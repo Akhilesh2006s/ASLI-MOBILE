@@ -1,0 +1,235 @@
+import { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { API_BASE_URL } from '../src/lib/api-config';
+import * as SecureStore from 'expo-secure-store';
+
+export default function PracticeTests() {
+  const router = useRouter();
+  const [tests, setTests] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchTests();
+  }, []);
+
+  const fetchTests = async () => {
+    try {
+      const token = await SecureStore.getItemAsync('authToken');
+      const response = await fetch(`${API_BASE_URL}/api/student/quizzes`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setTests(data.quizzes || data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching tests:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#3b82f6" />
+          <Text style={styles.loadingText}>Loading tests...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar style="dark" />
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Practice Tests</Text>
+        <Text style={styles.headerSubtitle}>Test your knowledge</Text>
+      </View>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {tests.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="document-text" size={64} color="#9ca3af" />
+            <Text style={styles.emptyText}>No tests available</Text>
+          </View>
+        ) : (
+          tests.map((test, index) => (
+            <TouchableOpacity
+              key={test._id || index}
+              style={styles.testCard}
+              onPress={() => router.push(`/quiz/${test._id}`)}
+            >
+              <View style={styles.testHeader}>
+                <View style={styles.testIcon}>
+                  <Ionicons name="document-text" size={24} color="#3b82f6" />
+                </View>
+                <View style={styles.testInfo}>
+                  <Text style={styles.testTitle}>{test.title || test.name || 'Practice Test'}</Text>
+                  <Text style={styles.testDescription} numberOfLines={2}>
+                    {test.description || 'Test your knowledge with this practice quiz'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+              </View>
+              <View style={styles.testMeta}>
+                {test.duration && (
+                  <View style={styles.metaItem}>
+                    <Ionicons name="time" size={16} color="#6b7280" />
+                    <Text style={styles.metaText}>{test.duration} min</Text>
+                  </View>
+                )}
+                {test.questions && (
+                  <View style={styles.metaItem}>
+                    <Ionicons name="document-text" size={16} color="#6b7280" />
+                    <Text style={styles.metaText}>{test.questions.length} questions</Text>
+                  </View>
+                )}
+                {test.score !== undefined && (
+                  <View style={styles.metaItem}>
+                    <Ionicons name="trophy" size={16} color="#f59e0b" />
+                    <Text style={styles.metaText}>Best: {test.score}%</Text>
+                  </View>
+                )}
+              </View>
+              <TouchableOpacity
+                style={styles.startButton}
+                onPress={() => router.push(`/quiz/${test._id}`)}
+              >
+                <Ionicons name="play" size={16} color="#fff" />
+                <Text style={styles.startButtonText}>Start Test</Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          ))
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f9fafb',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6b7280',
+  },
+  header: {
+    padding: 20,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  testCard: {
+    backgroundColor: '#fff',
+    marginHorizontal: 20,
+    marginTop: 16,
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  testHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  testIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#dbeafe',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  testInfo: {
+    flex: 1,
+  },
+  testTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  testDescription: {
+    fontSize: 14,
+    color: '#6b7280',
+    lineHeight: 20,
+  },
+  testMeta: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  metaText: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  startButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#3b82f6',
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  startButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 64,
+    gap: 16,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#6b7280',
+  },
+});
+
