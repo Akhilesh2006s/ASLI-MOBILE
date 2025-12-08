@@ -7,6 +7,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import * as SecureStore from 'expo-secure-store';
 import * as Clipboard from 'expo-clipboard';
+import { useBackNavigation, getDashboardPath } from '../../../src/hooks/useBackNavigation';
 
 interface ToolConfig {
   name: string;
@@ -341,15 +342,23 @@ export default function TeacherToolPage() {
   const [copied, setCopied] = useState(false);
   const [assignedStudents, setAssignedStudents] = useState<Array<{id: string, name: string, classNumber?: string}>>([]);
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
+  const [dashboardPath, setDashboardPath] = useState<string>('/teacher/dashboard');
 
   const config = toolType ? TOOL_CONFIGS[toolType] : null;
 
   useEffect(() => {
+    // Get dashboard path for back navigation
+    getDashboardPath().then(path => {
+      if (path) setDashboardPath(path);
+    });
     // Fetch assigned students if this tool needs student selection
     if (toolType === 'student-skill-tracker' || toolType === 'report-card-generator') {
       fetchStudents();
     }
   }, [toolType]);
+
+  // Navigate back to dashboard when back button is pressed
+  useBackNavigation(dashboardPath, false);
 
   const fetchStudents = async () => {
     try {
@@ -387,7 +396,7 @@ export default function TeacherToolPage() {
           <Text style={styles.errorText}>Tool not found</Text>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => router.back()}
+            onPress={() => router.replace(dashboardPath)}
           >
             <Text style={styles.backButtonText}>Go Back</Text>
           </TouchableOpacity>
@@ -593,7 +602,7 @@ export default function TeacherToolPage() {
       >
         <TouchableOpacity
           style={styles.backButtonHeader}
-          onPress={() => router.back()}
+          onPress={() => router.replace(dashboardPath)}
         >
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>

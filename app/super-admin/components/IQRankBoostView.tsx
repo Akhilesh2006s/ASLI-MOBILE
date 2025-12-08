@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { API_BASE_URL } from '../../../src/lib/api-config';
@@ -85,7 +85,7 @@ export default function IQRankBoostView() {
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'iq-test': return 'brain';
+      case 'iq-test': return 'bulb';
       case 'rank-boost': return 'trophy';
       case 'challenge': return 'target';
       case 'quiz': return 'star';
@@ -455,4 +455,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+
 

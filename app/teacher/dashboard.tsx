@@ -6,12 +6,18 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../src/lib/api-config';
+import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import AIClassesView from './components/AIClassesView';
 import StudentsView from './components/StudentsView';
+import AssessmentsView from './components/AssessmentsView';
+import VideosView from './components/VideosView';
+import HomeworkSubmissionsView from './components/HomeworkSubmissionsView';
+import RemarksView from './components/RemarksView';
+import ClassDashboardView from './components/ClassDashboardView';
 import EduOTTView from './components/EduOTTView';
 import VidyaAIView from './components/VidyaAIView';
 
-type TeacherView = 'ai-classes' | 'students' | 'eduott' | 'vidya-ai';
+type TeacherView = 'ai-classes' | 'students' | 'assessments' | 'videos' | 'homework' | 'remarks' | 'class-dashboard' | 'eduott' | 'vidya-ai';
 
 export default function TeacherDashboard() {
   const [currentView, setCurrentView] = useState<TeacherView>('ai-classes');
@@ -30,6 +36,9 @@ export default function TeacherDashboard() {
     checkAuth();
     fetchStats();
   }, []);
+
+  // Prevent back navigation from dashboard - user should stay in dashboard until logout
+  useBackNavigation('/teacher/dashboard', true);
 
   const checkAuth = async () => {
     try {
@@ -158,6 +167,11 @@ export default function TeacherDashboard() {
   const navigationItems: { view: TeacherView; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
     { view: 'ai-classes', label: 'AI Classes', icon: 'school' },
     { view: 'students', label: 'Students', icon: 'people' },
+    { view: 'assessments', label: 'Assessments', icon: 'clipboard' },
+    { view: 'videos', label: 'Videos', icon: 'videocam' },
+    { view: 'homework', label: 'Homework', icon: 'document-text' },
+    { view: 'remarks', label: 'Remarks', icon: 'chatbubble-ellipses' },
+    { view: 'class-dashboard', label: 'Class Dashboard', icon: 'stats-chart' },
     { view: 'eduott', label: 'EduOTT', icon: 'play' },
     { view: 'vidya-ai', label: 'Vidya AI', icon: 'sparkles' },
   ];
@@ -168,6 +182,16 @@ export default function TeacherDashboard() {
         return <AIClassesView stats={stats} />;
       case 'students':
         return <StudentsView />;
+      case 'assessments':
+        return <AssessmentsView />;
+      case 'videos':
+        return <VideosView />;
+      case 'homework':
+        return <HomeworkSubmissionsView />;
+      case 'remarks':
+        return <RemarksView />;
+      case 'class-dashboard':
+        return <ClassDashboardView />;
       case 'eduott':
         return <EduOTTView />;
       case 'vidya-ai':

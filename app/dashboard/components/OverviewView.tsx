@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
+import { getTodayStudyTime, getWeeklyStudyTime, updateStudyTime, setupAppStateListener } from '../../../src/utils/studyTimeTracker';
+import VidyaAICornerButton from './VidyaAICornerButton';
 
 // Try to load Vidya AI image
 let vidyaImageSource: any = null;
@@ -36,6 +38,24 @@ export default function OverviewView({ user }: OverviewViewProps) {
 
   useEffect(() => {
     fetchDashboardData();
+    setupAppStateListener();
+    
+    // Update study time every minute
+    const interval = setInterval(async () => {
+      const timeData = await updateStudyTime();
+      setStudyTimeToday(timeData.today);
+      setStudyTimeThisWeek(timeData.thisWeek);
+    }, 60000);
+    
+    // Initial load
+    updateStudyTime().then(timeData => {
+      setStudyTimeToday(timeData.today);
+      setStudyTimeThisWeek(timeData.thisWeek);
+    });
+    
+    return () => {
+      clearInterval(interval);
+    };
   }, []);
 
   const fetchDashboardData = async () => {
@@ -394,6 +414,7 @@ export default function OverviewView({ user }: OverviewViewProps) {
           <Text style={styles.viewButtonText}>View Complete Learning Path</Text>
         </TouchableOpacity>
       </View>
+      <VidyaAICornerButton />
     </View>
   );
 }

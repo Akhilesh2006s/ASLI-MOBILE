@@ -147,3 +147,4 @@ eas build:view [build-id]
 4. Once satisfied, build production version
 5. Submit to app stores
 
+

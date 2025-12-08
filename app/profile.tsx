@@ -5,15 +5,24 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
+import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
 
 export default function Profile() {
   const router = useRouter();
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [dashboardPath, setDashboardPath] = useState<string>('/dashboard');
 
   useEffect(() => {
     loadUserData();
+    // Get dashboard path for back navigation
+    getDashboardPath().then(path => {
+      if (path) setDashboardPath(path);
+    });
   }, []);
+
+  // Navigate back to dashboard when back button is pressed
+  useBackNavigation(dashboardPath, false);
 
   const loadUserData = async () => {
     const email = await SecureStore.getItemAsync('userEmail');
@@ -46,7 +55,7 @@ export default function Profile() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar style="dark" />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.replace(dashboardPath)} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#111827" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Profile</Text>

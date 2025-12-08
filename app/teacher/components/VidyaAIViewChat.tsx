@@ -178,6 +178,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     padding: 16,
+    paddingBottom: 32,
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
@@ -203,4 +204,5 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
 });
+
 

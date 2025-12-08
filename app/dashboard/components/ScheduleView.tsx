@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
+import CalendarView from './CalendarView';
 
 export default function ScheduleView() {
   const [incompleteContent, setIncompleteContent] = useState<any[]>([]);
@@ -389,4 +390,5 @@ const styles = StyleSheet.create({
     color: '#dc2626',
   },
 });
+
 

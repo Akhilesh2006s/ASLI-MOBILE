@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../src/lib/api-config';
+import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import OverviewView from './components/OverviewView';
 import LearningPathsView from './components/LearningPathsView';
 import BrowseView from './components/BrowseView';
@@ -14,19 +15,29 @@ import VidyaAIView from './components/VidyaAIView';
 import RemarksView from './components/RemarksView';
 import EduOTTView from './components/EduOTTView';
 import ExamsView from './components/ExamsView';
+import HomeworkSubmissionsView from '../student/components/HomeworkSubmissionsView';
+import StudentProgressView from './components/StudentProgressView';
+import QuizManagementView from './components/QuizManagementView';
+import ProgressChartsView from './components/ProgressChartsView';
+import RealTimeAnalyticsView from './components/RealTimeAnalyticsView';
 
-type DashboardView = 'overview' | 'learning-paths' | 'browse' | 'schedule' | 'vidya-ai' | 'remarks' | 'eduott' | 'exams';
+type DashboardView = 'overview' | 'learning-paths' | 'browse' | 'schedule' | 'vidya-ai' | 'remarks' | 'homework' | 'progress' | 'quizzes' | 'charts' | 'analytics' | 'eduott' | 'exams';
 
-const navigationItems = [
-  { view: 'overview' as DashboardView, label: 'Overview', icon: 'home' as keyof typeof Ionicons.glyphMap },
-  { view: 'learning-paths' as DashboardView, label: 'Learning Paths', icon: 'book' as keyof typeof Ionicons.glyphMap },
-  { view: 'browse' as DashboardView, label: 'Browse', icon: 'library' as keyof typeof Ionicons.glyphMap },
-  { view: 'schedule' as DashboardView, label: 'Schedule', icon: 'calendar' as keyof typeof Ionicons.glyphMap },
-  { view: 'eduott' as DashboardView, label: 'EduOTT', icon: 'videocam' as keyof typeof Ionicons.glyphMap },
-  { view: 'exams' as DashboardView, label: 'Exams', icon: 'document-text' as keyof typeof Ionicons.glyphMap },
-  { view: 'vidya-ai' as DashboardView, label: 'Vidya AI', icon: 'sparkles' as keyof typeof Ionicons.glyphMap },
-  { view: 'remarks' as DashboardView, label: 'Remarks', icon: 'chatbubble-ellipses' as keyof typeof Ionicons.glyphMap },
-];
+  const navigationItems = [
+    { view: 'overview' as DashboardView, label: 'Overview', icon: 'home' as keyof typeof Ionicons.glyphMap },
+    { view: 'learning-paths' as DashboardView, label: 'Learning Paths', icon: 'book' as keyof typeof Ionicons.glyphMap },
+    { view: 'browse' as DashboardView, label: 'Browse', icon: 'library' as keyof typeof Ionicons.glyphMap },
+    { view: 'schedule' as DashboardView, label: 'Schedule', icon: 'calendar' as keyof typeof Ionicons.glyphMap },
+    { view: 'homework' as DashboardView, label: 'Homework', icon: 'document-text' as keyof typeof Ionicons.glyphMap },
+    { view: 'progress' as DashboardView, label: 'Progress', icon: 'stats-chart' as keyof typeof Ionicons.glyphMap },
+    { view: 'quizzes' as DashboardView, label: 'Quizzes', icon: 'help-circle' as keyof typeof Ionicons.glyphMap },
+    { view: 'charts' as DashboardView, label: 'Charts', icon: 'bar-chart' as keyof typeof Ionicons.glyphMap },
+    { view: 'analytics' as DashboardView, label: 'Analytics', icon: 'pulse' as keyof typeof Ionicons.glyphMap },
+    { view: 'eduott' as DashboardView, label: 'EduOTT', icon: 'videocam' as keyof typeof Ionicons.glyphMap },
+    { view: 'exams' as DashboardView, label: 'Exams', icon: 'document-text' as keyof typeof Ionicons.glyphMap },
+    { view: 'vidya-ai' as DashboardView, label: 'Vidya AI', icon: 'sparkles' as keyof typeof Ionicons.glyphMap },
+    { view: 'remarks' as DashboardView, label: 'Remarks', icon: 'chatbubble-ellipses' as keyof typeof Ionicons.glyphMap },
+  ];
 
 export default function StudentDashboard() {
   const [currentView, setCurrentView] = useState<DashboardView>('overview');
@@ -39,6 +50,9 @@ export default function StudentDashboard() {
   useEffect(() => {
     checkAuth();
   }, []);
+
+  // Prevent back navigation from dashboard - user should stay in dashboard until logout
+  useBackNavigation('/dashboard', true);
 
   const checkAuth = async () => {
     try {
@@ -125,6 +139,16 @@ export default function StudentDashboard() {
         return <VidyaAIView />;
       case 'remarks':
         return <RemarksView />;
+      case 'homework':
+        return <HomeworkSubmissionsView />;
+      case 'progress':
+        return <StudentProgressView />;
+      case 'quizzes':
+        return <QuizManagementView />;
+      case 'charts':
+        return <ProgressChartsView />;
+      case 'analytics':
+        return <RealTimeAnalyticsView />;
       default:
         return <OverviewView user={user} />;
     }
@@ -175,8 +199,8 @@ export default function StudentDashboard() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {renderView()}
-      </ScrollView>
+          {renderView()}
+        </ScrollView>
 
       {/* FAB for Navigation */}
       <TouchableOpacity

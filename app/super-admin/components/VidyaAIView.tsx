@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
   assistantMessage: { alignSelf: 'flex-start', backgroundColor: '#fff', borderWidth: 1, borderColor: '#e5e7eb' },
   messageText: { fontSize: 16, color: '#111827' },
   userMessageText: { fontSize: 16, color: '#fff' },
-  inputContainer: { flexDirection: 'row', padding: 16, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#e5e7eb', alignItems: 'flex-end' },
+  inputContainer: { flexDirection: 'row', padding: 16, paddingBottom: 32, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#e5e7eb', alignItems: 'flex-end' },
   input: { flex: 1, backgroundColor: '#f9fafb', borderRadius: 24, paddingHorizontal: 16, paddingVertical: 12, maxHeight: 100, fontSize: 16 },
   sendButton: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#f97316', justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
 });

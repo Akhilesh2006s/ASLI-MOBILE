@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { API_BASE_URL } from '../../src/lib/api-config';
 import * as SecureStore from 'expo-secure-store';
+import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import AdminsView from './components/AdminsView';
 import ListView from './components/ListView';
 import VidyaAIView from './components/VidyaAIView';
@@ -63,6 +64,9 @@ export default function SuperAdminDashboard() {
     fetchUserInfo();
     fetchDashboardStats();
   }, []);
+
+  // Prevent back navigation from dashboard - user should stay in dashboard until logout
+  useBackNavigation('/super-admin/dashboard', true);
 
   const fetchUserInfo = async () => {
     try {

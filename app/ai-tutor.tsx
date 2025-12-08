@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { API_BASE_URL } from '../src/lib/api-config';
 import * as SecureStore from 'expo-secure-store';
+import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -24,7 +25,18 @@ export default function AITutor() {
   ]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [dashboardPath, setDashboardPath] = useState<string>('/dashboard');
   const scrollViewRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    // Get dashboard path for back navigation
+    getDashboardPath().then(path => {
+      if (path) setDashboardPath(path);
+    });
+  }, []);
+
+  // Navigate back to dashboard when back button is pressed
+  useBackNavigation(dashboardPath, false);
 
   const sendMessage = async () => {
     if (!inputText.trim() || isLoading) return;
@@ -245,6 +257,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     padding: 16,
+    paddingBottom: 32,
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',

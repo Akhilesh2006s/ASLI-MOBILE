@@ -29,8 +29,18 @@ export default function RootLayout() {
         <Stack.Screen name="super-admin/login" />
         <Stack.Screen name="super-admin/dashboard" />
         <Stack.Screen name="student/tools/[toolType]" />
-        <Stack.Screen name="student-exams" />
-        <Stack.Screen name="practice-tests" />
+            <Stack.Screen name="student-exams" />
+            <Stack.Screen name="practice-tests" />
+            <Stack.Screen name="video-lectures" />
+            <Stack.Screen name="live-stream" />
+            <Stack.Screen name="video-player" />
+            <Stack.Screen name="drive-viewer" />
+        <Stack.Screen name="asli-prep-content" />
+        <Stack.Screen name="iq-rank-boost-subjects" />
+        <Stack.Screen name="iq-rank-boost-quiz/[quizId]" />
+        <Stack.Screen name="onboarding" />
+        <Stack.Screen name="super-admin/analytics" />
+        <Stack.Screen name="super-admin/detailed-ai-analytics" />
       </Stack>
     </QueryClientProvider>
   );

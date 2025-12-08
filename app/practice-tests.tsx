@@ -6,15 +6,24 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { API_BASE_URL } from '../src/lib/api-config';
 import * as SecureStore from 'expo-secure-store';
+import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
 
 export default function PracticeTests() {
   const router = useRouter();
   const [tests, setTests] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [dashboardPath, setDashboardPath] = useState<string>('/dashboard');
 
   useEffect(() => {
     fetchTests();
+    // Get dashboard path for back navigation
+    getDashboardPath().then(path => {
+      if (path) setDashboardPath(path);
+    });
   }, []);
+
+  // Navigate back to dashboard when back button is pressed
+  useBackNavigation(dashboardPath, false);
 
   const fetchTests = async () => {
     try {

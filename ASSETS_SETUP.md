@@ -46,3 +46,4 @@ Or use an online tool like:
 
 The app is currently configured to work without assets (using solid colors). This is fine for development with Expo Go. For production builds, you'll want to add proper assets.
 
+

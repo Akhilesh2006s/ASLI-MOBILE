@@ -6,6 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { API_BASE_URL } from '../../src/lib/api-config';
 import * as SecureStore from 'expo-secure-store';
+import { useBackNavigation, getDashboardPath } from '../../src/hooks/useBackNavigation';
+import MathRenderer from '../../src/components/MathRenderer';
 
 interface Question {
   _id: string;
@@ -26,11 +28,20 @@ export default function QuizPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [dashboardPath, setDashboardPath] = useState<string>('/dashboard');
+
   useEffect(() => {
     if (id) {
       fetchQuiz();
     }
+    // Get dashboard path for back navigation
+    getDashboardPath().then(path => {
+      if (path) setDashboardPath(path);
+    });
   }, [id]);
+
+  // Navigate back to dashboard when back button is pressed
+  useBackNavigation(dashboardPath, false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -159,7 +170,9 @@ export default function QuizPage() {
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.questionCard}>
-          <Text style={styles.questionText}>{currentQuestion?.question}</Text>
+          <View style={styles.questionContainer}>
+            <MathRenderer formula={currentQuestion?.question || ''} inline={false} />
+          </View>
         </View>
 
         <View style={styles.optionsContainer}>
@@ -290,6 +303,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
+  },
+  questionContainer: {
+    width: '100%',
   },
   questionText: {
     fontSize: 18,

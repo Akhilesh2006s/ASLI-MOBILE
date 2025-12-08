@@ -7,6 +7,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import * as SecureStore from 'expo-secure-store';
 import * as Clipboard from 'expo-clipboard';
+import { useBackNavigation, getDashboardPath } from '../../../src/hooks/useBackNavigation';
 
 interface ToolConfig {
   name: string;
@@ -167,12 +168,20 @@ export default function StudentToolPage() {
   const [generatedContent, setGeneratedContent] = useState('');
   const [copied, setCopied] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [dashboardPath, setDashboardPath] = useState<string>('/dashboard');
 
   const config = toolType ? TOOL_CONFIGS[toolType] : null;
 
   useEffect(() => {
     fetchUser();
+    // Get dashboard path for back navigation
+    getDashboardPath().then(path => {
+      if (path) setDashboardPath(path);
+    });
   }, []);
+
+  // Navigate back to dashboard when back button is pressed
+  useBackNavigation(dashboardPath, false);
 
   const fetchUser = async () => {
     try {
@@ -698,4 +707,5 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
 });
+
 
