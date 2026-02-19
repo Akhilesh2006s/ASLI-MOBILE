@@ -10,14 +10,12 @@ import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import AIClassesView from './components/AIClassesView';
 import StudentsView from './components/StudentsView';
 import AssessmentsView from './components/AssessmentsView';
-import VideosView from './components/VideosView';
-import HomeworkSubmissionsView from './components/HomeworkSubmissionsView';
 import RemarksView from './components/RemarksView';
 import ClassDashboardView from './components/ClassDashboardView';
 import EduOTTView from './components/EduOTTView';
 import VidyaAIView from './components/VidyaAIView';
 
-type TeacherView = 'ai-classes' | 'students' | 'assessments' | 'videos' | 'homework' | 'remarks' | 'class-dashboard' | 'eduott' | 'vidya-ai';
+type TeacherView = 'ai-classes' | 'students' | 'assessments' | 'remarks' | 'class-dashboard' | 'eduott' | 'vidya-ai';
 
 export default function TeacherDashboard() {
   const [currentView, setCurrentView] = useState<TeacherView>('ai-classes');
@@ -116,6 +114,10 @@ export default function TeacherDashboard() {
   const fetchStats = async () => {
     try {
       const token = await SecureStore.getItemAsync('authToken');
+      console.log('[Mobile Debug] Fetching teacher stats...');
+      console.log('[Mobile Debug] API URL:', `${API_BASE_URL}/api/teacher/dashboard`);
+      console.log('[Mobile Debug] Token present:', token ? 'Yes' : 'No');
+      
       const response = await fetch(`${API_BASE_URL}/api/teacher/dashboard`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -123,19 +125,38 @@ export default function TeacherDashboard() {
         }
       });
 
+      console.log('[Mobile Debug] Response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('[Mobile Debug] Response data:', JSON.stringify(data, null, 2));
+        
         if (data.success && data.data) {
-          setStats({
-            totalStudents: data.data.totalStudents || 0,
-            totalClasses: data.data.totalClasses || 0,
-            totalVideos: data.data.totalVideos || 0,
-            averagePerformance: data.data.averagePerformance || 0,
-          });
+          // Stats are nested inside data.data.stats
+          const statsData = data.data.stats || data.data;
+          const students = data.data.students || [];
+          const assignedClasses = data.data.assignedClasses || [];
+          const videos = data.data.videos || [];
+          
+          // Calculate stats from actual data if not provided in stats object
+          const calculatedStats = {
+            totalStudents: statsData.totalStudents ?? students.length ?? 0,
+            totalClasses: statsData.totalClasses ?? assignedClasses.length ?? 0,
+            totalVideos: statsData.totalVideos ?? videos.length ?? 0,
+            averagePerformance: statsData.averagePerformance ?? 0,
+          };
+          
+          console.log('[Mobile Debug] Setting stats:', calculatedStats);
+          setStats(calculatedStats);
+        } else {
+          console.log('[Mobile Debug] API returned success: false or no data');
         }
+      } else {
+        const errorText = await response.text();
+        console.error('[Mobile Debug] Failed to fetch stats:', response.status, errorText);
       }
     } catch (error) {
-      console.error('Failed to fetch stats:', error);
+      console.error('[Mobile Debug] Failed to fetch stats (catch):', error);
     }
   };
 
@@ -168,8 +189,6 @@ export default function TeacherDashboard() {
     { view: 'ai-classes', label: 'AI Classes', icon: 'school' },
     { view: 'students', label: 'Students', icon: 'people' },
     { view: 'assessments', label: 'Assessments', icon: 'clipboard' },
-    { view: 'videos', label: 'Videos', icon: 'videocam' },
-    { view: 'homework', label: 'Homework', icon: 'document-text' },
     { view: 'remarks', label: 'Remarks', icon: 'chatbubble-ellipses' },
     { view: 'class-dashboard', label: 'Class Dashboard', icon: 'stats-chart' },
     { view: 'eduott', label: 'EduOTT', icon: 'play' },
@@ -184,10 +203,6 @@ export default function TeacherDashboard() {
         return <StudentsView />;
       case 'assessments':
         return <AssessmentsView />;
-      case 'videos':
-        return <VideosView />;
-      case 'homework':
-        return <HomeworkSubmissionsView />;
       case 'remarks':
         return <RemarksView />;
       case 'class-dashboard':

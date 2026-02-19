@@ -119,7 +119,11 @@ export default function OverviewView() {
   const topSubjectPerformance = studentAnalytics.subjectPerformance?.slice(0, 4) || [];
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <ScrollView 
+      style={styles.container} 
+      contentContainerStyle={styles.contentContainer}
+      showsVerticalScrollIndicator={true}
+    >
       {/* Stats Cards */}
       <View style={styles.statsGrid}>
         {/* Total Students */}
@@ -242,7 +246,7 @@ export default function OverviewView() {
           >
             <View style={styles.statCardContent}>
               <View style={styles.statCardIcon}>
-                <Ionicons name="target" size={32} color="#fff" />
+                <Ionicons name="locate" size={32} color="#fff" />
               </View>
               <View style={styles.statCardText}>
                 <Text style={styles.statCardLabel}>Assessments</Text>
@@ -256,11 +260,21 @@ export default function OverviewView() {
       </View>
 
       {/* Detailed School Analysis */}
-      <View style={styles.analysisCard}>
+      <LinearGradient
+        colors={['#f8fafc', '#f1f5f9']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.analysisCard}
+      >
         <View style={styles.analysisHeader}>
-          <View style={styles.analysisIcon}>
+          <LinearGradient
+            colors={['#fb923c', '#f97316']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.analysisIcon}
+          >
             <Ionicons name="bar-chart" size={32} color="#fff" />
-          </View>
+          </LinearGradient>
           <View>
             <Text style={styles.analysisTitle}>Detailed School Analysis</Text>
             <Text style={styles.analysisSubtitle}>Comprehensive insights about your students</Text>
@@ -366,7 +380,7 @@ export default function OverviewView() {
             </View>
           </View>
         )}
-      </View>
+      </LinearGradient>
 
       {/* Admin-Specific Data */}
       <View style={styles.adminCards}>
@@ -425,6 +439,7 @@ export default function OverviewView() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    minHeight: 0,
   },
   contentContainer: {
     paddingBottom: 20,
@@ -479,7 +494,6 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   analysisCard: {
-    backgroundColor: '#f8fafc',
     borderRadius: 16,
     padding: 20,
     marginBottom: 24,
@@ -488,6 +502,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    overflow: 'hidden',
   },
   analysisHeader: {
     flexDirection: 'row',
@@ -498,10 +515,10 @@ const styles = StyleSheet.create({
   analysisIcon: {
     width: 48,
     height: 48,
-    backgroundColor: '#fb923c',
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
   analysisTitle: {
     fontSize: 20,
@@ -675,5 +692,7 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
 });
+
+
 
 

@@ -433,10 +433,93 @@ export default function AIAnalyticsView() {
               <Ionicons name="pie-chart" size={24} color="#111827" />
               <Text style={styles.sectionTitle}>Performance Distribution</Text>
             </View>
-            <View style={styles.emptyContainer}>
-              <Ionicons name="pie-chart" size={64} color="#d1d5db" />
-              <Text style={styles.emptyText}>Performance distribution data coming soon</Text>
-            </View>
+            {analytics.globalAnalytics && analytics.adminAnalytics ? (
+              <View style={styles.distributionContainer}>
+                {/* Overall Score Distribution */}
+                <View style={styles.distributionCard}>
+                  <Text style={styles.distributionCardTitle}>Overall Score Distribution</Text>
+                  <View style={styles.distributionStats}>
+                    <View style={styles.distributionStatItem}>
+                      <View style={[styles.distributionBadge, { backgroundColor: '#10b981' }]}>
+                        <Text style={styles.distributionBadgeText}>90-100%</Text>
+                      </View>
+                      <Text style={styles.distributionStatValue}>
+                        {analytics.adminAnalytics.filter((a: AdminAnalytics) => a.averageScore >= 90).length}
+                      </Text>
+                      <Text style={styles.distributionStatLabel}>Excellent</Text>
+                    </View>
+                    <View style={styles.distributionStatItem}>
+                      <View style={[styles.distributionBadge, { backgroundColor: '#3b82f6' }]}>
+                        <Text style={styles.distributionBadgeText}>80-89%</Text>
+                      </View>
+                      <Text style={styles.distributionStatValue}>
+                        {analytics.adminAnalytics.filter((a: AdminAnalytics) => a.averageScore >= 80 && a.averageScore < 90).length}
+                      </Text>
+                      <Text style={styles.distributionStatLabel}>Good</Text>
+                    </View>
+                    <View style={styles.distributionStatItem}>
+                      <View style={[styles.distributionBadge, { backgroundColor: '#f59e0b' }]}>
+                        <Text style={styles.distributionBadgeText}>70-79%</Text>
+                      </View>
+                      <Text style={styles.distributionStatValue}>
+                        {analytics.adminAnalytics.filter((a: AdminAnalytics) => a.averageScore >= 70 && a.averageScore < 80).length}
+                      </Text>
+                      <Text style={styles.distributionStatLabel}>Average</Text>
+                    </View>
+                    <View style={styles.distributionStatItem}>
+                      <View style={[styles.distributionBadge, { backgroundColor: '#f97316' }]}>
+                        <Text style={styles.distributionBadgeText}>60-69%</Text>
+                      </View>
+                      <Text style={styles.distributionStatValue}>
+                        {analytics.adminAnalytics.filter((a: AdminAnalytics) => a.averageScore >= 60 && a.averageScore < 70).length}
+                      </Text>
+                      <Text style={styles.distributionStatLabel}>Below Avg</Text>
+                    </View>
+                    <View style={styles.distributionStatItem}>
+                      <View style={[styles.distributionBadge, { backgroundColor: '#ef4444' }]}>
+                        <Text style={styles.distributionBadgeText}>Below 60%</Text>
+                      </View>
+                      <Text style={styles.distributionStatValue}>
+                        {analytics.adminAnalytics.filter((a: AdminAnalytics) => a.averageScore < 60).length}
+                      </Text>
+                      <Text style={styles.distributionStatLabel}>Needs Improvement</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Global Average */}
+                {analytics.globalAnalytics.overallAverageScore !== undefined && (
+                  <View style={styles.distributionCard}>
+                    <Text style={styles.distributionCardTitle}>Global Average Score</Text>
+                    <View style={styles.globalAverageContainer}>
+                      <Text style={[styles.globalAverageValue, { color: getScoreColor(analytics.globalAnalytics.overallAverageScore || 0) }]}>
+                        {analytics.globalAnalytics.overallAverageScore.toFixed(1)}%
+                      </Text>
+                      <View style={styles.progressBar}>
+                        <View
+                          style={[
+                            styles.progressFill,
+                            {
+                              width: `${Math.min(analytics.globalAnalytics.overallAverageScore || 0, 100)}%`,
+                              backgroundColor: getScoreColor(analytics.globalAnalytics.overallAverageScore || 0)
+                            }
+                          ]}
+                        />
+                      </View>
+                      <Text style={styles.globalAverageLabel}>
+                        Based on {analytics.globalAnalytics.totalExams || 0} exams across {analytics.globalAnalytics.totalAdmins || 0} schools
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="pie-chart" size={64} color="#d1d5db" />
+                <Text style={styles.emptyText}>No distribution data available</Text>
+                <Text style={styles.emptySubtext}>Analytics data will appear here once exams are completed</Text>
+              </View>
+            )}
           </View>
         )}
 
@@ -511,10 +594,97 @@ export default function AIAnalyticsView() {
               <Ionicons name="trending-up" size={24} color="#111827" />
               <Text style={styles.sectionTitle}>Performance Trends Analysis</Text>
             </View>
-            <View style={styles.emptyContainer}>
-              <Ionicons name="trending-up" size={64} color="#d1d5db" />
-              <Text style={styles.emptyText}>Performance trends data coming soon</Text>
-            </View>
+            {analytics.globalAnalytics && analytics.adminAnalytics ? (
+              <View style={styles.trendsContainer}>
+                {/* Trend Summary */}
+                <View style={styles.trendCard}>
+                  <Text style={styles.trendCardTitle}>Performance Overview</Text>
+                  <View style={styles.trendStats}>
+                    <View style={styles.trendStatItem}>
+                      <Ionicons name="school" size={24} color="#8b5cf6" />
+                      <Text style={styles.trendStatValue}>{analytics.globalAnalytics.totalAdmins || 0}</Text>
+                      <Text style={styles.trendStatLabel}>Total Schools</Text>
+                    </View>
+                    <View style={styles.trendStatItem}>
+                      <Ionicons name="document-text" size={24} color="#3b82f6" />
+                      <Text style={styles.trendStatValue}>{analytics.globalAnalytics.totalExams || 0}</Text>
+                      <Text style={styles.trendStatLabel}>Total Exams</Text>
+                    </View>
+                    <View style={styles.trendStatItem}>
+                      <Ionicons name="people" size={24} color="#10b981" />
+                      <Text style={styles.trendStatValue}>{analytics.globalAnalytics.totalExamResults || 0}</Text>
+                      <Text style={styles.trendStatLabel}>Exam Results</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Top Performers Trend */}
+                {analytics.globalAnalytics.topPerformers && analytics.globalAnalytics.topPerformers.length > 0 && (
+                  <View style={styles.trendCard}>
+                    <Text style={styles.trendCardTitle}>Top Performing Schools</Text>
+                    <View style={styles.topPerformersList}>
+                      {analytics.globalAnalytics.topPerformers.slice(0, 5).map((performer: any, index: number) => (
+                        <View key={index} style={styles.topPerformerItem}>
+                          <View style={styles.topPerformerRank}>
+                            <Text style={styles.topPerformerRankText}>#{index + 1}</Text>
+                          </View>
+                          <View style={styles.topPerformerInfo}>
+                            <Text style={styles.topPerformerName}>{performer.adminName || performer.name || 'Unknown'}</Text>
+                            <Text style={styles.topPerformerEmail}>{performer.adminEmail || performer.email || ''}</Text>
+                          </View>
+                          <View style={styles.topPerformerScore}>
+                            <Text style={[styles.topPerformerScoreText, { color: getScoreColor(performer.averageScore || 0) }]}>
+                              {performer.averageScore?.toFixed(1) || '0.0'}%
+                            </Text>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* Admin Comparison Trend */}
+                {analytics.adminAnalytics && analytics.adminAnalytics.length > 0 && (
+                  <View style={styles.trendCard}>
+                    <Text style={styles.trendCardTitle}>School Performance Comparison</Text>
+                    <View style={styles.comparisonList}>
+                      {analytics.adminAnalytics.map((admin: AdminAnalytics, index: number) => (
+                        <View key={admin.adminId || index} style={styles.comparisonItem}>
+                          <View style={styles.comparisonInfo}>
+                            <Text style={styles.comparisonName}>{admin.adminName || 'Unknown School'}</Text>
+                            <Text style={styles.comparisonDetails}>
+                              {admin.totalStudents || 0} students • {admin.totalExams || 0} exams
+                            </Text>
+                          </View>
+                          <View style={styles.comparisonScore}>
+                            <Text style={[styles.comparisonScoreText, { color: getScoreColor(admin.averageScore || 0) }]}>
+                              {admin.averageScore?.toFixed(1) || '0.0'}%
+                            </Text>
+                            <View style={styles.progressBar}>
+                              <View
+                                style={[
+                                  styles.progressFill,
+                                  {
+                                    width: `${Math.min(admin.averageScore || 0, 100)}%`,
+                                    backgroundColor: getScoreColor(admin.averageScore || 0)
+                                  }
+                                ]}
+                              />
+                            </View>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </View>
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="trending-up" size={64} color="#d1d5db" />
+                <Text style={styles.emptyText}>No trends data available</Text>
+                <Text style={styles.emptySubtext}>Trends will appear here once sufficient exam data is collected</Text>
+              </View>
+            )}
           </View>
         )}
       </View>
@@ -937,5 +1107,188 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  distributionContainer: {
+    gap: 16,
+  },
+  distributionCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  distributionCardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 16,
+  },
+  distributionStats: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  distributionStatItem: {
+    flex: 1,
+    minWidth: '45%',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
+  },
+  distributionBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginBottom: 8,
+  },
+  distributionBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  distributionStatValue: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  distributionStatLabel: {
+    fontSize: 12,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+  globalAverageContainer: {
+    alignItems: 'center',
+  },
+  globalAverageValue: {
+    fontSize: 48,
+    fontWeight: '800',
+    marginBottom: 16,
+  },
+  globalAverageLabel: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  trendsContainer: {
+    gap: 16,
+  },
+  trendCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  trendCardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 16,
+  },
+  trendStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  trendStatItem: {
+    alignItems: 'center',
+  },
+  trendStatValue: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#111827',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  trendStatLabel: {
+    fontSize: 12,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+  topPerformersList: {
+    gap: 12,
+  },
+  topPerformerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
+  },
+  topPerformerRank: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#fef3c7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  topPerformerRankText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#92400e',
+  },
+  topPerformerInfo: {
+    flex: 1,
+  },
+  topPerformerName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 2,
+  },
+  topPerformerEmail: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  topPerformerScore: {
+    alignItems: 'flex-end',
+  },
+  topPerformerScoreText: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  comparisonList: {
+    gap: 12,
+  },
+  comparisonItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
+  },
+  comparisonInfo: {
+    flex: 1,
+  },
+  comparisonName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  comparisonDetails: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  comparisonScore: {
+    alignItems: 'flex-end',
+    minWidth: 80,
+  },
+  comparisonScoreText: {
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 4,
   },
 });

@@ -31,7 +31,11 @@ interface Video {
 }
 
 export default function VideoPlayer() {
-  const { videoId } = useLocalSearchParams<{ videoId: string }>();
+  const { videoId, isContentItem, contentData } = useLocalSearchParams<{ 
+    videoId: string;
+    isContentItem?: string;
+    contentData?: string;
+  }>();
   const [video, setVideo] = useState<Video | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'notes' | 'mindmap' | 'qa'>('notes');
@@ -41,12 +45,50 @@ export default function VideoPlayer() {
 
   useEffect(() => {
     if (videoId) {
+      // If content data is passed directly, use it
+      if (isContentItem === 'true' && contentData) {
+        try {
+          const parsedContent = JSON.parse(contentData);
+          const videoFileUrl = parsedContent.fileUrl || parsedContent.videoUrl || '';
+          const isYouTube = !!parsedContent.youtubeUrl || (videoFileUrl && (
+            videoFileUrl.includes('youtube.com') ||
+            videoFileUrl.includes('youtu.be')
+          ));
+
+          const transformedVideo: Video = {
+            _id: parsedContent._id,
+            title: parsedContent.title || 'Untitled Video',
+            description: parsedContent.description || '',
+            duration: parsedContent.duration ? (parsedContent.duration > 100 ? parsedContent.duration : parsedContent.duration * 60) : 0,
+            views: 0,
+            createdAt: new Date().toISOString(),
+            videoUrl: videoFileUrl,
+            youtubeUrl: parsedContent.youtubeUrl || (isYouTube ? videoFileUrl : ''),
+            isYouTubeVideo: isYouTube,
+            thumbnailUrl: null,
+            subject: parsedContent.subject || 'Unknown',
+            aiFeatures: {
+              hasNotes: false,
+              hasMindMap: false,
+              hasVoiceQA: false
+            }
+          };
+          
+          setVideo(transformedVideo);
+          setIsLoading(false);
+          return;
+        } catch (error) {
+          console.error('Error parsing content data:', error);
+          // Fall through to fetchVideo
+        }
+      }
+      
       fetchVideo();
     }
     getDashboardPath().then(path => {
       if (path) setDashboardPath(path);
     });
-  }, [videoId]);
+  }, [videoId, isContentItem, contentData]);
 
   useBackNavigation(dashboardPath, false);
 
@@ -54,7 +96,9 @@ export default function VideoPlayer() {
     try {
       setIsLoading(true);
       const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/student/videos/${videoId}`, {
+      
+      // Try fetching from videos endpoint first
+      let response = await fetch(`${API_BASE_URL}/api/student/videos/${videoId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -63,8 +107,114 @@ export default function VideoPlayer() {
 
       if (response.ok) {
         const data = await response.json();
-        setVideo(data.data || data);
+        const videoData = data.data || data;
+        setVideo(videoData);
+        return;
       }
+
+      // If not found, try fetching from asli-prep-content list and find by ID
+      // Try admin endpoint first
+      response = await fetch(`${API_BASE_URL}/api/admin/asli-prep-content?type=Video`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const contentsList = data.data || data || [];
+        const contentArray = Array.isArray(contentsList) ? contentsList : [];
+        
+        // Find the content item by ID
+        const contentData = contentArray.find((item: any) => 
+          (item._id === videoId) || (item.id === videoId)
+        );
+        
+        if (contentData) {
+          // Transform asli-prep-content to video format
+          const videoFileUrl = contentData.fileUrl || contentData.videoUrl || '';
+          const isYouTube = !!contentData.youtubeUrl || (videoFileUrl && (
+            videoFileUrl.includes('youtube.com') ||
+            videoFileUrl.includes('youtu.be')
+          ));
+
+          const transformedVideo = {
+            _id: contentData._id || contentData.id,
+            title: contentData.title || 'Untitled Video',
+            description: contentData.description || '',
+            duration: contentData.duration ? (contentData.duration > 100 ? contentData.duration : contentData.duration * 60) : 0,
+            views: contentData.views || 0,
+            createdAt: contentData.createdAt || new Date().toISOString(),
+            videoUrl: videoFileUrl,
+            youtubeUrl: contentData.youtubeUrl || (isYouTube ? videoFileUrl : ''),
+            isYouTubeVideo: isYouTube,
+            thumbnailUrl: contentData.thumbnailUrl || null,
+            subject: contentData.subject?.name || contentData.subject || 'Unknown',
+            aiFeatures: {
+              hasNotes: false,
+              hasMindMap: false,
+              hasVoiceQA: false
+            }
+          };
+          
+          setVideo(transformedVideo);
+          return;
+        }
+      }
+
+      // If still not found, try student asli-prep-content endpoint
+      response = await fetch(`${API_BASE_URL}/api/student/asli-prep-content?type=Video`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const contentsList = data.data || data || [];
+        const contentArray = Array.isArray(contentsList) ? contentsList : [];
+        
+        // Find the content item by ID
+        const contentData = contentArray.find((item: any) => 
+          (item._id === videoId) || (item.id === videoId)
+        );
+        
+        if (contentData) {
+          // Transform asli-prep-content to video format
+          const videoFileUrl = contentData.fileUrl || contentData.videoUrl || '';
+          const isYouTube = !!contentData.youtubeUrl || (videoFileUrl && (
+            videoFileUrl.includes('youtube.com') ||
+            videoFileUrl.includes('youtu.be')
+          ));
+
+          const transformedVideo = {
+            _id: contentData._id || contentData.id,
+            title: contentData.title || 'Untitled Video',
+            description: contentData.description || '',
+            duration: contentData.duration ? (contentData.duration > 100 ? contentData.duration : contentData.duration * 60) : 0,
+            views: contentData.views || 0,
+            createdAt: contentData.createdAt || new Date().toISOString(),
+            videoUrl: videoFileUrl,
+            youtubeUrl: contentData.youtubeUrl || (isYouTube ? videoFileUrl : ''),
+            isYouTubeVideo: isYouTube,
+            thumbnailUrl: contentData.thumbnailUrl || null,
+            subject: contentData.subject?.name || contentData.subject || 'Unknown',
+            aiFeatures: {
+              hasNotes: false,
+              hasMindMap: false,
+              hasVoiceQA: false
+            }
+          };
+          
+          setVideo(transformedVideo);
+          return;
+        }
+      }
+
+      // If all endpoints fail, video not found
+      console.error('Video not found in any endpoint');
     } catch (error) {
       console.error('Error fetching video:', error);
     } finally {

@@ -458,6 +458,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f9fafb',
+    minHeight: 0,
   },
   loadingContainer: {
     flex: 1,

@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Modal, Linking, Alert } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Video, ResizeMode } from 'expo-av';
+import { useRouter } from 'expo-router';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import * as SecureStore from 'expo-secure-store';
 
@@ -20,12 +20,10 @@ interface Video {
 }
 
 export default function EduOTTView() {
+  const router = useRouter();
   const [videos, setVideos] = useState<Video[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
-  const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
-  const videoRef = useRef<Video>(null);
 
   useEffect(() => {
     fetchVideos();
@@ -127,59 +125,47 @@ export default function EduOTTView() {
   };
 
   const handleVideoPress = (video: Video) => {
-    setSelectedVideo(video);
-    setIsVideoModalVisible(true);
+    // Navigate to video player instead of showing modal
+    router.push({
+      pathname: '/video-player',
+      params: { 
+        videoId: video._id,
+        isContentItem: 'true',
+        contentData: JSON.stringify({
+          _id: video._id,
+          title: video.title,
+          description: video.description,
+          fileUrl: video.fileUrl || video.videoUrl,
+          videoUrl: video.videoUrl || video.fileUrl,
+          youtubeUrl: video.youtubeUrl,
+          duration: video.duration,
+          isYouTubeVideo: video.isYouTubeVideo
+        })
+      }
+    });
   };
 
   const handlePlayVideo = async (video: Video) => {
-    if (video.isYouTubeVideo && video.youtubeUrl) {
-      // Extract YouTube video ID
-      let videoId = '';
-      if (video.youtubeUrl.includes('youtu.be/')) {
-        videoId = video.youtubeUrl.split('youtu.be/')[1]?.split('?')[0] || '';
-      } else if (video.youtubeUrl.includes('youtube.com/watch?v=')) {
-        videoId = video.youtubeUrl.split('v=')[1]?.split('&')[0] || '';
-      } else if (video.youtubeUrl.includes('youtube.com/embed/')) {
-        videoId = video.youtubeUrl.split('embed/')[1]?.split('?')[0] || '';
+    // Navigate to video player
+    router.push({
+      pathname: '/video-player',
+      params: { 
+        videoId: video._id,
+        isContentItem: 'true',
+        contentData: JSON.stringify({
+          _id: video._id,
+          title: video.title,
+          description: video.description,
+          fileUrl: video.fileUrl || video.videoUrl,
+          videoUrl: video.videoUrl || video.fileUrl,
+          youtubeUrl: video.youtubeUrl,
+          duration: video.duration,
+          isYouTubeVideo: video.isYouTubeVideo
+        })
       }
-      
-      if (videoId) {
-        const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
-        const canOpen = await Linking.canOpenURL(youtubeUrl);
-        if (canOpen) {
-          await Linking.openURL(youtubeUrl);
-        } else {
-          Alert.alert('Error', 'Cannot open YouTube. Please install YouTube app.');
-        }
-      } else {
-        Alert.alert('Error', 'Invalid YouTube URL');
-      }
-    } else if (video.videoUrl || video.fileUrl) {
-      // For regular video URLs, show in modal
-      setSelectedVideo(video);
-      setIsVideoModalVisible(true);
-    } else {
-      Alert.alert('Error', 'Video URL not available');
-    }
+    });
   };
 
-  const getVideoUrl = (video: Video) => {
-    if (video.videoUrl) {
-      return video.videoUrl.startsWith('http') 
-        ? video.videoUrl 
-        : `${API_BASE_URL}${video.videoUrl}`;
-    }
-    if (video.fileUrl) {
-      return video.fileUrl.startsWith('http') 
-        ? video.fileUrl 
-        : `${API_BASE_URL}${video.fileUrl}`;
-    }
-    if (video.fileUrls && video.fileUrls.length > 0) {
-      const url = video.fileUrls[0];
-      return url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
-    }
-    return '';
-  };
 
   return (
     <View style={styles.container}>
@@ -219,7 +205,7 @@ export default function EduOTTView() {
              <TouchableOpacity
                key={video._id}
                style={styles.videoCard}
-               onPress={() => handlePlayVideo(video)}
+               onPress={() => handleVideoPress(video)}
                activeOpacity={0.7}
              >
                <View style={styles.videoHeader}>
@@ -255,63 +241,6 @@ export default function EduOTTView() {
            ))}
          </ScrollView>
        )}
-
-       {/* Video Player Modal */}
-       <Modal
-         visible={isVideoModalVisible}
-         animationType="slide"
-         onRequestClose={() => setIsVideoModalVisible(false)}
-       >
-         <View style={styles.modalContainer}>
-           <View style={styles.modalHeader}>
-             <Text style={styles.modalTitle}>
-               {selectedVideo?.title || 'Video Player'}
-             </Text>
-             <TouchableOpacity
-               onPress={() => setIsVideoModalVisible(false)}
-               style={styles.closeButton}
-             >
-               <Ionicons name="close" size={28} color="#111827" />
-             </TouchableOpacity>
-           </View>
-
-           {selectedVideo && !selectedVideo.isYouTubeVideo && (
-             <View style={styles.videoPlayerContainer}>
-               <Video
-                 ref={videoRef}
-                 style={styles.videoPlayer}
-                 source={{ uri: getVideoUrl(selectedVideo) }}
-                 useNativeControls
-                 resizeMode={ResizeMode.CONTAIN}
-                 shouldPlay={false}
-                 isLooping={false}
-               />
-             </View>
-           )}
-
-           {selectedVideo && selectedVideo.isYouTubeVideo && (
-             <View style={styles.youtubeContainer}>
-               <Text style={styles.youtubeMessage}>
-                 This is a YouTube video. Opening in YouTube app...
-               </Text>
-               <TouchableOpacity
-                 style={styles.openYoutubeButton}
-                 onPress={() => handlePlayVideo(selectedVideo)}
-               >
-                 <Ionicons name="logo-youtube" size={24} color="#fff" />
-                 <Text style={styles.openYoutubeText}>Open in YouTube</Text>
-               </TouchableOpacity>
-             </View>
-           )}
-
-           {selectedVideo && selectedVideo.description && (
-             <ScrollView style={styles.modalDescription}>
-               <Text style={styles.descriptionTitle}>Description</Text>
-               <Text style={styles.descriptionText}>{selectedVideo.description}</Text>
-             </ScrollView>
-           )}
-         </View>
-       </Modal>
      </View>
    );
  }
@@ -320,6 +249,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f9fafb',
+    minHeight: 0,
   },
   header: {
     flexDirection: 'row',
@@ -435,79 +365,5 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111827',
     marginTop: 16,
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    paddingTop: 50,
-    backgroundColor: '#fff',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#111827',
-    flex: 1,
-  },
-  closeButton: {
-    padding: 8,
-  },
-  videoPlayerContainer: {
-    flex: 1,
-    backgroundColor: '#000',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  videoPlayer: {
-    width: '100%',
-    height: '100%',
-  },
-  youtubeContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#000',
-    padding: 40,
-  },
-  youtubeMessage: {
-    fontSize: 16,
-    color: '#fff',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  openYoutubeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ef4444',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 8,
-  },
-  openYoutubeText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  modalDescription: {
-    maxHeight: 200,
-    backgroundColor: '#fff',
-    padding: 20,
-  },
-  descriptionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  descriptionText: {
-    fontSize: 14,
-    color: '#6b7280',
-    lineHeight: 20,
   },
  });

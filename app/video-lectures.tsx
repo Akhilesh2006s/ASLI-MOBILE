@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image } from 'react-native';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { Image } from 'expo-image';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../src/lib/api-config';
 import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
@@ -94,18 +95,91 @@ export default function VideoLectures() {
     return (match && match[2].length === 11) ? match[2] : null;
   };
 
-  const filteredVideos = videos.filter(video => {
-    const matchesSearch = video.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (video.description && video.description.toLowerCase().includes(searchQuery.toLowerCase()));
-    const subjectId = typeof video.subject === 'object' ? video.subject?._id : video.subject;
-    const matchesSubject = selectedSubject === 'all' || subjectId === selectedSubject;
-    const matchesDifficulty = selectedDifficulty === 'all' || video.difficulty?.toLowerCase() === selectedDifficulty.toLowerCase();
-    return matchesSearch && matchesSubject && matchesDifficulty;
-  });
+  const filteredVideos = useMemo(() => {
+    return videos.filter(video => {
+      const matchesSearch = !searchQuery || video.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (video.description && video.description.toLowerCase().includes(searchQuery.toLowerCase()));
+      const subjectId = typeof video.subject === 'object' ? video.subject?._id : video.subject;
+      const matchesSubject = selectedSubject === 'all' || subjectId === selectedSubject;
+      const matchesDifficulty = selectedDifficulty === 'all' || video.difficulty?.toLowerCase() === selectedDifficulty.toLowerCase();
+      return matchesSearch && matchesSubject && matchesDifficulty;
+    });
+  }, [videos, searchQuery, selectedSubject, selectedDifficulty]);
 
-  const handleVideoPress = (video: Video) => {
+  const handleVideoPress = useCallback((video: Video) => {
     router.push(`/video-player?videoId=${video._id}`);
-  };
+  }, []);
+
+  const renderVideoItem = useCallback(({ item: video }: { item: Video }) => {
+    const subjectName = typeof video.subject === 'object'
+      ? video.subject?.name
+      : video.subject || 'General';
+    const youtubeId = video.isYouTubeVideo && video.youtubeUrl
+      ? extractYouTubeId(video.youtubeUrl)
+      : null;
+
+    return (
+      <TouchableOpacity
+        style={styles.videoCard}
+        onPress={() => handleVideoPress(video)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.videoThumbnail}>
+          {youtubeId ? (
+            <Image
+              source={{ uri: `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg` }}
+              style={styles.thumbnailImage}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={200}
+            />
+          ) : video.thumbnailUrl ? (
+            <Image
+              source={{ uri: video.thumbnailUrl }}
+              style={styles.thumbnailImage}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={200}
+            />
+          ) : (
+            <View style={styles.thumbnailPlaceholder}>
+              <Ionicons name="videocam" size={48} color="#9ca3af" />
+            </View>
+          )}
+          <View style={styles.playOverlay}>
+            <View style={styles.playButton}>
+              <Ionicons name="play" size={24} color="#fff" />
+            </View>
+          </View>
+          <View style={styles.durationBadge}>
+            <Ionicons name="time" size={12} color="#fff" />
+            <Text style={styles.durationText}>
+              {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.videoInfo}>
+          <Text style={styles.videoTitle} numberOfLines={2}>{video.title}</Text>
+          <Text style={styles.videoSubject}>{subjectName}</Text>
+          <View style={styles.videoMeta}>
+            {video.difficulty && (
+              <View style={[styles.difficultyBadge, styles[`difficulty${video.difficulty}` as keyof typeof styles]]}>
+                <Text style={styles.difficultyText}>{video.difficulty}</Text>
+              </View>
+            )}
+            {video.views !== undefined && (
+              <View style={styles.viewsContainer}>
+                <Ionicons name="eye" size={14} color="#6b7280" />
+                <Text style={styles.viewsText}>{video.views}</Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  }, [handleVideoPress]);
+
+  const keyExtractor = useCallback((item: Video) => item._id, []);
 
   if (isLoading) {
     return (
@@ -187,82 +261,33 @@ export default function VideoLectures() {
       </View>
 
       {/* Videos Grid */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {filteredVideos.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="videocam-off" size={64} color="#9ca3af" />
-            <Text style={styles.emptyText}>No videos found</Text>
-            <Text style={styles.emptySubtext}>Try adjusting your filters</Text>
-          </View>
-        ) : (
-          <View style={styles.videosGrid}>
-            {filteredVideos.map((video) => {
-              const subjectName = typeof video.subject === 'object'
-                ? video.subject?.name
-                : video.subject || 'General';
-              const youtubeId = video.isYouTubeVideo && video.youtubeUrl
-                ? extractYouTubeId(video.youtubeUrl)
-                : null;
-
-              return (
-                <TouchableOpacity
-                  key={video._id}
-                  style={styles.videoCard}
-                  onPress={() => handleVideoPress(video)}
-                >
-                  <View style={styles.videoThumbnail}>
-                    {youtubeId ? (
-                      <Image
-                        source={{ uri: `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg` }}
-                        style={styles.thumbnailImage}
-                        contentFit="cover"
-                      />
-                    ) : video.thumbnailUrl ? (
-                      <Image
-                        source={{ uri: video.thumbnailUrl }}
-                        style={styles.thumbnailImage}
-                        contentFit="cover"
-                      />
-                    ) : (
-                      <View style={styles.thumbnailPlaceholder}>
-                        <Ionicons name="videocam" size={48} color="#9ca3af" />
-                      </View>
-                    )}
-                    <View style={styles.playOverlay}>
-                      <View style={styles.playButton}>
-                        <Ionicons name="play" size={24} color="#fff" />
-                      </View>
-                    </View>
-                    <View style={styles.durationBadge}>
-                      <Ionicons name="time" size={12} color="#fff" />
-                      <Text style={styles.durationText}>
-                        {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.videoInfo}>
-                    <Text style={styles.videoTitle} numberOfLines={2}>{video.title}</Text>
-                    <Text style={styles.videoSubject}>{subjectName}</Text>
-                    <View style={styles.videoMeta}>
-                      {video.difficulty && (
-                        <View style={[styles.difficultyBadge, styles[`difficulty${video.difficulty}`]]}>
-                          <Text style={styles.difficultyText}>{video.difficulty}</Text>
-                        </View>
-                      )}
-                      {video.views !== undefined && (
-                        <View style={styles.viewsContainer}>
-                          <Ionicons name="eye" size={14} color="#6b7280" />
-                          <Text style={styles.viewsText}>{video.views}</Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
-      </ScrollView>
+      {filteredVideos.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="videocam-off" size={64} color="#9ca3af" />
+          <Text style={styles.emptyText}>No videos found</Text>
+          <Text style={styles.emptySubtext}>Try adjusting your filters</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredVideos}
+          renderItem={renderVideoItem}
+          keyExtractor={keyExtractor}
+          numColumns={2}
+          contentContainerStyle={styles.videosGrid}
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          updateCellsBatchingPeriod={50}
+          initialNumToRender={10}
+          windowSize={10}
+          getItemLayout={(data, index) => ({
+            length: 200,
+            offset: 200 * Math.floor(index / 2),
+            index,
+          })}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -375,8 +400,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   videosGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    padding: 16,
     gap: 12,
   },
   videoCard: {

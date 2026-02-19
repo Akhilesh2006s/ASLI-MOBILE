@@ -12,13 +12,11 @@ import ClassesView from './components/ClassesView';
 import TeachersView from './components/TeachersView';
 import SubjectsView from './components/SubjectsView';
 import ExamsView from './components/ExamsView';
-import AssessmentsView from './components/AssessmentsView';
-import VideosView from './components/VideosView';
-import QuizzesView from './components/QuizzesView';
 import LearningPathsView from './components/LearningPathsView';
 import EduOTTView from './components/EduOTTView';
+import CalendarView from './components/CalendarView';
 
-type AdminView = 'overview' | 'students' | 'classes' | 'teachers' | 'subjects' | 'exams' | 'assessments' | 'videos' | 'quizzes' | 'learning-paths' | 'eduott';
+type AdminView = 'overview' | 'students' | 'classes' | 'teachers' | 'subjects' | 'exams' | 'learning-paths' | 'eduott' | 'calendar';
 
 export default function AdminDashboard() {
   const [currentView, setCurrentView] = useState<AdminView>('overview');
@@ -98,11 +96,9 @@ export default function AdminDashboard() {
     { view: 'teachers', label: 'Teachers', icon: 'people' },
     { view: 'subjects', label: 'Subjects', icon: 'book' },
     { view: 'exams', label: 'Exams', icon: 'document-text' },
-    { view: 'assessments', label: 'Assessments', icon: 'clipboard' },
-    { view: 'videos', label: 'Videos', icon: 'videocam' },
-    { view: 'quizzes', label: 'Quizzes', icon: 'help-circle' },
-    { view: 'learning-paths', label: 'Learning Paths', icon: 'target' },
+    { view: 'learning-paths', label: 'Learning Paths', icon: 'map' },
     { view: 'eduott', label: 'EduOTT', icon: 'play' },
+    { view: 'calendar', label: 'Calendar', icon: 'calendar' },
   ];
 
   const renderContent = () => {
@@ -119,16 +115,12 @@ export default function AdminDashboard() {
         return <SubjectsView />;
       case 'exams':
         return <ExamsView />;
-      case 'assessments':
-        return <AssessmentsView />;
-      case 'videos':
-        return <VideosView />;
-      case 'quizzes':
-        return <QuizzesView />;
       case 'learning-paths':
         return <LearningPathsView />;
       case 'eduott':
         return <EduOTTView />;
+      case 'calendar':
+        return <CalendarView />;
       default:
         return <OverviewView />;
     }
@@ -169,9 +161,9 @@ export default function AdminDashboard() {
       </LinearGradient>
 
       {/* Content */}
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+      <View style={styles.content} pointerEvents="box-none">
         {renderContent()}
-      </ScrollView>
+      </View>
 
       {/* Navigation FAB */}
       <TouchableOpacity
@@ -321,9 +313,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-  },
-  contentContainer: {
-    padding: 20,
+    minHeight: 0,
   },
   fab: {
     position: 'absolute',

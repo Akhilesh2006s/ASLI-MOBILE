@@ -77,42 +77,73 @@ export default function Profile() {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Account</Text>
           </View>
-          <View style={styles.menuItem}>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => {
+              Alert.alert(
+                'Edit Profile',
+                'Profile editing feature is coming soon. You can update your information from the web dashboard.',
+                [{ text: 'OK' }]
+              );
+            }}
+          >
             <View style={styles.menuIcon}>
               <Ionicons name="person" size={20} color="#3b82f6" />
             </View>
             <Text style={styles.menuText}>Edit Profile</Text>
-          </View>
+            <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+          </TouchableOpacity>
           <View style={styles.menuItem}>
             <View style={styles.menuIcon}>
               <Ionicons name="mail" size={20} color="#3b82f6" />
             </View>
             <Text style={styles.menuText}>{userEmail || 'Email'}</Text>
           </View>
-          <View style={styles.menuItem}>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => {
+              Alert.alert(
+                'Settings',
+                'Settings feature is coming soon. You can manage your preferences from the web dashboard.',
+                [{ text: 'OK' }]
+              );
+            }}
+          >
             <View style={styles.menuIcon}>
               <Ionicons name="settings" size={20} color="#3b82f6" />
             </View>
             <Text style={styles.menuText}>Settings</Text>
-          </View>
+            <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Learning</Text>
           </View>
-          <View style={styles.menuItem}>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => router.push('/learning-paths')}
+          >
             <View style={styles.menuIcon}>
               <Ionicons name="book" size={20} color="#10b981" />
             </View>
             <Text style={styles.menuText}>My Courses</Text>
-          </View>
-          <View style={styles.menuItem}>
+            <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => {
+              // Navigate to dashboard which shows achievements/rankings
+              router.push(dashboardPath);
+            }}
+          >
             <View style={styles.menuIcon}>
               <Ionicons name="trophy" size={20} color="#f59e0b" />
             </View>
             <Text style={styles.menuText}>Achievements</Text>
-          </View>
+            <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+          </TouchableOpacity>
         </View>
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
@@ -208,6 +239,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#f3f4f6',
+    justifyContent: 'space-between',
   },
   menuIcon: {
     width: 40,
@@ -239,4 +271,3 @@ const styles = StyleSheet.create({
     color: '#dc2626',
   },
 });
-

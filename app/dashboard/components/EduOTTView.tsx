@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Modal, Linking } from 'react-native';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Modal, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Video } from 'expo-av';
 import * as SecureStore from 'expo-secure-store';
@@ -192,23 +192,6 @@ export default function EduOTTView() {
     }
   };
 
-  const handlePlayVideo = async (video: VideoItem) => {
-    if (video.isYouTubeVideo && video.videoUrl) {
-      try {
-        await Linking.openURL(video.videoUrl);
-      } catch (error) {
-        console.error('Failed to open YouTube:', error);
-      }
-    } else {
-      handleVideoClick(video);
-    }
-  };
-
-  const formatDuration = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -225,20 +208,84 @@ export default function EduOTTView() {
     }
   };
 
-  const filteredVideos = videos.filter((video) => {
-    const matchesSearch = video.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (video.description || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesSubject = selectedSubject === 'all' || 
-                          video.subjectName === selectedSubject;
-    return matchesSearch && matchesSubject;
-  });
+  const filteredVideos = useMemo(() => {
+    return videos.filter((video) => {
+      const matchesSearch = !searchTerm || video.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           (video.description || '').toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSubject = selectedSubject === 'all' || 
+                            video.subjectName === selectedSubject;
+      return matchesSearch && matchesSubject;
+    });
+  }, [videos, searchTerm, selectedSubject]);
 
-  const filteredSessions = liveSessions.filter(session => {
-    const matchesSearch = session.title.toLowerCase().includes(sessionSearchTerm.toLowerCase()) ||
-      (session.description || '').toLowerCase().includes(sessionSearchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || session.status === filterStatus;
-    return matchesSearch && matchesStatus;
-  });
+  const filteredSessions = useMemo(() => {
+    return liveSessions.filter(session => {
+      const matchesSearch = !sessionSearchTerm || session.title.toLowerCase().includes(sessionSearchTerm.toLowerCase()) ||
+        (session.description || '').toLowerCase().includes(sessionSearchTerm.toLowerCase());
+      const matchesStatus = filterStatus === 'all' || session.status === filterStatus;
+      return matchesSearch && matchesStatus;
+    });
+  }, [liveSessions, sessionSearchTerm, filterStatus]);
+
+  const handlePlayVideo = useCallback(async (video: VideoItem) => {
+    if (video.isYouTubeVideo && video.videoUrl) {
+      try {
+        await Linking.openURL(video.videoUrl);
+      } catch (error) {
+        console.error('Failed to open YouTube:', error);
+      }
+    } else {
+      handleVideoClick(video);
+    }
+  }, []);
+
+  const formatDuration = useCallback((seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  }, []);
+
+  const renderVideoItem = useCallback(({ item: video }: { item: VideoItem }) => (
+    <TouchableOpacity
+      style={styles.videoCard}
+      onPress={() => handlePlayVideo(video)}
+      activeOpacity={0.7}
+    >
+      <View style={styles.videoThumbnail}>
+        {video.isYouTubeVideo ? (
+          <Ionicons name="logo-youtube" size={40} color="#ef4444" />
+        ) : (
+          <Ionicons name="play-circle" size={40} color="#3b82f6" />
+        )}
+      </View>
+      <View style={styles.videoInfo}>
+        <Text style={styles.videoTitle}>{video.title}</Text>
+        {video.description && (
+          <Text style={styles.videoDescription} numberOfLines={2}>
+            {video.description}
+          </Text>
+        )}
+        <View style={styles.videoMeta}>
+          <View style={styles.videoMetaItem}>
+            <Ionicons name="book" size={14} color="#6b7280" />
+            <Text style={styles.videoMetaText}>{video.subjectName}</Text>
+          </View>
+          <View style={styles.videoMetaItem}>
+            <Ionicons name="time" size={14} color="#6b7280" />
+            <Text style={styles.videoMetaText}>{formatDuration(video.duration)}</Text>
+          </View>
+          {video.views > 0 && (
+            <View style={styles.videoMetaItem}>
+              <Ionicons name="eye" size={14} color="#6b7280" />
+              <Text style={styles.videoMetaText}>{video.views} views</Text>
+            </View>
+          )}
+        </View>
+      </View>
+    </TouchableOpacity>
+  ), [handlePlayVideo, formatDuration]);
+
+  const videoKeyExtractor = useCallback((item: VideoItem) => item._id, []);
 
   return (
     <View style={styles.container}>
@@ -329,47 +376,17 @@ export default function EduOTTView() {
               <Text style={styles.emptyStateText}>Check back later for new video content.</Text>
             </View>
           ) : (
-            <ScrollView style={styles.videosList}>
-              {filteredVideos.map((video) => (
-                <TouchableOpacity
-                  key={video._id}
-                  style={styles.videoCard}
-                  onPress={() => handlePlayVideo(video)}
-                >
-                  <View style={styles.videoThumbnail}>
-                    {video.isYouTubeVideo ? (
-                      <Ionicons name="logo-youtube" size={40} color="#ef4444" />
-                    ) : (
-                      <Ionicons name="play-circle" size={40} color="#3b82f6" />
-                    )}
-                  </View>
-                  <View style={styles.videoInfo}>
-                    <Text style={styles.videoTitle}>{video.title}</Text>
-                    {video.description && (
-                      <Text style={styles.videoDescription} numberOfLines={2}>
-                        {video.description}
-                      </Text>
-                    )}
-                    <View style={styles.videoMeta}>
-                      <View style={styles.videoMetaItem}>
-                        <Ionicons name="book" size={14} color="#6b7280" />
-                        <Text style={styles.videoMetaText}>{video.subjectName}</Text>
-                      </View>
-                      <View style={styles.videoMetaItem}>
-                        <Ionicons name="time" size={14} color="#6b7280" />
-                        <Text style={styles.videoMetaText}>{formatDuration(video.duration)}</Text>
-                      </View>
-                      {video.views > 0 && (
-                        <View style={styles.videoMetaItem}>
-                          <Ionicons name="eye" size={14} color="#6b7280" />
-                          <Text style={styles.videoMetaText}>{video.views} views</Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            <FlatList
+              data={filteredVideos}
+              keyExtractor={videoKeyExtractor}
+              renderItem={renderVideoItem}
+              removeClippedSubviews={true}
+              maxToRenderPerBatch={10}
+              updateCellsBatchingPeriod={50}
+              initialNumToRender={10}
+              windowSize={10}
+              showsVerticalScrollIndicator={false}
+            />
           )}
         </View>
       )}

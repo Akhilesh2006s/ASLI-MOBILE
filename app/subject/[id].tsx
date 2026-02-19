@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -100,12 +100,24 @@ export default function SubjectContent() {
               key={item._id || index}
               style={styles.contentCard}
               onPress={() => {
-                if (item.type === 'video') {
+                if (item.type === 'video' || item.type === 'Video') {
                   // Navigate to video player
-                  router.push(`/video/${item._id}`);
+                  router.push({
+                    pathname: '/video-player',
+                    params: { videoId: item._id }
+                  });
+                } else if (item.driveLink || item.fileUrl) {
+                  // Navigate to drive viewer for documents
+                  router.push({
+                    pathname: '/drive-viewer',
+                    params: { 
+                      fileId: item._id,
+                      driveLink: item.driveLink || item.fileUrl
+                    }
+                  });
                 } else {
-                  // Navigate to content viewer
-                  router.push(`/content/${item._id}`);
+                  // Fallback: show alert
+                  Alert.alert('Content', `Content: ${item.title || 'Untitled'}`);
                 }
               }}
             >
@@ -237,4 +249,3 @@ const styles = StyleSheet.create({
     color: '#6b7280',
   },
 });
-

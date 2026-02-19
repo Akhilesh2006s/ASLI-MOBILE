@@ -41,3 +41,7 @@ $iconReplacements = @{
 Write-Host "Icon replacement script - run manually for each file"
 
 
+
+
+
+

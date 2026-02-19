@@ -1,28 +1,28 @@
 // Centralized API URL Management for Mobile
-// Production Backend - Digital Ocean deployment
+// Production Backend - Railway deployment
 
-// Digital Ocean production URL (matches web client)
-// Point to the public API domain (served via Nginx proxy on the droplet)
-const PRODUCTION_URL = 'https://api.aslilearn.ai';
+// Railway production URL (matches web client)
+// If you change your Railway backend URL, update this:
+const PRODUCTION_URL = 'https://asli-stud-back-production-7ea4.up.railway.app';
 
 // Local development URL
 const LOCAL_URL = 'http://localhost:5000';
 
-// Use Digital Ocean URL by default (matches web client)
+// Use Railway URL by default (matches web client)
 // EXPO_PUBLIC_API_URL environment variable can override this
 const envUrl = process.env.EXPO_PUBLIC_API_URL;
 const isProduction = process.env.NODE_ENV === 'production';
 const isLocalhostUrl = envUrl && (envUrl.includes('localhost') || envUrl.includes('127.0.0.1'));
 
 let finalUrl: string;
-// Always use Digital Ocean URL by default (matches web client)
+// Always use Railway URL by default (matches web client)
 // EXPO_PUBLIC_API_URL can override for local development
 if (envUrl && !isLocalhostUrl) {
   finalUrl = envUrl; // Use explicit env URL if provided (non-localhost)
 } else if (envUrl && isLocalhostUrl) {
   finalUrl = envUrl; // Allow localhost if explicitly set
 } else {
-  // Default to Digital Ocean URL (production backend)
+  // Default to Railway URL (production backend)
   finalUrl = PRODUCTION_URL;
 }
 
@@ -31,8 +31,8 @@ export const API_BASE_URL = finalUrl;
 // Log current configuration
 const envLabel = API_BASE_URL.includes('localhost') 
   ? 'Development' 
-  : API_BASE_URL.includes('api.aslilearn.ai') 
-    ? 'Digital Ocean Production' 
+  : API_BASE_URL.includes('railway.app') 
+    ? 'Railway Production' 
     : 'Production';
 console.log(`🔌 API Base URL: ${API_BASE_URL} (${envLabel})`);
 

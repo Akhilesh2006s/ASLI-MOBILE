@@ -57,6 +57,9 @@ export default function AIClassesView({ stats }: AIClassesViewProps) {
     try {
       setIsLoadingClasses(true);
       const token = await SecureStore.getItemAsync('authToken');
+      console.log('[AIClassesView] Fetching classes...');
+      console.log('[AIClassesView] API URL:', `${API_BASE_URL}/api/teacher/classes`);
+      
       const response = await fetch(`${API_BASE_URL}/api/teacher/classes`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -64,8 +67,12 @@ export default function AIClassesView({ stats }: AIClassesViewProps) {
         }
       });
 
+      console.log('[AIClassesView] Classes response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('[AIClassesView] Classes data:', JSON.stringify(data, null, 2));
+        
         const classesData = data.data || data || [];
         const mappedClasses = (Array.isArray(classesData) ? classesData : []).map((cls: any) => ({
           id: cls._id || cls.id,
@@ -76,10 +83,14 @@ export default function AIClassesView({ stats }: AIClassesViewProps) {
           studentCount: cls.students?.length || cls.studentCount || 0,
           students: cls.students || []
         }));
+        console.log('[AIClassesView] Mapped classes:', mappedClasses.length);
         setAssignedClasses(mappedClasses);
+      } else {
+        const errorText = await response.text();
+        console.error('[AIClassesView] Failed to fetch classes:', response.status, errorText);
       }
     } catch (error) {
-      console.error('Failed to fetch classes:', error);
+      console.error('[AIClassesView] Failed to fetch classes (catch):', error);
     } finally {
       setIsLoadingClasses(false);
     }
@@ -89,6 +100,9 @@ export default function AIClassesView({ stats }: AIClassesViewProps) {
     try {
       setIsLoadingSubjects(true);
       const token = await SecureStore.getItemAsync('authToken');
+      console.log('[AIClassesView] Fetching subjects...');
+      console.log('[AIClassesView] API URL:', `${API_BASE_URL}/api/teacher/subjects`);
+      
       const response = await fetch(`${API_BASE_URL}/api/teacher/subjects`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -96,8 +110,12 @@ export default function AIClassesView({ stats }: AIClassesViewProps) {
         }
       });
 
+      console.log('[AIClassesView] Subjects response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('[AIClassesView] Subjects data:', JSON.stringify(data, null, 2));
+        
         const subjectsData = data.data || data.subjects || data || [];
         
         // Fetch content for each subject
@@ -106,7 +124,7 @@ export default function AIClassesView({ stats }: AIClassesViewProps) {
             try {
               const subjectId = subject._id || subject.id;
               const contentResponse = await fetch(
-                `${API_BASE_URL}/api/admin/asli-prep-content?subject=${encodeURIComponent(subjectId)}`,
+                `${API_BASE_URL}/api/teacher/asli-prep-content?subject=${encodeURIComponent(subjectId)}`,
                 {
                   headers: {
                     'Authorization': `Bearer ${token}`,
@@ -152,10 +170,14 @@ export default function AIClassesView({ stats }: AIClassesViewProps) {
           .filter(result => result.status === 'fulfilled')
           .map(result => (result as PromiseFulfilledResult<Subject>).value);
 
+        console.log('[AIClassesView] Processed subjects with content:', successfulSubjects.length);
         setSubjectsWithContent(successfulSubjects);
+      } else {
+        const errorText = await response.text();
+        console.error('[AIClassesView] Failed to fetch subjects:', response.status, errorText);
       }
     } catch (error) {
-      console.error('Failed to fetch subjects:', error);
+      console.error('[AIClassesView] Failed to fetch subjects (catch):', error);
     } finally {
       setIsLoadingSubjects(false);
     }

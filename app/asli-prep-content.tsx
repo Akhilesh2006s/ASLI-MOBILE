@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image } from 'react-native';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Alert, Linking, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { Image } from 'expo-image';
 import * as SecureStore from 'expo-secure-store';
+import * as FileSystem from 'expo-file-system';
 import { API_BASE_URL } from '../src/lib/api-config';
 import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
 
@@ -152,12 +154,193 @@ export default function AsliPrepContent() {
     return `${mins}m`;
   };
 
-  const filteredContents = contents.filter(content => {
-    const matchesSubject = filters.subject === 'all' || content.subject._id === filters.subject;
-    const matchesType = filters.type === 'all' || content.type === filters.type;
-    const matchesTopic = !filters.topic || content.topic?.toLowerCase().includes(filters.topic.toLowerCase());
-    return matchesSubject && matchesType && matchesTopic;
-  });
+  const filteredContents = useMemo(() => {
+    return contents.filter(content => {
+      const matchesSubject = filters.subject === 'all' || content.subject._id === filters.subject;
+      const matchesType = filters.type === 'all' || content.type === filters.type;
+      const matchesTopic = !filters.topic || content.topic?.toLowerCase().includes(filters.topic.toLowerCase());
+      return matchesSubject && matchesType && matchesTopic;
+    });
+  }, [contents, filters]);
+
+  const getFileExtension = useCallback((url: string): string => {
+    const match = url.match(/\.([a-zA-Z0-9]+)(\?|$)/);
+    return match ? match[1] : 'pdf';
+  }, []);
+
+  const handleDownload = useCallback(async (content: Content) => {
+    try {
+      if (!content.fileUrl) {
+        Alert.alert('Error', 'File URL not available');
+        return;
+      }
+
+      // For videos, navigate to video player
+      if (content.type === 'Video') {
+        router.push({
+          pathname: '/video-player',
+          params: { videoId: content._id }
+        });
+        return;
+      }
+
+      // For other file types, download or open
+      const fileUrl = content.fileUrl;
+      
+      // Check if it's a direct URL or needs authentication
+      if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
+        // Try to open in browser first (for PDFs, docs, etc.)
+        const canOpen = await Linking.canOpenURL(fileUrl);
+        if (canOpen) {
+          // For Google Drive links or direct file links, open in browser
+          if (fileUrl.includes('drive.google.com') || fileUrl.includes('docs.google.com')) {
+            Alert.alert(
+              'Open File',
+              'This file will open in your browser. Would you like to continue?',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Open',
+                  onPress: async () => {
+                    await Linking.openURL(fileUrl);
+                  }
+                }
+              ]
+            );
+          } else {
+            // Direct file download
+            Alert.alert(
+              'Download File',
+              `Would you like to download ${content.title}?`,
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Download',
+                  onPress: async () => {
+                    try {
+                      // For direct file URLs, try to download
+                      if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
+                        const fileName = content.title.replace(/[^a-z0-9]/gi, '_') + '.' + getFileExtension(fileUrl);
+                        const fileUri = FileSystem.documentDirectory + fileName;
+                        
+                        try {
+                          const downloadResult = await FileSystem.downloadAsync(fileUrl, fileUri);
+                          Alert.alert(
+                            'Download Complete',
+                            `File saved: ${fileName}`,
+                            [{ text: 'OK' }]
+                          );
+                        } catch (downloadError) {
+                          console.error('Download error:', downloadError);
+                          // Fallback to opening in browser
+                          const canOpen = await Linking.canOpenURL(fileUrl);
+                          if (canOpen) {
+                            await Linking.openURL(fileUrl);
+                          } else {
+                            Alert.alert('Error', 'Cannot download or open this file');
+                          }
+                        }
+                      } else {
+                        Alert.alert('Error', 'Invalid file URL');
+                      }
+                    } catch (error) {
+                      console.error('Error handling download:', error);
+                      Alert.alert('Error', 'Failed to download file. Opening in browser...');
+                      try {
+                        await Linking.openURL(fileUrl);
+                      } catch (linkError) {
+                        Alert.alert('Error', 'Cannot open this file URL');
+                      }
+                    }
+                  }
+                }
+              ]
+            );
+          }
+        } else {
+          Alert.alert('Error', 'Cannot open this file URL');
+        }
+      } else {
+        Alert.alert('Error', 'Invalid file URL');
+      }
+    } catch (error) {
+      console.error('Error handling download:', error);
+      Alert.alert('Error', 'Failed to download file. Please try again.');
+    }
+  }, [getFileExtension]);
+
+  const renderContentItem = useCallback(({ item: content }: { item: Content }) => {
+    const typeColor = getTypeColor(content.type);
+    return (
+      <TouchableOpacity
+        style={styles.contentCard}
+        onPress={() => handleDownload(content)}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.contentIcon, { backgroundColor: typeColor + '20' }]}>
+          <Ionicons name={getTypeIcon(content.type) as any} size={24} color={typeColor} />
+        </View>
+        
+        <View style={styles.contentInfo}>
+          <View style={styles.contentHeader}>
+            <View style={[styles.typeBadge, { backgroundColor: typeColor + '20' }]}>
+              <Text style={[styles.typeBadgeText, { color: typeColor }]}>
+                {content.type}
+              </Text>
+            </View>
+            {content.subject && (
+              <View style={styles.subjectBadge}>
+                <Text style={styles.subjectBadgeText}>{content.subject.name}</Text>
+              </View>
+            )}
+          </View>
+          
+          <Text style={styles.contentTitle} numberOfLines={2}>
+            {content.title}
+          </Text>
+          
+          {content.description && (
+            <Text style={styles.contentDescription} numberOfLines={2}>
+              {content.description}
+            </Text>
+          )}
+          
+          <View style={styles.contentMeta}>
+            {content.duration && (
+              <View style={styles.metaItem}>
+                <Ionicons name="time" size={14} color="#6b7280" />
+                <Text style={styles.metaText}>{formatDuration(content.duration)}</Text>
+              </View>
+            )}
+            {content.size && (
+              <View style={styles.metaItem}>
+                <Ionicons name="document" size={14} color="#6b7280" />
+                <Text style={styles.metaText}>{formatFileSize(content.size)}</Text>
+              </View>
+            )}
+            {content.views !== undefined && (
+              <View style={styles.metaItem}>
+                <Ionicons name="eye" size={14} color="#6b7280" />
+                <Text style={styles.metaText}>{content.views} views</Text>
+              </View>
+            )}
+          </View>
+        </View>
+        
+        <TouchableOpacity
+          style={[styles.downloadButton, { backgroundColor: typeColor }]}
+          onPress={(e) => {
+            e.stopPropagation();
+            handleDownload(content);
+          }}
+        >
+          <Ionicons name="download" size={20} color="#fff" />
+        </TouchableOpacity>
+      </TouchableOpacity>
+    );
+  }, [handleDownload, getFileExtension]);
+
+  const keyExtractor = useCallback((item: Content) => item._id, []);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -232,104 +415,32 @@ export default function AsliPrepContent() {
       </View>
 
       {/* Content List */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#9333ea" />
-            <Text style={styles.loadingText}>Loading content...</Text>
-          </View>
-        ) : filteredContents.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="document-outline" size={64} color="#9ca3af" />
-            <Text style={styles.emptyText}>No content found</Text>
-            <Text style={styles.emptySubtext}>Try adjusting your filters</Text>
-          </View>
-        ) : (
-          <View style={styles.contentList}>
-            {filteredContents.map((content) => {
-              const typeColor = getTypeColor(content.type);
-              return (
-                <TouchableOpacity
-                  key={content._id}
-                  style={styles.contentCard}
-                  onPress={() => {
-                    // Handle content view/download
-                    if (content.type === 'Video') {
-                      router.push({
-                        pathname: '/video-player',
-                        params: { videoId: content._id }
-                      });
-                    } else {
-                      // Open file or download
-                      Alert.alert('Content', `Would you like to download ${content.title}?`);
-                    }
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.contentIcon, { backgroundColor: typeColor + '20' }]}>
-                    <Ionicons name={getTypeIcon(content.type) as any} size={24} color={typeColor} />
-                  </View>
-                  
-                  <View style={styles.contentInfo}>
-                    <View style={styles.contentHeader}>
-                      <View style={[styles.typeBadge, { backgroundColor: typeColor + '20' }]}>
-                        <Text style={[styles.typeBadgeText, { color: typeColor }]}>
-                          {content.type}
-                        </Text>
-                      </View>
-                      {content.subject && (
-                        <View style={styles.subjectBadge}>
-                          <Text style={styles.subjectBadgeText}>{content.subject.name}</Text>
-                        </View>
-                      )}
-                    </View>
-                    
-                    <Text style={styles.contentTitle} numberOfLines={2}>
-                      {content.title}
-                    </Text>
-                    
-                    {content.description && (
-                      <Text style={styles.contentDescription} numberOfLines={2}>
-                        {content.description}
-                      </Text>
-                    )}
-                    
-                    <View style={styles.contentMeta}>
-                      {content.duration && (
-                        <View style={styles.metaItem}>
-                          <Ionicons name="time" size={14} color="#6b7280" />
-                          <Text style={styles.metaText}>{formatDuration(content.duration)}</Text>
-                        </View>
-                      )}
-                      {content.size && (
-                        <View style={styles.metaItem}>
-                          <Ionicons name="document" size={14} color="#6b7280" />
-                          <Text style={styles.metaText}>{formatFileSize(content.size)}</Text>
-                        </View>
-                      )}
-                      {content.views !== undefined && (
-                        <View style={styles.metaItem}>
-                          <Ionicons name="eye" size={14} color="#6b7280" />
-                          <Text style={styles.metaText}>{content.views} views</Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                  
-                  <TouchableOpacity
-                    style={[styles.downloadButton, { backgroundColor: typeColor }]}
-                    onPress={() => {
-                      // Handle download
-                    }}
-                  >
-                    <Ionicons name="download" size={20} color="#fff" />
-                  </TouchableOpacity>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
-      </ScrollView>
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#9333ea" />
+          <Text style={styles.loadingText}>Loading content...</Text>
+        </View>
+      ) : filteredContents.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="document-outline" size={64} color="#9ca3af" />
+          <Text style={styles.emptyText}>No content found</Text>
+          <Text style={styles.emptySubtext}>Try adjusting your filters</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredContents}
+          renderItem={renderContentItem}
+          keyExtractor={keyExtractor}
+          contentContainerStyle={styles.contentList}
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          updateCellsBatchingPeriod={50}
+          initialNumToRender={10}
+          windowSize={10}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -457,6 +568,7 @@ const styles = StyleSheet.create({
   },
   contentList: {
     padding: 16,
+    paddingBottom: 32,
   },
   contentCard: {
     flexDirection: 'row',

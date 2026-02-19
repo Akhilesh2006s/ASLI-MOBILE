@@ -6,16 +6,22 @@ import { API_BASE_URL } from '../../../src/lib/api-config';
 
 interface Remark {
   _id: string;
-  student: {
+  student?: {
     _id: string;
     fullName: string;
     email: string;
   };
-  subject: string;
-  text: string;
+  studentId?: {
+    _id: string;
+    fullName: string;
+    email: string;
+  };
+  subject?: string | { _id: string; name: string };
+  text?: string;
+  remark?: string;
   isPositive: boolean;
   createdAt: string;
-  createdBy: {
+  createdBy?: {
     _id: string;
     fullName: string;
   };
@@ -225,28 +231,30 @@ export default function TeacherRemarksView() {
             <View key={remark._id} style={styles.remarkCard}>
               <View style={styles.remarkHeader}>
                 <View style={styles.studentInfo}>
-                  <View style={[styles.remarkIcon, isPositive ? styles.remarkIconPositive : styles.remarkIconNegative]}>
+                  <View style={[styles.remarkIcon, remark.isPositive ? styles.remarkIconPositive : styles.remarkIconNegative]}>
                     <Ionicons
-                      name={isPositive ? 'thumbs-up' : 'thumbs-down'}
+                      name={remark.isPositive ? 'thumbs-up' : 'thumbs-down'}
                       size={20}
                       color="#fff"
                     />
                   </View>
                   <View style={styles.studentDetails}>
-                    <Text style={styles.studentName}>{remark.student.fullName}</Text>
-                    <Text style={styles.studentEmail}>{remark.student.email}</Text>
+                    <Text style={styles.studentName}>{remark.student?.fullName || remark.studentId?.fullName || 'Unknown Student'}</Text>
+                    <Text style={styles.studentEmail}>{remark.student?.email || remark.studentId?.email || ''}</Text>
                   </View>
                 </View>
-                <View style={[styles.typeBadge, isPositive ? styles.typeBadgePositive : styles.typeBadgeNegative]}>
+                <View style={[styles.typeBadge, remark.isPositive ? styles.typeBadgePositive : styles.typeBadgeNegative]}>
                   <Text style={styles.typeBadgeText}>
-                    {isPositive ? 'Positive' : 'Needs Improvement'}
+                    {remark.isPositive ? 'Positive' : 'Needs Improvement'}
                   </Text>
                 </View>
               </View>
 
               <View style={styles.remarkContent}>
-                <Text style={styles.subjectLabel}>Subject: {remark.subject}</Text>
-                <Text style={styles.remarkText}>{remark.text}</Text>
+                <Text style={styles.subjectLabel}>
+                  Subject: {typeof remark.subject === 'object' ? remark.subject?.name || 'General' : remark.subject || 'General'}
+                </Text>
+                <Text style={styles.remarkText}>{remark.remark || remark.text}</Text>
               </View>
 
               <View style={styles.remarkFooter}>
@@ -265,18 +273,28 @@ export default function TeacherRemarksView() {
       {/* Create Modal */}
       <Modal
         visible={isCreateModalOpen}
+        transparent
         animationType="slide"
         onRequestClose={() => setIsCreateModalOpen(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Add Remark</Text>
-            <TouchableOpacity onPress={() => setIsCreateModalOpen(false)}>
-              <Ionicons name="close" size={24} color="#111827" />
-            </TouchableOpacity>
-          </View>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setIsCreateModalOpen(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+            style={styles.modalContainer}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add Remark</Text>
+              <TouchableOpacity onPress={() => setIsCreateModalOpen(false)}>
+                <Ionicons name="close" size={24} color="#111827" />
+              </TouchableOpacity>
+            </View>
 
-          <ScrollView style={styles.modalContent}>
+            <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Student *</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -380,7 +398,8 @@ export default function TeacherRemarksView() {
               <Text style={styles.createButtonText}>Add Remark</Text>
             </TouchableOpacity>
           </ScrollView>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
     </View>
   );
@@ -563,15 +582,27 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#9ca3af',
   },
-  modalContainer: {
+  modalOverlay: {
     flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
     backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '90%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 16,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
   },
@@ -581,8 +612,8 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   modalContent: {
-    flex: 1,
-    padding: 16,
+    padding: 20,
+    paddingBottom: 32,
   },
   inputContainer: {
     marginBottom: 16,
@@ -682,4 +713,5 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
+
 

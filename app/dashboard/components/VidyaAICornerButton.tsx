@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -20,13 +20,15 @@ export default function VidyaAICornerButton() {
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentMessage((prev) => (prev + 1) % messages.length);
-    }, 3000);
+    }, 5000); // Increased from 3s to 5s to reduce re-renders
     return () => clearInterval(interval);
   }, []);
 
-  const handlePress = () => {
+  const handlePress = useCallback(() => {
     router.push('/ai-tutor');
-  };
+  }, []);
+
+  const currentMessageText = useMemo(() => messages[currentMessage], [currentMessage]);
 
   return (
     <View style={styles.container}>
@@ -40,7 +42,7 @@ export default function VidyaAICornerButton() {
             },
           ]}
         >
-          <Text style={styles.messageText}>{messages[currentMessage]}</Text>
+          <Text style={styles.messageText}>{currentMessageText}</Text>
           <View style={styles.messageTail} />
         </Animated.View>
       )}
@@ -128,4 +130,3 @@ const styles = StyleSheet.create({
     borderRadius: 32,
   },
 });
-

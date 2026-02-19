@@ -1,26 +1,19 @@
-import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { useState, useEffect, useMemo, useCallback, memo } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { getTodayStudyTime, getWeeklyStudyTime, updateStudyTime, setupAppStateListener } from '../../../src/utils/studyTimeTracker';
 import VidyaAICornerButton from './VidyaAICornerButton';
 
-// Try to load Vidya AI image
-let vidyaImageSource: any = null;
-try {
-  vidyaImageSource = require('../../../assets/Vidya-ai.jpg');
-} catch {
-  // Image not found, will use icon instead
-}
-
 interface OverviewViewProps {
   user: any;
 }
 
-export default function OverviewView({ user }: OverviewViewProps) {
+const OverviewView = memo(function OverviewView({ user }: OverviewViewProps) {
   const [stats, setStats] = useState({
     questionsAnswered: 0,
     accuracyRate: 0,
@@ -40,51 +33,59 @@ export default function OverviewView({ user }: OverviewViewProps) {
     fetchDashboardData();
     setupAppStateListener();
     
-    // Update study time every minute
-    const interval = setInterval(async () => {
-      const timeData = await updateStudyTime();
-      setStudyTimeToday(timeData.today);
-      setStudyTimeThisWeek(timeData.thisWeek);
-    }, 60000);
-    
     // Initial load
     updateStudyTime().then(timeData => {
       setStudyTimeToday(timeData.today);
       setStudyTimeThisWeek(timeData.thisWeek);
     });
     
+    // Update study time every 5 minutes (reduced from 1 minute for better performance)
+    const interval = setInterval(async () => {
+      const timeData = await updateStudyTime();
+      setStudyTimeToday(timeData.today);
+      setStudyTimeThisWeek(timeData.thisWeek);
+    }, 300000); // 5 minutes instead of 1 minute
+    
     return () => {
       clearInterval(interval);
     };
-  }, []);
+  }, [fetchDashboardData]);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       setIsLoading(true);
       const token = await SecureStore.getItemAsync('authToken');
       if (!token) return;
 
-      // Fetch exam results to calculate stats
+      // Fetch exam results to calculate stats - with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
       const [examsRes, resultsRes, rankingsRes] = await Promise.all([
         fetch(`${API_BASE_URL}/api/student/exams`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
-          }
+          },
+          signal: controller.signal
         }),
         fetch(`${API_BASE_URL}/api/student/exam-results`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
-          }
+          },
+          signal: controller.signal
         }),
         fetch(`${API_BASE_URL}/api/student/rankings`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
-          }
+          },
+          signal: controller.signal
         })
       ]);
+
+      clearTimeout(timeoutId);
 
       let examsData = [];
       if (examsRes.ok) {
@@ -207,18 +208,25 @@ export default function OverviewView({ user }: OverviewViewProps) {
         setIncompleteQuizzes(incompleteQuiz.slice(0, 10));
       }
 
-    } catch (error) {
-      console.error('Failed to fetch dashboard data:', error);
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log('Request timeout');
+      } else {
+        console.error('Failed to fetch dashboard data:', error);
+      }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [completedScheduleIds]);
 
-  const totalTodos = incompleteContent.length + incompleteQuizzes.length;
-  const completedTodos = incompleteContent.filter((c: any) => completedScheduleIds.has(c._id)).length + 
-                         incompleteQuizzes.filter((q: any) => completedScheduleIds.has(q._id)).length;
-  const todayProgress = totalTodos > 0 ? Math.round((completedTodos / totalTodos) * 100) : 0;
-  const efficiency = totalTodos > 0 ? Math.round((completedTodos / totalTodos) * 100) : 0;
+  const { totalTodos, completedTodos, todayProgress, efficiency } = useMemo(() => {
+    const total = incompleteContent.length + incompleteQuizzes.length;
+    const completed = incompleteContent.filter((c: any) => completedScheduleIds.has(c._id)).length + 
+                      incompleteQuizzes.filter((q: any) => completedScheduleIds.has(q._id)).length;
+    const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+    const eff = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { totalTodos: total, completedTodos: completed, todayProgress: progress, efficiency: eff };
+  }, [incompleteContent, incompleteQuizzes, completedScheduleIds]);
 
   return (
     <View style={styles.container}>
@@ -255,15 +263,12 @@ export default function OverviewView({ user }: OverviewViewProps) {
           {/* Vidya AI Image */}
           <View style={styles.vidyaImageContainer}>
             <View style={styles.vidyaImageWrapper}>
-              {vidyaImageSource ? (
-                <Image
-                  source={vidyaImageSource}
-                  style={styles.vidyaImage}
-                  resizeMode="contain"
-                />
-              ) : (
-                <Ionicons name="sparkles" size={48} color="rgba(255, 255, 255, 0.9)" />
-              )}
+              <Image
+                source={require('../../../assets/Vidya-ai.jpg')}
+                style={styles.vidyaImage}
+                contentFit="contain"
+                transition={200}
+              />
             </View>
           </View>
         </View>
@@ -417,7 +422,9 @@ export default function OverviewView({ user }: OverviewViewProps) {
       <VidyaAICornerButton />
     </View>
   );
-}
+});
+
+export default OverviewView;
 
 const styles = StyleSheet.create({
   container: {

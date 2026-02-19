@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Modal, Alert } from 'react-native';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Modal, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import * as SecureStore from 'expo-secure-store';
+import HomeworkSubmissionsView from './HomeworkSubmissionsView';
 
 type StudentsSubTab = 'list' | 'track-progress' | 'submissions';
 
@@ -50,6 +51,10 @@ export default function StudentsView() {
     try {
       setIsLoading(true);
       const token = await SecureStore.getItemAsync('authToken');
+      console.log('[StudentsView] Fetching students...');
+      console.log('[StudentsView] API URL:', `${API_BASE_URL}/api/teacher/students`);
+      console.log('[StudentsView] Token present:', token ? 'Yes' : 'No');
+      
       const response = await fetch(`${API_BASE_URL}/api/teacher/students`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -57,9 +62,16 @@ export default function StudentsView() {
         }
       });
 
+      console.log('[StudentsView] Response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('[StudentsView] Response data:', JSON.stringify(data, null, 2));
+        
         const studentsData = data.data || data.students || data || [];
+        console.log('[StudentsView] Students data is array:', Array.isArray(studentsData));
+        console.log('[StudentsView] Students count:', Array.isArray(studentsData) ? studentsData.length : 0);
+        
         const mappedStudents = (Array.isArray(studentsData) ? studentsData : []).map((student: any) => ({
           id: student._id || student.id,
           name: student.fullName || student.name || 'Unknown Student',
@@ -71,18 +83,26 @@ export default function StudentsView() {
           assignedClass: student.assignedClass || null,
           performance: student.performance || {}
         }));
+        
+        console.log('[StudentsView] Mapped students:', mappedStudents.length);
         setStudents(mappedStudents);
+      } else {
+        const errorText = await response.text();
+        console.error('[StudentsView] Failed to fetch students:', response.status, errorText);
       }
     } catch (error) {
-      console.error('Failed to fetch students:', error);
+      console.error('[StudentsView] Failed to fetch students (catch):', error);
     } finally {
       setIsLoading(false);
+      console.log('[StudentsView] Loading complete');
     }
   };
 
   const fetchTeacherSubjects = async () => {
     try {
       const token = await SecureStore.getItemAsync('authToken');
+      console.log('[StudentsView] Fetching teacher subjects...');
+      
       const response = await fetch(`${API_BASE_URL}/api/teacher/subjects`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -90,13 +110,21 @@ export default function StudentsView() {
         }
       });
 
+      console.log('[StudentsView] Subjects response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('[StudentsView] Subjects data:', JSON.stringify(data, null, 2));
+        
         const subjectsData = data.data || data.subjects || data || [];
         setTeacherSubjects(Array.isArray(subjectsData) ? subjectsData : []);
+        console.log('[StudentsView] Subjects set:', Array.isArray(subjectsData) ? subjectsData.length : 0);
+      } else {
+        const errorText = await response.text();
+        console.error('[StudentsView] Failed to fetch subjects:', response.status, errorText);
       }
     } catch (error) {
-      console.error('Failed to fetch subjects:', error);
+      console.error('[StudentsView] Failed to fetch subjects (catch):', error);
     }
   };
 
@@ -141,17 +169,67 @@ export default function StudentsView() {
     }
   };
 
-  const filteredStudents = students.filter(student =>
-    student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.classNumber.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredStudents = useMemo(() => {
+    if (!searchTerm.trim()) return students;
+    const searchLower = searchTerm.toLowerCase();
+    return students.filter(student =>
+      student.name.toLowerCase().includes(searchLower) ||
+      student.email.toLowerCase().includes(searchLower) ||
+      (student.classNumber && student.classNumber.toLowerCase().includes(searchLower))
+    );
+  }, [students, searchTerm]);
 
-  const formatDate = (dateString: string) => {
+  const renderStudentItem = useCallback(({ item: student }: { item: Student }) => {
+    const classDisplay = student.assignedClass
+      ? `${student.assignedClass.classNumber || student.classNumber}${student.assignedClass.section ? ` - ${student.assignedClass.section}` : ''}`
+      : student.classNumber;
+
+    return (
+      <View style={styles.studentCard}>
+        <View style={styles.studentCardHeader}>
+          <View style={styles.studentInfo}>
+            <Text style={styles.studentName}>{student.name}</Text>
+            <Text style={styles.studentEmail}>{student.email}</Text>
+          </View>
+          <View style={[styles.statusBadge, student.isActive ? styles.statusActive : styles.statusInactive]}>
+            <Text style={styles.statusText}>{student.isActive ? 'Active' : 'Inactive'}</Text>
+          </View>
+        </View>
+
+        <View style={styles.studentDetails}>
+          <View style={styles.detailRow}>
+            <Ionicons name="call" size={16} color="#6b7280" />
+            <Text style={styles.detailText}>{student.phone || 'No phone'}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Ionicons name="school" size={16} color="#6b7280" />
+            <Text style={styles.detailText}>Class: {classDisplay}</Text>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={styles.remarkButton}
+          onPress={() => {
+            setSelectedStudent(student);
+            setIsRemarkModalVisible(true);
+          }}
+        >
+          <Ionicons name="chatbubble-ellipses" size={20} color="#10b981" />
+          <Text style={styles.remarkButtonText}>Add Remark</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }, []);
+
+  const formatDate = useCallback((dateString: string) => {
     if (!dateString) return 'Never';
+    try {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
+    } catch {
+      return 'Invalid date';
+    }
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -213,7 +291,38 @@ export default function StudentsView() {
               <Text style={styles.emptyText}>No students found</Text>
             </View>
           ) : (
-            <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+            <FlatList
+              data={filteredStudents}
+              keyExtractor={(item) => item.id}
+              renderItem={renderStudentItem}
+              contentContainerStyle={styles.listContent}
+              style={styles.list}
+              removeClippedSubviews={true}
+              maxToRenderPerBatch={10}
+              updateCellsBatchingPeriod={50}
+              initialNumToRender={10}
+              windowSize={10}
+            />
+          )}
+        </>
+      )}
+
+      {/* Track Progress Tab */}
+      {activeSubTab === 'track-progress' && (
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {isLoading ? (
+            <View style={styles.emptyContainer}>
+              <ActivityIndicator size="large" color="#3b82f6" />
+              <Text style={styles.emptySubtext}>Loading progress data...</Text>
+            </View>
+          ) : filteredStudents.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="bar-chart-outline" size={64} color="#d1d5db" />
+              <Text style={styles.emptyText}>No Students</Text>
+              <Text style={styles.emptySubtext}>No students found to track progress</Text>
+            </View>
+          ) : (
+            <View style={styles.progressList}>
               {filteredStudents.map((student) => {
                 const perf = student.performance || {};
                 const classDisplay = student.assignedClass
@@ -298,27 +407,14 @@ export default function StudentsView() {
                   </View>
                 );
               })}
-            </ScrollView>
+            </View>
           )}
-        </>
+            </ScrollView>
       )}
 
-      {/* Track Progress Tab */}
-      {activeSubTab === 'track-progress' && (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="bar-chart-outline" size={64} color="#d1d5db" />
-          <Text style={styles.emptyText}>Track Progress</Text>
-          <Text style={styles.emptySubtext}>Student progress tracking coming soon</Text>
-        </View>
-      )}
-
-      {/* Submissions Tab */}
+      {/* Homework Submissions Tab */}
       {activeSubTab === 'submissions' && (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="document-text-outline" size={64} color="#d1d5db" />
-          <Text style={styles.emptyText}>Submissions</Text>
-          <Text style={styles.emptySubtext}>Homework submissions coming soon</Text>
-        </View>
+        <HomeworkSubmissionsView />
       )}
 
       {/* Add Remark Modal */}
@@ -546,6 +642,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6b7280',
   },
+  remarkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f0fdf4',
+    padding: 12,
+    borderRadius: 12,
+    gap: 8,
+    marginTop: 8,
+  },
+  remarkButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#10b981',
+  },
   progressSection: {
     marginTop: 12,
     paddingTop: 12,
@@ -741,6 +852,78 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
   },
+  content: {
+    flex: 1,
+  },
+  progressList: {
+    padding: 20,
+    gap: 16,
+  },
+  progressCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  progressCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  studentAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#3b82f6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  studentAvatarText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  studentClass: {
+    fontSize: 12,
+    color: '#9ca3af',
+    marginTop: 2,
+  },
+  progressMetrics: {
+    gap: 16,
+  },
+  metricItem: {
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  metricHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  metricLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6b7280',
+  },
+  metricValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  metricSubtext: {
+    fontSize: 12,
+    color: '#9ca3af',
+  },
 });
+
+
+
 
 
