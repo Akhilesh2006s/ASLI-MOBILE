@@ -5,11 +5,50 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Video, ResizeMode } from 'expo-av';
-import * as SecureStore from 'expo-secure-store';
-import { API_BASE_URL } from '../src/lib/api-config';
+import * as WebBrowser from 'expo-web-browser';
+import api from '../src/services/api/api';
 import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
 
 const { width, height } = Dimensions.get('window');
+
+function pickParam(v: string | string[] | undefined): string {
+  if (v == null) return '';
+  const s = Array.isArray(v) ? v[0] : v;
+  return typeof s === 'string' ? s : '';
+}
+
+function transformAsliPrepItemToVideo(contentData: any) {
+  const videoFileUrl = contentData.fileUrl || contentData.videoUrl || '';
+  const isYouTube = !!contentData.youtubeUrl || (videoFileUrl && (
+    videoFileUrl.includes('youtube.com') ||
+    videoFileUrl.includes('youtu.be')
+  ));
+  return {
+    _id: contentData._id || contentData.id,
+    title: contentData.title || 'Untitled Video',
+    description: contentData.description || '',
+    duration: contentData.duration ? (contentData.duration > 100 ? contentData.duration : contentData.duration * 60) : 0,
+    views: contentData.views || 0,
+    createdAt: contentData.createdAt || new Date().toISOString(),
+    videoUrl: videoFileUrl,
+    youtubeUrl: contentData.youtubeUrl || (isYouTube ? videoFileUrl : ''),
+    isYouTubeVideo: isYouTube,
+    thumbnailUrl: contentData.thumbnailUrl || null,
+    subject: contentData.subject?.name || contentData.subject || 'Unknown',
+    aiFeatures: {
+      hasNotes: false,
+      hasMindMap: false,
+      hasVoiceQA: false
+    }
+  };
+}
+
+function findAsliPrepById(contentsList: unknown, videoId: string) {
+  const contentArray = Array.isArray(contentsList) ? contentsList : [];
+  return contentArray.find((item: any) =>
+    (item._id === videoId) || (item.id === videoId)
+  );
+}
 
 interface Video {
   _id: string;
@@ -31,11 +70,13 @@ interface Video {
 }
 
 export default function VideoPlayer() {
-  const { videoId, isContentItem, contentData } = useLocalSearchParams<{ 
-    videoId: string;
+  const params = useLocalSearchParams<{
+    videoId?: string | string[];
     isContentItem?: string;
     contentData?: string;
   }>();
+  const videoId = pickParam(params.videoId);
+  const { isContentItem, contentData } = params;
   const [video, setVideo] = useState<Video | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'notes' | 'mindmap' | 'qa'>('notes');
@@ -93,127 +134,42 @@ export default function VideoPlayer() {
   useBackNavigation(dashboardPath, false);
 
   const fetchVideo = async () => {
+    if (!videoId) return;
     try {
       setIsLoading(true);
-      const token = await SecureStore.getItemAsync('authToken');
-      
-      // Try fetching from videos endpoint first
-      let response = await fetch(`${API_BASE_URL}/api/student/videos/${videoId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
 
-      if (response.ok) {
-        const data = await response.json();
-        const videoData = data.data || data;
-        setVideo(videoData);
-        return;
-      }
-
-      // If not found, try fetching from asli-prep-content list and find by ID
-      // Try admin endpoint first
-      response = await fetch(`${API_BASE_URL}/api/admin/asli-prep-content?type=Video`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const contentsList = data.data || data || [];
-        const contentArray = Array.isArray(contentsList) ? contentsList : [];
-        
-        // Find the content item by ID
-        const contentData = contentArray.find((item: any) => 
-          (item._id === videoId) || (item.id === videoId)
-        );
-        
-        if (contentData) {
-          // Transform asli-prep-content to video format
-          const videoFileUrl = contentData.fileUrl || contentData.videoUrl || '';
-          const isYouTube = !!contentData.youtubeUrl || (videoFileUrl && (
-            videoFileUrl.includes('youtube.com') ||
-            videoFileUrl.includes('youtu.be')
-          ));
-
-          const transformedVideo = {
-            _id: contentData._id || contentData.id,
-            title: contentData.title || 'Untitled Video',
-            description: contentData.description || '',
-            duration: contentData.duration ? (contentData.duration > 100 ? contentData.duration : contentData.duration * 60) : 0,
-            views: contentData.views || 0,
-            createdAt: contentData.createdAt || new Date().toISOString(),
-            videoUrl: videoFileUrl,
-            youtubeUrl: contentData.youtubeUrl || (isYouTube ? videoFileUrl : ''),
-            isYouTubeVideo: isYouTube,
-            thumbnailUrl: contentData.thumbnailUrl || null,
-            subject: contentData.subject?.name || contentData.subject || 'Unknown',
-            aiFeatures: {
-              hasNotes: false,
-              hasMindMap: false,
-              hasVoiceQA: false
-            }
-          };
-          
-          setVideo(transformedVideo);
+      try {
+        const { data } = await api.get(`/api/student/videos/${encodeURIComponent(videoId)}`);
+        const videoData = data?.data ?? data;
+        if (videoData && (videoData._id || videoData.title)) {
+          setVideo(videoData);
           return;
         }
+      } catch {
+        // 404 / network — try asli-prep fallbacks
       }
 
-      // If still not found, try student asli-prep-content endpoint
-      response = await fetch(`${API_BASE_URL}/api/student/asli-prep-content?type=Video`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const asliPrepAttempts: Array<() => Promise<{ data: any }>> = [
+        () => api.get('/api/admin/asli-prep-content', { params: { type: 'Video' } }),
+        () => api.get('/api/admin/asli-prep-content'),
+        () => api.get('/api/student/asli-prep-content', { params: { type: 'Video' } }),
+        () => api.get('/api/student/asli-prep-content'),
+      ];
 
-      if (response.ok) {
-        const data = await response.json();
-        const contentsList = data.data || data || [];
-        const contentArray = Array.isArray(contentsList) ? contentsList : [];
-        
-        // Find the content item by ID
-        const contentData = contentArray.find((item: any) => 
-          (item._id === videoId) || (item.id === videoId)
-        );
-        
-        if (contentData) {
-          // Transform asli-prep-content to video format
-          const videoFileUrl = contentData.fileUrl || contentData.videoUrl || '';
-          const isYouTube = !!contentData.youtubeUrl || (videoFileUrl && (
-            videoFileUrl.includes('youtube.com') ||
-            videoFileUrl.includes('youtu.be')
-          ));
-
-          const transformedVideo = {
-            _id: contentData._id || contentData.id,
-            title: contentData.title || 'Untitled Video',
-            description: contentData.description || '',
-            duration: contentData.duration ? (contentData.duration > 100 ? contentData.duration : contentData.duration * 60) : 0,
-            views: contentData.views || 0,
-            createdAt: contentData.createdAt || new Date().toISOString(),
-            videoUrl: videoFileUrl,
-            youtubeUrl: contentData.youtubeUrl || (isYouTube ? videoFileUrl : ''),
-            isYouTubeVideo: isYouTube,
-            thumbnailUrl: contentData.thumbnailUrl || null,
-            subject: contentData.subject?.name || contentData.subject || 'Unknown',
-            aiFeatures: {
-              hasNotes: false,
-              hasMindMap: false,
-              hasVoiceQA: false
-            }
-          };
-          
-          setVideo(transformedVideo);
-          return;
+      for (const run of asliPrepAttempts) {
+        try {
+          const { data } = await run();
+          const contentsList = data?.data ?? data ?? [];
+          const contentData = findAsliPrepById(contentsList, videoId);
+          if (contentData) {
+            setVideo(transformAsliPrepItemToVideo(contentData));
+            return;
+          }
+        } catch {
+          // try next source
         }
       }
 
-      // If all endpoints fail, video not found
       console.error('Video not found in any endpoint');
     } catch (error) {
       console.error('Error fetching video:', error);
@@ -222,11 +178,51 @@ export default function VideoPlayer() {
     }
   };
 
+  /** Supports watch, embed, shorts, youtu.be, v= */
   const extractYouTubeId = (url: string): string | null => {
-    if (!url) return null;
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-    const match = url.match(regExp);
-    return (match && match[2].length === 11) ? match[2] : null;
+    if (!url || typeof url !== 'string') return null;
+    const u = url.trim();
+    let m = u.match(/(?:youtu\.be\/)([a-zA-Z0-9_-]{11})(?:\?|#|$|\/)/);
+    if (m?.[1]) return m[1];
+    m = u.match(/[?&]v=([a-zA-Z0-9_-]{11})(?:&|#|$)/);
+    if (m?.[1]) return m[1];
+    m = u.match(/\/embed\/([a-zA-Z0-9_-]{11})(?:\?|#|$|\/)/);
+    if (m?.[1]) return m[1];
+    m = u.match(/\/shorts\/([a-zA-Z0-9_-]{11})(?:\?|#|$|\/)/);
+    if (m?.[1]) return m[1];
+    m = u.match(/\/live\/([a-zA-Z0-9_-]{11})(?:\?|#|$|\/)/);
+    if (m?.[1]) return m[1];
+    m = u.match(/^.*(?:v\/|vi\/)([a-zA-Z0-9_-]{11})(?:\?|#|$|\/)/);
+    if (m?.[1]) return m[1];
+    return null;
+  };
+
+  /** Best HTTPS URL to open in browser / YouTube app (expo-av cannot play YouTube pages). */
+  const resolveYoutubePlayUrl = (v: Video): string | null => {
+    const raw = (v.youtubeUrl || v.videoUrl || '').trim();
+    if (!raw) return null;
+    if (!/youtube\.com|youtu\.be/i.test(raw)) return null;
+    const id = extractYouTubeId(raw);
+    if (id) return `https://www.youtube.com/watch?v=${id}`;
+    if (/^https?:\/\//i.test(raw)) return raw.replace(/^http:\/\//i, 'https://');
+    return `https://${raw.replace(/^\/\//, '')}`;
+  };
+
+  const openYoutube = async (url: string) => {
+    try {
+      await WebBrowser.openBrowserAsync(url, {
+        enableBarCollapsing: true,
+        showInRecents: true,
+      });
+    } catch {
+      try {
+        const can = await Linking.canOpenURL(url);
+        if (can) await Linking.openURL(url);
+        else Alert.alert('Cannot open', 'Install a browser or YouTube app, or check your network.');
+      } catch {
+        Alert.alert('Error', 'Could not open YouTube.');
+      }
+    }
   };
 
   const formatDuration = (seconds: number) => {
@@ -263,9 +259,9 @@ export default function VideoPlayer() {
     );
   }
 
-  const youtubeId = video.isYouTubeVideo && video.youtubeUrl 
-    ? extractYouTubeId(video.youtubeUrl) 
-    : null;
+  const youtubePlayUrl = resolveYoutubePlayUrl(video);
+  const youtubeThumbId =
+    extractYouTubeId((video.youtubeUrl || video.videoUrl || '').trim()) || null;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -302,27 +298,35 @@ export default function VideoPlayer() {
 
       {/* Video Player */}
       <View style={styles.videoContainer}>
-        {youtubeId ? (
+        {youtubePlayUrl ? (
           <TouchableOpacity
             style={styles.videoPlaceholder}
-            onPress={() => {
-              const youtubeUrl = `https://www.youtube.com/watch?v=${youtubeId}`;
-              Linking.openURL(youtubeUrl).catch(() => {
-                Alert.alert('Error', 'Could not open YouTube video');
-              });
-            }}
+            activeOpacity={0.85}
+            onPress={() => openYoutube(youtubePlayUrl)}
           >
             {video.thumbnailUrl ? (
-              <Image source={{ uri: video.thumbnailUrl }} style={styles.thumbnailFull} />
+              <Image
+                pointerEvents="none"
+                source={{ uri: video.thumbnailUrl }}
+                style={styles.thumbnailFull}
+              />
+            ) : youtubeThumbId ? (
+              <Image
+                pointerEvents="none"
+                source={{ uri: `https://img.youtube.com/vi/${youtubeThumbId}/hqdefault.jpg` }}
+                style={styles.thumbnailFull}
+              />
             ) : (
-              <View style={styles.thumbnailPlaceholder} />
+              <View pointerEvents="none" style={styles.thumbnailPlaceholder} />
             )}
-            <View style={styles.playButtonLarge}>
+            <View pointerEvents="none" style={styles.playButtonLarge}>
               <Ionicons name="play" size={48} color="#fff" />
             </View>
-            <Text style={styles.playButtonText}>Tap to play on YouTube</Text>
+            <Text pointerEvents="none" style={styles.playButtonText}>
+              Tap to play on YouTube
+            </Text>
           </TouchableOpacity>
-        ) : video.videoUrl ? (
+        ) : video.videoUrl && !/youtube\.com|youtu\.be/i.test(video.videoUrl) ? (
           <View style={styles.videoWrapper}>
             <Video
               ref={videoRef}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Modal, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -34,6 +34,8 @@ interface ExamResult {
 }
 
 export default function ExamsView() {
+  const { width } = useWindowDimensions();
+  const compact = width < 380;
   const [activeTab, setActiveTab] = useState<'available' | 'attempted' | 'ranking' | 'upcoming'>('available');
   const [exams, setExams] = useState<Exam[]>([]);
   const [results, setResults] = useState<any[]>([]);
@@ -183,18 +185,18 @@ export default function ExamsView() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, compact && { marginBottom: 14 }]}>
         <View style={styles.headerIcon}>
           <Ionicons name="document-text" size={24} color="#3b82f6" />
         </View>
         <View>
-          <Text style={styles.headerTitle}>Exams</Text>
+          <Text style={[styles.headerTitle, compact && { fontSize: 20 }]}>Exams</Text>
           <Text style={styles.headerSubtitle}>Take practice exams and track your progress</Text>
         </View>
       </View>
 
       {/* Tabs */}
-      <View style={styles.tabsContainer}>
+      <View style={[styles.tabsContainer, compact && { marginBottom: 14 }]}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
           <TouchableOpacity
             style={[styles.tab, activeTab === 'available' && styles.tabActive]}

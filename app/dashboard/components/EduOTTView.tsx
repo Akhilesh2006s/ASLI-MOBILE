@@ -1,9 +1,22 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Modal, Linking } from 'react-native';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
+  Linking,
+  RefreshControl,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Video } from 'expo-av';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
+import Header from './eduott/Header';
+import TabSwitcher, { EduOTTTab } from './eduott/TabSwitcher';
+import SearchBar from './eduott/SearchBar';
+import FilterChips from './eduott/FilterChips';
+import VideoCard from './eduott/VideoCard';
 
 interface VideoItem {
   _id: string;
@@ -13,8 +26,10 @@ interface VideoItem {
   videoUrl?: string;
   fileUrl?: string;
   isYouTubeVideo?: boolean;
+  subjectId?: string;
   subjectName?: string;
   views?: number;
+  watchProgress?: number;
 }
 
 interface LiveSession {
@@ -28,37 +43,30 @@ interface LiveSession {
   viewerCount?: number;
 }
 
-export default function EduOTTView() {
-  const [activeTab, setActiveTab] = useState<'videos' | 'live-sessions'>('videos');
+interface EduOTTViewProps {
+  username?: string;
+}
+
+export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
+  const [activeTab, setActiveTab] = useState<EduOTTTab>('videos');
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [liveSessions, setLiveSessions] = useState<LiveSession[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingSessions, setLoadingSessions] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sessionSearchTerm, setSessionSearchTerm] = useState('');
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null);
-  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
-  const videoRef = useRef<Video>(null);
+  const [visibleCount, setVisibleCount] = useState(10);
+  const [bookmarkedIds, setBookmarkedIds] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     fetchSubjects();
+    fetchVideos();
+    fetchLiveSessions();
   }, []);
 
-  useEffect(() => {
-    if (activeTab === 'videos') {
-      // Fetch videos even if subjects is empty - let the API handle filtering
-      fetchVideos();
-    }
-  }, [activeTab]);
-
-  useEffect(() => {
-    if (activeTab === 'live-sessions') {
-      fetchLiveSessions();
-    }
-  }, [activeTab]);
+  useEffect(() => setVisibleCount(10), [searchTerm, selectedSubject]);
 
   const fetchSubjects = async () => {
     try {
@@ -105,11 +113,11 @@ export default function EduOTTView() {
         console.log('📹 Fetched videos:', videosList.length);
         
         const videosWithSubjects = videosList.map((content: any) => {
-          const subjectName = content.subject?.name || content.subject || 'Unknown Subject';
+          const subjectId = content.subject?._id || content.subject?.id || (typeof content.subject === 'string' ? content.subject : '');
+          const subjectName = content.subject?.name || (typeof content.subject === 'string' ? content.subject : 'Unknown Subject');
           const rawDuration = content.duration || 0;
-          // Duration might already be in seconds or minutes - handle both
           const durationInSeconds = rawDuration > 0 
-            ? (rawDuration > 100 ? rawDuration : rawDuration * 60) // If > 100, assume seconds, else minutes
+            ? (rawDuration > 100 ? rawDuration : rawDuration * 60)
             : 0;
           
           let videoFileUrl = content.fileUrl || content.videoUrl;
@@ -129,7 +137,9 @@ export default function EduOTTView() {
             fileUrl: videoFileUrl,
             duration: durationInSeconds,
             views: content.views || 0,
+            subjectId: subjectId ? String(subjectId) : '',
             subjectName: subjectName,
+            watchProgress: Number(content.watchProgress || content.progress || 0),
             isYouTubeVideo: videoFileUrl && (
               videoFileUrl.includes('youtube.com') || 
               videoFileUrl.includes('youtu.be')
@@ -179,20 +189,6 @@ export default function EduOTTView() {
     }
   };
 
-  const handleVideoClick = (video: VideoItem) => {
-    setSelectedVideo(video);
-    setIsVideoModalOpen(true);
-  };
-
-  const handleCloseVideoModal = () => {
-    setIsVideoModalOpen(false);
-    setSelectedVideo(null);
-    if (videoRef.current) {
-      videoRef.current.pauseAsync();
-    }
-  };
-
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'live':
@@ -212,30 +208,29 @@ export default function EduOTTView() {
     return videos.filter((video) => {
       const matchesSearch = !searchTerm || video.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            (video.description || '').toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesSubject = selectedSubject === 'all' || 
-                            video.subjectName === selectedSubject;
+      const normalizedSelected = String(selectedSubject || '').toLowerCase();
+      const normalizedName = String(video.subjectName || '').toLowerCase();
+      const normalizedId = String(video.subjectId || '').toLowerCase();
+      const matchesSubject =
+        selectedSubject === 'all' ||
+        normalizedId === normalizedSelected ||
+        normalizedName === normalizedSelected;
       return matchesSearch && matchesSubject;
     });
   }, [videos, searchTerm, selectedSubject]);
 
-  const filteredSessions = useMemo(() => {
-    return liveSessions.filter(session => {
-      const matchesSearch = !sessionSearchTerm || session.title.toLowerCase().includes(sessionSearchTerm.toLowerCase()) ||
-        (session.description || '').toLowerCase().includes(sessionSearchTerm.toLowerCase());
-      const matchesStatus = filterStatus === 'all' || session.status === filterStatus;
-      return matchesSearch && matchesStatus;
-    });
-  }, [liveSessions, sessionSearchTerm, filterStatus]);
+  const visibleVideos = useMemo(
+    () => filteredVideos.slice(0, visibleCount),
+    [filteredVideos, visibleCount]
+  );
 
   const handlePlayVideo = useCallback(async (video: VideoItem) => {
-    if (video.isYouTubeVideo && video.videoUrl) {
+    if (video.videoUrl) {
       try {
         await Linking.openURL(video.videoUrl);
       } catch (error) {
-        console.error('Failed to open YouTube:', error);
+        console.error('Failed to open video URL:', error);
       }
-    } else {
-      handleVideoClick(video);
     }
   }, []);
 
@@ -245,182 +240,185 @@ export default function EduOTTView() {
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   }, []);
 
+  const handleJoinLive = useCallback(async (session: LiveSession) => {
+    if (!session.streamUrl) return;
+    try {
+      await Linking.openURL(session.streamUrl);
+    } catch (error) {
+      console.error('Failed to open stream URL:', error);
+    }
+  }, []);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([fetchSubjects(), fetchVideos(), fetchLiveSessions()]);
+    setRefreshing(false);
+  }, []);
+
+  const toggleBookmark = useCallback((videoId: string) => {
+    setBookmarkedIds(prev => ({ ...prev, [videoId]: !prev[videoId] }));
+  }, []);
+
+  const onEndReached = useCallback(() => {
+    if (visibleCount < filteredVideos.length) {
+      setVisibleCount(prev => prev + 10);
+    }
+  }, [visibleCount, filteredVideos.length]);
+
   const renderVideoItem = useCallback(({ item: video }: { item: VideoItem }) => (
-    <TouchableOpacity
-      style={styles.videoCard}
+    <VideoCard
+      title={video.title}
+      description={video.description}
+      subjectName={video.subjectName}
+      durationText={formatDuration(video.duration)}
+      views={Number(video.views || 0)}
+      watchProgress={(video as any).watchProgress}
+      isBookmarked={Boolean(bookmarkedIds[video._id])}
+      isYouTubeVideo={video.isYouTubeVideo}
       onPress={() => handlePlayVideo(video)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.videoThumbnail}>
-        {video.isYouTubeVideo ? (
-          <Ionicons name="logo-youtube" size={40} color="#ef4444" />
-        ) : (
-          <Ionicons name="play-circle" size={40} color="#3b82f6" />
-        )}
-      </View>
-      <View style={styles.videoInfo}>
-        <Text style={styles.videoTitle}>{video.title}</Text>
-        {video.description && (
-          <Text style={styles.videoDescription} numberOfLines={2}>
-            {video.description}
+      onToggleBookmark={() => toggleBookmark(video._id)}
+    />
+  ), [bookmarkedIds, formatDuration, handlePlayVideo, toggleBookmark]);
+
+  const renderSessionItem = useCallback(({ item }: { item: LiveSession }) => {
+    const statusColor = getStatusColor(item.status);
+    return (
+      <TouchableOpacity style={styles.sessionCard} activeOpacity={0.9} onPress={() => handleJoinLive(item)}>
+        <View style={styles.sessionTopRow}>
+          <Text style={styles.sessionTitle} numberOfLines={2}>
+            {item.title}
           </Text>
-        )}
-        <View style={styles.videoMeta}>
-          <View style={styles.videoMetaItem}>
-            <Ionicons name="book" size={14} color="#6b7280" />
-            <Text style={styles.videoMetaText}>{video.subjectName}</Text>
+          <View style={[styles.sessionStatus, { backgroundColor: statusColor.bg }]}>
+            <Text style={[styles.sessionStatusText, { color: statusColor.text }]}>{item.status}</Text>
           </View>
-          <View style={styles.videoMetaItem}>
-            <Ionicons name="time" size={14} color="#6b7280" />
-            <Text style={styles.videoMetaText}>{formatDuration(video.duration)}</Text>
-          </View>
-          {video.views > 0 && (
-            <View style={styles.videoMetaItem}>
-              <Ionicons name="eye" size={14} color="#6b7280" />
-              <Text style={styles.videoMetaText}>{video.views} views</Text>
-            </View>
-          )}
         </View>
-      </View>
-    </TouchableOpacity>
-  ), [handlePlayVideo, formatDuration]);
+        <Text style={styles.sessionDescription} numberOfLines={2}>
+          {item.description || 'Live class session'}
+        </Text>
+        <View style={styles.sessionMeta}>
+          <Text style={styles.sessionMetaText}>{item.subject?.name || 'General'}</Text>
+          <Text style={styles.sessionMetaText}>•</Text>
+          <Text style={styles.sessionMetaText}>{item.viewerCount || 0} watching</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  }, [handleJoinLive]);
 
   const videoKeyExtractor = useCallback((item: VideoItem) => item._id, []);
 
+  const listHeader = (
+    <>
+      <Header username={username} />
+
+      <View style={styles.summaryCard}>
+        <View style={styles.summaryTop}>
+          <View style={styles.summaryIcon}>
+            <Ionicons name="videocam" size={20} color="#2563eb" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.summaryTitle}>EduOTT</Text>
+            <Text style={styles.summarySubtitle}>Videos & Live Classes</Text>
+          </View>
+        </View>
+        <View style={styles.summaryStats}>
+          <TouchableOpacity style={styles.statChip} activeOpacity={0.85} onPress={() => setActiveTab('videos')}>
+            <Text style={styles.statChipText}>🎥 {videos.length} Videos</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.statChip} activeOpacity={0.85} onPress={() => setActiveTab('live-sessions')}>
+            <Text style={styles.statChipText}>🔴 {liveSessions.filter(x => x.status === 'live').length} Live</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <TabSwitcher activeTab={activeTab} onChange={setActiveTab} />
+    </>
+  );
+
+  const renderSkeletons = () => (
+    <View style={styles.skeletonWrap}>
+      {[1, 2, 3].map((n) => (
+        <View key={n} style={styles.skeletonCard}>
+          <View style={styles.skeletonThumb} />
+          <View style={{ flex: 1, gap: 8 }}>
+            <View style={styles.skeletonLineLg} />
+            <View style={styles.skeletonLineSm} />
+            <View style={styles.skeletonLineXs} />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+
+  const renderVideoContent = () => {
+    if (loading) return renderSkeletons();
+    if (filteredVideos.length === 0) {
+      return (
+        <View style={styles.emptyState}>
+          <Ionicons name="videocam-outline" size={52} color="#94a3b8" />
+          <Text style={styles.emptyTitle}>No videos found</Text>
+          <Text style={styles.emptyText}>Try another keyword or subject filter.</Text>
+        </View>
+      );
+    }
+
+    return (
+      <FlatList
+        data={visibleVideos}
+        keyExtractor={videoKeyExtractor}
+        renderItem={renderVideoItem}
+        ListHeaderComponent={
+          <>
+            {listHeader}
+            <SearchBar value={searchTerm} onChangeText={setSearchTerm} />
+            <FilterChips selectedSubject={selectedSubject} subjects={subjects} onSelect={setSelectedSubject} />
+            <Text style={styles.resultsCount}>Showing {visibleVideos.length} of {filteredVideos.length}</Text>
+          </>
+        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        onEndReached={onEndReached}
+        onEndReachedThreshold={0.35}
+        contentContainerStyle={styles.listContainer}
+        maxToRenderPerBatch={8}
+        initialNumToRender={8}
+        windowSize={9}
+        removeClippedSubviews
+        showsVerticalScrollIndicator={false}
+      />
+    );
+  };
+
+  const renderLiveContent = () => {
+    if (loadingSessions) {
+      return (
+        <View style={styles.loader}>
+          <ActivityIndicator size="large" color="#2563eb" />
+        </View>
+      );
+    }
+
+    return (
+      <FlatList
+        data={liveSessions}
+        keyExtractor={(item) => item._id}
+        renderItem={renderSessionItem}
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Ionicons name="radio-outline" size={52} color="#94a3b8" />
+            <Text style={styles.emptyTitle}>No live sessions right now</Text>
+            <Text style={styles.emptyText}>Upcoming classes will appear here.</Text>
+          </View>
+        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        contentContainerStyle={styles.listContainer}
+        showsVerticalScrollIndicator={false}
+      />
+    );
+  };
+
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerIcon}>
-          <Ionicons name="videocam" size={24} color="#3b82f6" />
-        </View>
-        <View>
-          <Text style={styles.headerTitle}>EduOTT</Text>
-          <Text style={styles.headerSubtitle}>Educational videos and live sessions</Text>
-        </View>
-      </View>
-
-      {/* Tabs */}
-      <View style={styles.tabsContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'videos' && styles.tabActive]}
-          onPress={() => setActiveTab('videos')}
-        >
-          <Text style={[styles.tabText, activeTab === 'videos' && styles.tabTextActive]}>
-            Videos
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'live-sessions' && styles.tabActive]}
-          onPress={() => setActiveTab('live-sessions')}
-        >
-          <Text style={[styles.tabText, activeTab === 'live-sessions' && styles.tabTextActive]}>
-            Live Sessions
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Videos Tab */}
-      {activeTab === 'videos' && (
-        <View style={styles.content}>
-          {/* Search and Filter */}
-          <View style={styles.searchContainer}>
-            <View style={styles.searchInputContainer}>
-              <Ionicons name="search" size={20} color="#9ca3af" style={styles.searchIcon} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search videos by title..."
-                value={searchTerm}
-                onChangeText={setSearchTerm}
-                placeholderTextColor="#9ca3af"
-              />
-            </View>
-            <View style={styles.filterContainer}>
-              <Ionicons name="filter" size={20} color="#6b7280" />
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-                <TouchableOpacity
-                  style={[styles.filterChip, selectedSubject === 'all' && styles.filterChipActive]}
-                  onPress={() => setSelectedSubject('all')}
-                >
-                  <Text style={[styles.filterChipText, selectedSubject === 'all' && styles.filterChipTextActive]}>
-                    All Subjects
-                  </Text>
-                </TouchableOpacity>
-                {subjects.map((subject) => (
-                  <TouchableOpacity
-                    key={subject._id || subject.name}
-                    style={[styles.filterChip, selectedSubject === (subject._id || subject.name) && styles.filterChipActive]}
-                    onPress={() => setSelectedSubject(subject._id || subject.name)}
-                  >
-                    <Text style={[styles.filterChipText, selectedSubject === (subject._id || subject.name) && styles.filterChipTextActive]}>
-                      {subject.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          </View>
-
-          {/* Results Count */}
-          <Text style={styles.resultsCount}>
-            Showing {filteredVideos.length} of {videos.length} videos
-          </Text>
-
-          {/* Videos List */}
-          {loading ? (
-            <ActivityIndicator size="large" color="#3b82f6" style={styles.loader} />
-          ) : filteredVideos.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="videocam-outline" size={64} color="#d1d5db" />
-              <Text style={styles.emptyStateTitle}>No Videos Available</Text>
-              <Text style={styles.emptyStateText}>Check back later for new video content.</Text>
-            </View>
-          ) : (
-            <FlatList
-              data={filteredVideos}
-              keyExtractor={videoKeyExtractor}
-              renderItem={renderVideoItem}
-              removeClippedSubviews={true}
-              maxToRenderPerBatch={10}
-              updateCellsBatchingPeriod={50}
-              initialNumToRender={10}
-              windowSize={10}
-              showsVerticalScrollIndicator={false}
-            />
-          )}
-        </View>
-      )}
-
-      {/* Live Sessions Tab */}
-      {activeTab === 'live-sessions' && <LiveSessionsView />}
-
-      {/* Video Player Modal */}
-      <Modal
-        visible={isVideoModalOpen}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={handleCloseVideoModal}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{selectedVideo?.title}</Text>
-              <TouchableOpacity onPress={handleCloseVideoModal}>
-                <Ionicons name="close" size={24} color="#111827" />
-              </TouchableOpacity>
-            </View>
-            {selectedVideo && !selectedVideo.isYouTubeVideo && selectedVideo.videoUrl && (
-              <Video
-                ref={videoRef}
-                source={{ uri: selectedVideo.videoUrl }}
-                style={styles.videoPlayer}
-                useNativeControls
-                resizeMode="contain"
-              />
-            )}
-          </View>
-        </View>
-      </Modal>
+      {activeTab === 'videos' ? renderVideoContent() : renderLiveContent()}
     </View>
   );
 }
@@ -428,257 +426,179 @@ export default function EduOTTView() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F8FAFC',
   },
-  header: {
+  listContainer: {
+    paddingBottom: 20,
+  },
+  summaryCard: {
+    backgroundColor: '#f0f9ff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#dbeafe',
+    padding: 12,
+    marginBottom: 12,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  summaryTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginBottom: 20,
+    gap: 10,
+    marginBottom: 10,
   },
-  headerIcon: {
-    width: 40,
-    height: 40,
+  summaryIcon: {
+    width: 36,
+    height: 36,
     borderRadius: 12,
     backgroundColor: '#dbeafe',
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#111827',
+  summaryTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0f172a',
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
+  summarySubtitle: {
+    fontSize: 13,
+    color: '#64748B',
   },
-  tabsContainer: {
+  summaryStats: {
     flexDirection: 'row',
-    backgroundColor: '#f3f4f6',
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 20,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  tabActive: {
-    backgroundColor: '#fff',
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6b7280',
-  },
-  tabTextActive: {
-    color: '#111827',
-  },
-  content: {
-    flex: 1,
-  },
-  searchContainer: {
-    marginBottom: 16,
-    gap: 12,
-  },
-  searchInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: '#111827',
-  },
-  filterContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: 8,
   },
-  filterScroll: {
-    flexDirection: 'row',
+  statChip: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderRadius: 999,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    alignItems: 'center',
   },
-  filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#f3f4f6',
-    marginRight: 8,
-  },
-  filterChipActive: {
-    backgroundColor: '#3b82f6',
-  },
-  filterChipText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6b7280',
-  },
-  filterChipTextActive: {
-    color: '#fff',
+  statChipText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0f172a',
   },
   resultsCount: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 16,
+    fontSize: 12,
+    color: '#64748b',
+    marginBottom: 10,
   },
   loader: {
     marginTop: 40,
+    alignItems: 'center',
   },
   emptyState: {
     alignItems: 'center',
-    padding: 40,
-    marginTop: 40,
+    padding: 30,
+    marginTop: 30,
   },
-  emptyStateTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#6b7280',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyStateText: {
-    fontSize: 14,
-    color: '#9ca3af',
-    textAlign: 'center',
-  },
-  videosList: {
-    flex: 1,
-  },
-  videoCard: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    gap: 12,
-  },
-  videoThumbnail: {
-    width: 120,
-    height: 80,
-    borderRadius: 8,
-    backgroundColor: '#f3f4f6',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  videoInfo: {
-    flex: 1,
-    gap: 8,
-  },
-  videoTitle: {
+  emptyTitle: {
+    marginTop: 10,
     fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
+    color: '#334155',
   },
-  videoDescription: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  videoMeta: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  videoMetaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  videoMetaText: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  sessionsList: {
-    flex: 1,
+  emptyText: {
+    marginTop: 6,
+    fontSize: 13,
+    color: '#64748b',
+    textAlign: 'center',
   },
   sessionCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    gap: 12,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  sessionHeader: {
+  sessionTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  sessionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#dbeafe',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '700',
+    alignItems: 'flex-start',
+    marginBottom: 8,
   },
   sessionTitle: {
-    fontSize: 18,
+    flex: 1,
+    fontSize: 15,
     fontWeight: '700',
-    color: '#111827',
+    color: '#0f172a',
+    marginRight: 8,
+  },
+  sessionStatus: {
+    borderRadius: 999,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  sessionStatusText: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'capitalize',
   },
   sessionDescription: {
-    fontSize: 14,
-    color: '#6b7280',
+    fontSize: 13,
+    color: '#64748b',
+    marginBottom: 8,
   },
   sessionMeta: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  sessionMetaItem: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
   },
   sessionMetaText: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#64748b',
   },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
+  skeletonWrap: {
+    marginTop: 12,
+    gap: 10,
   },
-  modalContent: {
-    width: '100%',
-    height: '100%',
-    padding: 20,
-  },
-  modalHeader: {
+  skeletonCard: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
+    gap: 12,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#fff',
+  skeletonThumb: {
+    width: 110,
+    height: 76,
+    borderRadius: 12,
+    backgroundColor: '#e2e8f0',
   },
-  videoPlayer: {
-    width: '100%',
-    height: '70%',
+  skeletonLineLg: {
+    height: 14,
+    borderRadius: 8,
+    backgroundColor: '#e2e8f0',
+    width: '90%',
+  },
+  skeletonLineSm: {
+    height: 12,
+    borderRadius: 8,
+    backgroundColor: '#e2e8f0',
+    width: '60%',
+  },
+  skeletonLineXs: {
+    height: 10,
+    borderRadius: 8,
+    backgroundColor: '#e2e8f0',
+    width: '50%',
+    marginTop: 2,
   },
 });
 

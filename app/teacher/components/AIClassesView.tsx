@@ -41,6 +41,17 @@ interface AIClassesViewProps {
   };
 }
 
+function asText(value: unknown, fallback = 'N/A'): string {
+  if (value == null || value === '') return fallback;
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (typeof value === 'object' && value !== null && 'name' in value) {
+    const n = (value as { name?: unknown }).name;
+    return n != null ? asText(n, fallback) : fallback;
+  }
+  return String(value);
+}
+
 export default function AIClassesView({ stats }: AIClassesViewProps) {
   const [assignedClasses, setAssignedClasses] = useState<Class[]>([]);
   const [subjectsWithContent, setSubjectsWithContent] = useState<Subject[]>([]);
@@ -75,13 +86,13 @@ export default function AIClassesView({ stats }: AIClassesViewProps) {
         
         const classesData = data.data || data || [];
         const mappedClasses = (Array.isArray(classesData) ? classesData : []).map((cls: any) => ({
-          id: cls._id || cls.id,
+          id: String(cls._id || cls.id || ''),
           name: cls.name || `${cls.classNumber}${cls.section ? ` - ${cls.section}` : ''}`,
-          subject: cls.subject || 'N/A',
-          schedule: cls.schedule || 'N/A',
-          room: cls.room || 'N/A',
+          subject: asText(cls.subject, 'N/A'),
+          schedule: asText(cls.schedule, 'N/A'),
+          room: asText(cls.room, 'N/A'),
           studentCount: cls.students?.length || cls.studentCount || 0,
-          students: cls.students || []
+          students: Array.isArray(cls.students) ? cls.students : []
         }));
         console.log('[AIClassesView] Mapped classes:', mappedClasses.length);
         setAssignedClasses(mappedClasses);
@@ -247,22 +258,24 @@ export default function AIClassesView({ stats }: AIClassesViewProps) {
                   </View>
                 </View>
 
-                {expandedClasses.has(classItem.id) && classItem.students && classItem.students.length > 0 && (
+                {expandedClasses.has(classItem.id) &&
+                classItem.students &&
+                classItem.students.length > 0 ? (
                   <View style={styles.studentsList}>
                     <Text style={styles.studentsListTitle}>Students:</Text>
                     {classItem.students.map((student) => (
                       <View key={student.id} style={styles.studentItem}>
                         <View style={styles.studentInfo}>
-                          <Text style={styles.studentName}>{student.name}</Text>
-                          <Text style={styles.studentEmail}>{student.email}</Text>
+                          <Text style={styles.studentName}>{String(student.name ?? '')}</Text>
+                          <Text style={styles.studentEmail}>{String(student.email ?? '')}</Text>
                         </View>
                         <View style={[styles.studentStatusBadge, student.status === 'active' ? styles.studentStatusActive : styles.studentStatusInactive]}>
-                          <Text style={styles.studentStatusText}>{student.status}</Text>
+                          <Text style={styles.studentStatusText}>{String(student.status ?? '')}</Text>
                         </View>
                       </View>
                     ))}
                   </View>
-                )}
+                ) : null}
 
                 <TouchableOpacity
                   style={styles.expandButton}
@@ -305,19 +318,20 @@ export default function AIClassesView({ stats }: AIClassesViewProps) {
         ) : (
           <View style={styles.subjectsGrid}>
             {subjectsWithContent.map((subject) => {
+              const subjectKey = String(subject.id ?? subject._id);
               const getSubjectIcon = (subjectName: string) => {
                 const name = subjectName.toLowerCase();
                 if (name.includes('math')) return 'calculator';
-                if (name.includes('science') || name.includes('physics') || name.includes('chemistry')) return 'flash';
+                if (name.includes('science') || name.includes('physics') || name.includes('chemistry')) return 'flash-outline';
                 if (name.includes('english')) return 'book';
                 return 'book';
               };
 
               return (
-                <View key={subject.id} style={styles.subjectCard}>
+                <View key={subjectKey} style={styles.subjectCard}>
                   <View style={styles.subjectCardHeader}>
                     <View style={styles.subjectCardIcon}>
-                      <Ionicons name={getSubjectIcon(subject.name) as any} size={24} color="#fff" />
+                      <Ionicons name={getSubjectIcon(asText(subject.name, 'Unknown Subject')) as any} size={24} color="#fff" />
                     </View>
                     <View style={styles.subjectCardBadge}>
                       <Text style={styles.subjectCardBadgeText}>
@@ -325,10 +339,12 @@ export default function AIClassesView({ stats }: AIClassesViewProps) {
                       </Text>
                     </View>
                   </View>
-                  <Text style={styles.subjectCardName}>{subject.name}</Text>
-                  {subject.description && (
+                  <Text style={styles.subjectCardName}>
+                    {typeof subject.name === 'string' ? subject.name : String(subject.name ?? '')}
+                  </Text>
+                  {typeof subject.description === 'string' && subject.description.trim() !== '' ? (
                     <Text style={styles.subjectCardDescription}>{subject.description}</Text>
-                  )}
+                  ) : null}
 
                   <View style={styles.subjectStats}>
                     <View style={styles.subjectStatItem}>
@@ -348,27 +364,27 @@ export default function AIClassesView({ stats }: AIClassesViewProps) {
                     </View>
                   </View>
 
-                  {subject.videos && subject.videos.length > 0 && (
+                  {Array.isArray(subject.videos) && subject.videos.length > 0 ? (
                     <View style={styles.recentVideos}>
                       <Text style={styles.recentVideosTitle}>Recent Videos:</Text>
                       {subject.videos.slice(0, 2).map((video: any, idx: number) => (
                         <View key={video._id || idx} style={styles.recentVideoItem}>
                           <Text style={styles.recentVideoTitle} numberOfLines={1}>
-                            {video.title || 'Untitled Video'}
+                            {video.title != null ? String(video.title) : 'Untitled Video'}
                           </Text>
-                          {video.duration && (
+                          {video.duration != null && video.duration !== '' ? (
                             <Text style={styles.recentVideoDuration}>
-                              Duration: {video.duration} min
+                              Duration: {String(video.duration)} min
                             </Text>
-                          )}
+                          ) : null}
                         </View>
                       ))}
                     </View>
-                  )}
+                  ) : null}
 
                   <TouchableOpacity
                     style={styles.viewContentButton}
-                    onPress={() => router.push(`/teacher/subject/${subject.id}`)}
+                    onPress={() => router.push(`/teacher/subject/${subjectKey}`)}
                   >
                     <Text style={styles.viewContentButtonText}>View Content</Text>
                     <Ionicons name="arrow-forward" size={20} color="#fff" />

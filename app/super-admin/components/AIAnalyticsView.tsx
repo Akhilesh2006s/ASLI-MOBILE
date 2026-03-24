@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { API_BASE_URL } from '../../../src/lib/api-config';
-import * as SecureStore from 'expo-secure-store';
+import api from '../../../src/services/api/api';
 
 interface DetailedAnalytics {
   adminAnalytics?: AdminAnalytics[];
@@ -40,6 +39,7 @@ export default function AIAnalyticsView() {
   const [analytics, setAnalytics] = useState<DetailedAnalytics | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('admin-comparison');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchDetailedAnalytics();
@@ -48,22 +48,14 @@ export default function AIAnalyticsView() {
   const fetchDetailedAnalytics = async () => {
     setIsLoading(true);
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/ai/detailed-analytics`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setAnalytics(data.data || null);
-      } else {
-        console.error('Failed to fetch detailed analytics:', response.status);
-      }
-    } catch (error) {
-      console.error('Detailed analytics error:', error);
+      setError('');
+      const response = await api.get('/api/ai/detailed-analytics');
+      const data = response?.data;
+      setAnalytics((data?.data || data) ?? null);
+    } catch (err: any) {
+      setError(err?.friendlyMessage || 'Failed to fetch detailed analytics.');
+      console.error('Detailed analytics error:', err);
+      setAnalytics(null);
     } finally {
       setIsLoading(false);
     }
@@ -137,6 +129,7 @@ export default function AIAnalyticsView() {
           </LinearGradient>
         </TouchableOpacity>
       </View>
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       {/* Summary Statistics Cards */}
       <View style={styles.statsGrid}>
@@ -695,8 +688,9 @@ export default function AIAnalyticsView() {
 const styles = StyleSheet.create({
   content: { flex: 1 },
   header: {
-    padding: 20,
-    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
   },
   headerTitleRow: {
     flexDirection: 'row',
@@ -705,12 +699,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '800',
     color: '#111827',
   },
   headerSubtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#6b7280',
     marginBottom: 16,
   },
@@ -722,26 +716,26 @@ const styles = StyleSheet.create({
   refreshButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     gap: 8,
   },
   refreshButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 20,
-    gap: 12,
-    marginBottom: 24,
+    paddingHorizontal: 16,
+    gap: 10,
+    marginBottom: 16,
   },
   statCard: {
     flex: 1,
     minWidth: '47%',
-    borderRadius: 12,
+    borderRadius: 10,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -750,8 +744,8 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   statCardGradient: {
-    padding: 20,
-    minHeight: 120,
+    padding: 14,
+    minHeight: 100,
   },
   statCardContent: {
     flexDirection: 'row',
@@ -759,32 +753,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statCardLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#fff',
     opacity: 0.9,
     marginBottom: 8,
   },
   statCardValue: {
-    fontSize: 32,
+    fontSize: 26,
     fontWeight: '800',
     color: '#fff',
     marginBottom: 4,
   },
   statCardSubtext: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#fff',
     opacity: 0.9,
   },
   tabsContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
+    paddingHorizontal: 16,
+    marginBottom: 14,
   },
   tabsScroll: {
     flexGrow: 0,
   },
   tab: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderRadius: 8,
     marginRight: 8,
     backgroundColor: '#f3f4f6',
@@ -793,7 +787,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#8b5cf6',
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#6b7280',
   },
@@ -801,8 +795,8 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   tabContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   section: {
     marginBottom: 24,
@@ -814,7 +808,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     color: '#111827',
   },
@@ -1067,7 +1061,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 16,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#111827',
   },
@@ -1082,7 +1076,7 @@ const styles = StyleSheet.create({
     padding: 40,
   },
   emptyText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#111827',
     marginTop: 16,
@@ -1105,8 +1099,14 @@ const styles = StyleSheet.create({
   },
   generateButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
+  },
+  errorText: {
+    color: '#dc2626',
+    paddingHorizontal: 16,
+    marginBottom: 8,
+    fontSize: 13,
   },
   distributionContainer: {
     gap: 16,

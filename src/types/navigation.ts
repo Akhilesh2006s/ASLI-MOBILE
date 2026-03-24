@@ -14,6 +14,7 @@ export type RootStackParamList = {
   'teacher/dashboard': undefined;
   'teacher/subject/[id]': { id: string };
   'super-admin/login': undefined;
+  'super-admin-dashboard': undefined;
   'super-admin/dashboard': undefined;
   'student-exams': undefined;
   'practice-tests': undefined;

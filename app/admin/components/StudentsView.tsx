@@ -1,9 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Modal, ActivityIndicator, Alert, FlatList } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Modal, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { API_BASE_URL } from '../../../src/lib/api-config';
-import * as SecureStore from 'expo-secure-store';
+import api from '../../../src/services/api/api';
 
 interface Student {
   id: string;
@@ -39,22 +38,14 @@ export default function StudentsView() {
 
   const fetchClasses = async () => {
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/admin/classes`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const classesData = data.data || data || [];
-        const uniqueClasses = Array.from(new Set(
-          classesData.map((cls: any) => cls.classNumber || cls.name).filter(Boolean)
-        ));
-        setAllClasses(uniqueClasses);
-      }
+      const response = await api.get('/api/admin/classes');
+      const data = response?.data;
+      const classesData = data?.data || data || [];
+      const list = Array.isArray(classesData) ? classesData : [];
+      const uniqueClasses = Array.from(new Set(
+        list.map((cls: any) => cls.classNumber || cls.name).filter(Boolean)
+      ));
+      setAllClasses(uniqueClasses);
     } catch (error) {
       console.error('Failed to fetch classes:', error);
     }
@@ -63,29 +54,20 @@ export default function StudentsView() {
   const fetchStudents = async () => {
     try {
       setIsLoading(true);
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/admin/students`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const studentsData = data.data || data || [];
-        const mappedStudents = (Array.isArray(studentsData) ? studentsData : []).map((user: any) => ({
-          id: user._id || user.id,
-          name: user.fullName || user.name || 'Unknown Student',
-          email: user.email || '',
-          classNumber: user.classNumber || user.assignedClass?.classNumber || 'N/A',
-          phone: user.phone || '',
-          status: user.isActive ? 'active' : 'inactive',
-          createdAt: user.createdAt || new Date().toISOString(),
-          lastLogin: user.lastLogin || null
-        }));
-        setStudents(mappedStudents);
-      }
+      const response = await api.get('/api/admin/students');
+      const data = response?.data;
+      const studentsData = data?.data || data || [];
+      const mappedStudents = (Array.isArray(studentsData) ? studentsData : []).map((user: any) => ({
+        id: user._id || user.id,
+        name: user.fullName || user.name || 'Unknown Student',
+        email: user.email || '',
+        classNumber: user.classNumber || user.assignedClass?.classNumber || 'N/A',
+        phone: user.phone || '',
+        status: user.isActive ? 'active' : 'inactive',
+        createdAt: user.createdAt || new Date().toISOString(),
+        lastLogin: user.lastLogin || null
+      }));
+      setStudents(mappedStudents);
     } catch (error) {
       console.error('Failed to fetch students:', error);
     } finally {
@@ -100,34 +82,20 @@ export default function StudentsView() {
     }
 
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/admin/students`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          fullName: newStudent.name.trim(),
-          email: newStudent.email.trim(),
-          classNumber: newStudent.classNumber.trim(),
-          phone: newStudent.phone.trim(),
-          password: 'Password123'
-        })
+      await api.post('/api/admin/students', {
+        fullName: newStudent.name.trim(),
+        email: newStudent.email.trim(),
+        classNumber: newStudent.classNumber.trim(),
+        phone: newStudent.phone.trim(),
+        password: 'Password123'
       });
-
-      if (response.ok) {
-        Alert.alert('Success', 'Student added successfully! Default password: Password123');
-        setNewStudent({ name: '', email: '', classNumber: '', phone: '' });
-        setIsAddModalVisible(false);
-        fetchStudents();
-      } else {
-        const data = await response.json();
-        Alert.alert('Error', data.message || 'Failed to add student');
-      }
-    } catch (error) {
+      Alert.alert('Success', 'Student added successfully! Default password: Password123');
+      setNewStudent({ name: '', email: '', classNumber: '', phone: '' });
+      setIsAddModalVisible(false);
+      fetchStudents();
+    } catch (error: any) {
       console.error('Failed to add student:', error);
-      Alert.alert('Error', 'Network error. Please try again.');
+      Alert.alert('Error', error?.friendlyMessage || 'Network error. Please try again.');
     }
   };
 
@@ -142,24 +110,12 @@ export default function StudentsView() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const token = await SecureStore.getItemAsync('authToken');
-              const response = await fetch(`${API_BASE_URL}/api/admin/students/${id}`, {
-                method: 'DELETE',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json'
-                }
-              });
-
-              if (response.ok) {
-                Alert.alert('Success', 'Student deleted successfully');
-                fetchStudents();
-              } else {
-                Alert.alert('Error', 'Failed to delete student');
-              }
-            } catch (error) {
+              await api.delete(`/api/admin/students/${id}`);
+              Alert.alert('Success', 'Student deleted successfully');
+              fetchStudents();
+            } catch (error: any) {
               console.error('Failed to delete student:', error);
-              Alert.alert('Error', 'Network error. Please try again.');
+              Alert.alert('Error', error?.friendlyMessage || 'Network error. Please try again.');
             }
           }
         }
@@ -200,55 +156,72 @@ export default function StudentsView() {
   }, [students]);
 
   const renderStudentCard = useCallback(({ item: student }: { item: Student }) => (
-    <View style={styles.studentCard}>
+    <View
+      key={String(student.id ?? student.email)}
+      style={styles.studentCard}
+    >
       <View style={styles.studentCardContent}>
         <View style={styles.studentHeader}>
           <View style={styles.studentAvatarContainer}>
-            <LinearGradient
-              colors={['#3b82f6', '#2563eb']}
-              style={styles.studentAvatar}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
+            <View style={styles.studentAvatar}>
               <Text style={styles.studentAvatarText}>
                 {(student.name || 'U').charAt(0).toUpperCase()}
               </Text>
-            </LinearGradient>
-            <View style={[
-              styles.statusIndicator,
-              student.status === 'active' ? styles.statusIndicatorActive : styles.statusIndicatorInactive
-            ]}>
+            </View>
+            <View
+              style={[
+                styles.statusIndicator,
+                student.status === 'active' ? styles.statusIndicatorActive : styles.statusIndicatorInactive,
+              ]}
+            >
               <Ionicons
-                name={student.status === 'active' ? 'checkmark-circle' : 'close-circle'}
-                size={12}
+                name={student.status === 'active' ? 'checkmark' : 'remove'}
+                size={10}
                 color="#fff"
               />
             </View>
           </View>
           <View style={styles.studentInfo}>
-            <Text style={styles.studentName}>{student.name || 'Unknown Student'}</Text>
-            <Text style={styles.studentEmail}>{student.email || 'No email'}</Text>
-            <View style={styles.classBadge}>
-              <Ionicons name="school" size={12} color="#0ea5e9" />
-              <Text style={styles.classBadgeText}>Class {student.classNumber || 'N/A'}</Text>
+            <Text style={styles.studentName} numberOfLines={1}>
+              {student.name || 'Unknown Student'}
+            </Text>
+            <Text style={styles.studentEmail} numberOfLines={1}>
+              {student.email || 'No email'}
+            </Text>
+            <View style={styles.metaRow}>
+              <View style={styles.classChip}>
+                <Ionicons name="school-outline" size={12} color="#0d9488" />
+                <Text style={styles.classChipText}>Class {student.classNumber || 'N/A'}</Text>
+              </View>
+              <View
+                style={[
+                  styles.statusChip,
+                  student.status === 'active' ? styles.statusChipOn : styles.statusChipOff,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.statusChipText,
+                    student.status === 'active' ? styles.statusChipTextOn : styles.statusChipTextOff,
+                  ]}
+                >
+                  {student.status === 'active' ? 'Active' : 'Inactive'}
+                </Text>
+              </View>
             </View>
           </View>
         </View>
 
-        <View style={styles.studentDetails}>
-          <View style={styles.detailRow}>
-            <Ionicons name="mail" size={16} color="#0ea5e9" />
-            <Text style={styles.detailText} numberOfLines={1}>{student.email || 'No email'}</Text>
-          </View>
-          {student.phone && (
-            <View style={styles.detailRow}>
-              <Ionicons name="call" size={16} color="#0ea5e9" />
-              <Text style={styles.detailText}>{student.phone}</Text>
+        <View style={styles.studentMeta}>
+          {student.phone ? (
+            <View style={styles.metaItem}>
+              <Ionicons name="call-outline" size={14} color="#64748b" />
+              <Text style={styles.metaItemText}>{student.phone}</Text>
             </View>
-          )}
-          <View style={styles.detailRow}>
-            <Ionicons name="calendar" size={16} color="#0ea5e9" />
-            <Text style={styles.detailText}>
+          ) : null}
+          <View style={styles.metaItem}>
+            <Ionicons name="time-outline" size={14} color="#64748b" />
+            <Text style={styles.metaItemText}>
               Last login: {student.lastLogin ? new Date(student.lastLogin).toLocaleDateString() : 'Never'}
             </Text>
           </View>
@@ -256,14 +229,16 @@ export default function StudentsView() {
 
         <View style={styles.studentActions}>
           <TouchableOpacity
-            style={styles.actionButton}
+            style={styles.dangerOutlineBtn}
             onPress={() => handleDeleteStudent(student.id, student.name)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons name="trash" size={18} color="#ef4444" />
+            <Ionicons name="trash-outline" size={18} color="#dc2626" />
+            <Text style={styles.dangerOutlineBtnText}>Remove</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.assignButton}>
-            <Ionicons name="school" size={16} color="#0ea5e9" />
-            <Text style={styles.assignButtonText}>Assign Class</Text>
+          <TouchableOpacity style={styles.secondaryOutlineBtn} activeOpacity={0.85}>
+            <Ionicons name="swap-horizontal-outline" size={18} color="#0d9488" />
+            <Text style={styles.secondaryOutlineBtnText}>Assign class</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -276,165 +251,95 @@ export default function StudentsView() {
       contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={true}
     >
-      {/* Stats Cards */}
-      <View style={styles.statsContainer}>
-        <View style={styles.statCard}>
-          <LinearGradient
-            colors={['#a78bfa', '#8b5cf6']}
-            style={styles.statCardGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={styles.statCardContent}>
-              <View style={styles.statIcon}>
-                <Ionicons name="people" size={24} color="#fff" />
-              </View>
-              <View style={styles.statText}>
-                <Text style={styles.statLabel}>Total Students</Text>
-                <Text style={styles.statValue}>{stats.total}</Text>
-                <Text style={styles.statSubtext}>+12% this month</Text>
-              </View>
-            </View>
-          </LinearGradient>
+      {/* Summary — compact stat tiles (aligned with admin dashboard style) */}
+      <View style={styles.statsRow}>
+        <View style={[styles.summaryTile, { borderLeftColor: '#8b5cf6' }]}>
+          <View style={[styles.summaryIconWrap, { backgroundColor: '#f5f3ff' }]}>
+            <Ionicons name="people" size={18} color="#7c3aed" />
+          </View>
+          <Text style={styles.summaryTileLabel}>Total</Text>
+          <Text style={styles.summaryTileValue}>{stats.total}</Text>
         </View>
-
-        <View style={styles.statCard}>
-          <LinearGradient
-            colors={['#10b981', '#059669']}
-            style={styles.statCardGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={styles.statCardContent}>
-              <View style={styles.statIcon}>
-                <Ionicons name="checkmark-circle" size={24} color="#fff" />
-              </View>
-              <View style={styles.statText}>
-                <Text style={styles.statLabel}>Active Students</Text>
-                <Text style={styles.statValue}>{stats.active}</Text>
-                <View style={styles.statSubtextRow}>
-                  <View style={styles.onlineDot} />
-                  <Text style={styles.statSubtext}>Online now</Text>
-                </View>
-              </View>
-            </View>
-          </LinearGradient>
+        <View style={[styles.summaryTile, { borderLeftColor: '#10b981' }]}>
+          <View style={[styles.summaryIconWrap, { backgroundColor: '#ecfdf5' }]}>
+            <Ionicons name="checkmark-circle" size={18} color="#059669" />
+          </View>
+          <Text style={styles.summaryTileLabel}>Active</Text>
+          <Text style={styles.summaryTileValue}>{stats.active}</Text>
         </View>
-
-        <View style={styles.statCard}>
-          <LinearGradient
-            colors={['#f97316', '#ea580c']}
-            style={styles.statCardGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={styles.statCardContent}>
-              <View style={styles.statIcon}>
-                <Ionicons name="school" size={24} color="#fff" />
-              </View>
-              <View style={styles.statText}>
-                <Text style={styles.statLabel}>Active Classes</Text>
-                <Text style={styles.statValue}>{stats.classes}</Text>
-                <Text style={styles.statSubtext}>Classes running</Text>
-              </View>
-            </View>
-          </LinearGradient>
+        <View style={[styles.summaryTile, { borderLeftColor: '#f97316' }]}>
+          <View style={[styles.summaryIconWrap, { backgroundColor: '#fff7ed' }]}>
+            <Ionicons name="layers-outline" size={18} color="#ea580c" />
+          </View>
+          <Text style={styles.summaryTileLabel}>Classes</Text>
+          <Text style={styles.summaryTileValue}>{stats.classes}</Text>
         </View>
-
-        <View style={styles.statCard}>
-          <LinearGradient
-            colors={['#0ea5e9', '#0284c7']}
-            style={styles.statCardGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={styles.statCardContent}>
-              <View style={styles.statIcon}>
-                <Ionicons name="trending-up" size={24} color="#fff" />
-              </View>
-              <View style={styles.statText}>
-                <Text style={styles.statLabel}>New This Month</Text>
-                <Text style={styles.statValue}>{stats.newThisMonth}</Text>
-                <Text style={styles.statSubtext}>+25% growth</Text>
-              </View>
-            </View>
-          </LinearGradient>
+        <View style={[styles.summaryTile, { borderLeftColor: '#0ea5e9' }]}>
+          <View style={[styles.summaryIconWrap, { backgroundColor: '#f0f9ff' }]}>
+            <Ionicons name="person-add-outline" size={18} color="#0284c7" />
+          </View>
+          <Text style={styles.summaryTileLabel}>New</Text>
+          <Text style={styles.summaryTileValue}>{stats.newThisMonth}</Text>
         </View>
       </View>
 
-      {/* Action Bar */}
-      <View style={styles.actionBar}>
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#6b7280" style={styles.searchIcon} />
+      {/* Search + actions */}
+      <View style={styles.toolbarCard}>
+        <View style={styles.searchWrap}>
+          <Ionicons name="search" size={20} color="#94a3b8" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search students by name, email, or class..."
+            placeholder="Search by name, email, or class…"
             value={searchTerm}
             onChangeText={setSearchTerm}
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor="#94a3b8"
           />
         </View>
-        <View style={styles.actionButtons}>
+        <View style={styles.toolbarActions}>
           <TouchableOpacity
-            style={[styles.actionBarButton, styles.filterButton]}
+            style={styles.toolBtnOutline}
             onPress={() => setIsAdvancedFilterVisible(true)}
           >
-            <Ionicons name="filter" size={16} color="#fff" />
-            <Text style={styles.actionBarButtonText}>Filter</Text>
+            <Ionicons name="options-outline" size={18} color="#0d9488" />
+            <Text style={styles.toolBtnOutlineText}>Filter</Text>
             {selectedClassFilter !== 'all' && (
-              <View style={styles.filterBadge}>
-                <Text style={styles.filterBadgeText}>{selectedClassFilter}</Text>
-              </View>
+              <View style={styles.filterDot} />
             )}
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.actionBarButton, styles.exportButton]}
-            onPress={() => Alert.alert('Export', 'Export functionality coming soon')}
+            style={styles.toolBtnOutline}
+            onPress={() => Alert.alert('Export', 'Export coming soon')}
           >
-            <Ionicons name="download" size={16} color="#fff" />
-            <Text style={styles.actionBarButtonText}>Export</Text>
+            <Ionicons name="download-outline" size={18} color="#64748b" />
+            <Text style={styles.toolBtnMutedText}>Export</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionBarButton, styles.uploadButton]}
-            onPress={() => Alert.alert('Upload CSV', 'CSV upload functionality coming soon')}
-          >
-            <Ionicons name="cloud-upload" size={16} color="#fff" />
-            <Text style={styles.actionBarButtonText}>Upload</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionBarButton, styles.addButton]}
-            onPress={() => setIsAddModalVisible(true)}
-          >
-            <Ionicons name="person-add" size={16} color="#fff" />
-            <Text style={styles.actionBarButtonText}>Add</Text>
+          <TouchableOpacity style={styles.toolBtnPrimary} onPress={() => setIsAddModalVisible(true)}>
+            <Ionicons name="add" size={20} color="#fff" />
+            <Text style={styles.toolBtnPrimaryText}>Add</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Students Directory */}
+      {/* List */}
       <View style={styles.directoryContainer}>
         <View style={styles.directoryHeader}>
           <View>
-            <Text style={styles.directoryTitle}>Students Directory</Text>
-            <Text style={styles.directorySubtitle}>{filteredStudents.length} students found</Text>
+            <Text style={styles.directoryTitle}>All students</Text>
+            <Text style={styles.directorySubtitle}>
+              {filteredStudents.length} {filteredStudents.length === 1 ? 'student' : 'students'}
+              {searchTerm.trim() || selectedClassFilter !== 'all' ? ' matching filters' : ''}
+            </Text>
           </View>
-          <TouchableOpacity
-            style={styles.exportDataButton}
-            onPress={() => Alert.alert('Export Data', 'Export functionality coming soon')}
-          >
-            <Ionicons name="download" size={18} color="#fff" />
-            <Text style={styles.exportDataButtonText}>Export Data</Text>
-          </TouchableOpacity>
         </View>
 
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#0ea5e9" />
+            <ActivityIndicator size="large" color="#0d9488" />
           </View>
         ) : filteredStudents.length === 0 ? (
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIcon}>
-              <Ionicons name="people-outline" size={48} color="#0ea5e9" />
+              <Ionicons name="people-outline" size={48} color="#0d9488" />
             </View>
             <Text style={styles.emptyTitle}>No students found</Text>
             <Text style={styles.emptySubtitle}>Try adjusting your search criteria or add new students</Text>
@@ -626,246 +531,209 @@ export default function StudentsView() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f9ff',
+    backgroundColor: '#f8fafc',
     minHeight: 0,
   },
   contentContainer: {
-    paddingBottom: 20,
+    paddingBottom: 100,
   },
-  statsContainer: {
+  statsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 20,
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    minWidth: '47%',
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  statCardGradient: {
-    padding: 20,
-    minHeight: 120,
-  },
-  statCardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  statIcon: {
-    width: 48,
-    height: 48,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  statText: {
-    flex: 1,
-    alignItems: 'flex-end',
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#fff',
-    opacity: 0.9,
-    marginBottom: 4,
-    fontWeight: '600',
-  },
-  statValue: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  statSubtext: {
-    fontSize: 12,
-    color: '#fff',
-    opacity: 0.8,
-  },
-  statSubtextRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  onlineDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#fff',
-  },
-  actionBar: {
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    borderRadius: 12,
     paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+    gap: 8,
+  },
+  summaryTile: {
+    flex: 1,
+    minWidth: 0,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderLeftWidth: 4,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  summaryIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  summaryTileLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748b',
+    marginBottom: 2,
+    textAlign: 'center',
+  },
+  summaryTileValue: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  toolbarCard: {
+    marginHorizontal: 16,
+    marginBottom: 14,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  searchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 12,
+    paddingHorizontal: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#e2e8f0',
   },
   searchIcon: {
-    marginRight: 12,
+    marginRight: 8,
   },
   searchInput: {
     flex: 1,
-    height: 48,
-    fontSize: 16,
-    color: '#111827',
+    height: 46,
+    fontSize: 15,
+    color: '#0f172a',
   },
-  actionButtons: {
+  toolbarActions: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 8,
+    alignItems: 'center',
   },
-  actionBarButton: {
+  toolBtnOutline: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
+    justifyContent: 'center',
     gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    backgroundColor: '#fff',
     position: 'relative',
   },
-  filterButton: {
-    backgroundColor: '#3b82f6',
-  },
-  exportButton: {
-    backgroundColor: '#fb923c',
-  },
-  uploadButton: {
-    backgroundColor: '#10b981',
-  },
-  addButton: {
-    backgroundColor: '#fb923c',
-  },
-  actionBarButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  filterBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-    marginLeft: 4,
-  },
-  filterBadgeText: {
-    color: '#fff',
-    fontSize: 10,
+  toolBtnOutlineText: {
+    fontSize: 13,
     fontWeight: '700',
+    color: '#0d9488',
   },
-  directoryContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
-    marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: '#bae6fd',
+  toolBtnMutedText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748b',
   },
-  directoryHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#bae6fd',
-    backgroundColor: '#fff',
+  filterDot: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#f97316',
   },
-  directoryTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#0c4a6e',
-  },
-  directorySubtitle: {
-    fontSize: 14,
-    color: '#075985',
-    marginTop: 4,
-  },
-  exportDataButton: {
+  toolBtnPrimary: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0ea5e9',
-    paddingHorizontal: 16,
+    justifyContent: 'center',
+    gap: 6,
     paddingVertical: 10,
     borderRadius: 12,
-    gap: 8,
+    backgroundColor: '#0d9488',
   },
-  exportDataButtonText: {
-    color: '#fff',
+  toolBtnPrimaryText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '800',
+    color: '#fff',
   },
-  studentsList: {
-    padding: 16,
-    gap: 16,
-  },
-  studentCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+  directoryContainer: {
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginBottom: 16,
     borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#bae6fd',
+    borderColor: '#e2e8f0',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 3,
+  },
+  directoryHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    backgroundColor: '#fafafa',
+  },
+  directoryTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  directorySubtitle: {
+    fontSize: 13,
+    color: '#64748b',
+    marginTop: 4,
+  },
+  studentsList: {
+    padding: 14,
+    gap: 12,
+  },
+  studentCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
   },
   studentCardContent: {
-    padding: 16,
+    padding: 14,
   },
   studentHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 16,
     gap: 12,
   },
   studentAvatarContainer: {
     position: 'relative',
   },
   studentAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#0d9488',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
   },
   studentAvatarText: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: '800',
     color: '#fff',
   },
@@ -873,9 +741,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: -2,
     right: -2,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     borderWidth: 2,
     borderColor: '#fff',
     justifyContent: 'center',
@@ -885,121 +753,161 @@ const styles = StyleSheet.create({
     backgroundColor: '#10b981',
   },
   statusIndicatorInactive: {
-    backgroundColor: '#9ca3af',
+    backgroundColor: '#94a3b8',
   },
   studentInfo: {
     flex: 1,
+    minWidth: 0,
   },
   studentName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#0c4a6e',
-    marginBottom: 4,
+    color: '#0f172a',
+    marginBottom: 2,
   },
   studentEmail: {
-    fontSize: 14,
-    color: '#075985',
+    fontSize: 13,
+    color: '#64748b',
     marginBottom: 8,
   },
-  classBadge: {
+  metaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    alignItems: 'center',
+  },
+  classChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: '#e0f2fe',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
     gap: 4,
+    backgroundColor: '#f0fdfa',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#bae6fd',
+    borderColor: '#99f6e4',
   },
-  classBadgeText: {
+  classChipText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#0369a1',
+    color: '#0f766e',
   },
-  studentDetails: {
-    gap: 12,
-    marginBottom: 16,
-    paddingTop: 16,
+  statusChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  statusChipOn: {
+    backgroundColor: '#ecfdf5',
+  },
+  statusChipOff: {
+    backgroundColor: '#f1f5f9',
+  },
+  statusChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  statusChipTextOn: {
+    color: '#047857',
+  },
+  statusChipTextOff: {
+    color: '#64748b',
+  },
+  studentMeta: {
+    marginTop: 12,
+    paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#bae6fd',
+    borderTopColor: '#f1f5f9',
+    gap: 6,
   },
-  detailRow: {
+  metaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
-  detailText: {
-    fontSize: 14,
-    color: '#075985',
+  metaItemText: {
+    fontSize: 12,
+    color: '#64748b',
     flex: 1,
   },
   studentActions: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 16,
+    gap: 10,
+    marginTop: 14,
+    paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#bae6fd',
+    borderTopColor: '#f1f5f9',
   },
-  actionButton: {
-    padding: 8,
-  },
-  assignButton: {
+  dangerOutlineBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#bae6fd',
-    backgroundColor: '#f0f9ff',
+    justifyContent: 'center',
     gap: 6,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    backgroundColor: '#fef2f2',
   },
-  assignButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#0ea5e9',
+  dangerOutlineBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#dc2626',
+  },
+  secondaryOutlineBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#99f6e4',
+    backgroundColor: '#f0fdfa',
+  },
+  secondaryOutlineBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0d9488',
   },
   loadingContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 40,
+    padding: 32,
   },
   emptyContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 40,
+    padding: 32,
   },
   emptyIcon: {
-    width: 96,
-    height: 96,
-    backgroundColor: '#e0f2fe',
-    borderRadius: 48,
+    width: 80,
+    height: 80,
+    backgroundColor: '#f0fdfa',
+    borderRadius: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   emptyTitle: {
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: '700',
-    color: '#0c4a6e',
+    color: '#0f172a',
     marginBottom: 8,
   },
   emptySubtitle: {
-    fontSize: 14,
-    color: '#075985',
+    fontSize: 13,
+    color: '#64748b',
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   addFirstButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0ea5e9',
-    paddingHorizontal: 24,
+    backgroundColor: '#0d9488',
+    paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 12,
     gap: 8,
@@ -1016,40 +924,40 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '90%',
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    maxHeight: '88%',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    padding: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: '800',
     color: '#0c4a6e',
   },
   modalBody: {
-    padding: 20,
+    padding: 14,
   },
   formGroup: {
-    marginBottom: 20,
+    marginBottom: 14,
   },
   label: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#075985',
     marginBottom: 8,
   },
   input: {
     backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 14,
     color: '#0c4a6e',
     borderWidth: 1,
     borderColor: '#bae6fd',
@@ -1064,10 +972,10 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   classFilterList: {
-    maxHeight: 200,
+    maxHeight: 160,
   },
   classFilterItem: {
-    padding: 12,
+    padding: 10,
     borderRadius: 8,
     marginBottom: 8,
     backgroundColor: '#f0f9ff',
@@ -1079,7 +987,7 @@ const styles = StyleSheet.create({
     borderColor: '#0284c7',
   },
   classFilterText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#075985',
   },
@@ -1088,22 +996,22 @@ const styles = StyleSheet.create({
   },
   modalFooter: {
     flexDirection: 'row',
-    gap: 12,
-    padding: 20,
+    gap: 10,
+    padding: 14,
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
   },
   cancelButton: {
     flex: 1,
-    padding: 16,
-    borderRadius: 12,
+    padding: 12,
+    borderRadius: 10,
     backgroundColor: '#f3f4f6',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#bae6fd',
   },
   cancelButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#075985',
   },
@@ -1113,7 +1021,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   applyButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#fff',
   },
@@ -1123,11 +1031,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   submitButtonGradient: {
-    padding: 16,
+    padding: 12,
     alignItems: 'center',
   },
   submitButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#fff',
   },

@@ -1,9 +1,19 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Alert, Modal, FlatList } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { useState, useEffect, useCallback, useMemo, Fragment } from 'react';
+import type { ReactNode } from 'react';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Alert, Modal } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import {
+  SvgCheckbox,
+  SvgIconBook,
+  SvgIconCertificate,
+  SvgIconClose,
+  SvgIconPeople,
+  SvgIconPhone,
+  SvgIconSchool,
+  SvgIconTrash,
+} from './TeachersCardIcons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { API_BASE_URL } from '../../../src/lib/api-config';
-import * as SecureStore from 'expo-secure-store';
+import api from '../../../src/services/api/api';
 
 interface Teacher {
   id: string;
@@ -13,8 +23,25 @@ interface Teacher {
   department?: string;
   qualifications?: string;
   subjects?: any[];
+  assignedClassIds?: string[];
   isActive: boolean;
   createdAt: string;
+}
+
+interface SubjectOption {
+  id: string;
+  name: string;
+  code: string;
+  description?: string;
+}
+
+interface ClassOption {
+  id: string;
+  name: string;
+  subjectLabel: string;
+  schedule: string;
+  room: string;
+  studentCount: number;
 }
 
 export default function TeachersView() {
@@ -40,38 +67,41 @@ export default function TeachersView() {
     isActive: true
   });
 
+  const [subjectsList, setSubjectsList] = useState<SubjectOption[]>([]);
+  const [classesList, setClassesList] = useState<ClassOption[]>([]);
+  const [assignSubjectsModal, setAssignSubjectsModal] = useState(false);
+  const [assignClassesModal, setAssignClassesModal] = useState(false);
+  const [assigningForTeacher, setAssigningForTeacher] = useState<Teacher | null>(null);
+  const [selectedSubjectIds, setSelectedSubjectIds] = useState<string[]>([]);
+  const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
+  const [assignSubmitting, setAssignSubmitting] = useState(false);
+
   useEffect(() => {
     fetchTeachers();
+    fetchSubjectsList();
+    fetchClassesList();
   }, []);
 
   const fetchTeachers = useCallback(async () => {
     try {
       setIsLoading(true);
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/admin/teachers`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const teachersData = Array.isArray(data) ? data : (data.data || data.teachers || []);
-        const mappedTeachers = teachersData.map((teacher: any) => ({
-          id: teacher._id || teacher.id,
-          fullName: teacher.fullName || 'Unknown Teacher',
-          email: teacher.email || '',
-          phone: teacher.phone || '',
-          department: teacher.department || '',
-          qualifications: teacher.qualifications || '',
-          subjects: teacher.subjects || [],
-          isActive: teacher.isActive !== false,
-          createdAt: teacher.createdAt || new Date().toISOString()
-        }));
-        setTeachers(mappedTeachers);
-      }
-    } catch (error) {
+      const response = await api.get('/api/admin/teachers');
+      const data = response?.data;
+      const teachersData = Array.isArray(data) ? data : (data?.data || data?.teachers || []);
+      const mappedTeachers = (Array.isArray(teachersData) ? teachersData : []).map((teacher: any) => ({
+        id: String(teacher._id || teacher.id || ''),
+        fullName: teacher.fullName || 'Unknown Teacher',
+        email: teacher.email || '',
+        phone: teacher.phone || '',
+        department: teacher.department || '',
+        qualifications: teacher.qualifications || '',
+        subjects: teacher.subjects || [],
+        assignedClassIds: (teacher.assignedClassIds || []).map((id: any) => String(id)),
+        isActive: teacher.isActive !== false,
+        createdAt: teacher.createdAt || new Date().toISOString()
+      }));
+      setTeachers(mappedTeachers);
+    } catch (error: any) {
       console.error('Failed to fetch teachers:', error);
     } finally {
       setIsLoading(false);
@@ -104,28 +134,14 @@ export default function TeachersView() {
     }
 
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/admin/teachers`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(newTeacher)
-      });
-
-      if (response.ok) {
-        setNewTeacher({ fullName: '', email: '', phone: '', department: '', qualifications: '' });
-        setIsAddModalVisible(false);
-        fetchTeachers();
-        Alert.alert('Success', 'Teacher added successfully!');
-      } else {
-        const errorData = await response.json();
-        Alert.alert('Error', errorData.message || 'Failed to add teacher');
-      }
-    } catch (error) {
+      await api.post('/api/admin/teachers', newTeacher);
+      setNewTeacher({ fullName: '', email: '', phone: '', department: '', qualifications: '' });
+      setIsAddModalVisible(false);
+      fetchTeachers();
+      Alert.alert('Success', 'Teacher added successfully!');
+    } catch (error: any) {
       console.error('Failed to add teacher:', error);
-      Alert.alert('Error', 'Failed to add teacher. Please try again.');
+      Alert.alert('Error', error?.friendlyMessage || 'Failed to add teacher. Please try again.');
     }
   };
 
@@ -149,36 +165,22 @@ export default function TeachersView() {
     }
 
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/admin/teachers/${editingTeacher.id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(editTeacher)
+      await api.put(`/api/admin/teachers/${editingTeacher.id}`, editTeacher);
+      setEditingTeacher(null);
+      setIsEditModalVisible(false);
+      setEditTeacher({
+        fullName: '',
+        email: '',
+        phone: '',
+        department: '',
+        qualifications: '',
+        isActive: true
       });
-
-      if (response.ok) {
-        setEditingTeacher(null);
-        setIsEditModalVisible(false);
-        setEditTeacher({
-          fullName: '',
-          email: '',
-          phone: '',
-          department: '',
-          qualifications: '',
-          isActive: true
-        });
-        fetchTeachers();
-        Alert.alert('Success', 'Teacher updated successfully!');
-      } else {
-        const errorData = await response.json();
-        Alert.alert('Error', errorData.message || 'Failed to update teacher');
-      }
-    } catch (error) {
+      fetchTeachers();
+      Alert.alert('Success', 'Teacher updated successfully!');
+    } catch (error: any) {
       console.error('Failed to update teacher:', error);
-      Alert.alert('Error', 'Failed to update teacher. Please try again.');
+      Alert.alert('Error', error?.friendlyMessage || 'Failed to update teacher. Please try again.');
     }
   };
 
@@ -193,24 +195,12 @@ export default function TeachersView() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const token = await SecureStore.getItemAsync('authToken');
-              const response = await fetch(`${API_BASE_URL}/api/admin/teachers/${teacherId}`, {
-                method: 'DELETE',
-                headers: {
-                  'Authorization': `Bearer ${token}`
-                }
-              });
-
-              if (response.ok) {
-                fetchTeachers();
-                Alert.alert('Success', `${teacherName} has been deleted successfully.`);
-              } else {
-                const errorData = await response.json();
-                Alert.alert('Error', errorData.message || 'Failed to delete teacher');
-              }
-            } catch (error) {
+              await api.delete(`/api/admin/teachers/${teacherId}`);
+              fetchTeachers();
+              Alert.alert('Success', `${teacherName} has been deleted successfully.`);
+            } catch (error: any) {
               console.error('Failed to delete teacher:', error);
-              Alert.alert('Error', 'Failed to delete teacher. Please try again.');
+              Alert.alert('Error', error?.friendlyMessage || 'Failed to delete teacher. Please try again.');
             }
           }
         }
@@ -218,231 +208,327 @@ export default function TeachersView() {
     );
   };
 
-  const renderTeacherCard = useCallback(({ item: teacher }: { item: Teacher }) => (
-    <View style={styles.teacherCard}>
-      <View style={styles.teacherHeader}>
-        <View style={styles.teacherAvatarContainer}>
-          <LinearGradient
-            colors={['#3b82f6', '#2563eb']}
-            style={styles.teacherAvatar}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <Text style={styles.teacherAvatarText}>
-              {(teacher.fullName || 'T').charAt(0).toUpperCase()}
-            </Text>
-          </LinearGradient>
-          <View style={[
-            styles.statusIndicator,
-            teacher.isActive ? styles.statusIndicatorActive : styles.statusIndicatorInactive
-          ]}>
-            <Ionicons
-              name={teacher.isActive ? 'checkmark-circle' : 'close-circle'}
-              size={12}
-              color="#fff"
-            />
-          </View>
+  const fetchSubjectsList = useCallback(async () => {
+    try {
+      const response = await api.get('/api/admin/subjects');
+      const data = response?.data;
+      let subjectsData: any[] = [];
+      if (Array.isArray(data)) subjectsData = data;
+      else if (data?.data && Array.isArray(data.data)) subjectsData = data.data;
+      else if (data?.subjects && Array.isArray(data.subjects)) subjectsData = data.subjects;
+      setSubjectsList(
+        subjectsData.map((s: any) => ({
+          id: String(s._id || s.id || ''),
+          name: s.name || 'Subject',
+          code: s.code || '',
+          description: s.description || '',
+        })),
+      );
+    } catch (e) {
+      console.error('Failed to fetch subjects list:', e);
+    }
+  }, []);
+
+  const fetchClassesList = useCallback(async () => {
+    try {
+      const response = await api.get('/api/admin/classes');
+      const data = response?.data;
+      const classesData = Array.isArray(data) ? data : (data?.data || []);
+      setClassesList(
+        (Array.isArray(classesData) ? classesData : []).map((cls: any) => ({
+          id: String(cls._id || cls.id || ''),
+          name: cls.name || `${cls.classNumber ?? ''}${cls.section ? `-${cls.section}` : ''}`,
+          subjectLabel:
+            typeof cls.subject === 'object' && cls.subject !== null
+              ? String((cls.subject as { name?: string }).name ?? '')
+              : String(cls.subject ?? 'General'),
+          schedule: cls.schedule || '—',
+          room: cls.room || (cls.classNumber ? `Room ${cls.classNumber}${cls.section || ''}` : '—'),
+          studentCount: cls.students?.length || cls.studentCount || 0,
+        })),
+      );
+    } catch (e) {
+      console.error('Failed to fetch classes list:', e);
+    }
+  }, []);
+
+  const openAssignSubjectsModal = useCallback((teacher: Teacher) => {
+    setAssigningForTeacher(teacher);
+    const ids = (teacher.subjects || [])
+      .map((s: any) => String(s._id || s.id))
+      .filter(Boolean);
+    setSelectedSubjectIds(ids);
+    setAssignSubjectsModal(true);
+  }, []);
+
+  const openAssignClassesModal = useCallback((teacher: Teacher) => {
+    setAssigningForTeacher(teacher);
+    setSelectedClassIds((teacher.assignedClassIds || []).map(String));
+    setAssignClassesModal(true);
+  }, []);
+
+  const toggleSubjectId = useCallback((id: string) => {
+    setSelectedSubjectIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }, []);
+
+  const toggleClassId = useCallback((id: string) => {
+    setSelectedClassIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }, []);
+
+  const handleAssignSubjectsSubmit = async () => {
+    if (!assigningForTeacher) return;
+    setAssignSubmitting(true);
+    try {
+      await api.post(`/api/admin/teachers/${assigningForTeacher.id}/assign-subjects`, {
+        subjectIds: selectedSubjectIds,
+      });
+      setAssignSubjectsModal(false);
+      setAssigningForTeacher(null);
+      fetchTeachers();
+      Alert.alert('Success', 'Subjects assigned successfully!');
+    } catch (error: any) {
+      Alert.alert('Error', error?.friendlyMessage || 'Failed to assign subjects.');
+    } finally {
+      setAssignSubmitting(false);
+    }
+  };
+
+  const handleAssignClassesSubmit = async () => {
+    if (!assigningForTeacher) return;
+    setAssignSubmitting(true);
+    try {
+      await api.post(`/api/admin/teachers/${assigningForTeacher.id}/assign-classes`, {
+        classIds: selectedClassIds,
+      });
+      setAssignClassesModal(false);
+      setAssigningForTeacher(null);
+      fetchTeachers();
+      Alert.alert('Success', 'Classes assigned successfully!');
+    } catch (error: any) {
+      Alert.alert('Error', error?.friendlyMessage || 'Failed to assign classes.');
+    } finally {
+      setAssignSubmitting(false);
+    }
+  };
+
+  const renderTeacherCard = (teacher: Teacher) => {
+    const subjectNames = (teacher.subjects || [])
+      .map((s: any) => s?.name || s?.title || '')
+      .filter(Boolean);
+    const subjectsValue =
+      subjectNames.length > 0
+        ? subjectNames.slice(0, 3).join(', ') + (subjectNames.length > 3 ? ` (+${subjectNames.length - 3})` : '')
+        : 'No subjects assigned';
+
+    const DetailRow = ({
+      icon,
+      label,
+      value,
+      valueMuted,
+    }: {
+      icon: ReactNode;
+      label: string;
+      value: string;
+      valueMuted?: boolean;
+    }) => (
+      <View style={styles.kvRow}>
+        <View style={styles.kvRowLeft}>
+          <View style={styles.detailIconWrap}>{icon}</View>
+          <Text style={styles.kvLabel} numberOfLines={1}>
+            {label}
+          </Text>
         </View>
-        <View style={styles.teacherInfo}>
-          <Text style={styles.teacherName}>{teacher.fullName}</Text>
-          <Text style={styles.teacherEmail}>{teacher.email}</Text>
-          {teacher.department && (
-            <View style={styles.departmentBadge}>
-              <Ionicons name="business" size={12} color="#0ea5e9" />
-              <Text style={styles.departmentText}>{teacher.department}</Text>
+        <Text
+          style={[styles.kvValue, valueMuted && styles.kvValueMuted]}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
+          {value}
+        </Text>
+      </View>
+    );
+
+    return (
+      <View style={styles.teacherCard}>
+        <View style={styles.teacherTopRow}>
+          <View style={styles.teacherAvatarContainer}>
+            <View style={styles.teacherAvatar}>
+              <Text style={styles.teacherAvatarText}>
+                {(teacher.fullName || 'T').charAt(0).toUpperCase()}
+              </Text>
             </View>
-          )}
-        </View>
-      </View>
-
-      <View style={styles.teacherDetails}>
-        {teacher.phone && (
-          <View style={styles.detailRow}>
-            <Ionicons name="call" size={16} color="#0ea5e9" />
-            <Text style={styles.detailText}>{teacher.phone}</Text>
+            <View
+              style={[
+                styles.statusIndicator,
+                teacher.isActive ? styles.statusIndicatorActive : styles.statusIndicatorInactive,
+              ]}
+            >
+              <MaterialCommunityIcons
+                name={teacher.isActive ? 'check' : 'close'}
+                size={11}
+                color="#fff"
+                allowFontScaling={false}
+              />
+            </View>
           </View>
-        )}
-        {teacher.qualifications && (
-          <View style={styles.detailRow}>
-            <Ionicons name="school" size={16} color="#0ea5e9" />
-            <Text style={styles.detailText}>{teacher.qualifications}</Text>
-          </View>
-        )}
-        {teacher.subjects && teacher.subjects.length > 0 && (
-          <View style={styles.detailRow}>
-            <Ionicons name="book" size={16} color="#0ea5e9" />
-            <Text style={styles.detailText}>
-              {teacher.subjects.length} subject{teacher.subjects.length !== 1 ? 's' : ''}
+          <View style={styles.teacherTitleBlock}>
+            <TouchableOpacity onPress={() => handleEditTeacher(teacher)} activeOpacity={0.7}>
+              <Text style={styles.teacherName} numberOfLines={1}>
+                {teacher.fullName}
+              </Text>
+            </TouchableOpacity>
+            <Text style={styles.teacherEmailHint} numberOfLines={1}>
+              {teacher.email || 'No email'}
             </Text>
           </View>
-        )}
-      </View>
+          <View style={[styles.activePill, !teacher.isActive && styles.activePillOff]}>
+            <Text style={[styles.activePillText, !teacher.isActive && styles.activePillTextOff]}>
+              {teacher.isActive ? 'Active' : 'Inactive'}
+            </Text>
+          </View>
+        </View>
 
-      <View style={styles.teacherActions}>
-        <TouchableOpacity
-          style={styles.editButton}
-          onPress={() => handleEditTeacher(teacher)}
-        >
-          <Ionicons name="create" size={16} color="#0ea5e9" />
-          <Text style={styles.editButtonText}>Edit</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => handleDeleteTeacher(teacher.id, teacher.fullName)}
-        >
-          <Ionicons name="trash" size={16} color="#ef4444" />
-          <Text style={styles.deleteButtonText}>Delete</Text>
-        </TouchableOpacity>
+        <View style={styles.kvBlock}>
+          <DetailRow icon={<SvgIconPhone />} label="Phone:" value={teacher.phone?.trim() ? teacher.phone : '—'} />
+          <DetailRow
+            icon={<SvgIconSchool />}
+            label="Department:"
+            value={teacher.department?.trim() ? teacher.department : '—'}
+          />
+          <DetailRow
+            icon={<SvgIconBook size={18} color="#64748b" />}
+            label="Subjects:"
+            value={subjectsValue}
+            valueMuted={subjectNames.length === 0}
+          />
+          <DetailRow
+            icon={<SvgIconCertificate />}
+            label="Qualifications:"
+            value={teacher.qualifications?.trim() ? teacher.qualifications : '—'}
+          />
+        </View>
+
+        <View style={styles.teacherActions}>
+          <TouchableOpacity
+            style={[styles.squircleBtn, styles.squircleBtnOrange]}
+            onPress={() => openAssignClassesModal(teacher)}
+            activeOpacity={0.85}
+            accessibilityLabel="Assign classes"
+          >
+            <SvgIconPeople color="#c2410c" size={22} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.squircleBtn, styles.squircleBtnGreen]}
+            onPress={() => openAssignSubjectsModal(teacher)}
+            activeOpacity={0.85}
+            accessibilityLabel="Assign subjects"
+          >
+            <SvgIconBook color="#047857" size={22} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.squircleBtn, styles.squircleBtnRed]}
+            onPress={() => handleDeleteTeacher(teacher.id, teacher.fullName)}
+            activeOpacity={0.85}
+            accessibilityLabel="Delete teacher"
+          >
+            <SvgIconTrash color="#b91c1c" size={22} />
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
-  ), []);
+    );
+  };
 
   return (
-    <ScrollView 
-      style={styles.container} 
+    <ScrollView
+      style={styles.container}
       contentContainerStyle={styles.contentContainer}
-      showsVerticalScrollIndicator={true}
+      showsVerticalScrollIndicator
+      nestedScrollEnabled
+      keyboardShouldPersistTaps="handled"
     >
-      {/* Hero Section with Stats */}
-      <LinearGradient
-        colors={['#fff7ed', '#ffedd5', '#f0fdfa']}
-        style={styles.heroSection}
-      >
-        <View style={styles.heroContent}>
-          <View style={styles.heroHeader}>
-          <View>
-              <Text style={styles.heroTitle}>Teacher Management</Text>
-              <Text style={styles.heroSubtitle}>Manage teachers and their assignments</Text>
-            </View>
-            <View style={styles.heroIcon}>
-              <LinearGradient
-                colors={['#fb923c', '#f97316']}
-                style={styles.heroIconGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <Ionicons name="people" size={32} color="#fff" />
-              </LinearGradient>
-            </View>
+      <View style={styles.pageIntro}>
+        <Text style={styles.pageTitle}>Teacher Management</Text>
+        <Text style={styles.pageSubtitle}>Manage teachers and their assignments</Text>
+      </View>
+
+      <View style={styles.statsRow}>
+        <View style={[styles.summaryTile, { borderLeftColor: '#fb923c' }]}>
+          <View style={[styles.summaryIconWrap, { backgroundColor: '#fff7ed' }]}>
+            <MaterialCommunityIcons name="account-group" size={18} color="#ea580c" allowFontScaling={false} />
           </View>
-
-          {/* Stats Grid */}
-          <View style={styles.statsContainer}>
-            <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <LinearGradient
-                colors={['#fdba74', '#fb923c']}
-                style={styles.statCardGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <View style={styles.statCardContent}>
-                  <Ionicons name="people" size={24} color="#fff" />
-                  <View style={styles.statCardText}>
-                    <Text style={styles.statCardLabel}>Total Teachers</Text>
-                    <Text style={styles.statCardValue}>{totalTeachers}</Text>
-                  </View>
-                </View>
-              </LinearGradient>
-            </View>
-
-            <View style={styles.statCard}>
-              <LinearGradient
-                colors={['#7dd3fc', '#38bdf8']}
-                style={styles.statCardGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <View style={styles.statCardContent}>
-                  <Ionicons name="checkmark-circle" size={24} color="#fff" />
-                  <View style={styles.statCardText}>
-                    <Text style={styles.statCardLabel}>Active Teachers</Text>
-                    <Text style={styles.statCardValue}>{activeTeachers}</Text>
-                  </View>
-                </View>
-              </LinearGradient>
-            </View>
-
-            <View style={styles.statCard}>
-              <LinearGradient
-                colors={['#2dd4bf', '#14b8a6']}
-                style={styles.statCardGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <View style={styles.statCardContent}>
-                  <Ionicons name="business" size={24} color="#fff" />
-                  <View style={styles.statCardText}>
-                    <Text style={styles.statCardLabel}>Departments</Text>
-                    <Text style={styles.statCardValue}>{departments.length}</Text>
-                  </View>
-                </View>
-              </LinearGradient>
-            </View>
-
-            <View style={styles.statCard}>
-              <LinearGradient
-                colors={['#fdba74', '#fb923c']}
-                style={styles.statCardGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <View style={styles.statCardContent}>
-                  <Ionicons name="book" size={24} color="#fff" />
-                  <View style={styles.statCardText}>
-                    <Text style={styles.statCardLabel}>Subjects</Text>
-                    <Text style={styles.statCardValue}>{totalSubjects}</Text>
-                  </View>
-                </View>
-              </LinearGradient>
-            </View>
-          </View>
-            </View>
+          <Text style={styles.summaryTileLabel}>Total</Text>
+          <Text style={styles.summaryTileValue}>{totalTeachers}</Text>
         </View>
-      </LinearGradient>
+        <View style={[styles.summaryTile, { borderLeftColor: '#38bdf8' }]}>
+          <View style={[styles.summaryIconWrap, { backgroundColor: '#eff6ff' }]}>
+            <MaterialCommunityIcons name="check-circle" size={18} color="#0284c7" allowFontScaling={false} />
+          </View>
+          <Text style={styles.summaryTileLabel}>Active</Text>
+          <Text style={styles.summaryTileValue}>{activeTeachers}</Text>
+        </View>
+        <View style={[styles.summaryTile, { borderLeftColor: '#14b8a6' }]}>
+          <View style={[styles.summaryIconWrap, { backgroundColor: '#f0fdfa' }]}>
+            <MaterialCommunityIcons name="domain" size={18} color="#0d9488" allowFontScaling={false} />
+          </View>
+          <Text style={styles.summaryTileLabel}>Depts</Text>
+          <Text style={styles.summaryTileValue}>{departments.length}</Text>
+        </View>
+        <View style={[styles.summaryTile, { borderLeftColor: '#a855f7' }]}>
+          <View style={[styles.summaryIconWrap, { backgroundColor: '#f5f3ff' }]}>
+            <MaterialCommunityIcons name="book-open-variant" size={18} color="#7c3aed" allowFontScaling={false} />
+          </View>
+          <Text style={styles.summaryTileLabel}>Subjects</Text>
+          <Text style={styles.summaryTileValue}>{totalSubjects}</Text>
+        </View>
+      </View>
 
-      {/* Action Bar */}
-      <View style={styles.actionBar}>
-      <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#0ea5e9" style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search teachers..."
-          value={searchTerm}
-          onChangeText={setSearchTerm}
-          placeholderTextColor="#9ca3af"
-        />
+      <View style={styles.toolbarCard}>
+        <View style={styles.searchWrap}>
+          <View style={[styles.searchIcon, styles.toolbarIconWrap]}>
+            <MaterialCommunityIcons name="magnify" size={22} color="#94a3b8" allowFontScaling={false} />
+          </View>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search teachers by name, email, or department…"
+            value={searchTerm}
+            onChangeText={setSearchTerm}
+            placeholderTextColor="#94a3b8"
+          />
         </View>
         <TouchableOpacity
-          style={styles.addButton}
+          style={styles.addTeacherBtn}
           onPress={() => setIsAddModalVisible(true)}
-          activeOpacity={0.8}
+          activeOpacity={0.88}
         >
-          <LinearGradient
-            colors={['#fb923c', '#f97316']}
-            style={styles.addButtonGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <Ionicons name="add" size={20} color="#fff" />
-            <Text style={styles.addButtonText}>Add Teacher</Text>
-          </LinearGradient>
+          <MaterialCommunityIcons name="plus" size={22} color="#fff" allowFontScaling={false} />
+          <Text style={styles.addTeacherBtnText}>Add teacher</Text>
         </TouchableOpacity>
       </View>
 
       {/* Teachers List */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#fb923c" />
+          <ActivityIndicator size="large" color="#0d9488" />
         </View>
       ) : filteredTeachers.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="people-outline" size={64} color="#d1d5db" />
+          <View style={styles.emptyIconWrap}>
+            <MaterialCommunityIcons name="account-group-outline" size={48} color="#0d9488" allowFontScaling={false} />
+          </View>
           <Text style={styles.emptyText}>No teachers found</Text>
+          <Text style={styles.emptyHint}>Try a different search or add a new teacher.</Text>
         </View>
       ) : (
         <View style={styles.listContent}>
-          {filteredTeachers.map((teacher) => renderTeacherCard({ item: teacher }))}
+          {filteredTeachers.map((teacher, index) => (
+            <Fragment key={String(teacher.id || teacher.email || `teacher-${index}`)}>
+              {renderTeacherCard(teacher)}
+            </Fragment>
+          ))}
         </View>
       )}
 
@@ -462,8 +548,8 @@ export default function TeachersView() {
               end={{ x: 1, y: 1 }}
             >
               <Text style={styles.modalTitle}>Add New Teacher</Text>
-              <TouchableOpacity onPress={() => setIsAddModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#fff" />
+              <TouchableOpacity onPress={() => setIsAddModalVisible(false)} hitSlop={12}>
+                <SvgIconClose size={24} color="#fff" />
               </TouchableOpacity>
             </LinearGradient>
 
@@ -571,8 +657,8 @@ export default function TeachersView() {
               end={{ x: 1, y: 1 }}
             >
               <Text style={styles.modalTitle}>Edit Teacher</Text>
-              <TouchableOpacity onPress={() => setIsEditModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#fff" />
+              <TouchableOpacity onPress={() => setIsEditModalVisible(false)} hitSlop={12}>
+                <SvgIconClose size={24} color="#fff" />
               </TouchableOpacity>
             </LinearGradient>
 
@@ -663,112 +749,266 @@ export default function TeachersView() {
           </View>
         </View>
       </Modal>
-        </ScrollView>
+
+      {/* Assign Subjects — checkboxes use SVG (same as web) */}
+      <Modal
+        visible={assignSubjectsModal}
+        animationType="fade"
+        transparent
+        onRequestClose={() => !assignSubmitting && setAssignSubjectsModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.assignModalCard}>
+            <View style={styles.assignModalHeader}>
+              <View style={styles.assignModalTitleBlock}>
+                <Text style={styles.assignModalTitle}>
+                  Assign Subjects to {assigningForTeacher?.fullName ?? ''}
+                </Text>
+                <Text style={styles.assignModalDesc}>Select the subjects this teacher will teach.</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => !assignSubmitting && setAssignSubjectsModal(false)}
+                hitSlop={12}
+                style={styles.assignModalClose}
+              >
+                <SvgIconClose size={22} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.assignSectionLabel}>Available Subjects</Text>
+            <ScrollView
+              style={styles.assignScroll}
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator
+            >
+              {subjectsList.length === 0 ? (
+                <Text style={styles.assignEmpty}>No subjects available. Create subjects first.</Text>
+              ) : (
+                subjectsList.map((subject) => {
+                  const checked = selectedSubjectIds.includes(subject.id);
+                  return (
+                    <TouchableOpacity
+                      key={subject.id}
+                      style={styles.assignRow}
+                      onPress={() => toggleSubjectId(subject.id)}
+                      activeOpacity={0.75}
+                    >
+                      <View style={styles.assignCheckWrap}>
+                        <SvgCheckbox checked={checked} size={22} />
+                      </View>
+                      <View style={styles.assignRowText}>
+                        <Text style={styles.assignRowTitle}>{subject.name}</Text>
+                        <Text style={styles.assignRowSub} numberOfLines={2}>
+                          {subject.code ? `${subject.code}` : ''}
+                          {subject.code && subject.description ? ' — ' : ''}
+                          {subject.description || (subject.code ? '' : '—')}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </ScrollView>
+
+            <View style={styles.assignModalFooter}>
+              <TouchableOpacity
+                style={styles.assignCancelBtn}
+                onPress={() => !assignSubmitting && setAssignSubjectsModal(false)}
+                disabled={assignSubmitting}
+              >
+                <Text style={styles.assignCancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.assignPrimaryBtn, assignSubmitting && styles.assignPrimaryBtnDisabled]}
+                onPress={handleAssignSubjectsSubmit}
+                disabled={assignSubmitting}
+              >
+                <Text style={styles.assignPrimaryBtnText}>
+                  {assignSubmitting ? 'Saving…' : 'Assign Subjects'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Assign Classes */}
+      <Modal
+        visible={assignClassesModal}
+        animationType="fade"
+        transparent
+        onRequestClose={() => !assignSubmitting && setAssignClassesModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.assignModalCard}>
+            <View style={styles.assignModalHeader}>
+              <View style={styles.assignModalTitleBlock}>
+                <Text style={styles.assignModalTitle}>
+                  Assign Classes to {assigningForTeacher?.fullName ?? ''}
+                </Text>
+                <Text style={styles.assignModalDesc}>
+                  Select classes to assign to this teacher from the existing classes.
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => !assignSubmitting && setAssignClassesModal(false)}
+                hitSlop={12}
+                style={styles.assignModalClose}
+              >
+                <SvgIconClose size={22} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.assignSectionLabel}>Assign Classes</Text>
+            <ScrollView
+              style={[styles.assignScroll, styles.assignClassListBorder]}
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator
+            >
+              {classesList.length === 0 ? (
+                <Text style={styles.assignEmpty}>No classes available. Create classes first.</Text>
+              ) : (
+                classesList.map((cls) => {
+                  const checked = selectedClassIds.includes(cls.id);
+                  return (
+                    <TouchableOpacity
+                      key={cls.id}
+                      style={[styles.assignRow, styles.assignRowInList]}
+                      onPress={() => toggleClassId(cls.id)}
+                      activeOpacity={0.75}
+                    >
+                      <View style={styles.assignCheckWrap}>
+                        <SvgCheckbox checked={checked} size={22} />
+                      </View>
+                      <View style={styles.assignRowText}>
+                        <Text style={styles.assignRowTitle}>{cls.name}</Text>
+                        <Text style={styles.assignRowMeta} numberOfLines={2}>
+                          {cls.subjectLabel} • {cls.schedule} • {cls.room}
+                        </Text>
+                        <Text style={styles.assignRowSub}>{cls.studentCount} students</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </ScrollView>
+
+            <View style={styles.assignModalFooter}>
+              <TouchableOpacity
+                style={styles.assignCancelBtn}
+                onPress={() => !assignSubmitting && setAssignClassesModal(false)}
+                disabled={assignSubmitting}
+              >
+                <Text style={styles.assignCancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.assignPrimaryBtn, assignSubmitting && styles.assignPrimaryBtnDisabled]}
+                onPress={handleAssignClassesSubmit}
+                disabled={assignSubmitting}
+              >
+                <Text style={styles.assignPrimaryBtnText}>
+                  {assignSubmitting ? 'Saving…' : 'Assign Classes'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff7ed',
+    backgroundColor: '#f8fafc',
   },
   contentContainer: {
-    paddingBottom: 20,
+    paddingBottom: 100,
   },
-  heroSection: {
-    padding: 20,
-    paddingTop: 24,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+  pageIntro: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
-  heroContent: {
-    gap: 20,
-  },
-  statsContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 20,
-  },
-  heroHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  heroTitle: {
-    fontSize: 28,
+  pageTitle: {
+    fontSize: 22,
     fontWeight: '800',
-    color: '#fb923c',
+    color: '#0f172a',
+    letterSpacing: -0.3,
     marginBottom: 4,
   },
-  heroSubtitle: {
+  pageSubtitle: {
     fontSize: 14,
     color: '#64748b',
+    lineHeight: 20,
   },
-  heroIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    overflow: 'hidden',
-  },
-  heroIconGradient: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  statsGrid: {
+  statsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
+    paddingHorizontal: 16,
+    gap: 8,
+    marginBottom: 12,
   },
-  statCard: {
+  summaryTile: {
     flex: 1,
-    minWidth: '47%',
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  statCardGradient: {
-    padding: 16,
-  },
-  statCardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  statCardText: {
-    flex: 1,
-  },
-  statCardLabel: {
-    fontSize: 12,
-    color: '#fff',
-    opacity: 0.9,
-    marginBottom: 4,
-  },
-  statCardValue: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#fff',
-  },
-  actionBar: {
-    flexDirection: 'row',
-    padding: 16,
-    gap: 12,
+    minWidth: 0,
     backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderLeftWidth: 4,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  searchContainer: {
-    flex: 1,
+  summaryIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  summaryTileLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748b',
+    marginBottom: 2,
+    textAlign: 'center',
+  },
+  summaryTileValue: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  toolbarCard: {
+    marginHorizontal: 16,
+    marginBottom: 14,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f1f5f9',
     borderRadius: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     borderWidth: 1,
     borderColor: '#e2e8f0',
   },
@@ -777,68 +1017,67 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    height: 44,
-    fontSize: 16,
-    color: '#111827',
+    height: 46,
+    fontSize: 15,
+    color: '#0f172a',
   },
-  addButton: {
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  addButtonGradient: {
+  addTeacherBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    justifyContent: 'center',
     gap: 8,
+    backgroundColor: '#0d9488',
+    paddingVertical: 14,
+    borderRadius: 12,
   },
-  addButtonText: {
+  addTeacherBtnText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '800',
   },
   listContent: {
-    padding: 16,
-    gap: 16,
-    paddingBottom: 20,
+    paddingHorizontal: 16,
+    gap: 12,
+    paddingBottom: 8,
   },
   teacherCard: {
     backgroundColor: '#fff',
     borderRadius: 16,
-    padding: 16,
+    padding: 14,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 3,
     borderWidth: 1,
     borderColor: '#e2e8f0',
   },
-  teacherHeader: {
+  teacherTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
     gap: 12,
+    marginBottom: 12,
   },
   teacherAvatarContainer: {
     position: 'relative',
   },
   teacherAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#0d9488',
   },
   teacherAvatarText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: '#fff',
   },
   statusIndicator: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
+    bottom: -1,
+    right: -1,
     width: 18,
     height: 18,
     borderRadius: 9,
@@ -853,142 +1092,182 @@ const styles = StyleSheet.create({
   statusIndicatorInactive: {
     backgroundColor: '#ef4444',
   },
-  teacherInfo: {
+  teacherTitleBlock: {
     flex: 1,
+    minWidth: 0,
   },
   teacherName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0f172a',
+    marginBottom: 2,
   },
-  teacherEmail: {
-    fontSize: 14,
+  teacherEmailHint: {
+    fontSize: 13,
     color: '#64748b',
-    marginBottom: 6,
   },
-  departmentBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    alignSelf: 'flex-start',
-    backgroundColor: '#f0f9ff',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+  activePill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: '#ecfdf5',
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
   },
-  departmentText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#0ea5e9',
+  activePillOff: {
+    backgroundColor: '#fef2f2',
+    borderColor: '#fecaca',
   },
-  teacherDetails: {
+  activePillText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#047857',
+  },
+  activePillTextOff: {
+    color: '#b91c1c',
+  },
+  kvBlock: {
     gap: 8,
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
     marginBottom: 12,
   },
-  detailRow: {
+  kvRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  kvRowLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flexShrink: 0,
+    maxWidth: '42%',
   },
-  detailText: {
-    fontSize: 14,
+  /** Prevents icon font from collapsing to 0×0 in some Android flex layouts */
+  detailIconWrap: {
+    width: 22,
+    height: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toolbarIconWrap: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  kvLabel: {
+    fontSize: 13,
+    fontWeight: '600',
     color: '#64748b',
+  },
+  kvValue: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#0f172a',
+    textAlign: 'right',
+  },
+  kvValueMuted: {
+    color: '#0d9488',
+    fontWeight: '600',
   },
   teacherActions: {
     flexDirection: 'row',
-    gap: 12,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
   },
-  editButton: {
+  /** Icon-only actions — SVG icons (no font) so glyphs always show on device */
+  squircleBtn: {
     flex: 1,
-    flexDirection: 'row',
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    padding: 10,
-    borderRadius: 8,
-    backgroundColor: '#f0f9ff',
-    borderWidth: 1,
-    borderColor: '#0ea5e9',
+    borderWidth: 1.5,
   },
-  editButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#0ea5e9',
+  squircleBtnOrange: {
+    borderColor: '#fdba74',
   },
-  deleteButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    padding: 10,
-    borderRadius: 8,
-    backgroundColor: '#fef2f2',
-    borderWidth: 1,
-    borderColor: '#ef4444',
+  squircleBtnGreen: {
+    borderColor: '#6ee7b7',
   },
-  deleteButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#ef4444',
+  squircleBtnRed: {
+    borderColor: '#fca5a5',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 24,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 40,
+    padding: 28,
+  },
+  emptyIconWrap: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: '#f0fdfa',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginTop: 16,
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0f172a',
+    marginTop: 12,
+  },
+  emptyHint: {
+    fontSize: 14,
+    color: '#64748b',
+    marginTop: 6,
+    textAlign: 'center',
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 14,
   },
   modalContent: {
     backgroundColor: '#fff',
-    borderRadius: 20,
+    borderRadius: 16,
     width: '100%',
-    maxHeight: '80%',
+    maxHeight: '78%',
     overflow: 'hidden',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    padding: 14,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: '700',
     color: '#fff',
   },
   modalBody: {
-    padding: 20,
+    padding: 14,
   },
   formGroup: {
-    marginBottom: 20,
+    marginBottom: 14,
   },
   formLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#111827',
     marginBottom: 8,
@@ -997,46 +1276,184 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9fafb',
     borderWidth: 1,
     borderColor: '#e5e7eb',
-    borderRadius: 12,
-    padding: 12,
-    fontSize: 16,
+    borderRadius: 10,
+    padding: 10,
+    fontSize: 14,
     color: '#111827',
   },
   formTextArea: {
-    height: 80,
+    height: 72,
     textAlignVertical: 'top',
   },
   modalFooter: {
     flexDirection: 'row',
-    gap: 12,
-    padding: 20,
+    gap: 10,
+    padding: 14,
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
   },
   cancelButton: {
     flex: 1,
-    padding: 14,
-    borderRadius: 12,
+    padding: 12,
+    borderRadius: 10,
     backgroundColor: '#f3f4f6',
     alignItems: 'center',
   },
   cancelButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#6b7280',
   },
   submitButton: {
     flex: 1,
-    borderRadius: 12,
+    borderRadius: 10,
     overflow: 'hidden',
   },
   submitButtonGradient: {
-    padding: 14,
+    padding: 12,
     alignItems: 'center',
   },
   submitButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
+    color: '#fff',
+  },
+  assignModalCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    width: '100%',
+    maxWidth: 420,
+    maxHeight: '88%',
+    padding: 16,
+    overflow: 'hidden',
+  },
+  assignModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 8,
+  },
+  assignModalTitleBlock: {
+    flex: 1,
+    minWidth: 0,
+  },
+  assignModalTitle: {
+    fontSize: 19,
+    fontWeight: '800',
+    color: '#0f172a',
+    marginBottom: 6,
+  },
+  assignModalDesc: {
+    fontSize: 14,
+    color: '#64748b',
+    lineHeight: 20,
+  },
+  assignModalClose: {
+    padding: 4,
+  },
+  assignSectionLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0f172a',
+    marginBottom: 10,
+    marginTop: 4,
+  },
+  assignScroll: {
+    maxHeight: 320,
+    marginBottom: 12,
+  },
+  assignClassListBorder: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    padding: 8,
+    maxHeight: 280,
+  },
+  assignRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    backgroundColor: '#fffbeb',
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  assignRowInList: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    marginBottom: 6,
+    borderBottomWidth: 0,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+  },
+  assignCheckWrap: {
+    width: 26,
+    height: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  assignRowText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  assignRowTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0f172a',
+    marginBottom: 4,
+  },
+  assignRowMeta: {
+    fontSize: 13,
+    color: '#64748b',
+    marginBottom: 2,
+  },
+  assignRowSub: {
+    fontSize: 13,
+    color: '#94a3b8',
+  },
+  assignEmpty: {
+    fontSize: 14,
+    color: '#64748b',
+    textAlign: 'center',
+    paddingVertical: 24,
+  },
+  assignModalFooter: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: 12,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  assignCancelBtn: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  assignCancelBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#374151',
+  },
+  assignPrimaryBtn: {
+    backgroundColor: '#ea580c',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    minWidth: 140,
+    alignItems: 'center',
+  },
+  assignPrimaryBtnDisabled: {
+    opacity: 0.65,
+  },
+  assignPrimaryBtnText: {
+    fontSize: 15,
+    fontWeight: '800',
     color: '#fff',
   },
 });

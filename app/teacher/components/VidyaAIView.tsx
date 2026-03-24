@@ -83,7 +83,7 @@ export default function VidyaAIView() {
       id: 'daily-class-plan-maker',
       title: 'Daily Class Plan Maker',
       description: 'Organize your daily teaching schedule efficiently.',
-      icon: 'checkmark-square' as keyof typeof Ionicons.glyphMap,
+      icon: 'checkbox-outline' as keyof typeof Ionicons.glyphMap,
       color: '#14b8a6',
       route: '/teacher/tools/daily-class-plan-maker'
     },
@@ -107,7 +107,7 @@ export default function VidyaAIView() {
       id: 'learning-outcomes-generator',
       title: 'Learning Outcomes Generator',
       description: 'Define measurable learning outcomes for your courses.',
-      icon: 'target' as keyof typeof Ionicons.glyphMap,
+      icon: 'locate-outline' as keyof typeof Ionicons.glyphMap,
       color: '#14b8a6',
       route: '/teacher/tools/learning-outcomes-generator'
     },

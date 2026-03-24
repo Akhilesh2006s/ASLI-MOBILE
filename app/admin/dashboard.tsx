@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, ActivityIndicator, Pressable } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
-import { API_BASE_URL } from '../../src/lib/api-config';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
+import { useAuth } from '../../src/context/AuthContext';
+import authService from '../../src/services/api/authService';
 import OverviewView from './components/OverviewView';
 import StudentsView from './components/StudentsView';
 import ClassesView from './components/ClassesView';
@@ -15,10 +16,23 @@ import ExamsView from './components/ExamsView';
 import LearningPathsView from './components/LearningPathsView';
 import EduOTTView from './components/EduOTTView';
 import CalendarView from './components/CalendarView';
+import VidyaAIView from './components/VidyaAIView';
 
-type AdminView = 'overview' | 'students' | 'classes' | 'teachers' | 'subjects' | 'exams' | 'learning-paths' | 'eduott' | 'calendar';
+type AdminView =
+  | 'overview'
+  | 'students'
+  | 'classes'
+  | 'teachers'
+  | 'subjects'
+  | 'exams'
+  | 'learning-paths'
+  | 'eduott'
+  | 'calendar'
+  | 'vidya-ai';
 
 export default function AdminDashboard() {
+  const { signOut } = useAuth();
+  const insets = useSafeAreaInsets();
   const [currentView, setCurrentView] = useState<AdminView>('overview');
   const [modalVisible, setModalVisible] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -33,58 +47,55 @@ export default function AdminDashboard() {
 
   const checkAuth = async () => {
     try {
-      const token = await SecureStore.getItemAsync('authToken');
+      const auth = await authService.getStoredAuth();
+      const token = auth.token;
+      const userRole = auth.role;
+
       if (!token) {
         router.replace('/auth/login');
         return;
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      if (userRole === 'admin') {
+        setIsAuthenticated(true);
+        setIsLoading(false);
+      }
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.user && data.user.role === 'admin') {
-          setIsAuthenticated(true);
-        } else {
-          router.replace('/auth/login');
-        }
+      const data = await authService.me();
+      if (data?.user?.role === 'admin') {
+        setIsAuthenticated(true);
       } else {
         router.replace('/auth/login');
       }
     } catch (error) {
       console.error('Auth check failed:', error);
-      router.replace('/auth/login');
+      const message = String((error as any)?.message || '').toLowerCase();
+      const isNetworkIssue =
+        message.includes('network request failed') ||
+        message.includes('network error') ||
+        message.includes('timeout');
+
+      if (isNetworkIssue) {
+        setIsAuthenticated(true);
+      } else {
+        await authService.clearAuth();
+        router.replace('/auth/login');
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleLogout = async () => {
+    setModalVisible(false);
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      if (token) {
-        try {
-          await fetch(`${API_BASE_URL}/api/auth/logout`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          });
-        } catch (error) {
-          console.error('Logout API error:', error);
-        }
-      }
-      await SecureStore.deleteItemAsync('authToken');
-      await SecureStore.deleteItemAsync('user');
-      router.replace('/auth/login');
+      // Must clear AuthContext + storage — otherwise AuthGate thinks user is still
+      // logged in and redirects /auth/login → admin dashboard (infinite loading loop).
+      await signOut();
     } catch (error) {
       console.error('Logout failed:', error);
+      await authService.clearAuth();
+    } finally {
       router.replace('/auth/login');
     }
   };
@@ -99,6 +110,7 @@ export default function AdminDashboard() {
     { view: 'learning-paths', label: 'Learning Paths', icon: 'map' },
     { view: 'eduott', label: 'EduOTT', icon: 'play' },
     { view: 'calendar', label: 'Calendar', icon: 'calendar' },
+    { view: 'vidya-ai', label: 'Vidya AI', icon: 'sparkles' },
   ];
 
   const renderContent = () => {
@@ -121,6 +133,8 @@ export default function AdminDashboard() {
         return <EduOTTView />;
       case 'calendar':
         return <CalendarView />;
+      case 'vidya-ai':
+        return <VidyaAIView />;
       default:
         return <OverviewView />;
     }
@@ -129,7 +143,7 @@ export default function AdminDashboard() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#fb923c" />
+        <ActivityIndicator size="small" color="#fb923c" />
         <Text style={styles.loadingText}>Loading...</Text>
         <Text style={styles.loadingSubtext}>Preparing your admin dashboard</Text>
       </View>
@@ -140,23 +154,33 @@ export default function AdminDashboard() {
     return null;
   }
 
+  const currentLabel = navigationItems.find((item) => item.view === currentView)?.label || 'Dashboard';
+
   return (
     <View style={styles.container}>
-      {/* Header */}
+      {/* Navbar + page context */}
       <LinearGradient
-        colors={['#7dd3fc', '#38bdf8', '#2dd4bf']}
-        style={styles.header}
+        colors={['#0d9488', '#0891b2', '#0284c7']}
+        style={[styles.header, { paddingTop: Math.max(insets.top, 10) + 6 }]}
         start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
+        end={{ x: 1, y: 1 }}
       >
-        <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.headerSubtitle}>Admin Control Center</Text>
-            <Text style={styles.headerTitle}>
-              {navigationItems.find(item => item.view === currentView)?.label || 'Dashboard'}
-            </Text>
-            <Text style={styles.headerDescription}>Manage your learning platform with style</Text>
+        {/* Navbar: (1) current section (2) Admin Control Center (3) tagline — + logout */}
+        <View style={styles.navBar}>
+          <View style={styles.navTextStack} accessibilityRole="header">
+            <Text style={styles.navLine1}>{currentLabel}</Text>
+            <Text style={styles.navLine2}>Admin Control Center</Text>
+            <Text style={styles.navLine3}>Manage your learning platform with style.</Text>
           </View>
+          <TouchableOpacity
+            style={styles.navIconButton}
+            onPress={handleLogout}
+            accessibilityLabel="Log out"
+            accessibilityRole="button"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="log-out-outline" size={22} color="#fff" />
+          </TouchableOpacity>
         </View>
       </LinearGradient>
 
@@ -176,7 +200,7 @@ export default function AdminDashboard() {
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         >
-          <Ionicons name="menu" size={28} color="#fff" />
+          <Ionicons name="menu" size={22} color="#fff" />
         </LinearGradient>
       </TouchableOpacity>
 
@@ -187,11 +211,13 @@ export default function AdminDashboard() {
         animationType="slide"
         onRequestClose={() => setModalVisible(false)}
       >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setModalVisible(false)}
-        >
+        <View style={styles.modalOverlay}>
+          {/* Backdrop only — avoids parent Touchable swallowing nav item presses */}
+          <Pressable
+            style={[StyleSheet.absoluteFill, styles.modalBackdrop]}
+            onPress={() => setModalVisible(false)}
+          />
+          {/* Sheet (must close with </View> — not </TouchableOpacity>) */}
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderLeft}>
@@ -203,8 +229,8 @@ export default function AdminDashboard() {
                   <Text style={styles.modalSubtitle}>Admin Panel</Text>
                 </View>
               </View>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={28} color="#fff" />
+              <TouchableOpacity onPress={() => setModalVisible(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="close" size={22} color="#fff" />
               </TouchableOpacity>
             </View>
 
@@ -223,7 +249,7 @@ export default function AdminDashboard() {
                 >
                   <Ionicons
                     name={item.icon}
-                    size={20}
+                    size={18}
                     color={currentView === item.view ? '#f97316' : '#fff'}
                   />
                   <Text
@@ -241,12 +267,12 @@ export default function AdminDashboard() {
                 style={styles.modalLogout}
                 onPress={handleLogout}
               >
-                <Ionicons name="log-out" size={20} color="#ef4444" />
+                <Ionicons name="log-out" size={18} color="#ef4444" />
                 <Text style={styles.modalLogoutText}>Logout</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
     </View>
   );
@@ -264,52 +290,68 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f9ff',
   },
   loadingText: {
-    marginTop: 16,
-    fontSize: 24,
+    marginTop: 10,
+    fontSize: 15,
     fontWeight: '800',
     color: '#0ea5e9',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   loadingSubtext: {
-    fontSize: 14,
+    fontSize: 11,
     color: '#64748b',
   },
   header: {
-    paddingTop: 50,
-    paddingBottom: 24,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    paddingBottom: 14,
+    paddingHorizontal: 16,
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 18,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 10,
   },
-  headerContent: {
+  navBar: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    gap: 12,
   },
-  headerSubtitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#111827',
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-    marginBottom: 4,
+  navTextStack: {
+    flex: 1,
+    minWidth: 0,
   },
-  headerTitle: {
-    fontSize: 28,
+  navLine1: {
+    fontSize: 22,
     fontWeight: '800',
-    color: '#111827',
+    color: '#fff',
     textTransform: 'capitalize',
     marginBottom: 4,
+    letterSpacing: -0.3,
   },
-  headerDescription: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
+  navLine2: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.95)',
+    marginBottom: 4,
+    letterSpacing: 0.2,
+  },
+  navLine3: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.88)',
+    lineHeight: 16,
+  },
+  navIconButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
+    alignSelf: 'center',
   },
   content: {
     flex: 1,
@@ -317,11 +359,11 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    bottom: 24,
-    right: 24,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    bottom: 10,
+    right: 10,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -331,20 +373,23 @@ const styles = StyleSheet.create({
   fabGradient: {
     width: '100%',
     height: '100%',
-    borderRadius: 32,
+    borderRadius: 21,
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
+  modalBackdrop: {
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
   modalContent: {
+    zIndex: 1,
     backgroundColor: '#fb923c',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '80%',
+    borderTopLeftRadius: 14,
+    borderTopRightRadius: 14,
+    maxHeight: '68%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.3,
@@ -355,54 +400,58 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.2)',
   },
   modalHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   modalLogo: {
-    width: 48,
-    height: 48,
+    width: 32,
+    height: 32,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 12,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalLogoText: {
-    fontSize: 20,
+    fontSize: 13,
     fontWeight: '800',
     color: '#fff',
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 13,
     fontWeight: '800',
     color: '#fff',
   },
   modalSubtitle: {
-    fontSize: 12,
+    fontSize: 9,
     color: '#fff',
     opacity: 0.9,
   },
   modalNav: {
-    padding: 16,
+    paddingHorizontal: 8,
+    paddingTop: 4,
+    paddingBottom: 6,
   },
   modalNavItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 8,
-    gap: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    marginBottom: 4,
+    gap: 8,
   },
   modalNavItemActive: {
     backgroundColor: '#fff',
   },
   modalNavItemText: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '600',
     color: '#fff',
   },
@@ -412,15 +461,16 @@ const styles = StyleSheet.create({
   modalLogout: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 8,
-    marginBottom: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    marginTop: 6,
+    marginBottom: 16,
     backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    gap: 12,
+    gap: 8,
   },
   modalLogoutText: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '600',
     color: '#ef4444',
   },

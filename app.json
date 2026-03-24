@@ -4,8 +4,11 @@
     "slug": "aslilearn-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./image.png",
     "userInterfaceStyle": "light",
+    "jsEngine": "hermes",
     "splash": {
+      "image": "./image.png",
       "resizeMode": "contain",
       "backgroundColor": "#2563eb"
     },
@@ -19,6 +22,7 @@
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./image.png",
         "backgroundColor": "#2563eb"
       },
       "package": "com.aslilearn.mobile",
@@ -31,7 +35,8 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-web-browser"
     ],
     "scheme": "aslilearn",
     "extra": {

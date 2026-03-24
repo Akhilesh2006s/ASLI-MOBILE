@@ -5,15 +5,15 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { API_BASE_URL } from '../../src/lib/api-config';
 import * as SecureStore from 'expo-secure-store';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
+import api, { API_BASE_URL } from '../../src/services/api/api';
+import { useAuth } from '../../src/context/AuthContext';
 import AdminsView from './components/AdminsView';
 import ListView from './components/ListView';
 import VidyaAIView from './components/VidyaAIView';
 import BoardDashboardView from './components/BoardDashboardView';
-import SubjectManagementView from './components/SubjectManagementView';
-import ContentManagementView from './components/ContentManagementView';
+import SubjectContentManagementView from './components/SubjectContentManagementView';
 import ExamManagementView from './components/ExamManagementView';
 import IQRankBoostView from './components/IQRankBoostView';
 import AnalyticsView from './components/AnalyticsView';
@@ -31,19 +31,19 @@ const menuItems: MenuItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: 'stats-chart' },
   { id: 'board', label: 'Board Management', icon: 'people' },
   { id: 'admins', label: 'School Management', icon: 'shield' },
-  { id: 'subjects', label: 'Subject Management', icon: 'document-text' },
-  { id: 'content', label: 'Content Management', icon: 'cloud-upload' },
+  { id: 'subjects', label: 'Subject & Content', icon: 'document-text' },
   { id: 'exams', label: 'Exam Management', icon: 'document' },
   { id: 'iq-rank-boost', label: 'IQ/Rank Boost', icon: 'trophy' },
   { id: 'vidya-ai', label: 'Vidya AI', icon: 'sparkles' },
   { id: 'analytics', label: 'Analytics', icon: 'bar-chart' },
-  { id: 'ai-analytics', label: 'AI Analytics', icon: 'brain' },
+  { id: 'ai-analytics', label: 'AI Analytics', icon: 'bulb' },
   { id: 'subscriptions', label: 'Subscriptions', icon: 'card' },
   { id: 'settings', label: 'Settings', icon: 'settings' },
 ];
 
 export default function SuperAdminDashboard() {
   const router = useRouter();
+  const { token: authToken, signOut } = useAuth();
   const [currentView, setCurrentView] = useState<SuperAdminView>('dashboard');
   const [modalVisible, setModalVisible] = useState(false);
   const [stats, setStats] = useState({
@@ -59,6 +59,7 @@ export default function SuperAdminDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [user, setUser] = useState({ fullName: 'Super Admin', email: '' });
   const [selectedBoard, setSelectedBoard] = useState<string | null>(null);
+  const [statsError, setStatsError] = useState('');
 
   useEffect(() => {
     fetchUserInfo();
@@ -66,7 +67,7 @@ export default function SuperAdminDashboard() {
   }, []);
 
   // Prevent back navigation from dashboard - user should stay in dashboard until logout
-  useBackNavigation('/super-admin/dashboard', true);
+  useBackNavigation('/super-admin-dashboard', true);
 
   const fetchUserInfo = async () => {
     try {
@@ -81,19 +82,47 @@ export default function SuperAdminDashboard() {
 
   const fetchDashboardStats = async () => {
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/super-admin/dashboard/stats`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      setStatsError('');
+      const token =
+        authToken ||
+        (await SecureStore.getItemAsync('authToken')) ||
+        (await SecureStore.getItemAsync('token')) ||
+        (await SecureStore.getItemAsync('accessToken')) ||
+        (await SecureStore.getItemAsync('jwtToken'));
 
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data.data || data);
+      let payload: any = null;
+      try {
+        const response = await api.get(
+          '/api/super-admin/dashboard/stats',
+          token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
+        );
+        payload = response?.data;
+      } catch (primaryErr: any) {
+        // Some backend variants expose /stats instead of /dashboard/stats.
+        if (primaryErr?.response?.status === 404) {
+          const fallbackResponse = await api.get(
+            '/api/super-admin/stats',
+            token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
+          );
+          payload = fallbackResponse?.data;
+        } else {
+          throw primaryErr;
+        }
       }
-    } catch (error) {
+
+      const normalized = payload?.data || payload?.stats || payload || {};
+      setStats({
+        totalUsers: normalized.totalUsers || normalized.users || 0,
+        totalStudents: normalized.totalStudents || normalized.students || 0,
+        totalTeachers: normalized.totalTeachers || normalized.teachers || 0,
+        totalAdmins: normalized.totalAdmins || normalized.admins || 0,
+        courses: normalized.courses || 0,
+        assessments: normalized.assessments || 0,
+        exams: normalized.exams || 0,
+      });
+    } catch (error: any) {
+      const fallback = `Unable to fetch dashboard stats from ${API_BASE_URL}`;
+      setStatsError(error?.friendlyMessage || error?.message || fallback);
       console.error('Error fetching stats:', error);
     } finally {
       setIsLoading(false);
@@ -116,10 +145,16 @@ export default function SuperAdminDashboard() {
   };
 
   const handleLogout = async () => {
-    await SecureStore.deleteItemAsync('authToken');
-    await SecureStore.deleteItemAsync('userRole');
-    await SecureStore.deleteItemAsync('userEmail');
-    router.replace('/auth/login');
+    try {
+      await signOut();
+      await SecureStore.deleteItemAsync('token');
+      await SecureStore.deleteItemAsync('accessToken');
+      await SecureStore.deleteItemAsync('jwtToken');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      router.replace('/auth/login');
+    }
   };
 
   const renderDashboardContent = () => (
@@ -131,7 +166,9 @@ export default function SuperAdminDashboard() {
       <View style={styles.welcomeHeader}>
         <View style={styles.welcomeTextContainer}>
           <Text style={styles.welcomeTitle}>Welcome back, Super Admin</Text>
-          <Text style={styles.welcomeSubtitle}>Manage boards, schools, exams and AI analytic tau at one place.</Text>
+          <Text style={styles.welcomeSubtitle}>
+            Manage boards, schools, exams, and AI analytics — all in one place.
+          </Text>
         </View>
       </View>
 
@@ -141,6 +178,13 @@ export default function SuperAdminDashboard() {
         </View>
       ) : (
         <>
+          {statsError ? (
+            <View style={styles.errorBanner}>
+              <Ionicons name="alert-circle" size={18} color="#dc2626" style={{ marginRight: 8 }} />
+              <Text style={styles.errorBannerText}>{statsError}</Text>
+            </View>
+          ) : null}
+
           {/* Board Management Section - Orange gradient card */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Board Management</Text>
@@ -172,9 +216,9 @@ export default function SuperAdminDashboard() {
           {/* Content Management & AI Analytics - Two column grid */}
           <View style={styles.twoColumnGrid}>
             {/* Content Management - Sky blue gradient */}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.featureCard}
-              onPress={() => handleViewChange('content')}
+              onPress={() => handleViewChange('subjects')}
               activeOpacity={0.9}
             >
               <LinearGradient
@@ -185,18 +229,18 @@ export default function SuperAdminDashboard() {
               >
                 <View style={styles.featureCardContent}>
                   <View style={styles.featureCardTextContainer}>
-                    <Text style={styles.featureCardTitle}>Content Management</Text>
-                    <Text style={styles.featureCardSubtitle}>Manage videos, notes & materials</Text>
+                    <Text style={styles.featureCardTitle}>Content{'\n'}Management</Text>
+                    <Text style={styles.featureCardSubtitle}>Manage videos and notes</Text>
                   </View>
                   <View style={styles.featureCardIconContainer}>
-                    <Ionicons name="cloud-upload" size={40} color="#fff" />
+                    <Ionicons name="cloud-upload" size={38} color="#fff" />
                   </View>
                 </View>
               </LinearGradient>
             </TouchableOpacity>
 
-            {/* AI Analytics - Teal gradient */}
-            <TouchableOpacity 
+            {/* AI Analytics - Teal gradient (same structure as Content Management for equal height & corners) */}
+            <TouchableOpacity
               style={styles.featureCard}
               onPress={() => handleViewChange('ai-analytics')}
               activeOpacity={0.9}
@@ -209,11 +253,11 @@ export default function SuperAdminDashboard() {
               >
                 <View style={styles.featureCardContent}>
                   <View style={styles.featureCardTextContainer}>
-                    <Text style={styles.featureCardTitle}>AI Analytics</Text>
-                    <Text style={styles.featureCardSubtitle}>Advanced ML insights</Text>
+                    <Text style={styles.featureCardTitle}>AI{'\n'}Analytics</Text>
+                    <Text style={styles.featureCardSubtitle}>Smart performance insights</Text>
                   </View>
                   <View style={styles.featureCardIconContainer}>
-                    <Ionicons name="brain" size={40} color="#fff" />
+                    <Ionicons name="analytics-outline" size={38} color="#fff" />
                   </View>
                 </View>
               </LinearGradient>
@@ -292,9 +336,7 @@ export default function SuperAdminDashboard() {
           />
         );
       case 'subjects':
-        return <SubjectManagementView />;
-      case 'content':
-        return <ContentManagementView />;
+        return <SubjectContentManagementView />;
       case 'exams':
         return <ExamManagementView />;
       case 'iq-rank-boost':
@@ -442,8 +484,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: 16,
     paddingTop: 10,
+    paddingBottom: 14,
   },
   topHeaderTitle: {
     fontSize: 20,
@@ -461,8 +504,8 @@ const styles = StyleSheet.create({
   mainContent: {
     flex: 1,
     backgroundColor: '#f9fafb',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
     overflow: 'hidden',
   },
   content: {
@@ -472,26 +515,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    padding: 20,
-    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 10,
   },
   welcomeTextContainer: {
     flex: 1,
   },
   welcomeTitle: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '800',
     color: '#111827',
     marginBottom: 8,
   },
   welcomeSubtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#6b7280',
-    lineHeight: 24,
+    lineHeight: 20,
   },
   section: {
-    paddingHorizontal: 20,
-    marginBottom: 16,
+    paddingHorizontal: 16,
+    marginBottom: 12,
   },
   loadingContainer: {
     flex: 1,
@@ -499,14 +543,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 40,
   },
+  errorBanner: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    backgroundColor: '#fee2e2',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  errorBannerText: {
+    flex: 1,
+    color: '#b91c1c',
+    fontSize: 12,
+    lineHeight: 16,
+  },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     color: '#111827',
     marginBottom: 16,
   },
   boardCard: {
-    borderRadius: 12,
+    borderRadius: 10,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -515,7 +575,7 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   boardCardGradient: {
-    padding: 24,
+    padding: 16,
   },
   boardCardContent: {
     flexDirection: 'row',
@@ -523,26 +583,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   boardCardTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '800',
     color: '#fff',
     marginBottom: 4,
   },
   boardCardSubtitle: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#fff',
     opacity: 0.9,
   },
   twoColumnGrid: {
     flexDirection: 'row',
-    gap: 16,
-    paddingHorizontal: 20,
-    marginBottom: 16,
+    alignItems: 'stretch',
+    gap: 10,
+    paddingHorizontal: 16,
+    marginBottom: 12,
   },
   featureCard: {
     flex: 1,
-    borderRadius: 12,
+    minHeight: 118,
+    borderRadius: 16,
     overflow: 'hidden',
+    backgroundColor: 'transparent',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
@@ -550,47 +613,53 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   featureCardGradient: {
-    padding: 20,
-    minHeight: 120,
+    flex: 1,
+    alignSelf: 'stretch',
+    padding: 14,
+    minHeight: 118,
+    justifyContent: 'center',
   },
   featureCardContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     flex: 1,
+    minHeight: 90,
   },
   featureCardTextContainer: {
     flex: 1,
     marginRight: 12,
   },
   featureCardIconContainer: {
-    width: 48,
-    height: 48,
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
   },
   featureCardTitle: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '800',
     color: '#fff',
     marginBottom: 4,
+    lineHeight: 18,
   },
   featureCardSubtitle: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#fff',
     opacity: 0.9,
+    lineHeight: 16,
   },
   statsRow: {
     flexDirection: 'row',
-    gap: 16,
-    paddingHorizontal: 20,
-    marginBottom: 16,
+    gap: 10,
+    paddingHorizontal: 16,
+    marginBottom: 12,
   },
   statsWidget: {
     flex: 1,
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
+    borderRadius: 10,
+    padding: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -603,25 +672,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statsWidgetLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#6b7280',
     marginBottom: 4,
   },
   statsWidgetValue: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '800',
     color: '#111827',
   },
   chartPlaceholder: {
-    width: 48,
-    height: 48,
+    width: 36,
+    height: 36,
     justifyContent: 'center',
     alignItems: 'center',
   },
   vidyaCard: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 12,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 10,
     borderWidth: 2,
     borderColor: '#93c5fd',
     backgroundColor: '#fff',
@@ -644,19 +713,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 24,
+    padding: 14,
   },
   vidyaCardText: {
     flex: 1,
   },
   vidyaCardTitle: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: '800',
     color: '#111827',
     marginBottom: 8,
   },
   vidyaCardSubtitle: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#6b7280',
     marginBottom: 8,
   },
@@ -666,8 +735,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   vidyaCardImage: {
-    width: 96,
-    height: 96,
+    width: 64,
+    height: 64,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -691,11 +760,11 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    bottom: 24,
-    right: 24,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    bottom: 14,
+    right: 14,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#f97316',
     justifyContent: 'center',
     alignItems: 'center',
@@ -713,8 +782,8 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: '#fff',
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     maxHeight: '85%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
@@ -726,24 +795,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    padding: 14,
     backgroundColor: '#f97316',
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: '800',
     color: '#fff',
   },
   menuList: {
     maxHeight: 500,
-    padding: 16,
+    padding: 12,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: 12,
     borderRadius: 12,
     marginBottom: 8,
     backgroundColor: '#f9fafb',
@@ -754,9 +823,9 @@ const styles = StyleSheet.create({
     borderColor: '#f97316',
   },
   menuIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#f97316',
     justifyContent: 'center',
     alignItems: 'center',
@@ -767,7 +836,7 @@ const styles = StyleSheet.create({
   },
   menuItemText: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#111827',
   },
@@ -775,7 +844,7 @@ const styles = StyleSheet.create({
     color: '#f97316',
   },
   modalFooter: {
-    padding: 20,
+    padding: 14,
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
     backgroundColor: '#f9fafb',
@@ -785,31 +854,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   userAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#fff7ed',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   userName: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
     color: '#111827',
   },
   userEmail: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#6b7280',
   },
   settingsContainer: {
-    padding: 16,
+    padding: 12,
   },
   settingsItem: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    padding: 16,
+    padding: 12,
     borderRadius: 12,
     marginBottom: 12,
     shadowColor: '#000',
@@ -820,7 +889,7 @@ const styles = StyleSheet.create({
   },
   settingsText: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#111827',
     marginLeft: 12,

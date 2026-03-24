@@ -2,8 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, ActivityIndicator, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { API_BASE_URL } from '../../../src/lib/api-config';
-import * as SecureStore from 'expo-secure-store';
+import api from '../../../src/services/api/api';
 
 interface Subject {
   _id: string;
@@ -29,6 +28,7 @@ export default function SubjectManagementView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBySubject, setFilterBySubject] = useState<string>('all');
   const [filterByClass, setFilterByClass] = useState<string>('all');
+  const [error, setError] = useState('');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -46,22 +46,13 @@ export default function SubjectManagementView() {
   const fetchSubjects = async () => {
     setIsLoading(true);
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/super-admin/boards/${selectedBoard}/subjects`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setSubjects(data.data || []);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch subjects:', error);
+      setError('');
+      const response = await api.get(`/api/super-admin/boards/${selectedBoard}/subjects`);
+      const data = response?.data;
+      setSubjects(data?.data || data?.subjects || []);
+    } catch (err: any) {
+      setError(err?.friendlyMessage || 'Failed to fetch subjects.');
+      console.error('Failed to fetch subjects:', err);
     } finally {
       setIsLoading(false);
     }
@@ -105,43 +96,24 @@ export default function SubjectManagementView() {
     if (!formData.name || !formData.board) return;
 
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/super-admin/subjects`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      });
-
-      if (response.ok) {
-        setIsAddModalOpen(false);
-        setFormData({ name: '', code: '', description: '', board: selectedBoard });
-        fetchSubjects();
-      }
-    } catch (error) {
-      console.error('Failed to create subject:', error);
+      await api.post('/api/super-admin/subjects', formData);
+      setIsAddModalOpen(false);
+      setFormData({ name: '', code: '', description: '', board: selectedBoard });
+      fetchSubjects();
+    } catch (err: any) {
+      setError(err?.friendlyMessage || 'Failed to create subject.');
+      console.error('Failed to create subject:', err);
     }
   };
 
   const handleDelete = async (subjectId: string) => {
     setIsDeleting(subjectId);
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/super-admin/subjects/${subjectId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        fetchSubjects();
-      }
-    } catch (error) {
-      console.error('Failed to delete subject:', error);
+      await api.delete(`/api/super-admin/subjects/${subjectId}`);
+      fetchSubjects();
+    } catch (err: any) {
+      setError(err?.friendlyMessage || 'Failed to delete subject.');
+      console.error('Failed to delete subject:', err);
     } finally {
       setIsDeleting(null);
     }
@@ -228,6 +200,7 @@ export default function SubjectManagementView() {
       </View>
 
       {/* Subjects List */}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#3b82f6" />
@@ -588,6 +561,12 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#6b7280',
+  },
+  errorText: {
+    color: '#dc2626',
+    paddingHorizontal: 20,
+    marginBottom: 8,
+    fontSize: 13,
   },
   emptyContainer: {
     alignItems: 'center',

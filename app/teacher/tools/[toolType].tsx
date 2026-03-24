@@ -233,7 +233,7 @@ const TOOL_CONFIGS: Record<string, ToolConfig> = {
   'learning-outcomes-generator': {
     name: 'Learning Outcomes Generator',
     description: 'Define measurable learning outcomes for your courses',
-    icon: 'target',
+    icon: 'locate-outline',
     color: '#14b8a6',
     fields: [
       { name: 'gradeLevel', label: 'Class *', type: 'select', required: true, options: CLASS_OPTIONS },
@@ -308,7 +308,7 @@ const TOOL_CONFIGS: Record<string, ToolConfig> = {
   'daily-class-plan-maker': {
     name: 'Daily Class Plan Maker',
     description: 'Organize your daily teaching schedule efficiently',
-    icon: 'checkmark-square',
+    icon: 'checkbox-outline',
     color: '#14b8a6',
     fields: [
       { name: 'date', label: 'Date', type: 'text', placeholder: 'e.g., 2025-01-15' },

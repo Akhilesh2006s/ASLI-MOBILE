@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { API_BASE_URL } from '../../../src/lib/api-config';
-import * as SecureStore from 'expo-secure-store';
+import api from '../../../src/services/api/api';
 
 interface Admin {
   stats?: {
@@ -18,6 +17,7 @@ interface Admin {
 export default function AnalyticsView() {
   const [analytics, setAnalytics] = useState<Admin[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchAnalytics();
@@ -26,20 +26,15 @@ export default function AnalyticsView() {
   const fetchAnalytics = async () => {
     setIsLoading(true);
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/super-admin/admins`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const adminsList = Array.isArray(data) ? data : (data.data || []);
-        setAnalytics(adminsList);
-      }
-    } catch (error) {
-      console.error('Failed to fetch analytics:', error);
+      setError('');
+      const response = await api.get('/api/super-admin/admins');
+      const data = response?.data;
+      const adminsList = Array.isArray(data) ? data : (data?.data || []);
+      setAnalytics(Array.isArray(adminsList) ? adminsList : []);
+    } catch (err: any) {
+      setError(err?.friendlyMessage || 'Failed to fetch analytics.');
+      console.error('Failed to fetch analytics:', err);
+      setAnalytics([]);
     } finally {
       setIsLoading(false);
     }
@@ -74,6 +69,8 @@ export default function AnalyticsView() {
           </View>
         </View>
       </View>
+
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       {/* Analytics Overview Cards */}
       <View style={styles.statsGrid}>
@@ -203,8 +200,9 @@ export default function AnalyticsView() {
 const styles = StyleSheet.create({
   content: { flex: 1 },
   header: {
-    padding: 20,
-    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -212,26 +210,26 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '800',
     color: '#111827',
     marginBottom: 4,
   },
   headerSubtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#6b7280',
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 20,
-    gap: 12,
-    marginBottom: 24,
+    paddingHorizontal: 16,
+    gap: 10,
+    marginBottom: 16,
   },
   statCard: {
     flex: 1,
     minWidth: '47%',
-    borderRadius: 12,
+    borderRadius: 10,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -240,8 +238,8 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   statCardGradient: {
-    padding: 20,
-    minHeight: 120,
+    padding: 14,
+    minHeight: 100,
   },
   statCardContent: {
     flexDirection: 'row',
@@ -249,39 +247,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statCardLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#fff',
     opacity: 0.9,
     marginBottom: 8,
   },
   statCardValue: {
-    fontSize: 32,
+    fontSize: 26,
     fontWeight: '800',
     color: '#fff',
     marginBottom: 4,
   },
   statCardSubtext: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#fff',
     opacity: 0.9,
   },
   section: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
+    paddingHorizontal: 16,
+    marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     color: '#111827',
     marginBottom: 16,
   },
   adminList: {
-    gap: 16,
+    gap: 12,
   },
   adminCard: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 10,
+    padding: 14,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -291,7 +289,7 @@ const styles = StyleSheet.create({
   adminCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   adminIconContainer: {
     width: 40,
@@ -306,19 +304,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   adminCardName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#111827',
     marginBottom: 4,
   },
   adminCardEmail: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6b7280',
   },
   adminCardStats: {
     flexDirection: 'row',
-    gap: 16,
-    paddingTop: 16,
+    gap: 10,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
   },
@@ -326,12 +324,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   adminStatLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#6b7280',
     marginBottom: 4,
   },
   adminStatValue: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     color: '#111827',
   },
@@ -343,15 +341,21 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 16,
-    fontSize: 16,
+    fontSize: 14,
     color: '#6b7280',
+  },
+  errorText: {
+    color: '#dc2626',
+    paddingHorizontal: 16,
+    marginBottom: 8,
+    fontSize: 13,
   },
   emptyContainer: {
     alignItems: 'center',
     padding: 40,
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#9ca3af',
     marginTop: 16,
     textAlign: 'center',

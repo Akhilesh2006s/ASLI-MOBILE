@@ -1,9 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, ActivityIndicator, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { API_BASE_URL } from '../../../src/lib/api-config';
-import * as SecureStore from 'expo-secure-store';
+import api from '../../../src/services/api/api';
 
 interface Admin {
   id?: string;
@@ -27,6 +25,7 @@ export default function AdminsView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '', board: 'ASLI_EXCLUSIVE_SCHOOLS', schoolName: '' });
   const [isAdding, setIsAdding] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchAdmins();
@@ -34,17 +33,14 @@ export default function AdminsView() {
 
   const fetchAdmins = async () => {
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/super-admin/admins`, {
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const adminsList = Array.isArray(data) ? data : (data.data || []);
-        setAdmins(adminsList);
-      }
-    } catch (error) {
-      console.error('Error fetching admins:', error);
+      setError('');
+      const response = await api.get('/api/super-admin/admins');
+      const data = response?.data;
+      const adminsList = Array.isArray(data) ? data : (data?.data || []);
+      setAdmins(adminsList);
+    } catch (err: any) {
+      setError(err?.friendlyMessage || 'Failed to load admins');
+      console.error('Error fetching admins:', err);
     } finally {
       setIsLoading(false);
     }
@@ -74,19 +70,13 @@ export default function AdminsView() {
     }
     setIsAdding(true);
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/super-admin/admins`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(newAdmin),
-      });
-      if (response.ok) {
-        setShowAddModal(false);
-        setNewAdmin({ name: '', email: '', password: '', board: 'ASLI_EXCLUSIVE_SCHOOLS', schoolName: '' });
-        fetchAdmins();
-      }
-    } catch (error) {
-      console.error('Error adding admin:', error);
+      await api.post('/api/super-admin/admins', newAdmin);
+      setShowAddModal(false);
+      setNewAdmin({ name: '', email: '', password: '', board: 'ASLI_EXCLUSIVE_SCHOOLS', schoolName: '' });
+      fetchAdmins();
+    } catch (err: any) {
+      setError(err?.friendlyMessage || 'Failed to add admin');
+      console.error('Error adding admin:', err);
     } finally {
       setIsAdding(false);
     }
@@ -94,120 +84,76 @@ export default function AdminsView() {
 
   const handleDeleteAdmin = async (adminId: string) => {
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/super-admin/admins/${adminId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      });
-      if (response.ok) {
-        fetchAdmins();
-      }
-    } catch (error) {
-      console.error('Error deleting admin:', error);
+      await api.delete(`/api/super-admin/admins/${adminId}`);
+      fetchAdmins();
+    } catch (err: any) {
+      setError(err?.friendlyMessage || 'Failed to delete admin');
+      console.error('Error deleting admin:', err);
     }
   };
 
   return (
-    <ScrollView style={styles.content}>
-      {/* Header */}
+    <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      {/* Header — title + compact add (no full-width gradient bar) */}
       <View style={styles.header}>
-        <View>
+        <View style={styles.headerTextBlock}>
           <Text style={styles.headerTitle}>School Management</Text>
           <Text style={styles.headerSubtitle}>Manage schools and their associated data</Text>
         </View>
-        <TouchableOpacity 
-          style={styles.addButton}
-          onPress={() => setShowAddModal(true)}
-        >
-          <LinearGradient
-            colors={['#2563eb', '#1d4ed8']}
-            style={styles.addButtonGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-          >
-            <Ionicons name="people" size={20} color="#fff" />
-            <Text style={styles.addButtonText}>Add New School</Text>
-          </LinearGradient>
+        <TouchableOpacity style={styles.addSchoolInline} onPress={() => setShowAddModal(true)} activeOpacity={0.9}>
+          <Ionicons name="business-outline" size={18} color="#ea580c" />
+          <Text style={styles.addSchoolInlineText}>Add new school</Text>
+          <Ionicons name="chevron-forward" size={18} color="#f97316" />
         </TouchableOpacity>
       </View>
 
-      {/* Summary Cards */}
-      <View style={styles.summaryGrid}>
-        {/* Total Schools */}
-        <View style={styles.summaryCard}>
-          <LinearGradient
-            colors={['#fdba74', '#fb923c']}
-            style={styles.summaryCardGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-          >
-            <View style={styles.summaryCardContent}>
-              <View>
-                <Text style={styles.summaryCardLabel}>Total Schools</Text>
-                <Text style={styles.summaryCardValue}>{admins.length}</Text>
-              </View>
-              <Ionicons name="shield" size={48} color="#fff" />
-            </View>
-          </LinearGradient>
+      {/* Summary — clean cards (accent stripe + icon), aligned with board dashboard */}
+      <View style={styles.summaryRow}>
+        <View style={[styles.summaryStatCard, { borderLeftColor: '#fb923c' }]}>
+          <View style={[styles.summaryIconBadge, { backgroundColor: '#fff7ed' }]}>
+            <Ionicons name="shield-checkmark" size={18} color="#ea580c" />
+          </View>
+          <Text style={styles.summaryStatLabel}>Schools</Text>
+          <Text style={styles.summaryStatValue}>{admins.length}</Text>
         </View>
-
-        {/* Total Students */}
-        <View style={styles.summaryCard}>
-          <LinearGradient
-            colors={['#7dd3fc', '#38bdf8']}
-            style={styles.summaryCardGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={styles.summaryCardContent}>
-              <View>
-                <Text style={styles.summaryCardLabel}>Total Students</Text>
-                <Text style={styles.summaryCardValue}>{totalStudents}</Text>
-              </View>
-              <Ionicons name="people" size={48} color="#fff" />
-            </View>
-          </LinearGradient>
+        <View style={[styles.summaryStatCard, { borderLeftColor: '#38bdf8' }]}>
+          <View style={[styles.summaryIconBadge, { backgroundColor: '#eff6ff' }]}>
+            <Ionicons name="people" size={18} color="#0284c7" />
+          </View>
+          <Text style={styles.summaryStatLabel}>Students</Text>
+          <Text style={styles.summaryStatValue}>{totalStudents}</Text>
         </View>
-
-        {/* Total Teachers */}
-        <View style={styles.summaryCard}>
-          <LinearGradient
-            colors={['#2dd4bf', '#14b8a6']}
-            style={styles.summaryCardGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={styles.summaryCardContent}>
-              <View>
-                <Text style={styles.summaryCardLabel}>Total Teachers</Text>
-                <Text style={styles.summaryCardValue}>{totalTeachers}</Text>
-              </View>
-              <Ionicons name="school" size={48} color="#fff" />
-            </View>
-          </LinearGradient>
+        <View style={[styles.summaryStatCard, { borderLeftColor: '#14b8a6' }]}>
+          <View style={[styles.summaryIconBadge, { backgroundColor: '#f0fdfa' }]}>
+            <Ionicons name="school" size={18} color="#0d9488" />
+          </View>
+          <Text style={styles.summaryStatLabel}>Teachers</Text>
+          <Text style={styles.summaryStatValue}>{totalTeachers}</Text>
         </View>
       </View>
 
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
+      {/* Search */}
+      <View style={styles.searchSection}>
+        <Text style={styles.searchLabel}>Find a school</Text>
         <View style={styles.searchInputContainer}>
-          <Ionicons name="search" size={20} color="#9ca3af" style={styles.searchIcon} />
+          <Ionicons name="search" size={20} color="#94a3b8" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search schools by name, email, or school name..."
+            placeholder="Name, email, or school…"
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor="#94a3b8"
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
-              <Ionicons name="close-circle" size={20} color="#9ca3af" />
+            <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="close-circle" size={20} color="#94a3b8" />
             </TouchableOpacity>
           )}
         </View>
       </View>
 
       {/* Schools List */}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#f97316" />
@@ -250,31 +196,17 @@ export default function AdminsView() {
                 </View>
               </View>
 
-              {/* Stats Section */}
+              {/* Stats — inline chips */}
               <View style={styles.schoolCardStats}>
-                <View style={styles.statBox}>
-                  <LinearGradient
-                    colors={['#fdba74', '#fb923c']}
-                    style={styles.statBoxGradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                  >
-                    <Ionicons name="people" size={24} color="#fff" />
-                    <Text style={styles.statBoxValue}>{admin.stats?.students || 0}</Text>
-                    <Text style={styles.statBoxLabel}>Students</Text>
-                  </LinearGradient>
+                <View style={styles.miniStatChip}>
+                  <Ionicons name="people-outline" size={16} color="#c2410c" />
+                  <Text style={styles.miniStatChipValue}>{admin.stats?.students ?? 0}</Text>
+                  <Text style={styles.miniStatChipLabel}>Students</Text>
                 </View>
-                <View style={styles.statBox}>
-                  <LinearGradient
-                    colors={['#2dd4bf', '#14b8a6']}
-                    style={styles.statBoxGradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                  >
-                    <Ionicons name="school" size={24} color="#fff" />
-                    <Text style={styles.statBoxValue}>{admin.stats?.teachers || 0}</Text>
-                    <Text style={styles.statBoxLabel}>Teachers</Text>
-                  </LinearGradient>
+                <View style={[styles.miniStatChip, styles.miniStatChipTeal]}>
+                  <Ionicons name="school-outline" size={16} color="#0f766e" />
+                  <Text style={[styles.miniStatChipValue, { color: '#0f766e' }]}>{admin.stats?.teachers ?? 0}</Text>
+                  <Text style={[styles.miniStatChipLabel, { color: '#0d9488' }]}>Teachers</Text>
                 </View>
               </View>
 
@@ -381,94 +313,120 @@ export default function AdminsView() {
 }
 
 const styles = StyleSheet.create({
-  content: { flex: 1 },
+  content: { flex: 1, backgroundColor: '#f8fafc' },
+  scrollContent: {
+    paddingBottom: 100,
+  },
   header: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 8,
     paddingBottom: 16,
   },
+  headerTextBlock: {
+    marginBottom: 14,
+  },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '800',
-    color: '#111827',
+    color: '#0f172a',
     marginBottom: 4,
+    letterSpacing: -0.5,
   },
   headerSubtitle: {
-    fontSize: 16,
-    color: '#6b7280',
-    marginBottom: 16,
+    fontSize: 15,
+    color: '#64748b',
+    lineHeight: 22,
   },
-  addButton: {
-    borderRadius: 8,
-    overflow: 'hidden',
-    marginTop: 8,
-  },
-  addButtonGradient: {
+  addSchoolInline: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 8,
-  },
-  addButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  summaryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 20,
-    gap: 12,
-    marginBottom: 24,
-  },
-  summaryCard: {
-    flex: 1,
-    minWidth: '47%',
-    borderRadius: 12,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  summaryCardGradient: {
-    padding: 20,
-    minHeight: 100,
-  },
-  summaryCardContent: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
   },
-  summaryCardLabel: {
-    fontSize: 14,
-    color: '#fff',
-    opacity: 0.9,
+  addSchoolInlineText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    gap: 10,
+    marginBottom: 20,
+  },
+  summaryStatCard: {
+    flex: 1,
+    minWidth: 0,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderLeftWidth: 4,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  summaryIconBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 8,
   },
-  summaryCardValue: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#fff',
+  summaryStatLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748b',
+    marginBottom: 4,
+    textAlign: 'center',
   },
-  searchContainer: {
+  summaryStatValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0f172a',
+    letterSpacing: -0.3,
+  },
+  searchSection: {
     paddingHorizontal: 20,
     marginBottom: 20,
+  },
+  searchLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#475569',
+    marginBottom: 8,
   },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    paddingHorizontal: 16,
+    borderColor: '#e2e8f0',
+    paddingHorizontal: 14,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 1,
   },
   searchIcon: {
     marginRight: 12,
@@ -484,18 +442,20 @@ const styles = StyleSheet.create({
   },
   schoolsList: {
     paddingHorizontal: 20,
-    gap: 16,
+    gap: 14,
     paddingBottom: 20,
   },
   schoolCard: {
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
   },
   schoolCardHeader: {
     marginBottom: 16,
@@ -568,29 +528,35 @@ const styles = StyleSheet.create({
   },
   schoolCardStats: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
     marginBottom: 16,
   },
-  statBox: {
+  miniStatChip: {
     flex: 1,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  statBoxGradient: {
-    padding: 16,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#fff7ed',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: '#fed7aa',
   },
-  statBoxValue: {
-    fontSize: 24,
+  miniStatChipTeal: {
+    backgroundColor: '#f0fdfa',
+    borderColor: '#99f6e4',
+  },
+  miniStatChipValue: {
+    fontSize: 17,
     fontWeight: '800',
-    color: '#fff',
-    marginTop: 8,
-    marginBottom: 4,
+    color: '#c2410c',
   },
-  statBoxLabel: {
+  miniStatChipLabel: {
     fontSize: 12,
-    color: '#fff',
-    opacity: 0.9,
+    fontWeight: '600',
+    color: '#ea580c',
   },
   schoolCardFooter: {
     flexDirection: 'row',
@@ -619,6 +585,12 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#6b7280',
+  },
+  errorText: {
+    color: '#dc2626',
+    paddingHorizontal: 20,
+    marginBottom: 8,
+    fontSize: 13,
   },
   emptyContainer: {
     alignItems: 'center',

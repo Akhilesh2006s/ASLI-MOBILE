@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { API_BASE_URL } from '../../../src/lib/api-config';
-import * as SecureStore from 'expo-secure-store';
+import api from '../../../src/services/api/api';
 
 interface Stats {
   totalStudents: number;
@@ -57,31 +56,18 @@ export default function OverviewView() {
   const fetchAdminStats = async () => {
     try {
       setIsLoadingStats(true);
-      const token = await SecureStore.getItemAsync('authToken');
-      if (!token) {
-        setIsLoadingStats(false);
-        return;
-      }
-
-      const response = await fetch(`${API_BASE_URL}/api/admin/dashboard/stats`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const response = await api.get('/api/admin/dashboard/stats');
+      const payload = response?.data?.data || response?.data || {};
+      setStats({
+        totalStudents: payload.totalStudents || 0,
+        totalTeachers: payload.totalTeachers || 0,
+        totalClasses: payload.totalClasses || 0,
+        totalVideos: payload.totalVideos || 0,
+        totalQuizzes: payload.totalQuizzes || 0,
+        totalAssessments: payload.totalAssessments || 0,
+        activeUsers: payload.activeUsers || 0,
+        totalContent: payload.totalContent || 0,
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data) {
-          setStats({
-            totalStudents: data.data.totalStudents || 0,
-            totalTeachers: data.data.totalTeachers || 0,
-            totalClasses: data.data.totalClasses || 0,
-            totalVideos: data.data.totalVideos || 0,
-            totalQuizzes: data.data.totalQuizzes || 0,
-            totalAssessments: data.data.totalAssessments || 0,
-            activeUsers: data.data.activeUsers || 0,
-            totalContent: data.data.totalContent || 0,
-          });
-        }
-      }
     } catch (error) {
       console.error('Failed to fetch admin stats:', error);
     } finally {
@@ -92,22 +78,13 @@ export default function OverviewView() {
   const fetchStudentAnalytics = async () => {
     try {
       setIsLoadingAnalytics(true);
-      const token = await SecureStore.getItemAsync('authToken');
-      if (!token) {
-        setIsLoadingAnalytics(false);
-        return;
-      }
-
-      const response = await fetch(`${API_BASE_URL}/api/admin/students/analytics`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const response = await api.get('/api/admin/students/analytics');
+      const payload = response?.data?.data || response?.data || {};
+      setStudentAnalytics({
+        classDistribution: payload.classDistribution || [],
+        performanceMetrics: payload.performanceMetrics || { averageScore: 0, totalExamsTaken: 0, topPerformers: [] },
+        subjectPerformance: payload.subjectPerformance || [],
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data) {
-          setStudentAnalytics(data.data);
-        }
-      }
     } catch (error) {
       console.error('Failed to fetch student analytics:', error);
     } finally {
@@ -136,7 +113,7 @@ export default function OverviewView() {
           >
             <View style={styles.statCardContent}>
               <View style={styles.statCardIcon}>
-                <Ionicons name="people" size={32} color="#fff" />
+                <Ionicons name="people" size={22} color="#fff" />
               </View>
               <View style={styles.statCardText}>
                 <Text style={styles.statCardLabel}>Total Students</Text>
@@ -158,7 +135,7 @@ export default function OverviewView() {
           >
             <View style={styles.statCardContent}>
               <View style={styles.statCardIcon}>
-                <Ionicons name="school" size={32} color="#fff" />
+                <Ionicons name="school" size={26} color="#fff" />
               </View>
               <View style={styles.statCardText}>
                 <Text style={styles.statCardLabel}>Active Classes</Text>
@@ -180,7 +157,7 @@ export default function OverviewView() {
           >
             <View style={styles.statCardContent}>
               <View style={styles.statCardIcon}>
-                <Ionicons name="pulse" size={32} color="#fff" />
+                <Ionicons name="pulse" size={22} color="#fff" />
               </View>
               <View style={styles.statCardText}>
                 <Text style={styles.statCardLabel}>Active Users</Text>
@@ -202,7 +179,7 @@ export default function OverviewView() {
           >
             <View style={styles.statCardContent}>
               <View style={styles.statCardIcon}>
-                <Ionicons name="people" size={32} color="#fff" />
+                <Ionicons name="people" size={22} color="#fff" />
               </View>
               <View style={styles.statCardText}>
                 <Text style={styles.statCardLabel}>Teachers</Text>
@@ -224,7 +201,7 @@ export default function OverviewView() {
           >
             <View style={styles.statCardContent}>
               <View style={styles.statCardIcon}>
-                <Ionicons name="play" size={32} color="#fff" />
+                <Ionicons name="play" size={22} color="#fff" />
               </View>
               <View style={styles.statCardText}>
                 <Text style={styles.statCardLabel}>Videos</Text>
@@ -246,7 +223,7 @@ export default function OverviewView() {
           >
             <View style={styles.statCardContent}>
               <View style={styles.statCardIcon}>
-                <Ionicons name="locate" size={32} color="#fff" />
+                <Ionicons name="locate" size={26} color="#fff" />
               </View>
               <View style={styles.statCardText}>
                 <Text style={styles.statCardLabel}>Assessments</Text>
@@ -273,7 +250,7 @@ export default function OverviewView() {
             end={{ x: 1, y: 1 }}
             style={styles.analysisIcon}
           >
-            <Ionicons name="bar-chart" size={32} color="#fff" />
+            <Ionicons name="bar-chart" size={26} color="#fff" />
           </LinearGradient>
           <View>
             <Text style={styles.analysisTitle}>Detailed School Analysis</Text>
@@ -283,14 +260,14 @@ export default function OverviewView() {
 
         {isLoadingAnalytics ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#fb923c" />
+            <ActivityIndicator size="small" color="#fb923c" />
           </View>
         ) : (
           <View style={styles.analysisContent}>
             {/* Class Distribution */}
             <View style={styles.analysisSection}>
               <View style={styles.sectionHeader}>
-                <Ionicons name="school" size={20} color="#fb923c" />
+                <Ionicons name="school" size={17} color="#fb923c" />
                 <Text style={styles.sectionTitle}>Class Distribution</Text>
               </View>
               <View style={styles.sectionContent}>
@@ -312,7 +289,7 @@ export default function OverviewView() {
             {/* Performance Metrics */}
             <View style={styles.analysisSection}>
               <View style={styles.sectionHeader}>
-                <Ionicons name="trending-up" size={20} color="#10b981" />
+                <Ionicons name="trending-up" size={17} color="#10b981" />
                 <Text style={styles.sectionTitle}>Performance Metrics</Text>
               </View>
               <View style={styles.sectionContent}>
@@ -346,7 +323,7 @@ export default function OverviewView() {
             {/* Subject Performance */}
             <View style={styles.analysisSection}>
               <View style={styles.sectionHeader}>
-                <Ionicons name="book" size={20} color="#fb923c" />
+                <Ionicons name="book" size={17} color="#fb923c" />
                 <Text style={styles.sectionTitle}>Subject Performance</Text>
               </View>
               <View style={styles.sectionContent}>
@@ -393,7 +370,7 @@ export default function OverviewView() {
           >
             <View style={styles.adminCardContent}>
               <View style={styles.adminCardIcon}>
-                <Ionicons name="people" size={32} color="#fff" />
+                <Ionicons name="people" size={22} color="#fff" />
               </View>
               <View>
                 <Text style={styles.adminCardLabel}>Total Students Assigned</Text>
@@ -417,7 +394,7 @@ export default function OverviewView() {
           >
             <View style={styles.adminCardContent}>
               <View style={styles.adminCardIcon}>
-                <Ionicons name="school" size={32} color="#fff" />
+                <Ionicons name="school" size={26} color="#fff" />
               </View>
               <View>
                 <Text style={styles.adminCardLabel}>Total Teachers Assigned</Text>
@@ -442,28 +419,30 @@ const styles = StyleSheet.create({
     minHeight: 0,
   },
   contentContainer: {
-    paddingBottom: 20,
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: 14,
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 24,
+    gap: 8,
+    marginBottom: 14,
   },
   statCard: {
     flex: 1,
     minWidth: '47%',
-    borderRadius: 16,
+    borderRadius: 12,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
     shadowRadius: 8,
-    elevation: 6,
+    elevation: 4,
   },
   statCardGradient: {
-    padding: 16,
-    minHeight: 100,
+    padding: 11,
+    minHeight: 82,
   },
   statCardContent: {
     flexDirection: 'row',
@@ -471,10 +450,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statCardIcon: {
-    width: 48,
-    height: 48,
+    width: 40,
+    height: 40,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 12,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -483,20 +462,20 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   statCardLabel: {
-    fontSize: 12,
+    fontSize: 10,
     color: '#fff',
     opacity: 0.9,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   statCardValue: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '800',
     color: '#fff',
   },
   analysisCard: {
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 14,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -509,37 +488,37 @@ const styles = StyleSheet.create({
   analysisHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginBottom: 20,
+    gap: 8,
+    marginBottom: 12,
   },
   analysisIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
   },
   analysisTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '800',
     color: '#fb923c',
   },
   analysisSubtitle: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#64748b',
   },
   loadingContainer: {
-    padding: 40,
+    padding: 22,
     alignItems: 'center',
   },
   analysisContent: {
-    gap: 20,
+    gap: 12,
   },
   analysisSection: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 10,
+    padding: 11,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -549,16 +528,16 @@ const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
+    gap: 6,
+    marginBottom: 8,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '700',
     color: '#111827',
   },
   sectionContent: {
-    gap: 12,
+    gap: 8,
   },
   distributionItem: {
     flexDirection: 'row',
@@ -566,11 +545,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   distributionLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#374151',
   },
   distributionValue: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
     color: '#fb923c',
   },
@@ -578,118 +557,119 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   metricLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#64748b',
   },
   metricValue: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '800',
     color: '#10b981',
   },
   topPerformer: {
-    marginTop: 12,
-    paddingTop: 12,
+    marginTop: 8,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
   },
   topPerformerLabel: {
-    fontSize: 12,
+    fontSize: 10,
     color: '#9ca3af',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   topPerformerName: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
     color: '#111827',
     marginBottom: 2,
   },
   topPerformerScore: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#64748b',
   },
   subjectItem: {
-    marginBottom: 12,
+    marginBottom: 8,
   },
   subjectInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   subjectName: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
     color: '#374151',
   },
   subjectScore: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
     color: '#fb923c',
   },
   progressBar: {
-    height: 8,
+    height: 6,
     backgroundColor: '#e5e7eb',
-    borderRadius: 4,
+    borderRadius: 3,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
     backgroundColor: '#fb923c',
-    borderRadius: 4,
+    borderRadius: 3,
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#9ca3af',
     textAlign: 'center',
-    padding: 20,
+    padding: 12,
   },
   adminCards: {
-    gap: 16,
+    gap: 10,
   },
   adminCard: {
-    borderRadius: 16,
+    borderRadius: 12,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
     shadowRadius: 8,
-    elevation: 6,
+    elevation: 4,
   },
   adminCardGradient: {
-    padding: 20,
+    padding: 14,
   },
   adminCardContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 12,
   },
   adminCardIcon: {
-    width: 56,
-    height: 56,
+    width: 46,
+    height: 46,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 16,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
   adminCardLabel: {
-    fontSize: 14,
-    color: '#fff',
-    opacity: 0.9,
-    marginBottom: 8,
-  },
-  adminCardValue: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  adminCardSubtext: {
     fontSize: 12,
     color: '#fff',
+    opacity: 0.9,
+    marginBottom: 4,
+  },
+  adminCardValue: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  adminCardSubtext: {
+    fontSize: 10,
+    color: '#fff',
     opacity: 0.8,
+    lineHeight: 14,
   },
 });
 

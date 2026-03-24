@@ -4,8 +4,7 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { API_BASE_URL } from '../src/lib/api-config';
-import * as SecureStore from 'expo-secure-store';
+import api from '../src/services/api/api';
 import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
 
 export default function LearningPaths() {
@@ -27,15 +26,8 @@ export default function LearningPaths() {
 
   const fetchLearningPaths = async () => {
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/student/subjects`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      const data = await response.json();
-      if (data.success) {
+      const { data } = await api.get('/api/student/subjects');
+      if (data?.success !== false) {
         setLearningPaths(data.subjects || data.data || []);
       }
     } catch (error) {
@@ -74,7 +66,7 @@ export default function LearningPaths() {
             <TouchableOpacity
               key={path._id || index}
               style={styles.pathCard}
-              onPress={() => router.push(`/subject/${path._id}`)}
+              onPress={() => router.push(`/subject/${path._id || path.id}`)}
             >
               <View style={styles.pathHeader}>
                 <View style={[styles.pathIcon, { backgroundColor: '#dbeafe' }]}>

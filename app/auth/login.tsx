@@ -1,156 +1,137 @@
-import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  Image,
+  useWindowDimensions,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { API_BASE_URL, apiFetch } from '../../src/lib/api-config';
 import * as SecureStore from 'expo-secure-store';
+import { API_BASE_URL } from '../../src/services/api/api';
+import authService from '../../src/services/api/authService';
+import { useAuth } from '../../src/context/AuthContext';
+
+const THEME = {
+  primary: '#2563eb',
+  primaryDark: '#1d4ed8',
+  accent: '#6d94db',
+  text: '#111827',
+  textMuted: '#6b7280',
+  border: '#e5e7eb',
+  inputBg: '#f9fafb',
+  dangerBg: '#fee2e2',
+  dangerText: '#dc2626',
+};
 
 export default function Login() {
   const router = useRouter();
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  });
+  const { width } = useWindowDimensions();
+  const { signIn } = useAuth();
+  const compact = width < 380;
+  const cardWidth = useMemo(() => Math.min(width - 32, 460), [width]);
+
+  const [formData, setFormData] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = async () => {
-    setIsLoading(true);
-    setError('');
+  useEffect(() => {
+    const loadRememberedCredentials = async () => {
+      try {
+        const rememberedEmail = await SecureStore.getItemAsync('rememberedEmail');
+        const rememberedPassword = await SecureStore.getItemAsync('rememberedPassword');
+        if (rememberedEmail && rememberedPassword) {
+          setFormData({ email: rememberedEmail, password: rememberedPassword });
+          setRememberMe(true);
+        }
+      } catch (err) {
+        console.error('Failed to load remembered credentials:', err);
+      }
+    };
+    loadRememberedCredentials();
+  }, []);
 
-    // Validate form
+  const redirectByRole = (role: string) => {
+    if (role === 'super-admin') router.replace('/super-admin-dashboard');
+    else if (role === 'admin') router.replace('/admin/dashboard');
+    else if (role === 'teacher') router.replace('/teacher/dashboard');
+    else router.replace('/dashboard');
+  };
+
+  const handleSubmit = async () => {
+    setError('');
     if (!formData.email || !formData.password) {
-      setError('Please enter both email and password');
-      setIsLoading(false);
+      setError('Please enter both email and password.');
       return;
     }
 
+    setIsSubmitting(true);
     try {
-      console.log('🔌 Attempting login to:', `${API_BASE_URL}/api/auth/login`);
-      
-      // Add timeout to fetch request
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-      
-      // Use apiFetch helper for consistent error handling
-      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-        signal: controller.signal,
-      }).catch((fetchError) => {
-        clearTimeout(timeoutId);
-        throw fetchError;
-      });
-      
-      clearTimeout(timeoutId);
+      const data = await signIn(formData);
 
-      // Handle non-JSON responses
-      let data;
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        data = await response.json();
+      if (rememberMe) {
+        await SecureStore.setItemAsync('rememberedEmail', formData.email);
+        await SecureStore.setItemAsync('rememberedPassword', formData.password);
       } else {
-        const text = await response.text();
-        console.error('Non-JSON response:', text);
-        throw new Error(`Server error: ${response.status} ${response.statusText}`);
+        await SecureStore.deleteItemAsync('rememberedEmail');
+        await SecureStore.deleteItemAsync('rememberedPassword');
       }
 
-      if (response.ok) {
-        if (data.token) {
-          await SecureStore.setItemAsync('authToken', data.token);
-          await SecureStore.setItemAsync('userRole', data.user.role);
-          await SecureStore.setItemAsync('userEmail', data.user.email);
-          console.log('Login successful, role:', data.user.role);
-        }
-
-        // Redirect based on user role
-        if (data.user.role === 'super-admin') {
-          console.log('Redirecting to super-admin dashboard');
-          router.replace('/super-admin/dashboard');
-        } else if (data.user.role === 'admin') {
-          console.log('Redirecting to admin dashboard');
-          router.replace('/admin/dashboard');
-        } else if (data.user.role === 'teacher') {
-          console.log('Redirecting to teacher dashboard');
-          router.replace('/teacher/dashboard');
-        } else {
-          console.log('Redirecting to student dashboard');
-          router.replace('/dashboard');
-        }
-      } else {
-        setError(data.message || data.error || `Login failed: ${response.status}`);
-      }
+      redirectByRole(data?.user?.role || 'student');
     } catch (err: any) {
-      console.error('Login error:', err);
-      
-      // More specific error messages
-      if (err.name === 'AbortError' || err.message?.includes('aborted')) {
-        setError('Request timed out. Please check your internet connection and try again.');
-      } else if (err.message?.includes('Network request failed') || err.message?.includes('Failed to fetch')) {
-        setError(`Cannot connect to server.\n\nPlease check:\n• Your internet connection\n• Server is running\n\nServer: ${API_BASE_URL}`);
-      } else if (err.message?.includes('timeout')) {
-        setError('Request timed out. Please try again.');
-      } else if (err.message) {
-        setError(err.message);
-      } else {
-        setError('Network error. Please check your connection and try again.');
-      }
+      const fallback = `Cannot connect to server. Please check network and server status.\n${API_BASE_URL}`;
+      setError(err?.friendlyMessage || err?.message || fallback);
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar style="dark" />
-      <LinearGradient
-        colors={['#e0f2fe', '#dbeafe', '#cffafe']}
-        style={StyleSheet.absoluteFill}
-      />
-      
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="arrow-back" size={20} color="#374151" />
-        </TouchableOpacity>
+      <LinearGradient colors={['#e0f2fe', '#dbeafe', '#cffafe']} style={StyleSheet.absoluteFill} />
 
-        <View style={styles.card}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={[styles.card, { width: cardWidth, padding: compact ? 20 : 24 }]}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={20} color="#374151" />
+          </TouchableOpacity>
+
           <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <Text style={styles.logoText}>ASLILEARN</Text>
+            <View style={styles.brandRow}>
+              <Image source={require('../../image.png')} style={styles.brandIcon} resizeMode="contain" />
+              <Text style={styles.brandText}>ASLILEARN AI</Text>
             </View>
-            <Text style={styles.title}>Welcome Back</Text>
+            <Text style={[styles.title, compact && { fontSize: 26 }]}>Welcome Back</Text>
             <Text style={styles.subtitle}>Sign in to continue your learning journey</Text>
           </View>
 
           {error ? (
             <View style={styles.errorContainer}>
-              <Ionicons name="alert-circle" size={20} color="#dc2626" style={{ marginRight: 8 }} />
+              <Ionicons name="alert-circle" size={18} color={THEME.dangerText} style={styles.errorIcon} />
               <Text style={styles.errorText}>{error}</Text>
             </View>
           ) : null}
 
           <View style={styles.form}>
             <View style={styles.inputContainer}>
-              <Ionicons name="mail" size={20} color="#6366f1" style={styles.inputIcon} />
+              <Ionicons name="mail" size={18} color={THEME.accent} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="Email Address"
                 placeholderTextColor="#9ca3af"
                 value={formData.email}
-                onChangeText={(text) => setFormData({ ...formData, email: text })}
+                onChangeText={(email) => setFormData((prev) => ({ ...prev, email }))}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoComplete="email"
@@ -158,42 +139,38 @@ export default function Login() {
             </View>
 
             <View style={styles.inputContainer}>
-              <Ionicons name="lock-closed" size={20} color="#6366f1" style={styles.inputIcon} />
+              <Ionicons name="lock-closed" size={18} color={THEME.accent} style={styles.inputIcon} />
               <TextInput
-                style={[styles.input, { paddingRight: 50 }]}
+                style={[styles.input, styles.passwordInput]}
                 placeholder="Password"
                 placeholderTextColor="#9ca3af"
                 value={formData.password}
-                onChangeText={(text) => setFormData({ ...formData, password: text })}
+                onChangeText={(password) => setFormData((prev) => ({ ...prev, password }))}
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
               />
-              <TouchableOpacity
-                style={styles.eyeButton}
-                onPress={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? (
-                  <Ionicons name="eye-off" size={20} color="#9ca3af" />
-                ) : (
-                  <Ionicons name="eye" size={20} color="#9ca3af" />
-                )}
+              <TouchableOpacity style={styles.eyeButton} onPress={() => setShowPassword((v) => !v)}>
+                <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color="#9ca3af" />
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity style={styles.forgotButton}>
-              <Text style={styles.forgotText}>Forgot password?</Text>
+            <TouchableOpacity style={styles.rememberRow} onPress={() => setRememberMe((v) => !v)} activeOpacity={0.85}>
+              <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                {rememberMe ? <Ionicons name="checkmark" size={14} color="#fff" /> : null}
+              </View>
+              <Text style={styles.rememberText}>Remember me</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
+              style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
               onPress={handleSubmit}
-              disabled={isLoading}
+              disabled={isSubmitting}
             >
-              {isLoading ? (
+              {isSubmitting ? (
                 <ActivityIndicator color="#fff" />
               ) : (
                 <>
-                  <Ionicons name="flash" size={20} color="#fff" />
+                  <Ionicons name="flash" size={18} color="#fff" />
                   <Text style={styles.submitButtonText}>Sign In</Text>
                 </>
               )}
@@ -203,11 +180,8 @@ export default function Login() {
           <View style={styles.footer}>
             <Text style={styles.footerText}>
               Don't have an account?{' '}
-              <Text 
-                style={styles.footerLink}
-                onPress={() => router.push('/auth/register')}
-              >
-                Sign up here
+              <Text style={styles.footerLink} onPress={() => router.push('/auth/register')}>
+                Sign up
               </Text>
             </Text>
           </View>
@@ -218,133 +192,94 @@ export default function Login() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
-    padding: 20,
     justifyContent: 'center',
-  },
-  backButton: {
-    position: 'absolute',
-    top: 20,
-    left: 20,
-    zIndex: 10,
-    padding: 8,
+    alignItems: 'center',
+    padding: 16,
   },
   card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: 'rgba(255, 255, 255, 0.96)',
     borderRadius: 24,
-    padding: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 10,
+    shadowRadius: 18,
+    elevation: 8,
   },
-  header: {
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f3f4f6',
     alignItems: 'center',
-    marginBottom: 32,
+    justifyContent: 'center',
+    marginBottom: 10,
   },
-  logoContainer: {
-    marginBottom: 16,
-  },
-  logoText: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#2563eb',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    textAlign: 'center',
-  },
+  header: { alignItems: 'center', marginBottom: 26 },
+  brandRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  brandIcon: { width: 32, height: 32, marginRight: 8 },
+  brandText: { fontSize: 19, fontWeight: '800', color: THEME.accent, letterSpacing: 0.4 },
+  title: { fontSize: 28, fontWeight: '800', color: THEME.text, marginBottom: 6 },
+  subtitle: { fontSize: 14, color: THEME.textMuted, textAlign: 'center' },
   errorContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fee2e2',
+    alignItems: 'flex-start',
+    backgroundColor: THEME.dangerBg,
+    borderRadius: 12,
     padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
+    marginBottom: 14,
   },
-  errorText: {
-    flex: 1,
-    color: '#dc2626',
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  form: {
-    gap: 16,
-  },
+  errorIcon: { marginRight: 8, marginTop: 1 },
+  errorText: { flex: 1, color: THEME.dangerText, fontSize: 13, lineHeight: 18 },
+  form: { gap: 14 },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f9fafb',
-    borderRadius: 12,
+    backgroundColor: THEME.inputBg,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    paddingHorizontal: 16,
-    height: 56,
+    borderColor: THEME.border,
+    height: 54,
+    paddingHorizontal: 14,
   },
-  inputIcon: {
-    marginRight: 12,
+  inputIcon: { marginRight: 10 },
+  input: { flex: 1, fontSize: 16, color: THEME.text },
+  passwordInput: { paddingRight: 44 },
+  eyeButton: { padding: 4 },
+  rememberRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: '#9ca3af',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    marginRight: 10,
   },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: '#111827',
-  },
-  eyeButton: {
-    padding: 4,
-  },
-  forgotButton: {
-    alignSelf: 'flex-end',
-    marginTop: -8,
-  },
-  forgotText: {
-    color: '#2563eb',
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  checkboxChecked: { backgroundColor: THEME.primary, borderColor: THEME.primary },
+  rememberText: { color: '#374151', fontSize: 14, fontWeight: '500' },
   submitButton: {
+    marginTop: 6,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: THEME.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#2563eb',
-    paddingVertical: 16,
-    borderRadius: 12,
-    marginTop: 8,
   },
-  submitButtonDisabled: {
-    opacity: 0.6,
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  submitButtonDisabled: { opacity: 0.65 },
+  submitButtonText: { color: '#fff', fontSize: 16, fontWeight: '700', marginLeft: 8 },
   footer: {
-    marginTop: 24,
-    paddingTop: 24,
+    marginTop: 20,
+    paddingTop: 18,
+    borderTopColor: THEME.border,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
     alignItems: 'center',
   },
-  footerText: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  footerLink: {
-    color: '#2563eb',
-    fontWeight: '600',
-  },
+  footerText: { color: THEME.textMuted, fontSize: 14 },
+  footerLink: { color: THEME.primaryDark, fontWeight: '700' },
 });
-

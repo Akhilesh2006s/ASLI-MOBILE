@@ -51,7 +51,7 @@ export async function getDashboardPath(): Promise<string | null> {
     
     switch (userRole) {
       case 'super-admin':
-        return '/super-admin/dashboard';
+        return '/super-admin-dashboard';
       case 'admin':
         return '/admin/dashboard';
       case 'teacher':

@@ -1,10 +1,7 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { API_BASE_URL } from '../../../src/lib/api-config';
-import * as SecureStore from 'expo-secure-store';
+import api from '../../../src/services/api/api';
 
 interface BoardDashboardViewProps {
   boardCode?: string;
@@ -20,12 +17,12 @@ interface BoardAnalytics {
   participationRate: string;
 }
 
-export default function BoardDashboardView({ boardCode = 'ASLI_EXCLUSIVE_SCHOOLS', onBack }: BoardDashboardViewProps) {
-  const router = useRouter();
+export default function BoardDashboardView({ boardCode = 'ASLI_EXCLUSIVE_SCHOOLS' }: BoardDashboardViewProps) {
   const [boardData, setBoardData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [comparisonData, setComparisonData] = useState<BoardAnalytics[]>([]);
   const [isLoadingComparison, setIsLoadingComparison] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchBoardDashboard();
@@ -48,18 +45,17 @@ export default function BoardDashboardView({ boardCode = 'ASLI_EXCLUSIVE_SCHOOLS
   const fetchBoardDashboard = async () => {
     setIsLoading(true);
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/super-admin/boards/${boardCode}/dashboard`, {
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setBoardData(data.data);
-        }
+      setError('');
+      const response = await api.get(`/api/super-admin/boards/${boardCode}/dashboard`);
+      const data = response?.data;
+      if (data?.success) {
+        setBoardData(data.data);
+      } else {
+        setBoardData(data?.data || data || null);
       }
-    } catch (error) {
-      console.error('Error fetching board dashboard:', error);
+    } catch (err: any) {
+      setError(err?.friendlyMessage || 'Error fetching board dashboard');
+      console.error('Error fetching board dashboard:', err);
     } finally {
       setIsLoading(false);
     }
@@ -68,28 +64,22 @@ export default function BoardDashboardView({ boardCode = 'ASLI_EXCLUSIVE_SCHOOLS
   const fetchBoardComparison = async () => {
     setIsLoadingComparison(true);
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      
       // Try comparison endpoint first
-      const comparisonResponse = await fetch(`${API_BASE_URL}/api/super-admin/boards/analytics/comparison`, {
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      });
+      const comparisonResponse = await api.get('/api/super-admin/boards/analytics/comparison');
+      const comparisonData = comparisonResponse?.data;
 
-      if (comparisonResponse.ok) {
-        const comparisonData = await comparisonResponse.json();
-        if (comparisonData.success && comparisonData.data) {
-          const formatted = comparisonData.data.map((item: any) => ({
-            board: formatBoardName(item.boardName || item.board),
-            students: item.students || 0,
-            exams: item.exams || 0,
-            totalAttempts: item.totalAttempts || 0,
-            averageScore: item.averageScore || '0.00',
-            participationRate: item.participationRate || '0.0'
-          }));
-          setComparisonData(formatted);
-          setIsLoadingComparison(false);
-          return;
-        }
+      if (comparisonData?.success && comparisonData?.data) {
+        const formatted = comparisonData.data.map((item: any) => ({
+          board: formatBoardName(item.boardName || item.board),
+          students: item.students || 0,
+          exams: item.exams || 0,
+          totalAttempts: item.totalAttempts || 0,
+          averageScore: item.averageScore || '0.00',
+          participationRate: item.participationRate || '0.0'
+        }));
+        setComparisonData(formatted);
+        setIsLoadingComparison(false);
+        return;
       }
 
       // Fallback: use dashboard data
@@ -128,8 +118,8 @@ export default function BoardDashboardView({ boardCode = 'ASLI_EXCLUSIVE_SCHOOLS
         // If no boardData yet, set empty array
         setComparisonData([]);
       }
-    } catch (error) {
-      console.error('Error fetching board comparison:', error);
+    } catch (err: any) {
+      console.error('Error fetching board comparison:', err);
     } finally {
       setIsLoadingComparison(false);
     }
@@ -203,7 +193,7 @@ export default function BoardDashboardView({ boardCode = 'ASLI_EXCLUSIVE_SCHOOLS
       <ScrollView style={styles.content}>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle" size={64} color="#d1d5db" />
-          <Text style={styles.errorText}>No board data available</Text>
+          <Text style={styles.errorText}>{error || 'No board data available'}</Text>
           <TouchableOpacity style={styles.refreshButton} onPress={fetchBoardDashboard}>
             <Text style={styles.refreshButtonText}>Refresh</Text>
           </TouchableOpacity>
@@ -219,58 +209,60 @@ export default function BoardDashboardView({ boardCode = 'ASLI_EXCLUSIVE_SCHOOLS
 
   return (
     <ScrollView style={styles.content}>
-      {/* Header with back button */}
+      {/* Title — navigation via dashboard menu / FAB */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={onBack}
-        >
-          <LinearGradient
-            colors={['#fb923c', '#38bdf8']}
-            style={styles.backButtonGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-          >
-            <Ionicons name="arrow-back" size={20} color="#fff" />
-            <Text style={styles.backButtonText}>Back to Dashboard</Text>
-          </LinearGradient>
-        </TouchableOpacity>
         <View style={styles.headerText}>
           <Text style={styles.headerTitle}>{boardName}</Text>
           <Text style={styles.headerSubtitle}>Manage content, exams, subjects, and view analytics</Text>
         </View>
       </View>
 
-      {/* Board Stats - 4 cards */}
+      {/* Board Stats — clean cards (single surface, accent stripe + icon) */}
       <View style={styles.statsGrid}>
-        {/* Students Card */}
-        <View style={styles.statCard}>
-          <Text style={styles.statLabel}>Students</Text>
-          <Text style={[styles.statValue, { color: '#fb923c' }]}>
+        <View style={[styles.statCard, { borderLeftColor: '#fb923c' }]}>
+          <View style={styles.statCardTop}>
+            <View style={[styles.statIconBadge, { backgroundColor: '#fff7ed' }]}>
+              <Ionicons name="people" size={20} color="#ea580c" />
+            </View>
+            <Text style={styles.statLabel}>Students</Text>
+          </View>
+          <Text style={styles.statValue}>
             {typeof boardData.stats?.students === 'number' ? boardData.stats.students.toLocaleString() : '0'}
           </Text>
         </View>
 
-        {/* Teachers Card */}
-        <View style={styles.statCard}>
-          <Text style={[styles.statLabel, { color: '#14b8a6' }]}>Teachers</Text>
-          <Text style={[styles.statValue, { color: '#2dd4bf' }]}>
+        <View style={[styles.statCard, { borderLeftColor: '#14b8a6' }]}>
+          <View style={styles.statCardTop}>
+            <View style={[styles.statIconBadge, { backgroundColor: '#f0fdfa' }]}>
+              <Ionicons name="school" size={20} color="#0d9488" />
+            </View>
+            <Text style={styles.statLabel}>Teachers</Text>
+          </View>
+          <Text style={styles.statValue}>
             {typeof boardData.stats?.teachers === 'number' ? boardData.stats.teachers.toLocaleString() : '0'}
           </Text>
         </View>
 
-        {/* Exams Card */}
-        <View style={styles.statCard}>
-          <Text style={[styles.statLabel, { color: '#f97316' }]}>Exams</Text>
-          <Text style={[styles.statValue, { color: '#fb923c' }]}>
+        <View style={[styles.statCard, { borderLeftColor: '#f59e0b' }]}>
+          <View style={styles.statCardTop}>
+            <View style={[styles.statIconBadge, { backgroundColor: '#fffbeb' }]}>
+              <Ionicons name="document-text" size={20} color="#d97706" />
+            </View>
+            <Text style={styles.statLabel}>Exams</Text>
+          </View>
+          <Text style={styles.statValue}>
             {typeof boardData.stats?.exams === 'number' ? boardData.stats.exams.toLocaleString() : '0'}
           </Text>
         </View>
 
-        {/* Avg Score Card */}
-        <View style={styles.statCard}>
-          <Text style={[styles.statLabel, { color: '#7c3aed' }]}>Avg Score</Text>
-          <Text style={[styles.statValue, { color: '#2dd4bf' }]}>
+        <View style={[styles.statCard, { borderLeftColor: '#8b5cf6' }]}>
+          <View style={styles.statCardTop}>
+            <View style={[styles.statIconBadge, { backgroundColor: '#f5f3ff' }]}>
+              <Ionicons name="analytics" size={20} color="#7c3aed" />
+            </View>
+            <Text style={styles.statLabel}>Avg Score</Text>
+          </View>
+          <Text style={styles.statValue}>
             {boardData.stats?.averageScore ? `${boardData.stats.averageScore}%` : '0.00%'}
           </Text>
         </View>
@@ -375,28 +367,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   header: {
-    padding: 20,
-    paddingBottom: 16,
-  },
-  backButton: {
-    marginBottom: 16,
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  backButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 8,
-  },
-  backButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
   headerText: {
-    marginTop: 8,
+    marginTop: 0,
   },
   headerTitle: {
     fontSize: 28,
@@ -417,26 +393,43 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: '47%',
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
-    borderRadius: 12,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: '#e5e7eb',
+    borderLeftWidth: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  statLabel: {
-    fontSize: 14,
-    color: '#f97316',
-    fontWeight: '600',
+  statCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     marginBottom: 8,
   },
+  statIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statLabel: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748b',
+  },
   statValue: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '800',
+    color: '#0f172a',
+    letterSpacing: -0.4,
   },
   section: {
     paddingHorizontal: 20,

@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
-import { API_BASE_URL } from '../../../src/lib/api-config';
+import api from '../../../src/services/api/api';
 
 export default function LearningPathsView() {
+  const { width } = useWindowDimensions();
+  const compact = width < 380;
+  const isTablet = width >= 768;
+  const cardWidth = isTablet ? '31.5%' : '47%';
   const [activeTab, setActiveTab] = useState<'subjects' | 'quizzes'>('subjects');
   const [subjects, setSubjects] = useState<any[]>([]);
   const [quizzes, setQuizzes] = useState<any[]>([]);
@@ -20,19 +24,9 @@ export default function LearningPathsView() {
   const fetchSubjects = async () => {
     try {
       setIsLoadingSubjects(true);
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/student/subjects`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const subjectsArray = data.subjects || data.data || [];
-        setSubjects(subjectsArray);
-      }
+      const { data } = await api.get('/api/student/subjects');
+      const subjectsArray = data.subjects || data.data || [];
+      setSubjects(subjectsArray);
     } catch (error) {
       console.error('Failed to fetch subjects:', error);
     } finally {
@@ -43,18 +37,8 @@ export default function LearningPathsView() {
   const fetchQuizzes = async () => {
     try {
       setIsLoadingQuizzes(true);
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/student/quizzes`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setQuizzes(data.data || []);
-      }
+      const { data } = await api.get('/api/student/quizzes');
+      setQuizzes(data.data || []);
     } catch (error) {
       console.error('Failed to fetch quizzes:', error);
     } finally {
@@ -72,8 +56,27 @@ export default function LearningPathsView() {
     return 'book';
   };
 
+  const libraryTiles = [
+    { key: 'textbook', label: 'TextBook', count: '3 files', icon: 'book-outline' as keyof typeof Ionicons.glyphMap },
+    { key: 'workbook', label: 'Workbook', count: '0 files', icon: 'document-text-outline' as keyof typeof Ionicons.glyphMap },
+    { key: 'material', label: 'Material', count: '0 files', icon: 'document-outline' as keyof typeof Ionicons.glyphMap },
+    { key: 'video', label: 'Video', count: '78 files', icon: 'videocam-outline' as keyof typeof Ionicons.glyphMap },
+    { key: 'audio', label: 'Audio', count: '0 files', icon: 'headset-outline' as keyof typeof Ionicons.glyphMap },
+    { key: 'homework', label: 'Homework', count: '0 files', icon: 'clipboard-outline' as keyof typeof Ionicons.glyphMap },
+  ];
+
   return (
     <View style={styles.container}>
+      <LinearGradient
+        colors={['#3b82f6', '#2563eb']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={[styles.banner, compact && { paddingHorizontal: 12 }]}
+      >
+        <Text style={styles.bannerTitle}>Learning Paths for You</Text>
+        <Text style={styles.bannerSub}>Choose your learning journey and master your subjects.</Text>
+      </LinearGradient>
+
       {/* Tabs */}
       <View style={styles.tabsContainer}>
         <TouchableOpacity
@@ -96,7 +99,7 @@ export default function LearningPathsView() {
 
       {/* Subjects Tab */}
       {activeTab === 'subjects' && (
-        <View style={styles.content}>
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {isLoadingSubjects ? (
             <ActivityIndicator size="large" color="#3b82f6" style={styles.loader} />
           ) : subjects.length === 0 ? (
@@ -112,7 +115,7 @@ export default function LearningPathsView() {
                 return (
                   <TouchableOpacity
                     key={subject._id || subject.id}
-                    style={styles.subjectCard}
+                    style={[styles.subjectCard, { width: cardWidth }]}
                     onPress={() => router.push(`/subject/${subject._id || subject.id}`)}
                   >
                     <View style={styles.subjectIconContainer}>
@@ -124,7 +127,63 @@ export default function LearningPathsView() {
               })}
             </View>
           )}
-        </View>
+
+          {!isLoadingSubjects && subjects.length > 0 && (
+            <>
+              <View style={styles.sectionCard}>
+                <Text style={styles.sectionTitle}>Digital Library</Text>
+                <Text style={styles.sectionSub}>Browse by Type</Text>
+                <View style={styles.libraryGrid}>
+                  {libraryTiles.map((tile) => (
+                    <TouchableOpacity key={tile.key} style={[styles.libraryCard, { width: cardWidth }]} activeOpacity={0.85}>
+                      <LinearGradient
+                        colors={['#60a5fa', '#8b5cf6']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.libraryIconWrap}
+                      >
+                        <Ionicons name={tile.icon} size={24} color="#fff" />
+                      </LinearGradient>
+                      <Text style={styles.libraryTitle}>{tile.label}</Text>
+                      <Text style={styles.libraryCount}>{tile.count}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.sectionCard}>
+                <Text style={styles.sectionTitle}>Recommended for You</Text>
+                <View style={styles.recommendList}>
+                  <View style={styles.recommendCard}>
+                    <View style={styles.recommendIconPill}>
+                      <Ionicons name="flash-outline" size={16} color="#fb923c" />
+                    </View>
+                    <Text style={styles.recommendTitle}>IQ/Rank Boost Practice</Text>
+                    <Text style={styles.recommendDesc}>
+                      Boost your IQ and improve your rank with targeted practice.
+                    </Text>
+                    <TouchableOpacity style={styles.recommendButton} activeOpacity={0.85}>
+                      <Text style={styles.recommendButtonText}>Start Learning</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.recommendCard}>
+                    <View style={styles.recommendIconPill}>
+                      <Ionicons name="game-controller-outline" size={16} color="#3b82f6" />
+                    </View>
+                    <Text style={styles.recommendTitle}>Play Games</Text>
+                    <Text style={styles.recommendDesc}>
+                      Engage in fun educational games to enhance your learning experience.
+                    </Text>
+                    <View style={styles.comingSoonChip}>
+                      <Text style={styles.comingSoonText}>Coming Soon</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            </>
+          )}
+        </ScrollView>
       )}
 
       {/* Quizzes Tab */}
@@ -201,6 +260,22 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  banner: {
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 14,
+  },
+  bannerTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  bannerSub: {
+    marginTop: 4,
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.9)',
+  },
   tabsContainer: {
     flexDirection: 'row',
     backgroundColor: '#f3f4f6',
@@ -228,6 +303,25 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  sectionCard: {
+    marginTop: 16,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    padding: 14,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  sectionSub: {
+    marginTop: 4,
+    marginBottom: 12,
+    fontSize: 13,
+    color: '#6b7280',
   },
   loader: {
     marginTop: 40,
@@ -278,6 +372,96 @@ const styles = StyleSheet.create({
   },
   quizzesList: {
     gap: 16,
+  },
+  libraryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  libraryCard: {
+    width: '48%',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  libraryIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  libraryTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  libraryCount: {
+    marginTop: 4,
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  recommendList: {
+    gap: 12,
+  },
+  recommendCard: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    padding: 12,
+    backgroundColor: '#fff',
+  },
+  recommendIconPill: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: '#fff7ed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  recommendTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  recommendDesc: {
+    marginTop: 4,
+    fontSize: 13,
+    color: '#6b7280',
+  },
+  recommendButton: {
+    marginTop: 12,
+    alignSelf: 'flex-start',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  recommendButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  comingSoonChip: {
+    marginTop: 12,
+    alignSelf: 'flex-start',
+    backgroundColor: '#dbeafe',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  comingSoonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#2563eb',
   },
   quizCard: {
     backgroundColor: '#fff',

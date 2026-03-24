@@ -7,17 +7,18 @@ import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../src/lib/api-config';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
+import { useAuth } from '../../src/context/AuthContext';
+import authService from '../../src/services/api/authService';
 import AIClassesView from './components/AIClassesView';
 import StudentsView from './components/StudentsView';
-import AssessmentsView from './components/AssessmentsView';
-import RemarksView from './components/RemarksView';
 import ClassDashboardView from './components/ClassDashboardView';
 import EduOTTView from './components/EduOTTView';
 import VidyaAIView from './components/VidyaAIView';
 
-type TeacherView = 'ai-classes' | 'students' | 'assessments' | 'remarks' | 'class-dashboard' | 'eduott' | 'vidya-ai';
+type TeacherView = 'ai-classes' | 'students' | 'class-dashboard' | 'eduott' | 'vidya-ai';
 
 export default function TeacherDashboard() {
+  const { signOut } = useAuth();
   const [currentView, setCurrentView] = useState<TeacherView>('ai-classes');
   const [modalVisible, setModalVisible] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -161,26 +162,13 @@ export default function TeacherDashboard() {
   };
 
   const handleLogout = async () => {
+    setModalVisible(false);
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      if (token) {
-        try {
-          await fetch(`${API_BASE_URL}/api/auth/logout`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          });
-        } catch (error) {
-          console.error('Logout API error:', error);
-        }
-      }
-      await SecureStore.deleteItemAsync('authToken');
-      await SecureStore.deleteItemAsync('user');
-      router.replace('/auth/login');
+      await signOut();
     } catch (error) {
       console.error('Logout failed:', error);
+      await authService.clearAuth();
+    } finally {
       router.replace('/auth/login');
     }
   };
@@ -188,8 +176,6 @@ export default function TeacherDashboard() {
   const navigationItems: { view: TeacherView; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
     { view: 'ai-classes', label: 'AI Classes', icon: 'school' },
     { view: 'students', label: 'Students', icon: 'people' },
-    { view: 'assessments', label: 'Assessments', icon: 'clipboard' },
-    { view: 'remarks', label: 'Remarks', icon: 'chatbubble-ellipses' },
     { view: 'class-dashboard', label: 'Class Dashboard', icon: 'stats-chart' },
     { view: 'eduott', label: 'EduOTT', icon: 'play' },
     { view: 'vidya-ai', label: 'Vidya AI', icon: 'sparkles' },
@@ -201,10 +187,6 @@ export default function TeacherDashboard() {
         return <AIClassesView stats={stats} />;
       case 'students':
         return <StudentsView />;
-      case 'assessments':
-        return <AssessmentsView />;
-      case 'remarks':
-        return <RemarksView />;
       case 'class-dashboard':
         return <ClassDashboardView />;
       case 'eduott':
@@ -330,10 +312,10 @@ export default function TeacherDashboard() {
         </View>
       )}
 
-      {/* Content */}
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+      {/* Content — use View, not ScrollView: child views (e.g. StudentsView FlatList) own vertical scrolling */}
+      <View style={[styles.content, styles.contentPadding]}>
         {renderContent()}
-      </ScrollView>
+      </View>
 
       {/* Navigation FAB */}
       <TouchableOpacity
@@ -526,8 +508,9 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    minHeight: 0,
   },
-  contentContainer: {
+  contentPadding: {
     padding: 20,
     paddingBottom: 20,
   },

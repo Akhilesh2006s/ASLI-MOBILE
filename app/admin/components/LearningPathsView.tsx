@@ -1,19 +1,25 @@
-import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Linking,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { API_BASE_URL } from '../../../src/lib/api-config';
-import * as SecureStore from 'expo-secure-store';
+import api from '../../../src/services/api/api';
+import {
+  isVideoContent as lpIsVideo,
+  type LearningPathContentItem,
+} from '../../../src/lib/learningPathContent';
 
-interface ContentItem {
-  _id?: string;
-  id?: string;
+interface ContentItem extends LearningPathContentItem {
   title: string;
   type: string;
   subject?: string;
-  fileUrl?: string;
-  driveLink?: string;
-  description?: string;
 }
 
 interface Subject {
@@ -26,6 +32,13 @@ interface Subject {
   asliPrepContent?: ContentItem[];
 }
 
+function parseSubjectsPayload(data: any): any[] {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data?.subjects)) return data.subjects;
+  return [];
+}
+
 export default function LearningPathsView() {
   const router = useRouter();
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -34,100 +47,52 @@ export default function LearningPathsView() {
   const [isLoadingContent, setIsLoadingContent] = useState(false);
   const [expandedSubjectId, setExpandedSubjectId] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchSubjects();
-  }, []);
-
-  useEffect(() => {
-    if (subjects.length > 0) {
-      fetchSubjectsWithContent();
-    }
-  }, [subjects]);
-
-  const fetchSubjects = async () => {
+  const fetchSubjects = useCallback(async () => {
     try {
       setIsLoading(true);
-      const token = await SecureStore.getItemAsync('authToken');
-      if (!token) {
-        console.error('No auth token found');
-        setIsLoading(false);
-        return;
-      }
+      const response = await api.get('/api/admin/subjects');
+      const raw = response?.data;
+      const subjectsArray = parseSubjectsPayload(raw);
 
-      const response = await fetch(`${API_BASE_URL}/api/admin/subjects`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Learning paths subjects API response:', data);
-        
-        // Handle different response formats
-        let subjectsArray = [];
-        if (Array.isArray(data)) {
-          subjectsArray = data;
-        } else if (data.data && Array.isArray(data.data)) {
-          subjectsArray = data.data;
-        } else if (data.subjects && Array.isArray(data.subjects)) {
-          subjectsArray = data.subjects;
-        }
-        
-        setSubjects(subjectsArray.map((subject: any) => ({
-          _id: subject._id || subject.id,
-          id: subject._id || subject.id,
+      setSubjects(
+        subjectsArray.map((subject: any) => ({
+          _id: String(subject._id || subject.id || ''),
+          id: String(subject._id || subject.id || ''),
           name: subject.name || 'Unknown Subject',
           description: subject.description || '',
           board: subject.board || '',
-          totalContent: 0
-        })));
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Failed to fetch subjects:', response.status, errorData);
-        setSubjects([]);
-      }
+          totalContent: 0,
+        }))
+      );
     } catch (error) {
       console.error('Failed to fetch subjects:', error);
       setSubjects([]);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const fetchSubjectsWithContent = async () => {
+  useEffect(() => {
+    fetchSubjects();
+  }, [fetchSubjects]);
+
+  const fetchSubjectsWithContent = useCallback(async () => {
+    if (subjects.length === 0) return;
     try {
       setIsLoadingContent(true);
-      const token = await SecureStore.getItemAsync('authToken');
-      if (!token) {
-        setIsLoadingContent(false);
-        return;
-      }
 
       const subjectsWithContentResults = await Promise.allSettled(
-        subjects.map(async (subject: any) => {
+        subjects.map(async (subject: Subject) => {
           try {
             const subjectId = subject._id || subject.id;
-            
-            // Fetch Asli Prep content for this subject
             let asliPrepContent: ContentItem[] = [];
             try {
-              const contentResponse = await fetch(
-                `${API_BASE_URL}/api/admin/asli-prep-content?subject=${encodeURIComponent(subjectId)}`,
-                {
-                  headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                  }
-                }
-              );
-              
-              if (contentResponse.ok) {
-                const contentData = await contentResponse.json();
-                asliPrepContent = contentData.data || contentData || [];
-                if (!Array.isArray(asliPrepContent)) asliPrepContent = [];
-              }
+              const contentResponse = await api.get('/api/admin/asli-prep-content', {
+                params: { subject: subjectId },
+              });
+              const contentData = contentResponse?.data;
+              const raw = contentData?.data ?? contentData;
+              asliPrepContent = Array.isArray(raw) ? raw : [];
             } catch (contentError) {
               console.error('Error fetching content for subject:', subjectId, contentError);
               asliPrepContent = [];
@@ -139,8 +104,8 @@ export default function LearningPathsView() {
               name: subject.name || 'Unknown Subject',
               description: subject.description || '',
               board: subject.board || '',
-              asliPrepContent: asliPrepContent,
-              totalContent: asliPrepContent.length
+              asliPrepContent,
+              totalContent: asliPrepContent.length,
             };
           } catch (error) {
             console.error('Error processing subject:', subject, error);
@@ -149,12 +114,12 @@ export default function LearningPathsView() {
         })
       );
 
-      // Filter out failed results
       const validSubjects = subjectsWithContentResults
-        .filter((result): result is PromiseFulfilledResult<Subject> => 
-          result.status === 'fulfilled' && result.value !== null
+        .filter(
+          (result): result is PromiseFulfilledResult<Subject> =>
+            result.status === 'fulfilled' && result.value !== null
         )
-        .map(result => result.value);
+        .map((result) => result.value);
 
       setSubjectsWithContent(validSubjects);
     } catch (error) {
@@ -163,138 +128,151 @@ export default function LearningPathsView() {
     } finally {
       setIsLoadingContent(false);
     }
+  }, [subjects]);
+
+  useEffect(() => {
+    if (subjects.length > 0) {
+      fetchSubjectsWithContent();
+    }
+  }, [subjects, fetchSubjectsWithContent]);
+
+  const openContentItem = (content: ContentItem) => {
+    if (lpIsVideo(content)) {
+      const id = content._id || content.id;
+      if (id) {
+        router.push({
+          pathname: '/video-player',
+          params: { videoId: String(id) },
+        });
+        return;
+      }
+      const fallback = content.youtubeUrl || content.fileUrl;
+      if (fallback) {
+        Linking.openURL(fallback).catch(() => {});
+      }
+      return;
+    }
+
+    const link = content.driveLink || content.fileUrl;
+    if (link) {
+      router.push({
+        pathname: '/drive-viewer',
+        params: { driveLink: encodeURIComponent(link) },
+      });
+      return;
+    }
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Ionicons name="target" size={32} color="#fb923c" />
-          <View>
+          <Ionicons name="map" size={26} color="#fb923c" />
+          <View style={styles.headerTextBlock}>
             <Text style={styles.headerTitle}>Learning Paths</Text>
             <Text style={styles.headerSubtitle}>Manage learning paths for students</Text>
           </View>
         </View>
       </View>
 
-      {isLoading || isLoadingContent ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#fb923c" />
-        </View>
-      ) : subjectsWithContent.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="target-outline" size={64} color="#d1d5db" />
-          <Text style={styles.emptyText}>No learning paths found</Text>
-        </View>
-      ) : (
-        <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
-          {subjectsWithContent.map((subject) => {
-            const isExpanded = expandedSubjectId === subject.id;
-            return (
-              <TouchableOpacity 
-                key={subject.id} 
-                style={styles.pathCard}
-                onPress={() => setExpandedSubjectId(isExpanded ? null : subject.id)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.pathHeader}>
-                  <View style={styles.pathIcon}>
-                    <Ionicons name="book" size={24} color="#fb923c" />
-                  </View>
-                  <View style={styles.pathInfo}>
-                    <Text style={styles.pathName}>{subject.name}</Text>
-                    {subject.description && (
-                      <Text style={styles.pathDescription}>{subject.description}</Text>
-                    )}
-                    {subject.board && (
-                      <Text style={styles.pathBoard}>Board: {subject.board}</Text>
-                    )}
-                  </View>
-                  <Ionicons 
-                    name={isExpanded ? 'chevron-up' : 'chevron-down'} 
-                    size={20} 
-                    color="#9ca3af" 
-                  />
-                </View>
-                
-                <View style={styles.pathFooter}>
-                  <View style={styles.pathStat}>
-                    <Ionicons name="document-text" size={16} color="#6b7280" />
-                    <Text style={styles.pathStatText}>
-                      {subject.totalContent || 0} content items
-                    </Text>
-                  </View>
-                </View>
-
-                {isExpanded && subject.asliPrepContent && subject.asliPrepContent.length > 0 && (
-                  <View style={styles.contentList}>
-                    <Text style={styles.contentListTitle}>Content Items:</Text>
-                    {subject.asliPrepContent.map((content, index) => (
-                      <TouchableOpacity
-                        key={content._id || content.id || `content-${index}`}
-                        style={styles.contentItem}
-                        onPress={() => {
-                          if (content.type === 'video' || content.type === 'Video') {
-                            // Navigate to video player with content data
-                            router.push({
-                              pathname: '/video-player',
-                              params: { 
-                                videoId: content._id || content.id,
-                                isContentItem: 'true',
-                                contentData: JSON.stringify({
-                                  _id: content._id || content.id,
-                                  title: content.title,
-                                  description: content.description,
-                                  fileUrl: content.fileUrl,
-                                  videoUrl: content.fileUrl,
-                                  youtubeUrl: content.youtubeUrl,
-                                  duration: content.duration,
-                                  subject: subject.name
-                                })
-                              }
-                            });
-                          } else if (content.driveLink || content.fileUrl) {
-                            // Navigate to drive viewer for documents
-                            router.push({
-                              pathname: '/drive-viewer',
-                              params: { 
-                                fileId: content._id || content.id,
-                                driveLink: content.driveLink || content.fileUrl
-                              }
-                            });
-                          }
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <Ionicons 
-                          name={content.type === 'video' || content.type === 'Video' ? 'videocam' : 'document-text'} 
-                          size={20} 
-                          color="#fb923c" 
-                        />
-                        <View style={styles.contentItemInfo}>
-                          <Text style={styles.contentItemTitle} numberOfLines={1}>
-                            {content.title || 'Untitled'}
+      <View style={styles.body}>
+        {isLoading || isLoadingContent ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#fb923c" />
+          </View>
+        ) : subjectsWithContent.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="map-outline" size={52} color="#d1d5db" />
+            <Text style={styles.emptyText}>No learning paths found</Text>
+          </View>
+        ) : (
+          <ScrollView
+            style={styles.list}
+            contentContainerStyle={styles.listContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator
+          >
+            {subjectsWithContent.map((subject) => {
+              const isExpanded = expandedSubjectId === subject.id;
+              return (
+                <View key={subject.id} style={styles.pathCard}>
+                  <TouchableOpacity
+                    style={styles.pathHeaderRow}
+                    onPress={() => setExpandedSubjectId(isExpanded ? null : subject.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.pathHeader}>
+                      <View style={styles.pathIcon}>
+                        <Ionicons name="book" size={20} color="#fb923c" />
+                      </View>
+                      <View style={styles.pathInfo}>
+                        <Text style={styles.pathName}>{subject.name}</Text>
+                        {subject.description ? (
+                          <Text style={styles.pathDescription} numberOfLines={2}>
+                            {subject.description}
                           </Text>
-                          <Text style={styles.contentItemType}>
-                            Type: {content.type || 'Unknown'}
-                          </Text>
-                        </View>
-                        <Ionicons name="chevron-forward" size={16} color="#9ca3af" />
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
+                        ) : null}
+                        {subject.board ? (
+                          <Text style={styles.pathBoard}>Board: {subject.board}</Text>
+                        ) : null}
+                      </View>
+                      <Ionicons
+                        name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                        size={20}
+                        color="#9ca3af"
+                      />
+                    </View>
+                  </TouchableOpacity>
 
-                {isExpanded && (!subject.asliPrepContent || subject.asliPrepContent.length === 0) && (
-                  <View style={styles.noContentContainer}>
-                    <Text style={styles.noContentText}>No content items available</Text>
+                  <View style={styles.pathFooter}>
+                    <View style={styles.pathStat}>
+                      <Ionicons name="document-text" size={15} color="#6b7280" />
+                      <Text style={styles.pathStatText}>
+                        {subject.totalContent || 0} content items
+                      </Text>
+                    </View>
                   </View>
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      )}
+
+                  {isExpanded && subject.asliPrepContent && subject.asliPrepContent.length > 0 && (
+                    <View style={styles.contentList}>
+                      <Text style={styles.contentListTitle}>Content Items:</Text>
+                      {subject.asliPrepContent.map((content, index) => (
+                        <TouchableOpacity
+                          key={content._id || content.id || `content-${index}`}
+                          style={styles.contentItem}
+                          onPress={() => openContentItem(content)}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons
+                            name={lpIsVideo(content) ? 'videocam' : 'document-text'}
+                            size={18}
+                            color="#fb923c"
+                          />
+                          <View style={styles.contentItemInfo}>
+                            <Text style={styles.contentItemTitle} numberOfLines={1}>
+                              {content.title || 'Untitled'}
+                            </Text>
+                            <Text style={styles.contentItemType}>
+                              Type: {content.type || 'Unknown'}
+                            </Text>
+                          </View>
+                          <Ionicons name="chevron-forward" size={16} color="#9ca3af" />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+
+                  {isExpanded && (!subject.asliPrepContent || subject.asliPrepContent.length === 0) && (
+                    <View style={styles.noContentContainer}>
+                      <Text style={styles.noContentText}>No content items available</Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </ScrollView>
+        )}
+      </View>
     </View>
   );
 }
@@ -309,7 +287,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    padding: 14,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
@@ -317,29 +295,41 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     flex: 1,
   },
+  headerTextBlock: {
+    flex: 1,
+    minWidth: 0,
+  },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '800',
     color: '#111827',
   },
   headerSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6b7280',
+  },
+  body: {
+    flex: 1,
+    minHeight: 0,
   },
   list: {
     flex: 1,
   },
   listContent: {
-    padding: 20,
-    gap: 16,
+    padding: 12,
+    paddingBottom: 20,
+  },
+  pathHeaderRow: {
+    borderRadius: 8,
   },
   pathCard: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -349,30 +339,31 @@ const styles = StyleSheet.create({
   pathHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   pathIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: '#fef3c7',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 10,
   },
   pathInfo: {
     flex: 1,
+    minWidth: 0,
   },
   pathName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#111827',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   pathDescription: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6b7280',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   pathBoard: {
     fontSize: 12,
@@ -382,18 +373,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 12,
+    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
   },
   contentList: {
-    marginTop: 12,
-    paddingTop: 12,
+    marginTop: 10,
+    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
   },
   contentListTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#111827',
     marginBottom: 8,
@@ -403,62 +394,63 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#f9fafb',
     borderRadius: 8,
-    padding: 12,
+    padding: 10,
     marginBottom: 8,
-    gap: 12,
     borderWidth: 1,
     borderColor: '#e5e7eb',
   },
   contentItemInfo: {
     flex: 1,
+    marginLeft: 10,
   },
   contentItemTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#111827',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   contentItemType: {
     fontSize: 12,
     color: '#6b7280',
   },
   noContentContainer: {
-    marginTop: 12,
-    paddingTop: 12,
+    marginTop: 10,
+    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 12,
   },
   noContentText: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#9ca3af',
     fontStyle: 'italic',
   },
   pathStat: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   pathStatText: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6b7280',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 28,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 40,
+    padding: 28,
   },
   emptyText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#111827',
-    marginTop: 16,
+    marginTop: 12,
   },
 });

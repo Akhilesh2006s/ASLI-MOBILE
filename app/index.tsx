@@ -1,42 +1,18 @@
-import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as SecureStore from 'expo-secure-store';
-import { getDashboardPath } from '../src/hooks/useBackNavigation';
+import { useAuth } from '../src/context/AuthContext';
 
 export default function HomePage() {
   const router = useRouter();
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { isLoading } = useAuth();
 
-  useEffect(() => {
-    checkAuthAndRedirect();
-  }, []);
-
-  const checkAuthAndRedirect = async () => {
-    try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const userRole = await SecureStore.getItemAsync('userRole');
-
-      if (token && userRole) {
-        // User is authenticated, redirect to their dashboard
-        const dashboardPath = await getDashboardPath();
-        if (dashboardPath) {
-          router.replace(dashboardPath);
-          return;
-        }
-      }
-    } catch (error) {
-      console.error('Error checking auth:', error);
-    } finally {
-      setIsCheckingAuth(false);
-    }
-  };
-
-  if (isCheckingAuth) {
+  if (isLoading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
@@ -88,33 +64,47 @@ export default function HomePage() {
         <View style={styles.navbar}>
           <View style={styles.navbarContent}>
             <View style={styles.logoContainer}>
-              <View style={styles.logoPlaceholder}>
-                <Text style={styles.logoText}>AL</Text>
-              </View>
+              <Image source={require('../image.png')} style={styles.logoImage} resizeMode="contain" />
               <Text style={styles.brandName}>ASLILEARN AI</Text>
             </View>
-            <View style={styles.navButtons}>
-              <TouchableOpacity 
+            <TouchableOpacity
+              style={styles.menuButton}
+              onPress={() => setIsMenuOpen((prev) => !prev)}
+              accessibilityRole="button"
+              accessibilityLabel="Open navigation menu"
+            >
+              <Ionicons name={isMenuOpen ? 'close' : 'menu'} size={20} color="#374151" />
+            </TouchableOpacity>
+          </View>
+          {isMenuOpen ? (
+            <View style={styles.menuDropdown}>
+              <TouchableOpacity
                 style={styles.loginButton}
-                onPress={() => router.push('/auth/login')}
+                onPress={() => {
+                  setIsMenuOpen(false);
+                  router.push('/auth/login');
+                }}
               >
                 <Text style={styles.loginButtonText}>Login</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.getStartedButton}
-                onPress={() => router.push('/auth/register')}
+                onPress={() => {
+                  setIsMenuOpen(false);
+                  router.push('/auth/register');
+                }}
               >
                 <Text style={styles.getStartedButtonText}>Get Started</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          ) : null}
         </View>
 
         {/* Hero Section */}
         <View style={styles.heroSection}>
           <View style={styles.heroContent}>
             <View style={styles.badge}>
-              <Ionicons name="sparkles" size={16} color="#2563eb" />
+              <Ionicons name="sparkles" size={14} color="#2563eb" />
               <Text style={styles.badgeText}>AI-Powered Learning Platform</Text>
             </View>
 
@@ -133,13 +123,13 @@ export default function HomePage() {
                 style={styles.primaryButton}
                 onPress={() => router.push('/auth/login')}
               >
-                <Ionicons name="flash" size={20} color="#fff" />
+                <Ionicons name="flash" size={18} color="#fff" />
                 <Text style={styles.primaryButtonText}>Start Learning Free</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.secondaryButton}
               >
-                <Ionicons name="trophy" size={20} color="#374151" />
+                <Ionicons name="trophy" size={18} color="#374151" />
                 <Text style={styles.secondaryButtonText}>View Demo</Text>
               </TouchableOpacity>
             </View>
@@ -166,7 +156,7 @@ export default function HomePage() {
         <View style={styles.featuresSection}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionBadge}>
-              <Ionicons name="sparkles" size={16} color="#f97316" />
+              <Ionicons name="sparkles" size={14} color="#f97316" />
               <Text style={styles.sectionBadgeText}>Powerful Features</Text>
             </View>
             <Text style={styles.sectionTitle}>
@@ -183,7 +173,7 @@ export default function HomePage() {
                 'Brain': 'bulb',
                 'Video': 'videocam',
                 'FileText': 'document-text',
-                'Target': 'target',
+                'Target': 'locate-outline',
                 'Users': 'people',
                 'Zap': 'flash',
               };
@@ -191,7 +181,7 @@ export default function HomePage() {
               return (
                 <View key={index} style={styles.featureCard}>
                   <View style={[styles.featureIcon, { backgroundColor: feature.iconBg }]}>
-                    <Ionicons name={iconName as any} size={24} color="#fff" />
+                    <Ionicons name={iconName as any} size={20} color="#fff" />
                   </View>
                   <Text style={styles.featureTitle}>{feature.title}</Text>
                   <Text style={styles.featureDescription}>{feature.description}</Text>
@@ -228,126 +218,139 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
-    paddingVertical: 12,
+    paddingVertical: 8,
   },
   navbarContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
   },
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
-  logoPlaceholder: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#2563eb',
+  logoImage: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  brandName: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#6d94db',
+    letterSpacing: 0.4,
+  },
+  menuButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  logoText: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: '800',
-  },
-  brandName: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#2563eb',
-  },
-  navButtons: {
-    flexDirection: 'row',
-    gap: 12,
+  menuDropdown: {
+    marginTop: 8,
+    marginHorizontal: 14,
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#ffffff',
+    gap: 8,
   },
   loginButton: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#d1d5db',
     backgroundColor: '#fff',
+    alignItems: 'center',
   },
   loginButtonText: {
     color: '#374151',
     fontWeight: '600',
+    fontSize: 13,
   },
   getStartedButton: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 8,
     backgroundColor: '#2563eb',
+    alignItems: 'center',
   },
   getStartedButtonText: {
     color: '#fff',
     fontWeight: '600',
+    fontSize: 13,
   },
   heroSection: {
-    padding: 20,
-    paddingTop: 32,
+    padding: 16,
+    paddingTop: 24,
   },
   heroContent: {
-    gap: 16,
+    gap: 12,
   },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     alignSelf: 'flex-start',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 20,
     backgroundColor: '#dbeafe',
     borderWidth: 1,
     borderColor: '#bfdbfe',
   },
   badgeText: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: '600',
     color: '#1e40af',
   },
   heroTitle: {
-    fontSize: 36,
+    fontSize: 25,
     fontWeight: '800',
     color: '#111827',
-    lineHeight: 44,
+    lineHeight: 34,
   },
   heroTitleSecondary: {
     color: '#111827',
   },
   heroDescription: {
-    fontSize: 16,
+    fontSize: 13,
     color: '#374151',
-    lineHeight: 24,
+    lineHeight: 20,
   },
   ctaButtons: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
+    gap: 10,
+    marginTop: 6,
   },
   primaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 24,
-    paddingVertical: 14,
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 12,
     backgroundColor: '#9333ea',
   },
   primaryButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '600',
   },
   secondaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 24,
-    paddingVertical: 14,
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#d1d5db',
@@ -355,55 +358,55 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: {
     color: '#374151',
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '600',
   },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginTop: 24,
-    paddingTop: 24,
+    marginTop: 16,
+    paddingTop: 16,
   },
   statItem: {
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: '800',
     color: '#9333ea',
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 10,
     color: '#6b7280',
     marginTop: 4,
   },
   featuresSection: {
-    padding: 20,
+    padding: 16,
     backgroundColor: '#f9fafb',
   },
   sectionHeader: {
     alignItems: 'center',
-    marginBottom: 24,
-    gap: 12,
+    marginBottom: 16,
+    gap: 8,
   },
   sectionBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 20,
     backgroundColor: '#fff7ed',
     borderWidth: 1,
     borderColor: '#fed7aa',
   },
   sectionBadgeText: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: '600',
     color: '#c2410c',
   },
   sectionTitle: {
-    fontSize: 32,
+    fontSize: 23,
     fontWeight: '800',
     color: '#111827',
     textAlign: 'center',
@@ -412,66 +415,66 @@ const styles = StyleSheet.create({
     color: '#f97316',
   },
   sectionDescription: {
-    fontSize: 18,
+    fontSize: 13,
     color: '#374151',
     textAlign: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
   },
   featuresGrid: {
-    gap: 16,
+    gap: 12,
   },
   featureCard: {
     backgroundColor: '#fff',
-    padding: 20,
+    padding: 16,
     borderRadius: 16,
     borderWidth: 2,
     borderColor: '#e5e7eb',
-    gap: 12,
+    gap: 10,
   },
   featureIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 14,
+    width: 46,
+    height: 46,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
   featureTitle: {
-    fontSize: 20,
+    fontSize: 15,
     fontWeight: '800',
     color: '#111827',
   },
   featureDescription: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#6b7280',
-    lineHeight: 20,
+    lineHeight: 18,
   },
   ctaSection: {
-    padding: 32,
+    padding: 24,
     alignItems: 'center',
-    gap: 16,
+    gap: 12,
     backgroundColor: '#f0f9ff',
   },
   ctaTitle: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: '800',
     color: '#111827',
     textAlign: 'center',
   },
   ctaDescription: {
-    fontSize: 18,
+    fontSize: 13,
     color: '#374151',
     textAlign: 'center',
   },
   ctaButton: {
-    paddingHorizontal: 32,
-    paddingVertical: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
     borderRadius: 12,
     backgroundColor: '#3b82f6',
     marginTop: 8,
   },
   ctaButtonText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 13,
     fontWeight: '600',
   },
   loadingContainer: {

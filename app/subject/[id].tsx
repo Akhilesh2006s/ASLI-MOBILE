@@ -1,68 +1,106 @@
-import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  Linking,
+} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { API_BASE_URL } from '../../src/lib/api-config';
-import * as SecureStore from 'expo-secure-store';
+import api from '../../src/services/api/api';
 import { useBackNavigation, getDashboardPath } from '../../src/hooks/useBackNavigation';
+import {
+  isVideoContent,
+  type LearningPathContentItem,
+} from '../../src/lib/learningPathContent';
+
+function pickParam(v: string | string[] | undefined): string {
+  if (v == null) return '';
+  const s = Array.isArray(v) ? v[0] : v;
+  return typeof s === 'string' ? s : '';
+}
 
 export default function SubjectContent() {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: idRaw } = useLocalSearchParams<{ id?: string | string[] }>();
+  const id = pickParam(idRaw);
   const [subject, setSubject] = useState<any>(null);
-  const [content, setContent] = useState<any[]>([]);
+  const [content, setContent] = useState<LearningPathContentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dashboardPath, setDashboardPath] = useState<string>('/dashboard');
+
+  const fetchSubjectData = useCallback(async () => {
+    if (!id) return;
+    try {
+      setIsLoading(true);
+
+      try {
+        const subRes = await api.get(`/api/subjects/${encodeURIComponent(id)}`);
+        const sub = subRes.data?.subject ?? subRes.data;
+        if (sub) setSubject(sub);
+      } catch {
+        setSubject({ name: 'Subject', description: '' });
+      }
+
+      const contentRes = await api.get('/api/student/asli-prep-content', {
+        params: { subject: id },
+      });
+      const raw = contentRes.data?.data ?? contentRes.data;
+      setContent(Array.isArray(raw) ? raw : []);
+    } catch (error) {
+      console.error('Error fetching subject data:', error);
+      setContent([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id]);
 
   useEffect(() => {
     if (id) {
       fetchSubjectData();
     }
-    // Get dashboard path for back navigation
-    getDashboardPath().then(path => {
+    getDashboardPath().then((path) => {
       if (path) setDashboardPath(path);
     });
-  }, [id]);
+  }, [id, fetchSubjectData]);
 
-  // Navigate back to dashboard when back button is pressed
   useBackNavigation(dashboardPath, false);
 
-  const fetchSubjectData = async () => {
-    try {
-      const token = await SecureStore.getItemAsync('authToken');
-      
-      // Fetch subject details
-      const subjectResponse = await fetch(`${API_BASE_URL}/api/student/subjects/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (subjectResponse.ok) {
-        const subjectData = await subjectResponse.json();
-        setSubject(subjectData.subject || subjectData);
+  const openContentItem = (item: LearningPathContentItem) => {
+    if (isVideoContent(item)) {
+      const vid = item._id || item.id;
+      if (vid) {
+        router.push({
+          pathname: '/video-player',
+          params: { videoId: String(vid) },
+        });
+        return;
       }
-
-      // Fetch subject content
-      const contentResponse = await fetch(`${API_BASE_URL}/api/student/subjects/${id}/content`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (contentResponse.ok) {
-        const contentData = await contentResponse.json();
-        setContent(contentData.content || contentData.data || []);
+      const fallback = item.youtubeUrl || item.fileUrl;
+      if (fallback) {
+        Linking.openURL(fallback).catch(() => {});
+      } else {
+        Alert.alert('Video', 'This item has no playable URL.');
       }
-    } catch (error) {
-      console.error('Error fetching subject data:', error);
-    } finally {
-      setIsLoading(false);
+      return;
     }
+
+    const link = item.driveLink || item.fileUrl;
+    if (link) {
+      router.push({
+        pathname: '/drive-viewer',
+        params: { driveLink: encodeURIComponent(link) },
+      });
+      return;
+    }
+
+    Alert.alert('Content', item.title || 'No link available for this item.');
   };
 
   if (isLoading) {
@@ -88,7 +126,11 @@ export default function SubjectContent() {
         </View>
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         {content.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="book" size={64} color="#9ca3af" />
@@ -97,33 +139,19 @@ export default function SubjectContent() {
         ) : (
           content.map((item, index) => (
             <TouchableOpacity
-              key={item._id || index}
+              key={String(item._id || item.id || index)}
               style={styles.contentCard}
-              onPress={() => {
-                if (item.type === 'video' || item.type === 'Video') {
-                  // Navigate to video player
-                  router.push({
-                    pathname: '/video-player',
-                    params: { videoId: item._id }
-                  });
-                } else if (item.driveLink || item.fileUrl) {
-                  // Navigate to drive viewer for documents
-                  router.push({
-                    pathname: '/drive-viewer',
-                    params: { 
-                      fileId: item._id,
-                      driveLink: item.driveLink || item.fileUrl
-                    }
-                  });
-                } else {
-                  // Fallback: show alert
-                  Alert.alert('Content', `Content: ${item.title || 'Untitled'}`);
-                }
-              }}
+              onPress={() => openContentItem(item)}
+              activeOpacity={0.7}
             >
               <View style={styles.contentHeader}>
-                <View style={[styles.contentIcon, { backgroundColor: item.type === 'video' ? '#dbeafe' : '#d1fae5' }]}>
-                  {item.type === 'video' ? (
+                <View
+                  style={[
+                    styles.contentIcon,
+                    { backgroundColor: isVideoContent(item) ? '#dbeafe' : '#d1fae5' },
+                  ]}
+                >
+                  {isVideoContent(item) ? (
                     <Ionicons name="videocam" size={24} color="#3b82f6" />
                   ) : (
                     <Ionicons name="document-text" size={24} color="#10b981" />
@@ -139,11 +167,11 @@ export default function SubjectContent() {
                   <Ionicons name="checkmark-circle" size={24} color="#10b981" />
                 )}
               </View>
-              {item.duration && (
+              {item.duration ? (
                 <View style={styles.contentMeta}>
-                  <Text style={styles.metaText}>{item.duration}</Text>
+                  <Text style={styles.metaText}>{String(item.duration)}</Text>
                 </View>
-              )}
+              ) : null}
             </TouchableOpacity>
           ))
         )}

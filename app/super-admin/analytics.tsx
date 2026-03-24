@@ -16,7 +16,7 @@ export default function SuperAdminAnalytics() {
     fetchAnalytics();
   }, []);
 
-  useBackNavigation('/super-admin/dashboard', false);
+  useBackNavigation('/super-admin-dashboard', false);
 
   const fetchAnalytics = async () => {
     try {
@@ -58,7 +58,7 @@ export default function SuperAdminAnalytics() {
         style={styles.header}
       >
         <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => router.replace('/super-admin/dashboard')} style={styles.backButton}>
+          <TouchableOpacity onPress={() => router.replace('/super-admin-dashboard')} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
           <View style={styles.headerText}>

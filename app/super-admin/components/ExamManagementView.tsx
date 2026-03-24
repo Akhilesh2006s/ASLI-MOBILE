@@ -2,8 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, ActivityIndicator, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { API_BASE_URL } from '../../../src/lib/api-config';
-import * as SecureStore from 'expo-secure-store';
+import api from '../../../src/services/api/api';
 
 interface Exam {
   _id: string;
@@ -32,6 +31,7 @@ export default function ExamManagementView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [error, setError] = useState('');
 
   const [formData, setFormData] = useState({
     title: '',
@@ -52,25 +52,21 @@ export default function ExamManagementView() {
   const fetchExams = async () => {
     setIsLoading(true);
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/super-admin/exams`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setExams(data.data || []);
-        } else if (Array.isArray(data)) {
-          setExams(data);
-        } else if (data.data && Array.isArray(data.data)) {
-          setExams(data.data);
-        }
+      setError('');
+      const response = await api.get('/api/super-admin/exams');
+      const data = response?.data;
+      if (data?.success) {
+        setExams(data.data || []);
+      } else if (Array.isArray(data)) {
+        setExams(data);
+      } else if (Array.isArray(data?.data)) {
+        setExams(data.data);
+      } else {
+        setExams([]);
       }
-    } catch (error) {
-      console.error('Failed to fetch exams:', error);
+    } catch (err: any) {
+      setError(err?.friendlyMessage || 'Failed to fetch exams.');
+      console.error('Failed to fetch exams:', err);
     } finally {
       setIsLoading(false);
     }
@@ -90,56 +86,39 @@ export default function ExamManagementView() {
     if (!formData.title || !formData.duration || !formData.totalQuestions || !formData.totalMarks) return;
 
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/super-admin/exams`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ...formData,
-          duration: parseInt(formData.duration),
-          totalQuestions: parseInt(formData.totalQuestions),
-          totalMarks: parseInt(formData.totalMarks)
-        })
+      await api.post('/api/super-admin/exams', {
+        ...formData,
+        duration: parseInt(formData.duration),
+        totalQuestions: parseInt(formData.totalQuestions),
+        totalMarks: parseInt(formData.totalMarks)
       });
-      if (response.ok) {
-        setIsAddModalOpen(false);
-        setFormData({
-          title: '',
-          description: '',
-          examType: 'mains',
-          board: 'ASLI_EXCLUSIVE_SCHOOLS',
-          duration: '',
-          totalQuestions: '',
-          totalMarks: '',
-          startDate: '',
-          endDate: ''
-        });
-        fetchExams();
-      }
-    } catch (error) {
-      console.error('Failed to create exam:', error);
+      setIsAddModalOpen(false);
+      setFormData({
+        title: '',
+        description: '',
+        examType: 'mains',
+        board: 'ASLI_EXCLUSIVE_SCHOOLS',
+        duration: '',
+        totalQuestions: '',
+        totalMarks: '',
+        startDate: '',
+        endDate: ''
+      });
+      fetchExams();
+    } catch (err: any) {
+      setError(err?.friendlyMessage || 'Failed to create exam.');
+      console.error('Failed to create exam:', err);
     }
   };
 
   const handleDelete = async (examId: string) => {
     setIsDeleting(examId);
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/super-admin/exams/${examId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      if (response.ok) {
-        fetchExams();
-      }
-    } catch (error) {
-      console.error('Failed to delete exam:', error);
+      await api.delete(`/api/super-admin/exams/${examId}`);
+      fetchExams();
+    } catch (err: any) {
+      setError(err?.friendlyMessage || 'Failed to delete exam.');
+      console.error('Failed to delete exam:', err);
     } finally {
       setIsDeleting(null);
     }
@@ -205,6 +184,7 @@ export default function ExamManagementView() {
       </View>
 
       {/* Exams List */}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#3b82f6" />
@@ -580,6 +560,12 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#6b7280',
+  },
+  errorText: {
+    color: '#dc2626',
+    paddingHorizontal: 20,
+    marginBottom: 8,
+    fontSize: 13,
   },
   emptyContainer: {
     alignItems: 'center',

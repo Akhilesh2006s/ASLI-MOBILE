@@ -16,7 +16,7 @@ export default function DetailedAIAnalytics() {
     fetchAnalytics();
   }, []);
 
-  useBackNavigation('/super-admin/dashboard', false);
+  useBackNavigation('/super-admin-dashboard', false);
 
   const fetchAnalytics = async () => {
     try {
@@ -59,12 +59,12 @@ export default function DetailedAIAnalytics() {
         style={styles.header}
       >
         <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => router.replace('/super-admin/dashboard')} style={styles.backButton}>
+          <TouchableOpacity onPress={() => router.replace('/super-admin-dashboard')} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
           <View style={styles.headerText}>
             <View style={styles.headerTitleRow}>
-              <Ionicons name="brain" size={28} color="#fff" />
+              <Ionicons name="bulb" size={28} color="#fff" />
               <Text style={styles.headerTitle}>AI Analytics</Text>
             </View>
             <Text style={styles.headerSubtitle}>Advanced ML insights and predictions</Text>

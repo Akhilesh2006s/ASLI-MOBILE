@@ -2,8 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, ActivityIndicator, TextInput, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { API_BASE_URL } from '../../../src/lib/api-config';
-import * as SecureStore from 'expo-secure-store';
+import api from '../../../src/services/api/api';
 
 interface Content {
   _id: string;
@@ -39,6 +38,7 @@ export default function ContentManagementView() {
   const [filterBySubject, setFilterBySubject] = useState<string>('all');
   const [filterByClass, setFilterByClass] = useState<string>('all');
   const [filterByType, setFilterByType] = useState<string>('all');
+  const [error, setError] = useState('');
 
   const [formData, setFormData] = useState({
     title: '',
@@ -62,61 +62,32 @@ export default function ContentManagementView() {
 
   const fetchSubjects = async () => {
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/super-admin/boards/${selectedBoard}/subjects`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setSubjects(data.data || []);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch subjects:', error);
+      setError('');
+      const response = await api.get(`/api/super-admin/boards/${selectedBoard}/subjects`);
+      const data = response?.data;
+      setSubjects(data?.data || data?.subjects || []);
+    } catch (err: any) {
+      setError(err?.friendlyMessage || 'Failed to fetch subjects.');
+      console.error('Failed to fetch subjects:', err);
     }
   };
 
   const fetchContents = async () => {
     setIsLoading(true);
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const url = `${API_BASE_URL}/api/super-admin/boards/${selectedBoard}/content`;
-      console.log('🌐 Fetching content from:', url);
-      
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('📦 Content data received:', data);
-        if (data.success) {
-          setContents(data.data || []);
-        } else {
-          // If data is not wrapped in success, try direct array
-          if (Array.isArray(data)) {
-            setContents(data);
-          } else if (data.data && Array.isArray(data.data)) {
-            setContents(data.data);
-          } else {
-            console.log('⚠️ No valid content data found');
-            setContents([]);
-          }
-        }
+      setError('');
+      const response = await api.get(`/api/super-admin/boards/${selectedBoard}/content`);
+      const data = response?.data;
+      if (Array.isArray(data)) {
+        setContents(data);
+      } else if (Array.isArray(data?.data)) {
+        setContents(data.data);
       } else {
-        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-        console.error('❌ API error:', response.status, errorData);
         setContents([]);
       }
-    } catch (error) {
-      console.error('❌ Failed to fetch contents:', error);
+    } catch (err: any) {
+      setError(err?.friendlyMessage || 'Failed to fetch contents.');
+      console.error('Failed to fetch contents:', err);
       setContents([]);
     } finally {
       setIsLoading(false);
@@ -180,19 +151,11 @@ export default function ContentManagementView() {
   const handleDelete = async (contentId: string) => {
     setIsDeleting(contentId);
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/super-admin/content/${contentId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      if (response.ok) {
-        fetchContents();
-      }
-    } catch (error) {
-      console.error('Failed to delete content:', error);
+      await api.delete(`/api/super-admin/content/${contentId}`);
+      fetchContents();
+    } catch (err: any) {
+      setError(err?.friendlyMessage || 'Failed to delete content.');
+      console.error('Failed to delete content:', err);
     } finally {
       setIsDeleting(null);
     }
@@ -288,6 +251,7 @@ export default function ContentManagementView() {
       </View>
 
       {/* Contents List */}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#3b82f6" />
@@ -636,6 +600,12 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#6b7280',
+  },
+  errorText: {
+    color: '#dc2626',
+    paddingHorizontal: 20,
+    marginBottom: 8,
+    fontSize: 13,
   },
   emptyContainer: {
     alignItems: 'center',

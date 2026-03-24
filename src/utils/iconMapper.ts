@@ -14,7 +14,7 @@ export const iconMap: Record<string, string> = {
   'Brain': 'bulb',
   'Video': 'videocam',
   'FileText': 'document-text',
-  'Target': 'target',
+  'Target': 'locate-outline',
   'BookOpen': 'book',
   'Play': 'play',
   'TrendingUp': 'trending-up',

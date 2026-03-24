@@ -150,13 +150,73 @@ const TOOL_CONFIGS: Record<string, ToolConfig> = {
   'goal-motivation-planner': {
     name: 'Goal & Motivation Planner',
     description: 'Set goals and create motivation plans for success',
-    icon: 'target',
+    icon: 'locate-outline',
     color: '#fb923c',
     fields: [
       { name: 'gradeLevel', label: 'Class *', type: 'select', required: true, options: CLASS_OPTIONS },
       { name: 'goalType', label: 'Goal Type', type: 'select', options: ['Academic', 'Exam Preparation', 'Skill Development', 'Overall Improvement'] },
       { name: 'timeframe', label: 'Timeframe', type: 'select', options: ['1 week', '1 month', '3 months', '6 months', '1 year'] },
       { name: 'description', label: 'Goal Description (Optional)', type: 'textarea', placeholder: 'Describe your specific goals...' }
+    ]
+  },
+  'flashcard-generator': {
+    name: 'Flashcard Generator',
+    description: 'Create flashcards for effective memorization',
+    icon: 'albums',
+    color: '#ec4899',
+    fields: [
+      { name: 'gradeLevel', label: 'Class *', type: 'select', required: true, options: CLASS_OPTIONS },
+      { name: 'subject', label: 'Subject *', type: 'select', required: true, dependsOn: 'gradeLevel', getOptions: (classValue) => CLASS_SUBJECTS[classValue] || [] },
+      { name: 'topic', label: 'Topic *', type: 'text', required: true, placeholder: 'Enter topic name' },
+      { name: 'count', label: 'Number of Flashcards', type: 'number', placeholder: '10' }
+    ]
+  },
+  'exam-question-paper-generator': {
+    name: 'Exam Question Paper Generator',
+    description: 'Generate exam question papers',
+    icon: 'checkmark-circle',
+    color: '#ef4444',
+    fields: [
+      { name: 'gradeLevel', label: 'Class *', type: 'select', required: true, options: CLASS_OPTIONS },
+      { name: 'subject', label: 'Subject *', type: 'select', required: true, dependsOn: 'gradeLevel', getOptions: (classValue) => CLASS_SUBJECTS[classValue] || [] },
+      { name: 'topic', label: 'Topic *', type: 'text', required: true, placeholder: 'Enter topic name' },
+      { name: 'questionCount', label: 'Number of Questions', type: 'number', placeholder: '20' },
+      { name: 'difficulty', label: 'Difficulty', type: 'select', options: ['easy', 'medium', 'hard', 'mixed'] }
+    ]
+  },
+  'activity-project-generator': {
+    name: 'Activity & Project Generator',
+    description: 'Generate activities and projects',
+    icon: 'grid',
+    color: '#eab308',
+    fields: [
+      { name: 'gradeLevel', label: 'Class *', type: 'select', required: true, options: CLASS_OPTIONS },
+      { name: 'subject', label: 'Subject *', type: 'select', required: true, dependsOn: 'gradeLevel', getOptions: (classValue) => CLASS_SUBJECTS[classValue] || [] },
+      { name: 'topic', label: 'Topic (Optional)', type: 'text', placeholder: 'Enter topic (optional)' }
+    ]
+  },
+  'story-passage-creator': {
+    name: 'Story & Passage Creator',
+    description: 'Create stories and passages',
+    icon: 'document-text',
+    color: '#3b82f6',
+    fields: [
+      { name: 'gradeLevel', label: 'Class *', type: 'select', required: true, options: CLASS_OPTIONS },
+      { name: 'subject', label: 'Subject *', type: 'select', required: true, dependsOn: 'gradeLevel', getOptions: (classValue) => CLASS_SUBJECTS[classValue] || [] },
+      { name: 'topic', label: 'Topic (Optional)', type: 'text', placeholder: 'Enter topic (optional)' },
+      { name: 'length', label: 'Length', type: 'select', options: ['short', 'medium', 'long'] }
+    ]
+  },
+  'lesson-planner': {
+    name: 'Lesson Planner',
+    description: 'Plan your lessons effectively',
+    icon: 'calendar',
+    color: '#8b5cf6',
+    fields: [
+      { name: 'gradeLevel', label: 'Class *', type: 'select', required: true, options: CLASS_OPTIONS },
+      { name: 'subject', label: 'Subject *', type: 'select', required: true, dependsOn: 'gradeLevel', getOptions: (classValue) => CLASS_SUBJECTS[classValue] || [] },
+      { name: 'topic', label: 'Topic *', type: 'text', required: true, placeholder: 'Enter topic name' },
+      { name: 'duration', label: 'Class Duration (minutes)', type: 'number', placeholder: '45' }
     ]
   },
 };

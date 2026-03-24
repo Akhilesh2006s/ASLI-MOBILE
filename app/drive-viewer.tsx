@@ -22,26 +22,74 @@ interface DriveFile {
   createdAt: string;
 }
 
+function pickParam(v: string | string[] | undefined): string {
+  if (v == null) return '';
+  const s = Array.isArray(v) ? v[0] : v;
+  return typeof s === 'string' ? s : '';
+}
+
 export default function DriveViewer() {
-  const { fileId, driveLink } = useLocalSearchParams<{ fileId?: string; driveLink?: string }>();
+  const params = useLocalSearchParams<{ fileId?: string; driveLink?: string }>();
+  const fileId = pickParam(params.fileId);
+  const driveLinkRaw = pickParam(params.driveLink);
+  /** Decode once — Learning Paths passes encodeURIComponent so `&` in URLs doesn't break routing */
+  const driveLink = (() => {
+    if (!driveLinkRaw) return '';
+    try {
+      return decodeURIComponent(driveLinkRaw);
+    } catch {
+      return driveLinkRaw;
+    }
+  })();
+
   const [file, setFile] = useState<DriveFile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [viewerUrl, setViewerUrl] = useState<string>('');
   const [dashboardPath, setDashboardPath] = useState<string>('/dashboard');
 
-  useEffect(() => {
-    if (fileId) {
-      fetchFile();
-    } else if (driveLink) {
-      setViewerUrl(convertToViewerUrl(driveLink));
-      setIsLoading(false);
-    }
-    getDashboardPath().then(path => {
-      if (path) setDashboardPath(path);
-    });
-  }, [fileId, driveLink]);
+  const convertToViewerUrl = (link: string): string => {
+    let extractedId = '';
 
-  useBackNavigation(false, dashboardPath);
+    const fileMatch = link.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (fileMatch) {
+      extractedId = fileMatch[1];
+    } else {
+      const openMatch = link.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (openMatch) {
+        extractedId = openMatch[1];
+      } else {
+        const docMatch = link.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
+        if (docMatch) {
+          extractedId = docMatch[1];
+        } else {
+          const sheetMatch = link.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+          if (sheetMatch) {
+            extractedId = sheetMatch[1];
+          } else {
+            const slideMatch = link.match(/\/presentation\/d\/([a-zA-Z0-9_-]+)/);
+            if (slideMatch) {
+              extractedId = slideMatch[1];
+            }
+          }
+        }
+      }
+    }
+
+    if (!extractedId) {
+      return link;
+    }
+
+    if (link.includes('document')) {
+      return `https://docs.google.com/document/d/${extractedId}/preview`;
+    }
+    if (link.includes('spreadsheet')) {
+      return `https://docs.google.com/spreadsheets/d/${extractedId}/preview`;
+    }
+    if (link.includes('presentation')) {
+      return `https://docs.google.com/presentation/d/${extractedId}/preview`;
+    }
+    return `https://drive.google.com/file/d/${extractedId}/preview`;
+  };
 
   const fetchFile = async () => {
     try {
@@ -70,56 +118,21 @@ export default function DriveViewer() {
     }
   };
 
-  const convertToViewerUrl = (driveLink: string): string => {
-    // Extract file ID from various Google Drive link formats
-    let fileId = '';
-    
-    // Format: https://drive.google.com/file/d/FILE_ID/view
-    const fileMatch = driveLink.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-    if (fileMatch) {
-      fileId = fileMatch[1];
+  useEffect(() => {
+    if (driveLink) {
+      setViewerUrl(convertToViewerUrl(driveLink));
+      setIsLoading(false);
+    } else if (fileId) {
+      fetchFile();
     } else {
-      // Format: https://drive.google.com/open?id=FILE_ID
-      const openMatch = driveLink.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-      if (openMatch) {
-        fileId = openMatch[1];
-      } else {
-        // Format: https://docs.google.com/document/d/FILE_ID/edit
-        const docMatch = driveLink.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
-        if (docMatch) {
-          fileId = docMatch[1];
-        } else {
-          // Format: https://docs.google.com/spreadsheets/d/FILE_ID/edit
-          const sheetMatch = driveLink.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
-          if (sheetMatch) {
-            fileId = sheetMatch[1];
-          } else {
-            // Format: https://docs.google.com/presentation/d/FILE_ID/edit
-            const slideMatch = driveLink.match(/\/presentation\/d\/([a-zA-Z0-9_-]+)/);
-            if (slideMatch) {
-              fileId = slideMatch[1];
-            }
-          }
-        }
-      }
+      setIsLoading(false);
     }
+    getDashboardPath().then((path) => {
+      if (path) setDashboardPath(path);
+    });
+  }, [fileId, driveLink]);
 
-    if (!fileId) {
-      return driveLink; // Return original if we can't parse it
-    }
-
-    // Determine file type and return appropriate viewer URL
-    if (driveLink.includes('document')) {
-      return `https://docs.google.com/document/d/${fileId}/preview`;
-    } else if (driveLink.includes('spreadsheet')) {
-      return `https://docs.google.com/spreadsheets/d/${fileId}/preview`;
-    } else if (driveLink.includes('presentation')) {
-      return `https://docs.google.com/presentation/d/${fileId}/preview`;
-    } else {
-      // For regular files, use Google Drive viewer
-      return `https://drive.google.com/file/d/${fileId}/preview`;
-    }
-  };
+  useBackNavigation(dashboardPath, false);
 
   const handleOpenInBrowser = () => {
     const url = file?.driveLink || driveLink || '';

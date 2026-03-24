@@ -24,9 +24,6 @@ export async function exportToDOCX(options: ExportOptions): Promise<void> {
   // 2. Download the generated file
   // 3. Use expo-file-system to save it
   
-  console.log('Document export requested:', { title, filename });
-  console.log('Content:', textContent);
-  
   // For now, we'll just log it
   // In production, implement actual DOCX generation via backend
   throw new Error('DOCX export requires backend API implementation');
@@ -34,7 +31,6 @@ export async function exportToDOCX(options: ExportOptions): Promise<void> {
 
 export async function exportToPDF(options: ExportOptions): Promise<void> {
   // Similar to DOCX, PDF export should be done via backend
-  console.log('PDF export requested:', options);
   throw new Error('PDF export requires backend API implementation');
 }
 

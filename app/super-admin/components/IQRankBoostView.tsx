@@ -2,8 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { API_BASE_URL } from '../../../src/lib/api-config';
-import * as SecureStore from 'expo-secure-store';
+import api from '../../../src/services/api/api';
 
 interface IQActivity {
   _id: string;
@@ -20,11 +19,32 @@ interface IQActivity {
   averageScore?: number;
 }
 
+const toActivityList = (payload: any): IQActivity[] => {
+  const list = Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : []);
+  if (!Array.isArray(list)) return [];
+
+  return list.map((item: any, index: number) => ({
+    _id: item?._id || `activity-${index}`,
+    title: item?.title || item?.questionText || `${item?.subject?.name || 'General'} Activity`,
+    description: item?.description || item?.explanation || 'AI-generated activity',
+    type: (item?.type || 'quiz') as IQActivity['type'],
+    difficulty: (item?.difficulty || 'medium') as IQActivity['difficulty'],
+    points: Number(item?.points ?? 1),
+    duration: Number(item?.duration ?? 15),
+    classNumber: item?.classNumber ? String(item.classNumber) : '1',
+    questions: Number(item?.questions ?? 1),
+    isActive: item?.isActive !== false,
+    participants: Number(item?.participants ?? 0),
+    averageScore: Number(item?.averageScore ?? 0),
+  }));
+};
+
 export default function IQRankBoostView() {
   const [activities, setActivities] = useState<IQActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClass, setSelectedClass] = useState<number | null>(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchActivities();
@@ -33,21 +53,22 @@ export default function IQRankBoostView() {
   const fetchActivities = async () => {
     setIsLoading(true);
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/super-admin/iq-rank-activities`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      setError('');
+      try {
+        const response = await api.get('/api/super-admin/iq-rank-activities');
+        setActivities(toActivityList(response?.data));
+      } catch (primaryErr: any) {
+        // Current backend exposes questions list endpoint; keep screen working with it.
+        if (primaryErr?.response?.status === 404) {
+          const fallback = await api.get('/api/super-admin/iq-rank-activities/questions');
+          setActivities(toActivityList(fallback?.data));
+        } else {
+          throw primaryErr;
         }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setActivities(data.data || []);
-      } else {
-        setActivities([]);
       }
-    } catch (error) {
-      console.error('Error fetching activities:', error);
+    } catch (err: any) {
+      setError(err?.friendlyMessage || 'Error fetching activities.');
+      console.error('Error fetching activities:', err);
       setActivities([]);
     } finally {
       setIsLoading(false);
@@ -87,7 +108,7 @@ export default function IQRankBoostView() {
     switch (type) {
       case 'iq-test': return 'bulb';
       case 'rank-boost': return 'trophy';
-      case 'challenge': return 'target';
+      case 'challenge': return 'locate-outline';
       case 'quiz': return 'star';
       default: return 'star';
     }
@@ -131,7 +152,12 @@ export default function IQRankBoostView() {
         </View>
 
         {/* Activities List */}
-        {filteredActivities.length === 0 ? (
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#3b82f6" />
+            <Text style={styles.loadingText}>Loading activities...</Text>
+          </View>
+        ) : filteredActivities.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="trophy" size={64} color="#d1d5db" />
             <Text style={styles.emptyText}>No activities for this class</Text>
@@ -195,8 +221,15 @@ export default function IQRankBoostView() {
         </View>
       </View>
 
-      {/* Class Cards Grid */}
-      <View style={styles.classGrid}>
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#3b82f6" />
+          <Text style={styles.loadingText}>Loading activities...</Text>
+        </View>
+      ) : (
+        <View style={styles.classGrid}>
         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((classNum) => {
           const stats = classStats[classNum] || { total: 0, active: 0, questions: 0, participants: 0 };
           return (
@@ -237,7 +270,8 @@ export default function IQRankBoostView() {
             </TouchableOpacity>
           );
         })}
-      </View>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -245,17 +279,18 @@ export default function IQRankBoostView() {
 const styles = StyleSheet.create({
   content: { flex: 1 },
   header: {
-    padding: 20,
-    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '800',
     color: '#111827',
     marginBottom: 4,
   },
   headerSubtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#6b7280',
   },
   backButton: {
@@ -263,8 +298,8 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   searchContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
+    paddingHorizontal: 16,
+    marginBottom: 12,
   },
   searchInputContainer: {
     flexDirection: 'row',
@@ -285,20 +320,20 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 14,
     color: '#111827',
-    paddingVertical: 12,
+    paddingVertical: 10,
   },
   classGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 20,
-    gap: 12,
-    paddingBottom: 20,
+    paddingHorizontal: 16,
+    gap: 10,
+    paddingBottom: 16,
   },
   classCard: {
-    width: '47%',
-    borderRadius: 12,
+    width: '48%',
+    borderRadius: 10,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -307,7 +342,7 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   classCardGradient: {
-    padding: 16,
+    padding: 12,
   },
   classCardHeader: {
     flexDirection: 'row',
@@ -316,15 +351,15 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   classNumberBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
   },
   classNumberText: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '800',
     color: '#3b82f6',
   },
@@ -337,13 +372,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   classStatValue: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '800',
     color: '#fff',
     marginBottom: 4,
   },
   classStatLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#fff',
     opacity: 0.9,
   },
@@ -353,19 +388,19 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(255, 255, 255, 0.2)',
   },
   classCardFooterText: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#fff',
     opacity: 0.9,
   },
   activitiesList: {
-    paddingHorizontal: 20,
-    gap: 16,
-    paddingBottom: 20,
+    paddingHorizontal: 16,
+    gap: 12,
+    paddingBottom: 16,
   },
   activityCard: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 10,
+    padding: 14,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -384,13 +419,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   activityCardTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#111827',
     marginBottom: 4,
   },
   activityCardDescription: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6b7280',
   },
   activityCardDetails: {
@@ -408,8 +443,23 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   detailText: {
+    fontSize: 13,
+    color: '#6b7280',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  loadingText: {
+    marginTop: 10,
     fontSize: 14,
     color: '#6b7280',
+  },
+  errorText: {
+    color: '#dc2626',
+    paddingHorizontal: 16,
+    marginBottom: 8,
+    fontSize: 13,
   },
   activityCardFooter: {
     flexDirection: 'row',
