@@ -1,41 +1,41 @@
 import React, { memo } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-interface Subject {
-  _id?: string;
-  id?: string;
-  name?: string;
+export interface ChipOption {
+  value: string;
+  label: string;
 }
 
 interface FilterChipsProps {
-  selectedSubject: string;
-  subjects: Subject[];
-  onSelect: (subjectIdOrName: string) => void;
+  sectionLabel?: string;
+  selected: string;
+  onSelect: (value: string) => void;
+  options: ChipOption[];
 }
 
-function FilterChipsComponent({ selectedSubject, subjects, onSelect }: FilterChipsProps) {
+function FilterChipsComponent({ sectionLabel, selected, onSelect, options }: FilterChipsProps) {
   return (
     <View style={styles.wrapper}>
+      {sectionLabel ? <Text style={styles.sectionLabel}>{sectionLabel}</Text> : null}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.container}>
         <TouchableOpacity
-          style={[styles.chip, selectedSubject === 'all' && styles.chipActive]}
+          style={[styles.chip, selected === 'all' && styles.chipActive]}
           onPress={() => onSelect('all')}
           activeOpacity={0.85}
         >
-          <Text style={[styles.chipText, selectedSubject === 'all' && styles.chipTextActive]}>All</Text>
+          <Text style={[styles.chipText, selected === 'all' && styles.chipTextActive]}>All</Text>
         </TouchableOpacity>
 
-        {subjects.map((subject) => {
-          const value = (subject._id || subject.id || subject.name || '').toString();
-          const active = selectedSubject === value;
+        {options.map((opt) => {
+          const active = selected === opt.value;
           return (
             <TouchableOpacity
-              key={value}
+              key={opt.value}
               style={[styles.chip, active && styles.chipActive]}
-              onPress={() => onSelect(value)}
+              onPress={() => onSelect(opt.value)}
               activeOpacity={0.85}
             >
-              <Text style={[styles.chipText, active && styles.chipTextActive]}>{subject.name || 'Subject'}</Text>
+              <Text style={[styles.chipText, active && styles.chipTextActive]}>{opt.label}</Text>
             </TouchableOpacity>
           );
         })}
@@ -47,6 +47,12 @@ function FilterChipsComponent({ selectedSubject, subjects, onSelect }: FilterChi
 const styles = StyleSheet.create({
   wrapper: {
     marginBottom: 10,
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748b',
+    marginBottom: 6,
   },
   container: {
     paddingRight: 8,

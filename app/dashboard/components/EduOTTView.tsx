@@ -17,6 +17,32 @@ import TabSwitcher, { EduOTTTab } from './eduott/TabSwitcher';
 import SearchBar from './eduott/SearchBar';
 import FilterChips from './eduott/FilterChips';
 import VideoCard from './eduott/VideoCard';
+import {
+  extractPlainSubjectName,
+  getSubjectClassLabel,
+} from '../../../src/lib/subject-names';
+import { useEduOTTFilters } from '../../../src/contexts/edu-ott-filter-context';
+
+function buildVideosUrl(
+  selectedClass: string | null,
+  selectedSubject: string | null
+): string {
+  const params = new URLSearchParams({ type: 'Video' });
+  if (selectedClass) params.set('class', selectedClass);
+  if (selectedSubject) params.set('subject', selectedSubject);
+  return `${API_BASE_URL}/api/student/asli-prep-content?${params.toString()}`;
+}
+
+function buildStreamsUrl(
+  selectedClass: string | null,
+  selectedSubject: string | null
+): string {
+  const params = new URLSearchParams();
+  if (selectedClass) params.set('class', selectedClass);
+  if (selectedSubject) params.set('subject', selectedSubject);
+  const q = params.toString();
+  return `${API_BASE_URL}/api/student/streams${q ? `?${q}` : ''}`;
+}
 
 interface VideoItem {
   _id: string;
@@ -28,6 +54,7 @@ interface VideoItem {
   isYouTubeVideo?: boolean;
   subjectId?: string;
   subjectName?: string;
+  classNumber?: string;
   views?: number;
   watchProgress?: number;
 }
@@ -40,6 +67,7 @@ interface LiveSession {
   streamUrl?: string;
   scheduledTime?: string;
   subject?: { _id: string; name: string };
+  classNumber?: string;
   viewerCount?: number;
 }
 
@@ -47,147 +75,206 @@ interface EduOTTViewProps {
   username?: string;
 }
 
+function mapContentToVideoItem(content: any): VideoItem {
+  const subjectId = content.subject?._id || content.subject?.id || (typeof content.subject === 'string' ? content.subject : '');
+  const subjectName = content.subject?.name || (typeof content.subject === 'string' ? content.subject : 'Unknown Subject');
+  const rawDuration = content.duration || 0;
+  const durationInSeconds = rawDuration > 0 ? (rawDuration > 100 ? rawDuration : rawDuration * 60) : 0;
+
+  let videoFileUrl = content.fileUrl || content.videoUrl;
+  if (videoFileUrl && !videoFileUrl.startsWith('http') && !videoFileUrl.startsWith('//')) {
+    if (videoFileUrl.startsWith('/')) {
+      videoFileUrl = `${API_BASE_URL}${videoFileUrl}`;
+    } else {
+      videoFileUrl = `${API_BASE_URL}/${videoFileUrl}`;
+    }
+  }
+
+  const classNum =
+    content.classNumber != null && String(content.classNumber).trim() !== ''
+      ? String(content.classNumber).trim()
+      : content.subject?.classNumber != null && String(content.subject.classNumber).trim() !== ''
+        ? String(content.subject.classNumber).trim()
+        : undefined;
+
+  return {
+    _id: content._id,
+    title: content.title || 'Untitled Video',
+    description: content.description || '',
+    videoUrl: videoFileUrl,
+    fileUrl: videoFileUrl,
+    duration: durationInSeconds,
+    views: content.views || 0,
+    subjectId: subjectId ? String(subjectId) : '',
+    subjectName: subjectName,
+    classNumber: classNum,
+    watchProgress: Number(content.watchProgress || content.progress || 0),
+    isYouTubeVideo: !!(
+      videoFileUrl &&
+      (videoFileUrl.includes('youtube.com') || videoFileUrl.includes('youtu.be'))
+    ),
+  };
+}
+
 export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
+  const {
+    selectedClass,
+    selectedSubject,
+    listEpoch,
+    setSelectedClass,
+    setSelectedSubject,
+    clearFilters,
+    clearClass,
+    clearSubject,
+  } = useEduOTTFilters();
+
   const [activeTab, setActiveTab] = useState<EduOTTTab>('videos');
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [liveSessions, setLiveSessions] = useState<LiveSession[]>([]);
-  const [subjects, setSubjects] = useState<any[]>([]);
+  const [videoCatalog, setVideoCatalog] = useState<VideoItem[]>([]);
+  const [sessionCatalog, setSessionCatalog] = useState<LiveSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSubject, setSelectedSubject] = useState<string>('all');
+  const [sessionSearchTerm, setSessionSearchTerm] = useState('');
   const [visibleCount, setVisibleCount] = useState(10);
   const [bookmarkedIds, setBookmarkedIds] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    fetchSubjects();
-    fetchVideos();
-    fetchLiveSessions();
-  }, []);
-
-  useEffect(() => setVisibleCount(10), [searchTerm, selectedSubject]);
-
-  const fetchSubjects = async () => {
-    try {
+    let cancelled = false;
+    async function loadCatalog() {
       const token = await SecureStore.getItemAsync('authToken');
       if (!token) return;
-
-      const response = await fetch(`${API_BASE_URL}/api/student/subjects`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      try {
+        const [vRes, sRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/student/asli-prep-content?type=Video`, {
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          }),
+          fetch(`${API_BASE_URL}/api/student/streams`, {
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          }),
+        ]);
+        if (cancelled) return;
+        if (vRes.ok) {
+          const data = await vRes.json();
+          const list = data.data || data || [];
+          setVideoCatalog(list.map(mapContentToVideoItem));
+        } else setVideoCatalog([]);
+        if (sRes.ok) {
+          const data = await sRes.json();
+          const list = data.data || data || [];
+          setSessionCatalog(list);
+        } else setSessionCatalog([]);
+      } catch {
+        if (!cancelled) {
+          setVideoCatalog([]);
+          setSessionCatalog([]);
         }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const subjectsList = data.subjects || data.data || [];
-        setSubjects(subjectsList);
       }
-    } catch (error) {
-      console.error('Failed to fetch subjects:', error);
     }
-  };
+    loadCatalog();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  const fetchVideos = async () => {
-    try {
-      setLoading(true);
-      const token = await SecureStore.getItemAsync('authToken');
-      if (!token) {
-        setLoading(false);
-        return;
-      }
+  useEffect(
+    () => setVisibleCount(10),
+    [searchTerm, listEpoch]
+  );
 
-      const response = await fetch(`${API_BASE_URL}/api/student/asli-prep-content?type=Video`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const videosList = data.data || data || [];
-        
-        console.log('📹 Fetched videos:', videosList.length);
-        
-        const videosWithSubjects = videosList.map((content: any) => {
-          const subjectId = content.subject?._id || content.subject?.id || (typeof content.subject === 'string' ? content.subject : '');
-          const subjectName = content.subject?.name || (typeof content.subject === 'string' ? content.subject : 'Unknown Subject');
-          const rawDuration = content.duration || 0;
-          const durationInSeconds = rawDuration > 0 
-            ? (rawDuration > 100 ? rawDuration : rawDuration * 60)
-            : 0;
-          
-          let videoFileUrl = content.fileUrl || content.videoUrl;
-          if (videoFileUrl && !videoFileUrl.startsWith('http') && !videoFileUrl.startsWith('//')) {
-            if (videoFileUrl.startsWith('/')) {
-              videoFileUrl = `${API_BASE_URL}${videoFileUrl}`;
-            } else {
-              videoFileUrl = `${API_BASE_URL}/${videoFileUrl}`;
-            }
-          }
-          
-          return {
-            _id: content._id,
-            title: content.title || 'Untitled Video',
-            description: content.description || '',
-            videoUrl: videoFileUrl,
-            fileUrl: videoFileUrl,
-            duration: durationInSeconds,
-            views: content.views || 0,
-            subjectId: subjectId ? String(subjectId) : '',
-            subjectName: subjectName,
-            watchProgress: Number(content.watchProgress || content.progress || 0),
-            isYouTubeVideo: videoFileUrl && (
-              videoFileUrl.includes('youtube.com') || 
-              videoFileUrl.includes('youtu.be')
-            )
-          };
-        });
-        
-        setVideos(videosWithSubjects);
-      } else {
-        console.error('Failed to fetch videos:', response.status, response.statusText);
-        setVideos([]);
-      }
-    } catch (error) {
-      console.error('Failed to fetch videos:', error);
-      setVideos([]);
-    } finally {
+  useEffect(() => {
+    if (activeTab !== 'videos') {
       setLoading(false);
+      return;
     }
-  };
+    let cancelled = false;
 
-  const fetchLiveSessions = async () => {
-    try {
-      setLoadingSessions(true);
-      const token = await SecureStore.getItemAsync('authToken');
-      if (!token) {
-        setLoadingSessions(false);
-        return;
-      }
-
-      const response = await fetch(`${API_BASE_URL}/api/student/streams`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+    async function fetchVideos() {
+      try {
+        setLoading(true);
+        const token = await SecureStore.getItemAsync('authToken');
+        if (!token) {
+          setLoading(false);
+          return;
         }
-      });
 
-      if (response.ok) {
-        const data = await response.json();
-        const sessionsList = data.data || data || [];
-        setLiveSessions(sessionsList);
+        const response = await fetch(buildVideosUrl(selectedClass, selectedSubject), {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (cancelled) return;
+
+        if (response.ok) {
+          const data = await response.json();
+          const videosList = data.data || data || [];
+          setVideos(videosList.map(mapContentToVideoItem));
+        } else {
+          setVideos([]);
+        }
+      } catch (error) {
+        console.error('Failed to fetch videos:', error);
+        if (!cancelled) setVideos([]);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-    } catch (error) {
-      console.error('Failed to fetch live sessions:', error);
-      setLiveSessions([]);
-    } finally {
-      setLoadingSessions(false);
     }
-  };
+
+    fetchVideos();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, selectedClass, selectedSubject, listEpoch]);
+
+  useEffect(() => {
+    if (activeTab !== 'live-sessions') {
+      setLoadingSessions(false);
+      return;
+    }
+    let cancelled = false;
+
+    async function fetchLiveSessions() {
+      try {
+        setLoadingSessions(true);
+        const token = await SecureStore.getItemAsync('authToken');
+        if (!token) {
+          setLoadingSessions(false);
+          return;
+        }
+
+        const response = await fetch(buildStreamsUrl(selectedClass, selectedSubject), {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (cancelled) return;
+
+        if (response.ok) {
+          const data = await response.json();
+          const sessionsList = data.data || data || [];
+          setLiveSessions(sessionsList);
+        } else {
+          setLiveSessions([]);
+        }
+      } catch (error) {
+        console.error('Failed to fetch live sessions:', error);
+        if (!cancelled) setLiveSessions([]);
+      } finally {
+        if (!cancelled) setLoadingSessions(false);
+      }
+    }
+
+    fetchLiveSessions();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, selectedClass, selectedSubject, listEpoch]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -204,25 +291,92 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
     }
   };
 
+  const globalClassOptions = useMemo(() => {
+    const set = new Set<string>();
+    videoCatalog.forEach((v) => {
+      const l = getSubjectClassLabel({
+        name: v.subjectName,
+        classNumber: v.classNumber,
+      });
+      if (l) set.add(l);
+    });
+    sessionCatalog.forEach((session) => {
+      const l = getSubjectClassLabel({
+        name: session.subject?.name,
+        classNumber: session.classNumber,
+      });
+      if (l) set.add(l);
+    });
+    return Array.from(set).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+  }, [videoCatalog, sessionCatalog]);
+
+  const globalSubjectOptions = useMemo(() => {
+    const names = new Set<string>();
+    videoCatalog.forEach((v) => {
+      const l = getSubjectClassLabel({
+        name: v.subjectName,
+        classNumber: v.classNumber,
+      });
+      if (selectedClass && l !== selectedClass) return;
+      names.add(extractPlainSubjectName(v.subjectName || '').trim());
+    });
+    sessionCatalog.forEach((session) => {
+      const l = getSubjectClassLabel({
+        name: session.subject?.name,
+        classNumber: session.classNumber,
+      });
+      if (selectedClass && l !== selectedClass) return;
+      names.add(extractPlainSubjectName(session.subject?.name || '').trim());
+    });
+    return Array.from(names).filter(Boolean).sort((a, b) => a.localeCompare(b));
+  }, [videoCatalog, sessionCatalog, selectedClass]);
+
   const filteredVideos = useMemo(() => {
     return videos.filter((video) => {
-      const matchesSearch = !searchTerm || video.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           (video.description || '').toLowerCase().includes(searchTerm.toLowerCase());
-      const normalizedSelected = String(selectedSubject || '').toLowerCase();
-      const normalizedName = String(video.subjectName || '').toLowerCase();
-      const normalizedId = String(video.subjectId || '').toLowerCase();
-      const matchesSubject =
-        selectedSubject === 'all' ||
-        normalizedId === normalizedSelected ||
-        normalizedName === normalizedSelected;
-      return matchesSearch && matchesSubject;
+      const matchesSearch =
+        !searchTerm ||
+        video.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (video.description || '').toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesSearch;
     });
-  }, [videos, searchTerm, selectedSubject]);
+  }, [videos, searchTerm]);
+
+  const filteredSessions = useMemo(() => {
+    return liveSessions.filter((session) => {
+      const matchesSearch =
+        !sessionSearchTerm ||
+        session.title.toLowerCase().includes(sessionSearchTerm.toLowerCase()) ||
+        (session.description || '').toLowerCase().includes(sessionSearchTerm.toLowerCase());
+      return matchesSearch;
+    });
+  }, [liveSessions, sessionSearchTerm]);
 
   const visibleVideos = useMemo(
     () => filteredVideos.slice(0, visibleCount),
     [filteredVideos, visibleCount]
   );
+
+  const videoClassChipOptions = useMemo(
+    () => globalClassOptions.map((c) => ({ value: c, label: `Class ${c}` })),
+    [globalClassOptions]
+  );
+  const videoSubjectChipOptions = useMemo(
+    () => globalSubjectOptions.map((n) => ({ value: n, label: n })),
+    [globalSubjectOptions]
+  );
+
+  const classChipSelected = selectedClass ?? 'all';
+  const subjectChipSelected = selectedSubject ?? 'all';
+
+  const formatVideoSubjectLine = useCallback((video: VideoItem) => {
+    const plain = extractPlainSubjectName(video.subjectName || '').trim();
+    const cl = getSubjectClassLabel({
+      name: video.subjectName,
+      classNumber: video.classNumber,
+    });
+    if (!plain && !cl) return video.description || 'Video lecture';
+    return cl ? `${plain} · Class ${cl}` : plain;
+  }, []);
 
   const handlePlayVideo = useCallback(async (video: VideoItem) => {
     if (video.videoUrl) {
@@ -251,9 +405,48 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([fetchSubjects(), fetchVideos(), fetchLiveSessions()]);
-    setRefreshing(false);
-  }, []);
+    const token = await SecureStore.getItemAsync('authToken');
+    if (!token) {
+      setRefreshing(false);
+      return;
+    }
+    try {
+      const [vRes, sRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/student/asli-prep-content?type=Video`, {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        }),
+        fetch(`${API_BASE_URL}/api/student/streams`, {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        }),
+      ]);
+      if (vRes.ok) {
+        const data = await vRes.json();
+        setVideoCatalog((data.data || data || []).map(mapContentToVideoItem));
+      }
+      if (sRes.ok) {
+        const data = await sRes.json();
+        setSessionCatalog(data.data || data || []);
+      }
+      const vUrl = buildVideosUrl(selectedClass, selectedSubject);
+      const v2 = await fetch(vUrl, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
+      if (v2.ok) {
+        const data = await v2.json();
+        setVideos((data.data || data || []).map(mapContentToVideoItem));
+      }
+      const sUrl = buildStreamsUrl(selectedClass, selectedSubject);
+      const s2 = await fetch(sUrl, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
+      if (s2.ok) {
+        const data = await s2.json();
+        setLiveSessions(data.data || data || []);
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  }, [selectedClass, selectedSubject]);
 
   const toggleBookmark = useCallback((videoId: string) => {
     setBookmarkedIds(prev => ({ ...prev, [videoId]: !prev[videoId] }));
@@ -269,7 +462,7 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
     <VideoCard
       title={video.title}
       description={video.description}
-      subjectName={video.subjectName}
+      subjectName={formatVideoSubjectLine(video)}
       durationText={formatDuration(video.duration)}
       views={Number(video.views || 0)}
       watchProgress={(video as any).watchProgress}
@@ -278,7 +471,7 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
       onPress={() => handlePlayVideo(video)}
       onToggleBookmark={() => toggleBookmark(video._id)}
     />
-  ), [bookmarkedIds, formatDuration, handlePlayVideo, toggleBookmark]);
+  ), [bookmarkedIds, formatDuration, formatVideoSubjectLine, handlePlayVideo, toggleBookmark]);
 
   const renderSessionItem = useCallback(({ item }: { item: LiveSession }) => {
     const statusColor = getStatusColor(item.status);
@@ -296,7 +489,16 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
           {item.description || 'Live class session'}
         </Text>
         <View style={styles.sessionMeta}>
-          <Text style={styles.sessionMetaText}>{item.subject?.name || 'General'}</Text>
+          <Text style={styles.sessionMetaText}>
+            {(() => {
+              const plain = extractPlainSubjectName(item.subject?.name || 'General');
+              const cl = getSubjectClassLabel({
+                name: item.subject?.name,
+                classNumber: item.classNumber,
+              });
+              return cl ? `${plain} · Class ${cl}` : plain;
+            })()}
+          </Text>
           <Text style={styles.sessionMetaText}>•</Text>
           <Text style={styles.sessionMetaText}>{item.viewerCount || 0} watching</Text>
         </View>
@@ -331,6 +533,38 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
       </View>
 
       <TabSwitcher activeTab={activeTab} onChange={setActiveTab} />
+
+      <FilterChips
+        sectionLabel="Class"
+        selected={classChipSelected}
+        onSelect={(v) => setSelectedClass(v === 'all' ? null : v)}
+        options={videoClassChipOptions}
+      />
+      <FilterChips
+        sectionLabel="Subject"
+        selected={subjectChipSelected}
+        onSelect={(v) => setSelectedSubject(v === 'all' ? null : v)}
+        options={videoSubjectChipOptions}
+      />
+
+      {(selectedClass != null || selectedSubject != null) && (
+        <View style={styles.activeFiltersRow}>
+          <Text style={styles.activeFiltersLabel}>Active:</Text>
+          {selectedClass != null && (
+            <TouchableOpacity style={styles.activeChip} onPress={clearClass}>
+              <Text style={styles.activeChipText}>Class: {selectedClass} ✕</Text>
+            </TouchableOpacity>
+          )}
+          {selectedSubject != null && (
+            <TouchableOpacity style={styles.activeChipAlt} onPress={clearSubject}>
+              <Text style={styles.activeChipText}>Subject: {selectedSubject} ✕</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity onPress={clearFilters}>
+            <Text style={styles.clearAllText}>Clear filters</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </>
   );
 
@@ -356,7 +590,9 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
         <View style={styles.emptyState}>
           <Ionicons name="videocam-outline" size={52} color="#94a3b8" />
           <Text style={styles.emptyTitle}>No videos found</Text>
-          <Text style={styles.emptyText}>Try another keyword or subject filter.</Text>
+          <Text style={styles.emptyText}>
+            No content available for the selected filters, or try another keyword. Clear filters to see all items.
+          </Text>
         </View>
       );
     }
@@ -370,7 +606,6 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
           <>
             {listHeader}
             <SearchBar value={searchTerm} onChangeText={setSearchTerm} />
-            <FilterChips selectedSubject={selectedSubject} subjects={subjects} onSelect={setSelectedSubject} />
             <Text style={styles.resultsCount}>Showing {visibleVideos.length} of {filteredVideos.length}</Text>
           </>
         }
@@ -398,15 +633,30 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
 
     return (
       <FlatList
-        data={liveSessions}
+        data={filteredSessions}
         keyExtractor={(item) => item._id}
         renderItem={renderSessionItem}
-        ListHeaderComponent={listHeader}
+        ListHeaderComponent={
+          <>
+            {listHeader}
+            <SearchBar
+              value={sessionSearchTerm}
+              onChangeText={setSessionSearchTerm}
+              placeholder="Search live sessions..."
+            />
+          </>
+        }
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Ionicons name="radio-outline" size={52} color="#94a3b8" />
-            <Text style={styles.emptyTitle}>No live sessions right now</Text>
-            <Text style={styles.emptyText}>Upcoming classes will appear here.</Text>
+            <Text style={styles.emptyTitle}>
+              {liveSessions.length === 0 ? 'No live sessions right now' : 'No sessions match filters'}
+            </Text>
+            <Text style={styles.emptyText}>
+              {liveSessions.length === 0
+                ? 'Upcoming classes will appear here.'
+                : 'Try another search or class/subject filter.'}
+            </Text>
           </View>
         }
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -490,6 +740,44 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748b',
     marginBottom: 10,
+  },
+  activeFiltersRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  activeFiltersLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  activeChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#e0f2fe',
+    borderWidth: 1,
+    borderColor: '#7dd3fc',
+  },
+  activeChipAlt: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#ede9fe',
+    borderWidth: 1,
+    borderColor: '#c4b5fd',
+  },
+  activeChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0f172a',
+  },
+  clearAllText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2563eb',
   },
   loader: {
     marginTop: 40,

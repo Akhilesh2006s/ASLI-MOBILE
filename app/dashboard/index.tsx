@@ -20,6 +20,7 @@ import OverviewView from './components/OverviewView';
 import LearningPathsView from './components/LearningPathsView';
 import VidyaAIView from './components/VidyaAIView';
 import EduOTTView from './components/EduOTTView';
+import { EduOTTFilterProvider } from '../../src/contexts/edu-ott-filter-context';
 import ExamsView from './components/ExamsView';
 
 /** Same four links as website header (Navigation.tsx): Learning Paths, EduOTT, Exams, Vidya AI */
@@ -158,7 +159,13 @@ export default function StudentDashboard() {
       case 'learning-paths':
         return <LearningPathsView />;
       case 'eduott':
-        return <EduOTTView username={user?.fullName?.split(' ')[0] || user?.email?.split('@')[0] || 'Student'} />;
+        return (
+          <EduOTTFilterProvider>
+            <EduOTTView
+              username={user?.fullName?.split(' ')[0] || user?.email?.split('@')[0] || 'Student'}
+            />
+          </EduOTTFilterProvider>
+        );
       case 'exams':
         return <ExamsView />;
       case 'vidya-ai':

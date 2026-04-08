@@ -5,15 +5,16 @@ import { Ionicons } from '@expo/vector-icons';
 interface SearchBarProps {
   value: string;
   onChangeText: (text: string) => void;
+  placeholder?: string;
 }
 
-function SearchBarComponent({ value, onChangeText }: SearchBarProps) {
+function SearchBarComponent({ value, onChangeText, placeholder = 'Search videos...' }: SearchBarProps) {
   return (
     <View style={styles.container}>
       <Ionicons name="search" size={18} color="#94a3b8" />
       <TextInput
         style={styles.input}
-        placeholder="Search videos..."
+        placeholder={placeholder}
         value={value}
         onChangeText={onChangeText}
         placeholderTextColor="#94a3b8"
