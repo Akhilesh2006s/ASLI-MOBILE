@@ -1,9 +1,14 @@
-import { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Modal, Linking, Alert } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Linking, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Video as ExpoVideo, ResizeMode } from 'expo-av';
-import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../../src/theme/teacher';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { router } from 'expo-router';
+import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
 import teacherService, { asArray } from '../../../src/services/api/teacherService';
+import { openContentPreview } from '../../../src/utils/openContentPreview';
+import EduOTTVideoCard from '../../../src/components/eduott/EduOTTVideoCard';
+import { resolveContentDurationSeconds } from '../../../src/utils/eduottVideoUtils';
+import { extractPlainSubjectName, getSubjectClassLabel } from '../../../src/lib/subject-names';
 
 type EduOTTSubTab = 'videos' | 'live-sessions';
 
@@ -19,6 +24,8 @@ interface EduVideo {
   isYouTubeVideo?: boolean;
   fileUrl?: string;
   subjectName?: string;
+  classNumber?: string;
+  thumbnailUrl?: string;
 }
 
 export default function EduOTTView() {
@@ -33,10 +40,6 @@ export default function EduOTTView() {
   const [teacherSubjects, setTeacherSubjects] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
-  const [selectedVideo, setSelectedVideo] = useState<EduVideo | null>(null);
-  const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
-  const videoRef = useRef<ExpoVideo>(null);
-
   useEffect(() => {
     fetchTeacherSubjects();
   }, []);
@@ -74,22 +77,31 @@ export default function EduOTTView() {
           videoFileUrl.includes('youtu.be')
         ));
 
-        const durationInMinutes = content.duration && content.duration > 0
-          ? Number(content.duration)
-          : 0;
+        const subjectName = content.subject?.name || content.subject || 'Unknown Subject';
+        const classNumber =
+          content.classNumber != null && String(content.classNumber).trim() !== ''
+            ? String(content.classNumber).trim()
+            : content.subject?.classNumber != null
+              ? String(content.subject.classNumber).trim()
+              : undefined;
 
         return {
           _id: content._id || content.id,
           title: content.title || 'Untitled Video',
           description: content.description || '',
-          duration: durationInMinutes * 60,
+          duration: resolveContentDurationSeconds({
+            duration: content.duration,
+            durationSeconds: content.durationSeconds,
+          }),
           views: content.views || 0,
           createdAt: content.createdAt || new Date().toISOString(),
           videoUrl: videoFileUrl,
           youtubeUrl: content.youtubeUrl || (isYouTube ? videoFileUrl : ''),
           isYouTubeVideo: isYouTube,
           fileUrl: videoFileUrl,
-          subjectName: content.subject?.name || content.subject || 'Unknown Subject',
+          subjectName,
+          classNumber,
+          thumbnailUrl: content.thumbnailUrl,
         };
       });
 
@@ -130,45 +142,23 @@ export default function EduOTTView() {
   });
 
 
-  const handlePlayVideo = async (video: EduVideo) => {
-    if (video.isYouTubeVideo && video.youtubeUrl) {
-      let videoId = '';
-      if (video.youtubeUrl.includes('youtu.be/')) {
-        videoId = video.youtubeUrl.split('youtu.be/')[1]?.split('?')[0] || '';
-      } else if (video.youtubeUrl.includes('youtube.com/watch?v=')) {
-        videoId = video.youtubeUrl.split('v=')[1]?.split('&')[0] || '';
-      }
-      
-      if (videoId) {
-        const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
-        const canOpen = await Linking.canOpenURL(youtubeUrl);
-        if (canOpen) {
-          await Linking.openURL(youtubeUrl);
-        } else {
-          Alert.alert('Error', 'Cannot open YouTube. Please install YouTube app.');
-        }
-      }
-    } else if (video.videoUrl || video.fileUrl) {
-      setSelectedVideo(video);
-      setIsVideoModalVisible(true);
-    } else {
-      Alert.alert('Error', 'Video URL not available');
-    }
-  };
-
-  const getVideoUrl = (video: EduVideo) => {
-    if (video.videoUrl) return teacherService.resolveMediaUrl(video.videoUrl);
-    if (video.fileUrl) return teacherService.resolveMediaUrl(video.fileUrl);
-    return '';
+  const handlePlayVideo = (video: EduVideo) => {
+    openContentPreview(router, {
+      _id: video._id,
+      title: video.title,
+      type: 'Video',
+      fileUrl: video.videoUrl || video.fileUrl,
+      youtubeUrl: video.youtubeUrl,
+    });
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'live': return '#ef4444';
-      case 'scheduled': return '#3b82f6';
-      case 'ended': return '#6b7280';
-      case 'cancelled': return '#f97316';
-      default: return '#6b7280';
+      case 'live': return TEACHER.danger;
+      case 'scheduled': return TEACHER.primary;
+      case 'ended': return TEACHER.textMuted;
+      case 'cancelled': return TEACHER.warning;
+      default: return TEACHER.textMuted;
     }
   };
 
@@ -177,7 +167,7 @@ export default function EduOTTView() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerIcon}>
-          <Ionicons name="play" size={32} color="#8b5cf6" />
+          <Ionicons name="play" size={32} color={TEACHER.primaryLight} />
         </View>
         <View>
           <Text style={styles.headerTitle}>EduOTT</Text>
@@ -191,7 +181,7 @@ export default function EduOTTView() {
           style={[styles.subTab, activeSubTab === 'videos' && styles.subTabActive]}
           onPress={() => setActiveSubTab('videos')}
         >
-          <Ionicons name="play" size={16} color={activeSubTab === 'videos' ? '#8b5cf6' : '#6b7280'} />
+          <Ionicons name="play" size={16} color={activeSubTab === 'videos' ? TEACHER.primaryLight : TEACHER.textMuted} />
           <Text style={[styles.subTabText, activeSubTab === 'videos' && styles.subTabTextActive]}>
             Videos
           </Text>
@@ -200,7 +190,7 @@ export default function EduOTTView() {
           style={[styles.subTab, activeSubTab === 'live-sessions' && styles.subTabActive]}
           onPress={() => setActiveSubTab('live-sessions')}
         >
-          <Ionicons name="radio" size={16} color={activeSubTab === 'live-sessions' ? '#8b5cf6' : '#6b7280'} />
+          <Ionicons name="radio" size={16} color={activeSubTab === 'live-sessions' ? TEACHER.primaryLight : TEACHER.textMuted} />
           <Text style={[styles.subTabText, activeSubTab === 'live-sessions' && styles.subTabTextActive]}>
             Live Sessions
           </Text>
@@ -212,19 +202,19 @@ export default function EduOTTView() {
         <>
           {/* Search and Filter */}
           <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color="#9ca3af" style={styles.searchIcon} />
+            <Ionicons name="search" size={20} color={TEACHER.textMuted} style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
               placeholder="Search videos by title..."
               value={searchTerm}
               onChangeText={setSearchTerm}
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={TEACHER.textMuted}
             />
           </View>
 
           {isLoading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#8b5cf6" />
+              <ActivityIndicator size="large" color={TEACHER.primary} />
             </View>
           ) : filteredVideos.length === 0 ? (
             <View style={styles.emptyContainer}>
@@ -235,36 +225,26 @@ export default function EduOTTView() {
             </View>
           ) : (
             <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
-              {filteredVideos.map((video) => (
-                <TouchableOpacity
-                  key={video._id}
-                  style={styles.videoCard}
-                  onPress={() => handlePlayVideo(video)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.videoCardHeader}>
-                    <View style={styles.videoIcon}>
-                      <Ionicons name="play-circle" size={32} color="#8b5cf6" />
-                    </View>
-                    <View style={styles.videoInfo}>
-                      <Text style={styles.videoTitle}>{video.title}</Text>
-                      {video.subjectName && (
-                        <Text style={styles.videoSubject}>{video.subjectName}</Text>
-                      )}
-                    </View>
-                  </View>
-                  {video.description && (
-                    <Text style={styles.videoDescription} numberOfLines={2}>
-                      {video.description}
-                    </Text>
-                  )}
-                  <View style={styles.videoStats}>
-                    <View style={styles.statItem}>
-                      <Ionicons name="eye" size={16} color="#6b7280" />
-                      <Text style={styles.statText}>{video.views} views</Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
+              {filteredVideos.map((video, index) => (
+                <Animated.View key={video._id} entering={FadeInDown.duration(350).delay(Math.min(index * 60, 480))}>
+                  <EduOTTVideoCard
+                    variant="teacher"
+                    title={video.title}
+                    durationSeconds={video.duration}
+                    subjectLabel={extractPlainSubjectName(video.subjectName || '').trim() || undefined}
+                    classLabel={
+                      getSubjectClassLabel({
+                        name: video.subjectName,
+                        classNumber: video.classNumber,
+                      }) || undefined
+                    }
+                    thumbnailUrl={video.thumbnailUrl}
+                    youtubeUrl={video.youtubeUrl}
+                    fileUrl={video.fileUrl}
+                    videoUrl={video.videoUrl}
+                    onPress={() => handlePlayVideo(video)}
+                  />
+                </Animated.View>
               ))}
             </ScrollView>
           )}
@@ -275,19 +255,19 @@ export default function EduOTTView() {
       {activeSubTab === 'live-sessions' && (
         <>
           <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color="#9ca3af" style={styles.searchIcon} />
+            <Ionicons name="search" size={20} color={TEACHER.textMuted} style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
               placeholder="Search live sessions..."
               value={sessionSearchTerm}
               onChangeText={setSessionSearchTerm}
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={TEACHER.textMuted}
             />
           </View>
 
           {isLoadingSessions ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#8b5cf6" />
+              <ActivityIndicator size="large" color={TEACHER.primary} />
             </View>
           ) : filteredSessions.length === 0 ? (
             <View style={styles.emptyContainer}>
@@ -312,7 +292,7 @@ export default function EduOTTView() {
                   <View style={styles.sessionDetails}>
                     {session.streamer && (
                       <View style={styles.detailRow}>
-                        <Ionicons name="person" size={16} color="#6b7280" />
+                        <Ionicons name="person" size={16} color={TEACHER.textMuted} />
                         <Text style={styles.detailText}>
                           {session.streamer.fullName || session.streamer.email}
                         </Text>
@@ -334,7 +314,7 @@ export default function EduOTTView() {
                         Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open stream.'));
                       }}
                     >
-                      <Ionicons name="radio" size={16} color="#fff" />
+                      <Ionicons name="radio" size={16} color={TEACHER.textOnPrimary} />
                       <Text style={styles.watchLiveText}>Watch Live</Text>
                     </TouchableOpacity>
                   ) : null}
@@ -345,351 +325,78 @@ export default function EduOTTView() {
         </>
       )}
 
-      {/* Video Player Modal */}
-      <Modal
-        visible={isVideoModalVisible}
-        animationType="slide"
-        onRequestClose={() => setIsVideoModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>
-              {selectedVideo?.title || 'Video Player'}
-            </Text>
-            <TouchableOpacity onPress={() => setIsVideoModalVisible(false)}>
-              <Ionicons name="close" size={28} color="#111827" />
-            </TouchableOpacity>
-          </View>
-
-          {selectedVideo && !selectedVideo.isYouTubeVideo && (
-            <View style={styles.videoPlayerContainer}>
-              <ExpoVideo
-                ref={videoRef}
-                style={styles.videoPlayer}
-                source={{ uri: getVideoUrl(selectedVideo) }}
-                useNativeControls
-                resizeMode={ResizeMode.CONTAIN}
-                shouldPlay={false}
-                isLooping={false}
-              />
-            </View>
-          )}
-
-          {selectedVideo && selectedVideo.isYouTubeVideo && (
-            <View style={styles.youtubeContainer}>
-              <Text style={styles.youtubeMessage}>
-                This is a YouTube video. Opening in YouTube app...
-              </Text>
-              <TouchableOpacity
-                style={styles.openYoutubeButton}
-                onPress={() => handlePlayVideo(selectedVideo)}
-              >
-                <Ionicons name="logo-youtube" size={24} color="#fff" />
-                <Text style={styles.openYoutubeText}>Open in YouTube</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {selectedVideo && selectedVideo.description && (
-            <ScrollView style={styles.modalDescription}>
-              <Text style={styles.descriptionTitle}>Description</Text>
-              <Text style={styles.descriptionText}>{selectedVideo.description}</Text>
-            </ScrollView>
-          )}
-        </View>
-      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
+  container: { flex: 1, backgroundColor: TEACHER.bg },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    gap: 12,
+    flexDirection: 'row', alignItems: 'center', padding: 20,
+    backgroundColor: TEACHER.surface, borderBottomWidth: 1, borderBottomColor: TEACHER.surfaceBorder, gap: 12,
   },
   headerIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#f3e8ff',
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 48, height: 48, borderRadius: 12, backgroundColor: TEACHER.surfaceElevated,
+    borderWidth: 1, borderColor: TEACHER.surfaceBorder, justifyContent: 'center', alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#8b5cf6',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
+  headerTitle: { ...TEACHER_TYPO.section, color: TEACHER.primaryLight },
+  headerSubtitle: { fontSize: 14, color: TEACHER.textMuted },
   subTabsContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    padding: 8,
-    margin: 20,
-    marginBottom: 0,
-    borderRadius: 12,
-    gap: 8,
+    flexDirection: 'row', backgroundColor: TEACHER.surface, padding: 8, margin: 20, marginBottom: 0,
+    borderRadius: TEACHER_RADIUS.lg, gap: 8, borderWidth: 1, borderColor: TEACHER.surfaceBorder,
   },
   subTab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: '#f3f4f6',
-    gap: 8,
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    padding: 12, borderRadius: TEACHER_RADIUS.sm, backgroundColor: TEACHER.surfaceElevated, gap: 8,
   },
-  subTabActive: {
-    backgroundColor: '#f3e8ff',
-  },
-  subTabText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6b7280',
-  },
-  subTabTextActive: {
-    color: '#8b5cf6',
-  },
+  subTabActive: { backgroundColor: TEACHER.navActiveBg, borderWidth: 1, borderColor: TEACHER.primary },
+  subTabText: { fontSize: 14, fontWeight: '600', color: TEACHER.textMuted },
+  subTabTextActive: { color: TEACHER.primaryLight },
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    margin: 20,
-    marginBottom: 0,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+    flexDirection: 'row', alignItems: 'center', backgroundColor: TEACHER.surface,
+    margin: 20, marginBottom: 0, paddingHorizontal: 16, borderRadius: TEACHER_RADIUS.lg,
+    borderWidth: 1, borderColor: TEACHER.surfaceBorder,
   },
-  searchIcon: {
-    marginRight: 12,
-  },
-  searchInput: {
-    flex: 1,
-    height: 48,
-    fontSize: 16,
-    color: '#111827',
-  },
-  list: {
-    flex: 1,
-  },
-  listContent: {
-    padding: 20,
-    gap: 16,
-  },
-  videoCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  videoCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  videoIcon: {
-    marginRight: 12,
-  },
-  videoInfo: {
-    flex: 1,
-  },
-  videoTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  videoSubject: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  videoDescription: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 12,
-  },
-  videoStats: {
-    flexDirection: 'row',
-    gap: 16,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  statText: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  sessionCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  sessionCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sessionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    flex: 1,
-  },
-  sessionStatusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  sessionStatusText: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'capitalize',
-  },
-  sessionDescription: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 12,
-  },
+  searchIcon: { marginRight: 12 },
+  searchInput: { flex: 1, height: 48, fontSize: 16, color: TEACHER.text },
+  list: { flex: 1 },
+  listContent: { padding: 20, paddingBottom: 120, gap: 16 },
+  sessionCard: { ...glassCard, borderRadius: TEACHER_RADIUS.lg, padding: 16 },
+  sessionCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  sessionTitle: { fontSize: 18, fontWeight: '700', color: TEACHER.text, flex: 1 },
+  sessionStatusBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
+  sessionStatusText: { fontSize: 12, fontWeight: '600', textTransform: 'capitalize' },
+  sessionDescription: { fontSize: 14, color: TEACHER.textMuted, marginBottom: 12 },
   watchLiveBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: TEACHER.danger,
-    padding: 12,
-    borderRadius: TEACHER_RADIUS.md,
-    marginTop: 8,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: TEACHER.danger, padding: 12, borderRadius: TEACHER_RADIUS.md, marginTop: 8,
   },
-  watchLiveText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  sessionDetails: {
-    gap: 8,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  detailText: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginTop: 16,
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
+  watchLiveText: { color: TEACHER.textOnPrimary, fontWeight: '700', fontSize: 14 },
+  sessionDetails: { gap: 8 },
+  detailRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  detailText: { fontSize: 14, color: TEACHER.textMuted },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
+  emptyText: { fontSize: 18, fontWeight: '700', color: TEACHER.text, marginTop: 16 },
+  modalContainer: { flex: 1, backgroundColor: TEACHER.bg },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    paddingTop: 50,
-    backgroundColor: '#fff',
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    padding: 20, paddingTop: 50, backgroundColor: TEACHER.surface,
+    borderBottomWidth: 1, borderBottomColor: TEACHER.surfaceBorder,
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#111827',
-    flex: 1,
-  },
-  videoPlayerContainer: {
-    flex: 1,
-    backgroundColor: '#000',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  videoPlayer: {
-    width: '100%',
-    height: '100%',
-  },
-  youtubeContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#000',
-    padding: 40,
-  },
-  youtubeMessage: {
-    fontSize: 16,
-    color: '#fff',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
+  modalTitle: { ...TEACHER_TYPO.section, fontSize: 20, color: TEACHER.text, flex: 1 },
+  videoPlayerContainer: { flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' },
+  videoPlayer: { width: '100%', height: '100%' },
+  youtubeContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000', padding: 40 },
+  youtubeMessage: { fontSize: 16, color: TEACHER.text, textAlign: 'center', marginBottom: 24 },
   openYoutubeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ef4444',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 8,
+    flexDirection: 'row', alignItems: 'center', backgroundColor: TEACHER.danger,
+    paddingHorizontal: 24, paddingVertical: 12, borderRadius: TEACHER_RADIUS.sm, gap: 8,
   },
-  openYoutubeText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  modalDescription: {
-    maxHeight: 200,
-    backgroundColor: '#fff',
-    padding: 20,
-  },
-  descriptionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  descriptionText: {
-    fontSize: 14,
-    color: '#6b7280',
-    lineHeight: 20,
-  },
+  openYoutubeText: { fontSize: 16, fontWeight: '600', color: TEACHER.textOnPrimary },
+  modalDescription: { maxHeight: 200, backgroundColor: TEACHER.surface, padding: 20, borderTopWidth: 1, borderTopColor: TEACHER.surfaceBorder },
+  descriptionTitle: { fontSize: 18, fontWeight: '700', color: TEACHER.text, marginBottom: 12 },
+  descriptionText: { fontSize: 14, color: TEACHER.textMuted, lineHeight: 20 },
 });
 
 

@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import teacherService, { asArray } from '../../../src/services/api/teacherService';
-import { TEACHER, TEACHER_SPACING } from '../../../src/theme/teacher';
+import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
 
 interface Assessment {
   _id: string;
@@ -103,7 +105,7 @@ export default function TeacherAssessmentsView() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3b82f6" />
+        <ActivityIndicator size="large" color={TEACHER.primary} />
         <Text style={styles.loadingText}>Loading assessments...</Text>
       </View>
     );
@@ -114,11 +116,11 @@ export default function TeacherAssessmentsView() {
       {/* Search and Filters */}
       <View style={styles.filtersContainer}>
         <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#6b7280" style={styles.searchIcon} />
+          <Ionicons name="search" size={20} color={TEACHER.textMuted} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search assessments..."
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor={TEACHER.textMuted}
             value={searchTerm}
             onChangeText={setSearchTerm}
           />
@@ -151,30 +153,33 @@ export default function TeacherAssessmentsView() {
       <TouchableOpacity
         style={styles.addButton}
         onPress={() => setIsCreateModalOpen(true)}
+        activeOpacity={0.85}
       >
-        <Ionicons name="add" size={24} color="#fff" />
-        <Text style={styles.addButtonText}>Create Assessment</Text>
+        <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.addButtonGrad}>
+          <Ionicons name="add" size={24} color={TEACHER.textOnPrimary} />
+          <Text style={styles.addButtonText}>Create Assessment</Text>
+        </LinearGradient>
       </TouchableOpacity>
 
       {/* Assessments List */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentInner} showsVerticalScrollIndicator={false}>
         {filteredAssessments.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="document-text-outline" size={64} color="#9ca3af" />
+            <Ionicons name="document-text-outline" size={64} color={TEACHER.textMuted} />
             <Text style={styles.emptyText}>No assessments found</Text>
             <Text style={styles.emptySubtext}>Create your first assessment to get started</Text>
           </View>
         ) : (
-          filteredAssessments.map((assessment) => {
+          filteredAssessments.map((assessment, index) => {
             const subjectName = typeof assessment.subject === 'object' 
               ? assessment.subject?.name 
               : assessment.subject || 'General';
 
             return (
-              <View key={assessment._id} style={styles.assessmentCard}>
+              <Animated.View key={assessment._id} entering={FadeInDown.duration(350).delay(Math.min(index * 60, 480))} style={styles.assessmentCard}>
                 <View style={styles.assessmentHeader}>
                   <View style={styles.assessmentIcon}>
-                    <Ionicons name="clipboard" size={24} color="#3b82f6" />
+                    <Ionicons name="clipboard" size={24} color={TEACHER.primaryLight} />
                   </View>
                   <View style={styles.assessmentInfo}>
                     <Text style={styles.assessmentTitle} numberOfLines={2}>{assessment.title}</Text>
@@ -190,16 +195,16 @@ export default function TeacherAssessmentsView() {
 
                 <View style={styles.assessmentMeta}>
                   <View style={styles.metaItem}>
-                    <Ionicons name="time" size={16} color="#3b82f6" />
+                    <Ionicons name="time" size={16} color={TEACHER.primaryLight} />
                     <Text style={styles.metaText}>{assessment.duration} min</Text>
                   </View>
                   <View style={styles.metaItem}>
-                    <Ionicons name="trophy" size={16} color="#f59e0b" />
+                    <Ionicons name="trophy" size={16} color={TEACHER.warning} />
                     <Text style={styles.metaText}>{assessment.totalMarks} marks</Text>
                   </View>
                   {assessment.questions && (
                     <View style={styles.metaItem}>
-                      <Ionicons name="help-circle" size={16} color="#9333ea" />
+                      <Ionicons name="help-circle" size={16} color={TEACHER.primaryLight} />
                       <Text style={styles.metaText}>
                         {Array.isArray(assessment.questions) ? assessment.questions.length : assessment.questions} questions
                       </Text>
@@ -211,13 +216,13 @@ export default function TeacherAssessmentsView() {
                   <Ionicons
                     name={assessment.isActive ? 'checkmark-circle' : 'close-circle'}
                     size={16}
-                    color={assessment.isActive ? '#10b981' : '#ef4444'}
+                    color={assessment.isActive ? TEACHER.success : TEACHER.danger}
                   />
-                  <Text style={[styles.statusText, { color: assessment.isActive ? '#10b981' : '#ef4444' }]}>
+                  <Text style={[styles.statusText, { color: assessment.isActive ? TEACHER.success : TEACHER.danger }]}>
                     {assessment.isActive ? 'Active' : 'Inactive'}
                   </Text>
                 </View>
-              </View>
+              </Animated.View>
             );
           })
         )}
@@ -233,7 +238,7 @@ export default function TeacherAssessmentsView() {
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Create Assessment</Text>
             <TouchableOpacity onPress={() => setIsCreateModalOpen(false)}>
-              <Ionicons name="close" size={24} color="#111827" />
+              <Ionicons name="close" size={24} color={TEACHER.text} />
             </TouchableOpacity>
           </View>
 
@@ -329,11 +334,10 @@ export default function TeacherAssessmentsView() {
               </View>
             </View>
 
-            <TouchableOpacity
-              style={styles.createButton}
-              onPress={handleCreateAssessment}
-            >
-              <Text style={styles.createButtonText}>Create Assessment</Text>
+            <TouchableOpacity style={styles.createButton} onPress={handleCreateAssessment} activeOpacity={0.85}>
+              <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.createButtonGrad}>
+                <Text style={styles.createButtonText}>Create Assessment</Text>
+              </LinearGradient>
             </TouchableOpacity>
           </ScrollView>
         </View>
@@ -345,32 +349,35 @@ export default function TeacherAssessmentsView() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: TEACHER.bg,
     paddingHorizontal: TEACHER_SPACING.lg,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: TEACHER.bg,
   },
   loadingText: {
     marginTop: 12,
-    fontSize: 16,
-    color: '#6b7280',
+    ...TEACHER_TYPO.body,
+    color: TEACHER.textMuted,
   },
   filtersContainer: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    ...glassCard,
+    borderRadius: TEACHER_RADIUS.lg,
+    padding: TEACHER_SPACING.lg,
+    marginBottom: TEACHER_SPACING.md,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f3f4f6',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    marginBottom: 12,
+    backgroundColor: TEACHER.surfaceElevated,
+    borderRadius: TEACHER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
+    paddingHorizontal: TEACHER_SPACING.lg,
+    marginBottom: TEACHER_SPACING.md,
     height: 48,
   },
   searchIcon: {
@@ -378,8 +385,8 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
-    color: '#111827',
+    ...TEACHER_TYPO.body,
+    color: TEACHER.text,
   },
   filterScroll: {
     marginBottom: 8,
@@ -388,38 +395,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: TEACHER.surfaceElevated,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
     marginRight: 8,
   },
   filterChipActive: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: TEACHER.primary,
+    borderColor: TEACHER.primary,
   },
   filterChipText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: TEACHER.textSecondary,
   },
   filterChipTextActive: {
-    color: '#fff',
+    color: TEACHER.textOnPrimary,
   },
   addButton: {
+    borderRadius: TEACHER_RADIUS.md,
+    overflow: 'hidden',
+    marginBottom: TEACHER_SPACING.md,
+  },
+  addButtonGrad: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#3b82f6',
     padding: 16,
-    margin: 16,
-    borderRadius: 12,
     gap: 8,
   },
   addButtonText: {
-    color: '#fff',
+    color: TEACHER.textOnPrimary,
     fontSize: 16,
     fontWeight: '700',
   },
   content: {
     flex: 1,
-    padding: 16,
+  },
+  contentInner: {
+    paddingBottom: 120,
   },
   emptyContainer: {
     flex: 1,
@@ -428,27 +442,22 @@ const styles = StyleSheet.create({
     paddingVertical: 64,
   },
   emptyText: {
+    ...TEACHER_TYPO.section,
     fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
+    color: TEACHER.text,
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#6b7280',
+    color: TEACHER.textMuted,
     textAlign: 'center',
   },
   assessmentCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    ...glassCard,
+    borderRadius: TEACHER_RADIUS.lg,
+    padding: TEACHER_SPACING.lg,
+    marginBottom: TEACHER_SPACING.md,
   },
   assessmentHeader: {
     flexDirection: 'row',
@@ -460,26 +469,28 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#dbeafe',
+    backgroundColor: TEACHER.surfaceElevated,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
   },
   assessmentInfo: {
     flex: 1,
   },
   assessmentTitle: {
-    fontSize: 16,
+    ...TEACHER_TYPO.body,
     fontWeight: '700',
-    color: '#111827',
+    color: TEACHER.text,
     marginBottom: 4,
   },
   assessmentSubject: {
     fontSize: 14,
-    color: '#6b7280',
+    color: TEACHER.textMuted,
   },
   assessmentDescription: {
     fontSize: 14,
-    color: '#6b7280',
+    color: TEACHER.textMuted,
     marginBottom: 12,
   },
   assessmentMeta: {
@@ -488,7 +499,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: TEACHER.surfaceBorder,
   },
   metaItem: {
     flexDirection: 'row',
@@ -497,7 +508,7 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: TEACHER.textMuted,
   },
   statusBadge: {
     flexDirection: 'row',
@@ -510,7 +521,7 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: TEACHER.bg,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -518,12 +529,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: TEACHER.surfaceBorder,
   },
   modalTitle: {
+    ...TEACHER_TYPO.section,
     fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
+    color: TEACHER.text,
   },
   modalContent: {
     flex: 1,
@@ -535,16 +546,17 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: TEACHER.textSecondary,
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
+    borderColor: TEACHER.surfaceBorder,
+    borderRadius: TEACHER_RADIUS.sm,
     padding: 12,
     fontSize: 16,
-    color: '#111827',
+    color: TEACHER.text,
+    backgroundColor: TEACHER.surfaceElevated,
   },
   textArea: {
     height: 100,
@@ -558,47 +570,55 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: TEACHER.surfaceElevated,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
     marginRight: 8,
   },
   subjectChipActive: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: TEACHER.primary,
+    borderColor: TEACHER.primary,
   },
   subjectChipText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: TEACHER.textSecondary,
   },
   subjectChipTextActive: {
-    color: '#fff',
+    color: TEACHER.textOnPrimary,
   },
   typeChip: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: TEACHER.surfaceElevated,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
     marginRight: 8,
   },
   typeChipActive: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: TEACHER.primary,
+    borderColor: TEACHER.primary,
   },
   typeChipText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: TEACHER.textSecondary,
   },
   typeChipTextActive: {
-    color: '#fff',
+    color: TEACHER.textOnPrimary,
   },
   createButton: {
-    backgroundColor: '#3b82f6',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
+    borderRadius: TEACHER_RADIUS.sm,
+    overflow: 'hidden',
     marginTop: 8,
   },
+  createButtonGrad: {
+    padding: 16,
+    alignItems: 'center',
+  },
   createButtonText: {
-    color: '#fff',
+    color: TEACHER.textOnPrimary,
     fontSize: 16,
     fontWeight: '700',
   },

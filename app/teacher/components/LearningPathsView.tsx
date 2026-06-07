@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import teacherService from '../../../src/services/api/teacherService';
 import { TeacherShimmer } from '../../../src/components/teacher';
-import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../../src/theme/teacher';
+import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
 
 interface SubjectWithContent {
   _id: string;
@@ -87,9 +89,9 @@ export default function LearningPathsView() {
         <Ionicons name="book" size={22} color={TEACHER.primaryLight} />
         <Text style={styles.headerTitle}>Learning Paths</Text>
       </View>
-      {subjects.map((subject) => (
+      {subjects.map((subject, index) => (
+        <Animated.View key={subject.id} entering={FadeInDown.duration(350).delay(Math.min(index * 70, 490))}>
         <Pressable
-          key={subject.id}
           style={({ pressed }) => [styles.card, pressed && styles.pressed]}
           onPress={() => router.push(`/teacher/subject/${subject.id}` as any)}
         >
@@ -107,7 +109,7 @@ export default function LearningPathsView() {
           ) : null}
           <View style={styles.statsRow}>
             <View style={styles.stat}>
-              <Ionicons name="play" size={14} color="#60a5fa" />
+              <Ionicons name="play" size={14} color={TEACHER.primaryLight} />
               <Text style={styles.statVal}>{subject.videos.length}</Text>
               <Text style={styles.statLbl}>Videos</Text>
             </View>
@@ -132,22 +134,20 @@ export default function LearningPathsView() {
             <Ionicons name="arrow-forward" size={16} color={TEACHER.textOnPrimary} />
           </View>
         </Pressable>
+        </Animated.View>
       ))}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { paddingHorizontal: TEACHER_SPACING.lg, paddingBottom: TEACHER_SPACING.xxl },
+  wrap: { paddingHorizontal: TEACHER_SPACING.lg, paddingBottom: 120, backgroundColor: TEACHER.bg },
   header: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: TEACHER_SPACING.lg },
-  headerTitle: { fontSize: 20, fontWeight: '800', color: TEACHER.text },
+  headerTitle: { ...TEACHER_TYPO.section, color: TEACHER.text },
   card: {
-    backgroundColor: TEACHER.surface,
-    borderRadius: TEACHER_RADIUS.card,
+    ...glassCard,
     padding: TEACHER_SPACING.lg,
     marginBottom: TEACHER_SPACING.md,
-    borderWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
   },
   pressed: { opacity: 0.92 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: TEACHER_SPACING.md },

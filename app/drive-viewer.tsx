@@ -4,10 +4,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-// Using Linking instead of WebView for better compatibility
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../src/lib/api-config';
 import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
+import MediaPreviewPanel from '../src/components/shared/MediaPreviewPanel';
+import { resolveContentUrl } from '../src/utils/contentPreview';
 
 interface DriveFile {
   _id: string;
@@ -29,10 +30,16 @@ function pickParam(v: string | string[] | undefined): string {
 }
 
 export default function DriveViewer() {
-  const params = useLocalSearchParams<{ fileId?: string; driveLink?: string }>();
+  const params = useLocalSearchParams<{
+    fileId?: string;
+    driveLink?: string;
+    title?: string;
+    contentType?: string;
+  }>();
   const fileId = pickParam(params.fileId);
   const driveLinkRaw = pickParam(params.driveLink);
-  /** Decode once — Learning Paths passes encodeURIComponent so `&` in URLs doesn't break routing */
+  const paramTitle = pickParam(params.title);
+  const contentType = pickParam(params.contentType);
   const driveLink = (() => {
     if (!driveLinkRaw) return '';
     try {
@@ -44,52 +51,10 @@ export default function DriveViewer() {
 
   const [file, setFile] = useState<DriveFile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [viewerUrl, setViewerUrl] = useState<string>('');
   const [dashboardPath, setDashboardPath] = useState<string>('/dashboard');
 
-  const convertToViewerUrl = (link: string): string => {
-    let extractedId = '';
-
-    const fileMatch = link.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-    if (fileMatch) {
-      extractedId = fileMatch[1];
-    } else {
-      const openMatch = link.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-      if (openMatch) {
-        extractedId = openMatch[1];
-      } else {
-        const docMatch = link.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
-        if (docMatch) {
-          extractedId = docMatch[1];
-        } else {
-          const sheetMatch = link.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
-          if (sheetMatch) {
-            extractedId = sheetMatch[1];
-          } else {
-            const slideMatch = link.match(/\/presentation\/d\/([a-zA-Z0-9_-]+)/);
-            if (slideMatch) {
-              extractedId = slideMatch[1];
-            }
-          }
-        }
-      }
-    }
-
-    if (!extractedId) {
-      return link;
-    }
-
-    if (link.includes('document')) {
-      return `https://docs.google.com/document/d/${extractedId}/preview`;
-    }
-    if (link.includes('spreadsheet')) {
-      return `https://docs.google.com/spreadsheets/d/${extractedId}/preview`;
-    }
-    if (link.includes('presentation')) {
-      return `https://docs.google.com/presentation/d/${extractedId}/preview`;
-    }
-    return `https://drive.google.com/file/d/${extractedId}/preview`;
-  };
+  const previewUrl = resolveContentUrl(file?.driveLink || driveLink);
+  const previewTitle = file?.title || paramTitle || 'Preview';
 
   const fetchFile = async () => {
     try {
@@ -97,16 +62,15 @@ export default function DriveViewer() {
       const token = await SecureStore.getItemAsync('authToken');
       const response = await fetch(`${API_BASE_URL}/api/student/drive-files/${fileId}`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
       });
 
       if (response.ok) {
         const data = await response.json();
         const fileData = data.data || data;
         setFile(fileData);
-        setViewerUrl(convertToViewerUrl(fileData.driveLink));
       } else {
         Alert.alert('Error', 'Failed to load file');
       }
@@ -120,7 +84,6 @@ export default function DriveViewer() {
 
   useEffect(() => {
     if (driveLink) {
-      setViewerUrl(convertToViewerUrl(driveLink));
       setIsLoading(false);
     } else if (fileId) {
       fetchFile();
@@ -135,9 +98,9 @@ export default function DriveViewer() {
   useBackNavigation(dashboardPath, false);
 
   const handleOpenInBrowser = () => {
-    const url = file?.driveLink || driveLink || '';
+    const url = previewUrl;
     if (url) {
-      Linking.openURL(url).catch(err => {
+      Linking.openURL(url).catch(() => {
         Alert.alert('Error', 'Could not open link in browser');
       });
     }
@@ -147,14 +110,14 @@ export default function DriveViewer() {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3b82f6" />
-          <Text style={styles.loadingText}>Loading file...</Text>
+          <ActivityIndicator size="large" color="#6366F1" />
+          <Text style={styles.loadingText}>Loading preview…</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  if (!viewerUrl) {
+  if (!previewUrl) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.errorContainer}>
@@ -173,50 +136,33 @@ export default function DriveViewer() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <LinearGradient
-        colors={['#3b82f6', '#2563eb']}
-        style={styles.header}
-      >
+      <LinearGradient colors={['#6366F1', '#4F46E5']} style={styles.header}>
         <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => router.replace(dashboardPath)} style={styles.backButton}>
+          <TouchableOpacity onPress={() => router.replace(dashboardPath)} style={styles.headerBack}>
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
           <View style={styles.headerText}>
             <Text style={styles.headerTitle} numberOfLines={1}>
-              {file?.title || 'Drive File'}
+              {previewTitle}
             </Text>
-            {file?.description && (
+            {file?.description ? (
               <Text style={styles.headerSubtitle} numberOfLines={1}>
                 {file.description}
               </Text>
-            )}
+            ) : null}
           </View>
           <TouchableOpacity onPress={handleOpenInBrowser} style={styles.openButton}>
-            <Ionicons name="open-outline" size={24} color="#fff" />
+            <Ionicons name="open-outline" size={22} color="#fff" />
           </TouchableOpacity>
         </View>
       </LinearGradient>
 
-      {/* Document Preview */}
       <View style={styles.previewContainer}>
-        <View style={styles.previewContent}>
-          <Ionicons name="document-text" size={64} color="#3b82f6" />
-          <Text style={styles.previewTitle}>{file?.title || 'Drive File'}</Text>
-          <Text style={styles.previewText}>
-            This file will open in your browser for the best viewing experience.
-          </Text>
-          <TouchableOpacity
-            style={styles.openButtonLarge}
-            onPress={handleOpenInBrowser}
-          >
-            <Ionicons name="open-outline" size={24} color="#fff" />
-            <Text style={styles.openButtonText}>Open in Browser</Text>
-          </TouchableOpacity>
-          {file?.description && (
-            <Text style={styles.previewDescription}>{file.description}</Text>
-          )}
-        </View>
+        <MediaPreviewPanel
+          fileUrl={previewUrl}
+          title={previewTitle}
+          contentType={contentType || file?.fileType}
+        />
       </View>
     </SafeAreaView>
   );
@@ -225,35 +171,35 @@ export default function DriveViewer() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#fff',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000',
+    backgroundColor: '#fff',
   },
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#fff',
+    color: '#64748B',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000',
+    backgroundColor: '#fff',
     padding: 32,
   },
   errorText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#fff',
+    color: '#0F172A',
     marginTop: 16,
     marginBottom: 24,
   },
   backButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#6366F1',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -264,27 +210,30 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   header: {
-    paddingTop: 50,
-    paddingBottom: 16,
-    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 14,
+    paddingHorizontal: 16,
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
+  headerBack: {
+    padding: 4,
+  },
   headerText: {
     flex: 1,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
     color: '#fff',
-    marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.9)',
+    marginTop: 2,
   },
   openButton: {
     padding: 4,
@@ -292,49 +241,5 @@ const styles = StyleSheet.create({
   previewContainer: {
     flex: 1,
     backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  previewContent: {
-    alignItems: 'center',
-    maxWidth: 400,
-  },
-  previewTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#111827',
-    marginTop: 24,
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  previewText: {
-    fontSize: 16,
-    color: '#6b7280',
-    textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 24,
-  },
-  openButtonLarge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#3b82f6',
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 12,
-    gap: 12,
-    marginBottom: 16,
-  },
-  openButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  previewDescription: {
-    fontSize: 14,
-    color: '#9ca3af',
-    textAlign: 'center',
-    marginTop: 16,
   },
 });
-

@@ -1,8 +1,14 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  ZoomIn,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../theme/teacher';
-import { STUDENTS_UI } from '../../lib/students-ui';
 
 export type ChipItem = {
   id: string;
@@ -17,6 +23,59 @@ type Props = {
   variant?: 'default' | 'students';
 };
 
+function usePressScale(to = 0.96) {
+  const scale = useSharedValue(1);
+  const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const onPressIn = () => { scale.value = withSpring(to, { damping: 14, stiffness: 300 }); };
+  const onPressOut = () => { scale.value = withSpring(1.0, { damping: 14, stiffness: 300 }); };
+  return { style, onPressIn, onPressOut };
+}
+
+function ChipButton({
+  item,
+  selected,
+  onChange,
+}: {
+  item: ChipItem;
+  selected: boolean;
+  onChange: (id: string) => void;
+}) {
+  const press = usePressScale();
+
+  return (
+    <Pressable
+      onPress={() => onChange(item.id)}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+    >
+      <Animated.View style={press.style}>
+        {selected ? (
+          <Animated.View entering={ZoomIn.duration(200)}>
+            <LinearGradient
+              colors={[TEACHER.primary, TEACHER.primaryDark]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[styles.chip, styles.chipActive]}
+            >
+              {item.icon ? (
+                <Ionicons name={item.icon} size={14} color={TEACHER.textOnPrimary} />
+              ) : null}
+              <Text style={styles.chipTextActive}>{item.label}</Text>
+            </LinearGradient>
+          </Animated.View>
+        ) : (
+          <View style={styles.chip}>
+            {item.icon ? (
+              <Ionicons name={item.icon} size={14} color={TEACHER.textMuted} />
+            ) : null}
+            <Text style={styles.chipText}>{item.label}</Text>
+          </View>
+        )}
+      </Animated.View>
+    </Pressable>
+  );
+}
+
 export default function SubNavChips({ items, active, onChange, variant = 'default' }: Props) {
   const isStudents = variant === 'students';
 
@@ -25,47 +84,16 @@ export default function SubNavChips({ items, active, onChange, variant = 'defaul
       horizontal
       showsHorizontalScrollIndicator={false}
       style={styles.scroll}
-      contentContainerStyle={[styles.row, isStudents && styles.studentsRow]}
+      contentContainerStyle={styles.row}
     >
-      {items.map((item) => {
-        const selected = item.id === active;
-        return (
-          <Pressable
-            key={item.id}
-            onPress={() => onChange(item.id)}
-            style={[
-              styles.chip,
-              isStudents && styles.studentsChip,
-              selected && (isStudents ? styles.studentsChipActive : styles.chipActive),
-            ]}
-          >
-            {item.icon ? (
-              <Ionicons
-                name={item.icon}
-                size={14}
-                color={
-                  selected
-                    ? isStudents
-                      ? '#fff'
-                      : TEACHER.primaryLight
-                    : isStudents
-                      ? STUDENTS_UI.emeraldDark
-                      : TEACHER.textMuted
-                }
-              />
-            ) : null}
-            <Text
-              style={[
-                styles.chipText,
-                isStudents && styles.studentsChipText,
-                selected && (isStudents ? styles.studentsChipTextActive : styles.chipTextActive),
-              ]}
-            >
-              {item.label}
-            </Text>
-          </Pressable>
-        );
-      })}
+      {items.map((item) => (
+        <ChipButton
+          key={item.id}
+          item={item}
+          selected={item.id === active}
+          onChange={onChange}
+        />
+      ))}
     </ScrollView>
   );
 
@@ -95,13 +123,12 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: TEACHER_SPACING.lg,
     paddingVertical: TEACHER_SPACING.sm,
-    borderRadius: TEACHER_RADIUS.full,
+    borderRadius: TEACHER_RADIUS.chip,
     backgroundColor: TEACHER.surface,
     borderWidth: 1,
     borderColor: TEACHER.surfaceBorder,
   },
   chipActive: {
-    backgroundColor: TEACHER.navActiveBg,
     borderColor: TEACHER.primary,
   },
   chipText: {
@@ -110,40 +137,16 @@ const styles = StyleSheet.create({
     color: TEACHER.textMuted,
   },
   chipTextActive: {
-    color: TEACHER.primaryLight,
+    fontSize: 13,
     fontWeight: '700',
+    color: TEACHER.textOnPrimary,
   },
   studentsWrap: {
     marginHorizontal: TEACHER_SPACING.lg,
     marginBottom: TEACHER_SPACING.sm,
-    backgroundColor: '#ffffff',
+    backgroundColor: TEACHER.cardBg,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.8)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
-  },
-  studentsRow: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  studentsChip: {
-    borderRadius: 12,
-    backgroundColor: '#fff',
-    borderColor: STUDENTS_UI.emeraldBorder,
-  },
-  studentsChipActive: {
-    backgroundColor: STUDENTS_UI.emerald,
-    borderColor: STUDENTS_UI.emerald,
-  },
-  studentsChipText: {
-    color: STUDENTS_UI.emeraldDark,
-    fontWeight: '700',
-  },
-  studentsChipTextActive: {
-    color: '#fff',
+    borderColor: TEACHER.surfaceBorder,
   },
 });

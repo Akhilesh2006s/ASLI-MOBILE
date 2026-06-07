@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, View, ViewStyle } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -9,15 +10,26 @@ import Animated, {
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../theme/teacher';
 
 function ShimmerBlock({ style }: { style?: ViewStyle }) {
-  const opacity = useSharedValue(0.35);
+  const shimX = useSharedValue(-200);
 
   useEffect(() => {
-    opacity.value = withRepeat(withTiming(0.75, { duration: 900 }), -1, true);
-  }, [opacity]);
+    shimX.value = withRepeat(withTiming(200, { duration: 1100 }), -1, false);
+  }, [shimX]);
 
-  const animStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  const shimStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shimX.value }] }));
 
-  return <Animated.View style={[styles.block, style, animStyle]} />;
+  return (
+    <View style={[styles.block, style]}>
+      <Animated.View style={[styles.shimSweep, shimStyle]}>
+        <LinearGradient
+          colors={['transparent', 'rgba(99,102,241,0.18)', 'transparent']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={StyleSheet.absoluteFill}
+        />
+      </Animated.View>
+    </View>
+  );
 }
 
 type Props = {
@@ -57,8 +69,15 @@ export default function TeacherShimmer({ variant = 'card', count = 3 }: Props) {
 
 const styles = StyleSheet.create({
   block: {
-    backgroundColor: TEACHER.primary,
+    backgroundColor: TEACHER.surfaceElevated,
     borderRadius: TEACHER_RADIUS.md,
+    overflow: 'hidden',
+  },
+  shimSweep: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 100,
   },
   statsRow: {
     flexDirection: 'row',
@@ -68,7 +87,7 @@ const styles = StyleSheet.create({
   },
   statBlock: {
     width: 80,
-    height: 64,
+    height: 72,
     borderRadius: TEACHER_RADIUS.lg,
   },
   list: {
@@ -80,7 +99,7 @@ const styles = StyleSheet.create({
     borderRadius: TEACHER_RADIUS.lg,
   },
   cardBlock: {
-    height: 140,
+    height: 160,
     borderRadius: TEACHER_RADIUS.card,
   },
 });

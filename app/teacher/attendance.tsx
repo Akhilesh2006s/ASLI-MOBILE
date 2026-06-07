@@ -1,19 +1,27 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import AttendanceTrackerView from './components/AttendanceTrackerView';
-import { COLORS, FONT, SPACING } from '../../src/theme';
+import { TEACHER, TEACHER_SPACING, TEACHER_TYPO } from '../../src/theme/teacher';
 
 export default function TeacherAttendanceScreen() {
   useBackNavigation('/teacher/dashboard', false);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
+        <LinearGradient
+          colors={[...TEACHER.headerGradient]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={22} color={COLORS.text} />
+          <Ionicons name="chevron-back" size={22} color={TEACHER.text} />
         </Pressable>
         <Text style={styles.headerTitle}>Attendance Tracker</Text>
         <View style={styles.backBtn} />
@@ -26,18 +34,18 @@ export default function TeacherAttendanceScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.bg },
+  container: { flex: 1, backgroundColor: TEACHER.bg },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    backgroundColor: COLORS.card,
+    paddingHorizontal: TEACHER_SPACING.lg,
+    paddingVertical: TEACHER_SPACING.md,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: TEACHER.surfaceBorder,
+    overflow: 'hidden',
   },
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: FONT.xl, fontWeight: FONT.bold, color: COLORS.text },
-  body: { flex: 1, padding: SPACING.lg },
+  headerTitle: { ...TEACHER_TYPO.section, fontSize: 18, color: TEACHER.text },
+  body: { flex: 1, padding: TEACHER_SPACING.lg },
 });

@@ -1,9 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../theme/teacher';
 
 export type TeacherTab = {
@@ -20,6 +25,54 @@ type Props = {
 };
 
 const SPRING = { damping: 16, stiffness: 280 };
+
+function TabButton({
+  tab,
+  active,
+  onPress,
+}: {
+  tab: TeacherTab;
+  active: boolean;
+  onPress: () => void;
+}) {
+  const bounce = useSharedValue(1);
+  const bounceStyle = useAnimatedStyle(() => ({ transform: [{ scale: bounce.value }] }));
+  const iconName = active ? tab.activeIcon : tab.icon;
+
+  const handlePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    bounce.value = withSpring(1.3, { damping: 8, stiffness: 400 });
+    setTimeout(() => {
+      bounce.value = withSpring(1, { damping: 12, stiffness: 300 });
+    }, 120);
+    onPress();
+  };
+
+  return (
+    <Pressable
+      onPress={handlePress}
+      style={styles.tab}
+      accessibilityLabel={tab.label}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+    >
+      {active ? (
+        <View style={styles.iconGlow}>
+          <Animated.View style={bounceStyle}>
+            <Ionicons name={iconName} size={20} color={TEACHER.navActiveText} />
+          </Animated.View>
+        </View>
+      ) : (
+        <Animated.View style={bounceStyle}>
+          <Ionicons name={iconName} size={20} color={TEACHER.navInactive} />
+        </Animated.View>
+      )}
+      <Text style={[styles.label, active ? styles.labelActive : styles.labelInactive]} numberOfLines={1}>
+        {tab.label}
+      </Text>
+    </Pressable>
+  );
+}
 
 export default function TeacherTabBar({ tabs, activeTab, onTabChange }: Props) {
   const insets = useSafeAreaInsets();
@@ -39,34 +92,31 @@ export default function TeacherTabBar({ tabs, activeTab, onTabChange }: Props) {
 
   return (
     <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+      <LinearGradient
+        colors={['transparent', TEACHER.primary + '60', 'transparent']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.topGlow}
+      />
       <View style={styles.bar} onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}>
-        {tabWidth > 0 ? <Animated.View style={[styles.indicator, slideStyle, { left: 3 }]} /> : null}
-        {tabs.map((tab) => {
-          const active = tab.id === activeTab;
-          const iconName = active ? tab.activeIcon : tab.icon;
-          return (
-            <Pressable
-              key={tab.id}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                onTabChange(tab.id);
-              }}
-              style={styles.tab}
-              accessibilityLabel={tab.label}
-              accessibilityRole="button"
-              accessibilityState={{ selected: active }}
-            >
-              <Ionicons
-                name={iconName}
-                size={20}
-                color={active ? TEACHER.navActiveText : TEACHER.navInactive}
-              />
-              <Text style={[styles.label, active ? styles.labelActive : styles.labelInactive]} numberOfLines={1}>
-                {tab.label}
-              </Text>
-            </Pressable>
-          );
-        })}
+        {tabWidth > 0 ? (
+          <Animated.View style={[styles.indicator, slideStyle, { left: 3 }]}>
+            <LinearGradient
+              colors={[TEACHER.primary + '38', TEACHER.primaryDark + '28']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+          </Animated.View>
+        ) : null}
+        {tabs.map((tab) => (
+          <TabButton
+            key={tab.id}
+            tab={tab}
+            active={tab.id === activeTab}
+            onPress={() => onTabChange(tab.id)}
+          />
+        ))}
       </View>
     </View>
   );
@@ -80,21 +130,27 @@ const styles = StyleSheet.create({
     bottom: 0,
     zIndex: 40,
   },
+  topGlow: {
+    height: 1,
+    marginHorizontal: 20,
+    marginBottom: 2,
+    borderRadius: 1,
+  },
   bar: {
     flexDirection: 'row',
     backgroundColor: TEACHER.tabBarBg,
-    borderRadius: TEACHER_RADIUS.xl,
+    borderRadius: TEACHER_RADIUS.pill,
     borderWidth: 1,
     borderColor: TEACHER.tabBarBorder,
     paddingVertical: TEACHER_SPACING.sm,
-    ...TEACHER.shadow.md,
+    ...TEACHER.shadow.lg,
   },
   indicator: {
     position: 'absolute',
     top: 4,
     bottom: 4,
     borderRadius: TEACHER_RADIUS.lg,
-    backgroundColor: TEACHER.navActiveBg,
+    overflow: 'hidden',
   },
   tab: {
     flex: 1,
@@ -104,14 +160,22 @@ const styles = StyleSheet.create({
     gap: 2,
     zIndex: 1,
   },
+  iconGlow: {
+    shadowColor: TEACHER.primary,
+    shadowOpacity: 0.7,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 0,
+  },
   label: {
     fontSize: 10,
-    fontWeight: '700',
   },
   labelActive: {
     color: TEACHER.navActiveText,
+    fontWeight: '800',
   },
   labelInactive: {
     color: TEACHER.navInactive,
+    fontWeight: '600',
   },
 });

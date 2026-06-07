@@ -1,13 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator, Image, Alert, Linking } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Video, ResizeMode } from 'expo-av';
-import * as WebBrowser from 'expo-web-browser';
+import { WebView } from 'react-native-webview';
 import api from '../src/services/api/api';
 import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
+import {
+  getAuthHeaders,
+  getYoutubeEmbedUrl,
+  resolveContentUrl,
+} from '../src/utils/contentPreview';
 
 const { width, height } = Dimensions.get('window');
 
@@ -82,6 +87,7 @@ export default function VideoPlayer() {
   const [activeTab, setActiveTab] = useState<'notes' | 'mindmap' | 'qa'>('notes');
   const [dashboardPath, setDashboardPath] = useState<string>('/dashboard');
   const [isPlaying, setIsPlaying] = useState(false);
+  const [videoHeaders, setVideoHeaders] = useState<Record<string, string> | undefined>();
   const videoRef = useRef<Video>(null);
 
   useEffect(() => {
@@ -178,58 +184,23 @@ export default function VideoPlayer() {
     }
   };
 
-  /** Supports watch, embed, shorts, youtu.be, v= */
-  const extractYouTubeId = (url: string): string | null => {
-    if (!url || typeof url !== 'string') return null;
-    const u = url.trim();
-    let m = u.match(/(?:youtu\.be\/)([a-zA-Z0-9_-]{11})(?:\?|#|$|\/)/);
-    if (m?.[1]) return m[1];
-    m = u.match(/[?&]v=([a-zA-Z0-9_-]{11})(?:&|#|$)/);
-    if (m?.[1]) return m[1];
-    m = u.match(/\/embed\/([a-zA-Z0-9_-]{11})(?:\?|#|$|\/)/);
-    if (m?.[1]) return m[1];
-    m = u.match(/\/shorts\/([a-zA-Z0-9_-]{11})(?:\?|#|$|\/)/);
-    if (m?.[1]) return m[1];
-    m = u.match(/\/live\/([a-zA-Z0-9_-]{11})(?:\?|#|$|\/)/);
-    if (m?.[1]) return m[1];
-    m = u.match(/^.*(?:v\/|vi\/)([a-zA-Z0-9_-]{11})(?:\?|#|$|\/)/);
-    if (m?.[1]) return m[1];
-    return null;
-  };
-
-  /** Best HTTPS URL to open in browser / YouTube app (expo-av cannot play YouTube pages). */
-  const resolveYoutubePlayUrl = (v: Video): string | null => {
-    const raw = (v.youtubeUrl || v.videoUrl || '').trim();
-    if (!raw) return null;
-    if (!/youtube\.com|youtu\.be/i.test(raw)) return null;
-    const id = extractYouTubeId(raw);
-    if (id) return `https://www.youtube.com/watch?v=${id}`;
-    if (/^https?:\/\//i.test(raw)) return raw.replace(/^http:\/\//i, 'https://');
-    return `https://${raw.replace(/^\/\//, '')}`;
-  };
-
-  const openYoutube = async (url: string) => {
-    try {
-      await WebBrowser.openBrowserAsync(url, {
-        enableBarCollapsing: true,
-        showInRecents: true,
-      });
-    } catch {
-      try {
-        const can = await Linking.canOpenURL(url);
-        if (can) await Linking.openURL(url);
-        else Alert.alert('Cannot open', 'Install a browser or YouTube app, or check your network.');
-      } catch {
-        Alert.alert('Error', 'Could not open YouTube.');
-      }
-    }
-  };
-
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+
+  const resolvedVideoUrl = resolveContentUrl(video?.videoUrl || '');
+  const isDirectVideo =
+    !!resolvedVideoUrl && !/youtube\.com|youtu\.be/i.test(resolvedVideoUrl);
+
+  useEffect(() => {
+    if (!isDirectVideo) {
+      setVideoHeaders(undefined);
+      return;
+    }
+    getAuthHeaders(resolvedVideoUrl).then(setVideoHeaders);
+  }, [isDirectVideo, resolvedVideoUrl]);
 
   if (isLoading) {
     return (
@@ -259,9 +230,7 @@ export default function VideoPlayer() {
     );
   }
 
-  const youtubePlayUrl = resolveYoutubePlayUrl(video);
-  const youtubeThumbId =
-    extractYouTubeId((video.youtubeUrl || video.videoUrl || '').trim()) || null;
+  const youtubeEmbedUrl = getYoutubeEmbedUrl((video.youtubeUrl || video.videoUrl || '').trim());
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -298,39 +267,23 @@ export default function VideoPlayer() {
 
       {/* Video Player */}
       <View style={styles.videoContainer}>
-        {youtubePlayUrl ? (
-          <TouchableOpacity
-            style={styles.videoPlaceholder}
-            activeOpacity={0.85}
-            onPress={() => openYoutube(youtubePlayUrl)}
-          >
-            {video.thumbnailUrl ? (
-              <Image
-                pointerEvents="none"
-                source={{ uri: video.thumbnailUrl }}
-                style={styles.thumbnailFull}
-              />
-            ) : youtubeThumbId ? (
-              <Image
-                pointerEvents="none"
-                source={{ uri: `https://img.youtube.com/vi/${youtubeThumbId}/hqdefault.jpg` }}
-                style={styles.thumbnailFull}
-              />
-            ) : (
-              <View pointerEvents="none" style={styles.thumbnailPlaceholder} />
-            )}
-            <View pointerEvents="none" style={styles.playButtonLarge}>
-              <Ionicons name="play" size={48} color="#fff" />
-            </View>
-            <Text pointerEvents="none" style={styles.playButtonText}>
-              Tap to play on YouTube
-            </Text>
-          </TouchableOpacity>
-        ) : video.videoUrl && !/youtube\.com|youtu\.be/i.test(video.videoUrl) ? (
+        {youtubeEmbedUrl ? (
+          <View style={styles.videoWrapper}>
+            <WebView
+              source={{ uri: youtubeEmbedUrl }}
+              style={styles.video}
+              allowsFullscreenVideo
+              allowsInlineMediaPlayback
+              mediaPlaybackRequiresUserAction={false}
+              javaScriptEnabled
+              domStorageEnabled
+            />
+          </View>
+        ) : isDirectVideo ? (
           <View style={styles.videoWrapper}>
             <Video
               ref={videoRef}
-              source={{ uri: video.videoUrl }}
+              source={{ uri: resolvedVideoUrl, headers: videoHeaders }}
               style={styles.video}
               useNativeControls
               resizeMode={ResizeMode.CONTAIN}

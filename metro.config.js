@@ -10,6 +10,7 @@ config.resolver = {
   extraNodeModules: {
     ...config.resolver?.extraNodeModules,
     'react-native': path.resolve(__dirname, 'node_modules', 'react-native'),
+    'react-native-webview': path.resolve(__dirname, 'node_modules', 'react-native-webview'),
   },
   resolveRequest: (context, moduleName, platform) => {
     // Handle react-native internal imports

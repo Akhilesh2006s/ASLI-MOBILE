@@ -13,8 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import teacherService from '../../../src/services/api/teacherService';
 import { TeacherShimmer } from '../../../src/components/teacher';
-import { STUDENTS_UI } from '../../../src/lib/students-ui';
-import { TEACHER_SPACING } from '../../../src/theme/teacher';
+import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
 
 function formatClassLabel(c: any): string {
   if (c.classNumber) {
@@ -129,7 +128,7 @@ export default function WorkDiaryView() {
             <Text style={selectedClass ? styles.selectValue : styles.selectPlaceholder}>
               {selectedClass ? formatClassLabel(selectedClass) : 'Select class and section'}
             </Text>
-            <Ionicons name="chevron-down" size={18} color={STUDENTS_UI.textMuted} />
+            <Ionicons name="chevron-down" size={18} color={TEACHER.textMuted} />
           </Pressable>
         )}
 
@@ -139,7 +138,7 @@ export default function WorkDiaryView() {
           value={form.date}
           onChangeText={(t) => setForm((f) => ({ ...f, date: t }))}
           placeholder="YYYY-MM-DD"
-          placeholderTextColor={STUDENTS_UI.textLight}
+                    placeholderTextColor={TEACHER.textMuted}
         />
 
         <Text style={styles.label}>Title (optional)</Text>
@@ -148,7 +147,7 @@ export default function WorkDiaryView() {
           value={form.title}
           onChangeText={(t) => setForm((f) => ({ ...f, title: t }))}
           placeholder="e.g. Algebra — quadratic equations"
-          placeholderTextColor={STUDENTS_UI.textLight}
+                    placeholderTextColor={TEACHER.textMuted}
         />
 
         <Text style={styles.label}>Today&apos;s work</Text>
@@ -157,13 +156,13 @@ export default function WorkDiaryView() {
           value={form.content}
           onChangeText={(t) => setForm((f) => ({ ...f, content: t }))}
           placeholder="Topics taught, activities, homework given, notes for parents..."
-          placeholderTextColor={STUDENTS_UI.textLight}
+                    placeholderTextColor={TEACHER.textMuted}
           multiline
           numberOfLines={5}
         />
 
         <Pressable onPress={submit} disabled={saving || !form.classId}>
-          <LinearGradient colors={['#6366f1', '#8b5cf6']} style={[styles.saveBtn, (!form.classId || saving) && { opacity: 0.5 }]}>
+          <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={[styles.saveBtn, (!form.classId || saving) && { opacity: 0.5 }]}>
             <Ionicons name="save-outline" size={18} color="#fff" />
             <Text style={styles.saveBtnText}>{saving ? 'Saving…' : 'Save entry'}</Text>
           </LinearGradient>
@@ -200,7 +199,7 @@ export default function WorkDiaryView() {
                 ) : null}
               </View>
               <Pressable onPress={() => remove(entry._id || entry.id)}>
-                <Ionicons name="trash-outline" size={18} color="#ef4444" />
+                <Ionicons name="trash-outline" size={18} color={TEACHER.danger} />
               </Pressable>
             </View>
             {entry.title ? <Text style={styles.entryTitle}>{entry.title}</Text> : null}
@@ -239,106 +238,58 @@ export default function WorkDiaryView() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1 },
+  scroll: { flex: 1, backgroundColor: TEACHER.bg },
   scrollContent: { paddingHorizontal: TEACHER_SPACING.lg, paddingBottom: 120, gap: 14 },
-  panel: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#c7d2fe',
-  },
+  panel: { ...glassCard, borderRadius: TEACHER_RADIUS.xl, padding: 16 },
   headerRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
   headerIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#4f46e5',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 44, height: 44, borderRadius: 12, backgroundColor: TEACHER.primary,
+    alignItems: 'center', justifyContent: 'center',
   },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: STUDENTS_UI.text },
-  headerSub: { fontSize: 12, color: STUDENTS_UI.textMuted, marginTop: 4, lineHeight: 18 },
-  label: { fontSize: 13, fontWeight: '700', color: STUDENTS_UI.text, marginBottom: 6, marginTop: 10 },
+  headerTitle: { ...TEACHER_TYPO.section, fontSize: 18, color: TEACHER.text },
+  headerSub: { fontSize: 12, color: TEACHER.textMuted, marginTop: 4, lineHeight: 18 },
+  label: { fontSize: 13, fontWeight: '700', color: TEACHER.text, marginBottom: 6, marginTop: 10 },
   warnBox: {
-    borderWidth: 1,
-    borderColor: '#fcd34d',
-    backgroundColor: '#fffbeb',
-    borderRadius: 12,
-    padding: 12,
-    fontSize: 13,
-    color: '#92400e',
+    borderWidth: 1, borderColor: TEACHER.warning, backgroundColor: 'rgba(255,184,48,0.12)',
+    borderRadius: TEACHER_RADIUS.md, padding: 12, fontSize: 13, color: TEACHER.warning,
   },
   selectTrigger: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 12,
-    padding: 14,
-    backgroundColor: '#fff',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    borderWidth: 1, borderColor: TEACHER.surfaceBorder, borderRadius: TEACHER_RADIUS.md,
+    padding: 14, backgroundColor: TEACHER.surfaceElevated,
   },
-  selectValue: { fontSize: 15, color: STUDENTS_UI.text, fontWeight: '600' },
-  selectPlaceholder: { fontSize: 15, color: STUDENTS_UI.textLight },
+  selectValue: { fontSize: 15, color: TEACHER.text, fontWeight: '600' },
+  selectPlaceholder: { fontSize: 15, color: TEACHER.textMuted },
   input: {
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 12,
-    padding: 14,
-    color: STUDENTS_UI.text,
-    backgroundColor: '#fff',
+    borderWidth: 1, borderColor: TEACHER.surfaceBorder, borderRadius: TEACHER_RADIUS.md,
+    padding: 14, color: TEACHER.text, backgroundColor: TEACHER.surfaceElevated,
   },
   textArea: { minHeight: 120, textAlignVertical: 'top' },
   saveBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    padding: 14,
-    borderRadius: 12,
-    marginTop: 16,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, padding: 14, borderRadius: TEACHER_RADIUS.md, marginTop: 16,
   },
-  saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  recentTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: STUDENTS_UI.textLight,
-    letterSpacing: 1,
-    marginTop: 4,
-  },
+  saveBtnText: { color: TEACHER.textOnPrimary, fontWeight: '700', fontSize: 15 },
+  recentTitle: { ...TEACHER_TYPO.label, color: TEACHER.textMuted, marginTop: 4 },
   emptyBox: {
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: '#e5e7eb',
-    borderRadius: 14,
-    padding: 20,
-    backgroundColor: '#f9fafb',
+    borderWidth: 2, borderStyle: 'dashed', borderColor: TEACHER.surfaceBorder,
+    borderRadius: TEACHER_RADIUS.lg, padding: 20, backgroundColor: 'rgba(123,80,255,0.07)',
   },
-  emptyText: { fontSize: 13, color: STUDENTS_UI.textMuted, textAlign: 'center', lineHeight: 20 },
-  entry: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: STUDENTS_UI.cardBorder,
-  },
+  emptyText: { fontSize: 13, color: TEACHER.textMuted, textAlign: 'center', lineHeight: 20 },
+  entry: { ...glassCard, borderRadius: TEACHER_RADIUS.lg, padding: 14 },
   entryHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  entryDate: { fontSize: 13, fontWeight: '700', color: '#4f46e5' },
-  entryClass: { fontSize: 12, color: STUDENTS_UI.textMuted, marginTop: 2 },
-  entryTitle: { fontSize: 16, fontWeight: '800', color: STUDENTS_UI.text, marginBottom: 6 },
-  entryContent: { fontSize: 14, color: STUDENTS_UI.textMuted, lineHeight: 20 },
-  pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  entryDate: { fontSize: 13, fontWeight: '700', color: TEACHER.primaryLight },
+  entryClass: { fontSize: 12, color: TEACHER.textMuted, marginTop: 2 },
+  entryTitle: { fontSize: 16, fontWeight: '800', color: TEACHER.text, marginBottom: 6 },
+  entryContent: { fontSize: 14, color: TEACHER.textMuted, lineHeight: 20 },
+  pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'flex-end' },
   pickerSheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    paddingBottom: 32,
+    backgroundColor: TEACHER.bg, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    padding: 20, paddingBottom: 32, borderTopWidth: 1, borderColor: TEACHER.surfaceBorder,
   },
-  pickerTitle: { fontSize: 16, fontWeight: '800', marginBottom: 12, color: STUDENTS_UI.text },
-  pickerItem: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
-  pickerItemActive: { backgroundColor: '#eef2ff' },
-  pickerItemText: { fontSize: 15, color: STUDENTS_UI.text },
-  pickerItemTextActive: { fontWeight: '700', color: '#4f46e5' },
+  pickerTitle: { ...TEACHER_TYPO.section, fontSize: 16, marginBottom: 12, color: TEACHER.text },
+  pickerItem: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: TEACHER.surfaceBorder },
+  pickerItemActive: { backgroundColor: TEACHER.navActiveBg },
+  pickerItemText: { fontSize: 15, color: TEACHER.textSecondary },
+  pickerItemTextActive: { fontWeight: '700', color: TEACHER.primaryLight },
 });

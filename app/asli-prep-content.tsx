@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Linking, Platform } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,9 +7,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import * as SecureStore from 'expo-secure-store';
-import * as FileSystem from 'expo-file-system';
 import { API_BASE_URL } from '../src/lib/api-config';
 import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
+import { openContentPreview } from '../src/utils/openContentPreview';
 
 interface Content {
   _id: string;
@@ -175,111 +175,13 @@ export default function AsliPrepContent() {
     });
   }, [contents, filters]);
 
-  const getFileExtension = useCallback((url: string): string => {
-    const match = url.match(/\.([a-zA-Z0-9]+)(\?|$)/);
-    return match ? match[1] : 'pdf';
-  }, []);
-
-  const handleDownload = useCallback(async (content: Content) => {
-    try {
-      if (!content.fileUrl) {
-        Alert.alert('Error', 'File URL not available');
-        return;
-      }
-
-      // For videos, navigate to video player
-      if (content.type === 'Video') {
-        router.push({
-          pathname: '/video-player',
-          params: { videoId: content._id }
-        });
-        return;
-      }
-
-      // For other file types, download or open
-      const fileUrl = content.fileUrl;
-      
-      // Check if it's a direct URL or needs authentication
-      if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
-        // Try to open in browser first (for PDFs, docs, etc.)
-        const canOpen = await Linking.canOpenURL(fileUrl);
-        if (canOpen) {
-          // For Google Drive links or direct file links, open in browser
-          if (fileUrl.includes('drive.google.com') || fileUrl.includes('docs.google.com')) {
-            Alert.alert(
-              'Open File',
-              'This file will open in your browser. Would you like to continue?',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Open',
-                  onPress: async () => {
-                    await Linking.openURL(fileUrl);
-                  }
-                }
-              ]
-            );
-          } else {
-            // Direct file download
-            Alert.alert(
-              'Download File',
-              `Would you like to download ${content.title}?`,
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Download',
-                  onPress: async () => {
-                    try {
-                      // For direct file URLs, try to download
-                      if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
-                        const fileName = content.title.replace(/[^a-z0-9]/gi, '_') + '.' + getFileExtension(fileUrl);
-                        const fileUri = FileSystem.documentDirectory + fileName;
-                        
-                        try {
-                          const downloadResult = await FileSystem.downloadAsync(fileUrl, fileUri);
-                          Alert.alert(
-                            'Download Complete',
-                            `File saved: ${fileName}`,
-                            [{ text: 'OK' }]
-                          );
-                        } catch (downloadError) {
-                          console.error('Download error:', downloadError);
-                          // Fallback to opening in browser
-                          const canOpen = await Linking.canOpenURL(fileUrl);
-                          if (canOpen) {
-                            await Linking.openURL(fileUrl);
-                          } else {
-                            Alert.alert('Error', 'Cannot download or open this file');
-                          }
-                        }
-                      } else {
-                        Alert.alert('Error', 'Invalid file URL');
-                      }
-                    } catch (error) {
-                      console.error('Error handling download:', error);
-                      Alert.alert('Error', 'Failed to download file. Opening in browser...');
-                      try {
-                        await Linking.openURL(fileUrl);
-                      } catch (linkError) {
-                        Alert.alert('Error', 'Cannot open this file URL');
-                      }
-                    }
-                  }
-                }
-              ]
-            );
-          }
-        } else {
-          Alert.alert('Error', 'Cannot open this file URL');
-        }
-      } else {
-        Alert.alert('Error', 'Invalid file URL');
-      }
-    } catch (error) {
-      console.error('Error handling download:', error);
-      Alert.alert('Error', 'Failed to download file. Please try again.');
+  const handleDownload = useCallback((content: Content) => {
+    if (!content.fileUrl) {
+      Alert.alert('Error', 'File URL not available');
+      return;
     }
-  }, [getFileExtension]);
+    openContentPreview(router, content);
+  }, []);
 
   const getSubjectName = useCallback((subject: Content['subject'] | string | undefined) => {
     if (!subject) return '';

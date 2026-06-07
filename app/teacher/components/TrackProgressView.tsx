@@ -16,13 +16,12 @@ import { TeacherShimmer } from '../../../src/components/teacher';
 import {
   formatClassBadge,
   performerCounts,
-  progressColors,
   progressStatusLabel,
   progressTier,
   STUDENTS_UI,
   type StudentRow,
 } from '../../../src/lib/students-ui';
-import { TEACHER_SPACING } from '../../../src/theme/teacher';
+import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, PERFORMANCE_COLORS, glassCard } from '../../../src/theme/teacher';
 
 type Props = {
   initialClassFilter?: string;
@@ -69,6 +68,17 @@ function ProgressBar({ value, color }: { value: number; color: string }) {
       <View style={[styles.progressFill, { width: `${Math.min(value, 100)}%`, backgroundColor: color }]} />
     </View>
   );
+}
+
+function tierBarColor(tier: 'good' | 'avg' | 'low') {
+  if (tier === 'good') return PERFORMANCE_COLORS.good;
+  if (tier === 'avg') return PERFORMANCE_COLORS.average;
+  return PERFORMANCE_COLORS['at-risk'];
+}
+
+function tierPillStyle(tier: 'good' | 'avg' | 'low') {
+  const color = tierBarColor(tier);
+  return { bg: `${color}22`, text: color };
 }
 
 export default function TrackProgressView({ initialClassFilter, initialStudentId }: Props) {
@@ -203,7 +213,7 @@ export default function TrackProgressView({ initialClassFilter, initialStudentId
             <Ionicons
               name={tab.icon}
               size={14}
-              color={selected ? '#fff' : STUDENTS_UI.emeraldDark}
+              color={selected ? TEACHER.textOnPrimary : TEACHER.primaryLight}
             />
             <Text style={[styles.panelTabText, selected && styles.panelTabTextActive]}>{tab.label}</Text>
           </Pressable>
@@ -216,7 +226,7 @@ export default function TrackProgressView({ initialClassFilter, initialStudentId
     <ScrollView contentContainerStyle={styles.panelContent} showsVerticalScrollIndicator={false}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.kpiHorizontal}>
         <View style={[styles.kpiCard, styles.kpiCardWide]}>
-          <View style={[styles.kpiIcon, { backgroundColor: '#3b82f6' }]}>
+          <View style={[styles.kpiIcon, { backgroundColor: TEACHER.primary }]}>
             <Ionicons name="locate" size={18} color="#fff" />
           </View>
           <Text style={styles.kpiVal}>{avgExam.toFixed(1)}%</Text>
@@ -224,7 +234,7 @@ export default function TrackProgressView({ initialClassFilter, initialStudentId
           <Text style={styles.kpiSub}>{withExams.length} of {filtered.length} with exam data</Text>
         </View>
         <View style={[styles.kpiCard, styles.kpiCardWide]}>
-          <View style={[styles.kpiIcon, { backgroundColor: STUDENTS_UI.emerald }]}>
+          <View style={[styles.kpiIcon, { backgroundColor: TEACHER.primaryLight }]}>
             <Ionicons name="trending-up" size={18} color="#fff" />
           </View>
           <Text style={styles.kpiVal}>{avgOverall.toFixed(1)}%</Text>
@@ -242,33 +252,33 @@ export default function TrackProgressView({ initialClassFilter, initialStudentId
       </ScrollView>
 
       <View style={styles.performerRow}>
-        <View style={[styles.performerCard, { borderColor: '#bbf7d0' }]}>
-          <Ionicons name="trending-up" size={20} color="#16a34a" />
+        <View style={[styles.performerCard, { borderColor: `${PERFORMANCE_COLORS.good}55` }]}>
+          <Ionicons name="trending-up" size={20} color={PERFORMANCE_COLORS.good} />
           <Text style={styles.performerVal}>{performers.high}</Text>
           <Text style={styles.performerLbl}>High</Text>
         </View>
-        <View style={[styles.performerCard, { borderColor: '#fef08a' }]}>
-          <Ionicons name="locate" size={20} color="#ca8a04" />
+        <View style={[styles.performerCard, { borderColor: `${PERFORMANCE_COLORS.average}55` }]}>
+          <Ionicons name="locate" size={20} color={PERFORMANCE_COLORS.average} />
           <Text style={styles.performerVal}>{performers.average}</Text>
           <Text style={styles.performerLbl}>Average</Text>
         </View>
-        <View style={[styles.performerCard, { borderColor: '#fecaca' }]}>
-          <Ionicons name="alert-circle" size={20} color="#dc2626" />
+        <View style={[styles.performerCard, { borderColor: `${PERFORMANCE_COLORS['at-risk']}55` }]}>
+          <Ionicons name="alert-circle" size={20} color={PERFORMANCE_COLORS['at-risk']} />
           <Text style={styles.performerVal}>{performers.needAttention}</Text>
           <Text style={styles.performerLbl}>At Risk</Text>
         </View>
       </View>
 
-      <SectionCard title="Class AI Summary" icon="sparkles" iconColor={STUDENTS_UI.purple} accent="#faf5ff">
+      <SectionCard title="Class AI Summary" icon="sparkles" iconColor={TEACHER.primaryLight} accent="rgba(123,80,255,0.07)">
         <View style={styles.aiHeader}>
           <Text style={styles.sectionHint}>Quick class-wide improvement overview</Text>
           <Pressable style={styles.refreshBtn} onPress={refreshClassAi} disabled={aiLoading}>
-            <Ionicons name="refresh" size={14} color="#92400e" />
+            <Ionicons name="refresh" size={14} color={TEACHER.warning} />
             <Text style={styles.refreshText}>Refresh</Text>
           </Pressable>
         </View>
         {aiLoading ? (
-          <ActivityIndicator color={STUDENTS_UI.emerald} />
+          <ActivityIndicator color={TEACHER.primary} />
         ) : (
           <Text style={styles.aiText}>{aiSummary || 'Tap Refresh for AI class summary.'}</Text>
         )}
@@ -278,7 +288,7 @@ export default function TrackProgressView({ initialClassFilter, initialStudentId
         <Text style={styles.quickJumpTitle}>Jump to section</Text>
         {PANEL_TABS.filter((t) => t.id !== 'overview').map((tab) => (
           <Pressable key={tab.id} style={styles.quickJumpBtn} onPress={() => setActivePanel(tab.id)}>
-            <Ionicons name={tab.icon} size={16} color={STUDENTS_UI.indigo} />
+            <Ionicons name={tab.icon} size={16} color={TEACHER.primaryLight} />
             <Text style={styles.quickJumpText}>{tab.label}</Text>
             <Ionicons name="chevron-forward" size={14} color={STUDENTS_UI.textLight} />
           </Pressable>
@@ -290,7 +300,7 @@ export default function TrackProgressView({ initialClassFilter, initialStudentId
   const renderExamItem = ({ item: s }: { item: StudentRow }) => {
     const pct = s.performance?.averagePercentage ?? 0;
     const tier = progressTier(pct);
-    const colors = progressColors(tier);
+    const colors = tierPillStyle(tier);
     return (
       <View style={styles.listItem}>
         <View style={styles.listItemTop}>
@@ -319,7 +329,7 @@ export default function TrackProgressView({ initialClassFilter, initialStudentId
           <Text style={styles.progressLbl}>Overall progress</Text>
           <Text style={styles.progressPct}>{overall.toFixed(1)}%</Text>
         </View>
-        <ProgressBar value={overall} color={STUDENTS_UI.emerald} />
+        <ProgressBar value={overall} color={TEACHER.primary} />
         <Text style={styles.listSub}>
           {watch > 0 ? `${watch.toFixed(1)} min/day avg on platform` : 'No usage data yet'}
         </Text>
@@ -337,7 +347,7 @@ export default function TrackProgressView({ initialClassFilter, initialStudentId
         </Text>
         <View style={styles.insightActions}>
           <Pressable style={styles.viewBtn} onPress={() => setRemarksStudent(s)}>
-            <Ionicons name="chatbubbles-outline" size={14} color={STUDENTS_UI.indigo} />
+            <Ionicons name="chatbubbles-outline" size={14} color={TEACHER.primaryLight} />
             <Text style={styles.viewBtnText}>Remarks</Text>
           </Pressable>
           <Pressable
@@ -347,7 +357,7 @@ export default function TrackProgressView({ initialClassFilter, initialStudentId
               loadStudentAi(s);
             }}
           >
-            <Ionicons name="bulb-outline" size={14} color={STUDENTS_UI.indigo} />
+            <Ionicons name="bulb-outline" size={14} color={TEACHER.primaryLight} />
             <Text style={styles.viewBtnText}>AI Tips</Text>
           </Pressable>
         </View>
@@ -358,7 +368,7 @@ export default function TrackProgressView({ initialClassFilter, initialStudentId
   const renderReportItem = ({ item: s }: { item: StudentRow }) => {
     const overall = s.performance?.overallProgress ?? 0;
     const tier = progressTier(overall);
-    const colors = progressColors(tier);
+    const colors = tierPillStyle(tier);
     return (
       <Pressable style={styles.reportRow} onPress={() => setDetailStudent(s)}>
         <View style={{ flex: 1 }}>
@@ -372,10 +382,10 @@ export default function TrackProgressView({ initialClassFilter, initialStudentId
               <Text style={[styles.pillText, { color: colors.text }]}>{progressStatusLabel(overall)}</Text>
             </View>
           </View>
-          <ProgressBar value={overall} color={colors.bar} />
+          <ProgressBar value={overall} color={tierBarColor(tier)} />
         </View>
         <View style={styles.viewBtn}>
-          <Ionicons name="eye-outline" size={14} color={STUDENTS_UI.indigo} />
+          <Ionicons name="eye-outline" size={14} color={TEACHER.primaryLight} />
           <Text style={styles.viewBtnText}>View</Text>
         </View>
       </Pressable>
@@ -436,7 +446,7 @@ export default function TrackProgressView({ initialClassFilter, initialStudentId
               <View style={styles.insightsHeader}>
                 <Text style={styles.sectionHint}>Remarks and AI improvement tips per student</Text>
                 <Pressable style={styles.refreshBtn} onPress={refreshClassAi} disabled={aiLoading}>
-                  <Ionicons name="refresh" size={14} color="#92400e" />
+                  <Ionicons name="refresh" size={14} color={TEACHER.warning} />
                   <Text style={styles.refreshText}>Refresh class AI</Text>
                 </Pressable>
                 {aiSummary ? <Text style={styles.aiText}>{aiSummary}</Text> : null}
@@ -517,7 +527,7 @@ export default function TrackProgressView({ initialClassFilter, initialStudentId
               {studentAiInsight ? <Text style={styles.aiText}>{studentAiInsight}</Text> : null}
               {!studentAiInsight && !studentAiLoading ? (
                 <Pressable style={styles.primaryBtn} onPress={() => detailStudent && loadStudentAi(detailStudent)}>
-                  <LinearGradient colors={['#9333ea', '#4f46e5']} style={styles.primaryBtnGrad}>
+                  <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.primaryBtnGrad}>
                     <Text style={styles.primaryBtnText}>AI Improvement Analysis</Text>
                   </LinearGradient>
                 </Pressable>
@@ -535,7 +545,7 @@ export default function TrackProgressView({ initialClassFilter, initialStudentId
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  root: { flex: 1, backgroundColor: TEACHER.bg },
   topBlock: {
     paddingHorizontal: TEACHER_SPACING.lg,
     gap: 10,
@@ -554,72 +564,66 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: STUDENTS_UI.emeraldBorder,
-    backgroundColor: '#fff',
+    borderColor: TEACHER.surfaceBorder,
+    backgroundColor: TEACHER.surface,
   },
   panelTabActive: {
-    backgroundColor: STUDENTS_UI.emerald,
-    borderColor: STUDENTS_UI.emerald,
+    backgroundColor: TEACHER.primary,
+    borderColor: TEACHER.primary,
   },
-  panelTabText: { fontSize: 12, fontWeight: '700', color: STUDENTS_UI.emeraldDark },
-  panelTabTextActive: { color: '#fff' },
+  panelTabText: { fontSize: 12, fontWeight: '700', color: TEACHER.primaryLight },
+  panelTabTextActive: { color: TEACHER.textOnPrimary },
   kpiHorizontal: { gap: 10, paddingVertical: 4 },
   kpiCardWide: { width: 220 },
   quickJumpRow: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
+    ...glassCard,
+    borderRadius: TEACHER_RADIUS.lg,
     padding: 12,
-    borderWidth: 1,
-    borderColor: STUDENTS_UI.cardBorder,
     gap: 8,
   },
-  quickJumpTitle: { fontSize: 12, fontWeight: '800', color: STUDENTS_UI.textMuted, marginBottom: 4 },
+  quickJumpTitle: { ...TEACHER_TYPO.label, color: TEACHER.textMuted, marginBottom: 4 },
   quickJumpBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: TEACHER.surfaceBorder,
   },
-  quickJumpText: { flex: 1, fontSize: 14, fontWeight: '600', color: STUDENTS_UI.text },
+  quickJumpText: { flex: 1, fontSize: 14, fontWeight: '600', color: TEACHER.text },
   insightsHeader: { gap: 8, marginBottom: 8 },
   insightCard: {
     borderWidth: 1,
-    borderColor: '#f3f4f6',
-    borderRadius: 12,
+    borderColor: TEACHER.surfaceBorder,
+    borderRadius: TEACHER_RADIUS.md,
     padding: 12,
     marginBottom: 8,
-    backgroundColor: '#fffbeb',
+    backgroundColor: 'rgba(123,80,255,0.07)',
   },
   insightActions: { flexDirection: 'row', gap: 8, marginTop: 10 },
   listEmpty: { padding: 32, alignItems: 'center' },
   headerCard: {
     flexDirection: 'row',
     gap: 12,
-    backgroundColor: '#fff',
-    borderRadius: 20,
+    ...glassCard,
+    borderRadius: TEACHER_RADIUS.xl,
     padding: 16,
-    borderWidth: 1,
-    borderColor: STUDENTS_UI.cardBorder,
   },
   headerIcon: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: STUDENTS_UI.emerald,
+    backgroundColor: TEACHER.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: STUDENTS_UI.emeraldDark },
-  headerSub: { fontSize: 12, color: STUDENTS_UI.textMuted, marginTop: 4, lineHeight: 18 },
+  headerTitle: { ...TEACHER_TYPO.section, fontSize: 18, color: TEACHER.text },
+  headerSub: { fontSize: 12, color: TEACHER.textMuted, marginTop: 4, lineHeight: 18 },
   kpiRow: { gap: 10 },
   kpiCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
+    ...glassCard,
+    borderRadius: TEACHER_RADIUS.lg,
     padding: 14,
-    borderWidth: 1,
-    borderColor: STUDENTS_UI.cardBorder,
   },
   kpiIcon: {
     width: 36,
@@ -629,45 +633,43 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 8,
   },
-  kpiVal: { fontSize: 24, fontWeight: '800', color: STUDENTS_UI.text },
-  kpiLbl: { fontSize: 12, color: STUDENTS_UI.textMuted },
-  kpiSub: { fontSize: 11, color: STUDENTS_UI.textLight, marginTop: 4 },
+  kpiVal: { ...TEACHER_TYPO.number, fontSize: 24, color: TEACHER.text },
+  kpiLbl: { fontSize: 12, color: TEACHER.textMuted },
+  kpiSub: { fontSize: 11, color: TEACHER.textMuted, marginTop: 4 },
   sectionCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
+    ...glassCard,
+    borderRadius: TEACHER_RADIUS.xl,
     padding: 14,
-    borderWidth: 1,
-    borderColor: STUDENTS_UI.cardBorder,
     gap: 10,
   },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: STUDENTS_UI.text },
-  sectionHint: { fontSize: 11, color: STUDENTS_UI.textMuted, marginBottom: 4 },
+  sectionTitle: { ...TEACHER_TYPO.body, fontWeight: '800', color: TEACHER.text },
+  sectionHint: { fontSize: 11, color: TEACHER.textMuted, marginBottom: 4 },
   listItem: {
     borderWidth: 1,
-    borderColor: '#f3f4f6',
-    borderRadius: 12,
+    borderColor: TEACHER.surfaceBorder,
+    borderRadius: TEACHER_RADIUS.md,
     padding: 12,
     marginBottom: 8,
-    backgroundColor: '#fafafa',
+    backgroundColor: 'rgba(123,80,255,0.07)',
   },
   listItemTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  listName: { fontSize: 14, fontWeight: '700', color: STUDENTS_UI.text },
-  listSub: { fontSize: 12, color: STUDENTS_UI.textMuted, marginTop: 4 },
+  listName: { fontSize: 14, fontWeight: '700', color: TEACHER.text },
+  listSub: { fontSize: 12, color: TEACHER.textMuted, marginTop: 4 },
   pill: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
   pillText: { fontSize: 11, fontWeight: '700' },
   progressRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, marginBottom: 4 },
-  progressLbl: { fontSize: 12, color: STUDENTS_UI.textMuted },
-  progressPct: { fontSize: 12, fontWeight: '700', color: STUDENTS_UI.emeraldDark },
-  progressTrack: { height: 8, backgroundColor: '#e5e7eb', borderRadius: 999, overflow: 'hidden' },
+  progressLbl: { fontSize: 12, color: TEACHER.textMuted },
+  progressPct: { fontSize: 12, fontWeight: '700', color: TEACHER.primaryLight },
+  progressTrack: { height: 8, backgroundColor: TEACHER.surfaceBorder, borderRadius: 999, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 999 },
   viewRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     borderWidth: 1,
-    borderColor: '#f3f4f6',
-    borderRadius: 12,
+    borderColor: TEACHER.surfaceBorder,
+    borderRadius: TEACHER_RADIUS.md,
     padding: 10,
     marginBottom: 8,
   },
@@ -676,78 +678,82 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     borderWidth: 1,
-    borderColor: '#c7d2fe',
+    borderColor: TEACHER.surfaceBorder,
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    backgroundColor: '#fff',
+    backgroundColor: TEACHER.surfaceElevated,
   },
-  viewBtnText: { fontSize: 12, fontWeight: '700', color: STUDENTS_UI.indigo },
+  viewBtnText: { fontSize: 12, fontWeight: '700', color: TEACHER.primaryLight },
   aiHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   refreshBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     borderWidth: 1,
-    borderColor: '#fcd34d',
+    borderColor: TEACHER.warning,
     borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
-  refreshText: { fontSize: 11, fontWeight: '700', color: '#92400e' },
-  aiText: { fontSize: 13, color: STUDENTS_UI.textMuted, lineHeight: 20 },
-  emptyLine: { fontSize: 13, color: STUDENTS_UI.textLight, fontStyle: 'italic' },
+  refreshText: { fontSize: 11, fontWeight: '700', color: TEACHER.warning },
+  aiText: { fontSize: 13, color: TEACHER.textMuted, lineHeight: 20 },
+  emptyLine: { fontSize: 13, color: TEACHER.textMuted, fontStyle: 'italic' },
   performerRow: { flexDirection: 'row', gap: 8 },
   performerCard: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 14,
+    ...glassCard,
+    borderRadius: TEACHER_RADIUS.lg,
     padding: 10,
     alignItems: 'center',
-    borderWidth: 1,
     gap: 4,
   },
-  performerVal: { fontSize: 20, fontWeight: '800', color: STUDENTS_UI.text },
-  performerLbl: { fontSize: 10, fontWeight: '700', color: STUDENTS_UI.text, textAlign: 'center' },
-  performerSub: { fontSize: 9, color: STUDENTS_UI.textLight, textAlign: 'center' },
+  performerVal: { fontSize: 20, fontWeight: '800', color: TEACHER.text },
+  performerLbl: { fontSize: 10, fontWeight: '700', color: TEACHER.textSecondary, textAlign: 'center' },
+  performerSub: { fontSize: 9, color: TEACHER.textMuted, textAlign: 'center' },
   reportRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     borderWidth: 1,
-    borderColor: '#f3f4f6',
-    borderRadius: 12,
+    borderColor: TEACHER.surfaceBorder,
+    borderRadius: TEACHER_RADIUS.md,
     padding: 12,
     marginBottom: 8,
+    backgroundColor: 'rgba(123,80,255,0.07)',
   },
   reportMeta: { flexDirection: 'row', gap: 8, marginVertical: 8, flexWrap: 'wrap' },
-  classBadge: { backgroundColor: '#ede9fe', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
-  classBadgeText: { fontSize: 11, fontWeight: '700', color: '#5b21b6' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
+  classBadge: { backgroundColor: TEACHER.navActiveBg, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
+  classBadgeText: { fontSize: 11, fontWeight: '700', color: TEACHER.primaryLight },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'flex-end' },
   modalCard: {
-    backgroundColor: '#fff',
+    backgroundColor: TEACHER.bg,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
     maxHeight: '85%',
+    borderTopWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
   },
-  modalTitle: { fontSize: 18, fontWeight: '800', color: STUDENTS_UI.text, marginBottom: 12 },
-  remarkItem: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
-  remarkText: { fontSize: 14, color: STUDENTS_UI.text },
-  remarkMeta: { fontSize: 11, color: STUDENTS_UI.textMuted, marginTop: 4 },
+  modalTitle: { ...TEACHER_TYPO.section, fontSize: 18, color: TEACHER.text, marginBottom: 12 },
+  remarkItem: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: TEACHER.surfaceBorder },
+  remarkText: { fontSize: 14, color: TEACHER.text },
+  remarkMeta: { fontSize: 11, color: TEACHER.textMuted, marginTop: 4 },
   metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 12 },
   metric: {
     width: '47%',
-    backgroundColor: '#f9fafb',
-    borderRadius: 12,
+    backgroundColor: TEACHER.surfaceElevated,
+    borderRadius: TEACHER_RADIUS.md,
     padding: 12,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
   },
-  metricVal: { fontSize: 18, fontWeight: '800', color: STUDENTS_UI.emeraldDark },
-  metricLbl: { fontSize: 11, color: STUDENTS_UI.textMuted, marginTop: 4 },
-  primaryBtn: { borderRadius: 12, overflow: 'hidden', marginVertical: 12 },
+  metricVal: { fontSize: 18, fontWeight: '800', color: TEACHER.primaryLight },
+  metricLbl: { fontSize: 11, color: TEACHER.textMuted, marginTop: 4 },
+  primaryBtn: { borderRadius: TEACHER_RADIUS.md, overflow: 'hidden', marginVertical: 12 },
   primaryBtnGrad: { padding: 14, alignItems: 'center' },
-  primaryBtnText: { color: '#fff', fontWeight: '700' },
+  primaryBtnText: { color: TEACHER.textOnPrimary, fontWeight: '700' },
   closeBtn: { alignItems: 'center', padding: 14 },
-  closeBtnText: { color: STUDENTS_UI.textMuted, fontWeight: '600' },
+  closeBtnText: { color: TEACHER.textMuted, fontWeight: '600' },
 });

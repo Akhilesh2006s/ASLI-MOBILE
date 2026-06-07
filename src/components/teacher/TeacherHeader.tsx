@@ -1,7 +1,14 @@
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 import { TEACHER, TEACHER_SPACING } from '../../theme/teacher';
 import type { BackendStatus } from '../../services/api/teacherService';
 
@@ -14,30 +21,52 @@ type Props = {
   backendStatus?: BackendStatus;
   onMenu?: () => void;
   onProfile?: () => void;
+  onLogout?: () => void;
 };
 
-const STATUS_META: Record<BackendStatus, { icon: keyof typeof Ionicons.glyphMap; color: string; label: string }> = {
-  online: { icon: 'cloud-done-outline', color: TEACHER.success, label: 'Live' },
-  cached: { icon: 'cloud-offline-outline', color: TEACHER.secondary, label: 'Cached' },
-  offline: { icon: 'cloud-offline', color: TEACHER.danger, label: 'Offline' },
-};
+const screenWidth = Dimensions.get('window').width;
 
 export default function TeacherHeader({
   userName,
   subjects = [],
   nextClassLabel,
   countdown,
-  stale,
-  backendStatus = stale ? 'cached' : 'online',
-  onMenu,
-  onProfile,
+  onLogout,
 }: Props) {
-  const statusMeta = STATUS_META[backendStatus];
+  const shimmerX = useSharedValue(-150);
+  useEffect(() => {
+    shimmerX.value = withRepeat(
+      withTiming(screenWidth + 150, { duration: 2400 }),
+      -1,
+      false,
+    );
+  }, [shimmerX]);
+
+  const shimmerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: shimmerX.value }],
+  }));
+
   return (
-    <LinearGradient colors={[...TEACHER.headerGradient]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.wrap}>
+    <View style={styles.wrap}>
+      <LinearGradient
+        colors={[...TEACHER.headerGradient]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      <LinearGradient
+        colors={['rgba(99,102,241,0.08)', 'transparent', 'rgba(99,102,241,0.04)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      <Animated.View style={[styles.shimmerSweep, shimmerStyle]} />
+
       <View style={styles.row}>
         <View style={styles.textBlock}>
-          <Text style={styles.greeting}>{userName}</Text>
+          <Animated.Text entering={FadeInDown.duration(400)} style={styles.greeting}>
+            {userName}
+          </Animated.Text>
           {subjects.length > 0 ? (
             <View style={styles.badges}>
               {subjects.slice(0, 3).map((s) => (
@@ -48,31 +77,37 @@ export default function TeacherHeader({
             </View>
           ) : null}
         </View>
-        <View style={styles.actions}>
-          <View style={[styles.statusPill, { borderColor: `${statusMeta.color}55`, backgroundColor: `${statusMeta.color}18` }]}>
-            <Ionicons name={statusMeta.icon} size={12} color={statusMeta.color} />
-            <Text style={[styles.statusText, { color: statusMeta.color }]}>{statusMeta.label}</Text>
-          </View>
-          {onProfile ? (
-            <Pressable onPress={onProfile} style={styles.iconBtn}>
-              <Ionicons name="person-circle-outline" size={26} color={TEACHER.text} />
-            </Pressable>
-          ) : null}
-          {onMenu ? (
-            <Pressable onPress={onMenu} style={styles.iconBtn}>
-              <Ionicons name="menu" size={26} color={TEACHER.text} />
-            </Pressable>
-          ) : null}
-        </View>
+        {onLogout ? (
+          <Pressable
+            onPress={onLogout}
+            style={styles.logoutBtn}
+            accessibilityLabel="Logout"
+            accessibilityRole="button"
+          >
+            <Ionicons name="log-out-outline" size={22} color={TEACHER.danger} />
+          </Pressable>
+        ) : null}
       </View>
       {nextClassLabel ? (
         <View style={styles.scheduleRow}>
-          <Ionicons name="time-outline" size={16} color={TEACHER.textSecondary} />
-          <Text style={styles.scheduleText}>{nextClassLabel}</Text>
-          {countdown ? <Text style={styles.countdown}>{countdown}</Text> : null}
+          <View style={styles.scheduleAccent} />
+          <LinearGradient
+            colors={['#EEF2FF', '#F8FAFC']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.scheduleGradient}
+          >
+            <Ionicons name="time-outline" size={16} color={TEACHER.textSecondary} />
+            <Text style={styles.scheduleText}>{nextClassLabel}</Text>
+            {countdown ? (
+              <View style={styles.countdownBadge}>
+                <Text style={styles.countdown}>{countdown}</Text>
+              </View>
+            ) : null}
+          </LinearGradient>
         </View>
       ) : null}
-    </LinearGradient>
+    </View>
   );
 }
 
@@ -83,15 +118,28 @@ const styles = StyleSheet.create({
     paddingBottom: TEACHER_SPACING.lg,
     borderBottomWidth: 1,
     borderBottomColor: TEACHER.surfaceBorder,
+    overflow: 'hidden',
+  },
+  shimmerSweep: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 120,
+    backgroundColor: 'rgba(99,102,241,0.06)',
   },
   row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
+    justifyContent: 'space-between',
   },
   textBlock: { flex: 1, paddingRight: TEACHER_SPACING.sm },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  iconBtn: { padding: 4 },
+  logoutBtn: {
+    padding: 6,
+    borderRadius: 10,
+    backgroundColor: 'rgba(239,68,68,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.2)',
+  },
   greeting: {
     fontSize: 22,
     fontWeight: '800',
@@ -105,48 +153,42 @@ const styles = StyleSheet.create({
     marginTop: TEACHER_SPACING.sm,
   },
   badge: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: TEACHER.surfaceHover,
     borderRadius: 999,
     paddingHorizontal: TEACHER_SPACING.md,
     paddingVertical: 4,
     borderWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
+    borderColor: 'rgba(99,102,241,0.25)',
   },
   badgeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: TEACHER.textSecondary,
-  },
-  stalePill: {
-    backgroundColor: 'rgba(245,158,11,0.15)',
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  statusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  statusText: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.3,
+    color: TEACHER.primaryDark,
   },
   scheduleRow: {
+    marginTop: TEACHER_SPACING.md,
+    position: 'relative',
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
+  },
+  scheduleAccent: {
+    position: 'absolute',
+    left: 0,
+    top: 8,
+    bottom: 8,
+    width: 3,
+    borderRadius: 2,
+    backgroundColor: TEACHER.primary,
+    zIndex: 2,
+  },
+  scheduleGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: TEACHER_SPACING.sm,
-    marginTop: TEACHER_SPACING.md,
-    backgroundColor: TEACHER.surface,
-    borderRadius: 12,
     padding: TEACHER_SPACING.md,
-    borderWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
+    paddingLeft: TEACHER_SPACING.lg,
   },
   scheduleText: {
     flex: 1,
@@ -154,9 +196,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: TEACHER.textSecondary,
   },
+  countdownBadge: {
+    backgroundColor: TEACHER.navActiveBg,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
   countdown: {
     fontSize: 13,
     fontWeight: '800',
-    color: TEACHER.primaryLight,
+    color: TEACHER.primaryDark,
   },
 });

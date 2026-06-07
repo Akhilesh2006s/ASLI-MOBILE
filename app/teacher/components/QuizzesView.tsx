@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import teacherService from '../../../src/services/api/teacherService';
 import { TeacherShimmer } from '../../../src/components/teacher';
-import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../../src/theme/teacher';
+import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
 
 export default function QuizzesView() {
   const [quizzes, setQuizzes] = useState<any[]>([]);
@@ -30,16 +32,15 @@ export default function QuizzesView() {
 
   return (
     <View style={styles.wrap}>
-      <Pressable
-        style={styles.createBtn}
-        onPress={() => router.push('/teacher/tools/worksheet-mcq-generator' as any)}
-      >
-        <Ionicons name="add-circle" size={20} color={TEACHER.textOnPrimary} />
-        <Text style={styles.createBtnText}>Create New Quiz</Text>
+      <Pressable style={styles.createBtn} onPress={() => router.push('/teacher/tools/worksheet-mcq-generator' as any)}>
+        <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.createBtnGrad}>
+          <Ionicons name="add-circle" size={20} color={TEACHER.textOnPrimary} />
+          <Text style={styles.createBtnText}>Create New Quiz</Text>
+        </LinearGradient>
       </Pressable>
 
-      {quizzes.map((quiz) => (
-        <View key={quiz._id || quiz.id} style={styles.card}>
+      {quizzes.map((quiz, index) => (
+        <Animated.View key={quiz._id || quiz.id} entering={FadeInDown.duration(350).delay(Math.min(index * 60, 480))} style={styles.card}>
           <View style={styles.cardHeader}>
             <Text style={styles.title}>{quiz.title || 'Untitled Quiz'}</Text>
             <View style={[styles.badge, quiz.isActive !== false && styles.badgeActive]}>
@@ -52,7 +53,7 @@ export default function QuizzesView() {
           {quiz.averageScore != null ? (
             <Text style={styles.score}>Avg score: {quiz.averageScore}%</Text>
           ) : null}
-        </View>
+        </Animated.View>
       ))}
 
       {!quizzes.length ? (
@@ -67,25 +68,21 @@ export default function QuizzesView() {
 }
 
 const styles = StyleSheet.create({
-  wrap: { paddingHorizontal: TEACHER_SPACING.lg, paddingBottom: TEACHER_SPACING.xxl },
-  createBtn: {
+  wrap: { paddingHorizontal: TEACHER_SPACING.lg, paddingBottom: 120, backgroundColor: TEACHER.bg },
+  createBtn: { borderRadius: TEACHER_RADIUS.md, overflow: 'hidden', marginBottom: TEACHER_SPACING.lg },
+  createBtnGrad: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: TEACHER.primary,
     padding: 14,
-    borderRadius: TEACHER_RADIUS.md,
-    marginBottom: TEACHER_SPACING.lg,
   },
   createBtnText: { color: TEACHER.textOnPrimary, fontWeight: '700' },
   card: {
-    backgroundColor: TEACHER.surface,
+    ...glassCard,
     borderRadius: TEACHER_RADIUS.lg,
     padding: TEACHER_SPACING.lg,
     marginBottom: TEACHER_SPACING.sm,
-    borderWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   title: { flex: 1, fontSize: 16, fontWeight: '800', color: TEACHER.text },
@@ -95,7 +92,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 999,
   },
-  badgeActive: { backgroundColor: 'rgba(34,197,94,0.15)' },
+  badgeActive: { backgroundColor: 'rgba(0,214,143,0.15)' },
   badgeText: { fontSize: 11, fontWeight: '700', color: TEACHER.textMuted },
   meta: { fontSize: 12, color: TEACHER.textMuted, marginTop: 6 },
   score: { fontSize: 13, color: TEACHER.primaryLight, fontWeight: '600', marginTop: 8 },

@@ -182,8 +182,8 @@ export default function ClassDashboardView() {
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1 },
-  content: { paddingHorizontal: TEACHER_SPACING.lg, paddingBottom: TEACHER_SPACING.xxl },
+  wrap: { flex: 1, backgroundColor: TEACHER.bg },
+  content: { paddingHorizontal: TEACHER_SPACING.lg, paddingBottom: 120 },
   classRow: { gap: 8, marginBottom: TEACHER_SPACING.lg },
   classChip: {
     paddingHorizontal: 14,
@@ -237,8 +237,8 @@ const styles = StyleSheet.create({
   avatarText: { color: TEACHER.textOnPrimary, fontWeight: '800' },
   studentName: { flex: 1, fontSize: 14, fontWeight: '600', color: TEACHER.text },
   toggle: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
-  togglePresent: { backgroundColor: 'rgba(34,197,94,0.2)' },
-  toggleAbsent: { backgroundColor: 'rgba(239,68,68,0.2)' },
+  togglePresent: { backgroundColor: 'rgba(0,214,143,0.2)' },
+  toggleAbsent: { backgroundColor: 'rgba(255,77,106,0.2)' },
   toggleText: { fontSize: 12, fontWeight: '700', color: TEACHER.text },
   submitBtn: {
     flexDirection: 'row',

@@ -14,8 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import teacherService from '../../../src/services/api/teacherService';
 import { TeacherShimmer } from '../../../src/components/teacher';
-import { STUDENTS_UI } from '../../../src/lib/students-ui';
-import { TEACHER_SPACING } from '../../../src/theme/teacher';
+import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
 
 type HomeworkGroup = {
   homework: any;
@@ -150,7 +149,7 @@ export default function HomeworkSubmissionsView() {
     <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
       <View style={styles.headerCard}>
         <View style={styles.headerLeft}>
-          <LinearGradient colors={['#9333ea', '#2563eb']} style={styles.headerIcon}>
+          <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.headerIcon}>
             <Ionicons name="document-text" size={22} color="#fff" />
           </LinearGradient>
           <View style={{ flex: 1 }}>
@@ -159,7 +158,7 @@ export default function HomeworkSubmissionsView() {
           </View>
         </View>
         <Pressable onPress={() => setShowCreate(true)}>
-          <LinearGradient colors={['#9333ea', '#2563eb']} style={styles.createBtn}>
+          <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.createBtn}>
             <Ionicons name="add" size={18} color="#fff" />
             <Text style={styles.createBtnText}>Create Homework</Text>
           </LinearGradient>
@@ -168,12 +167,12 @@ export default function HomeworkSubmissionsView() {
 
       <View style={styles.sectionCard}>
         <View style={styles.sectionHeader}>
-          <Ionicons name="document-text" size={18} color={STUDENTS_UI.purple} />
+          <Ionicons name="document-text" size={18} color={TEACHER.primaryLight} />
           <Text style={styles.sectionTitle}>Homework Submissions</Text>
         </View>
         {groups.length === 0 ? (
           <View style={styles.empty}>
-            <Ionicons name="document-text-outline" size={48} color="#d1d5db" />
+            <Ionicons name="document-text-outline" size={48} color={TEACHER.textMuted} />
             <Text style={styles.emptyText}>No homework assignments found for your assigned subjects</Text>
           </View>
         ) : (
@@ -204,12 +203,12 @@ export default function HomeworkSubmissionsView() {
                       {hw.classNumber ? ` · Class: ${hw.classNumber}` : ''}
                     </Text>
                     {deadline ? (
-                      <Text style={[styles.deadline, overdue && { color: '#dc2626' }]}>
+                      <Text style={[styles.deadline, overdue && { color: TEACHER.danger }]}>
                         Deadline: {deadline.toLocaleDateString()}
                       </Text>
                     ) : null}
                   </View>
-                  <Ionicons name={isOpen ? 'chevron-up' : 'chevron-down'} size={20} color={STUDENTS_UI.textMuted} />
+                  <Ionicons name={isOpen ? 'chevron-up' : 'chevron-down'} size={20} color={TEACHER.textMuted} />
                 </Pressable>
                 {isOpen ? (
                   <View style={styles.subs}>
@@ -248,7 +247,7 @@ export default function HomeworkSubmissionsView() {
 
       <View style={styles.sectionCard}>
         <View style={styles.sectionHeader}>
-          <Ionicons name="people" size={18} color={STUDENTS_UI.purple} />
+          <Ionicons name="people" size={18} color={TEACHER.primaryLight} />
           <Text style={styles.sectionTitle}>Submissions by Students</Text>
         </View>
         {classList.length === 0 ? (
@@ -263,7 +262,7 @@ export default function HomeworkSubmissionsView() {
             return (
               <View key={classNum} style={styles.classBlock}>
                 <Pressable style={styles.classHeader} onPress={() => toggleClass(classNum)}>
-                  <Ionicons name={open ? 'chevron-down' : 'chevron-forward'} size={16} color="#312e81" />
+                  <Ionicons name={open ? 'chevron-down' : 'chevron-forward'} size={16} color={TEACHER.primaryLight} />
                   <Text style={styles.classTitle}>{classNum}</Text>
                   <Text style={styles.classCount}>{rows.length} student{rows.length !== 1 ? 's' : ''}</Text>
                 </Pressable>
@@ -296,7 +295,7 @@ export default function HomeworkSubmissionsView() {
           <ScrollView contentContainerStyle={styles.modalCard}>
             <Text style={styles.modalTitle}>Create Homework</Text>
             <Text style={styles.label}>Title</Text>
-            <TextInput style={styles.input} value={form.title} onChangeText={(t) => setForm((f) => ({ ...f, title: t }))} placeholderTextColor={STUDENTS_UI.textLight} />
+            <TextInput style={styles.input} value={form.title} onChangeText={(t) => setForm((f) => ({ ...f, title: t }))}             placeholderTextColor={TEACHER.textMuted} />
             <Text style={styles.label}>Class</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
               {classes.map((c) => {
@@ -322,13 +321,13 @@ export default function HomeworkSubmissionsView() {
               })}
             </ScrollView>
             <Text style={styles.label}>Topic</Text>
-            <TextInput style={styles.input} value={form.topic} onChangeText={(t) => setForm((f) => ({ ...f, topic: t }))} placeholderTextColor={STUDENTS_UI.textLight} />
+            <TextInput style={styles.input} value={form.topic} onChangeText={(t) => setForm((f) => ({ ...f, topic: t }))}             placeholderTextColor={TEACHER.textMuted} />
             <Text style={styles.label}>Deadline (YYYY-MM-DD)</Text>
-            <TextInput style={styles.input} value={form.deadline} onChangeText={(t) => setForm((f) => ({ ...f, deadline: t }))} placeholderTextColor={STUDENTS_UI.textLight} />
+            <TextInput style={styles.input} value={form.deadline} onChangeText={(t) => setForm((f) => ({ ...f, deadline: t }))}             placeholderTextColor={TEACHER.textMuted} />
             <Text style={styles.label}>Description</Text>
-            <TextInput style={[styles.input, styles.area]} value={form.description} onChangeText={(t) => setForm((f) => ({ ...f, description: t }))} multiline placeholderTextColor={STUDENTS_UI.textLight} />
+            <TextInput style={[styles.input, styles.area]} value={form.description} onChangeText={(t) => setForm((f) => ({ ...f, description: t }))} multiline             placeholderTextColor={TEACHER.textMuted} />
             <Pressable onPress={submitHomework}>
-              <LinearGradient colors={['#9333ea', '#2563eb']} style={styles.saveBtn}>
+              <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.saveBtn}>
                 <Text style={styles.saveBtnText}>Create</Text>
               </LinearGradient>
             </Pressable>
@@ -343,10 +342,10 @@ export default function HomeworkSubmissionsView() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Grade Submission</Text>
-            <TextInput style={styles.input} value={grade} onChangeText={setGrade} keyboardType="numeric" placeholder="Marks" placeholderTextColor={STUDENTS_UI.textLight} />
-            <TextInput style={[styles.input, styles.area]} value={feedback} onChangeText={setFeedback} placeholder="Feedback" placeholderTextColor={STUDENTS_UI.textLight} multiline />
+            <TextInput style={styles.input} value={grade} onChangeText={setGrade} keyboardType="numeric" placeholder="Marks"             placeholderTextColor={TEACHER.textMuted} />
+            <TextInput style={[styles.input, styles.area]} value={feedback} onChangeText={setFeedback} placeholder="Feedback"             placeholderTextColor={TEACHER.textMuted} multiline />
             <Pressable onPress={submitGrade}>
-              <LinearGradient colors={['#9333ea', '#2563eb']} style={styles.saveBtn}>
+              <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.saveBtn}>
                 <Text style={styles.saveBtnText}>Save Grade</Text>
               </LinearGradient>
             </Pressable>
@@ -361,70 +360,56 @@ export default function HomeworkSubmissionsView() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1 },
+  scroll: { flex: 1, backgroundColor: TEACHER.bg },
   scrollContent: { paddingHorizontal: TEACHER_SPACING.lg, paddingBottom: 120, gap: 14 },
-  headerCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: STUDENTS_UI.cardBorder,
-    gap: 14,
-  },
+  headerCard: { ...glassCard, borderRadius: TEACHER_RADIUS.xl, padding: 16, gap: 14 },
   headerLeft: { flexDirection: 'row', gap: 12, alignItems: 'center' },
   headerIcon: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 20, fontWeight: '800', color: STUDENTS_UI.purple },
-  headerSub: { fontSize: 13, color: STUDENTS_UI.textMuted, marginTop: 2 },
+  headerTitle: { ...TEACHER_TYPO.section, fontSize: 20, color: TEACHER.primaryLight },
+  headerSub: { fontSize: 13, color: TEACHER.textMuted, marginTop: 2 },
   createBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 12, borderRadius: 12 },
-  createBtnText: { color: '#fff', fontWeight: '700' },
-  sectionCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: STUDENTS_UI.cardBorder,
-    gap: 10,
-  },
+  createBtnText: { color: TEACHER.textOnPrimary, fontWeight: '700' },
+  sectionCard: { ...glassCard, borderRadius: TEACHER_RADIUS.xl, padding: 14, gap: 10 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  sectionTitle: { fontSize: 17, fontWeight: '800', color: STUDENTS_UI.text },
+  sectionTitle: { ...TEACHER_TYPO.section, fontSize: 17, color: TEACHER.text },
   empty: { alignItems: 'center', paddingVertical: 32 },
-  emptyText: { color: STUDENTS_UI.textMuted, textAlign: 'center', marginTop: 8 },
-  hwCard: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 14, overflow: 'hidden', marginBottom: 10 },
-  hwHeader: { flexDirection: 'row', alignItems: 'center', padding: 14, backgroundColor: '#faf5ff' },
-  hwOverdue: { borderLeftWidth: 4, borderLeftColor: '#ef4444' },
+  emptyText: { color: TEACHER.textMuted, textAlign: 'center', marginTop: 8 },
+  hwCard: { borderWidth: 1, borderColor: TEACHER.surfaceBorder, borderRadius: TEACHER_RADIUS.lg, overflow: 'hidden', marginBottom: 10 },
+  hwHeader: { flexDirection: 'row', alignItems: 'center', padding: 14, backgroundColor: TEACHER.surfaceElevated },
+  hwOverdue: { borderLeftWidth: 4, borderLeftColor: TEACHER.danger },
   hwTitleRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
-  hwTitle: { fontSize: 15, fontWeight: '700', color: STUDENTS_UI.text },
-  hwMeta: { fontSize: 12, color: STUDENTS_UI.textMuted, marginTop: 4 },
-  deadline: { fontSize: 12, color: STUDENTS_UI.textMuted, marginTop: 2 },
-  badgeRed: { backgroundColor: '#fee2e2', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
-  badgeRedText: { fontSize: 10, fontWeight: '700', color: '#991b1b' },
-  badgeYellow: { backgroundColor: '#fef9c3', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
-  badgeYellowText: { fontSize: 10, fontWeight: '700', color: '#854d0e' },
-  subs: { padding: 12, backgroundColor: '#fff' },
-  noSubs: { fontSize: 13, color: STUDENTS_UI.textLight, fontStyle: 'italic' },
-  subRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#f3f4f6' },
-  subName: { fontSize: 14, fontWeight: '700', color: STUDENTS_UI.text },
-  subMeta: { fontSize: 11, color: STUDENTS_UI.textMuted, marginTop: 2 },
-  gradeBtn: { borderWidth: 1, borderColor: '#c7d2fe', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
-  gradeBtnText: { fontSize: 12, fontWeight: '700', color: STUDENTS_UI.indigo },
-  classBlock: { borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
+  hwTitle: { fontSize: 15, fontWeight: '700', color: TEACHER.text },
+  hwMeta: { fontSize: 12, color: TEACHER.textMuted, marginTop: 4 },
+  deadline: { fontSize: 12, color: TEACHER.textMuted, marginTop: 2 },
+  badgeRed: { backgroundColor: 'rgba(255,77,106,0.18)', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
+  badgeRedText: { fontSize: 10, fontWeight: '700', color: TEACHER.danger },
+  badgeYellow: { backgroundColor: 'rgba(255,184,48,0.18)', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
+  badgeYellowText: { fontSize: 10, fontWeight: '700', color: TEACHER.warning },
+  subs: { padding: 12, backgroundColor: 'rgba(123,80,255,0.07)' },
+  noSubs: { fontSize: 13, color: TEACHER.textMuted, fontStyle: 'italic' },
+  subRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderTopWidth: 1, borderTopColor: TEACHER.surfaceBorder },
+  subName: { fontSize: 14, fontWeight: '700', color: TEACHER.text },
+  subMeta: { fontSize: 11, color: TEACHER.textMuted, marginTop: 2 },
+  gradeBtn: { borderWidth: 1, borderColor: TEACHER.surfaceBorder, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: TEACHER.surfaceElevated },
+  gradeBtnText: { fontSize: 12, fontWeight: '700', color: TEACHER.primaryLight },
+  classBlock: { borderBottomWidth: 1, borderBottomColor: TEACHER.surfaceBorder },
   classHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12 },
-  classTitle: { flex: 1, fontSize: 16, fontWeight: '700', color: '#312e81' },
-  classCount: { fontSize: 11, color: STUDENTS_UI.textMuted },
-  studentSubBlock: { marginLeft: 24, paddingBottom: 10, borderLeftWidth: 2, borderLeftColor: '#e0e7ff', paddingLeft: 12 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  modalCard: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20 },
-  modalTitle: { fontSize: 20, fontWeight: '800', color: STUDENTS_UI.text, marginBottom: 12 },
-  label: { fontSize: 12, fontWeight: '700', color: STUDENTS_UI.textMuted, marginTop: 8, marginBottom: 6 },
-  input: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, padding: 12, color: STUDENTS_UI.text },
+  classTitle: { flex: 1, fontSize: 16, fontWeight: '700', color: TEACHER.text },
+  classCount: { fontSize: 11, color: TEACHER.textMuted },
+  studentSubBlock: { marginLeft: 24, paddingBottom: 10, borderLeftWidth: 2, borderLeftColor: TEACHER.surfaceBorder, paddingLeft: 12 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'flex-end' },
+  modalCard: { backgroundColor: TEACHER.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, borderTopWidth: 1, borderColor: TEACHER.surfaceBorder },
+  modalTitle: { ...TEACHER_TYPO.section, fontSize: 20, color: TEACHER.text, marginBottom: 12 },
+  label: { fontSize: 12, fontWeight: '700', color: TEACHER.textMuted, marginTop: 8, marginBottom: 6 },
+  input: { borderWidth: 1, borderColor: TEACHER.surfaceBorder, borderRadius: TEACHER_RADIUS.md, padding: 12, color: TEACHER.text, backgroundColor: TEACHER.surfaceElevated },
   area: { minHeight: 80, textAlignVertical: 'top' },
   chipRow: { gap: 8, paddingVertical: 4 },
-  chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, borderWidth: 1, borderColor: '#e5e7eb' },
-  chipActive: { borderColor: STUDENTS_UI.purple, backgroundColor: '#f5f3ff' },
-  chipText: { fontSize: 12, color: STUDENTS_UI.textMuted, fontWeight: '600' },
-  chipTextActive: { color: STUDENTS_UI.purple, fontWeight: '700' },
+  chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, borderWidth: 1, borderColor: TEACHER.surfaceBorder, backgroundColor: TEACHER.surfaceElevated },
+  chipActive: { borderColor: TEACHER.primary, backgroundColor: TEACHER.navActiveBg },
+  chipText: { fontSize: 12, color: TEACHER.textMuted, fontWeight: '600' },
+  chipTextActive: { color: TEACHER.primaryLight, fontWeight: '700' },
   saveBtn: { padding: 14, borderRadius: 12, alignItems: 'center', marginTop: 16 },
-  saveBtnText: { color: '#fff', fontWeight: '700' },
+  saveBtnText: { color: TEACHER.textOnPrimary, fontWeight: '700' },
   cancelBtn: { alignItems: 'center', padding: 14 },
-  cancelText: { color: STUDENTS_UI.textMuted, fontWeight: '600' },
+  cancelText: { color: TEACHER.textMuted, fontWeight: '600' },
 });

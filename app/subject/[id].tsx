@@ -95,7 +95,11 @@ export default function SubjectContent() {
     if (link) {
       router.push({
         pathname: '/drive-viewer',
-        params: { driveLink: encodeURIComponent(link) },
+        params: {
+          driveLink: encodeURIComponent(link),
+          title: item.title || 'Preview',
+          contentType: item.type || '',
+        },
       });
       return;
     }

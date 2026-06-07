@@ -18,11 +18,9 @@ import {
   type TimetableEntryLike,
   type UnifiedScheduleEntry,
 } from '../../../src/lib/timetable-utils';
-import { TEACHER_RADIUS, TEACHER_SPACING } from '../../../src/theme/teacher';
+import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
 
 const WEEK_HEADERS = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
-const ORANGE = '#f97316';
-const VIOLET = '#7c3aed';
 
 type RemoteEvent = {
   id?: string;
@@ -179,7 +177,7 @@ export default function ScheduleCalendarView() {
       <View style={styles.wrap}>
         <View style={styles.outerCard}>
           <View style={styles.sectionHeader}>
-            <View style={[styles.sectionIcon, { backgroundColor: ORANGE }]}>
+            <View style={[styles.sectionIcon, { backgroundColor: TEACHER.secondary }]}>
               <Ionicons name="calendar" size={20} color="#fff" />
             </View>
             <View>
@@ -197,8 +195,8 @@ export default function ScheduleCalendarView() {
     <View style={styles.wrap}>
       <View style={styles.outerCard}>
         <View style={styles.sectionHeader}>
-          <View style={[styles.sectionIcon, { backgroundColor: ORANGE }]}>
-            <Ionicons name="calendar" size={20} color="#fff" />
+          <View style={[styles.sectionIcon, { backgroundColor: TEACHER.secondary }]}>
+            <Ionicons name="calendar" size={20} color={TEACHER.textOnPrimary} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.sectionTitle}>Schedule & Calendar</Text>
@@ -209,11 +207,11 @@ export default function ScheduleCalendarView() {
         <View style={styles.calendarCard}>
           <View style={styles.monthNav}>
             <Pressable style={styles.navBtn} onPress={() => shiftMonth(-1)}>
-              <Ionicons name="chevron-back" size={18} color="#374151" />
+              <Ionicons name="chevron-back" size={18} color={TEACHER.textSecondary} />
             </Pressable>
             <Text style={styles.monthLabel}>{format(viewMonth, 'MMMM yyyy')}</Text>
             <Pressable style={styles.navBtn} onPress={() => shiftMonth(1)}>
-              <Ionicons name="chevron-forward" size={18} color="#374151" />
+              <Ionicons name="chevron-forward" size={18} color={TEACHER.textSecondary} />
             </Pressable>
           </View>
 
@@ -228,6 +226,7 @@ export default function ScheduleCalendarView() {
           <View style={styles.daysGrid}>
             {calendarDays.map((day) => {
               const selected = isSameDay(day, selectedDate);
+              const today = isSameDay(day, new Date());
               const inMonth = isCurrentMonth(day);
               const hasSchedule = hasScheduleOnDate(day);
               const hasExam = hasExamOnDate(day);
@@ -247,7 +246,8 @@ export default function ScheduleCalendarView() {
                     style={[
                       styles.dayCell,
                       !inMonth && styles.dayCellOutside,
-                      hasSchedule && !selected && styles.dayCellMarked,
+                      today && !selected && styles.dayCellToday,
+                      hasSchedule && !selected && !today && styles.dayCellMarked,
                       selected && styles.dayCellSelected,
                     ]}
                   >
@@ -257,6 +257,7 @@ export default function ScheduleCalendarView() {
                         styles.dayText,
                         !inMonth && styles.dayTextOutside,
                         hasSchedule && !selected && styles.dayTextMarked,
+                        today && !selected && styles.dayTextToday,
                         selected && styles.dayTextSelected,
                       ]}
                     >
@@ -285,7 +286,7 @@ export default function ScheduleCalendarView() {
           {dayEntries.length === 0 ? (
             <View style={styles.scheduleEmpty}>
               <View style={styles.scheduleEmptyIcon}>
-                <Ionicons name="calendar-outline" size={28} color="#9ca3af" />
+                <Ionicons name="calendar-outline" size={28} color={TEACHER.textMuted} />
               </View>
               <Text style={styles.scheduleEmptyTitle}>No schedule for this day</Text>
               <Text style={styles.scheduleEmptySub}>Select another date to view your schedule</Text>
@@ -299,7 +300,7 @@ export default function ScheduleCalendarView() {
                   onPress={() => setDetailEntry(entry)}
                 >
                   <View style={styles.entryTimeRow}>
-                    <Ionicons name="time-outline" size={14} color={VIOLET} />
+                    <Ionicons name="time-outline" size={14} color={TEACHER.primaryLight} />
                     <Text style={styles.entryTime}>
                       {entry.startTime} – {entry.endTime}
                     </Text>
@@ -328,7 +329,7 @@ export default function ScheduleCalendarView() {
                   ) : null}
                   {entry.room ? (
                     <View style={styles.roomRow}>
-                      <Ionicons name="location-outline" size={14} color="#9ca3af" />
+                      <Ionicons name="location-outline" size={14} color={TEACHER.textMuted} />
                       <Text style={styles.entryMeta}>{entry.room}</Text>
                     </View>
                   ) : null}
@@ -387,19 +388,11 @@ export default function ScheduleCalendarView() {
 const styles = StyleSheet.create({
   wrap: {
     paddingHorizontal: TEACHER_SPACING.lg,
-    paddingBottom: TEACHER_SPACING.xxl,
+    paddingBottom: 120,
   },
   outerCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: TEACHER_RADIUS.card,
-    borderWidth: 1,
-    borderColor: 'rgba(229,231,235,0.8)',
+    ...glassCard,
     padding: TEACHER_SPACING.lg,
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
-    elevation: 3,
     gap: TEACHER_SPACING.md,
   },
   sectionHeader: {
@@ -416,21 +409,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#111827',
-    letterSpacing: -0.3,
+    ...TEACHER_TYPO.section,
+    color: TEACHER.text,
   },
   sectionSub: {
-    fontSize: 12,
-    color: '#6b7280',
+    ...TEACHER_TYPO.caption,
+    color: TEACHER.textMuted,
     marginTop: 2,
   },
   calendarCard: {
-    borderRadius: 14,
+    borderRadius: TEACHER_RADIUS.lg,
     borderWidth: 1,
-    borderColor: 'rgba(229,231,235,0.9)',
-    backgroundColor: '#fff',
+    borderColor: TEACHER.surfaceBorder,
+    backgroundColor: TEACHER.surface,
     padding: 12,
   },
   monthNav: {
@@ -444,15 +435,15 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#fff',
+    borderColor: TEACHER.surfaceBorder,
+    backgroundColor: TEACHER.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
   monthLabel: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#111827',
+    color: TEACHER.text,
   },
   weekHeaderRow: {
     flexDirection: 'row',
@@ -463,7 +454,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 11,
     fontWeight: '700',
-    color: '#9ca3af',
+    color: TEACHER.textMuted,
   },
   daysGrid: {
     flexDirection: 'row',
@@ -485,11 +476,14 @@ const styles = StyleSheet.create({
   dayCellOutside: {
     opacity: 0.45,
   },
+  dayCellToday: {
+    backgroundColor: 'rgba(123,80,255,0.20)',
+  },
   dayCellMarked: {
-    backgroundColor: '#eef2ff',
+    backgroundColor: TEACHER.surfaceElevated,
   },
   dayCellSelected: {
-    backgroundColor: VIOLET,
+    backgroundColor: TEACHER.primary,
   },
   examDot: {
     position: 'absolute',
@@ -498,29 +492,33 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#ef4444',
+    backgroundColor: TEACHER.danger,
   },
   dayText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#374151',
+    color: TEACHER.textSecondary,
   },
   dayTextOutside: {
-    color: '#9ca3af',
+    color: TEACHER.textMuted,
+  },
+  dayTextToday: {
+    color: TEACHER.primaryLight,
+    fontWeight: '700',
   },
   dayTextMarked: {
-    color: '#4338ca',
+    color: TEACHER.primaryLight,
     fontWeight: '700',
   },
   dayTextSelected: {
-    color: '#fff',
+    color: TEACHER.textOnPrimary,
     fontWeight: '800',
   },
   scheduleCard: {
-    borderRadius: 14,
+    borderRadius: TEACHER_RADIUS.lg,
     borderWidth: 1,
-    borderColor: 'rgba(229,231,235,0.9)',
-    backgroundColor: '#fff',
+    borderColor: TEACHER.surfaceBorder,
+    backgroundColor: TEACHER.surface,
     padding: 14,
     minHeight: 280,
   },
@@ -534,18 +532,18 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: VIOLET,
+    backgroundColor: TEACHER.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   scheduleTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
+    color: TEACHER.text,
   },
   scheduleDate: {
     fontSize: 12,
-    color: '#6b7280',
+    color: TEACHER.textMuted,
     marginTop: 2,
   },
   scheduleEmpty: {
@@ -555,8 +553,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: '#e5e7eb',
-    backgroundColor: '#f9fafb',
+    borderColor: TEACHER.surfaceBorder,
+    backgroundColor: 'rgba(123,80,255,0.07)',
     paddingVertical: 36,
     paddingHorizontal: 16,
   },
@@ -564,7 +562,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 16,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: TEACHER.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
@@ -572,11 +570,11 @@ const styles = StyleSheet.create({
   scheduleEmptyTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#111827',
+    color: TEACHER.text,
   },
   scheduleEmptySub: {
     fontSize: 13,
-    color: '#6b7280',
+    color: TEACHER.textMuted,
     marginTop: 4,
     textAlign: 'center',
   },
@@ -584,17 +582,12 @@ const styles = StyleSheet.create({
     maxHeight: 360,
   },
   entryCard: {
-    borderRadius: 12,
+    borderRadius: TEACHER_RADIUS.md,
     borderWidth: 1,
-    borderColor: '#f3f4f6',
-    backgroundColor: '#fff',
+    borderColor: TEACHER.surfaceBorder,
+    backgroundColor: 'rgba(123,80,255,0.07)',
     padding: 12,
     marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
   },
   entryTimeRow: {
     flexDirection: 'row',
@@ -605,7 +598,7 @@ const styles = StyleSheet.create({
   entryTime: {
     fontSize: 13,
     fontWeight: '700',
-    color: VIOLET,
+    color: TEACHER.primaryLight,
   },
   entryTitleRow: {
     flexDirection: 'row',
@@ -621,37 +614,37 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   badgeExam: {
-    borderColor: '#fecaca',
-    backgroundColor: '#fef2f2',
+    borderColor: 'rgba(255,77,106,0.4)',
+    backgroundColor: 'rgba(255,77,106,0.15)',
   },
   badgeAdmin: {
-    borderColor: '#ddd6fe',
-    backgroundColor: '#f5f3ff',
+    borderColor: TEACHER.surfaceBorder,
+    backgroundColor: TEACHER.surfaceElevated,
   },
   badgeClass: {
-    borderColor: '#bfdbfe',
-    backgroundColor: '#eff6ff',
+    borderColor: 'rgba(123,80,255,0.35)',
+    backgroundColor: 'rgba(123,80,255,0.12)',
   },
   eventBadgeText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#991b1b',
+    color: TEACHER.danger,
   },
   eventBadgeTextAdmin: {
-    color: '#5b21b6',
+    color: TEACHER.primaryLight,
   },
   eventBadgeTextClass: {
-    color: '#1d4ed8',
+    color: TEACHER.primaryLight,
   },
   entryTitle: {
     flex: 1,
     fontSize: 15,
     fontWeight: '700',
-    color: '#111827',
+    color: TEACHER.text,
   },
   entryMeta: {
     fontSize: 13,
-    color: '#4b5563',
+    color: TEACHER.textMuted,
     marginTop: 2,
   },
   roomRow: {
@@ -662,45 +655,46 @@ const styles = StyleSheet.create({
   },
   detailOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.65)',
     justifyContent: 'center',
     padding: 24,
   },
   detailCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
+    ...glassCard,
     padding: 20,
   },
   detailTitle: {
+    ...TEACHER_TYPO.section,
     fontSize: 18,
-    fontWeight: '800',
-    color: '#111827',
+    color: TEACHER.text,
   },
   detailType: {
     fontSize: 13,
-    color: '#6b7280',
+    color: TEACHER.textMuted,
     marginTop: 4,
     marginBottom: 12,
   },
   detailLine: {
     fontSize: 14,
-    color: '#374151',
+    color: TEACHER.textSecondary,
     marginTop: 8,
     lineHeight: 20,
   },
   detailLabel: {
     fontWeight: '700',
-    color: '#111827',
+    color: TEACHER.text,
   },
   detailClose: {
     marginTop: 20,
     alignItems: 'center',
     paddingVertical: 12,
     borderRadius: 10,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: TEACHER.surfaceElevated,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
   },
   detailCloseText: {
     fontWeight: '700',
-    color: '#374151',
+    color: TEACHER.textSecondary,
   },
 });

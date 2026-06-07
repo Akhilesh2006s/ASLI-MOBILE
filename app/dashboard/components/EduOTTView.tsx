@@ -17,7 +17,8 @@ import Header from './eduott/Header';
 import TabSwitcher, { EduOTTTab } from './eduott/TabSwitcher';
 import SearchBar from './eduott/SearchBar';
 import FilterChips from './eduott/FilterChips';
-import VideoCard from './eduott/VideoCard';
+import EduOTTVideoCard from '../../../src/components/eduott/EduOTTVideoCard';
+import { resolveContentDurationSeconds } from '../../../src/utils/eduottVideoUtils';
 import {
   extractPlainSubjectName,
   getSubjectClassLabel,
@@ -52,6 +53,8 @@ interface VideoItem {
   duration: number;
   videoUrl?: string;
   fileUrl?: string;
+  youtubeUrl?: string;
+  thumbnailUrl?: string;
   isYouTubeVideo?: boolean;
   subjectId?: string;
   subjectName?: string;
@@ -79,8 +82,10 @@ interface EduOTTViewProps {
 function mapContentToVideoItem(content: any): VideoItem {
   const subjectId = content.subject?._id || content.subject?.id || (typeof content.subject === 'string' ? content.subject : '');
   const subjectName = content.subject?.name || (typeof content.subject === 'string' ? content.subject : 'Unknown Subject');
-  const rawDuration = content.duration || 0;
-  const durationInSeconds = rawDuration > 0 ? (rawDuration > 100 ? rawDuration : rawDuration * 60) : 0;
+  const durationInSeconds = resolveContentDurationSeconds({
+    duration: content.duration,
+    durationSeconds: content.durationSeconds,
+  });
 
   let videoFileUrl = content.fileUrl || content.videoUrl;
   if (videoFileUrl && !videoFileUrl.startsWith('http') && !videoFileUrl.startsWith('//')) {
@@ -104,6 +109,8 @@ function mapContentToVideoItem(content: any): VideoItem {
     description: content.description || '',
     videoUrl: videoFileUrl,
     fileUrl: videoFileUrl,
+    youtubeUrl: content.youtubeUrl || undefined,
+    thumbnailUrl: content.thumbnailUrl || undefined,
     duration: durationInSeconds,
     views: content.views || 0,
     subjectId: subjectId ? String(subjectId) : '',
@@ -140,7 +147,6 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [sessionSearchTerm, setSessionSearchTerm] = useState('');
   const [visibleCount, setVisibleCount] = useState(10);
-  const [bookmarkedIds, setBookmarkedIds] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -369,28 +375,12 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
   const classChipSelected = selectedClass ?? 'all';
   const subjectChipSelected = selectedSubject ?? 'all';
 
-  const formatVideoSubjectLine = useCallback((video: VideoItem) => {
-    const plain = extractPlainSubjectName(video.subjectName || '').trim();
-    const cl = getSubjectClassLabel({
-      name: video.subjectName,
-      classNumber: video.classNumber,
-    });
-    if (!plain && !cl) return video.description || 'Video lecture';
-    return cl ? `${plain} · Class ${cl}` : plain;
-  }, []);
-
   const handlePlayVideo = useCallback((video: VideoItem) => {
     if (!video._id) return;
     router.push({
       pathname: '/video-player',
       params: { videoId: video._id, isContentItem: 'true' },
     });
-  }, []);
-
-  const formatDuration = useCallback((seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   }, []);
 
   const handleJoinLive = useCallback((session: LiveSession) => {
@@ -446,10 +436,6 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
     }
   }, [selectedClass, selectedSubject]);
 
-  const toggleBookmark = useCallback((videoId: string) => {
-    setBookmarkedIds(prev => ({ ...prev, [videoId]: !prev[videoId] }));
-  }, []);
-
   const onEndReached = useCallback(() => {
     if (visibleCount < filteredVideos.length) {
       setVisibleCount(prev => prev + 10);
@@ -457,19 +443,24 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
   }, [visibleCount, filteredVideos.length]);
 
   const renderVideoItem = useCallback(({ item: video }: { item: VideoItem }) => (
-    <VideoCard
+    <EduOTTVideoCard
+      variant="student"
       title={video.title}
-      description={video.description}
-      subjectName={formatVideoSubjectLine(video)}
-      durationText={formatDuration(video.duration)}
-      views={Number(video.views || 0)}
-      watchProgress={(video as any).watchProgress}
-      isBookmarked={Boolean(bookmarkedIds[video._id])}
-      isYouTubeVideo={video.isYouTubeVideo}
+      durationSeconds={video.duration}
+      subjectLabel={extractPlainSubjectName(video.subjectName || '').trim() || undefined}
+      classLabel={
+        getSubjectClassLabel({
+          name: video.subjectName,
+          classNumber: video.classNumber,
+        }) || undefined
+      }
+      thumbnailUrl={video.thumbnailUrl}
+      youtubeUrl={video.youtubeUrl}
+      fileUrl={video.fileUrl}
+      videoUrl={video.videoUrl}
       onPress={() => handlePlayVideo(video)}
-      onToggleBookmark={() => toggleBookmark(video._id)}
     />
-  ), [bookmarkedIds, formatDuration, formatVideoSubjectLine, handlePlayVideo, toggleBookmark]);
+  ), [handlePlayVideo]);
 
   const renderSessionItem = useCallback(({ item }: { item: LiveSession }) => {
     const statusColor = getStatusColor(item.status);

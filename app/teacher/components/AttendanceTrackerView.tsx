@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import teacherService from '../../../src/services/api/teacherService';
 import { ActionButton, EmptyState, ErrorState, LoadingState } from '../../../src/components/ui';
-import { COLORS, FONT, RADIUS, SPACING } from '../../../src/theme';
+import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
 
 type StudentRow = {
   _id?: string;
@@ -78,22 +80,26 @@ export default function AttendanceTrackerView() {
         ))}
       </View>
 
-      {error ? <ErrorState message={error} onRetry={load} style={{ marginBottom: SPACING.md }} /> : null}
+      {error ? <ErrorState message={error} onRetry={load} style={{ marginBottom: TEACHER_SPACING.md }} /> : null}
 
       {tab === 'mark' ? (
         <>
           <Pressable style={styles.bulkBtn} onPress={markAllPresent}>
-            <Ionicons name="checkmark-done" size={16} color={COLORS.primary} />
+            <Ionicons name="checkmark-done" size={16} color={TEACHER.primaryLight} />
             <Text style={styles.bulkText}>Mark All Present</Text>
           </Pressable>
-          <ScrollView style={styles.list}>
+          <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
             {students.length === 0 ? (
               <EmptyState icon="people-outline" title="No students" subtitle="Select a class to mark attendance." />
             ) : (
-              students.map((s) => {
+              students.map((s, index) => {
                 const id = s._id || s.id || s.fullName || '';
                 return (
-                  <View key={id} style={styles.row}>
+                  <Animated.View
+                    key={id}
+                    entering={FadeInDown.duration(350).delay(Math.min(index * 60, 480))}
+                    style={styles.row}
+                  >
                     <View style={styles.rowInfo}>
                       <Text style={styles.name}>{s.fullName || s.name}</Text>
                       {s.rollNo ? <Text style={styles.roll}>Roll {s.rollNo}</Text> : null}
@@ -114,25 +120,34 @@ export default function AttendanceTrackerView() {
                         </Pressable>
                       ))}
                     </View>
-                  </View>
+                  </Animated.View>
                 );
               })
             )}
           </ScrollView>
-          <ActionButton label="Submit Attendance" onPress={submit} loading={submitting} gradient={COLORS.gradientTeacher} />
+          <ActionButton
+            label="Submit Attendance"
+            onPress={submit}
+            loading={submitting}
+            gradient={[TEACHER.primary, TEACHER.primaryDark]}
+          />
         </>
       ) : (
-        <ScrollView style={styles.list}>
+        <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
           {history.length === 0 ? (
             <EmptyState icon="time-outline" title="No history" subtitle="Past attendance records appear here." />
           ) : (
             history.map((h, i) => (
-              <View key={i} style={styles.historyCard}>
+              <Animated.View
+                key={i}
+                entering={FadeInDown.duration(350).delay(Math.min(i * 60, 480))}
+                style={styles.historyCard}
+              >
                 <Text style={styles.historyDate}>{h.date || h.createdAt || 'Record'}</Text>
                 <Text style={styles.historyMeta}>
                   Present: {h.present ?? '—'} • Absent: {h.absent ?? '—'}
                 </Text>
-              </View>
+              </Animated.View>
             ))
           )}
         </ScrollView>
@@ -143,34 +158,35 @@ export default function AttendanceTrackerView() {
 
 const styles = StyleSheet.create({
   wrap: { flex: 1 },
-  tabs: { flexDirection: 'row', gap: SPACING.sm, marginBottom: SPACING.md },
+  tabs: { flexDirection: 'row', gap: TEACHER_SPACING.sm, marginBottom: TEACHER_SPACING.md },
   tab: {
     flex: 1,
-    paddingVertical: SPACING.sm,
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.divider,
+    paddingVertical: TEACHER_SPACING.sm,
+    borderRadius: TEACHER_RADIUS.full,
+    backgroundColor: TEACHER.surface,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
     alignItems: 'center',
   },
-  tabActive: { backgroundColor: COLORS.primaryLight },
-  tabText: { fontSize: FONT.sm, color: COLORS.textMuted, fontWeight: FONT.semibold },
-  tabTextActive: { color: COLORS.primary },
-  bulkBtn: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, marginBottom: SPACING.md },
-  bulkText: { color: COLORS.primary, fontWeight: FONT.semibold, fontSize: FONT.sm },
-  list: { flex: 1, marginBottom: SPACING.md },
+  tabActive: { backgroundColor: TEACHER.navActiveBg, borderColor: TEACHER.primary },
+  tabText: { ...TEACHER_TYPO.caption, color: TEACHER.textMuted },
+  tabTextActive: { color: TEACHER.primaryLight },
+  bulkBtn: { flexDirection: 'row', alignItems: 'center', gap: TEACHER_SPACING.sm, marginBottom: TEACHER_SPACING.md },
+  bulkText: { color: TEACHER.primaryLight, fontWeight: '700', fontSize: 14 },
+  list: { flex: 1, marginBottom: TEACHER_SPACING.md },
+  listContent: { paddingBottom: 120 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    marginBottom: SPACING.sm,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    ...glassCard,
+    borderRadius: TEACHER_RADIUS.lg,
+    padding: TEACHER_SPACING.md,
+    marginBottom: TEACHER_SPACING.sm,
   },
   rowInfo: { flex: 1 },
-  name: { fontSize: FONT.base, fontWeight: FONT.semibold, color: COLORS.text },
-  roll: { fontSize: FONT.xs, color: COLORS.textMuted },
+  name: { ...TEACHER_TYPO.body, fontWeight: '700', color: TEACHER.text },
+  roll: { fontSize: 12, color: TEACHER.textMuted, marginTop: 2 },
   statusRow: { flexDirection: 'row', gap: 4 },
   statusBtn: {
     width: 28,
@@ -178,21 +194,21 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.divider,
-  },
-  statusPresent: { backgroundColor: '#D1FAE5' },
-  statusAbsent: { backgroundColor: '#FEE2E2' },
-  statusLate: { backgroundColor: '#FEF3C7' },
-  statusText: { fontSize: FONT.xs, color: COLORS.textMuted, fontWeight: FONT.bold },
-  statusTextActive: { color: COLORS.text },
-  historyCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    marginBottom: SPACING.sm,
+    backgroundColor: TEACHER.surfaceElevated,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: TEACHER.surfaceBorder,
   },
-  historyDate: { fontWeight: FONT.semibold, color: COLORS.text },
-  historyMeta: { fontSize: FONT.sm, color: COLORS.textMuted, marginTop: 4 },
+  statusPresent: { backgroundColor: 'rgba(0,214,143,0.22)', borderColor: TEACHER.success },
+  statusAbsent: { backgroundColor: 'rgba(255,77,106,0.22)', borderColor: TEACHER.danger },
+  statusLate: { backgroundColor: 'rgba(255,184,48,0.22)', borderColor: TEACHER.warning },
+  statusText: { fontSize: 12, color: TEACHER.textMuted, fontWeight: '800' },
+  statusTextActive: { color: TEACHER.text },
+  historyCard: {
+    ...glassCard,
+    borderRadius: TEACHER_RADIUS.lg,
+    padding: TEACHER_SPACING.md,
+    marginBottom: TEACHER_SPACING.sm,
+  },
+  historyDate: { fontWeight: '700', color: TEACHER.text },
+  historyMeta: { fontSize: 14, color: TEACHER.textMuted, marginTop: 4 },
 });

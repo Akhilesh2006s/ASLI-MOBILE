@@ -2,19 +2,33 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import {
   formatClassBadge,
   formatLastLogin,
   progressColors,
   progressTier,
-  STUDENTS_UI,
   type StudentRow,
 } from '../../lib/students-ui';
+import { TEACHER, glassCard } from '../../theme/teacher';
 
 type Props = {
   student: StudentRow;
   onAddRemark: () => void;
 };
+
+function usePressScale(to = 0.96) {
+  const scale = useSharedValue(1);
+  const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const onPressIn = () => { scale.value = withSpring(to, { damping: 14, stiffness: 300 }); };
+  const onPressOut = () => { scale.value = withSpring(1.0, { damping: 14, stiffness: 300 }); };
+  return { style, onPressIn, onPressOut };
+}
 
 function ProgressBar({ value, color }: { value: number; color: string }) {
   return (
@@ -25,6 +39,7 @@ function ProgressBar({ value, color }: { value: number; color: string }) {
 }
 
 export default function StudentListCard({ student, onAddRemark }: Props) {
+  const press = usePressScale();
   const perf = student.performance || {};
   const classLabel = formatClassBadge(student);
   const lastLogin = formatLastLogin(student.lastLogin);
@@ -37,7 +52,7 @@ export default function StudentListCard({ student, onAddRemark }: Props) {
   const learningColors = progressColors(learningTier);
 
   return (
-    <View style={styles.card}>
+    <Animated.View entering={FadeInDown.duration(350)} style={styles.card}>
       <View style={styles.headerRow}>
         <View style={styles.headerText}>
           <Text style={styles.name}>{student.name}</Text>
@@ -52,19 +67,19 @@ export default function StudentListCard({ student, onAddRemark }: Props) {
 
       <View style={styles.metaGrid}>
         <View style={styles.metaItem}>
-          <Ionicons name="call-outline" size={14} color={STUDENTS_UI.textMuted} />
+          <Ionicons name="call-outline" size={14} color={TEACHER.textMuted} />
           <Text style={styles.metaLabel}>Contact</Text>
           <Text style={styles.metaValue}>{student.phone?.trim() || 'No phone'}</Text>
         </View>
         <View style={styles.metaItem}>
-          <Ionicons name="school-outline" size={14} color={STUDENTS_UI.textMuted} />
+          <Ionicons name="school-outline" size={14} color={TEACHER.textMuted} />
           <Text style={styles.metaLabel}>Class</Text>
           <View style={styles.classBadge}>
             <Text style={styles.classBadgeText}>{classLabel}</Text>
           </View>
         </View>
         <View style={styles.metaItem}>
-          <Ionicons name="time-outline" size={14} color={STUDENTS_UI.textMuted} />
+          <Ionicons name="time-outline" size={14} color={TEACHER.textMuted} />
           <Text style={styles.metaLabel}>Last Login</Text>
           {lastLogin ? (
             <>
@@ -76,7 +91,7 @@ export default function StudentListCard({ student, onAddRemark }: Props) {
           )}
         </View>
         <View style={styles.metaItem}>
-          <Ionicons name="stats-chart-outline" size={14} color={STUDENTS_UI.textMuted} />
+          <Ionicons name="stats-chart-outline" size={14} color={TEACHER.textMuted} />
           <Text style={styles.metaLabel}>Average</Text>
           {(perf.totalExams ?? 0) > 0 ? (
             <>
@@ -96,7 +111,7 @@ export default function StudentListCard({ student, onAddRemark }: Props) {
         {hasOverall ? (
           <>
             <View style={styles.progressHeader}>
-              <View style={[styles.pill, { backgroundColor: overallColors.bg }]}>
+              <View style={[styles.pill, { backgroundColor: overallColors.bg + '33' }]}>
                 <Text style={[styles.pillText, { color: overallColors.text }]}>
                   {overall.toFixed(1)}%
                 </Text>
@@ -112,13 +127,13 @@ export default function StudentListCard({ student, onAddRemark }: Props) {
               <View style={styles.learningBlock}>
                 <View style={styles.progressHeader}>
                   <Text style={styles.learningLabel}>Learning Progress</Text>
-                  <View style={[styles.pill, { backgroundColor: learningColors.bg }]}>
+                  <View style={[styles.pill, { backgroundColor: learningColors.bg + '33' }]}>
                     <Text style={[styles.pillText, { color: learningColors.text }]}>
                       {learning.toFixed(0)}%
                     </Text>
                   </View>
                 </View>
-                <ProgressBar value={learning} color="#3b82f6" />
+                <ProgressBar value={learning} color={learningColors.bar} />
               </View>
             ) : null}
           </>
@@ -135,80 +150,80 @@ export default function StudentListCard({ student, onAddRemark }: Props) {
         )}
       </View>
 
-      <Pressable onPress={onAddRemark} style={styles.remarkBtnWrap}>
-        <LinearGradient
-          colors={['#9333ea', '#db2777']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.remarkBtn}
-        >
-          <Ionicons name="chatbubble-ellipses-outline" size={18} color="#fff" />
-          <Text style={styles.remarkBtnText}>Add Remark</Text>
-        </LinearGradient>
+      <Pressable
+        onPress={onAddRemark}
+        onPressIn={press.onPressIn}
+        onPressOut={press.onPressOut}
+        style={styles.remarkBtnWrap}
+      >
+        <Animated.View style={press.style}>
+          <LinearGradient
+            colors={['#9333ea', '#db2777']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.remarkBtn}
+          >
+            <Ionicons name="chatbubble-ellipses-outline" size={18} color="#fff" />
+            <Text style={styles.remarkBtnText}>Add Remark</Text>
+          </LinearGradient>
+        </Animated.View>
       </Pressable>
-    </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: STUDENTS_UI.cardBg,
-    borderRadius: 16,
+    ...glassCard,
+    backgroundColor: TEACHER.cardBg,
     padding: 16,
-    borderWidth: 1,
-    borderColor: STUDENTS_UI.cardBorder,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
     gap: 14,
   },
   headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   headerText: { flex: 1 },
-  name: { fontSize: 16, fontWeight: '800', color: STUDENTS_UI.text, textTransform: 'uppercase' },
-  email: { fontSize: 13, color: STUDENTS_UI.textMuted, marginTop: 2 },
-  statusBadge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
-  activeBadge: { backgroundColor: '#dcfce7' },
-  inactiveBadge: { backgroundColor: '#fee2e2' },
+  name: { fontSize: 16, fontWeight: '800', color: TEACHER.text, textTransform: 'uppercase' },
+  email: { fontSize: 13, color: TEACHER.textMuted, marginTop: 2 },
+  statusBadge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1 },
+  activeBadge: { backgroundColor: 'rgba(0,214,143,0.15)', borderColor: 'rgba(0,214,143,0.3)' },
+  inactiveBadge: { backgroundColor: 'rgba(255,77,106,0.15)', borderColor: 'rgba(255,77,106,0.3)' },
   statusText: { fontSize: 11, fontWeight: '700' },
-  activeText: { color: '#166534' },
-  inactiveText: { color: '#991b1b' },
+  activeText: { color: TEACHER.success },
+  inactiveText: { color: TEACHER.danger },
   metaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   metaItem: { width: '47%', gap: 2 },
-  metaLabel: { fontSize: 11, fontWeight: '700', color: STUDENTS_UI.textLight, marginTop: 2 },
-  metaValue: { fontSize: 14, fontWeight: '600', color: STUDENTS_UI.text },
-  metaSub: { fontSize: 11, color: STUDENTS_UI.textMuted },
-  metaMuted: { fontSize: 13, color: STUDENTS_UI.textLight },
+  metaLabel: { fontSize: 11, fontWeight: '700', color: TEACHER.textMuted, marginTop: 2 },
+  metaValue: { fontSize: 14, fontWeight: '600', color: TEACHER.text },
+  metaSub: { fontSize: 11, color: TEACHER.textMuted },
+  metaMuted: { fontSize: 13, color: TEACHER.textMuted },
   classBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#dbeafe',
+    backgroundColor: TEACHER.surfaceHover,
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 2,
     marginTop: 2,
   },
-  classBadgeText: { fontSize: 12, fontWeight: '700', color: '#1e40af' },
+  classBadgeText: { fontSize: 12, fontWeight: '700', color: TEACHER.primaryDark },
   progressSection: {
     borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
+    borderTopColor: TEACHER.surfaceBorder,
     paddingTop: 12,
     gap: 8,
   },
-  sectionTitle: { fontSize: 12, fontWeight: '800', color: STUDENTS_UI.textMuted, textTransform: 'uppercase' },
+  sectionTitle: { fontSize: 12, fontWeight: '800', color: TEACHER.textMuted, textTransform: 'uppercase' },
   progressHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   pill: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
   pillText: { fontSize: 12, fontWeight: '700' },
   progressTrack: {
     height: 8,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: TEACHER.surfaceElevated,
     borderRadius: 999,
     overflow: 'hidden',
   },
   progressFill: { height: '100%', borderRadius: 999 },
-  progressNote: { fontSize: 11, color: STUDENTS_UI.textLight },
+  progressNote: { fontSize: 11, color: TEACHER.textMuted },
   learningBlock: { marginTop: 4, gap: 6 },
-  learningLabel: { fontSize: 12, color: STUDENTS_UI.textMuted },
+  learningLabel: { fontSize: 12, color: TEACHER.textMuted },
   remarkBtnWrap: { borderRadius: 12, overflow: 'hidden' },
   remarkBtn: {
     flexDirection: 'row',

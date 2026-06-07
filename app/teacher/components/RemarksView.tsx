@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import teacherService, { asArray } from '../../../src/services/api/teacherService';
+import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
 
 interface Remark {
   _id: string;
@@ -110,7 +113,7 @@ export default function TeacherRemarksView() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3b82f6" />
+        <ActivityIndicator size="large" color={TEACHER.primary} />
         <Text style={styles.loadingText}>Loading remarks...</Text>
       </View>
     );
@@ -166,25 +169,24 @@ export default function TeacherRemarksView() {
       </View>
 
       {/* Add Button */}
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => setIsCreateModalOpen(true)}
-      >
-        <Ionicons name="add" size={24} color="#fff" />
-        <Text style={styles.addButtonText}>Add Remark</Text>
+      <TouchableOpacity style={styles.addButton} onPress={() => setIsCreateModalOpen(true)} activeOpacity={0.85}>
+        <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.addButtonGrad}>
+          <Ionicons name="add" size={24} color={TEACHER.textOnPrimary} />
+          <Text style={styles.addButtonText}>Add Remark</Text>
+        </LinearGradient>
       </TouchableOpacity>
 
       {/* Remarks List */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentInner} showsVerticalScrollIndicator={false}>
         {filteredRemarks.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="chatbubble-outline" size={64} color="#9ca3af" />
+            <Ionicons name="chatbubble-outline" size={64} color={TEACHER.textMuted} />
             <Text style={styles.emptyText}>No remarks found</Text>
             <Text style={styles.emptySubtext}>Add your first remark to get started</Text>
           </View>
         ) : (
-          filteredRemarks.map((remark) => (
-            <View key={remark._id} style={styles.remarkCard}>
+          filteredRemarks.map((remark, index) => (
+            <Animated.View key={remark._id} entering={FadeInDown.duration(350).delay(Math.min(index * 60, 480))} style={styles.remarkCard}>
               <View style={styles.remarkHeader}>
                 <View style={styles.studentInfo}>
                   <View style={[styles.remarkIcon, remark.isPositive ? styles.remarkIconPositive : styles.remarkIconNegative]}>
@@ -200,7 +202,7 @@ export default function TeacherRemarksView() {
                   </View>
                 </View>
                 <View style={[styles.typeBadge, remark.isPositive ? styles.typeBadgePositive : styles.typeBadgeNegative]}>
-                  <Text style={styles.typeBadgeText}>
+                  <Text style={[styles.typeBadgeText, remark.isPositive ? styles.typeBadgeTextPositive : styles.typeBadgeTextNegative]}>
                     {remark.isPositive ? 'Positive' : 'Needs Improvement'}
                   </Text>
                 </View>
@@ -221,7 +223,7 @@ export default function TeacherRemarksView() {
                   {new Date(remark.createdAt).toLocaleDateString()}
                 </Text>
               </View>
-            </View>
+            </Animated.View>
           ))
         )}
       </ScrollView>
@@ -246,7 +248,7 @@ export default function TeacherRemarksView() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Add Remark</Text>
               <TouchableOpacity onPress={() => setIsCreateModalOpen(false)}>
-                <Ionicons name="close" size={24} color="#111827" />
+                <Ionicons name="close" size={24} color={TEACHER.text} />
               </TouchableOpacity>
             </View>
 
@@ -318,7 +320,7 @@ export default function TeacherRemarksView() {
                   style={[styles.typeButton, isPositive && styles.typeButtonActive]}
                   onPress={() => setIsPositive(true)}
                 >
-                  <Ionicons name="thumbs-up" size={20} color={isPositive ? '#fff' : '#6b7280'} />
+                  <Ionicons name="thumbs-up" size={20} color={isPositive ? TEACHER.textOnPrimary : TEACHER.textMuted} />
                   <Text style={[styles.typeButtonText, isPositive && styles.typeButtonTextActive]}>
                     Positive
                   </Text>
@@ -327,7 +329,7 @@ export default function TeacherRemarksView() {
                   style={[styles.typeButton, !isPositive && styles.typeButtonActive]}
                   onPress={() => setIsPositive(false)}
                 >
-                  <Ionicons name="thumbs-down" size={20} color={!isPositive ? '#fff' : '#6b7280'} />
+                  <Ionicons name="thumbs-down" size={20} color={!isPositive ? TEACHER.textOnPrimary : TEACHER.textMuted} />
                   <Text style={[styles.typeButtonText, !isPositive && styles.typeButtonTextActive]}>
                     Needs Improvement
                   </Text>
@@ -340,6 +342,7 @@ export default function TeacherRemarksView() {
               <TextInput
                 style={[styles.input, styles.textArea]}
                 placeholder="Enter your remark..."
+                placeholderTextColor={TEACHER.textMuted}
                 value={remarkText}
                 onChangeText={setRemarkText}
                 multiline
@@ -347,11 +350,10 @@ export default function TeacherRemarksView() {
               />
             </View>
 
-            <TouchableOpacity
-              style={styles.createButton}
-              onPress={handleCreateRemark}
-            >
-              <Text style={styles.createButtonText}>Add Remark</Text>
+            <TouchableOpacity style={styles.createButton} onPress={handleCreateRemark} activeOpacity={0.85}>
+              <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.createButtonGrad}>
+                <Text style={styles.createButtonText}>Add Remark</Text>
+              </LinearGradient>
             </TouchableOpacity>
           </ScrollView>
           </TouchableOpacity>
@@ -364,23 +366,25 @@ export default function TeacherRemarksView() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: TEACHER.bg,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: TEACHER.bg,
   },
   loadingText: {
     marginTop: 12,
-    fontSize: 16,
-    color: '#6b7280',
+    ...TEACHER_TYPO.body,
+    color: TEACHER.textMuted,
   },
   filtersContainer: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    ...glassCard,
+    borderRadius: TEACHER_RADIUS.lg,
+    padding: TEACHER_SPACING.lg,
+    margin: TEACHER_SPACING.lg,
+    marginBottom: 0,
     gap: 12,
   },
   filterScroll: {
@@ -390,38 +394,46 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: TEACHER.surfaceElevated,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
     marginRight: 8,
   },
   filterChipActive: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: TEACHER.primary,
+    borderColor: TEACHER.primary,
   },
   filterChipText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: TEACHER.textSecondary,
   },
   filterChipTextActive: {
-    color: '#fff',
+    color: TEACHER.textOnPrimary,
   },
   addButton: {
+    borderRadius: TEACHER_RADIUS.md,
+    overflow: 'hidden',
+    margin: TEACHER_SPACING.lg,
+  },
+  addButtonGrad: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#3b82f6',
     padding: 16,
-    margin: 16,
-    borderRadius: 12,
     gap: 8,
   },
   addButtonText: {
-    color: '#fff',
+    color: TEACHER.textOnPrimary,
     fontSize: 16,
     fontWeight: '700',
   },
   content: {
     flex: 1,
-    padding: 16,
+  },
+  contentInner: {
+    padding: TEACHER_SPACING.lg,
+    paddingBottom: 120,
   },
   emptyContainer: {
     flex: 1,
@@ -430,27 +442,22 @@ const styles = StyleSheet.create({
     paddingVertical: 64,
   },
   emptyText: {
+    ...TEACHER_TYPO.section,
     fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
+    color: TEACHER.text,
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#6b7280',
+    color: TEACHER.textMuted,
     textAlign: 'center',
   },
   remarkCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    ...glassCard,
+    borderRadius: TEACHER_RADIUS.lg,
+    padding: TEACHER_SPACING.lg,
+    marginBottom: TEACHER_SPACING.md,
   },
   remarkHeader: {
     flexDirection: 'row',
@@ -472,23 +479,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   remarkIconPositive: {
-    backgroundColor: '#10b981',
+    backgroundColor: TEACHER.success,
   },
   remarkIconNegative: {
-    backgroundColor: '#ef4444',
+    backgroundColor: TEACHER.danger,
   },
   studentDetails: {
     flex: 1,
   },
   studentName: {
-    fontSize: 16,
+    ...TEACHER_TYPO.body,
     fontWeight: '700',
-    color: '#111827',
+    color: TEACHER.text,
     marginBottom: 4,
   },
   studentEmail: {
     fontSize: 12,
-    color: '#6b7280',
+    color: TEACHER.textMuted,
   },
   typeBadge: {
     paddingHorizontal: 12,
@@ -496,30 +503,40 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   typeBadgePositive: {
-    backgroundColor: '#d1fae5',
+    backgroundColor: 'rgba(0,214,143,0.18)',
+    borderWidth: 1,
+    borderColor: TEACHER.success,
   },
   typeBadgeNegative: {
-    backgroundColor: '#fee2e2',
+    backgroundColor: 'rgba(255,77,106,0.18)',
+    borderWidth: 1,
+    borderColor: TEACHER.danger,
   },
   typeBadgeText: {
     fontSize: 12,
     fontWeight: '700',
   },
+  typeBadgeTextPositive: {
+    color: TEACHER.success,
+  },
+  typeBadgeTextNegative: {
+    color: TEACHER.danger,
+  },
   remarkContent: {
     marginBottom: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: TEACHER.surfaceBorder,
   },
   subjectLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6b7280',
+    color: TEACHER.textMuted,
     marginBottom: 8,
   },
   remarkText: {
     fontSize: 14,
-    color: '#111827',
+    color: TEACHER.text,
     lineHeight: 20,
   },
   remarkFooter: {
@@ -528,31 +545,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: TEACHER.surfaceBorder,
   },
   createdBy: {
     fontSize: 12,
-    color: '#6b7280',
+    color: TEACHER.textMuted,
   },
   createdAt: {
     fontSize: 12,
-    color: '#9ca3af',
+    color: TEACHER.textMuted,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: TEACHER.bg,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '90%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 16,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -560,12 +574,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: TEACHER.surfaceBorder,
   },
   modalTitle: {
+    ...TEACHER_TYPO.section,
     fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
+    color: TEACHER.text,
   },
   modalContent: {
     padding: 20,
@@ -577,16 +591,17 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: TEACHER.textSecondary,
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
+    borderColor: TEACHER.surfaceBorder,
+    borderRadius: TEACHER_RADIUS.sm,
     padding: 12,
     fontSize: 16,
-    color: '#111827',
+    color: TEACHER.text,
+    backgroundColor: TEACHER.surfaceElevated,
   },
   textArea: {
     height: 120,
@@ -596,44 +611,52 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: TEACHER.surfaceElevated,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
     marginRight: 8,
   },
   studentChipActive: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: TEACHER.primary,
+    borderColor: TEACHER.primary,
   },
   studentChipText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: TEACHER.textSecondary,
   },
   studentChipTextActive: {
-    color: '#fff',
+    color: TEACHER.textOnPrimary,
   },
   subjectChip: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: TEACHER.surfaceElevated,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
     marginRight: 8,
   },
   subjectChipActive: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: TEACHER.primary,
+    borderColor: TEACHER.primary,
   },
   subjectChipText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: TEACHER.textSecondary,
   },
   subjectChipTextActive: {
-    color: '#fff',
+    color: TEACHER.textOnPrimary,
   },
   typeToggle: {
     flexDirection: 'row',
-    backgroundColor: '#f3f4f6',
-    borderRadius: 8,
+    backgroundColor: TEACHER.surfaceElevated,
+    borderRadius: TEACHER_RADIUS.sm,
     padding: 4,
     gap: 8,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
   },
   typeButton: {
     flex: 1,
@@ -646,25 +669,27 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   typeButtonActive: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: TEACHER.primary,
   },
   typeButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6b7280',
+    color: TEACHER.textMuted,
   },
   typeButtonTextActive: {
-    color: '#fff',
+    color: TEACHER.textOnPrimary,
   },
   createButton: {
-    backgroundColor: '#3b82f6',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
+    borderRadius: TEACHER_RADIUS.sm,
+    overflow: 'hidden',
     marginTop: 8,
   },
+  createButtonGrad: {
+    padding: 16,
+    alignItems: 'center',
+  },
   createButtonText: {
-    color: '#fff',
+    color: TEACHER.textOnPrimary,
     fontSize: 16,
     fontWeight: '700',
   },

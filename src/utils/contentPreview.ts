@@ -1,0 +1,138 @@
+import * as SecureStore from 'expo-secure-store';
+import { API_BASE_URL } from '../lib/api-config';
+
+const STREAMABLE_MEDIA_EXT =
+  /\.(mp4|webm|ogg|mov|avi|mkv|mp3|wav|m4a|aac|flac|jpg|jpeg|png|gif|webp|svg|bmp)(\?|#|$)/i;
+
+export type PreviewKind = 'youtube' | 'video' | 'pdf' | 'drive' | 'image' | 'audio' | 'unknown';
+
+export function resolveContentUrl(url?: string): string {
+  if (!url) return '';
+  const trimmed = url.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+  if (trimmed.startsWith('/')) return `${API_BASE_URL}${trimmed}`;
+  return `${API_BASE_URL}/${trimmed}`;
+}
+
+export function extractYouTubeId(url: string): string | null {
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  const short = trimmed.match(/youtu\.be\/([a-zA-Z0-9_-]{6,})/i);
+  if (short) return short[1];
+  const watch = trimmed.match(/[?&]v=([a-zA-Z0-9_-]{6,})/i);
+  if (watch) return watch[1];
+  const embed = trimmed.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{6,})/i);
+  if (embed) return embed[1];
+  return null;
+}
+
+export function getYoutubeEmbedUrl(url: string): string | null {
+  const id = extractYouTubeId(url);
+  return id ? `https://www.youtube.com/embed/${id}?playsinline=1&rel=0` : null;
+}
+
+export function isYouTubeUrl(url: string): boolean {
+  return /youtube\.com|youtu\.be/i.test(url);
+}
+
+function shouldFetchDirectly(url: string): boolean {
+  const lower = url.toLowerCase();
+  if (lower.includes('/uploads/')) return true;
+  if (lower.includes(API_BASE_URL.toLowerCase()) && lower.includes('.pdf')) return true;
+  return false;
+}
+
+export function isPdfPreviewContent(fileUrl: string, contentType?: string | null): boolean {
+  const absolute = resolveContentUrl(fileUrl).toLowerCase();
+  if (!absolute) return false;
+  if (absolute.includes('.pdf')) return true;
+  if (STREAMABLE_MEDIA_EXT.test(absolute)) return false;
+  if (absolute.includes('youtube.com') || absolute.includes('youtu.be')) return false;
+
+  const type = (contentType || '').trim();
+  if (type === 'TextBook' || type === 'Workbook' || type === 'PDF') return true;
+  if (type === 'Material' || type === 'Homework') return true;
+  if (/\/uploads\//i.test(absolute)) return true;
+
+  return false;
+}
+
+export function getPreviewKind(
+  fileUrl: string,
+  contentType?: string | null,
+  youtubeUrl?: string,
+): PreviewKind {
+  const resolved = resolveContentUrl(fileUrl);
+  const yt = youtubeUrl || resolved;
+  if (isYouTubeUrl(yt)) return 'youtube';
+  if (contentType === 'Video' || /\.(mp4|webm|mov|avi|mkv)(\?|#|$)/i.test(resolved)) return 'video';
+  if (contentType === 'Audio' || /\.(mp3|wav|ogg|m4a|aac|flac)(\?|#|$)/i.test(resolved)) return 'audio';
+  if (/\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?|#|$)/i.test(resolved)) return 'image';
+  if (isPdfPreviewContent(resolved, contentType)) return 'pdf';
+  if (/drive\.google\.com|docs\.google\.com/i.test(resolved)) return 'drive';
+  return 'unknown';
+}
+
+export function getDrivePreviewUrl(link: string): string {
+  const trimmed = link.trim();
+  let extractedId = '';
+
+  const fileMatch = trimmed.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (fileMatch) {
+    extractedId = fileMatch[1];
+  } else {
+    const openMatch = trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (openMatch) {
+      extractedId = openMatch[1];
+    } else {
+      const docMatch = trimmed.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
+      if (docMatch) {
+        extractedId = docMatch[1];
+      } else {
+        const sheetMatch = trimmed.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+        if (sheetMatch) {
+          extractedId = sheetMatch[1];
+        } else {
+          const slideMatch = trimmed.match(/\/presentation\/d\/([a-zA-Z0-9_-]+)/);
+          if (slideMatch) {
+            extractedId = slideMatch[1];
+          }
+        }
+      }
+    }
+  }
+
+  if (!extractedId) return trimmed;
+
+  if (trimmed.includes('document')) {
+    return `https://docs.google.com/document/d/${extractedId}/preview`;
+  }
+  if (trimmed.includes('spreadsheet')) {
+    return `https://docs.google.com/spreadsheets/d/${extractedId}/preview`;
+  }
+  if (trimmed.includes('presentation')) {
+    return `https://docs.google.com/presentation/d/${extractedId}/preview`;
+  }
+  return `https://drive.google.com/file/d/${extractedId}/preview`;
+}
+
+export async function getPdfPreviewUrl(fileUrl: string, title?: string): Promise<string> {
+  const absolute = resolveContentUrl(fileUrl);
+  if (!absolute) return '';
+  if (shouldFetchDirectly(absolute)) return absolute;
+
+  const token = (await SecureStore.getItemAsync('authToken')) || '';
+  return (
+    `${API_BASE_URL}/api/student/content-preview` +
+    `?url=${encodeURIComponent(absolute)}` +
+    `&filename=${encodeURIComponent(title || 'preview.pdf')}` +
+    `&token=${encodeURIComponent(token)}`
+  );
+}
+
+export async function getAuthHeaders(url: string): Promise<Record<string, string> | undefined> {
+  if (url.includes('content-preview') && url.includes('token=')) return undefined;
+  if (!url.includes(API_BASE_URL) && !url.includes('/uploads/')) return undefined;
+  const token = await SecureStore.getItemAsync('authToken');
+  return token ? { Authorization: `Bearer ${token}` } : undefined;
+}

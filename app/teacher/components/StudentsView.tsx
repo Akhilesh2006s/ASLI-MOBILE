@@ -2,13 +2,14 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Modal, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import teacherService, { asArray } from '../../../src/services/api/teacherService';
 import HomeworkSubmissionsView from './HomeworkSubmissionsView';
 import TrackProgressView from './TrackProgressView';
 import WorkDiaryView from './WorkDiaryView';
 import { SubNavChips, StudentListCard } from '../../../src/components/teacher';
-import { mergeStudentsWithPerformance, STUDENTS_UI, type StudentRow } from '../../../src/lib/students-ui';
-import { TEACHER, TEACHER_SPACING } from '../../../src/theme/teacher';
+import { mergeStudentsWithPerformance, type StudentRow } from '../../../src/lib/students-ui';
+import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO } from '../../../src/theme/teacher';
 
 type StudentsSubTab = 'list' | 'track-progress' | 'submissions' | 'daily' | 'remarks';
 
@@ -114,14 +115,16 @@ export default function StudentsView({ initialSubTab, progressClassFilter, progr
     );
   }, [students, searchTerm]);
 
-  const renderStudentItem = useCallback(({ item: student }: { item: Student }) => (
-    <StudentListCard
-      student={student}
-      onAddRemark={() => {
-        setSelectedStudent(student);
-        setIsRemarkModalVisible(true);
-      }}
-    />
+  const renderStudentItem = useCallback(({ item: student, index }: { item: Student; index: number }) => (
+    <Animated.View entering={FadeInDown.duration(350).delay(Math.min(index * 50, 400))}>
+      <StudentListCard
+        student={student}
+        onAddRemark={() => {
+          setSelectedStudent(student);
+          setIsRemarkModalVisible(true);
+        }}
+      />
+    </Animated.View>
   ), []);
 
   const formatDate = useCallback((dateString: string) => {
@@ -142,17 +145,21 @@ export default function StudentsView({ initialSubTab, progressClassFilter, progr
         onChange={(id) => setActiveSubTab(id as StudentsSubTab)}
         variant="students"
       />
-      <View style={styles.searchCard}>
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#9ca3af" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search students by name, email, or phone..."
-            value={searchTerm}
-            onChangeText={setSearchTerm}
-            placeholderTextColor="#9ca3af"
-          />
+      <View style={styles.countHeader}>
+        <Text style={styles.countTitle}>{filteredStudents.length} Students</Text>
+        <View style={styles.countBadge}>
+          <Text style={styles.countBadgeText}>{students.length}</Text>
         </View>
+      </View>
+      <View style={styles.searchContainer}>
+        <Ionicons name="search-outline" size={20} color={TEACHER.textMuted} style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search students by name, email, or phone..."
+          value={searchTerm}
+          onChangeText={setSearchTerm}
+          placeholderTextColor={TEACHER.textMuted}
+        />
       </View>
     </>
   );
@@ -164,7 +171,7 @@ export default function StudentsView({ initialSubTab, progressClassFilter, progr
           <>
             {listHeader}
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#10b981" />
+              <ActivityIndicator size="large" color={TEACHER.primary} />
             </View>
           </>
         ) : (
@@ -175,7 +182,9 @@ export default function StudentsView({ initialSubTab, progressClassFilter, progr
             ListHeaderComponent={listHeader}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Ionicons name="people-outline" size={64} color="#d1d5db" />
+                <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.emptyIconCircle}>
+                  <Ionicons name="people-outline" size={36} color="#fff" />
+                </LinearGradient>
                 <Text style={styles.emptyText}>No students found</Text>
               </View>
             }
@@ -225,7 +234,7 @@ export default function StudentsView({ initialSubTab, progressClassFilter, progr
                 Add Remark for {selectedStudent?.name}
               </Text>
               <TouchableOpacity onPress={() => setIsRemarkModalVisible(false)}>
-                <Ionicons name="close" size={28} color="#111827" />
+                <Ionicons name="close" size={28} color={TEACHER.text} />
               </TouchableOpacity>
             </View>
 
@@ -296,7 +305,7 @@ export default function StudentsView({ initialSubTab, progressClassFilter, progr
                 disabled={isSubmittingRemark || !remarkText.trim()}
               >
                 <LinearGradient
-                  colors={['#8b5cf6', '#ec4899']}
+                  colors={[TEACHER.primary, TEACHER.primaryDark]}
                   style={styles.submitButtonGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
@@ -319,7 +328,36 @@ export default function StudentsView({ initialSubTab, progressClassFilter, progr
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: TEACHER.bg,
+  },
+  countHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: TEACHER_SPACING.lg,
+    marginBottom: TEACHER_SPACING.sm,
+  },
+  countTitle: {
+    ...TEACHER_TYPO.section,
+    color: TEACHER.text,
+  },
+  countBadge: {
+    backgroundColor: TEACHER.navActiveBg,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  countBadgeText: {
+    color: TEACHER.primaryDark,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  emptyIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   subTabsContainer: {
     backgroundColor: '#fff',
@@ -351,37 +389,26 @@ const styles = StyleSheet.create({
   subTabTextActive: {
     color: '#10b981',
   },
-  searchCard: {
-    marginHorizontal: TEACHER_SPACING.lg,
-    marginBottom: TEACHER_SPACING.sm,
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: STUDENTS_UI.cardBorder,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 2,
-  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    marginHorizontal: TEACHER_SPACING.lg,
+    marginBottom: TEACHER_SPACING.sm,
+    backgroundColor: TEACHER.surface,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 12,
-    paddingHorizontal: 12,
+    borderColor: TEACHER.surfaceBorder,
+    borderRadius: TEACHER_RADIUS.pill,
+    paddingHorizontal: 16,
+    height: 46,
   },
   searchIcon: {
     marginRight: 12,
   },
   searchInput: {
     flex: 1,
-    height: 48,
-    fontSize: 16,
-    color: STUDENTS_UI.text,
+    height: 46,
+    fontSize: 15,
+    color: TEACHER.text,
   },
   list: {
     flex: 1,
@@ -536,7 +563,7 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
+    color: TEACHER.text,
     marginTop: 16,
     marginBottom: 8,
   },
@@ -547,14 +574,16 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(15,23,42,0.40)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: TEACHER.bg,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '90%',
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -562,12 +591,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: TEACHER.surfaceBorder,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#111827',
+    ...TEACHER_TYPO.section,
+    color: TEACHER.text,
     flex: 1,
   },
   modalBody: {
@@ -579,7 +607,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
+    color: TEACHER.textSecondary,
     marginBottom: 8,
   },
   remarkTypeButtons: {
@@ -589,46 +617,50 @@ const styles = StyleSheet.create({
   remarkTypeButton: {
     flex: 1,
     padding: 12,
-    borderRadius: 8,
-    backgroundColor: '#f3f4f6',
+    borderRadius: 14,
+    backgroundColor: TEACHER.surface,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
     alignItems: 'center',
   },
   remarkTypeButtonActive: {
-    backgroundColor: '#d1fae5',
+    backgroundColor: 'rgba(16,185,129,0.10)',
+    borderColor: TEACHER.success,
   },
   remarkTypeButtonActiveNegative: {
-    backgroundColor: '#fee2e2',
+    backgroundColor: 'rgba(239,68,68,0.10)',
+    borderColor: TEACHER.danger,
   },
   remarkTypeButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6b7280',
+    color: TEACHER.textMuted,
   },
   remarkTypeButtonTextActive: {
-    color: '#10b981',
+    color: TEACHER.success,
   },
   remarkTypeButtonTextActiveNegative: {
-    color: '#ef4444',
+    color: TEACHER.danger,
   },
   subjectSelector: {
-    backgroundColor: '#f9fafb',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: TEACHER.surface,
+    borderRadius: 14,
+    padding: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: TEACHER.surfaceBorder,
   },
   subjectSelectorText: {
     fontSize: 16,
-    color: '#111827',
+    color: TEACHER.text,
   },
   textArea: {
-    backgroundColor: '#f9fafb',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: TEACHER.surface,
+    borderRadius: 14,
+    padding: 12,
     fontSize: 16,
-    color: '#111827',
+    color: TEACHER.text,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: TEACHER.surfaceBorder,
     minHeight: 120,
   },
   modalFooter: {
@@ -636,19 +668,21 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: TEACHER.surfaceBorder,
   },
   cancelButton: {
     flex: 1,
     padding: 16,
-    borderRadius: 12,
-    backgroundColor: '#f3f4f6',
+    borderRadius: 14,
+    backgroundColor: TEACHER.surface,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
     alignItems: 'center',
   },
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: TEACHER.textSecondary,
   },
   submitButton: {
     flex: 1,

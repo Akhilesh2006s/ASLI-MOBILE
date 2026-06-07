@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
-  Linking,
   Modal,
   Pressable,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   View,
@@ -13,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import teacherService from '../../../src/services/api/teacherService';
+import { openContentPreview } from '../../../src/utils/openContentPreview';
 import { SubNavChips, TeacherShimmer } from '../../../src/components/teacher';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../../src/theme/teacher';
 
@@ -87,7 +87,7 @@ export default function TeacherSubjectContentScreen() {
   const openContent = (item: ContentItem) => {
     const url = item.fileUrls?.[0] || item.fileUrl;
     if (url) {
-      Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open content.'));
+      openContentPreview(router, item);
     } else {
       setPreview(item);
     }
@@ -103,6 +103,7 @@ export default function TeacherSubjectContentScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
+      <StatusBar barStyle="dark-content" />
       <View style={styles.topBar}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={TEACHER.text} />
@@ -225,7 +226,7 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 12, fontWeight: '600', color: TEACHER.textMuted },
   chipTextActive: { color: TEACHER.primaryLight },
   listScroll: { flex: 1 },
-  list: { padding: TEACHER_SPACING.lg, paddingBottom: 40 },
+  list: { padding: TEACHER_SPACING.lg, paddingBottom: 120 },
   item: {
     flexDirection: 'row',
     alignItems: 'center',

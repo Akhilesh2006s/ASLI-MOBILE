@@ -19,10 +19,8 @@ import {
   teacherSlotLabel,
   type TimetableEntryLike,
 } from '../../../src/lib/timetable-utils';
-import { TEACHER_RADIUS, TEACHER_SPACING } from '../../../src/theme/teacher';
-
-const ORANGE = '#D3723E';
-const WARM_HEADER = '#FFF9F2';
+import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function TimetableView() {
   const [entries, setEntries] = useState<TimetableEntryLike[]>([]);
@@ -150,14 +148,14 @@ export default function TimetableView() {
               <Text style={styles.filterTriggerText} numberOfLines={1}>
                 {classFilter === 'all' ? 'All classes' : classFilter}
               </Text>
-              <Ionicons name="chevron-down" size={16} color="#4A3121" />
+              <Ionicons name="chevron-down" size={16} color={TEACHER.textSecondary} />
             </Pressable>
           ) : null}
         </View>
 
         {sessionCount === 0 ? (
           <View style={styles.empty}>
-            <Ionicons name="calendar-outline" size={40} color="#fed7aa" />
+            <Ionicons name="calendar-outline" size={40} color={TEACHER.textMuted} />
             <Text style={styles.emptyTitle}>No schedule entries this week</Text>
             <Text style={styles.emptySub}>
               Schedules assigned by your admin will appear here once they add entries in Timetable
@@ -194,7 +192,7 @@ export default function TimetableView() {
                     {opt === 'all' ? 'All classes' : opt}
                   </Text>
                   {classFilter === opt ? (
-                    <Ionicons name="checkmark" size={18} color={ORANGE} />
+                    <Ionicons name="checkmark" size={18} color={TEACHER.primaryLight} />
                   ) : null}
                 </Pressable>
               ))}
@@ -216,16 +214,15 @@ export default function TimetableView() {
             {selectedSlot ? (
               <Text style={styles.modalMeta}>{teacherSlotLabel(selectedSlot)}</Text>
             ) : null}
-            <Pressable
-              style={styles.modalBtn}
-              onPress={() => router.push('/teacher/attendance' as any)}
-            >
-              <Ionicons name="checkmark-done-outline" size={18} color="#fff" />
-              <Text style={styles.modalBtnText}>Mark Attendance</Text>
+            <Pressable style={styles.modalBtn} onPress={() => router.push('/teacher/attendance' as any)}>
+              <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.modalBtnGrad}>
+                <Ionicons name="checkmark-done-outline" size={18} color={TEACHER.textOnPrimary} />
+                <Text style={styles.modalBtnText}>Mark Attendance</Text>
+              </LinearGradient>
             </Pressable>
             {selectedSlot?.status !== 'Completed' ? (
               <Pressable
-                style={[styles.modalBtn, styles.modalBtnOutline]}
+                style={styles.modalBtnOutline}
                 onPress={() => selectedSlot && markComplete(selectedSlot)}
               >
                 <Text style={styles.modalBtnOutlineText}>Mark Completed</Text>
@@ -244,25 +241,17 @@ export default function TimetableView() {
 const styles = StyleSheet.create({
   wrap: {
     paddingHorizontal: TEACHER_SPACING.lg,
-    paddingBottom: TEACHER_SPACING.xxl,
+    paddingBottom: 120,
   },
   card: {
-    backgroundColor: '#ffffff',
-    borderRadius: TEACHER_RADIUS.card,
-    borderWidth: 1,
-    borderColor: '#f3f4f6',
+    ...glassCard,
     overflow: 'hidden',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3,
   },
   cardHeader: {
     padding: TEACHER_SPACING.lg,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-    backgroundColor: WARM_HEADER,
+    borderBottomColor: TEACHER.surfaceBorder,
+    backgroundColor: TEACHER.surface,
     gap: TEACHER_SPACING.md,
   },
   headerTop: {
@@ -281,35 +270,33 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: ORANGE,
+    backgroundColor: TEACHER.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerText: { flex: 1 },
   title: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#4A3121',
-    letterSpacing: -0.3,
+    ...TEACHER_TYPO.section,
+    color: TEACHER.text,
   },
   subtitle: {
-    fontSize: 12,
-    color: '#6b7280',
+    ...TEACHER_TYPO.caption,
+    color: TEACHER.textMuted,
     marginTop: 2,
     lineHeight: 18,
   },
   sessionBadge: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#ddd6fe',
-    backgroundColor: 'rgba(240,235,255,0.8)',
+    borderColor: TEACHER.surfaceBorder,
+    backgroundColor: TEACHER.navActiveBg,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
   sessionBadgeText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#6C5CE7',
+    color: TEACHER.primaryLight,
   },
   filterTrigger: {
     flexDirection: 'row',
@@ -317,8 +304,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#fed7aa',
-    backgroundColor: '#fff',
+    borderColor: TEACHER.surfaceBorder,
+    backgroundColor: TEACHER.surfaceElevated,
     paddingHorizontal: 14,
     paddingVertical: 12,
     maxWidth: 280,
@@ -327,7 +314,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: '600',
-    color: '#4A3121',
+    color: TEACHER.text,
     marginRight: 8,
   },
   gridWrap: {
@@ -341,12 +328,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#374151',
+    color: TEACHER.text,
     marginTop: 12,
   },
   emptySub: {
     fontSize: 12,
-    color: '#6b7280',
+    color: TEACHER.textMuted,
     textAlign: 'center',
     marginTop: 6,
     maxWidth: 320,
@@ -356,31 +343,33 @@ const styles = StyleSheet.create({
     height: 18,
     width: 120,
     borderRadius: 6,
-    backgroundColor: 'rgba(211,114,62,0.15)',
+    backgroundColor: 'rgba(123,80,255,0.15)',
     marginBottom: 8,
   },
   shimmerSub: {
     height: 12,
     width: '90%',
     borderRadius: 6,
-    backgroundColor: 'rgba(211,114,62,0.1)',
+    backgroundColor: 'rgba(123,80,255,0.1)',
   },
   pickerOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(0,0,0,0.65)',
     justifyContent: 'flex-end',
   },
   pickerSheet: {
-    backgroundColor: '#fff',
+    backgroundColor: TEACHER.bg,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: TEACHER_SPACING.lg,
     paddingBottom: 32,
+    borderTopWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
   },
   pickerTitle: {
+    ...TEACHER_TYPO.section,
     fontSize: 16,
-    fontWeight: '800',
-    color: '#111827',
+    color: TEACHER.text,
     marginBottom: 12,
   },
   pickerItem: {
@@ -389,57 +378,64 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: TEACHER.surfaceBorder,
   },
   pickerItemActive: {
-    backgroundColor: '#FFF9F2',
+    backgroundColor: TEACHER.navActiveBg,
   },
   pickerItemText: {
     fontSize: 15,
-    color: '#374151',
+    color: TEACHER.textSecondary,
   },
   pickerItemTextActive: {
     fontWeight: '700',
-    color: ORANGE,
+    color: TEACHER.primaryLight,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(0,0,0,0.65)',
     justifyContent: 'flex-end',
   },
   modalCard: {
-    backgroundColor: '#fff',
+    backgroundColor: TEACHER.bg,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: TEACHER_SPACING.xxl,
+    borderTopWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#111827',
+    ...TEACHER_TYPO.section,
+    color: TEACHER.text,
   },
   modalMeta: {
     fontSize: 14,
-    color: '#6b7280',
+    color: TEACHER.textMuted,
     marginTop: 6,
   },
   modalBtn: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginTop: TEACHER_SPACING.lg,
+  },
+  modalBtnGrad: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: ORANGE,
     padding: 14,
-    borderRadius: 12,
-    marginTop: TEACHER_SPACING.lg,
   },
-  modalBtnText: { color: '#fff', fontWeight: '700' },
+  modalBtnText: { color: TEACHER.textOnPrimary, fontWeight: '700' },
   modalBtnOutline: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: TEACHER.surfaceBorder,
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+    marginTop: TEACHER_SPACING.md,
   },
-  modalBtnOutlineText: { color: '#111827', fontWeight: '700' },
+  modalBtnOutlineText: { color: TEACHER.text, fontWeight: '700' },
   modalClose: { alignItems: 'center', marginTop: TEACHER_SPACING.lg },
-  modalCloseText: { color: '#6b7280', fontWeight: '600' },
+  modalCloseText: { color: TEACHER.textMuted, fontWeight: '600' },
 });

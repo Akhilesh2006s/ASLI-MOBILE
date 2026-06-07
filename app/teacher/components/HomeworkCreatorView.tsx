@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 import teacherService from '../../../src/services/api/teacherService';
 import { TeacherShimmer } from '../../../src/components/teacher';
-import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../../src/theme/teacher';
+import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, glassCard } from '../../../src/theme/teacher';
 
 export default function HomeworkCreatorView() {
   const [homework, setHomework] = useState<any[]>([]);
@@ -93,8 +95,10 @@ export default function HomeworkCreatorView() {
   return (
     <View style={styles.wrap}>
       <Pressable style={styles.addBtn} onPress={() => setShowForm(!showForm)}>
-        <Ionicons name={showForm ? 'close' : 'add'} size={20} color={TEACHER.textOnPrimary} />
-        <Text style={styles.addBtnText}>{showForm ? 'Cancel' : 'Create Homework'}</Text>
+        <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.addBtnGrad}>
+          <Ionicons name={showForm ? 'close' : 'add'} size={20} color={TEACHER.textOnPrimary} />
+          <Text style={styles.addBtnText}>{showForm ? 'Cancel' : 'Create Homework'}</Text>
+        </LinearGradient>
       </Pressable>
 
       {showForm ? (
@@ -138,8 +142,8 @@ export default function HomeworkCreatorView() {
         </View>
       ) : null}
 
-      {homework.map((hw) => (
-        <View key={hw.id} style={styles.card}>
+      {homework.map((hw, index) => (
+        <Animated.View key={hw.id} entering={FadeInDown.duration(350).delay(Math.min(index * 60, 480))} style={styles.card}>
           <Text style={styles.cardTitle}>{hw.title}</Text>
           <Text style={styles.cardMeta}>{hw.subject || 'General'} · Due {hw.dueDate || '—'}</Text>
           <View style={styles.progressRow}>
@@ -148,7 +152,7 @@ export default function HomeworkCreatorView() {
               {hw.submitted}/{hw.total} submitted
             </Text>
           </View>
-        </View>
+        </Animated.View>
       ))}
 
       {!homework.length && !showForm ? (
@@ -162,25 +166,14 @@ export default function HomeworkCreatorView() {
 }
 
 const styles = StyleSheet.create({
-  wrap: { paddingHorizontal: TEACHER_SPACING.lg, paddingBottom: TEACHER_SPACING.xxl },
-  addBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: TEACHER.primary,
-    padding: 14,
-    borderRadius: TEACHER_RADIUS.md,
-    marginBottom: TEACHER_SPACING.lg,
+  wrap: { paddingHorizontal: TEACHER_SPACING.lg, paddingBottom: 120, backgroundColor: TEACHER.bg },
+  addBtn: { borderRadius: TEACHER_RADIUS.md, overflow: 'hidden', marginBottom: TEACHER_SPACING.lg },
+  addBtnGrad: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 14,
   },
   addBtnText: { color: TEACHER.textOnPrimary, fontWeight: '700' },
   form: {
-    backgroundColor: TEACHER.surface,
-    borderRadius: TEACHER_RADIUS.card,
-    padding: TEACHER_SPACING.lg,
-    marginBottom: TEACHER_SPACING.lg,
-    borderWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
+    ...glassCard, padding: TEACHER_SPACING.lg, marginBottom: TEACHER_SPACING.lg,
   },
   label: { fontSize: 12, fontWeight: '700', color: TEACHER.textMuted, marginBottom: 6, marginTop: 8 },
   input: {
@@ -213,12 +206,7 @@ const styles = StyleSheet.create({
   },
   saveBtnText: { color: TEACHER.textOnPrimary, fontWeight: '700' },
   card: {
-    backgroundColor: TEACHER.surface,
-    borderRadius: TEACHER_RADIUS.lg,
-    padding: TEACHER_SPACING.lg,
-    marginBottom: TEACHER_SPACING.sm,
-    borderWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
+    ...glassCard, borderRadius: TEACHER_RADIUS.lg, padding: TEACHER_SPACING.lg, marginBottom: TEACHER_SPACING.sm,
   },
   cardTitle: { fontSize: 16, fontWeight: '800', color: TEACHER.text },
   cardMeta: { fontSize: 12, color: TEACHER.textMuted, marginTop: 4 },

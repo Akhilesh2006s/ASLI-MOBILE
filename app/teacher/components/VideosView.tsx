@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import teacherService, { asArray } from '../../../src/services/api/teacherService';
-import { TEACHER, TEACHER_SPACING } from '../../../src/theme/teacher';
+import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
 
 interface Video {
   _id: string;
@@ -110,7 +112,7 @@ export default function TeacherVideosView() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3b82f6" />
+        <ActivityIndicator size="large" color={TEACHER.primary} />
         <Text style={styles.loadingText}>Loading videos...</Text>
       </View>
     );
@@ -155,16 +157,14 @@ export default function TeacherVideosView() {
       </View>
 
       {/* Add Button */}
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => setIsCreateModalOpen(true)}
-      >
-        <Ionicons name="add" size={24} color="#fff" />
-        <Text style={styles.addButtonText}>Create Video</Text>
+      <TouchableOpacity style={styles.addButton} onPress={() => setIsCreateModalOpen(true)} activeOpacity={0.85}>
+        <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.addButtonGrad}>
+          <Ionicons name="add" size={24} color={TEACHER.textOnPrimary} />
+          <Text style={styles.addButtonText}>Create Video</Text>
+        </LinearGradient>
       </TouchableOpacity>
 
-      {/* Videos List */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentInner} showsVerticalScrollIndicator={false}>
         {filteredVideos.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="videocam-outline" size={64} color="#9ca3af" />
@@ -172,16 +172,16 @@ export default function TeacherVideosView() {
             <Text style={styles.emptySubtext}>Create your first video to get started</Text>
           </View>
         ) : (
-          filteredVideos.map((video) => {
+          filteredVideos.map((video, index) => {
             const subjectName = typeof video.subject === 'object' 
               ? video.subject?.name 
               : video.subject || 'General';
 
             return (
-              <View key={video._id} style={styles.videoCard}>
+              <Animated.View key={video._id} entering={FadeInDown.duration(350).delay(Math.min(index * 60, 480))} style={styles.videoCard}>
                 <View style={styles.videoHeader}>
                   <View style={styles.videoIcon}>
-                    <Ionicons name="videocam" size={24} color="#ef4444" />
+                    <Ionicons name="videocam" size={24} color={TEACHER.primaryLight} />
                   </View>
                   <View style={styles.videoInfo}>
                     <Text style={styles.videoTitle} numberOfLines={2}>{video.title}</Text>
@@ -197,12 +197,12 @@ export default function TeacherVideosView() {
 
                 <View style={styles.videoMeta}>
                   <View style={styles.metaItem}>
-                    <Ionicons name="time" size={16} color="#3b82f6" />
+                    <Ionicons name="time" size={16} color={TEACHER.primaryLight} />
                     <Text style={styles.metaText}>{video.duration} min</Text>
                   </View>
                   {video.views !== undefined && (
                     <View style={styles.metaItem}>
-                      <Ionicons name="eye" size={16} color="#6b7280" />
+                      <Ionicons name="eye" size={16} color={TEACHER.textMuted} />
                       <Text style={styles.metaText}>{video.views} views</Text>
                     </View>
                   )}
@@ -218,13 +218,13 @@ export default function TeacherVideosView() {
                   <Ionicons
                     name={video.isActive ? 'checkmark-circle' : 'close-circle'}
                     size={16}
-                    color={video.isActive ? '#10b981' : '#ef4444'}
+                    color={video.isActive ? TEACHER.success : TEACHER.danger}
                   />
-                  <Text style={[styles.statusText, { color: video.isActive ? '#10b981' : '#ef4444' }]}>
+                  <Text style={[styles.statusText, { color: video.isActive ? TEACHER.success : TEACHER.danger }]}>
                     {video.isActive ? 'Active' : 'Inactive'}
                   </Text>
                 </View>
-              </View>
+              </Animated.View>
             );
           })
         )}
@@ -241,7 +241,7 @@ export default function TeacherVideosView() {
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Create Video</Text>
             <TouchableOpacity onPress={() => setIsCreateModalOpen(false)}>
-              <Ionicons name="close" size={24} color="#111827" />
+              <Ionicons name="close" size={24} color={TEACHER.text} />
             </TouchableOpacity>
           </View>
 
@@ -374,11 +374,10 @@ export default function TeacherVideosView() {
               </View>
             </View>
 
-            <TouchableOpacity
-              style={styles.createButton}
-              onPress={handleCreateVideo}
-            >
-              <Text style={styles.createButtonText}>Create Video</Text>
+            <TouchableOpacity style={styles.createButton} onPress={handleCreateVideo} activeOpacity={0.85}>
+              <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.createButtonGrad}>
+                <Text style={styles.createButtonText}>Create Video</Text>
+              </LinearGradient>
             </TouchableOpacity>
           </ScrollView>
         </SafeAreaView>
@@ -388,305 +387,95 @@ export default function TeacherVideosView() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    paddingHorizontal: TEACHER_SPACING.lg,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#6b7280',
-  },
-  filtersContainer: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
+  container: { flex: 1, backgroundColor: TEACHER.bg, paddingHorizontal: TEACHER_SPACING.lg },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: TEACHER.bg },
+  loadingText: { marginTop: 12, ...TEACHER_TYPO.body, color: TEACHER.textMuted },
+  filtersContainer: { ...glassCard, borderRadius: TEACHER_RADIUS.lg, padding: TEACHER_SPACING.lg, marginBottom: TEACHER_SPACING.md },
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f3f4f6',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    marginBottom: 12,
-    height: 48,
+    flexDirection: 'row', alignItems: 'center', backgroundColor: TEACHER.surfaceElevated,
+    borderRadius: TEACHER_RADIUS.md, borderWidth: 1, borderColor: TEACHER.surfaceBorder,
+    paddingHorizontal: TEACHER_SPACING.lg, marginBottom: TEACHER_SPACING.md, height: 48,
   },
-  searchIcon: {
-    marginRight: 12,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#111827',
-  },
-  filterScroll: {
-    marginBottom: 8,
-  },
+  searchIcon: { marginRight: 12 },
+  searchInput: { flex: 1, ...TEACHER_TYPO.body, color: TEACHER.text },
+  filterScroll: { marginBottom: 8 },
   filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#f3f4f6',
-    marginRight: 8,
+    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
+    backgroundColor: TEACHER.surfaceElevated, borderWidth: 1, borderColor: TEACHER.surfaceBorder, marginRight: 8,
   },
-  filterChipActive: {
-    backgroundColor: '#3b82f6',
-  },
-  filterChipText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  filterChipTextActive: {
-    color: '#fff',
-  },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#ef4444',
-    padding: 16,
-    margin: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  addButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  content: {
-    flex: 1,
-    padding: 16,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 64,
-  },
-  emptyText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#6b7280',
-    textAlign: 'center',
-  },
-  videoCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  videoHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    gap: 12,
-  },
+  filterChipActive: { backgroundColor: TEACHER.primary, borderColor: TEACHER.primary },
+  filterChipText: { fontSize: 14, fontWeight: '600', color: TEACHER.textSecondary },
+  filterChipTextActive: { color: TEACHER.textOnPrimary },
+  addButton: { borderRadius: TEACHER_RADIUS.md, overflow: 'hidden', marginBottom: TEACHER_SPACING.md },
+  addButtonGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, gap: 8 },
+  addButtonText: { color: TEACHER.textOnPrimary, fontSize: 16, fontWeight: '700' },
+  content: { flex: 1 },
+  contentInner: { paddingBottom: 120 },
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 64 },
+  emptyText: { ...TEACHER_TYPO.section, fontSize: 20, color: TEACHER.text, marginTop: 16, marginBottom: 8 },
+  emptySubtext: { fontSize: 14, color: TEACHER.textMuted, textAlign: 'center' },
+  videoCard: { ...glassCard, borderRadius: TEACHER_RADIUS.lg, padding: TEACHER_SPACING.lg, marginBottom: TEACHER_SPACING.md },
+  videoHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 12 },
   videoIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#fee2e2',
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 48, height: 48, borderRadius: 12, backgroundColor: TEACHER.surfaceElevated,
+    borderWidth: 1, borderColor: TEACHER.surfaceBorder, justifyContent: 'center', alignItems: 'center',
   },
-  videoInfo: {
-    flex: 1,
-  },
-  videoTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  videoSubject: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  videoDescription: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 12,
-  },
+  videoInfo: { flex: 1 },
+  videoTitle: { ...TEACHER_TYPO.body, fontWeight: '700', color: TEACHER.text, marginBottom: 4 },
+  videoSubject: { fontSize: 14, color: TEACHER.textMuted },
+  videoDescription: { fontSize: 14, color: TEACHER.textMuted, marginBottom: 12 },
   videoMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    marginBottom: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 12, paddingTop: 12,
+    borderTopWidth: 1, borderTopColor: TEACHER.surfaceBorder,
   },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  metaText: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  metaText: { fontSize: 14, color: TEACHER.textMuted },
   youtubeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fee2e2',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    gap: 4,
+    flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,77,106,0.15)',
+    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, gap: 4,
   },
-  youtubeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#ef4444',
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  statusText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: '#fff',
-    paddingTop: 20,
-  },
+  youtubeText: { fontSize: 12, fontWeight: '600', color: TEACHER.danger },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  statusText: { fontSize: 14, fontWeight: '600' },
+  modalContainer: { flex: 1, backgroundColor: TEACHER.bg, paddingTop: 20 },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    paddingTop: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    padding: 16, paddingTop: 20, borderBottomWidth: 1, borderBottomColor: TEACHER.surfaceBorder,
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  modalContent: {
-    flex: 1,
-    padding: 16,
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
+  modalTitle: { ...TEACHER_TYPO.section, fontSize: 20, color: TEACHER.text },
+  modalContent: { flex: 1, padding: 16 },
+  inputContainer: { marginBottom: 16 },
+  inputLabel: { fontSize: 14, fontWeight: '600', color: TEACHER.textSecondary, marginBottom: 8 },
   input: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    color: '#111827',
+    borderWidth: 1, borderColor: TEACHER.surfaceBorder, borderRadius: TEACHER_RADIUS.sm,
+    padding: 12, fontSize: 16, color: TEACHER.text, backgroundColor: TEACHER.surfaceElevated,
   },
-  textArea: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
-  inputRow: {
-    flexDirection: 'row',
-    gap: 16,
-  },
+  textArea: { height: 100, textAlignVertical: 'top' },
+  inputRow: { flexDirection: 'row', gap: 16 },
   subjectChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#f3f4f6',
-    marginRight: 8,
+    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
+    backgroundColor: TEACHER.surfaceElevated, borderWidth: 1, borderColor: TEACHER.surfaceBorder, marginRight: 8,
   },
-  subjectChipActive: {
-    backgroundColor: '#3b82f6',
-  },
-  subjectChipText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  subjectChipTextActive: {
-    color: '#fff',
-  },
+  subjectChipActive: { backgroundColor: TEACHER.primary, borderColor: TEACHER.primary },
+  subjectChipText: { fontSize: 14, fontWeight: '600', color: TEACHER.textSecondary },
+  subjectChipTextActive: { color: TEACHER.textOnPrimary },
   toggleContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#f3f4f6',
-    borderRadius: 8,
-    padding: 4,
+    flexDirection: 'row', backgroundColor: TEACHER.surfaceElevated, borderRadius: TEACHER_RADIUS.sm,
+    padding: 4, borderWidth: 1, borderColor: TEACHER.surfaceBorder,
   },
-  toggleButton: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 6,
-    alignItems: 'center',
-  },
-  toggleButtonActive: {
-    backgroundColor: '#3b82f6',
-  },
-  toggleText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6b7280',
-  },
-  toggleTextActive: {
-    color: '#fff',
-  },
+  toggleButton: { flex: 1, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 6, alignItems: 'center' },
+  toggleButtonActive: { backgroundColor: TEACHER.primary },
+  toggleText: { fontSize: 14, fontWeight: '600', color: TEACHER.textMuted },
+  toggleTextActive: { color: TEACHER.textOnPrimary },
   difficultyChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#f3f4f6',
-    marginRight: 8,
+    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
+    backgroundColor: TEACHER.surfaceElevated, borderWidth: 1, borderColor: TEACHER.surfaceBorder, marginRight: 8,
   },
-  difficultyChipActive: {
-    backgroundColor: '#3b82f6',
-  },
-  difficultyChipText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  difficultyChipTextActive: {
-    color: '#fff',
-  },
-  createButton: {
-    backgroundColor: '#ef4444',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  createButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  difficultyChipActive: { backgroundColor: TEACHER.primary, borderColor: TEACHER.primary },
+  difficultyChipText: { fontSize: 14, fontWeight: '600', color: TEACHER.textSecondary },
+  difficultyChipTextActive: { color: TEACHER.textOnPrimary },
+  createButton: { borderRadius: TEACHER_RADIUS.sm, overflow: 'hidden', marginTop: 8 },
+  createButtonGrad: { padding: 16, alignItems: 'center' },
+  createButtonText: { color: TEACHER.textOnPrimary, fontSize: 16, fontWeight: '700' },
 });
 

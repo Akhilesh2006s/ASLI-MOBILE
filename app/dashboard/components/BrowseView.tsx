@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
+import { openContentPreview } from '../../../src/utils/openContentPreview';
 
 const CONTENT_TYPES = [
   { id: 'TextBook', label: 'TextBook', icon: 'book' as keyof typeof Ionicons.glyphMap },
@@ -89,17 +91,9 @@ export default function BrowseView() {
     }
   };
 
-  const handleOpenContent = async (contentItem: any) => {
+  const handleOpenContent = (contentItem: any) => {
     if (contentItem.fileUrl) {
-      let url = contentItem.fileUrl;
-      if (!url.startsWith('http') && !url.startsWith('//')) {
-        url = url.startsWith('/') ? `${API_BASE_URL}${url}` : `${API_BASE_URL}/${url}`;
-      }
-      try {
-        await Linking.openURL(url);
-      } catch (error) {
-        console.error('Failed to open URL:', error);
-      }
+      openContentPreview(router, contentItem);
     }
   };
 

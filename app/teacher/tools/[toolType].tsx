@@ -146,6 +146,12 @@ function TeacherToolHeader({
 }) {
   return (
     <View style={styles.header}>
+      <LinearGradient
+        colors={[...TEACHER.headerGradient]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
       <Pressable onPress={onBack} style={styles.backBtn} hitSlop={8}>
         <Ionicons name="arrow-back" size={22} color={TEACHER.text} />
       </Pressable>
@@ -717,7 +723,7 @@ export default function TeacherToolPage() {
   if (!config) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <StatusBar barStyle="light-content" />
+        <StatusBar barStyle="dark-content" />
         <TeacherToolHeader title="Tool not found" onBack={() => router.back()} />
         <View style={styles.errorContainer}>
           <View style={styles.errorIconWrap}>
@@ -739,7 +745,7 @@ export default function TeacherToolPage() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" />
 
       <TeacherToolHeader
         title={config.name}
@@ -929,6 +935,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: TEACHER_SPACING.lg,
     paddingVertical: TEACHER_SPACING.md,
     gap: TEACHER_SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: TEACHER.surfaceBorder,
+    overflow: 'hidden',
   },
   backBtn: {
     width: 40,

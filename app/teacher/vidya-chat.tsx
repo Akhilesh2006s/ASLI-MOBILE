@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import { collectVidyaSubjectLabels } from '../../src/lib/vidya-subjects';
@@ -51,8 +52,14 @@ export default function TeacherVidyaChatScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
+        <LinearGradient
+          colors={[...TEACHER.headerGradient]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={TEACHER.text} />
         </Pressable>
@@ -92,7 +99,7 @@ const styles = StyleSheet.create({
     paddingVertical: TEACHER_SPACING.md,
     borderBottomWidth: 1,
     borderBottomColor: TEACHER.surfaceBorder,
-    backgroundColor: TEACHER.surface,
+    overflow: 'hidden',
   },
   backBtn: {
     width: 40,

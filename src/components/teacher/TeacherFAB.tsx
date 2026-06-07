@@ -1,17 +1,18 @@
-import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import React, { useEffect } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
+  FadeIn,
   SharedValue,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { TEACHER, TEACHER_SPACING } from '../../theme/teacher';
+import { TEACHER, TEACHER_SPACING, glassCard } from '../../theme/teacher';
 
 export type FabAction = {
   id: string;
@@ -40,13 +41,14 @@ function FabActionItem({
 
   const itemStyle = useAnimatedStyle(() => {
     const rad = (angle * Math.PI) / 180;
-    const scale = progress.value;
+    const threshold = index * 0.12;
+    const staggered = Math.max(0, Math.min(1, (progress.value - threshold) / (1 - threshold)));
     return {
-      opacity: progress.value,
+      opacity: staggered,
       transform: [
-        { translateX: Math.cos(rad) * radius * scale },
-        { translateY: Math.sin(rad) * radius * scale },
-        { scale: 0.6 + progress.value * 0.4 },
+        { translateX: Math.cos(rad) * radius * staggered },
+        { translateY: Math.sin(rad) * radius * staggered },
+        { scale: 0.6 + staggered * 0.4 },
       ],
     };
   });
@@ -54,7 +56,9 @@ function FabActionItem({
   return (
     <Animated.View style={[styles.actionWrap, { bottom, right: 20 }, itemStyle]}>
       <Pressable style={styles.actionBtn} onPress={() => onSelect(action)}>
-        <Ionicons name={action.icon} size={18} color={TEACHER.text} />
+        <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.actionIconCircle}>
+          <Ionicons name={action.icon} size={16} color={TEACHER.textOnPrimary} />
+        </LinearGradient>
       </Pressable>
       <Text style={styles.actionLabel}>{action.label}</Text>
     </Animated.View>
@@ -70,7 +74,12 @@ export default function TeacherFAB({ actions, bottomOffset = 88 }: Props) {
   const insets = useSafeAreaInsets();
   const [open, setOpen] = React.useState(false);
   const progress = useSharedValue(0);
+  const mountScale = useSharedValue(0.75);
   const bottom = Math.max(insets.bottom, 12) + bottomOffset;
+
+  useEffect(() => {
+    mountScale.value = withSpring(1.0, { damping: 10, stiffness: 220 });
+  }, [mountScale]);
 
   const toggle = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -88,8 +97,12 @@ export default function TeacherFAB({ actions, bottomOffset = 88 }: Props) {
     transform: [{ rotate: `${progress.value * 45}deg` }],
   }));
 
+  const mountStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: mountScale.value }],
+  }));
+
   const backdropStyle = useAnimatedStyle(() => ({
-    opacity: progress.value * 0.55,
+    opacity: progress.value * 0.78,
   }));
 
   const handleSelect = (action: FabAction) => {
@@ -100,7 +113,7 @@ export default function TeacherFAB({ actions, bottomOffset = 88 }: Props) {
   return (
     <>
       {open ? (
-        <Animated.View style={[styles.backdrop, backdropStyle]}>
+        <Animated.View entering={FadeIn.duration(200)} style={[styles.backdrop, backdropStyle]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={close} />
         </Animated.View>
       ) : null}
@@ -116,16 +129,15 @@ export default function TeacherFAB({ actions, bottomOffset = 88 }: Props) {
         />
       ))}
 
-      <Pressable
-        onPress={toggle}
-        style={({ pressed }) => [styles.fabWrap, { bottom, right: 20 }, pressed && styles.pressed]}
-      >
-        <LinearGradient colors={[...TEACHER.fabGradient]} style={styles.fab}>
-          <Animated.View style={mainRotate}>
-            <Ionicons name={open ? 'close' : 'add'} size={28} color={TEACHER.textOnPrimary} />
-          </Animated.View>
-        </LinearGradient>
-      </Pressable>
+      <Animated.View style={[styles.fabWrap, { bottom, right: 20 }, mountStyle]}>
+        <Pressable onPress={toggle} style={styles.fabOuter}>
+          <LinearGradient colors={[...TEACHER.fabGradient]} style={styles.fab}>
+            <Animated.View style={mainRotate}>
+              <Ionicons name={open ? 'close' : 'add'} size={28} color={TEACHER.textOnPrimary} />
+            </Animated.View>
+          </LinearGradient>
+        </Pressable>
+      </Animated.View>
     </>
   );
 }
@@ -133,13 +145,22 @@ export default function TeacherFAB({ actions, bottomOffset = 88 }: Props) {
 const styles = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#000',
+    backgroundColor: 'rgba(15,23,42,0.35)',
     zIndex: 45,
   },
   fabWrap: {
     position: 'absolute',
     zIndex: 50,
-    ...TEACHER.shadow.lg,
+  },
+  fabOuter: {
+    borderWidth: 2,
+    borderColor: 'rgba(99,102,241,0.30)',
+    borderRadius: 31,
+    shadowColor: TEACHER.primary,
+    shadowOpacity: 0.65,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 12,
   },
   fab: {
     width: 58,
@@ -147,11 +168,6 @@ const styles = StyleSheet.create({
     borderRadius: 29,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.15)',
-  },
-  pressed: {
-    transform: [{ scale: 0.94 }],
   },
   actionWrap: {
     position: 'absolute',
@@ -160,15 +176,21 @@ const styles = StyleSheet.create({
     width: 90,
   },
   actionBtn: {
+    ...glassCard,
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: TEACHER.surfaceElevated,
-    borderWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: TEACHER_SPACING.xs,
+    backgroundColor: TEACHER.cardBg,
+  },
+  actionIconCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   actionLabel: {
     fontSize: 10,

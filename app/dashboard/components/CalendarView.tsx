@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput, Alert, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { router } from 'expo-router';
+import { openContentPreview } from '../../../src/utils/openContentPreview';
 
 interface ContentItem {
   _id: string;
@@ -219,16 +220,8 @@ export default function CalendarView({ contents: propContents, onMarkAsDone, com
     }
   };
 
-  const handleDownload = async (content: ContentItem) => {
-    const fileUrl = content.fileUrl.startsWith('http') 
-      ? content.fileUrl 
-      : `${API_BASE_URL}${content.fileUrl}`;
-    
-    try {
-      await Linking.openURL(fileUrl);
-    } catch (error) {
-      Alert.alert('Error', 'Could not open file');
-    }
+  const handleDownload = (content: ContentItem) => {
+    openContentPreview(router, content);
   };
 
   const getTypeIcon = (type: string) => {
