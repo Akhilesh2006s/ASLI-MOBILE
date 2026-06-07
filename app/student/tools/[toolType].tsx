@@ -353,10 +353,10 @@ export default function StudentToolPage() {
       if (field.dependsOn && field.getOptions) {
         const parentValue = formParams[field.dependsOn];
         if (parentValue) return field.getOptions(parentValue);
-        return [];
-      }
-
       return [];
+    }
+    
+    return [];
     },
     [formParams, subjectsForTool, cascade.subtopics, availableNCERTTopics]
   );
@@ -449,7 +449,7 @@ export default function StudentToolPage() {
 
     const requiredFields = config.fields.filter((f) => f.required);
     const missingFields = requiredFields.filter((f) => !formParams[f.name]);
-
+    
     if (missingFields.length > 0) {
       Alert.alert('Validation Error', `Please fill in: ${missingFields.map((f) => f.label).join(', ')}`);
       return;
@@ -488,7 +488,7 @@ export default function StudentToolPage() {
         subject: formParams.subject || formParams.subjects,
         topic: mappedTopic,
       };
-
+      
       const response = await fetch(`${API_BASE_URL}/api/student/ai/tool`, {
         method: 'POST',
         headers: {
@@ -569,7 +569,7 @@ export default function StudentToolPage() {
           </Text>
           {loading ? <ActivityIndicator size="small" color={accent} style={styles.fieldSpinner} /> : null}
         </View>
-        <TouchableOpacity
+          <TouchableOpacity
           style={[styles.dropdownTrigger, disabled && styles.dropdownTriggerDisabled]}
           onPress={() => openDropdown(fieldName, label.replace(' *', ''), options, value, disabled)}
           activeOpacity={0.75}
@@ -582,8 +582,8 @@ export default function StudentToolPage() {
             {display}
           </Text>
           <Ionicons name="chevron-down" size={18} color={disabled ? '#cbd5e1' : '#64748b'} />
-        </TouchableOpacity>
-      </View>
+          </TouchableOpacity>
+        </View>
     );
   };
 
@@ -648,7 +648,7 @@ export default function StudentToolPage() {
             <Text style={styles.fieldLabel}>
               {field.label.replace(' *', '')}
               {field.required ? <Text style={styles.required}> *</Text> : null}
-            </Text>
+          </Text>
           </View>
           <TextInput
             style={[styles.textArea, styles.textInput]}
@@ -663,17 +663,17 @@ export default function StudentToolPage() {
         </View>
       );
     }
-
-    return (
+      
+      return (
       <View key={field.name} style={styles.fieldBlock}>
         <View style={styles.labelRow}>
           <View style={[styles.fieldIconWrap, { backgroundColor: `${accent}18` }]}>
             <Ionicons name={FIELD_ICONS[field.name] || 'options-outline'} size={16} color={accent} />
-          </View>
+        </View>
           <Text style={styles.fieldLabel}>
             {field.label.replace(' *', '')}
             {field.required ? <Text style={styles.required}> *</Text> : null}
-          </Text>
+        </Text>
         </View>
         <TextInput
           style={styles.textInput}
@@ -688,8 +688,8 @@ export default function StudentToolPage() {
   };
 
   if (!config) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
         <StatusBar style="dark" />
         <View style={styles.errorContainer}>
           <View style={styles.errorIconWrap}>
@@ -800,57 +800,57 @@ export default function StudentToolPage() {
                   <Text style={styles.resultMeta}>{wordCount.toLocaleString()} words</Text>
                 </View>
                 <View style={styles.resultActions}>
-                  <TouchableOpacity
+        <TouchableOpacity
                     style={[styles.resultActionBtn, copied && styles.resultActionBtnActive]}
                     onPress={handleCopy}
-                  >
+        >
                     <Ionicons name={copied ? 'checkmark' : 'copy-outline'} size={18} color={copied ? '#059669' : accent} />
-                  </TouchableOpacity>
+        </TouchableOpacity>
                   <TouchableOpacity style={styles.resultActionBtn} onPress={handleShare}>
                     <Ionicons name="share-outline" size={18} color={accent} />
                   </TouchableOpacity>
-                </View>
-              </View>
+          </View>
+          </View>
               <View style={styles.resultDivider} />
               <Text style={styles.resultText} selectable>
                 {generatedContent}
               </Text>
-            </View>
+        </View>
           ) : (
             <View style={styles.emptyResult}>
               <Ionicons name="document-text-outline" size={32} color="#cbd5e1" />
               <Text style={styles.emptyResultTitle}>Your AI output will appear here</Text>
               <Text style={styles.emptyResultText}>Fill the form above and tap Generate</Text>
-            </View>
+        </View>
           )}
         </ScrollView>
 
         <View style={styles.footer}>
-          <TouchableOpacity
+        <TouchableOpacity
             style={[styles.generateBtn, isGenerating && styles.generateBtnDisabled]}
-            onPress={handleGenerate}
-            disabled={isGenerating}
+          onPress={handleGenerate}
+          disabled={isGenerating}
             activeOpacity={0.9}
-          >
-            <LinearGradient
+        >
+          <LinearGradient
               colors={[accent, `${accent}DD`]}
               style={styles.generateBtnGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            >
-              {isGenerating ? (
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            {isGenerating ? (
                 <>
-                  <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color="#fff" />
                   <Text style={styles.generateBtnText}>Generating...</Text>
                 </>
-              ) : (
-                <>
-                  <Ionicons name="sparkles" size={20} color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="sparkles" size={20} color="#fff" />
                   <Text style={styles.generateBtnText}>Generate with AI</Text>
-                </>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
+              </>
+            )}
+          </LinearGradient>
+        </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
 
@@ -868,7 +868,7 @@ export default function StudentToolPage() {
               {(activeDropdown?.options || []).map((option) => {
                 const selected = activeDropdown?.value === option;
                 return (
-                  <TouchableOpacity
+                <TouchableOpacity
                     key={option}
                     style={[styles.modalItem, selected && styles.modalItemSelected]}
                     onPress={() => {
@@ -878,12 +878,12 @@ export default function StudentToolPage() {
                   >
                     <Text style={[styles.modalItemText, selected && styles.modalItemTextSelected]}>
                       {option.charAt(0).toUpperCase() + option.slice(1)}
-                    </Text>
+                  </Text>
                     {selected ? <Ionicons name="checkmark-circle" size={20} color={accent} /> : null}
-                  </TouchableOpacity>
+                </TouchableOpacity>
                 );
               })}
-            </ScrollView>
+      </ScrollView>
             <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setActiveDropdown(null)}>
               <Text style={styles.modalCloseText}>Close</Text>
             </TouchableOpacity>
