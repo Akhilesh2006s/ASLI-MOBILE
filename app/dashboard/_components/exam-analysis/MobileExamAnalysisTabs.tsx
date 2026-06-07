@@ -331,7 +331,9 @@ export function QuestionsTabMobile({ result, aiAnalysis }: { result: ExamAnalysi
               {selectedQuestion.options?.map((opt: unknown, idx: number) => {
                 const text = getOptionText(opt, selectedQuestion.subject);
                 const ua = getUserAnswerForQuestion(selectedQuestion, selectedIndex, result.answers);
-                const isSelected = Array.isArray(ua) ? ua.map(getOptionText).includes(text) : getOptionText(ua) === text;
+                const isSelected = Array.isArray(ua)
+                  ? ua.map((item) => getOptionText(item)).includes(text)
+                  : getOptionText(ua) === text;
                 const correctAns = selectedQuestion.correctAnswer;
                 const isCorrect = Array.isArray(correctAns)
                   ? correctAns.map((c) => getOptionText(c)).includes(text)

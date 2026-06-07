@@ -785,7 +785,7 @@ export default function AiToolGenerationsView() {
   const loadData = useCallback(async () => {
     setError(null);
     try {
-      const params = board ? { board } : {};
+      const params: Record<string, string> = board ? { board } : {};
       const [meta, branch, boardList] = await Promise.all([
         fetchMeta(params),
         fetchBranch(params),

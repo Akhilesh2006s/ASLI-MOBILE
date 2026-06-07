@@ -30,6 +30,16 @@ import {
   updateTopic,
 } from '../../../src/lib/ai-tool-topics';
 
+type TopicOptionsData = {
+  boards?: string[];
+  classes?: string[];
+  subjects?: string[];
+  topics?: string[];
+  subTopics?: string[];
+};
+
+const EMPTY_TOPIC_OPTIONS: TopicOptionsData = {};
+
 type PickerProps = {
   visible: boolean;
   title: string;
@@ -186,14 +196,14 @@ export default function AiToolTopicsView() {
         fetchTopicOptions({ board: selectedBoard }),
         selectedClass
           ? fetchTopicOptions({ board: selectedBoard, classLabel: selectedClass })
-          : Promise.resolve({}),
+          : Promise.resolve(EMPTY_TOPIC_OPTIONS),
         selectedClass && selectedSubject
           ? fetchTopicOptions({
               board: selectedBoard,
               classLabel: selectedClass,
               subject: selectedSubject,
             })
-          : Promise.resolve({}),
+          : Promise.resolve(EMPTY_TOPIC_OPTIONS),
         selectedClass && selectedSubject && selectedTopic
           ? fetchTopicOptions({
               board: selectedBoard,
@@ -201,7 +211,7 @@ export default function AiToolTopicsView() {
               subject: selectedSubject,
               topicName: selectedTopic,
             })
-          : Promise.resolve({}),
+          : Promise.resolve(EMPTY_TOPIC_OPTIONS),
       ]);
 
       setHierarchyClasses(sortNatural(classesData.classes || []));
@@ -220,10 +230,10 @@ export default function AiToolTopicsView() {
   const fetchDialogOptions = useCallback(async (boardValue: string, classLabelValue: string) => {
     try {
       const [classesData, subjectsData] = await Promise.all([
-        boardValue ? fetchTopicOptions({ board: boardValue }) : Promise.resolve({}),
+        boardValue ? fetchTopicOptions({ board: boardValue }) : Promise.resolve(EMPTY_TOPIC_OPTIONS),
         boardValue && classLabelValue
           ? fetchTopicOptions({ board: boardValue, classLabel: classLabelValue })
-          : Promise.resolve({}),
+          : Promise.resolve(EMPTY_TOPIC_OPTIONS),
       ]);
       setDialogClassOptions(sortNatural(classesData.classes || []));
       setDialogSubjectOptions(sortNatural(subjectsData.subjects || []));

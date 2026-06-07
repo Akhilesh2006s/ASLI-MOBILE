@@ -120,9 +120,9 @@ export default function SubjectManagementView() {
   };
 
   const colorSchemes = [
-    { bg: ['#fdba74', '#fb923c'], text: '#fff' },
-    { bg: ['#7dd3fc', '#38bdf8'], text: '#fff' },
-    { bg: ['#2dd4bf', '#14b8a6'], text: '#fff' }
+    { bg: ['#fdba74', '#fb923c'] as [string, string], text: '#fff' },
+    { bg: ['#7dd3fc', '#38bdf8'] as [string, string], text: '#fff' },
+    { bg: ['#2dd4bf', '#14b8a6'] as [string, string], text: '#fff' },
   ];
 
   return (

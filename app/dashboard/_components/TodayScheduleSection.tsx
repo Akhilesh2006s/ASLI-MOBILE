@@ -98,7 +98,10 @@ export default function TodayScheduleSection() {
           const live = isLiveNow(slot);
           const color = COLORS_SUBJ[i % COLORS_SUBJ.length];
           return (
-            <GlassCard key={`${slot.subject}-${i}`} style={[styles.card, { borderLeftColor: color, borderLeftWidth: 3 }]}>
+            <GlassCard
+              key={`${slot.subject}-${i}`}
+              style={StyleSheet.flatten([styles.card, { borderLeftColor: color, borderLeftWidth: 3 }])}
+            >
               {live ? (
                 <View style={styles.liveBadge}>
                   <Text style={styles.liveText}>Live Now</Text>

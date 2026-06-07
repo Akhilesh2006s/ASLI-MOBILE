@@ -112,22 +112,25 @@ export default function DetailedAnalysisView({
           if (!cancelled) setReviewHydrated(true);
           return;
         }
-        setDisplayResult((prev) => ({
-          ...prev,
-          ...srv,
-          _id: srv._id != null ? String(srv._id) : prev._id,
-          examId: String(srv.examId || prev.examId || examIdStr),
-          questions:
-            Array.isArray(qs) && qs.length > 0
-              ? qs
-              : prev.questions?.length
-                ? prev.questions
-                : srv.questions,
-          answers:
-            srv.answers && Object.keys(srv.answers).length > 0
-              ? { ...(prev.answers || {}), ...srv.answers }
-              : prev.answers,
-        }));
+        setDisplayResult((prev) => {
+          const base = prev ?? srv;
+          return {
+            ...base,
+            ...srv,
+            _id: srv._id != null ? String(srv._id) : base._id,
+            examId: String(srv.examId || base.examId || examIdStr),
+            questions:
+              Array.isArray(qs) && qs.length > 0
+                ? qs
+                : base.questions?.length
+                  ? base.questions
+                  : srv.questions,
+            answers:
+              srv.answers && Object.keys(srv.answers).length > 0
+                ? { ...(base.answers || {}), ...srv.answers }
+                : base.answers,
+          };
+        });
       } catch {
         /* non-fatal */
       } finally {
@@ -180,14 +183,14 @@ export default function DetailedAnalysisView({
     return () => { cancelled = true; };
   }, [
     reviewHydrated,
-    displayResult.examId,
-    displayResult.correctAnswers,
-    displayResult.wrongAnswers,
-    displayResult.unattempted,
-    displayResult.obtainedMarks,
-    displayResult.percentage,
-    displayResult.attemptNumber,
-    displayResult._id,
+    displayResult?.examId,
+    displayResult?.correctAnswers,
+    displayResult?.wrongAnswers,
+    displayResult?.unattempted,
+    displayResult?.obtainedMarks,
+    displayResult?.percentage,
+    displayResult?.attemptNumber,
+    displayResult?._id,
     examTitle,
   ]);
 
