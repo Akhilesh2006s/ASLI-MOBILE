@@ -3,12 +3,13 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Video, ResizeMode } from 'expo-av';
 import { Image } from 'expo-image';
+import YouTubeEmbedWebView from './YouTubeEmbedWebView';
 import {
   getAuthHeaders,
   getDrivePreviewUrl,
   getPdfPreviewUrl,
   getPreviewKind,
-  getYoutubeEmbedUrl,
+  isYouTubeUrl,
   resolveContentUrl,
 } from '../../utils/contentPreview';
 
@@ -53,8 +54,6 @@ export default function MediaPreviewPanel({ fileUrl, title, contentType, youtube
       }
 
       if (kind === 'youtube') {
-        setPreviewUri(getYoutubeEmbedUrl(ytSource));
-        setWebHeaders(undefined);
         setLoading(false);
         return;
       }
@@ -127,7 +126,15 @@ export default function MediaPreviewPanel({ fileUrl, title, contentType, youtube
     );
   }
 
-  if (previewUri && (kind === 'pdf' || kind === 'drive' || kind === 'youtube')) {
+  if (kind === 'youtube' && isYouTubeUrl(ytSource)) {
+    return (
+      <View style={styles.flex}>
+        <YouTubeEmbedWebView videoUrl={ytSource} style={styles.flex} />
+      </View>
+    );
+  }
+
+  if (previewUri && (kind === 'pdf' || kind === 'drive')) {
     return (
       <WebView
         source={{ uri: previewUri, headers: webHeaders }}

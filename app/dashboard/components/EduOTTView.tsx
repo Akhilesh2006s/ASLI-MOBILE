@@ -24,6 +24,7 @@ import {
   getSubjectClassLabel,
 } from '../../../src/lib/subject-names';
 import { useEduOTTFilters } from '../../../src/contexts/edu-ott-filter-context';
+import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
 
 function buildVideosUrl(
   selectedClass: string | null,
@@ -125,6 +126,7 @@ function mapContentToVideoItem(content: any): VideoItem {
 }
 
 export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
+  const { isAsliPrepExclusive, loading: programLoading } = useSchoolProgram();
   const {
     selectedClass,
     selectedSubject,
@@ -149,30 +151,51 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
   const [visibleCount, setVisibleCount] = useState(10);
 
   useEffect(() => {
+    if (!programLoading && !isAsliPrepExclusive && activeTab === 'videos') {
+      setActiveTab('live-sessions');
+    }
+  }, [programLoading, isAsliPrepExclusive, activeTab]);
+
+  useEffect(() => {
     let cancelled = false;
     async function loadCatalog() {
       const token = await SecureStore.getItemAsync('authToken');
       if (!token) return;
       try {
-        const [vRes, sRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/student/asli-prep-content?type=Video`, {
-            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          }),
+        const fetches: Promise<Response>[] = [
           fetch(`${API_BASE_URL}/api/student/streams`, {
             headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
           }),
-        ]);
+        ];
+        if (isAsliPrepExclusive) {
+          fetches.unshift(
+            fetch(`${API_BASE_URL}/api/student/asli-prep-content?type=Video`, {
+              headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            })
+          );
+        }
+        const results = await Promise.all(fetches);
         if (cancelled) return;
-        if (vRes.ok) {
-          const data = await vRes.json();
-          const list = data.data || data || [];
-          setVideoCatalog(list.map(mapContentToVideoItem));
-        } else setVideoCatalog([]);
-        if (sRes.ok) {
-          const data = await sRes.json();
-          const list = data.data || data || [];
-          setSessionCatalog(list);
-        } else setSessionCatalog([]);
+        if (isAsliPrepExclusive) {
+          const vRes = results[0];
+          const sRes = results[1];
+          if (vRes.ok) {
+            const data = await vRes.json();
+            const list = data.data || data || [];
+            setVideoCatalog(list.map(mapContentToVideoItem));
+          } else setVideoCatalog([]);
+          if (sRes.ok) {
+            const data = await sRes.json();
+            setSessionCatalog(data.data || data || []);
+          } else setSessionCatalog([]);
+        } else {
+          setVideoCatalog([]);
+          const sRes = results[0];
+          if (sRes.ok) {
+            const data = await sRes.json();
+            setSessionCatalog(data.data || data || []);
+          } else setSessionCatalog([]);
+        }
       } catch {
         if (!cancelled) {
           setVideoCatalog([]);
@@ -180,11 +203,13 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
         }
       }
     }
-    loadCatalog();
+    if (!programLoading) {
+      loadCatalog();
+    }
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isAsliPrepExclusive, programLoading]);
 
   useEffect(
     () => setVisibleCount(10),
@@ -193,6 +218,11 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
 
   useEffect(() => {
     if (activeTab !== 'videos') {
+      setLoading(false);
+      return;
+    }
+    if (!isAsliPrepExclusive) {
+      setVideos([]);
       setLoading(false);
       return;
     }
@@ -235,7 +265,7 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
     return () => {
       cancelled = true;
     };
-  }, [activeTab, selectedClass, selectedSubject, listEpoch]);
+  }, [activeTab, selectedClass, selectedSubject, listEpoch, isAsliPrepExclusive]);
 
   useEffect(() => {
     if (activeTab !== 'live-sessions') {
@@ -379,7 +409,7 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
     if (!video._id) return;
     router.push({
       pathname: '/video-player',
-      params: { videoId: video._id, isContentItem: 'true' },
+      params: { videoId: video._id, isContentItem: 'true', returnTo: 'eduott' },
     });
   }, []);
 
@@ -399,29 +429,32 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
       return;
     }
     try {
-      const [vRes, sRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/student/asli-prep-content?type=Video`, {
+      const sRes = await fetch(`${API_BASE_URL}/api/student/streams`, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
+      if (isAsliPrepExclusive) {
+        const vRes = await fetch(`${API_BASE_URL}/api/student/asli-prep-content?type=Video`, {
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        }),
-        fetch(`${API_BASE_URL}/api/student/streams`, {
+        });
+        if (vRes.ok) {
+          const data = await vRes.json();
+          setVideoCatalog((data.data || data || []).map(mapContentToVideoItem));
+        }
+        const vUrl = buildVideosUrl(selectedClass, selectedSubject);
+        const v2 = await fetch(vUrl, {
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        }),
-      ]);
-      if (vRes.ok) {
-        const data = await vRes.json();
-        setVideoCatalog((data.data || data || []).map(mapContentToVideoItem));
+        });
+        if (v2.ok) {
+          const data = await v2.json();
+          setVideos((data.data || data || []).map(mapContentToVideoItem));
+        }
+      } else {
+        setVideoCatalog([]);
+        setVideos([]);
       }
       if (sRes.ok) {
         const data = await sRes.json();
         setSessionCatalog(data.data || data || []);
-      }
-      const vUrl = buildVideosUrl(selectedClass, selectedSubject);
-      const v2 = await fetch(vUrl, {
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      });
-      if (v2.ok) {
-        const data = await v2.json();
-        setVideos((data.data || data || []).map(mapContentToVideoItem));
       }
       const sUrl = buildStreamsUrl(selectedClass, selectedSubject);
       const s2 = await fetch(sUrl, {
@@ -434,7 +467,7 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
     } finally {
       setRefreshing(false);
     }
-  }, [selectedClass, selectedSubject]);
+  }, [selectedClass, selectedSubject, isAsliPrepExclusive]);
 
   const onEndReached = useCallback(() => {
     if (visibleCount < filteredVideos.length) {
@@ -508,20 +541,26 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.summaryTitle}>EduOTT</Text>
-            <Text style={styles.summarySubtitle}>Videos & Live Classes</Text>
+            <Text style={styles.summarySubtitle}>
+              {isAsliPrepExclusive ? 'Videos & Live Classes' : 'Live Classes'}
+            </Text>
           </View>
         </View>
         <View style={styles.summaryStats}>
-          <TouchableOpacity style={styles.statChip} activeOpacity={0.85} onPress={() => setActiveTab('videos')}>
-            <Text style={styles.statChipText}>🎥 {videos.length} Videos</Text>
-          </TouchableOpacity>
+          {isAsliPrepExclusive && (
+            <TouchableOpacity style={styles.statChip} activeOpacity={0.85} onPress={() => setActiveTab('videos')}>
+              <Text style={styles.statChipText}>🎥 {videos.length} Videos</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={styles.statChip} activeOpacity={0.85} onPress={() => setActiveTab('live-sessions')}>
             <Text style={styles.statChipText}>🔴 {liveSessions.filter(x => x.status === 'live').length} Live</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      <TabSwitcher activeTab={activeTab} onChange={setActiveTab} />
+      {isAsliPrepExclusive && (
+        <TabSwitcher activeTab={activeTab} onChange={setActiveTab} />
+      )}
 
       <FilterChips
         sectionLabel="Class"
@@ -573,7 +612,9 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
           <Ionicons name="videocam-outline" size={52} color="#94a3b8" />
           <Text style={styles.emptyTitle}>No videos found</Text>
           <Text style={styles.emptyText}>
-            No content available for the selected filters, or try another keyword. Clear filters to see all items.
+            {!isAsliPrepExclusive
+              ? 'Videos are available for Asli Prep schools only.'
+              : 'No content available for the selected filters, or try another keyword. Clear filters to see all items.'}
           </Text>
         </View>
       );

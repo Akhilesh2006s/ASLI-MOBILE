@@ -10,6 +10,12 @@ import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../src/lib/api-config';
 import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
 import { openContentPreview } from '../src/utils/openContentPreview';
+import { useSchoolProgram } from '../src/hooks/useSchoolProgram';
+import {
+  filterContentsBySchoolProgram,
+  getAllowedContentTypes,
+  type ContentTypeName,
+} from '../src/lib/school-program';
 
 interface Content {
   _id: string;
@@ -34,8 +40,10 @@ const VALID_TYPES = ['TextBook', 'Workbook', 'Material', 'Video', 'Audio'] as co
 
 export default function AsliPrepContent() {
   const { type: typeParam } = useLocalSearchParams<{ type?: string }>();
+  const { isAsliPrepExclusive, isTypeAllowed } = useSchoolProgram();
+  const allowedTypes = getAllowedContentTypes(isAsliPrepExclusive);
   const initialType =
-    typeof typeParam === 'string' && VALID_TYPES.includes(typeParam as typeof VALID_TYPES[number])
+    typeof typeParam === 'string' && allowedTypes.includes(typeParam as ContentTypeName)
       ? typeParam
       : 'all';
   const [contents, setContents] = useState<Content[]>([]);
@@ -57,7 +65,7 @@ export default function AsliPrepContent() {
 
   useEffect(() => {
     fetchContents();
-  }, [filters]);
+  }, [filters, isAsliPrepExclusive]);
 
   useBackNavigation(dashboardPath, false);
 
@@ -115,7 +123,7 @@ export default function AsliPrepContent() {
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          setContents(data.data || []);
+          setContents(filterContentsBySchoolProgram(data.data || [], isAsliPrepExclusive));
         }
       }
     } catch (error) {
@@ -324,7 +332,7 @@ export default function AsliPrepContent() {
         </ScrollView>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-          {['all', 'TextBook', 'Workbook', 'Material', 'Video', 'Audio'].map(type => (
+          {(['all', ...allowedTypes] as const).map(type => (
             <TouchableOpacity
               key={type}
               style={[styles.filterChip, filters.type === type && styles.filterChipActive]}

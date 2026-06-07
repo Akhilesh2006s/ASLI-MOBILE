@@ -1,22 +1,79 @@
-import { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput, Alert, Image } from 'react-native';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Modal,
+  TextInput,
+  Alert,
+  Image,
+  ActivityIndicator,
+  Pressable,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as SecureStore from 'expo-secure-store';
+import api from '../../../src/services/api/api';
 import { API_BASE_URL } from '../../../src/lib/api-config';
-// Image picker will be added when expo-image-picker is installed
-// import * as ImagePicker from 'expo-image-picker';
 
 interface Event {
   _id?: string;
   id?: string;
   name: string;
   date: string;
+  startDate?: string;
+  endDate?: string;
+  type?: 'event' | 'exam';
+  examType?: string;
+  examId?: string;
   photo?: string;
   description?: string;
-  createdAt?: string;
-  updatedAt?: string;
 }
+
+function asArray(payload: any): any[] {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.events)) return payload.events;
+  return [];
+}
+
+function toLocalDateKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function parseEventDateKey(value?: string): string {
+  if (!value) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return String(value).slice(0, 10);
+  return toLocalDateKey(new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()));
+}
+
+function resolvePhotoUrl(photo?: string): string | undefined {
+  if (!photo) return undefined;
+  if (photo.startsWith('http') || photo.startsWith('//')) return photo;
+  if (photo.startsWith('/')) return `${API_BASE_URL}${photo}`;
+  return `${API_BASE_URL}/${photo}`;
+}
+
+function formatDisplayDate(value?: string): string {
+  const key = parseEventDateKey(value);
+  if (!key) return '';
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+}
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const EVENT_COLORS = ['#10b981', '#3b82f6', '#ec4899', '#8b5cf6', '#f59e0b', '#ef4444'];
 
 export default function CalendarView() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -36,132 +93,131 @@ export default function CalendarView() {
     date: '',
     photo: null as string | null,
     photoUrl: '',
-    description: ''
+    description: '',
   });
 
-  useEffect(() => {
-    fetchEvents();
-  }, []);
-
-  const fetchEvents = async () => {
+  const fetchEvents = useCallback(async () => {
     try {
       setIsLoading(true);
-      const token = await SecureStore.getItemAsync('authToken');
-      if (!token) return;
+      const [eventsRes, examsRes] = await Promise.all([
+        api.get('/api/admin/events'),
+        api.get('/api/admin/exams/viewable'),
+      ]);
 
-      const response = await fetch(`${API_BASE_URL}/api/admin/events`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const calendarEvents: Event[] = [];
+      const baseEvents = asArray(eventsRes?.data);
+      calendarEvents.push(
+        ...baseEvents.map((event: any) => ({
+          ...event,
+          type: 'event' as const,
+          startDate: event.date,
+          endDate: event.date,
+        }))
+      );
 
-      if (response.ok) {
-        const data = await response.json();
-        const eventsList = Array.isArray(data) ? data : (data.events || data.data || []);
-        console.log('Fetched events:', eventsList.length, eventsList);
-        setEvents(eventsList);
-      } else {
-        console.error('Failed to fetch events:', response.status, response.statusText);
-      }
+      const exams = asArray(examsRes?.data);
+      calendarEvents.push(
+        ...exams.map((exam: any) => ({
+          id: `exam-${exam._id}`,
+          examId: exam._id,
+          name: exam.title,
+          date: exam.startDate,
+          startDate: exam.startDate,
+          endDate: exam.endDate,
+          description: exam.description,
+          type: 'exam' as const,
+          examType: exam.examType,
+        }))
+      );
+
+      setEvents(calendarEvents);
     } catch (error) {
-      console.error('Error fetching events:', error);
+      console.error('Error fetching calendar:', error);
+      setEvents([]);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const getFirstDayOfMonth = (date: Date) => {
-    return new Date(date.getFullYear(), date.getMonth(), 1);
-  };
-
-  const getLastDayOfMonth = (date: Date) => {
-    return new Date(date.getFullYear(), date.getMonth() + 1, 0);
-  };
+  useEffect(() => {
+    fetchEvents();
+  }, [fetchEvents]);
 
   const calendarDays = useMemo(() => {
-    const firstDay = getFirstDayOfMonth(currentDate);
+    const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
     const startDate = new Date(firstDay);
     startDate.setDate(startDate.getDate() - startDate.getDay());
 
     const days: Date[] = [];
     const current = new Date(startDate);
-
     for (let i = 0; i < 42; i++) {
       days.push(new Date(current));
       current.setDate(current.getDate() + 1);
     }
-
     return days;
   }, [currentDate]);
 
-  const getEventsForDate = (date: Date) => {
+  const getEventsForDate = useCallback(
+    (date: Date) => {
+      const dateStr = toLocalDateKey(date);
+      return events.filter((event) => {
+        const start = parseEventDateKey(event.startDate || event.date);
+        const end = parseEventDateKey(event.endDate || event.date);
+        return dateStr >= start && dateStr <= end;
+      });
+    },
+    [events]
+  );
+
+  const monthlyEvents = useMemo(() => {
+    const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+    const startMs = monthStart.getTime();
+    const endMs = monthEnd.getTime();
+
+    return events
+      .filter((event) => {
+        const eventStart = new Date(parseEventDateKey(event.startDate || event.date)).getTime();
+        const eventEnd = new Date(parseEventDateKey(event.endDate || event.date)).getTime();
+        return eventStart <= endMs && eventEnd >= startMs;
+      })
+      .sort((a, b) => {
+        const aTime = new Date(parseEventDateKey(a.startDate || a.date)).getTime();
+        const bTime = new Date(parseEventDateKey(b.startDate || b.date)).getTime();
+        return aTime - bTime;
+      });
+  }, [events, currentDate]);
+
+  const monthlyEventsByDate = useMemo(() => {
+    const grouped = monthlyEvents.reduce<Record<string, Event[]>>((acc, event) => {
+      const key = parseEventDateKey(event.startDate || event.date);
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(event);
+      return acc;
+    }, {});
+    return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
+  }, [monthlyEvents]);
+
+  const isToday = (date: Date) => date.toDateString() === new Date().toDateString();
+
+  const isCurrentMonth = (date: Date) =>
+    date.getMonth() === currentDate.getMonth() &&
+    date.getFullYear() === currentDate.getFullYear();
+
+  const getEventColor = (event: Event, index: number) => {
+    if (event.type === 'exam') return '#2563eb';
+    return EVENT_COLORS[index % EVENT_COLORS.length];
+  };
+
+  const openAddEvent = (date: Date) => {
     const normalizedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    const dateStr = `${normalizedDate.getFullYear()}-${String(normalizedDate.getMonth() + 1).padStart(2, '0')}-${String(normalizedDate.getDate()).padStart(2, '0')}`;
-
-    const matchingEvents = events.filter(event => {
-      if (!event.date) return false;
-      
-      const eventDateObj = new Date(event.date);
-      // Handle timezone issues by normalizing to local date
-      const normalizedEventDate = new Date(
-        eventDateObj.getFullYear(),
-        eventDateObj.getMonth(),
-        eventDateObj.getDate()
-      );
-      const eventDateStr = `${normalizedEventDate.getFullYear()}-${String(normalizedEventDate.getMonth() + 1).padStart(2, '0')}-${String(normalizedEventDate.getDate()).padStart(2, '0')}`;
-      
-      const matches = eventDateStr === dateStr;
-      if (matches) {
-        console.log('Event matched:', {
-          calendarDate: dateStr,
-          eventDate: eventDateStr,
-          eventName: event.name,
-          originalEventDate: event.date
-        });
-      }
-      return matches;
-    });
-    
-    return matchingEvents;
-  };
-
-  const isToday = (date: Date) => {
-    const today = new Date();
-    return date.toDateString() === today.toDateString();
-  };
-
-  const isCurrentMonth = (date: Date) => {
-    return date.getMonth() === currentDate.getMonth() &&
-           date.getFullYear() === currentDate.getFullYear();
-  };
-
-  const goToPreviousMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
-  };
-
-  const goToNextMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
-  };
-
-  const goToToday = () => {
-    setCurrentDate(new Date());
-  };
-
-  const handleDateClick = (date: Date) => {
-    const normalizedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    const year = normalizedDate.getFullYear();
-    const month = String(normalizedDate.getMonth() + 1).padStart(2, '0');
-    const day = String(normalizedDate.getDate()).padStart(2, '0');
-    const dateString = `${year}-${month}-${day}`;
-
     setSelectedDate(normalizedDate);
     setEventForm({
       name: '',
-      date: dateString,
+      date: toLocalDateKey(normalizedDate),
       photo: null,
       photoUrl: '',
-      description: ''
+      description: '',
     });
     setIsEditMode(false);
     setEditingEvent(null);
@@ -169,19 +225,16 @@ export default function CalendarView() {
   };
 
   const handleEventSubmit = async () => {
-    if (!eventForm.name || !eventForm.date) {
+    if (!eventForm.name.trim() || !eventForm.date) {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
 
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      if (!token) return;
-
       const formData = new FormData();
-      formData.append('name', eventForm.name);
+      formData.append('name', eventForm.name.trim());
       formData.append('date', eventForm.date);
-      formData.append('description', eventForm.description);
+      formData.append('description', eventForm.description || '');
 
       if (eventForm.photo) {
         formData.append('photo', {
@@ -191,81 +244,63 @@ export default function CalendarView() {
         } as any);
       }
 
-      const url = isEditMode && editingEvent
-        ? `${API_BASE_URL}/api/admin/events/${editingEvent._id || editingEvent.id}`
-        : `${API_BASE_URL}/api/admin/events`;
+      const eventId = editingEvent?._id || editingEvent?.id;
+      const url = isEditMode && eventId
+        ? `/api/admin/events/${eventId}`
+        : '/api/admin/events';
 
-      const response = await fetch(url, {
-        method: isEditMode ? 'PUT' : 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
+      await api.request({
+        url,
+        method: isEditMode ? 'put' : 'post',
+        data: formData,
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      if (response.ok) {
-        Alert.alert('Success', isEditMode ? 'Event updated successfully' : 'Event created successfully');
-        setIsEventModalOpen(false);
-        resetForm();
-        fetchEvents();
-      } else {
-        const error = await response.json();
-        Alert.alert('Error', error.message || 'Failed to save event');
-      }
-    } catch (error) {
+      Alert.alert('Success', isEditMode ? 'Event updated successfully' : 'Event created successfully');
+      setIsEventModalOpen(false);
+      resetForm();
+      fetchEvents();
+    } catch (error: any) {
       console.error('Error saving event:', error);
-      Alert.alert('Error', 'Failed to save event');
+      Alert.alert('Error', error?.response?.data?.message || 'Failed to save event');
     }
   };
 
-  const handleDeleteEvent = async (event: Event) => {
-    Alert.alert(
-      'Delete Event',
-      'Are you sure you want to delete this event?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const token = await SecureStore.getItemAsync('authToken');
-              if (!token) return;
+  const handleDeleteEvent = (event: Event) => {
+    if (event.type === 'exam') return;
 
-              const response = await fetch(`${API_BASE_URL}/api/admin/events/${event._id || event.id}`, {
-                method: 'DELETE',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                },
-              });
-
-              if (response.ok) {
-                Alert.alert('Success', 'Event deleted successfully');
-                fetchEvents();
-              } else {
-                Alert.alert('Error', 'Failed to delete event');
-              }
-            } catch (error) {
-              console.error('Error deleting event:', error);
-              Alert.alert('Error', 'Failed to delete event');
-            }
+    Alert.alert('Delete Event', 'Are you sure you want to delete this event?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const eventId = event._id || event.id;
+            await api.delete(`/api/admin/events/${eventId}`);
+            Alert.alert('Success', 'Event deleted successfully');
+            setIsViewModalOpen(false);
+            fetchEvents();
+          } catch {
+            Alert.alert('Error', 'Failed to delete event');
           }
-        }
-      ]
-    );
+        },
+      },
+    ]);
   };
 
   const handleEditEvent = (event: Event) => {
+    if (event.type === 'exam') return;
     setEditingEvent(event);
     setIsEditMode(true);
     setEventForm({
       name: event.name,
-      date: new Date(event.date).toISOString().split('T')[0],
+      date: parseEventDateKey(event.date),
       photo: null,
-      photoUrl: event.photo || '',
-      description: event.description || ''
+      photoUrl: resolvePhotoUrl(event.photo) || '',
+      description: event.description || '',
     });
-    setSelectedDate(new Date(event.date));
+    setSelectedDate(new Date(parseEventDateKey(event.date)));
     setIsViewModalOpen(false);
     setIsEventModalOpen(true);
   };
@@ -278,201 +313,196 @@ export default function CalendarView() {
   const resetForm = () => {
     setEventForm({
       name: '',
-      date: selectedDate ? selectedDate.toISOString().split('T')[0] : '',
+      date: selectedDate ? toLocalDateKey(selectedDate) : '',
       photo: null,
       photoUrl: '',
-      description: ''
+      description: '',
     });
     setIsEditMode(false);
     setEditingEvent(null);
   };
 
-  const handlePhotoPick = async () => {
-    // Image picker functionality - can be enabled when expo-image-picker is installed
-    setIsUrlModalOpen(true);
-    setImageUrlInput('');
-  };
-
-  const handleUrlSubmit = () => {
-    if (imageUrlInput.trim()) {
-      setEventForm({
-        ...eventForm,
-        photoUrl: imageUrlInput.trim()
-      });
-      setIsUrlModalOpen(false);
-      setImageUrlInput('');
-    }
-  };
-
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'];
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-  const eventColors = ['#10b981', '#3b82f6', '#ec4899', '#8b5cf6', '#f59e0b', '#ef4444'];
-
-  const getEventColor = (index: number) => {
-    return eventColors[index % eventColors.length];
-  };
-
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#fb923c" />
         <Text style={styles.loadingText}>Loading calendar...</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.header}>
-        <View>
+        <View style={styles.headerTextWrap}>
           <Text style={styles.headerTitle}>Calendar</Text>
           <Text style={styles.headerSubtitle}>Manage and view your events</Text>
         </View>
-        <TouchableOpacity style={styles.todayButton} onPress={goToToday}>
-          <Text style={styles.todayButtonText}>Today</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity style={styles.todayButton} onPress={() => setCurrentDate(new Date())}>
+            <Text style={styles.todayButtonText}>Today</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.addButton} onPress={() => openAddEvent(new Date())}>
+            <Ionicons name="add" size={22} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.calendarCard}>
         <View style={styles.calendarNav}>
-          <TouchableOpacity onPress={goToPreviousMonth}>
+          <TouchableOpacity
+            onPress={() =>
+              setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))
+            }
+          >
             <Ionicons name="chevron-back" size={24} color="#111827" />
           </TouchableOpacity>
           <Text style={styles.monthText}>
-            {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+            {MONTH_NAMES[currentDate.getMonth()]} {currentDate.getFullYear()}
           </Text>
-          <TouchableOpacity onPress={goToNextMonth}>
+          <TouchableOpacity
+            onPress={() =>
+              setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))
+            }
+          >
             <Ionicons name="chevron-forward" size={24} color="#111827" />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.calendarGrid}>
-          {dayNames.map(day => (
+        <View style={styles.miniGrid}>
+          {DAY_NAMES.map((day) => (
             <View key={day} style={styles.dayHeader}>
-              <Text style={styles.dayHeaderText}>{day}</Text>
+              <Text style={styles.dayHeaderText}>{day.slice(0, 1)}</Text>
             </View>
           ))}
-
           {calendarDays.map((date, index) => {
             const dayEvents = getEventsForDate(date);
             const isCurrentMonthDay = isCurrentMonth(date);
             const isTodayDate = isToday(date);
 
             return (
-              <TouchableOpacity
-                key={index}
+              <Pressable
+                key={`${toLocalDateKey(date)}-${index}`}
                 style={[
-                  styles.calendarDay,
-                  !isCurrentMonthDay && styles.calendarDayOtherMonth,
-                  isTodayDate && styles.calendarDayToday
+                  styles.miniDay,
+                  !isCurrentMonthDay && styles.miniDayOtherMonth,
+                  isTodayDate && styles.miniDayToday,
                 ]}
-                onPress={() => handleDateClick(date)}
+                onPress={() => openAddEvent(date)}
               >
-                <Text style={[
-                  styles.dayNumber,
-                  isTodayDate && styles.dayNumberToday,
-                  !isCurrentMonthDay && styles.dayNumberOtherMonth
-                ]}>
+                <Text
+                  style={[
+                    styles.miniDayNumber,
+                    !isCurrentMonthDay && styles.miniDayNumberMuted,
+                    isTodayDate && styles.miniDayNumberToday,
+                  ]}
+                >
                   {date.getDate()}
                 </Text>
-
-                <View style={styles.eventsContainer}>
-                  {dayEvents.length > 0 ? (
-                    <>
-                      {dayEvents.slice(0, 3).map((event, eventIndex) => {
-                        const eventId = event._id || event.id || `event-${eventIndex}`;
-                        return (
-                          <TouchableOpacity
-                            key={eventId}
-                            style={[styles.eventDot, { backgroundColor: getEventColor(eventIndex) }]}
-                            onPress={(e) => {
-                              e.stopPropagation();
-                              handleViewEvent(event);
-                            }}
-                          >
-                            <Text style={styles.eventDotText} numberOfLines={1}>
-                              {event.name}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                      {dayEvents.length > 3 && (
-                        <Text style={styles.moreEventsText}>+{dayEvents.length - 3} more</Text>
-                      )}
-                    </>
-                  ) : null}
-                </View>
-              </TouchableOpacity>
+                {dayEvents.length > 0 ? (
+                  <View style={styles.dotRow}>
+                    {dayEvents.slice(0, 3).map((event, i) => (
+                      <View
+                        key={event._id || event.id || i}
+                        style={[styles.dot, { backgroundColor: getEventColor(event, i) }]}
+                      />
+                    ))}
+                  </View>
+                ) : null}
+              </Pressable>
             );
           })}
         </View>
       </View>
 
-      {/* Events List Section */}
-      {events.length > 0 && (
-        <View style={styles.eventsListSection}>
-          <Text style={styles.eventsListTitle}>Upcoming Events</Text>
-          <View style={styles.eventsList}>
-            {events
-              .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-              .slice(0, 10)
-              .map((event, index) => {
-                const eventDate = new Date(event.date);
-                const isPast = eventDate < new Date(new Date().setHours(0, 0, 0, 0));
-                return (
-                  <TouchableOpacity
-                    key={event._id || event.id || `event-list-${index}`}
-                    style={[styles.eventListItem, isPast && styles.eventListItemPast]}
-                    onPress={() => handleViewEvent(event)}
-                  >
-                    <View style={[styles.eventListDot, { backgroundColor: getEventColor(index) }]} />
-                    <View style={styles.eventListContent}>
-                      <Text style={styles.eventListName}>{event.name}</Text>
-                      <Text style={styles.eventListDate}>
-                        {eventDate.toLocaleDateString('en-US', {
-                          weekday: 'short',
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric'
-                        })}
-                      </Text>
-                      {event.description && (
-                        <Text style={styles.eventListDescription} numberOfLines={2}>
-                          {event.description}
-                        </Text>
-                      )}
-                    </View>
-                    {event.photo && (
-                      <Image source={{ uri: event.photo }} style={styles.eventListImage} />
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-          </View>
+      <View style={styles.agendaSection}>
+        <View style={styles.agendaHeader}>
+          <Text style={styles.agendaTitle}>This Month</Text>
+          <Text style={styles.agendaCount}>{monthlyEvents.length} scheduled</Text>
         </View>
-      )}
 
-      {/* Add/Edit Event Modal */}
-      <Modal
-        visible={isEventModalOpen}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setIsEventModalOpen(false)}
-      >
+        {monthlyEventsByDate.length === 0 ? (
+          <View style={styles.emptyAgenda}>
+            <Ionicons name="calendar-outline" size={40} color="#cbd5e1" />
+            <Text style={styles.emptyAgendaText}>No events or exams scheduled this month.</Text>
+            <TouchableOpacity style={styles.emptyAddBtn} onPress={() => openAddEvent(new Date())}>
+              <Text style={styles.emptyAddBtnText}>Add Event</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          monthlyEventsByDate.map(([dateKey, dayEvents]) => (
+            <View key={dateKey} style={styles.agendaDayGroup}>
+              <Text style={styles.agendaDayLabel}>
+                {formatDisplayDate(dateKey)}
+              </Text>
+              {dayEvents.map((event, idx) => (
+                <TouchableOpacity
+                  key={event._id || event.id || `${event.name}-${idx}`}
+                  style={styles.agendaItem}
+                  onPress={() => handleViewEvent(event)}
+                  activeOpacity={0.85}
+                >
+                  <View style={[styles.agendaStripe, { backgroundColor: getEventColor(event, idx) }]} />
+                  <View style={styles.agendaItemBody}>
+                    <View style={styles.agendaItemTop}>
+                      <Text style={styles.agendaItemTitle} numberOfLines={2}>
+                        {event.type === 'exam' ? `Exam: ${event.name}` : event.name}
+                      </Text>
+                      <View
+                        style={[
+                          styles.typeBadge,
+                          event.type === 'exam' ? styles.typeBadgeExam : styles.typeBadgeEvent,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.typeBadgeText,
+                            event.type === 'exam' ? styles.typeBadgeTextExam : styles.typeBadgeTextEvent,
+                          ]}
+                        >
+                          {event.type === 'exam' ? 'Exam' : 'Event'}
+                        </Text>
+                      </View>
+                    </View>
+                    {event.description ? (
+                      <Text style={styles.agendaItemDesc} numberOfLines={2}>
+                        {event.description}
+                      </Text>
+                    ) : null}
+                    {event.endDate &&
+                    parseEventDateKey(event.endDate) !== parseEventDateKey(event.startDate || event.date) ? (
+                      <Text style={styles.agendaItemRange}>
+                        {formatDisplayDate(event.startDate || event.date)} – {formatDisplayDate(event.endDate)}
+                      </Text>
+                    ) : null}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ))
+        )}
+      </View>
+
+      <Modal visible={isEventModalOpen} animationType="slide" transparent onRequestClose={() => setIsEventModalOpen(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{isEditMode ? 'Edit Event' : 'Add Event'}</Text>
-              <TouchableOpacity onPress={() => {
-                setIsEventModalOpen(false);
-                resetForm();
-              }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setIsEventModalOpen(false);
+                  resetForm();
+                }}
+              >
                 <Ionicons name="close" size={24} color="#111827" />
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalBody}>
+            <ScrollView style={styles.modalBody} keyboardShouldPersistTaps="handled">
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Event Name *</Text>
                 <TextInput
@@ -484,24 +514,14 @@ export default function CalendarView() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Date *</Text>
+                <Text style={styles.label}>Date * (YYYY-MM-DD)</Text>
                 <TextInput
                   style={styles.input}
                   value={eventForm.date}
                   onChangeText={(text) => setEventForm({ ...eventForm, date: text })}
-                  placeholder="YYYY-MM-DD"
+                  placeholder="2026-06-07"
+                  autoCapitalize="none"
                 />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Photo</Text>
-                {eventForm.photoUrl && (
-                  <Image source={{ uri: eventForm.photoUrl }} style={styles.photoPreview} />
-                )}
-                <TouchableOpacity style={styles.photoButton} onPress={handlePhotoPick}>
-                  <Ionicons name="image" size={20} color="#fff" />
-                  <Text style={styles.photoButtonText}>Pick Photo</Text>
-                </TouchableOpacity>
               </View>
 
               <View style={styles.inputGroup}>
@@ -526,10 +546,7 @@ export default function CalendarView() {
                 >
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.button, styles.submitButton]}
-                  onPress={handleEventSubmit}
-                >
+                <TouchableOpacity style={[styles.button, styles.submitButton]} onPress={handleEventSubmit}>
                   <Text style={styles.submitButtonText}>
                     {isEditMode ? 'Update Event' : 'Create Event'}
                   </Text>
@@ -540,13 +557,7 @@ export default function CalendarView() {
         </View>
       </Modal>
 
-      {/* View Event Modal */}
-      <Modal
-        visible={isViewModalOpen}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setIsViewModalOpen(false)}
-      >
+      <Modal visible={isViewModalOpen} animationType="slide" transparent onRequestClose={() => setIsViewModalOpen(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -557,54 +568,69 @@ export default function CalendarView() {
             </View>
 
             <ScrollView style={styles.modalBody}>
-              {selectedEvent?.photo && (
-                <Image source={{ uri: selectedEvent.photo }} style={styles.viewPhoto} />
-              )}
+              {selectedEvent?.photo ? (
+                <Image
+                  source={{ uri: resolvePhotoUrl(selectedEvent.photo) }}
+                  style={styles.viewPhoto}
+                />
+              ) : null}
+
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Date</Text>
                 <Text style={styles.viewText}>
-                  {selectedEvent ? new Date(selectedEvent.date).toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  }) : ''}
+                  {formatDisplayDate(selectedEvent?.startDate || selectedEvent?.date)}
                 </Text>
               </View>
-              {selectedEvent?.description && (
+
+              {selectedEvent?.endDate &&
+              parseEventDateKey(selectedEvent.endDate) !==
+                parseEventDateKey(selectedEvent.startDate || selectedEvent.date) ? (
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>End Date</Text>
+                  <Text style={styles.viewText}>{formatDisplayDate(selectedEvent.endDate)}</Text>
+                </View>
+              ) : null}
+
+              {selectedEvent?.type === 'exam' ? (
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Type</Text>
+                  <Text style={styles.viewText}>
+                    Exam ({selectedEvent.examType || 'scheduled'})
+                  </Text>
+                </View>
+              ) : null}
+
+              {selectedEvent?.description ? (
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Description</Text>
                   <Text style={styles.viewText}>{selectedEvent.description}</Text>
                 </View>
-              )}
-              <View style={styles.modalActions}>
-                <TouchableOpacity
-                  style={[styles.button, styles.editButton]}
-                  onPress={() => selectedEvent && handleEditEvent(selectedEvent)}
-                >
-                  <Ionicons name="create" size={20} color="#fff" />
-                  <Text style={styles.editButtonText}>Edit</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.button, styles.deleteButton]}
-                  onPress={() => selectedEvent && handleDeleteEvent(selectedEvent)}
-                >
-                  <Ionicons name="trash" size={20} color="#fff" />
-                  <Text style={styles.deleteButtonText}>Delete</Text>
-                </TouchableOpacity>
-              </View>
+              ) : null}
+
+              {selectedEvent?.type !== 'exam' ? (
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={[styles.button, styles.editButton]}
+                    onPress={() => selectedEvent && handleEditEvent(selectedEvent)}
+                  >
+                    <Ionicons name="create" size={20} color="#fff" />
+                    <Text style={styles.editButtonText}>Edit</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.button, styles.deleteButton]}
+                    onPress={() => selectedEvent && handleDeleteEvent(selectedEvent)}
+                  >
+                    <Ionicons name="trash" size={20} color="#fff" />
+                    <Text style={styles.deleteButtonText}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
             </ScrollView>
           </View>
         </View>
       </Modal>
 
-      {/* Image URL Input Modal */}
-      <Modal
-        visible={isUrlModalOpen}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setIsUrlModalOpen(false)}
-      >
+      <Modal visible={isUrlModalOpen} animationType="slide" transparent onRequestClose={() => setIsUrlModalOpen(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -637,7 +663,13 @@ export default function CalendarView() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.button, styles.submitButton]}
-                  onPress={handleUrlSubmit}
+                  onPress={() => {
+                    if (imageUrlInput.trim()) {
+                      setEventForm({ ...eventForm, photoUrl: imageUrlInput.trim() });
+                    }
+                    setIsUrlModalOpen(false);
+                    setImageUrlInput('');
+                  }}
                 >
                   <Text style={styles.submitButtonText}>Add URL</Text>
                 </TouchableOpacity>
@@ -651,144 +683,153 @@ export default function CalendarView() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f0f9ff',
-    minHeight: 0,
-  },
+  container: { flex: 1, backgroundColor: '#f0f9ff' },
+  scrollContent: { paddingBottom: 32 },
   loadingContainer: {
-    flex: 1,
+    minHeight: 240,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    gap: 12,
   },
-  loadingText: {
-    fontSize: 16,
-    color: '#64748b',
-  },
+  loadingText: { fontSize: 16, color: '#64748b' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
+    alignItems: 'flex-start',
+    paddingTop: 8,
+    paddingBottom: 12,
+    gap: 12,
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 4,
-  },
+  headerTextWrap: { flex: 1 },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: '#111827' },
+  headerSubtitle: { fontSize: 14, color: '#6b7280', marginTop: 4 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   todayButton: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     backgroundColor: '#fff',
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#e5e7eb',
   },
-  todayButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
+  todayButtonText: { fontSize: 14, fontWeight: '600', color: '#111827' },
+  addButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#fb923c',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   calendarCard: {
     backgroundColor: '#fff',
-    margin: 20,
     borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    marginBottom: 16,
   },
   calendarNav: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  monthText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  calendarGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  dayHeader: {
+  monthText: { fontSize: 18, fontWeight: '700', color: '#111827' },
+  miniGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  dayHeader: { width: '14.28%', alignItems: 'center', paddingVertical: 4 },
+  dayHeaderText: { fontSize: 11, fontWeight: '700', color: '#6b7280' },
+  miniDay: {
     width: '14.28%',
-    paddingVertical: 8,
+    aspectRatio: 1,
     alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    marginBottom: 2,
   },
-  dayHeaderText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#6b7280',
-  },
-  calendarDay: {
-    width: '14.28%',
-    minHeight: 100,
-    padding: 6,
+  miniDayOtherMonth: { opacity: 0.35 },
+  miniDayToday: {
+    backgroundColor: '#fff7ed',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#fff',
-    justifyContent: 'flex-start',
-    alignItems: 'flex-start',
-  },
-  calendarDayOtherMonth: {
-    backgroundColor: '#f9fafb',
-    opacity: 0.5,
-  },
-  calendarDayToday: {
-    borderWidth: 2,
     borderColor: '#fb923c',
   },
-  dayNumber: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 6,
-    alignSelf: 'flex-start',
-  },
-  dayNumberToday: {
-    color: '#fb923c',
-    fontWeight: '800',
-  },
-  dayNumberOtherMonth: {
-    color: '#9ca3af',
-  },
-  eventsContainer: {
-    gap: 4,
-    width: '100%',
-    flex: 1,
-  },
-  eventDot: {
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginBottom: 2,
-    minHeight: 20,
-    width: '100%',
-    justifyContent: 'center',
+  miniDayNumber: { fontSize: 13, fontWeight: '600', color: '#374151' },
+  miniDayNumberMuted: { color: '#9ca3af' },
+  miniDayNumberToday: { color: '#ea580c', fontWeight: '800' },
+  dotRow: { flexDirection: 'row', gap: 2, marginTop: 2 },
+  dot: { width: 4, height: 4, borderRadius: 2 },
+  agendaSection: { gap: 12 },
+  agendaHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  eventDotText: {
-    fontSize: 10,
-    color: '#fff',
-    fontWeight: '700',
+  agendaTitle: { fontSize: 18, fontWeight: '700', color: '#0c4a6e' },
+  agendaCount: { fontSize: 12, color: '#0284c7', fontWeight: '600' },
+  emptyAgenda: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e0f2fe',
+  },
+  emptyAgendaText: {
+    fontSize: 14,
+    color: '#64748b',
     textAlign: 'center',
+    marginTop: 12,
   },
-  moreEventsText: {
-    fontSize: 10,
-    color: '#6b7280',
-    fontWeight: '600',
+  emptyAddBtn: {
+    marginTop: 16,
+    backgroundColor: '#fb923c',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
   },
+  emptyAddBtnText: { color: '#fff', fontWeight: '700' },
+  agendaDayGroup: { gap: 8 },
+  agendaDayLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0369a1',
+    marginTop: 4,
+  },
+  agendaItem: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e0f2fe',
+    overflow: 'hidden',
+  },
+  agendaStripe: { width: 4 },
+  agendaItemBody: { flex: 1, padding: 12, gap: 4 },
+  agendaItemTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  agendaItemTitle: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  typeBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  typeBadgeExam: { backgroundColor: '#dbeafe' },
+  typeBadgeEvent: { backgroundColor: '#ffedd5' },
+  typeBadgeText: { fontSize: 11, fontWeight: '700' },
+  typeBadgeTextExam: { color: '#1d4ed8' },
+  typeBadgeTextEvent: { color: '#c2410c' },
+  agendaItemDesc: { fontSize: 13, color: '#64748b', lineHeight: 18 },
+  agendaItemRange: { fontSize: 12, color: '#0284c7', marginTop: 2 },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -809,23 +850,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  modalBody: {
-    padding: 20,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: '#111827', flex: 1, marginRight: 12 },
+  modalBody: { padding: 20 },
+  inputGroup: { marginBottom: 16 },
+  label: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 },
   input: {
     borderWidth: 1,
     borderColor: '#d1d5db',
@@ -835,46 +863,10 @@ const styles = StyleSheet.create({
     color: '#111827',
     backgroundColor: '#fff',
   },
-  textArea: {
-    minHeight: 100,
-    textAlignVertical: 'top',
-  },
-  photoPreview: {
-    width: '100%',
-    height: 200,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  photoButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#3b82f6',
-    padding: 12,
-    borderRadius: 8,
-    gap: 8,
-  },
-  photoButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  viewPhoto: {
-    width: '100%',
-    height: 250,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  viewText: {
-    fontSize: 16,
-    color: '#374151',
-    lineHeight: 24,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 20,
-  },
+  textArea: { minHeight: 100, textAlignVertical: 'top' },
+  viewPhoto: { width: '100%', height: 220, borderRadius: 8, marginBottom: 16 },
+  viewText: { fontSize: 16, color: '#374151', lineHeight: 24 },
+  modalActions: { flexDirection: 'row', gap: 12, marginTop: 8 },
   button: {
     flex: 1,
     flexDirection: 'row',
@@ -884,97 +876,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     gap: 8,
   },
-  cancelButton: {
-    backgroundColor: '#f3f4f6',
-  },
-  cancelButtonText: {
-    color: '#374151',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  submitButton: {
-    backgroundColor: '#fb923c',
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  editButton: {
-    backgroundColor: '#3b82f6',
-  },
-  editButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  deleteButton: {
-    backgroundColor: '#ef4444',
-  },
-  deleteButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  eventsListSection: {
-    margin: 20,
-    marginTop: 0,
-  },
-  eventsListTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 16,
-  },
-  eventsList: {
-    gap: 12,
-  },
-  eventListItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  eventListItemPast: {
-    opacity: 0.6,
-  },
-  eventListDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 12,
-  },
-  eventListContent: {
-    flex: 1,
-  },
-  eventListName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  eventListDate: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 4,
-  },
-  eventListDescription: {
-    fontSize: 13,
-    color: '#9ca3af',
-    lineHeight: 18,
-  },
-  eventListImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    marginLeft: 12,
-  },
+  cancelButton: { backgroundColor: '#f3f4f6' },
+  cancelButtonText: { color: '#374151', fontSize: 16, fontWeight: '600' },
+  submitButton: { backgroundColor: '#fb923c' },
+  submitButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  editButton: { backgroundColor: '#3b82f6' },
+  editButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  deleteButton: { backgroundColor: '#ef4444' },
+  deleteButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });

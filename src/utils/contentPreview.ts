@@ -23,12 +23,60 @@ export function extractYouTubeId(url: string): string | null {
   if (watch) return watch[1];
   const embed = trimmed.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{6,})/i);
   if (embed) return embed[1];
+  const shorts = trimmed.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{6,})/i);
+  if (shorts) return shorts[1];
   return null;
+}
+
+/** Origin sent as Referer for YouTube embeds in WebView (must match app bundle id). */
+export const YOUTUBE_EMBED_ORIGIN = 'https://com.aslilearn.mobile';
+
+export function getYoutubeWatchUrl(videoId: string): string {
+  return `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
+}
+
+export function buildYouTubeEmbedHtml(videoId: string): string {
+  const origin = encodeURIComponent(YOUTUBE_EMBED_ORIGIN);
+  const embedSrc =
+    `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}` +
+    `?playsinline=1&rel=0&modestbranding=1&enablejsapi=1&origin=${origin}`;
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+    iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  </style>
+</head>
+<body>
+  <iframe
+    src="${embedSrc}"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+    allowfullscreen
+    referrerpolicy="strict-origin-when-cross-origin"
+  ></iframe>
+</body>
+</html>`;
+}
+
+export function getYoutubeEmbedWebViewSource(url: string): { html: string; baseUrl: string } | null {
+  const id = extractYouTubeId(url);
+  if (!id) return null;
+  return {
+    html: buildYouTubeEmbedHtml(id),
+    baseUrl: YOUTUBE_EMBED_ORIGIN,
+  };
 }
 
 export function getYoutubeEmbedUrl(url: string): string | null {
   const id = extractYouTubeId(url);
-  return id ? `https://www.youtube.com/embed/${id}?playsinline=1&rel=0` : null;
+  if (!id) return null;
+  const origin = encodeURIComponent(YOUTUBE_EMBED_ORIGIN);
+  return `https://www.youtube-nocookie.com/embed/${id}?playsinline=1&rel=0&modestbranding=1&enablejsapi=1&origin=${origin}`;
 }
 
 export function isYouTubeUrl(url: string): boolean {

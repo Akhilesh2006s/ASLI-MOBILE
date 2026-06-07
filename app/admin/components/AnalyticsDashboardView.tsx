@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as SecureStore from 'expo-secure-store';
-import { API_BASE_URL } from '../../../src/lib/api-config';
+import adminService from '../../../src/services/api/adminService';
 
 interface AnalyticsData {
   totalStudents: number;
@@ -39,26 +38,58 @@ export default function AnalyticsDashboardView() {
   const fetchAnalytics = async () => {
     setIsLoading(true);
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/admin/analytics`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      const data = await response.json();
+      const [analyticsRes, studentRes] = await Promise.all([
+        adminService.getAnalytics(),
+        adminService.getStudentAnalytics(),
+      ]);
+
+      const overview = analyticsRes?.data?.overview || analyticsRes?.overview || {};
+      const engagement = analyticsRes?.data?.engagement || analyticsRes?.engagement || {};
+      const recent = analyticsRes?.data?.recentActivity || analyticsRes?.recentActivity || {};
+      const studentPayload = studentRes?.data || studentRes || {};
+      const performance = studentPayload.performanceMetrics || {};
+      const classDistribution = studentPayload.classDistribution || [];
+      const topPerformersRaw = performance.topPerformers || [];
+
+      const recentActivity = [
+        ...(recent.videos || []).map((video: any, idx: number) => ({
+          id: `video-${idx}`,
+          action: `Video: ${video.title || 'Untitled'}`,
+          user: 'Content',
+          time: video.createdAt ? new Date(video.createdAt).toLocaleDateString() : '',
+          type: 'video',
+        })),
+        ...(recent.assessments || []).map((item: any, idx: number) => ({
+          id: `assessment-${idx}`,
+          action: `Assessment: ${item.title || 'Untitled'}`,
+          user: 'Assessment',
+          time: item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '',
+          type: 'assessment',
+        })),
+      ];
+
       setAnalytics({
-        totalStudents: data.totalStudents || 0,
-        activeStudents: data.activeStudents || 0,
-        totalClasses: data.totalClasses || 0,
-        totalVideos: data.totalVideos || 0,
-        totalQuizzes: data.totalQuizzes || 0,
-        totalAssessments: data.totalAssessments || 0,
-        averageScore: data.averageScore || 0,
-        completionRate: data.completionRate || 0,
-        recentActivity: data.recentActivity || [],
-        classPerformance: data.classPerformance || [],
-        topPerformers: data.topPerformers || [],
+        totalStudents: overview.totalStudents || 0,
+        activeStudents: overview.activeStudents || 0,
+        totalClasses: classDistribution.length,
+        totalVideos: overview.totalVideos || 0,
+        totalQuizzes: overview.totalAssessments || 0,
+        totalAssessments: overview.totalAssessments || 0,
+        averageScore: Math.round(Number(performance.averageScore) || 0),
+        completionRate: engagement.studentEngagement || 0,
+        recentActivity,
+        classPerformance: classDistribution.map((item: any) => ({
+          classNumber: item.className || item.class || '—',
+          students: item.count || 0,
+          averageScore: Math.round(Number(performance.averageScore) || 0),
+          completionRate: engagement.studentEngagement || 0,
+        })),
+        topPerformers: topPerformersRaw.map((item: any, idx: number) => ({
+          name: item.studentName || item.name || 'Student',
+          class: item.classNumber || item.class || '—',
+          score: Math.round(Number(item.averageScore || item.score) || 0),
+          rank: idx + 1,
+        })),
       });
     } catch (error) {
       console.error('Failed to fetch analytics:', error);

@@ -41,6 +41,7 @@ import {
   mapGradeLevelForIitBoard,
   resolveCurriculumBoardForAiTools,
   resolveIsAsliPrepExclusive,
+  resolveStudentCurriculumGradeLevel,
 } from '../../../src/lib/school-program-ai';
 import {
   useCurriculumCascade,
@@ -135,6 +136,10 @@ export default function StudentToolPage() {
   const boardOptions = getAiToolBoardOptions(isAsliPrepExclusive, schoolBoardName);
   const selectedBoard = formParams.board || getDefaultAiToolBoard(isAsliPrepExclusive, schoolBoardName);
   const cascadeTopic = formParams.topic || formParams.chapter || '';
+  const assignedGradeLevel = useMemo(
+    () => resolveStudentCurriculumGradeLevel(user),
+    [user]
+  );
 
   const cascade = useCurriculumCascade(
     formParams.gradeLevel,
@@ -143,8 +148,10 @@ export default function StudentToolPage() {
     selectedBoard
   );
 
-  const classSelectOptions =
-    cascade.classOptions.length > 0 ? cascade.classOptions : CLASS_OPTIONS;
+  const classSelectOptions = useMemo(() => {
+    if (assignedGradeLevel) return [assignedGradeLevel];
+    return cascade.classOptions.length > 0 ? cascade.classOptions : CLASS_OPTIONS;
+  }, [assignedGradeLevel, cascade.classOptions]);
 
   const availableSubjects = useMemo(() => {
     const gv = formParams.gradeLevel;
@@ -235,6 +242,14 @@ export default function StudentToolPage() {
     });
   }, [isReadingPractice, formParams.subject]);
 
+  useEffect(() => {
+    if (!assignedGradeLevel) return;
+    setFormParams((prev) => {
+      if (prev.gradeLevel === assignedGradeLevel) return prev;
+      return { ...prev, gradeLevel: assignedGradeLevel };
+    });
+  }, [assignedGradeLevel]);
+
   const fetchUser = async () => {
     try {
       const token = await SecureStore.getItemAsync('authToken');
@@ -260,29 +275,9 @@ export default function StudentToolPage() {
           board: prev.board || defaultBoard,
         }));
 
-        if (userData.user) {
-          const studentClass = userData.user.assignedClass?.classNumber || userData.user.classNumber;
-          if (studentClass) {
-            let classValue = studentClass.toString().trim();
-            classValue = classValue.replace(/^Class\s*/i, '');
-            const classNum = classValue.replace(/[^-\d]/g, '');
-            const absNum = Math.abs(parseInt(classNum, 10));
-
-            if (!isNaN(absNum) && absNum >= 6 && absNum <= 12) {
-              const mappedClass = `Class ${absNum}`;
-              if (CLASS_OPTIONS.includes(mappedClass)) {
-                setFormParams((prev) => ({ ...prev, gradeLevel: mappedClass }));
-              }
-            } else if (classValue.toLowerCase().includes('dropper')) {
-              setFormParams((prev) => ({ ...prev, gradeLevel: 'Dropper Batch' }));
-            } else if (
-              classValue.toLowerCase().includes('iit') ||
-              classValue === 'IIT-6' ||
-              classValue === 'Class-6-IIT'
-            ) {
-              setFormParams((prev) => ({ ...prev, gradeLevel: 'Class 6' }));
-            }
-          }
+        const curriculumGrade = resolveStudentCurriculumGradeLevel(userData.user);
+        if (curriculumGrade) {
+          setFormParams((prev) => ({ ...prev, gradeLevel: curriculumGrade }));
         }
       }
     } catch (error) {
@@ -293,6 +288,8 @@ export default function StudentToolPage() {
   };
 
   const handleInputChange = (name: string, value: any) => {
+    if (name === 'gradeLevel' && assignedGradeLevel) return;
+
     setFormParams((prev) => {
       const newParams = { ...prev, [name]: value };
 
@@ -321,9 +318,8 @@ export default function StudentToolPage() {
         delete newParams.concept;
         delete newParams.chapter;
         delete newParams.projectTopic;
-        if (String(value).toUpperCase() === 'IIT') {
-          const iitClass = cascade.classOptions.find((c) => /iit/i.test(c)) || 'Class 6';
-          newParams.gradeLevel = iitClass;
+        if (assignedGradeLevel) {
+          newParams.gradeLevel = assignedGradeLevel;
         }
       }
 
@@ -394,7 +390,7 @@ export default function StudentToolPage() {
         cascade.loadingSubtopics;
     }
 
-    const isClassFieldDisabled = field.name === 'gradeLevel' && !!user?.classNumber;
+    const isClassFieldDisabled = field.name === 'gradeLevel' && !!assignedGradeLevel;
     return { isDisabled: isDisabled || isClassFieldDisabled, loading, isClassFieldDisabled };
   };
 
@@ -596,7 +592,7 @@ export default function StudentToolPage() {
     const value = formParams[field.name] || '';
     const { isDisabled, loading } = getFieldDisabledState(field);
 
-    if (field.name === 'gradeLevel' && user?.classNumber && value) {
+    if (field.name === 'gradeLevel' && assignedGradeLevel) {
       return (
         <View key={field.name} style={styles.fieldBlock}>
           <View style={styles.labelRow}>
@@ -606,7 +602,7 @@ export default function StudentToolPage() {
             <Text style={styles.fieldLabel}>Class</Text>
           </View>
           <View style={styles.lockedField}>
-            <Text style={styles.lockedValue}>{value}</Text>
+            <Text style={styles.lockedValue}>{assignedGradeLevel}</Text>
             <View style={styles.lockedBadge}>
               <Ionicons name="lock-closed" size={12} color={STUDENT.textMuted} />
               <Text style={styles.lockedBadgeText}>Assigned</Text>

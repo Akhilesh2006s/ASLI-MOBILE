@@ -1,11 +1,29 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
+  Linking,
+  Alert,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { API_BASE_URL } from '../../../src/lib/api-config';
-import * as SecureStore from 'expo-secure-store';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { router } from 'expo-router';
+import { TEACHER, TEACHER_RADIUS, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
+import api from '../../../src/services/api/api';
+import { openContentPreview } from '../../../src/utils/openContentPreview';
+import EduOTTVideoCard from '../../../src/components/eduott/EduOTTVideoCard';
+import { resolveContentDurationSeconds } from '../../../src/utils/eduottVideoUtils';
+import { extractPlainSubjectName, getSubjectClassLabel } from '../../../src/lib/subject-names';
+import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
 
-interface Video {
+type EduOTTSubTab = 'videos' | 'live-sessions';
+
+interface EduVideo {
   _id: string;
   title: string;
   description?: string;
@@ -16,96 +34,94 @@ interface Video {
   youtubeUrl?: string;
   isYouTubeVideo?: boolean;
   fileUrl?: string;
-  fileUrls?: string[];
+  subjectName?: string;
+  classNumber?: string;
+  thumbnailUrl?: string;
+}
+
+function asArray(payload: any): any[] {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  return [];
 }
 
 export default function EduOTTView() {
-  const router = useRouter();
-  const [videos, setVideos] = useState<Video[]>([]);
+  const { isAsliPrepExclusive } = useSchoolProgram();
+  const [activeSubTab, setActiveSubTab] = useState<EduOTTSubTab>('videos');
+  const [videos, setVideos] = useState<EduVideo[]>([]);
+  const [liveSessions, setLiveSessions] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sessionSearchTerm, setSessionSearchTerm] = useState('');
+  const [selectedSubject, setSelectedSubject] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
 
   useEffect(() => {
-    fetchVideos();
-  }, []);
+    if (activeSubTab === 'videos') {
+      if (isAsliPrepExclusive) {
+        fetchVideos();
+      } else {
+        setVideos([]);
+        setIsLoading(false);
+      }
+    } else if (activeSubTab === 'live-sessions') {
+      fetchLiveSessions();
+    }
+  }, [activeSubTab, selectedSubject, isAsliPrepExclusive]);
 
   const fetchVideos = async () => {
     try {
       setIsLoading(true);
-      const token = await SecureStore.getItemAsync('authToken');
-      if (!token) {
-        console.error('No auth token found');
-        setIsLoading(false);
-        return;
+      let response;
+      try {
+        response = await api.get('/api/admin/asli-prep-content', { params: { type: 'Video' } });
+      } catch {
+        response = await api.get('/api/admin/videos');
       }
 
-      // Try multiple endpoints
-      let response = await fetch(`${API_BASE_URL}/api/admin/asli-prep-content?type=Video`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+      const videosArray = asArray(response?.data);
+
+      const mappedVideos = videosArray.map((content: any) => {
+        const videoFileUrl =
+          content.fileUrls && content.fileUrls.length > 0
+            ? content.fileUrls[0]
+            : content.fileUrl || content.videoUrl || '';
+
+        const isYouTube =
+          !!content.youtubeUrl ||
+          (videoFileUrl &&
+            (videoFileUrl.includes('youtube.com') || videoFileUrl.includes('youtu.be')));
+
+        const subjectName = content.subject?.name || content.subject || 'Unknown Subject';
+        const classNumber =
+          content.classNumber != null && String(content.classNumber).trim() !== ''
+            ? String(content.classNumber).trim()
+            : content.subject?.classNumber != null
+              ? String(content.subject.classNumber).trim()
+              : undefined;
+
+        return {
+          _id: content._id || content.id,
+          title: content.title || 'Untitled Video',
+          description: content.description || '',
+          duration: resolveContentDurationSeconds({
+            duration: content.duration,
+            durationSeconds: content.durationSeconds,
+          }),
+          views: content.views || 0,
+          createdAt: content.createdAt || new Date().toISOString(),
+          videoUrl: videoFileUrl,
+          youtubeUrl: content.youtubeUrl || (isYouTube ? videoFileUrl : ''),
+          isYouTubeVideo: isYouTube,
+          fileUrl: videoFileUrl,
+          subjectName,
+          classNumber,
+          thumbnailUrl: content.thumbnailUrl,
+        };
       });
 
-      if (!response.ok) {
-        // Fallback to videos endpoint
-        response = await fetch(`${API_BASE_URL}/api/admin/videos`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-      }
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Videos API response:', data);
-        
-        // Handle different response formats
-        let videosData = [];
-        if (data.success && data.data) {
-          videosData = Array.isArray(data.data) ? data.data : [];
-        } else if (Array.isArray(data)) {
-          videosData = data;
-        } else if (data.videos && Array.isArray(data.videos)) {
-          videosData = data.videos;
-        }
-        
-         // Map content to video format
-         const mappedVideos = videosData.map((item: any) => {
-           // Get video URL - check fileUrl, fileUrls array, or videoUrl
-           const videoFileUrl = item.fileUrls && item.fileUrls.length > 0 
-             ? item.fileUrls[0] 
-             : (item.fileUrl || item.videoUrl || '');
-           
-           // Check if it's a YouTube URL
-           const isYouTube = !!item.youtubeUrl || (videoFileUrl && (
-             videoFileUrl.includes('youtube.com') || 
-             videoFileUrl.includes('youtu.be') ||
-             videoFileUrl.includes('youtube.com/watch')
-           ));
-           
-           return {
-             _id: item._id || item.id,
-             title: item.title || 'Untitled Video',
-             description: item.description || '',
-             duration: item.duration || 0,
-             views: item.views || 0,
-             createdAt: item.createdAt || new Date().toISOString(),
-             videoUrl: videoFileUrl,
-             youtubeUrl: item.youtubeUrl || (isYouTube ? videoFileUrl : ''),
-             isYouTubeVideo: isYouTube,
-             fileUrl: videoFileUrl,
-             fileUrls: item.fileUrls || []
-           };
-         });
-        
-        setVideos(mappedVideos);
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Failed to fetch videos:', response.status, errorData);
-        setVideos([]);
-      }
+      setVideos(mappedVideos);
     } catch (error) {
       console.error('Failed to fetch videos:', error);
       setVideos([]);
@@ -114,256 +130,351 @@ export default function EduOTTView() {
     }
   };
 
-  const filteredVideos = videos.filter(video =>
-    video.title.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  const fetchLiveSessions = async () => {
+    try {
+      setIsLoadingSessions(true);
+      const response = await api.get('/api/admin/streams');
+      setLiveSessions(asArray(response?.data));
+    } catch (error) {
+      console.error('Failed to fetch live sessions:', error);
+      setLiveSessions([]);
+    } finally {
+      setIsLoadingSessions(false);
+    }
   };
 
-  const handleVideoPress = (video: Video) => {
-    // Navigate to video player instead of showing modal
-    router.push({
-      pathname: '/video-player',
-      params: { 
-        videoId: video._id,
-        isContentItem: 'true',
-        contentData: JSON.stringify({
-          _id: video._id,
-          title: video.title,
-          description: video.description,
-          fileUrl: video.fileUrl || video.videoUrl,
-          videoUrl: video.videoUrl || video.fileUrl,
-          youtubeUrl: video.youtubeUrl,
-          duration: video.duration,
-          isYouTubeVideo: video.isYouTubeVideo
-        })
-      }
-    });
+  const filteredVideos = videos.filter((video) => {
+    const matchesSearch =
+      video.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      video.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSubject = selectedSubject === 'all' || video.subjectName === selectedSubject;
+    return matchesSearch && matchesSubject;
+  });
+
+  const filteredSessions = liveSessions.filter((session) => {
+    const matchesSearch =
+      session.title?.toLowerCase().includes(sessionSearchTerm.toLowerCase()) ||
+      session.description?.toLowerCase().includes(sessionSearchTerm.toLowerCase());
+    const matchesStatus = filterStatus === 'all' || session.status === filterStatus;
+    return matchesSearch && matchesStatus;
+  });
+
+  const handlePlayVideo = (video: EduVideo) => {
+    openContentPreview(
+      router,
+      {
+        _id: video._id,
+        title: video.title,
+        type: 'Video',
+        fileUrl: video.videoUrl || video.fileUrl,
+        youtubeUrl: video.youtubeUrl,
+      },
+      { returnTo: 'eduott' }
+    );
   };
 
-  const handlePlayVideo = async (video: Video) => {
-    // Navigate to video player
-    router.push({
-      pathname: '/video-player',
-      params: { 
-        videoId: video._id,
-        isContentItem: 'true',
-        contentData: JSON.stringify({
-          _id: video._id,
-          title: video.title,
-          description: video.description,
-          fileUrl: video.fileUrl || video.videoUrl,
-          videoUrl: video.videoUrl || video.fileUrl,
-          youtubeUrl: video.youtubeUrl,
-          duration: video.duration,
-          isYouTubeVideo: video.isYouTubeVideo
-        })
-      }
-    });
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'live':
+        return TEACHER.danger;
+      case 'scheduled':
+        return TEACHER.primary;
+      case 'ended':
+        return TEACHER.textMuted;
+      case 'cancelled':
+        return TEACHER.warning;
+      default:
+        return TEACHER.textMuted;
+    }
   };
-
 
   return (
     <View style={styles.container}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Ionicons name="play" size={32} color="#fb923c" />
-          <View>
-            <Text style={styles.headerTitle}>EduOTT</Text>
-            <Text style={styles.headerSubtitle}>Manage educational OTT content</Text>
+        <View style={styles.headerIcon}>
+          <Ionicons name="play" size={32} color={TEACHER.primaryLight} />
+        </View>
+        <View>
+          <Text style={styles.headerTitle}>EduOTT</Text>
+          <Text style={styles.headerSubtitle}>Educational videos and live sessions</Text>
+        </View>
+      </View>
+
+      <View style={styles.subTabsContainer}>
+        <TouchableOpacity
+          style={[styles.subTab, activeSubTab === 'videos' && styles.subTabActive]}
+          onPress={() => setActiveSubTab('videos')}
+        >
+          <Ionicons
+            name="play"
+            size={16}
+            color={activeSubTab === 'videos' ? TEACHER.primaryLight : TEACHER.textMuted}
+          />
+          <Text style={[styles.subTabText, activeSubTab === 'videos' && styles.subTabTextActive]}>
+            Videos
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.subTab, activeSubTab === 'live-sessions' && styles.subTabActive]}
+          onPress={() => setActiveSubTab('live-sessions')}
+        >
+          <Ionicons
+            name="radio"
+            size={16}
+            color={activeSubTab === 'live-sessions' ? TEACHER.primaryLight : TEACHER.textMuted}
+          />
+          <Text
+            style={[styles.subTabText, activeSubTab === 'live-sessions' && styles.subTabTextActive]}
+          >
+            Live Sessions
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {activeSubTab === 'videos' && (
+        <>
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={20} color={TEACHER.textMuted} style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search videos by title..."
+              value={searchTerm}
+              onChangeText={setSearchTerm}
+              placeholderTextColor={TEACHER.textMuted}
+            />
           </View>
-        </View>
-      </View>
 
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#9ca3af" style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search videos..."
-          value={searchTerm}
-          onChangeText={setSearchTerm}
-          placeholderTextColor="#9ca3af"
-        />
-      </View>
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={TEACHER.primary} />
+            </View>
+          ) : filteredVideos.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="play-outline" size={64} color="#d1d5db" />
+              <Text style={styles.emptyText}>
+                {!isAsliPrepExclusive
+                  ? 'Videos are available for Asli Prep schools only.'
+                  : searchTerm
+                    ? 'No videos match your search'
+                    : 'No videos found'}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.listSection}>
+              {filteredVideos.map((video, index) => (
+                <Animated.View
+                  key={video._id}
+                  entering={FadeInDown.duration(350).delay(Math.min(index * 60, 480))}
+                >
+                  <EduOTTVideoCard
+                    variant="teacher"
+                    title={video.title}
+                    durationSeconds={video.duration}
+                    subjectLabel={
+                      extractPlainSubjectName(video.subjectName || '').trim() || undefined
+                    }
+                    classLabel={
+                      getSubjectClassLabel({
+                        name: video.subjectName,
+                        classNumber: video.classNumber,
+                      }) || undefined
+                    }
+                    thumbnailUrl={video.thumbnailUrl}
+                    youtubeUrl={video.youtubeUrl}
+                    fileUrl={video.fileUrl}
+                    videoUrl={video.videoUrl}
+                    onPress={() => handlePlayVideo(video)}
+                  />
+                </Animated.View>
+              ))}
+            </View>
+          )}
+        </>
+      )}
 
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#fb923c" />
-        </View>
-      ) : filteredVideos.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="play-outline" size={64} color="#d1d5db" />
-          <Text style={styles.emptyText}>No videos found</Text>
-        </View>
-      ) : (
-         <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
-           {filteredVideos.map((video) => (
-             <TouchableOpacity
-               key={video._id}
-               style={styles.videoCard}
-               onPress={() => handleVideoPress(video)}
-               activeOpacity={0.7}
-             >
-               <View style={styles.videoHeader}>
-                 <View style={styles.videoIcon}>
-                   <Ionicons name="play-circle" size={32} color="#fb923c" />
-                 </View>
-                 <View style={styles.videoInfo}>
-                   <Text style={styles.videoTitle}>{video.title}</Text>
-                   {video.description && (
-                     <Text style={styles.videoDescription} numberOfLines={2}>
-                       {video.description}
-                     </Text>
-                   )}
-                 </View>
-               </View>
-               <View style={styles.videoStats}>
-                 <View style={styles.statItem}>
-                   <Ionicons name="time" size={16} color="#6b7280" />
-                   <Text style={styles.statText}>{formatDuration(video.duration)}</Text>
-                 </View>
-                 <View style={styles.statItem}>
-                   <Ionicons name="eye" size={16} color="#6b7280" />
-                   <Text style={styles.statText}>{video.views} views</Text>
-                 </View>
-                 {video.isYouTubeVideo && (
-                   <View style={styles.statItem}>
-                     <Ionicons name="logo-youtube" size={16} color="#ef4444" />
-                     <Text style={styles.statText}>YouTube</Text>
-                   </View>
-                 )}
-               </View>
-             </TouchableOpacity>
-           ))}
-         </ScrollView>
-       )}
-     </View>
-   );
- }
+      {activeSubTab === 'live-sessions' && (
+        <>
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={20} color={TEACHER.textMuted} style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search live sessions..."
+              value={sessionSearchTerm}
+              onChangeText={setSessionSearchTerm}
+              placeholderTextColor={TEACHER.textMuted}
+            />
+          </View>
+
+          {isLoadingSessions ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={TEACHER.primary} />
+            </View>
+          ) : filteredSessions.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="radio-outline" size={64} color="#d1d5db" />
+              <Text style={styles.emptyText}>No live sessions found</Text>
+            </View>
+          ) : (
+            <View style={styles.listSection}>
+              {filteredSessions.map((session) => (
+                <View key={session._id} style={styles.sessionCard}>
+                  <View style={styles.sessionCardHeader}>
+                    <Text style={styles.sessionTitle}>{session.title || 'Untitled Session'}</Text>
+                    <View
+                      style={[
+                        styles.sessionStatusBadge,
+                        { backgroundColor: getStatusColor(session.status) + '20' },
+                      ]}
+                    >
+                      <Text
+                        style={[styles.sessionStatusText, { color: getStatusColor(session.status) }]}
+                      >
+                        {session.status}
+                      </Text>
+                    </View>
+                  </View>
+                  {session.description ? (
+                    <Text style={styles.sessionDescription}>{session.description}</Text>
+                  ) : null}
+                  <View style={styles.sessionDetails}>
+                    {session.streamer ? (
+                      <View style={styles.detailRow}>
+                        <Ionicons name="person" size={16} color={TEACHER.textMuted} />
+                        <Text style={styles.detailText}>
+                          {session.streamer.fullName || session.streamer.email}
+                        </Text>
+                      </View>
+                    ) : null}
+                    {session.viewerCount !== undefined ? (
+                      <View style={styles.detailRow}>
+                        <Ionicons name="eye" size={16} color={TEACHER.textMuted} />
+                        <Text style={styles.detailText}>{session.viewerCount} viewers</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  {(session.status === 'live' || session.status === 'Live') &&
+                  (session.hlsUrl || session.playbackUrl || session.streamUrl) ? (
+                    <TouchableOpacity
+                      style={styles.watchLiveBtn}
+                      onPress={() => {
+                        const url = session.hlsUrl || session.playbackUrl || session.streamUrl;
+                        Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open stream.'));
+                      }}
+                    >
+                      <Ionicons name="radio" size={16} color={TEACHER.textOnPrimary} />
+                      <Text style={styles.watchLiveText}>Watch Live</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              ))}
+            </View>
+          )}
+        </>
+      )}
+      </ScrollView>
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-    minHeight: 0,
-  },
+  container: { flex: 1, backgroundColor: TEACHER.bg },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: TEACHER.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: TEACHER.surfaceBorder,
+    gap: 12,
   },
-  headerLeft: {
+  headerIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: TEACHER.surfaceElevated,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: { ...TEACHER_TYPO.section, color: TEACHER.primaryLight },
+  headerSubtitle: { fontSize: 14, color: TEACHER.textMuted },
+  subTabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: TEACHER.surface,
+    padding: 8,
+    margin: 20,
+    marginBottom: 0,
+    borderRadius: TEACHER_RADIUS.lg,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
+  },
+  subTab: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    flex: 1,
+    justifyContent: 'center',
+    padding: 12,
+    borderRadius: TEACHER_RADIUS.sm,
+    backgroundColor: TEACHER.surfaceElevated,
+    gap: 8,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#111827',
+  subTabActive: {
+    backgroundColor: TEACHER.navActiveBg,
+    borderWidth: 1,
+    borderColor: TEACHER.primary,
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
+  subTabText: { fontSize: 14, fontWeight: '600', color: TEACHER.textMuted },
+  subTabTextActive: { color: TEACHER.primaryLight },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: TEACHER.surface,
     margin: 20,
     marginBottom: 0,
     paddingHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: TEACHER_RADIUS.lg,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: TEACHER.surfaceBorder,
   },
-  searchIcon: {
-    marginRight: 12,
-  },
-  searchInput: {
-    flex: 1,
-    height: 48,
-    fontSize: 16,
-    color: '#111827',
-  },
-  list: {
-    flex: 1,
-  },
-  listContent: {
-    padding: 20,
-    gap: 16,
-  },
-  videoCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  videoHeader: {
+  searchIcon: { marginRight: 12 },
+  searchInput: { flex: 1, height: 48, fontSize: 16, color: TEACHER.text },
+  scroll: { flex: 1 },
+  scrollContent: { paddingBottom: 120 },
+  listSection: { padding: 20, gap: 16 },
+  sessionCard: { ...glassCard, borderRadius: TEACHER_RADIUS.lg, padding: 16 },
+  sessionCardHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
   },
-  videoIcon: {
-    marginRight: 12,
-  },
-  videoInfo: {
-    flex: 1,
-  },
-  videoTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  videoDescription: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  videoStats: {
-    flexDirection: 'row',
-    gap: 16,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-  },
-  statItem: {
+  sessionTitle: { fontSize: 18, fontWeight: '700', color: TEACHER.text, flex: 1 },
+  sessionStatusBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
+  sessionStatusText: { fontSize: 12, fontWeight: '600', textTransform: 'capitalize' },
+  sessionDescription: { fontSize: 14, color: TEACHER.textMuted, marginBottom: 12 },
+  watchLiveBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
+    backgroundColor: TEACHER.danger,
+    padding: 12,
+    borderRadius: TEACHER_RADIUS.md,
+    marginTop: 8,
   },
-  statText: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginTop: 16,
-  },
- });
+  watchLiveText: { color: TEACHER.textOnPrimary, fontWeight: '700', fontSize: 14 },
+  sessionDetails: { gap: 8 },
+  detailRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  detailText: { fontSize: 14, color: TEACHER.textMuted },
+  loadingContainer: { minHeight: 240, justifyContent: 'center', alignItems: 'center' },
+  emptyContainer: { minHeight: 240, justifyContent: 'center', alignItems: 'center', padding: 40 },
+  emptyText: { fontSize: 18, fontWeight: '700', color: TEACHER.text, marginTop: 16 },
+});

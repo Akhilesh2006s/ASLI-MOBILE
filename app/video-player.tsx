@@ -1,16 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Video, ResizeMode } from 'expo-av';
-import { WebView } from 'react-native-webview';
 import api from '../src/services/api/api';
-import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
+import YouTubeEmbedWebView from '../src/components/shared/YouTubeEmbedWebView';
+import { useBackNavigation, useContentViewerBack } from '../src/hooks/useBackNavigation';
 import {
+  extractYouTubeId,
   getAuthHeaders,
-  getYoutubeEmbedUrl,
+  getYoutubeWatchUrl,
   resolveContentUrl,
 } from '../src/utils/contentPreview';
 
@@ -79,13 +80,15 @@ export default function VideoPlayer() {
     videoId?: string | string[];
     isContentItem?: string;
     contentData?: string;
+    returnTo?: string | string[];
   }>();
   const videoId = pickParam(params.videoId);
+  const returnTo = pickParam(params.returnTo);
   const { isContentItem, contentData } = params;
   const [video, setVideo] = useState<Video | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'notes' | 'mindmap' | 'qa'>('notes');
-  const [dashboardPath, setDashboardPath] = useState<string>('/dashboard');
+  const goBack = useContentViewerBack(returnTo || undefined);
   const [isPlaying, setIsPlaying] = useState(false);
   const [videoHeaders, setVideoHeaders] = useState<Record<string, string> | undefined>();
   const videoRef = useRef<Video>(null);
@@ -132,12 +135,7 @@ export default function VideoPlayer() {
       
       fetchVideo();
     }
-    getDashboardPath().then(path => {
-      if (path) setDashboardPath(path);
-    });
   }, [videoId, isContentItem, contentData]);
-
-  useBackNavigation(dashboardPath, false);
 
   const fetchVideo = async () => {
     if (!videoId) return;
@@ -221,7 +219,7 @@ export default function VideoPlayer() {
           <Text style={styles.errorText}>Video not found</Text>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => router.replace(dashboardPath)}
+            onPress={() => void goBack()}
           >
             <Text style={styles.backButtonText}>Go Back</Text>
           </TouchableOpacity>
@@ -230,7 +228,14 @@ export default function VideoPlayer() {
     );
   }
 
-  const youtubeEmbedUrl = getYoutubeEmbedUrl((video.youtubeUrl || video.videoUrl || '').trim());
+  const youtubeSourceUrl = (video.youtubeUrl || video.videoUrl || '').trim();
+  const youtubeVideoId = extractYouTubeId(youtubeSourceUrl);
+  const isYouTube = !!youtubeVideoId || !!video.isYouTubeVideo;
+
+  const openInYouTube = () => {
+    if (!youtubeVideoId) return;
+    Linking.openURL(getYoutubeWatchUrl(youtubeVideoId)).catch(() => {});
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -240,7 +245,7 @@ export default function VideoPlayer() {
         style={styles.header}
       >
         <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => router.replace(dashboardPath)} style={styles.backButton}>
+          <TouchableOpacity onPress={() => void goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
           <View style={styles.headerText}>
@@ -267,17 +272,12 @@ export default function VideoPlayer() {
 
       {/* Video Player */}
       <View style={styles.videoContainer}>
-        {youtubeEmbedUrl ? (
+        {isYouTube && youtubeSourceUrl ? (
           <View style={styles.videoWrapper}>
-            <WebView
-              source={{ uri: youtubeEmbedUrl }}
-              style={styles.video}
-              allowsFullscreenVideo
-              allowsInlineMediaPlayback
-              mediaPlaybackRequiresUserAction={false}
-              javaScriptEnabled
-              domStorageEnabled
-            />
+            <YouTubeEmbedWebView videoUrl={youtubeSourceUrl} style={styles.video} />
+            <TouchableOpacity style={styles.openYoutubeButton} onPress={openInYouTube}>
+              <Text style={styles.openYoutubeText}>Open in YouTube</Text>
+            </TouchableOpacity>
           </View>
         ) : isDirectVideo ? (
           <View style={styles.videoWrapper}>
@@ -466,6 +466,20 @@ const styles = StyleSheet.create({
   videoWrapper: {
     flex: 1,
     backgroundColor: '#000',
+  },
+  openYoutubeButton: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  openYoutubeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   video: {
     width: '100%',

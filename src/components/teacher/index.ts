@@ -9,4 +9,5 @@ export type { ChipItem } from './SubNavChips';
 export { default as TeacherClassCard } from './TeacherClassCard';
 export type { ClassCardStudent } from './TeacherClassCard';
 export { default as WeeklyTimetableGrid } from './WeeklyTimetableGrid';
+export { default as TimetableView } from './TimetableView';
 export { default as StudentListCard } from './StudentListCard';

@@ -72,6 +72,19 @@ export function SvgIconBook({ size = 22, color = '#047857' }: IconProps) {
   );
 }
 
+/** Book with bookmark — daily diary (matches web BookMarked) */
+export function SvgIconBookMarked({ size = 22, color = '#4338ca' }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" accessibilityRole="image">
+      <Path
+        fill={color}
+        d="M6 2c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12V4H6V2zm0 4h10v12H6V6zm12 0h2v14h-2V6z"
+      />
+      <Path fill={color} d="M14 2v4h4L14 2z" />
+    </Svg>
+  );
+}
+
 /** Trash — delete */
 export function SvgIconTrash({ size = 22, color = '#b91c1c' }: IconProps) {
   return (

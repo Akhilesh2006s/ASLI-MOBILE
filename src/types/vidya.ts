@@ -7,7 +7,7 @@ export interface VidyaMessage {
   type?: 'text' | 'voice' | 'image';
 }
 
-export type VidyaChatRole = 'teacher' | 'student';
+export type VidyaChatRole = 'teacher' | 'student' | 'admin';
 
 export type TeachingTab = 'lesson' | 'quiz' | 'help';
 
@@ -49,4 +49,8 @@ export interface UseVidyaChatResult {
   todayFocusReason?: string;
   studyStreakMessage?: string;
   proactivePrompt?: string;
+  clearChat?: () => void;
+  isClearingChat?: boolean;
+  isDatabaseBackedAssistant?: boolean;
+  lastControlLatencyMs?: number | null;
 }

@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as SecureStore from 'expo-secure-store';
-import { API_BASE_URL } from '../../../src/lib/api-config';
+import adminService from '../../../src/services/api/adminService';
 
 interface Assessment {
   _id: string;
@@ -46,17 +45,8 @@ export default function AssessmentsView() {
 
   const fetchSubjects = async () => {
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/subjects`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setSubjects(data.subjects || data.data || []);
-      }
+      const data = await adminService.getSubjects();
+      setSubjects(data?.data || data?.subjects || data || []);
     } catch (error) {
       console.error('Failed to fetch subjects:', error);
     }
@@ -65,17 +55,8 @@ export default function AssessmentsView() {
   const fetchAssessments = async () => {
     try {
       setIsLoading(true);
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/admin/assessments`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setAssessments(data.data || data || []);
-      }
+      const data = await adminService.getAssessments();
+      setAssessments(data?.data || data || []);
     } catch (error) {
       console.error('Failed to fetch assessments:', error);
     } finally {
@@ -90,34 +71,21 @@ export default function AssessmentsView() {
     }
 
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/admin/assessments`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(newAssessment)
+      await adminService.createAssessment(newAssessment);
+      Alert.alert('Success', 'Assessment created successfully');
+      setIsCreateModalOpen(false);
+      setNewAssessment({
+        title: '',
+        description: '',
+        subject: '',
+        type: 'quiz',
+        difficulty: 'medium',
+        duration: 60,
+        totalMarks: 100,
+        passingMarks: 50,
+        questions: 20,
       });
-
-      if (response.ok) {
-        Alert.alert('Success', 'Assessment created successfully');
-        setIsCreateModalOpen(false);
-        setNewAssessment({
-          title: '',
-          description: '',
-          subject: '',
-          type: 'quiz',
-          difficulty: 'medium',
-          duration: 60,
-          totalMarks: 100,
-          passingMarks: 50,
-          questions: 20
-        });
-        fetchAssessments();
-      } else {
-        Alert.alert('Error', 'Failed to create assessment');
-      }
+      fetchAssessments();
     } catch (error) {
       console.error('Failed to create assessment:', error);
       Alert.alert('Error', 'An error occurred');
@@ -135,22 +103,12 @@ export default function AssessmentsView() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const token = await SecureStore.getItemAsync('authToken');
-              const response = await fetch(`${API_BASE_URL}/api/admin/assessments/${id}`, {
-                method: 'DELETE',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json'
-                }
-              });
-
-              if (response.ok) {
-                fetchAssessments();
-              }
+              await adminService.deleteAssessment(id);
+              fetchAssessments();
             } catch (error) {
               console.error('Failed to delete assessment:', error);
             }
-          }
+          },
         }
       ]
     );

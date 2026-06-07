@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, RefreshControl, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { Easing, SlideInRight, SlideOutLeft } from 'react-native-reanimated';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import authService from '../../src/services/api/authService';
 import { useAuth } from '../../src/context/AuthContext';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
@@ -30,6 +30,7 @@ const TABS: StudentTab[] = [
 
 export default function StudentDashboard() {
   const { signOut } = useAuth();
+  const { tab } = useLocalSearchParams<{ tab?: string }>();
   const [activeTab, setActiveTab] = useState<TabId>('home');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -43,6 +44,10 @@ export default function StudentDashboard() {
   useEffect(() => {
     checkAuth();
   }, []);
+
+  useEffect(() => {
+    if (tab === 'eduott') setActiveTab('eduott');
+  }, [tab]);
 
   const firstName = useMemo(
     () => user?.fullName?.split(' ')[0] || user?.email?.split('@')[0] || 'Student',

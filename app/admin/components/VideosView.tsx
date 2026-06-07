@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as SecureStore from 'expo-secure-store';
-import { API_BASE_URL } from '../../../src/lib/api-config';
+import adminService from '../../../src/services/api/adminService';
 
 interface Video {
   _id: string;
@@ -48,17 +47,8 @@ export default function VideosView() {
 
   const fetchSubjects = async () => {
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/subjects`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setSubjects(data.subjects || data.data || []);
-      }
+      const data = await adminService.getSubjects();
+      setSubjects(data?.data || data?.subjects || data || []);
     } catch (error) {
       console.error('Failed to fetch subjects:', error);
     }
@@ -67,17 +57,8 @@ export default function VideosView() {
   const fetchVideos = async () => {
     try {
       setIsLoading(true);
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/admin/videos`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setVideos(data.data || data || []);
-      }
+      const data = await adminService.getVideos();
+      setVideos(data?.data || data || []);
     } catch (error) {
       console.error('Failed to fetch videos:', error);
     } finally {
@@ -92,38 +73,25 @@ export default function VideosView() {
     }
 
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/admin/videos`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ...newVideo,
-          subjectId: newVideo.subject
-        })
+      await adminService.createVideo({
+        ...newVideo,
+        subjectId: newVideo.subject,
       });
-
-      if (response.ok) {
-        Alert.alert('Success', 'Video created successfully');
-        setIsCreateModalOpen(false);
-        setNewVideo({
-          title: '',
-          description: '',
-          subject: '',
-          subjectId: '',
-          duration: 30,
-          videoUrl: '',
-          youtubeUrl: '',
-          isYouTubeVideo: false,
-          difficulty: 'medium',
-          language: 'English'
-        });
-        fetchVideos();
-      } else {
-        Alert.alert('Error', 'Failed to create video');
-      }
+      Alert.alert('Success', 'Video created successfully');
+      setIsCreateModalOpen(false);
+      setNewVideo({
+        title: '',
+        description: '',
+        subject: '',
+        subjectId: '',
+        duration: 30,
+        videoUrl: '',
+        youtubeUrl: '',
+        isYouTubeVideo: false,
+        difficulty: 'medium',
+        language: 'English',
+      });
+      fetchVideos();
     } catch (error) {
       console.error('Failed to create video:', error);
       Alert.alert('Error', 'An error occurred');
@@ -141,23 +109,13 @@ export default function VideosView() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const token = await SecureStore.getItemAsync('authToken');
-              const response = await fetch(`${API_BASE_URL}/api/admin/videos/${id}`, {
-                method: 'DELETE',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json'
-                }
-              });
-
-              if (response.ok) {
-                fetchVideos();
-              }
+              await adminService.deleteVideo(id);
+              fetchVideos();
             } catch (error) {
               console.error('Failed to delete video:', error);
             }
-          }
-        }
+          },
+        },
       ]
     );
   };

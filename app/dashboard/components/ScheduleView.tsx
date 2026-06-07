@@ -3,9 +3,11 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
-import CalendarView from './CalendarView';
+import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
+import { filterContentsBySchoolProgram } from '../../../src/lib/school-program';
 
 export default function ScheduleView() {
+  const { isAsliPrepExclusive } = useSchoolProgram();
   const [incompleteContent, setIncompleteContent] = useState<any[]>([]);
   const [incompleteQuizzes, setIncompleteQuizzes] = useState<any[]>([]);
   const [completedScheduleIds, setCompletedScheduleIds] = useState<Set<string>>(new Set());
@@ -13,7 +15,7 @@ export default function ScheduleView() {
 
   useEffect(() => {
     fetchScheduleItems();
-  }, []);
+  }, [isAsliPrepExclusive]);
 
   const fetchScheduleItems = async () => {
     try {
@@ -37,7 +39,10 @@ export default function ScheduleView() {
 
       if (contentRes.ok) {
         const contentData = await contentRes.json();
-        const allContent = contentData.data || contentData || [];
+        const allContent = filterContentsBySchoolProgram(
+          contentData.data || contentData || [],
+          isAsliPrepExclusive
+        );
         const incomplete = allContent.filter((content: any) => {
           const contentId = content._id || content.id;
           return !completedScheduleIds.has(contentId);

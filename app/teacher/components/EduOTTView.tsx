@@ -9,6 +9,7 @@ import { openContentPreview } from '../../../src/utils/openContentPreview';
 import EduOTTVideoCard from '../../../src/components/eduott/EduOTTVideoCard';
 import { resolveContentDurationSeconds } from '../../../src/utils/eduottVideoUtils';
 import { extractPlainSubjectName, getSubjectClassLabel } from '../../../src/lib/subject-names';
+import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
 
 type EduOTTSubTab = 'videos' | 'live-sessions';
 
@@ -29,6 +30,7 @@ interface EduVideo {
 }
 
 export default function EduOTTView() {
+  const { isAsliPrepExclusive } = useSchoolProgram();
   const [activeSubTab, setActiveSubTab] = useState<EduOTTSubTab>('videos');
   const [selectedClass, setSelectedClass] = useState('all');
   const [videos, setVideos] = useState<EduVideo[]>([]);
@@ -46,11 +48,16 @@ export default function EduOTTView() {
 
   useEffect(() => {
     if (activeSubTab === 'videos') {
-      fetchVideos();
+      if (isAsliPrepExclusive) {
+        fetchVideos();
+      } else {
+        setVideos([]);
+        setIsLoading(false);
+      }
     } else if (activeSubTab === 'live-sessions') {
       fetchLiveSessions();
     }
-  }, [activeSubTab, selectedSubject]);
+  }, [activeSubTab, selectedSubject, isAsliPrepExclusive]);
 
   const fetchTeacherSubjects = async () => {
     try {
@@ -143,13 +150,17 @@ export default function EduOTTView() {
 
 
   const handlePlayVideo = (video: EduVideo) => {
-    openContentPreview(router, {
-      _id: video._id,
-      title: video.title,
-      type: 'Video',
-      fileUrl: video.videoUrl || video.fileUrl,
-      youtubeUrl: video.youtubeUrl,
-    });
+    openContentPreview(
+      router,
+      {
+        _id: video._id,
+        title: video.title,
+        type: 'Video',
+        fileUrl: video.videoUrl || video.fileUrl,
+        youtubeUrl: video.youtubeUrl,
+      },
+      { returnTo: 'eduott' }
+    );
   };
 
   const getStatusColor = (status: string) => {
@@ -164,6 +175,12 @@ export default function EduOTTView() {
 
   return (
     <View style={styles.container}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerIcon}>
@@ -220,11 +237,15 @@ export default function EduOTTView() {
             <View style={styles.emptyContainer}>
               <Ionicons name="play-outline" size={64} color="#d1d5db" />
               <Text style={styles.emptyText}>
-                {searchTerm ? 'No videos match your search' : 'No videos found'}
+                {!isAsliPrepExclusive
+                  ? 'Videos are available for Asli Prep schools only.'
+                  : searchTerm
+                    ? 'No videos match your search'
+                    : 'No videos found'}
               </Text>
             </View>
           ) : (
-            <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+            <View style={styles.listSection}>
               {filteredVideos.map((video, index) => (
                 <Animated.View key={video._id} entering={FadeInDown.duration(350).delay(Math.min(index * 60, 480))}>
                   <EduOTTVideoCard
@@ -246,7 +267,7 @@ export default function EduOTTView() {
                   />
                 </Animated.View>
               ))}
-            </ScrollView>
+            </View>
           )}
         </>
       )}
@@ -275,7 +296,7 @@ export default function EduOTTView() {
               <Text style={styles.emptyText}>No live sessions found</Text>
             </View>
           ) : (
-            <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+            <View style={styles.listSection}>
               {filteredSessions.map((session) => (
                 <View key={session._id} style={styles.sessionCard}>
                   <View style={styles.sessionCardHeader}>
@@ -320,11 +341,12 @@ export default function EduOTTView() {
                   ) : null}
                 </View>
               ))}
-            </ScrollView>
+            </View>
           )}
         </>
       )}
 
+      </ScrollView>
     </View>
   );
 }
@@ -359,8 +381,9 @@ const styles = StyleSheet.create({
   },
   searchIcon: { marginRight: 12 },
   searchInput: { flex: 1, height: 48, fontSize: 16, color: TEACHER.text },
-  list: { flex: 1 },
-  listContent: { padding: 20, paddingBottom: 120, gap: 16 },
+  scroll: { flex: 1 },
+  scrollContent: { paddingBottom: 120 },
+  listSection: { padding: 20, gap: 16 },
   sessionCard: { ...glassCard, borderRadius: TEACHER_RADIUS.lg, padding: 16 },
   sessionCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   sessionTitle: { fontSize: 18, fontWeight: '700', color: TEACHER.text, flex: 1 },
@@ -375,8 +398,8 @@ const styles = StyleSheet.create({
   sessionDetails: { gap: 8 },
   detailRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   detailText: { fontSize: 14, color: TEACHER.textMuted },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
+  loadingContainer: { minHeight: 240, justifyContent: 'center', alignItems: 'center' },
+  emptyContainer: { minHeight: 240, justifyContent: 'center', alignItems: 'center', padding: 40 },
   emptyText: { fontSize: 18, fontWeight: '700', color: TEACHER.text, marginTop: 16 },
   modalContainer: { flex: 1, backgroundColor: TEACHER.bg },
   modalHeader: {

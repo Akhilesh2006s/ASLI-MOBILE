@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { BackHandler } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
@@ -42,6 +42,70 @@ export function useBackNavigation(dashboardPath: string, preventBack: boolean = 
   }, [dashboardPath, preventBack, router]);
 }
 
+export type ContentReturnTarget = 'eduott' | 'learning';
+
+function dashboardPathForRole(role: string | null): string {
+  if (role === 'admin') return '/admin/dashboard';
+  if (role === 'teacher') return '/teacher/dashboard';
+  return '/dashboard';
+}
+
+/**
+ * Navigate to a dashboard section (EduOTT or Learning Paths).
+ */
+export function navigateToDashboardSection(
+  router: ReturnType<typeof useRouter>,
+  returnTo: ContentReturnTarget
+) {
+  SecureStore.getItemAsync('userRole').then((role) => {
+    const pathname = dashboardPathForRole(role);
+    if (returnTo === 'eduott') {
+      router.replace({ pathname, params: { tab: 'eduott' } });
+      return;
+    }
+    const tab = role === 'student' ? 'learning' : 'learning-paths';
+    router.replace({ pathname, params: { tab } });
+  });
+}
+
+/** @deprecated use navigateToDashboardSection */
+export function navigateToEduOTTDashboard(router: ReturnType<typeof useRouter>) {
+  navigateToDashboardSection(router, 'eduott');
+}
+
+/**
+ * Back navigation for video-player, drive-viewer, and similar content screens.
+ */
+export function useContentViewerBack(returnTo?: string) {
+  const router = useRouter();
+
+  const goBack = useCallback(async () => {
+    if (returnTo === 'eduott') {
+      navigateToDashboardSection(router, 'eduott');
+      return;
+    }
+    if (returnTo === 'learning') {
+      navigateToDashboardSection(router, 'learning');
+      return;
+    }
+    const path = await getDashboardPath();
+    router.replace(path || '/dashboard');
+  }, [returnTo, router]);
+
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      void goBack();
+      return true;
+    });
+    return () => backHandler.remove();
+  }, [goBack]);
+
+  return goBack;
+}
+
+/** @deprecated use useContentViewerBack */
+export const useVideoPlayerBack = useContentViewerBack;
+
 /**
  * Helper function to get dashboard path based on user role
  */
@@ -66,5 +130,3 @@ export async function getDashboardPath(): Promise<string | null> {
     return null;
   }
 }
-
-

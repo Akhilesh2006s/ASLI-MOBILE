@@ -19,6 +19,8 @@ import {
   isVideoContent,
   type LearningPathContentItem,
 } from '../../src/lib/learningPathContent';
+import { useSchoolProgram } from '../../src/hooks/useSchoolProgram';
+import { filterContentsBySchoolProgram } from '../../src/lib/school-program';
 
 function pickParam(v: string | string[] | undefined): string {
   if (v == null) return '';
@@ -28,6 +30,7 @@ function pickParam(v: string | string[] | undefined): string {
 
 export default function SubjectContent() {
   const router = useRouter();
+  const { isAsliPrepExclusive } = useSchoolProgram();
   const { id: idRaw } = useLocalSearchParams<{ id?: string | string[] }>();
   const id = pickParam(idRaw);
   const [subject, setSubject] = useState<any>(null);
@@ -52,14 +55,15 @@ export default function SubjectContent() {
         params: { subject: id },
       });
       const raw = contentRes.data?.data ?? contentRes.data;
-      setContent(Array.isArray(raw) ? raw : []);
+      const list = Array.isArray(raw) ? raw : [];
+      setContent(filterContentsBySchoolProgram(list, isAsliPrepExclusive));
     } catch (error) {
       console.error('Error fetching subject data:', error);
       setContent([]);
     } finally {
       setIsLoading(false);
     }
-  }, [id]);
+  }, [id, isAsliPrepExclusive]);
 
   useEffect(() => {
     if (id) {

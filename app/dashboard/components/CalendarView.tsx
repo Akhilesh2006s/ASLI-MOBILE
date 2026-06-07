@@ -5,6 +5,8 @@ import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { router } from 'expo-router';
 import { openContentPreview } from '../../../src/utils/openContentPreview';
+import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
+import { filterContentsBySchoolProgram } from '../../../src/lib/school-program';
 
 interface ContentItem {
   _id: string;
@@ -12,8 +14,8 @@ interface ContentItem {
   description?: string;
   type: 'TextBook' | 'Workbook' | 'Material' | 'Video' | 'Audio' | 'Homework';
   fileUrl: string;
-  date: string;
-  createdAt: string;
+  date: string | Date;
+  createdAt: string | Date;
   deadline?: string;
   subject?: {
     _id: string;
@@ -34,6 +36,7 @@ interface CalendarViewProps {
 }
 
 export default function CalendarView({ contents: propContents, onMarkAsDone, completedItems = [] }: CalendarViewProps) {
+  const { isAsliPrepExclusive } = useSchoolProgram();
   const [contents, setContents] = useState<ContentItem[]>(propContents || []);
   const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
   const [markedDone, setMarkedDone] = useState<Set<string>>(new Set(completedItems));
@@ -45,10 +48,12 @@ export default function CalendarView({ contents: propContents, onMarkAsDone, com
   const [submissionDescription, setSubmissionDescription] = useState('');
 
   useEffect(() => {
-    if (!propContents || propContents.length === 0) {
-      fetchContents();
+    if (propContents && propContents.length > 0) {
+      setContents(filterContentsBySchoolProgram(propContents, isAsliPrepExclusive));
+      return;
     }
-  }, []);
+    fetchContents();
+  }, [isAsliPrepExclusive, propContents]);
 
   const fetchContents = async () => {
     try {
@@ -62,7 +67,9 @@ export default function CalendarView({ contents: propContents, onMarkAsDone, com
 
       if (response.ok) {
         const data = await response.json();
-        setContents(data.data || data || []);
+        setContents(
+          filterContentsBySchoolProgram(data.data || data || [], isAsliPrepExclusive)
+        );
       }
     } catch (error) {
       console.error('Failed to fetch contents:', error);
@@ -101,9 +108,9 @@ export default function CalendarView({ contents: propContents, onMarkAsDone, com
     sortedContents.forEach(content => {
       let contentDate: Date;
       if (content.date) {
-        contentDate = content.date instanceof Date ? content.date : new Date(content.date);
+        contentDate = new Date(content.date);
       } else if (content.createdAt) {
-        contentDate = content.createdAt instanceof Date ? content.createdAt : new Date(content.createdAt);
+        contentDate = new Date(content.createdAt);
       } else {
         return;
       }

@@ -31,6 +31,10 @@ import {
 import { StudentHomeHeader } from '../../../src/components/student';
 import TeacherDiaryFeed from '../../../src/components/student/TeacherDiaryFeed';
 import { STUDENT } from '../../../src/theme/student';
+import {
+  filterContentsBySchoolProgram,
+  resolveIsAsliPrepExclusive,
+} from '../../../src/lib/school-program';
 
 /** Web-parity home modules only — no RemarksView/DigitalLibrary extras */
 
@@ -114,6 +118,16 @@ const OverviewView = memo(function OverviewView({ user, onGoExams, onGoProfile, 
 
       clearTimeout(timeoutId);
 
+      let isAsliPrepExclusive = false;
+      if (meRes.ok) {
+        const meData = await meRes.json();
+        isAsliPrepExclusive = resolveIsAsliPrepExclusive(meData?.user);
+        const backendOverall = meData?.user?.overallProgress;
+        if (backendOverall !== undefined && backendOverall !== null) {
+          setOverallProgress(Number(backendOverall) || 0);
+        }
+      }
+
       let examsData: any[] = [];
       if (examsRes.ok) {
         const examsJson = await examsRes.json();
@@ -131,14 +145,6 @@ const OverviewView = memo(function OverviewView({ user, onGoExams, onGoProfile, 
       if (rankingsRes.ok) {
         const rankingsJson = await rankingsRes.json();
         rankingsData = rankingsJson.data || rankingsJson.rankings || rankingsJson || [];
-      }
-
-      if (meRes.ok) {
-        const meData = await meRes.json();
-        const backendOverall = meData?.user?.overallProgress;
-        if (backendOverall !== undefined && backendOverall !== null) {
-          setOverallProgress(Number(backendOverall) || 0);
-        }
       }
 
       // Calculate stats
@@ -232,7 +238,10 @@ const OverviewView = memo(function OverviewView({ user, onGoExams, onGoProfile, 
             );
             if (contentResponse.ok) {
               const contentData = await contentResponse.json();
-              const contents = contentData.data || contentData || [];
+              const contents = filterContentsBySchoolProgram(
+                contentData.data || contentData || [],
+                isAsliPrepExclusive
+              );
               const totalContent = contents.length;
               learningPathProgress = totalContent > 0 ? Math.round((completedIds.length / totalContent) * 100) : 0;
             }
@@ -337,7 +346,10 @@ const OverviewView = memo(function OverviewView({ user, onGoExams, onGoProfile, 
 
       if (contentRes.ok) {
         const contentData = await contentRes.json();
-        const allContent = contentData.data || contentData || [];
+        const allContent = filterContentsBySchoolProgram(
+          contentData.data || contentData || [],
+          isAsliPrepExclusive
+        );
         setScheduleAllContent(allContent);
         const completedContentIds = await collectCompletedContentIds(subjectIds);
         const slicedContent = buildTodaysTasksContentList(

@@ -4,9 +4,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import teacherService from '../../../src/services/api/teacherService';
-import { SubNavChips, TeacherShimmer, TeacherClassCard } from '../../../src/components/teacher';
+import {
+  SubNavChips,
+  TeacherShimmer,
+  TeacherClassCard,
+  TimetableView,
+} from '../../../src/components/teacher';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO } from '../../../src/theme/teacher';
-import TimetableView from './TimetableView';
 import ScheduleCalendarView from './ScheduleCalendarView';
 
 type ClassesSubTab = 'classes' | 'timetable' | 'schedule';

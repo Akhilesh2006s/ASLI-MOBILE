@@ -5,6 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import {
   SvgCheckbox,
   SvgIconBook,
+  SvgIconBookMarked,
   SvgIconCertificate,
   SvgIconClose,
   SvgIconPeople,
@@ -12,6 +13,7 @@ import {
   SvgIconSchool,
   SvgIconTrash,
 } from './TeachersCardIcons';
+import AdminTeacherDailyModal from './AdminTeacherDailyModal';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../../src/services/api/api';
 
@@ -38,11 +40,47 @@ interface SubjectOption {
 interface ClassOption {
   id: string;
   name: string;
+  classNumber?: string;
+  section?: string;
   subjectLabel: string;
+  assignedSubjects?: any[];
   schedule: string;
   room: string;
   studentCount: number;
 }
+
+const resolveAssignedClass = (classId: string, classList: ClassOption[]) => {
+  const id = String(classId);
+  return classList.find(
+    (c) =>
+      c.id === id ||
+      c.classNumber === id ||
+      `${c.classNumber ?? ''}${c.section ?? ''}` === id
+  );
+};
+
+const getClassSubjectLine = (classItem: ClassOption | undefined, teacherSubjects: any[] = []) => {
+  if (!classItem) return '';
+  const teacherIdSet = new Set(
+    teacherSubjects.map((s) => String(s?._id || s?.id || '')).filter(Boolean)
+  );
+  const fromClass = (classItem.assignedSubjects ?? []).filter((sub) => {
+    if (!sub) return false;
+    const sid = String(sub.id || sub._id || '');
+    return teacherIdSet.size === 0 || !sid || teacherIdSet.has(sid);
+  });
+  const labels = (
+    fromClass.length > 0
+      ? fromClass.map((s) => s.name || s.code || '').filter(Boolean)
+      : teacherSubjects.map((s) => s?.name || s?.title || '').filter(Boolean)
+  );
+  const unique = Array.from(new Set(labels));
+  if (unique.length > 0) return unique.join(', ');
+  if (classItem.subjectLabel && classItem.subjectLabel !== 'General') {
+    return classItem.subjectLabel;
+  }
+  return '';
+};
 
 export default function TeachersView() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -75,6 +113,7 @@ export default function TeachersView() {
   const [selectedSubjectIds, setSelectedSubjectIds] = useState<string[]>([]);
   const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
   const [assignSubmitting, setAssignSubmitting] = useState(false);
+  const [dailyDialogTeacher, setDailyDialogTeacher] = useState<Teacher | null>(null);
 
   useEffect(() => {
     fetchTeachers();
@@ -237,12 +276,19 @@ export default function TeachersView() {
       setClassesList(
         (Array.isArray(classesData) ? classesData : []).map((cls: any) => ({
           id: String(cls._id || cls.id || ''),
-          name: cls.name || `${cls.classNumber ?? ''}${cls.section ? `-${cls.section}` : ''}`,
+          name:
+            cls.name ||
+            (cls.classNumber
+              ? `Class ${cls.classNumber}${cls.section ? `-${cls.section}` : ''}`
+              : 'Class'),
+          classNumber: cls.classNumber ? String(cls.classNumber) : undefined,
+          section: cls.section ? String(cls.section) : undefined,
           subjectLabel:
             typeof cls.subject === 'object' && cls.subject !== null
               ? String((cls.subject as { name?: string }).name ?? '')
               : String(cls.subject ?? 'General'),
-          schedule: cls.schedule || '—',
+          assignedSubjects: cls.assignedSubjects || [],
+          schedule: cls.schedule || 'Mon-Fri 9:00 AM',
           room: cls.room || (cls.classNumber ? `Room ${cls.classNumber}${cls.section || ''}` : '—'),
           studentCount: cls.students?.length || cls.studentCount || 0,
         })),
@@ -296,6 +342,20 @@ export default function TeachersView() {
       setAssignSubmitting(false);
     }
   };
+
+  const getAssignedClassOptions = useCallback(
+    (teacher: Teacher) =>
+      (teacher.assignedClassIds || []).map((classId) => {
+        const classItem = resolveAssignedClass(classId, classesList);
+        const label = classItem?.name
+          ? classItem.name
+          : classItem?.classNumber
+            ? `Class ${classItem.classNumber}${classItem.section ? ` - ${classItem.section}` : ''}`
+            : `Class ${classId}`;
+        return { id: String(classItem?.id ?? classId), label };
+      }),
+    [classesList]
+  );
 
   const handleAssignClassesSubmit = async () => {
     if (!assigningForTeacher) return;
@@ -412,6 +472,75 @@ export default function TeachersView() {
           />
         </View>
 
+        <View style={styles.assignedClassesBlock}>
+          <Text style={styles.assignedClassesTitle}>Assigned Classes:</Text>
+          <ScrollView
+            style={styles.assignedClassesScroll}
+            nestedScrollEnabled
+            showsVerticalScrollIndicator
+          >
+            {(teacher.assignedClassIds || []).length > 0 ? (
+              (teacher.assignedClassIds || []).map((classId) => {
+                const classItem = resolveAssignedClass(classId, classesList);
+                if (!classItem) {
+                  return (
+                    <View key={classId} style={styles.assignedClassCardMissing}>
+                      <Text style={styles.assignedClassMissingText}>
+                        Assigned (class not found — re-assign from Class Management)
+                      </Text>
+                      <Text style={styles.assignedClassMeta}>ID: {classId}</Text>
+                    </View>
+                  );
+                }
+                const subjectLine = getClassSubjectLine(classItem, teacher.subjects || []);
+                return (
+                  <View key={classId} style={styles.assignedClassCard}>
+                    <Text style={styles.assignedClassName}>
+                      {classItem.name}
+                      {subjectLine ? (
+                        <Text style={styles.assignedClassSubject}> - {subjectLine}</Text>
+                      ) : null}
+                    </Text>
+                    <View style={styles.assignedClassMetaRow}>
+                      <MaterialCommunityIcons
+                        name="calendar-month-outline"
+                        size={14}
+                        color="#7c3aed"
+                        allowFontScaling={false}
+                      />
+                      <Text style={styles.assignedClassMeta}>{classItem.schedule}</Text>
+                    </View>
+                    <View style={styles.assignedClassMetaRow}>
+                      <MaterialCommunityIcons
+                        name="office-building-outline"
+                        size={14}
+                        color="#64748b"
+                        allowFontScaling={false}
+                      />
+                      <Text style={styles.assignedClassMeta}>{classItem.room}</Text>
+                      <Text style={styles.assignedClassMetaDot}> • </Text>
+                      <MaterialCommunityIcons
+                        name="account-group-outline"
+                        size={14}
+                        color="#7c3aed"
+                        allowFontScaling={false}
+                      />
+                      <Text style={styles.assignedClassMeta}>
+                        {classItem.studentCount}{' '}
+                        {classItem.studentCount === 1 ? 'student' : 'students'}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })
+            ) : (
+              <View style={styles.noClassesAssignedWrap}>
+                <Text style={styles.noClassesAssigned}>No classes assigned</Text>
+              </View>
+            )}
+          </ScrollView>
+        </View>
+
         <View style={styles.teacherActions}>
           <TouchableOpacity
             style={[styles.squircleBtn, styles.squircleBtnOrange]}
@@ -428,6 +557,14 @@ export default function TeachersView() {
             accessibilityLabel="Assign subjects"
           >
             <SvgIconBook color="#047857" size={22} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.squircleBtn, styles.squircleBtnPurple]}
+            onPress={() => setDailyDialogTeacher(teacher)}
+            activeOpacity={0.85}
+            accessibilityLabel="View daily diary"
+          >
+            <SvgIconBookMarked color="#4338ca" size={22} />
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.squircleBtn, styles.squircleBtnRed]}
@@ -916,6 +1053,16 @@ export default function TeachersView() {
           </View>
         </View>
       </Modal>
+
+      <AdminTeacherDailyModal
+        visible={!!dailyDialogTeacher}
+        onClose={() => setDailyDialogTeacher(null)}
+        teacherId={dailyDialogTeacher?.id ?? null}
+        teacherName={dailyDialogTeacher?.fullName ?? 'Teacher'}
+        assignedClasses={
+          dailyDialogTeacher ? getAssignedClassOptions(dailyDialogTeacher) : []
+        }
+      />
     </ScrollView>
   );
 }
@@ -1175,6 +1322,84 @@ const styles = StyleSheet.create({
     color: '#0d9488',
     fontWeight: '600',
   },
+  assignedClassesBlock: {
+    marginBottom: 12,
+    minHeight: 120,
+  },
+  assignedClassesTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0f172a',
+    marginBottom: 8,
+  },
+  assignedClassesScroll: {
+    maxHeight: 192,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    backgroundColor: '#fffbeb',
+    padding: 8,
+  },
+  assignedClassCard: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginBottom: 8,
+    minHeight: 72,
+  },
+  assignedClassCardMissing: {
+    backgroundColor: '#fffbeb',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#fcd34d',
+    marginBottom: 8,
+    minHeight: 72,
+  },
+  assignedClassMissingText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#b45309',
+  },
+  assignedClassName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0f172a',
+    lineHeight: 20,
+  },
+  assignedClassSubject: {
+    fontWeight: '500',
+    color: '#64748b',
+  },
+  assignedClassMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    gap: 4,
+    flexWrap: 'wrap',
+  },
+  assignedClassMeta: {
+    fontSize: 12,
+    color: '#64748b',
+  },
+  assignedClassMetaDot: {
+    fontSize: 12,
+    color: '#94a3b8',
+  },
+  noClassesAssignedWrap: {
+    paddingVertical: 8,
+  },
+  noClassesAssigned: {
+    fontSize: 12,
+    color: '#64748b',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    alignSelf: 'flex-start',
+  },
   teacherActions: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1199,6 +1424,9 @@ const styles = StyleSheet.create({
   },
   squircleBtnGreen: {
     borderColor: '#6ee7b7',
+  },
+  squircleBtnPurple: {
+    borderColor: '#a5b4fc',
   },
   squircleBtnRed: {
     borderColor: '#fca5a5',

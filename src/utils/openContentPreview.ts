@@ -14,7 +14,13 @@ type ContentLike = {
   videoUrl?: string;
 };
 
-export function openContentPreview(router: Router, item: ContentLike) {
+import type { ContentReturnTarget } from '../hooks/useBackNavigation';
+
+export function openContentPreview(
+  router: Router,
+  item: ContentLike,
+  options?: { returnTo?: ContentReturnTarget }
+) {
   const rawUrl =
     item.fileUrls?.[0] ||
     item.fileUrl ||
@@ -32,10 +38,11 @@ export function openContentPreview(router: Router, item: ContentLike) {
     getPreviewKind(rawUrl, item.type, item.youtubeUrl) === 'youtube';
 
   if (isVideoType) {
+    const returnParams = options?.returnTo ? { returnTo: options.returnTo } : {};
     if (contentId) {
       router.push({
         pathname: '/video-player',
-        params: { videoId: String(contentId) },
+        params: { videoId: String(contentId), ...returnParams },
       });
       return;
     }
@@ -51,6 +58,7 @@ export function openContentPreview(router: Router, item: ContentLike) {
           youtubeUrl: item.youtubeUrl,
           type: item.type || 'Video',
         }),
+        ...returnParams,
       },
     });
     return;
@@ -68,6 +76,7 @@ export function openContentPreview(router: Router, item: ContentLike) {
       driveLink: encodeURIComponent(link),
       title: item.title || 'Preview',
       contentType: item.type || '',
+      ...returnParams,
     },
   });
 }

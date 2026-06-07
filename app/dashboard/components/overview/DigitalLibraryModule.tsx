@@ -1,20 +1,21 @@
 import React, { memo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import GlassCard from '../../../../src/components/student/GlassCard';
 import PremiumSectionHeader from '../../../../src/components/student/PremiumSectionHeader';
+import { useSchoolProgram } from '../../../../src/hooks/useSchoolProgram';
 import { STUDENT, STUDENT_RADIUS } from '../../../../src/theme/student';
 
-const LIBRARY_ITEMS = [
-  { title: 'TextBook', type: 'TextBook', icon: 'book-outline' as const, color: STUDENT.accent },
-  { title: 'Workbook', type: 'Workbook', icon: 'document-text-outline' as const, color: STUDENT.primary },
-  { title: 'Material', type: 'Material', icon: 'document-outline' as const, color: STUDENT.textSecondary },
-  { title: 'Video', type: 'Video', icon: 'videocam-outline' as const, color: STUDENT.primary },
-  { title: 'Audio', type: 'Audio', icon: 'headset-outline' as const, color: STUDENT.warning },
-  { title: 'Homework', type: 'Homework', icon: 'clipboard-outline' as const, color: STUDENT.danger },
-];
+const TILE_COLORS: Record<string, string> = {
+  TextBook: STUDENT.accent,
+  Workbook: STUDENT.primary,
+  Material: STUDENT.textSecondary,
+  Video: STUDENT.primary,
+  Audio: STUDENT.warning,
+  Homework: STUDENT.danger,
+};
 
 function openLibraryType(type: string) {
   if (type === 'Homework') {
@@ -31,6 +32,7 @@ interface DigitalLibraryModuleProps {
 
 function DigitalLibraryModuleComponent({ dark }: DigitalLibraryModuleProps) {
   const { width } = useWindowDimensions();
+  const { libraryTiles, loading } = useSchoolProgram();
   const compact = width < 380;
   const cardWidth = compact ? '48.2%' : '31.6%';
 
@@ -42,24 +44,28 @@ function DigitalLibraryModuleComponent({ dark }: DigitalLibraryModuleProps) {
         icon="library-outline"
         accent={STUDENT.accent}
       />
-      <View style={styles.grid}>
-        {LIBRARY_ITEMS.map((item) => (
-          <TouchableOpacity
-            key={item.title}
-            style={[styles.card, { width: cardWidth }]}
-            onPress={() => openLibraryType(item.type)}
-            activeOpacity={0.85}
-          >
-            <LinearGradient
-              colors={[`${item.color}33`, `${item.color}18`]}
-              style={styles.iconWrap}
-            >
-              <Ionicons name={item.icon} size={16} color={item.color} />
-            </LinearGradient>
-            <Text style={[styles.cardText, dark && styles.cardTextDark]}>{item.title}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      {loading ? (
+        <ActivityIndicator color={STUDENT.primary} style={{ marginVertical: 16 }} />
+      ) : (
+        <View style={styles.grid}>
+          {libraryTiles.map((item) => {
+            const color = TILE_COLORS[item.type] || STUDENT.accent;
+            return (
+              <TouchableOpacity
+                key={item.key}
+                style={[styles.card, { width: cardWidth }]}
+                onPress={() => openLibraryType(item.type)}
+                activeOpacity={0.85}
+              >
+                <LinearGradient colors={[`${color}33`, `${color}18`]} style={styles.iconWrap}>
+                  <Ionicons name={item.icon as any} size={16} color={color} />
+                </LinearGradient>
+                <Text style={[styles.cardText, dark && styles.cardTextDark]}>{item.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
     </GlassCard>
   );
 }

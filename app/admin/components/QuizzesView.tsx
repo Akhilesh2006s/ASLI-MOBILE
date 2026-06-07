@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as SecureStore from 'expo-secure-store';
-import { API_BASE_URL } from '../../../src/lib/api-config';
+import adminService from '../../../src/services/api/adminService';
 
 interface Quiz {
   _id: string;
@@ -39,17 +38,8 @@ export default function QuizzesView() {
 
   const fetchSubjects = async () => {
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/subjects`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setSubjects(data.subjects || data.data || []);
-      }
+      const data = await adminService.getSubjects();
+      setSubjects(data?.data || data?.subjects || data || []);
     } catch (error) {
       console.error('Failed to fetch subjects:', error);
     }
@@ -58,17 +48,8 @@ export default function QuizzesView() {
   const fetchQuizzes = async () => {
     try {
       setIsLoading(true);
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/admin/quizzes`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setQuizzes(data.data || data || []);
-      }
+      const data = await adminService.getQuizzes();
+      setQuizzes(data?.data || data || []);
     } catch (error) {
       console.error('Failed to fetch quizzes:', error);
     } finally {
@@ -83,31 +64,18 @@ export default function QuizzesView() {
     }
 
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/admin/quizzes`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(newQuiz)
+      await adminService.createQuiz(newQuiz);
+      Alert.alert('Success', 'Quiz created successfully');
+      setIsCreateModalOpen(false);
+      setNewQuiz({
+        title: '',
+        description: '',
+        subject: '',
+        classNumber: '',
+        difficulty: 'medium',
+        totalQuestions: 20,
       });
-
-      if (response.ok) {
-        Alert.alert('Success', 'Quiz created successfully');
-        setIsCreateModalOpen(false);
-        setNewQuiz({
-          title: '',
-          description: '',
-          subject: '',
-          classNumber: '',
-          difficulty: 'medium',
-          totalQuestions: 20
-        });
-        fetchQuizzes();
-      } else {
-        Alert.alert('Error', 'Failed to create quiz');
-      }
+      fetchQuizzes();
     } catch (error) {
       console.error('Failed to create quiz:', error);
       Alert.alert('Error', 'An error occurred');

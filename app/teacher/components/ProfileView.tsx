@@ -13,10 +13,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import teacherService from '../../../src/services/api/teacherService';
-import { TeacherShimmer } from '../../../src/components/teacher';
+import { TeacherShimmer, TimetableView } from '../../../src/components/teacher';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
 import EduOTTView from './EduOTTView';
-import TimetableView from './TimetableView';
 import WorkDiaryView from './WorkDiaryView';
 
 type Props = {

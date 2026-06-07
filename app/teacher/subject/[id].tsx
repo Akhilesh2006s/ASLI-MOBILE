@@ -15,8 +15,8 @@ import teacherService from '../../../src/services/api/teacherService';
 import { openContentPreview } from '../../../src/utils/openContentPreview';
 import { SubNavChips, TeacherShimmer } from '../../../src/components/teacher';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../../src/theme/teacher';
-
-const CONTENT_TYPES = ['TextBook', 'Workbook', 'Material', 'Video', 'Audio', 'Homework'];
+import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
+import { filterContentsBySchoolProgram } from '../../../src/lib/school-program';
 
 type ContentItem = {
   _id: string;
@@ -32,6 +32,7 @@ type ContentItem = {
 
 export default function TeacherSubjectContentScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { isAsliPrepExclusive } = useSchoolProgram();
   const [subject, setSubject] = useState<any>(null);
   const [contents, setContents] = useState<ContentItem[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
@@ -42,7 +43,7 @@ export default function TeacherSubjectContentScreen() {
 
   useEffect(() => {
     if (id) load(String(id));
-  }, [id]);
+  }, [id, isAsliPrepExclusive]);
 
   const load = async (subjectId: string) => {
     setLoading(true);
@@ -54,7 +55,8 @@ export default function TeacherSubjectContentScreen() {
       ]);
       const subData = subRes.data?.subject ?? subRes.data;
       setSubject(subData || { _id: subjectId, name: 'Subject' });
-      setContents(Array.isArray(contentRes.data) ? contentRes.data : []);
+      const raw = Array.isArray(contentRes.data) ? contentRes.data : [];
+      setContents(filterContentsBySchoolProgram(raw, isAsliPrepExclusive));
       setClasses(Array.isArray(classRes.data) ? classRes.data : []);
     } catch {
       setSubject({ _id: subjectId, name: 'Subject' });

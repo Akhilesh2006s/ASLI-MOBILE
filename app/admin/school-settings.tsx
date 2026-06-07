@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
-import { API_BASE_URL } from '../../src/services/api/api';
+import adminService from '../../src/services/api/adminService';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import { ActionButton, ErrorState, LoadingState } from '../../src/components/ui';
 import { COLORS, FONT, RADIUS, SPACING } from '../../src/theme';
@@ -24,12 +23,7 @@ export default function SchoolSettings() {
   const load = useCallback(async () => {
     try {
       setError('');
-      const token = await SecureStore.getItemAsync('authToken');
-      const res = await fetch(`${API_BASE_URL}/api/admin/school-settings`, {
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      });
-      if (!res.ok) throw new Error('Failed to load settings');
-      const data = await res.json();
+      const data = await adminService.getSchoolSettings();
       const s = data?.settings || data?.data || data;
       setForm({
         schoolName: s?.schoolName || s?.name || '',
@@ -51,13 +45,8 @@ export default function SchoolSettings() {
     setSaving(true);
     setError('');
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const res = await fetch(`${API_BASE_URL}/api/admin/school-settings`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
-      if (!res.ok) throw new Error('Failed to save settings');
+      await adminService.updateSchoolSettings(form);
+      Alert.alert('Saved', 'School settings updated successfully.');
     } catch (e: any) {
       setError(e?.message || 'Could not save settings');
     } finally {

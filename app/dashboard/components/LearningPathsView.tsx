@@ -12,6 +12,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import api from '../../../src/services/api/api';
+import { filterContentsBySchoolProgram } from '../../../src/lib/school-program';
+import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
 import GlassCard from '../../../src/components/student/GlassCard';
 import ChipNav from '../../../src/components/student/ChipNav';
 import PremiumSectionHeader from '../../../src/components/student/PremiumSectionHeader';
@@ -48,6 +50,7 @@ function AnimatedProgressBar({ progress, delay = 0 }: { progress: number; delay?
 
 export default function LearningPathsView({ dark }: { dark?: boolean }) {
   const { width } = useWindowDimensions();
+  const { isAsliPrepExclusive, libraryTiles } = useSchoolProgram();
   const compact = width < 380;
   const isTablet = width >= 768;
   const scrollPad = 36;
@@ -63,24 +66,26 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
   useEffect(() => {
     fetchSubjects();
     fetchQuizzes();
-    fetchLibraryCounts();
   }, []);
+
+  useEffect(() => {
+    fetchLibraryCounts();
+  }, [isAsliPrepExclusive, libraryTiles.length]);
 
   const fetchLibraryCounts = async () => {
     try {
       const { data } = await api.get('/api/student/asli-prep-content');
-      const allContent = data.data || data || [];
-      const counts: Record<string, number> = {
-        TextBook: 0,
-        Workbook: 0,
-        Material: 0,
-        Video: 0,
-        Audio: 0,
-        Homework: 0,
-      };
+      const allContent = filterContentsBySchoolProgram(
+        data.data || data || [],
+        isAsliPrepExclusive
+      );
+      const counts: Record<string, number> = {};
+      libraryTiles.forEach((tile) => {
+        counts[tile.type] = 0;
+      });
       (Array.isArray(allContent) ? allContent : []).forEach((item: any) => {
         const t = item.type || 'Material';
-        counts[t] = (counts[t] || 0) + 1;
+        if (counts[t] != null) counts[t] = (counts[t] || 0) + 1;
       });
       setLibraryCounts(counts);
     } catch (error) {
@@ -133,14 +138,10 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
     router.push({ pathname: '/asli-prep-content', params: { type } });
   };
 
-  const libraryTiles = [
-    { key: 'textbook', label: 'TextBook', type: 'TextBook', icon: 'book-outline' as keyof typeof Ionicons.glyphMap },
-    { key: 'workbook', label: 'Workbook', type: 'Workbook', icon: 'document-text-outline' as keyof typeof Ionicons.glyphMap },
-    { key: 'material', label: 'Material', type: 'Material', icon: 'document-outline' as keyof typeof Ionicons.glyphMap },
-    { key: 'video', label: 'Video', type: 'Video', icon: 'videocam-outline' as keyof typeof Ionicons.glyphMap },
-    { key: 'audio', label: 'Audio', type: 'Audio', icon: 'headset-outline' as keyof typeof Ionicons.glyphMap },
-    { key: 'homework', label: 'Homework', type: 'Homework', icon: 'clipboard-outline' as keyof typeof Ionicons.glyphMap },
-  ];
+  const libraryTilesResolved = libraryTiles.map((tile) => ({
+    ...tile,
+    icon: tile.icon as keyof typeof Ionicons.glyphMap,
+  }));
 
   const tabChips = [
     { id: 'subjects', label: 'Browse by Subject' },
@@ -228,7 +229,7 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
                   icon="library-outline"
                 />
                 <View style={styles.libraryGrid}>
-                  {libraryTiles.map((tile, index) => (
+                  {libraryTilesResolved.map((tile, index) => (
                     <View key={tile.key} style={styles.libraryTile}>
                       <GlassCard
                         variant="elevated"

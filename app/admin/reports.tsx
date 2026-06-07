@@ -1,10 +1,9 @@
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
-import { API_BASE_URL } from '../../src/services/api/api';
+import adminService from '../../src/services/api/adminService';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import { ActionButton, ErrorState, LoadingState, PremiumCard } from '../../src/components/ui';
 import { COLORS, FONT, SPACING } from '../../src/theme';
@@ -16,24 +15,30 @@ const REPORTS = [
 ];
 
 export default function AdminReports() {
-  const [loading, setLoading] = useState(false);
+  const [loadingType, setLoadingType] = useState<string | null>(null);
   const [error, setError] = useState('');
 
   useBackNavigation('/admin/dashboard', false);
 
-  const download = useCallback(async (type: string) => {
-    setLoading(true);
+  const download = useCallback(async (type: string, format: 'csv' | 'pdf') => {
+    setLoadingType(`${type}-${format}`);
     setError('');
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const res = await fetch(`${API_BASE_URL}/api/admin/reports?type=${type}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Failed to generate report');
+      const response = await adminService.downloadReport(type, format);
+      if (format === 'pdf') {
+        const message = response?.data?.message || 'Report generated on server.';
+        Alert.alert('Report ready', message);
+      } else {
+        const rowHint =
+          typeof response?.data === 'string'
+            ? `${response.data.split('\n').length - 1} rows exported`
+            : 'CSV export completed';
+        Alert.alert('Export complete', rowHint);
+      }
     } catch (e: any) {
-      setError(e?.message || 'Could not download report');
+      setError(e?.response?.data?.message || e?.message || 'Could not download report');
     } finally {
-      setLoading(false);
+      setLoadingType(null);
     }
   }, []);
 
@@ -47,14 +52,24 @@ export default function AdminReports() {
         <View style={styles.backBtn} />
       </View>
 
-      {loading ? <LoadingState variant="list" style={{ padding: SPACING.lg }} /> : null}
+      {loadingType ? <LoadingState variant="list" style={{ padding: SPACING.lg }} /> : null}
       {error ? <ErrorState message={error} onRetry={() => setError('')} style={{ margin: SPACING.lg }} /> : null}
 
       <ScrollView contentContainerStyle={styles.content}>
         {REPORTS.map((r) => (
           <PremiumCard key={r.id} title={r.label} icon={r.icon} gradient={COLORS.gradientAdmin}>
-            <ActionButton label="Export CSV" onPress={() => download(`${r.id}&format=csv`)} variant="secondary" />
-            <ActionButton label="Export PDF" onPress={() => download(`${r.id}&format=pdf`)} style={{ marginTop: SPACING.sm }} />
+            <ActionButton
+              label="Export CSV"
+              onPress={() => download(r.id, 'csv')}
+              variant="secondary"
+              loading={loadingType === `${r.id}-csv`}
+            />
+            <ActionButton
+              label="Export PDF"
+              onPress={() => download(r.id, 'pdf')}
+              style={{ marginTop: SPACING.sm }}
+              loading={loadingType === `${r.id}-pdf`}
+            />
           </PremiumCard>
         ))}
       </ScrollView>

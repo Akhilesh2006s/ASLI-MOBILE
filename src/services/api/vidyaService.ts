@@ -29,6 +29,17 @@ const vidyaService = {
     fetchJson<any>('/api/ai-chat/analyze-image', { method: 'POST', body: JSON.stringify(body) }),
 
   getStudentFocusCard: () => fetchJson<any>('/api/vidya/student/focus-card'),
+
+  controlQuery: (body: { message: string; history?: Array<{ role: string; content: string }> }) =>
+    fetchJson<any>('/api/vidya/control/query', { method: 'POST', body: JSON.stringify(body) }),
+
+  getControlHistory: (limit = 50) =>
+    fetchJson<{ success: boolean; items: Array<{ prompt: string; responseText: string; createdAt?: string }> }>(
+      `/api/vidya/control/history?limit=${limit}`
+    ),
+
+  clearControlHistory: () =>
+    fetchJson<any>('/api/vidya/control/history', { method: 'DELETE' }),
 };
 
 export default vidyaService;

@@ -9,7 +9,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import authService from '../../src/services/api/authService';
 import teacherService, { type BackendStatus } from '../../src/services/api/teacherService';
 import { useTeacherBackendStatus } from '../../src/hooks/useTeacherBackendStatus';
@@ -83,6 +83,7 @@ function MenuItem({
 
 export default function TeacherDashboard() {
   const { signOut } = useAuth();
+  const { tab } = useLocalSearchParams<{ tab?: string }>();
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
   const [navTarget, setNavTarget] = useState<NavTarget>({});
   const [menuOpen, setMenuOpen] = useState(false);
@@ -106,6 +107,10 @@ export default function TeacherDashboard() {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (tab === 'eduott') setActiveTab('eduott');
+  }, [tab]);
 
   const loadData = async () => {
     try {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
+  ActivityIndicator,
   Modal,
   Pressable,
   ScrollView,
@@ -9,9 +9,8 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import teacherService from '../../../src/services/api/teacherService';
-import { TeacherShimmer, WeeklyTimetableGrid } from '../../../src/components/teacher';
+import api from '../../../src/services/api/api';
+import WeeklyTimetableGrid from '../../../src/components/teacher/WeeklyTimetableGrid';
 import {
   buildWeekdayPlacements,
   formatWeekRange,
@@ -19,8 +18,12 @@ import {
   teacherSlotLabel,
   type TimetableEntryLike,
 } from '../../../src/lib/timetable-utils';
-import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
-import { LinearGradient } from 'expo-linear-gradient';
+
+function asArray(payload: any): any[] {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  return [];
+}
 
 export default function TimetableView() {
   const [entries, setEntries] = useState<TimetableEntryLike[]>([]);
@@ -39,9 +42,9 @@ export default function TimetableView() {
   const loadTimetable = async () => {
     setLoading(true);
     try {
-      const res = await teacherService.timetable();
-      const data = res.data ?? [];
-      setEntries(Array.isArray(data) ? data.filter(Boolean) : []);
+      const response = await api.get('/api/timetable');
+      const data = asArray(response?.data);
+      setEntries(data.filter(Boolean));
     } catch {
       setEntries([]);
     } finally {
@@ -51,8 +54,8 @@ export default function TimetableView() {
 
   const classOptions = useMemo(() => {
     const map = new Map<string, string>();
-    entries.forEach((e) => {
-      const label = teacherSlotLabel(e);
+    entries.forEach((entry) => {
+      const label = teacherSlotLabel(entry);
       if (label && label !== '—') map.set(label, label);
     });
     return Array.from(map.values()).sort();
@@ -60,7 +63,7 @@ export default function TimetableView() {
 
   const filteredEntries = useMemo(() => {
     if (classFilter === 'all') return entries;
-    return entries.filter((e) => teacherSlotLabel(e) === classFilter);
+    return entries.filter((entry) => teacherSlotLabel(entry) === classFilter);
   }, [entries, classFilter]);
 
   const sessionCount = useMemo(
@@ -68,60 +71,16 @@ export default function TimetableView() {
     [filteredEntries]
   );
 
-  const markComplete = async (entry: TimetableEntryLike) => {
-    if (entry.status !== 'Scheduled' && entry.status !== undefined && entry.status !== 'Pending') {
-      setSelectedSlot(entry);
-      return;
-    }
-    const id = entry._id || entry.id;
-    if (!id) return;
-    try {
-      await teacherService.updateTimetableStatus(String(id), 'Completed');
-      setEntries((prev) =>
-        prev.map((e) =>
-          (e._id || e.id) === id ? { ...e, status: 'Completed' } : e
-        )
-      );
-      setSelectedSlot(null);
-      Alert.alert('Done', 'Marked as completed.');
-    } catch {
-      Alert.alert('Error', 'Could not update timetable entry.');
-    }
-  };
-
-  const handleEntryClick = (entry: TimetableEntryLike) => {
-    if (entry.status === 'Completed') {
-      setSelectedSlot(entry);
-      return;
-    }
-    Alert.alert('Mark completed?', teacherSlotLabel(entry), [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Mark completed', onPress: () => markComplete(entry) },
-      { text: 'Details', onPress: () => setSelectedSlot(entry) },
-    ]);
-  };
-
   if (loading) {
     return (
-      <View style={styles.wrap}>
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <View style={styles.headerIcon}>
-              <Ionicons name="calendar" size={22} color="#fff" />
-            </View>
-            <View style={styles.headerText}>
-              <View style={styles.shimmerTitle} />
-              <View style={styles.shimmerSub} />
-            </View>
-          </View>
-          <TeacherShimmer variant="list" count={6} />
-        </View>
+      <View style={styles.loadingWrap}>
+        <ActivityIndicator size="large" color="#fb923c" />
       </View>
     );
   }
 
   return (
-    <View style={styles.wrap}>
+    <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <View style={styles.headerTop}>
@@ -132,7 +91,7 @@ export default function TimetableView() {
               <View style={styles.headerText}>
                 <Text style={styles.title}>Timetable</Text>
                 <Text style={styles.subtitle}>
-                  Monday – Saturday · same weekly pattern · {weekRange}
+                  Monday – Saturday · {weekRange}
                 </Text>
               </View>
             </View>
@@ -148,23 +107,25 @@ export default function TimetableView() {
               <Text style={styles.filterTriggerText} numberOfLines={1}>
                 {classFilter === 'all' ? 'All classes' : classFilter}
               </Text>
-              <Ionicons name="chevron-down" size={16} color={TEACHER.textSecondary} />
+              <Ionicons name="chevron-down" size={16} color="#6b7280" />
             </Pressable>
           ) : null}
         </View>
 
         {sessionCount === 0 ? (
           <View style={styles.empty}>
-            <Ionicons name="calendar-outline" size={40} color={TEACHER.textMuted} />
-            <Text style={styles.emptyTitle}>No schedule entries this week</Text>
+            <Ionicons name="calendar-outline" size={40} color="#d1d5db" />
+            <Text style={styles.emptyTitle}>No timetable entries yet</Text>
             <Text style={styles.emptySub}>
-              Schedules assigned by your admin will appear here once they add entries in Timetable
-              Management.
+              Add schedule entries from the web admin Timetable section to see them here.
             </Text>
           </View>
         ) : (
           <View style={styles.gridWrap}>
-            <WeeklyTimetableGrid entries={filteredEntries} onEntryClick={handleEntryClick} />
+            <WeeklyTimetableGrid
+              entries={filteredEntries}
+              onEntryClick={(entry) => setSelectedSlot(entry)}
+            />
           </View>
         )}
       </View>
@@ -192,7 +153,7 @@ export default function TimetableView() {
                     {opt === 'all' ? 'All classes' : opt}
                   </Text>
                   {classFilter === opt ? (
-                    <Ionicons name="checkmark" size={18} color={TEACHER.primaryLight} />
+                    <Ionicons name="checkmark" size={18} color="#ea580c" />
                   ) : null}
                 </Pressable>
               ))}
@@ -205,7 +166,9 @@ export default function TimetableView() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>
-              {selectedSlot?.subject || (selectedSlot ? teacherSlotLabel(selectedSlot) : '') || 'Class Details'}
+              {selectedSlot?.subject ||
+                (selectedSlot ? teacherSlotLabel(selectedSlot) : '') ||
+                'Class Details'}
             </Text>
             <Text style={styles.modalMeta}>
               {selectedSlot?.dayOfWeek || selectedSlot?.day} · {selectedSlot?.startTime} –{' '}
@@ -214,45 +177,37 @@ export default function TimetableView() {
             {selectedSlot ? (
               <Text style={styles.modalMeta}>{teacherSlotLabel(selectedSlot)}</Text>
             ) : null}
-            <Pressable style={styles.modalBtn} onPress={() => router.push('/teacher/attendance' as any)}>
-              <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.modalBtnGrad}>
-                <Ionicons name="checkmark-done-outline" size={18} color={TEACHER.textOnPrimary} />
-                <Text style={styles.modalBtnText}>Mark Attendance</Text>
-              </LinearGradient>
-            </Pressable>
-            {selectedSlot?.status !== 'Completed' ? (
-              <Pressable
-                style={styles.modalBtnOutline}
-                onPress={() => selectedSlot && markComplete(selectedSlot)}
-              >
-                <Text style={styles.modalBtnOutlineText}>Mark Completed</Text>
-              </Pressable>
-            ) : null}
             <Pressable style={styles.modalClose} onPress={() => setSelectedSlot(null)}>
               <Text style={styles.modalCloseText}>Close</Text>
             </Pressable>
           </View>
         </View>
       </Modal>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
-    paddingHorizontal: TEACHER_SPACING.lg,
-    paddingBottom: 120,
+  scrollContent: {
+    paddingBottom: 32,
+  },
+  loadingWrap: {
+    minHeight: 240,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   card: {
-    ...glassCard,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
     overflow: 'hidden',
   },
   cardHeader: {
-    padding: TEACHER_SPACING.lg,
+    padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: TEACHER.surfaceBorder,
-    backgroundColor: TEACHER.surface,
-    gap: TEACHER_SPACING.md,
+    borderBottomColor: '#e5e7eb',
+    gap: 12,
   },
   headerTop: {
     flexDirection: 'row',
@@ -270,33 +225,33 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: TEACHER.primary,
+    backgroundColor: '#fb923c',
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerText: { flex: 1 },
   title: {
-    ...TEACHER_TYPO.section,
-    color: TEACHER.text,
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#111827',
   },
   subtitle: {
-    ...TEACHER_TYPO.caption,
-    color: TEACHER.textMuted,
+    fontSize: 13,
+    color: '#6b7280',
     marginTop: 2,
-    lineHeight: 18,
   },
   sessionBadge: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
-    backgroundColor: TEACHER.navActiveBg,
+    borderColor: '#fed7aa',
+    backgroundColor: '#fff7ed',
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
   sessionBadgeText: {
     fontSize: 12,
     fontWeight: '700',
-    color: TEACHER.primaryLight,
+    color: '#ea580c',
   },
   filterTrigger: {
     flexDirection: 'row',
@@ -304,8 +259,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
-    backgroundColor: TEACHER.surfaceElevated,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#f9fafb',
     paddingHorizontal: 14,
     paddingVertical: 12,
     maxWidth: 280,
@@ -314,43 +269,29 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: '600',
-    color: TEACHER.text,
+    color: '#111827',
     marginRight: 8,
   },
   gridWrap: {
-    padding: TEACHER_SPACING.md,
+    padding: 12,
   },
   empty: {
     alignItems: 'center',
     paddingVertical: 48,
-    paddingHorizontal: TEACHER_SPACING.lg,
+    paddingHorizontal: 24,
   },
   emptyTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: TEACHER.text,
+    color: '#111827',
     marginTop: 12,
   },
   emptySub: {
     fontSize: 12,
-    color: TEACHER.textMuted,
+    color: '#6b7280',
     textAlign: 'center',
     marginTop: 6,
-    maxWidth: 320,
     lineHeight: 18,
-  },
-  shimmerTitle: {
-    height: 18,
-    width: 120,
-    borderRadius: 6,
-    backgroundColor: 'rgba(123,80,255,0.15)',
-    marginBottom: 8,
-  },
-  shimmerSub: {
-    height: 12,
-    width: '90%',
-    borderRadius: 6,
-    backgroundColor: 'rgba(123,80,255,0.1)',
   },
   pickerOverlay: {
     flex: 1,
@@ -358,18 +299,16 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   pickerSheet: {
-    backgroundColor: TEACHER.bg,
+    backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    padding: TEACHER_SPACING.lg,
+    padding: 20,
     paddingBottom: 32,
-    borderTopWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
   },
   pickerTitle: {
-    ...TEACHER_TYPO.section,
     fontSize: 16,
-    color: TEACHER.text,
+    fontWeight: '800',
+    color: '#111827',
     marginBottom: 12,
   },
   pickerItem: {
@@ -378,18 +317,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: TEACHER.surfaceBorder,
+    borderBottomColor: '#e5e7eb',
   },
   pickerItemActive: {
-    backgroundColor: TEACHER.navActiveBg,
+    backgroundColor: '#fff7ed',
   },
   pickerItemText: {
     fontSize: 15,
-    color: TEACHER.textSecondary,
+    color: '#6b7280',
   },
   pickerItemTextActive: {
     fontWeight: '700',
-    color: TEACHER.primaryLight,
+    color: '#ea580c',
   },
   modalOverlay: {
     flex: 1,
@@ -397,45 +336,28 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalCard: {
-    backgroundColor: TEACHER.bg,
+    backgroundColor: '#fff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: TEACHER_SPACING.xxl,
-    borderTopWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
+    padding: 24,
   },
   modalTitle: {
-    ...TEACHER_TYPO.section,
-    color: TEACHER.text,
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#111827',
   },
   modalMeta: {
     fontSize: 14,
-    color: TEACHER.textMuted,
+    color: '#6b7280',
     marginTop: 6,
   },
-  modalBtn: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginTop: TEACHER_SPACING.lg,
-  },
-  modalBtnGrad: {
-    flexDirection: 'row',
+  modalClose: {
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    padding: 14,
+    marginTop: 20,
+    paddingVertical: 12,
   },
-  modalBtnText: { color: TEACHER.textOnPrimary, fontWeight: '700' },
-  modalBtnOutline: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
-    borderRadius: 12,
-    padding: 14,
-    alignItems: 'center',
-    marginTop: TEACHER_SPACING.md,
+  modalCloseText: {
+    color: '#6b7280',
+    fontWeight: '600',
   },
-  modalBtnOutlineText: { color: TEACHER.text, fontWeight: '700' },
-  modalClose: { alignItems: 'center', marginTop: TEACHER_SPACING.lg },
-  modalCloseText: { color: TEACHER.textMuted, fontWeight: '600' },
 });

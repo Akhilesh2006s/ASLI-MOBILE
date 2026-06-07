@@ -15,6 +15,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../../src/services/api/api';
 import {
+  SvgCheckbox,
   SvgIconBook,
   SvgIconCertificate,
   SvgIconClose,
@@ -26,6 +27,20 @@ import {
   SvgIconTrash,
 } from './TeachersCardIcons';
 
+interface ClassOption {
+  id: string;
+  classNumber: string;
+  className: string;
+  section?: string;
+}
+
+interface SubjectClass {
+  id: string;
+  classNumber: string;
+  className: string;
+  section?: string;
+}
+
 interface Subject {
   id: string;
   name: string;
@@ -36,14 +51,33 @@ interface Subject {
     fullName: string;
     email: string;
   };
+  classes?: SubjectClass[];
+  classIds?: string[];
   grade?: string;
   department?: string;
   isActive: boolean;
   createdAt: string;
 }
 
+const toggleClassId = (classIds: string[], classId: string, checked: boolean) => {
+  if (checked) return classIds.includes(classId) ? classIds : [...classIds, classId];
+  return classIds.filter((id) => id !== classId);
+};
+
+const getClassItemLabel = (c: SubjectClass) => {
+  if (c.className?.trim()) return c.className.trim();
+  const base = c.classNumber ? `Class ${c.classNumber}` : 'Class';
+  return c.section ? `${base}-${c.section}` : base;
+};
+
+const formatClassLabels = (subject: Subject) => {
+  if (!subject.classes?.length) return '—';
+  return subject.classes.map(getClassItemLabel).join(', ');
+};
+
 export default function SubjectsView() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [classes, setClasses] = useState<ClassOption[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
@@ -55,6 +89,7 @@ export default function SubjectsView() {
     description: '',
     department: '',
     grade: '',
+    classIds: [] as string[],
   });
   const [editSubject, setEditSubject] = useState({
     name: '',
@@ -62,10 +97,30 @@ export default function SubjectsView() {
     description: '',
     department: '',
     grade: '',
+    classIds: [] as string[],
   });
 
   useEffect(() => {
     fetchSubjects();
+    fetchClasses();
+  }, []);
+
+  const fetchClasses = useCallback(async () => {
+    try {
+      const response = await api.get('/api/admin/classes');
+      const data = response?.data;
+      const classesData = Array.isArray(data) ? data : data?.data || [];
+      setClasses(
+        (Array.isArray(classesData) ? classesData : []).map((c: any) => ({
+          id: String(c._id || c.id || ''),
+          classNumber: String(c.classNumber || ''),
+          className: c.name || c.className || `Class ${c.classNumber || ''}`,
+          section: c.section ? String(c.section) : undefined,
+        }))
+      );
+    } catch (error) {
+      console.error('Failed to fetch classes:', error);
+    }
   }, []);
 
   const fetchSubjects = useCallback(async () => {
@@ -88,6 +143,19 @@ export default function SubjectsView() {
         code: subject.code || '',
         description: subject.description || '',
         teacher: subject.teacher,
+        classes: Array.isArray(subject.classes)
+          ? subject.classes.map((c: any) => ({
+              id: String(c.id || c._id || ''),
+              classNumber: c.classNumber || '',
+              className: c.className || c.name || `Class ${c.classNumber || ''}`,
+              section: c.section,
+            }))
+          : [],
+        classIds: Array.isArray(subject.classIds)
+          ? subject.classIds.map(String)
+          : Array.isArray(subject.classes)
+            ? subject.classes.map((c: any) => String(c.id || c._id || ''))
+            : [],
         grade: subject.grade || '',
         department: subject.department || '',
         isActive: subject.isActive !== false,
@@ -125,8 +193,18 @@ export default function SubjectsView() {
     }
 
     try {
-      await api.post('/api/admin/subjects', newSubject);
-      setNewSubject({ name: '', code: '', description: '', department: '', grade: '' });
+      await api.post('/api/admin/subjects', {
+        ...newSubject,
+        classIds: newSubject.classIds,
+      });
+      setNewSubject({
+        name: '',
+        code: '',
+        description: '',
+        department: '',
+        grade: '',
+        classIds: [],
+      });
       setIsAddModalVisible(false);
       fetchSubjects();
       Alert.alert('Success', 'Subject added successfully!');
@@ -144,6 +222,7 @@ export default function SubjectsView() {
       description: subject.description || '',
       department: subject.department || '',
       grade: subject.grade || '',
+      classIds: subject.classIds || subject.classes?.map((c) => c.id) || [],
     });
     setIsEditModalVisible(true);
   };
@@ -154,7 +233,10 @@ export default function SubjectsView() {
       return;
     }
     try {
-      await api.put(`/api/admin/subjects/${editingSubject.id}`, editSubject);
+      await api.put(`/api/admin/subjects/${editingSubject.id}`, {
+        ...editSubject,
+        classIds: editSubject.classIds,
+      });
       setIsEditModalVisible(false);
       setEditingSubject(null);
       fetchSubjects();
@@ -170,6 +252,7 @@ export default function SubjectsView() {
       `Description: ${subject.description?.trim() ? subject.description : '—'}`,
       `Department: ${subject.department?.trim() ? subject.department : '—'}`,
       `Grade: ${subject.grade?.trim() ? subject.grade : '—'}`,
+      `Assigned Classes: ${formatClassLabels(subject)}`,
       `Status: ${subject.isActive ? 'Active' : 'Inactive'}`,
       subject.teacher
         ? `Teacher: ${subject.teacher.fullName}\nEmail: ${subject.teacher.email || '—'}`
@@ -201,6 +284,40 @@ export default function SubjectsView() {
       ],
     );
   };
+
+  const renderClassPicker = (
+    selectedIds: string[],
+    onChange: (ids: string[]) => void
+  ) => (
+    <View style={styles.formGroup}>
+      <Text style={styles.formLabel}>Assign to Class(es)</Text>
+      {classes.length === 0 ? (
+        <Text style={styles.classPickerEmpty}>No classes yet. Add classes first.</Text>
+      ) : (
+        <ScrollView style={styles.classPickerScroll} nestedScrollEnabled>
+          {classes.map((cls) => {
+            const checked = selectedIds.includes(cls.id);
+            return (
+              <TouchableOpacity
+                key={cls.id}
+                style={[styles.classPickRow, checked && styles.classPickRowActive]}
+                onPress={() =>
+                  onChange(toggleClassId(selectedIds, cls.id, !checked))
+                }
+                activeOpacity={0.75}
+              >
+                <SvgCheckbox checked={checked} size={22} />
+                <Text style={styles.classPickLabel}>
+                  {cls.className} ({cls.classNumber}
+                  {cls.section ? `-${cls.section}` : ''})
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      )}
+    </View>
+  );
 
   const DetailRow = ({
     icon,
@@ -286,6 +403,30 @@ export default function SubjectsView() {
           value={subject.teacher?.email?.trim() ? subject.teacher.email : '—'}
           valueMuted={!subject.teacher?.email}
         />
+      </View>
+
+      <View style={styles.assignedClassesBlock}>
+        <Text style={styles.assignedClassesTitle}>Assigned Classes:</Text>
+        {(subject.classes?.length ?? 0) > 0 ? (
+          <ScrollView
+            style={styles.assignedClassesScroll}
+            nestedScrollEnabled
+            showsVerticalScrollIndicator
+          >
+            {subject.classes!.map((cls) => (
+              <View key={cls.id} style={styles.assignedClassItem}>
+                <View style={styles.assignedClassIconWrap}>
+                  <SvgIconSchool size={16} color="#0284c7" />
+                </View>
+                <Text style={styles.assignedClassItemText}>{getClassItemLabel(cls)}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        ) : (
+          <View style={styles.noClassesAssignedWrap}>
+            <Text style={styles.noClassesAssigned}>No classes assigned</Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.cardActions}>
@@ -463,6 +604,9 @@ export default function SubjectsView() {
                   placeholderTextColor="#9ca3af"
                 />
               </View>
+              {renderClassPicker(newSubject.classIds, (classIds) =>
+                setNewSubject({ ...newSubject, classIds })
+              )}
             </ScrollView>
             <View style={styles.modalFooter}>
               <TouchableOpacity style={styles.cancelButton} onPress={() => setIsAddModalVisible(false)}>
@@ -544,6 +688,9 @@ export default function SubjectsView() {
                   placeholderTextColor="#9ca3af"
                 />
               </View>
+              {renderClassPicker(editSubject.classIds, (classIds) =>
+                setEditSubject({ ...editSubject, classIds })
+              )}
             </ScrollView>
             <View style={styles.modalFooter}>
               <TouchableOpacity style={styles.cancelButton} onPress={() => setIsEditModalVisible(false)}>
@@ -930,5 +1077,94 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#fff',
+  },
+  classPickerEmpty: {
+    fontSize: 13,
+    color: '#0284c7',
+    paddingVertical: 8,
+  },
+  classPickerScroll: {
+    maxHeight: 180,
+    borderWidth: 1,
+    borderColor: '#bae6fd',
+    borderRadius: 12,
+    backgroundColor: '#f0f9ff',
+    padding: 8,
+  },
+  classPickRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    marginBottom: 4,
+  },
+  classPickRowActive: {
+    backgroundColor: '#e0f2fe',
+  },
+  classPickLabel: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0c4a6e',
+  },
+  assignedClassesBlock: {
+    marginBottom: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+  },
+  assignedClassesTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0f172a',
+    marginBottom: 8,
+  },
+  assignedClassesScroll: {
+    maxHeight: 140,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    backgroundColor: '#fffbeb',
+    padding: 8,
+  },
+  assignedClassItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#f0f9ff',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: '#bae6fd',
+  },
+  assignedClassIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: '#e0f2fe',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  assignedClassItemText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0c4a6e',
+  },
+  noClassesAssignedWrap: {
+    paddingVertical: 4,
+  },
+  noClassesAssigned: {
+    fontSize: 13,
+    color: '#64748b',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    alignSelf: 'flex-start',
   },
 });

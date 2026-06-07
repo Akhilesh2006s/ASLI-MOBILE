@@ -10,11 +10,15 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import api from '../../../src/services/api/api';
 import {
   isVideoContent as lpIsVideo,
   type LearningPathContentItem,
 } from '../../../src/lib/learningPathContent';
+import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
+import {
+  loadLearningPathCatalog,
+  type SubjectWithPathContent,
+} from '../../../src/lib/learningPathCatalog';
 
 interface ContentItem extends LearningPathContentItem {
   title: string;
@@ -22,119 +26,30 @@ interface ContentItem extends LearningPathContentItem {
   subject?: string;
 }
 
-interface Subject {
-  _id: string;
-  id: string;
-  name: string;
-  description?: string;
-  board?: string;
-  totalContent?: number;
-  asliPrepContent?: ContentItem[];
-}
-
-function parseSubjectsPayload(data: any): any[] {
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data?.data)) return data.data;
-  if (Array.isArray(data?.subjects)) return data.subjects;
-  return [];
-}
-
 export default function LearningPathsView() {
   const router = useRouter();
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [subjectsWithContent, setSubjectsWithContent] = useState<Subject[]>([]);
+  const { isAsliPrepExclusive, loading: programLoading } = useSchoolProgram();
+  const [subjectsWithContent, setSubjectsWithContent] = useState<SubjectWithPathContent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingContent, setIsLoadingContent] = useState(false);
   const [expandedSubjectId, setExpandedSubjectId] = useState<string | null>(null);
 
-  const fetchSubjects = useCallback(async () => {
+  const loadCatalog = useCallback(async () => {
+    if (programLoading) return;
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      const response = await api.get('/api/admin/subjects');
-      const raw = response?.data;
-      const subjectsArray = parseSubjectsPayload(raw);
-
-      setSubjects(
-        subjectsArray.map((subject: any) => ({
-          _id: String(subject._id || subject.id || ''),
-          id: String(subject._id || subject.id || ''),
-          name: subject.name || 'Unknown Subject',
-          description: subject.description || '',
-          board: subject.board || '',
-          totalContent: 0,
-        }))
-      );
+      const rows = await loadLearningPathCatalog('admin', isAsliPrepExclusive);
+      setSubjectsWithContent(rows);
     } catch (error) {
-      console.error('Failed to fetch subjects:', error);
-      setSubjects([]);
+      console.error('Failed to fetch learning paths:', error);
+      setSubjectsWithContent([]);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isAsliPrepExclusive, programLoading]);
 
   useEffect(() => {
-    fetchSubjects();
-  }, [fetchSubjects]);
-
-  const fetchSubjectsWithContent = useCallback(async () => {
-    if (subjects.length === 0) return;
-    try {
-      setIsLoadingContent(true);
-
-      const subjectsWithContentResults = await Promise.allSettled(
-        subjects.map(async (subject: Subject) => {
-          try {
-            const subjectId = subject._id || subject.id;
-            let asliPrepContent: ContentItem[] = [];
-            try {
-              const contentResponse = await api.get('/api/admin/asli-prep-content', {
-                params: { subject: subjectId },
-              });
-              const contentData = contentResponse?.data;
-              const raw = contentData?.data ?? contentData;
-              asliPrepContent = Array.isArray(raw) ? raw : [];
-            } catch (contentError) {
-              console.error('Error fetching content for subject:', subjectId, contentError);
-              asliPrepContent = [];
-            }
-
-            return {
-              _id: subject._id || subject.id,
-              id: subject._id || subject.id,
-              name: subject.name || 'Unknown Subject',
-              description: subject.description || '',
-              board: subject.board || '',
-              asliPrepContent,
-              totalContent: asliPrepContent.length,
-            };
-          } catch (error) {
-            console.error('Error processing subject:', subject, error);
-            return null;
-          }
-        })
-      );
-
-      const validSubjects = subjectsWithContentResults
-        .filter(
-          (result): result is PromiseFulfilledResult<Subject> =>
-            result.status === 'fulfilled' && result.value !== null
-        )
-        .map((result) => result.value);
-
-      setSubjectsWithContent(validSubjects);
-    } catch (error) {
-      console.error('Failed to fetch subjects with content:', error);
-      setSubjectsWithContent([]);
-    } finally {
-      setIsLoadingContent(false);
-    }
-  }, [subjects]);
-
-  useEffect(() => {
-    if (subjects.length > 0) {
-      fetchSubjectsWithContent();
-    }
-  }, [subjects, fetchSubjectsWithContent]);
+    loadCatalog();
+  }, [loadCatalog]);
 
   const openContentItem = (content: ContentItem) => {
     if (lpIsVideo(content)) {
@@ -159,9 +74,10 @@ export default function LearningPathsView() {
         pathname: '/drive-viewer',
         params: { driveLink: encodeURIComponent(link) },
       });
-      return;
     }
   };
+
+  const showLoading = programLoading || isLoading;
 
   return (
     <View style={styles.container}>
@@ -170,13 +86,17 @@ export default function LearningPathsView() {
           <Ionicons name="map" size={26} color="#fb923c" />
           <View style={styles.headerTextBlock}>
             <Text style={styles.headerTitle}>Learning Paths</Text>
-            <Text style={styles.headerSubtitle}>Manage learning paths for students</Text>
+            <Text style={styles.headerSubtitle}>
+              {isAsliPrepExclusive
+                ? 'Asli Prep catalog — all content types'
+                : 'Curriculum library — Audio, TextBook & Homework'}
+            </Text>
           </View>
         </View>
       </View>
 
       <View style={styles.body}>
-        {isLoading || isLoadingContent ? (
+        {showLoading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#fb923c" />
           </View>
@@ -184,6 +104,11 @@ export default function LearningPathsView() {
           <View style={styles.emptyContainer}>
             <Ionicons name="map-outline" size={52} color="#d1d5db" />
             <Text style={styles.emptyText}>No learning paths found</Text>
+            <Text style={styles.emptyHint}>
+              {isAsliPrepExclusive
+                ? 'No catalog content is available yet.'
+                : 'Normal schools see Audio, TextBook and Homework only.'}
+            </Text>
           </View>
         ) : (
           <ScrollView
@@ -240,7 +165,7 @@ export default function LearningPathsView() {
                         <TouchableOpacity
                           key={content._id || content.id || `content-${index}`}
                           style={styles.contentItem}
-                          onPress={() => openContentItem(content)}
+                          onPress={() => openContentItem(content as ContentItem)}
                           activeOpacity={0.7}
                         >
                           <Ionicons
@@ -259,12 +184,6 @@ export default function LearningPathsView() {
                           <Ionicons name="chevron-forward" size={16} color="#9ca3af" />
                         </TouchableOpacity>
                       ))}
-                    </View>
-                  )}
-
-                  {isExpanded && (!subject.asliPrepContent || subject.asliPrepContent.length === 0) && (
-                    <View style={styles.noContentContainer}>
-                      <Text style={styles.noContentText}>No content items available</Text>
                     </View>
                   )}
                 </View>
@@ -413,19 +332,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6b7280',
   },
-  noContentContainer: {
-    marginTop: 10,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  noContentText: {
-    fontSize: 13,
-    color: '#9ca3af',
-    fontStyle: 'italic',
-  },
   pathStat: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -452,5 +358,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111827',
     marginTop: 12,
+  },
+  emptyHint: {
+    fontSize: 13,
+    color: '#6b7280',
+    marginTop: 8,
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });

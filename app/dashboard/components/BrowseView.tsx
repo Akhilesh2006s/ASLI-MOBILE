@@ -5,17 +5,16 @@ import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { openContentPreview } from '../../../src/utils/openContentPreview';
-
-const CONTENT_TYPES = [
-  { id: 'TextBook', label: 'TextBook', icon: 'book' as keyof typeof Ionicons.glyphMap },
-  { id: 'Workbook', label: 'Workbook', icon: 'document-text' as keyof typeof Ionicons.glyphMap },
-  { id: 'Material', label: 'Material', icon: 'document' as keyof typeof Ionicons.glyphMap },
-  { id: 'Video', label: 'Video', icon: 'videocam' as keyof typeof Ionicons.glyphMap },
-  { id: 'Audio', label: 'Audio', icon: 'headset' as keyof typeof Ionicons.glyphMap },
-  { id: 'Homework', label: 'Homework', icon: 'clipboard' as keyof typeof Ionicons.glyphMap },
-];
+import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
+import { filterContentsBySchoolProgram } from '../../../src/lib/school-program';
 
 export default function BrowseView() {
+  const { isAsliPrepExclusive, libraryTiles } = useSchoolProgram();
+  const visibleTypes = libraryTiles.map((tile) => ({
+    id: tile.type,
+    label: tile.label,
+    icon: tile.icon.replace('-outline', '') as keyof typeof Ionicons.glyphMap,
+  }));
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [content, setContent] = useState<any[]>([]);
   const [contentTypeCounts, setContentTypeCounts] = useState<{ [key: string]: number }>({});
@@ -24,7 +23,7 @@ export default function BrowseView() {
 
   useEffect(() => {
     fetchContentCounts();
-  }, []);
+  }, [isAsliPrepExclusive]);
 
   useEffect(() => {
     if (selectedType) {
@@ -47,10 +46,13 @@ export default function BrowseView() {
 
       if (response.ok) {
         const data = await response.json();
-        const fetchedContent = data.data || data || [];
+        const fetchedContent = filterContentsBySchoolProgram(
+          data.data || data || [],
+          isAsliPrepExclusive
+        );
         
         const counts: { [key: string]: number } = {};
-        CONTENT_TYPES.forEach(type => {
+        visibleTypes.forEach(type => {
           counts[type.id] = fetchedContent.filter((c: any) => 
             c.type && c.type.toLowerCase() === type.id.toLowerCase()
           ).length;
@@ -78,7 +80,10 @@ export default function BrowseView() {
 
       if (response.ok) {
         const data = await response.json();
-        const fetchedContent = data.data || data || [];
+        const fetchedContent = filterContentsBySchoolProgram(
+          data.data || data || [],
+          isAsliPrepExclusive
+        );
         const filtered = fetchedContent.filter((c: any) => 
           c.type && c.type.toLowerCase() === selectedType?.toLowerCase()
         );
@@ -114,7 +119,7 @@ export default function BrowseView() {
 
       {/* Content Type Cards */}
       <View style={styles.typesGrid}>
-        {CONTENT_TYPES.map((type) => (
+        {visibleTypes.map((type) => (
           <TouchableOpacity
             key={type.id}
             style={[
