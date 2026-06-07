@@ -6,10 +6,10 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { openContentPreview } from '../../../src/utils/openContentPreview';
 import {
   isVideoContent as lpIsVideo,
   type LearningPathContentItem,
@@ -52,29 +52,7 @@ export default function LearningPathsView() {
   }, [loadCatalog]);
 
   const openContentItem = (content: ContentItem) => {
-    if (lpIsVideo(content)) {
-      const id = content._id || content.id;
-      if (id) {
-        router.push({
-          pathname: '/video-player',
-          params: { videoId: String(id) },
-        });
-        return;
-      }
-      const fallback = content.youtubeUrl || content.fileUrl;
-      if (fallback) {
-        Linking.openURL(fallback).catch(() => {});
-      }
-      return;
-    }
-
-    const link = content.driveLink || content.fileUrl;
-    if (link) {
-      router.push({
-        pathname: '/drive-viewer',
-        params: { driveLink: encodeURIComponent(link) },
-      });
-    }
+    openContentPreview(router, content, { returnTo: 'learning' });
   };
 
   const showLoading = programLoading || isLoading;

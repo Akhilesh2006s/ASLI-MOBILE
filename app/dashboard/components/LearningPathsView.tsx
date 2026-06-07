@@ -135,7 +135,7 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
       router.push('/assignments');
       return;
     }
-    router.push({ pathname: '/asli-prep-content', params: { type } });
+    router.push({ pathname: '/asli-prep-content', params: { type, returnTo: 'learning' } });
   };
 
   const libraryTilesResolved = libraryTiles.map((tile) => ({
@@ -199,7 +199,12 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
                     padding={16}
                     animate
                     delay={index * 50}
-                    onPress={() => router.push(`/subject/${subject._id || subject.id}`)}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/subject/[id]',
+                        params: { id: String(subject._id || subject.id), returnTo: 'learning' },
+                      })
+                    }
                   >
                     <View style={styles.subjectCardInner}>
                       <LinearGradient

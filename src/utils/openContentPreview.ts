@@ -29,6 +29,7 @@ export function openContentPreview(
     item.youtubeUrl ||
     '';
   const contentId = item._id || item.id;
+  const returnParams = options?.returnTo ? { returnTo: options.returnTo } : {};
 
   const isVideoType =
     item.type === 'Video' ||
@@ -38,7 +39,6 @@ export function openContentPreview(
     getPreviewKind(rawUrl, item.type, item.youtubeUrl) === 'youtube';
 
   if (isVideoType) {
-    const returnParams = options?.returnTo ? { returnTo: options.returnTo } : {};
     if (contentId) {
       router.push({
         pathname: '/video-player',

@@ -38,6 +38,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (tab === 'eduott') setCurrentView('eduott');
+    else if (tab === 'learning-paths') setCurrentView('learning-paths');
   }, [tab]);
 
   const checkAuth = async () => {

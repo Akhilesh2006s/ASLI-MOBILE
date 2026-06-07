@@ -15,7 +15,7 @@ import teacherService from '../../../src/services/api/teacherService';
 import { openContentPreview } from '../../../src/utils/openContentPreview';
 import { SubNavChips, TeacherShimmer } from '../../../src/components/teacher';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../../src/theme/teacher';
-import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
+import { useContentViewerBack } from '../../../src/hooks/useBackNavigation';
 import { filterContentsBySchoolProgram } from '../../../src/lib/school-program';
 
 type ContentItem = {
@@ -31,7 +31,9 @@ type ContentItem = {
 };
 
 export default function TeacherSubjectContentScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, returnTo: returnToRaw } = useLocalSearchParams<{ id: string; returnTo?: string }>();
+  const returnTo = typeof returnToRaw === 'string' ? returnToRaw : Array.isArray(returnToRaw) ? returnToRaw[0] : '';
+  const goBack = useContentViewerBack(returnTo || undefined);
   const { isAsliPrepExclusive } = useSchoolProgram();
   const [subject, setSubject] = useState<any>(null);
   const [contents, setContents] = useState<ContentItem[]>([]);
@@ -89,7 +91,11 @@ export default function TeacherSubjectContentScreen() {
   const openContent = (item: ContentItem) => {
     const url = item.fileUrls?.[0] || item.fileUrl;
     if (url) {
-      openContentPreview(router, item);
+      openContentPreview(
+        router,
+        item,
+        returnTo === 'learning' ? { returnTo: 'learning' } : undefined
+      );
     } else {
       setPreview(item);
     }
@@ -107,7 +113,7 @@ export default function TeacherSubjectContentScreen() {
     <SafeAreaView style={styles.screen} edges={['top']}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+        <Pressable onPress={() => void goBack()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={TEACHER.text} />
         </Pressable>
         <View style={styles.topText}>

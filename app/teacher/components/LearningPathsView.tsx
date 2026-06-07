@@ -67,7 +67,7 @@ export default function LearningPathsView() {
           <Animated.View key={subject.id} entering={FadeInDown.duration(350).delay(Math.min(index * 70, 490))}>
             <Pressable
               style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-              onPress={() => router.push(`/teacher/subject/${subject.id}` as any)}
+              onPress={() => router.push(`/teacher/subject/${subject.id}?returnTo=learning`)}
             >
               <View style={styles.cardTop}>
                 <View style={styles.iconWrap}>

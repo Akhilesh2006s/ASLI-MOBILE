@@ -47,6 +47,7 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     if (tab === 'eduott') setActiveTab('eduott');
+    else if (tab === 'learning') setActiveTab('learning');
   }, [tab]);
 
   const firstName = useMemo(

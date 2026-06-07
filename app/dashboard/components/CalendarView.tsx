@@ -368,8 +368,8 @@ export default function CalendarView({ contents: propContents, onMarkAsDone, com
                 style={styles.downloadButton}
                 onPress={() => handleDownload(selectedContent)}
               >
-                <Ionicons name="download" size={20} color="#fff" />
-                <Text style={styles.downloadButtonText}>Download/Open</Text>
+                <Ionicons name="eye" size={20} color="#fff" />
+                <Text style={styles.downloadButtonText}>View</Text>
               </TouchableOpacity>
             </ScrollView>
           )}

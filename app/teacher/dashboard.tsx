@@ -110,6 +110,7 @@ export default function TeacherDashboard() {
 
   useEffect(() => {
     if (tab === 'eduott') setActiveTab('eduott');
+    else if (tab === 'learning-paths') setActiveTab('learning-paths');
   }, [tab]);
 
   const loadData = async () => {

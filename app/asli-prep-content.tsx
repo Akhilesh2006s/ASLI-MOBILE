@@ -8,7 +8,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../src/lib/api-config';
-import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
+import { useContentViewerBack } from '../src/hooks/useBackNavigation';
 import { openContentPreview } from '../src/utils/openContentPreview';
 import { useSchoolProgram } from '../src/hooks/useSchoolProgram';
 import {
@@ -39,7 +39,12 @@ interface Content {
 const VALID_TYPES = ['TextBook', 'Workbook', 'Material', 'Video', 'Audio'] as const;
 
 export default function AsliPrepContent() {
-  const { type: typeParam } = useLocalSearchParams<{ type?: string }>();
+  const { type: typeParam, returnTo: returnToRaw } = useLocalSearchParams<{
+    type?: string;
+    returnTo?: string;
+  }>();
+  const returnTo = typeof returnToRaw === 'string' ? returnToRaw : '';
+  const goBack = useContentViewerBack(returnTo || undefined);
   const { isAsliPrepExclusive, isTypeAllowed } = useSchoolProgram();
   const allowedTypes = getAllowedContentTypes(isAsliPrepExclusive);
   const initialType =
@@ -54,20 +59,16 @@ export default function AsliPrepContent() {
     topic: ''
   });
   const [subjects, setSubjects] = useState<any[]>([]);
-  const [dashboardPath, setDashboardPath] = useState<string>('/dashboard');
 
   useEffect(() => {
     fetchSubjects();
-    getDashboardPath().then(path => {
-      if (path) setDashboardPath(path);
-    });
   }, []);
 
   useEffect(() => {
     fetchContents();
   }, [filters, isAsliPrepExclusive]);
 
-  useBackNavigation(dashboardPath, false);
+  const previewOpts = returnTo === 'learning' ? { returnTo: 'learning' as const } : undefined;
 
   const fetchSubjects = async () => {
     try {
@@ -188,7 +189,7 @@ export default function AsliPrepContent() {
       Alert.alert('Error', 'File URL not available');
       return;
     }
-    openContentPreview(router, content);
+    openContentPreview(router, content, previewOpts);
   }, []);
 
   const getSubjectName = useCallback((subject: Content['subject'] | string | undefined) => {
@@ -263,7 +264,7 @@ export default function AsliPrepContent() {
             handleDownload(content);
           }}
         >
-          <Ionicons name="download" size={20} color="#fff" />
+          <Ionicons name="eye" size={20} color="#fff" />
         </TouchableOpacity>
       </TouchableOpacity>
     );
@@ -279,7 +280,7 @@ export default function AsliPrepContent() {
         style={styles.header}
       >
         <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => router.replace(dashboardPath)} style={styles.backButton}>
+          <TouchableOpacity onPress={() => void goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
           <View style={styles.headerText}>

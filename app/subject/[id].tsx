@@ -6,15 +6,14 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
-  Linking,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../src/services/api/api';
-import { useBackNavigation, getDashboardPath } from '../../src/hooks/useBackNavigation';
+import { useContentViewerBack } from '../../src/hooks/useBackNavigation';
+import { openContentPreview } from '../../src/utils/openContentPreview';
 import {
   isVideoContent,
   type LearningPathContentItem,
@@ -31,12 +30,16 @@ function pickParam(v: string | string[] | undefined): string {
 export default function SubjectContent() {
   const router = useRouter();
   const { isAsliPrepExclusive } = useSchoolProgram();
-  const { id: idRaw } = useLocalSearchParams<{ id?: string | string[] }>();
+  const { id: idRaw, returnTo: returnToRaw } = useLocalSearchParams<{
+    id?: string | string[];
+    returnTo?: string | string[];
+  }>();
   const id = pickParam(idRaw);
+  const returnTo = pickParam(returnToRaw);
   const [subject, setSubject] = useState<any>(null);
   const [content, setContent] = useState<LearningPathContentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [dashboardPath, setDashboardPath] = useState<string>('/dashboard');
+  const goBack = useContentViewerBack(returnTo || undefined);
 
   const fetchSubjectData = useCallback(async () => {
     if (!id) return;
@@ -69,46 +72,11 @@ export default function SubjectContent() {
     if (id) {
       fetchSubjectData();
     }
-    getDashboardPath().then((path) => {
-      if (path) setDashboardPath(path);
-    });
   }, [id, fetchSubjectData]);
 
-  useBackNavigation(dashboardPath, false);
-
   const openContentItem = (item: LearningPathContentItem) => {
-    if (isVideoContent(item)) {
-      const vid = item._id || item.id;
-      if (vid) {
-        router.push({
-          pathname: '/video-player',
-          params: { videoId: String(vid) },
-        });
-        return;
-      }
-      const fallback = item.youtubeUrl || item.fileUrl;
-      if (fallback) {
-        Linking.openURL(fallback).catch(() => {});
-      } else {
-        Alert.alert('Video', 'This item has no playable URL.');
-      }
-      return;
-    }
-
-    const link = item.driveLink || item.fileUrl;
-    if (link) {
-      router.push({
-        pathname: '/drive-viewer',
-        params: {
-          driveLink: encodeURIComponent(link),
-          title: item.title || 'Preview',
-          contentType: item.type || '',
-        },
-      });
-      return;
-    }
-
-    Alert.alert('Content', item.title || 'No link available for this item.');
+    const previewOpts = returnTo === 'learning' ? { returnTo: 'learning' as const } : undefined;
+    openContentPreview(router, item, previewOpts);
   };
 
   if (isLoading) {
@@ -125,7 +93,7 @@ export default function SubjectContent() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar style="dark" />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => void goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#111827" />
         </TouchableOpacity>
         <View style={styles.headerContent}>

@@ -4,10 +4,10 @@ import { WebView } from 'react-native-webview';
 import { Video, ResizeMode } from 'expo-av';
 import { Image } from 'expo-image';
 import YouTubeEmbedWebView from './YouTubeEmbedWebView';
+import PdfPreviewWebView from './PdfPreviewWebView';
 import {
   getAuthHeaders,
   getDrivePreviewUrl,
-  getPdfPreviewUrl,
   getPreviewKind,
   isYouTubeUrl,
   resolveContentUrl,
@@ -25,7 +25,7 @@ export default function MediaPreviewPanel({ fileUrl, title, contentType, youtube
   const ytSource = youtubeUrl || resolvedUrl;
   const kind = getPreviewKind(resolvedUrl, contentType, youtubeUrl);
 
-  const [loading, setLoading] = useState(kind === 'pdf');
+  const [loading, setLoading] = useState(kind === 'drive');
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [webHeaders, setWebHeaders] = useState<Record<string, string> | undefined>();
   const [videoHeaders, setVideoHeaders] = useState<Record<string, string> | undefined>();
@@ -35,14 +35,7 @@ export default function MediaPreviewPanel({ fileUrl, title, contentType, youtube
 
     (async () => {
       if (kind === 'pdf') {
-        setLoading(true);
-        const uri = await getPdfPreviewUrl(resolvedUrl, title);
-        const headers = await getAuthHeaders(uri);
-        if (!cancelled) {
-          setPreviewUri(uri);
-          setWebHeaders(headers);
-          setLoading(false);
-        }
+        setLoading(false);
         return;
       }
 
@@ -134,7 +127,15 @@ export default function MediaPreviewPanel({ fileUrl, title, contentType, youtube
     );
   }
 
-  if (previewUri && (kind === 'pdf' || kind === 'drive')) {
+  if (kind === 'pdf') {
+    return (
+      <View style={styles.flex}>
+        <PdfPreviewWebView fileUrl={fileUrl} title={title} style={styles.flex} />
+      </View>
+    );
+  }
+
+  if (previewUri && kind === 'drive') {
     return (
       <WebView
         source={{ uri: previewUri, headers: webHeaders }}

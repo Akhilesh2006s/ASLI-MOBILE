@@ -84,10 +84,98 @@ export function isYouTubeUrl(url: string): boolean {
 }
 
 function shouldFetchDirectly(url: string): boolean {
-  const lower = url.toLowerCase();
-  if (lower.includes('/uploads/')) return true;
-  if (lower.includes(API_BASE_URL.toLowerCase()) && lower.includes('.pdf')) return true;
-  return false;
+  try {
+    const host = new URL(url).hostname;
+    const directDomains = ['ncert.nic.in', 'ncertbooks.prashanthellina.com'];
+    return directDomains.some((d) => host === d || host.endsWith(`.${d}`));
+  } catch {
+    return false;
+  }
+}
+
+/** Proxy URL that returns PDF bytes for inline viewing (PDF.js / WebView). */
+export async function getPdfJsFetchUrl(fileUrl: string, title?: string): Promise<string> {
+  const absolute = resolveContentUrl(fileUrl);
+  if (!absolute) return '';
+  if (shouldFetchDirectly(absolute)) return absolute;
+
+  const token = (await SecureStore.getItemAsync('authToken')) || '';
+  return (
+    `${API_BASE_URL}/api/student/content-preview` +
+    `?url=${encodeURIComponent(absolute)}` +
+    `&filename=${encodeURIComponent(title || 'preview.pdf')}` +
+    `&token=${encodeURIComponent(token)}` +
+    `&forceProxy=1`
+  );
+}
+
+export function buildPdfJsPreviewHtml(pdfUrl: string): string {
+  const safeUrl = JSON.stringify(pdfUrl);
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"><\/script>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #525659; min-height: 100%; }
+    #status {
+      color: #fff;
+      text-align: center;
+      padding: 32px 16px;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 15px;
+    }
+    #pages { padding: 8px 0 24px; }
+    canvas {
+      display: block;
+      margin: 0 auto 12px;
+      max-width: calc(100% - 16px);
+      height: auto;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+    }
+    #error { color: #fca5a5; padding: 24px; text-align: center; font-family: sans-serif; }
+  </style>
+</head>
+<body>
+  <div id="status">Loading PDF…</div>
+  <div id="pages"></div>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const url = ${safeUrl};
+    (async function () {
+      const statusEl = document.getElementById('status');
+      const container = document.getElementById('pages');
+      try {
+        const pdf = await pdfjsLib.getDocument({ url, withCredentials: false }).promise;
+        if (statusEl) statusEl.remove();
+        const pageCount = pdf.numPages;
+        for (let num = 1; num <= pageCount; num++) {
+          const page = await pdf.getPage(num);
+          const baseViewport = page.getViewport({ scale: 1 });
+          const containerWidth = Math.max(document.documentElement.clientWidth - 16, 280);
+          const scale = containerWidth / baseViewport.width;
+          const viewport = page.getViewport({ scale });
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          container.appendChild(canvas);
+          await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+        }
+      } catch (err) {
+        if (statusEl) statusEl.remove();
+        const errEl = document.createElement('div');
+        errEl.id = 'error';
+        errEl.textContent = 'Could not display this PDF. Please try again.';
+        document.body.appendChild(errEl);
+      }
+    })();
+  <\/script>
+</body>
+</html>`;
 }
 
 export function isPdfPreviewContent(fileUrl: string, contentType?: string | null): boolean {
@@ -165,17 +253,7 @@ export function getDrivePreviewUrl(link: string): string {
 }
 
 export async function getPdfPreviewUrl(fileUrl: string, title?: string): Promise<string> {
-  const absolute = resolveContentUrl(fileUrl);
-  if (!absolute) return '';
-  if (shouldFetchDirectly(absolute)) return absolute;
-
-  const token = (await SecureStore.getItemAsync('authToken')) || '';
-  return (
-    `${API_BASE_URL}/api/student/content-preview` +
-    `?url=${encodeURIComponent(absolute)}` +
-    `&filename=${encodeURIComponent(title || 'preview.pdf')}` +
-    `&token=${encodeURIComponent(token)}`
-  );
+  return getPdfJsFetchUrl(fileUrl, title);
 }
 
 export async function getAuthHeaders(url: string): Promise<Record<string, string> | undefined> {

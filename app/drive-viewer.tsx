@@ -3,10 +3,10 @@ import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Linking, A
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../src/lib/api-config';
-import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
+import { useContentViewerBack } from '../src/hooks/useBackNavigation';
 import MediaPreviewPanel from '../src/components/shared/MediaPreviewPanel';
 import { resolveContentUrl } from '../src/utils/contentPreview';
 
@@ -35,8 +35,10 @@ export default function DriveViewer() {
     driveLink?: string;
     title?: string;
     contentType?: string;
+    returnTo?: string | string[];
   }>();
   const fileId = pickParam(params.fileId);
+  const returnTo = pickParam(params.returnTo);
   const driveLinkRaw = pickParam(params.driveLink);
   const paramTitle = pickParam(params.title);
   const contentType = pickParam(params.contentType);
@@ -51,7 +53,7 @@ export default function DriveViewer() {
 
   const [file, setFile] = useState<DriveFile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [dashboardPath, setDashboardPath] = useState<string>('/dashboard');
+  const goBack = useContentViewerBack(returnTo || undefined);
 
   const previewUrl = resolveContentUrl(file?.driveLink || driveLink);
   const previewTitle = file?.title || paramTitle || 'Preview';
@@ -90,12 +92,7 @@ export default function DriveViewer() {
     } else {
       setIsLoading(false);
     }
-    getDashboardPath().then((path) => {
-      if (path) setDashboardPath(path);
-    });
   }, [fileId, driveLink]);
-
-  useBackNavigation(dashboardPath, false);
 
   const handleOpenInBrowser = () => {
     const url = previewUrl;
@@ -125,7 +122,7 @@ export default function DriveViewer() {
           <Text style={styles.errorText}>File not found</Text>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => router.replace(dashboardPath)}
+            onPress={() => void goBack()}
           >
             <Text style={styles.backButtonText}>Go Back</Text>
           </TouchableOpacity>
@@ -138,7 +135,7 @@ export default function DriveViewer() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <LinearGradient colors={['#6366F1', '#4F46E5']} style={styles.header}>
         <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => router.replace(dashboardPath)} style={styles.headerBack}>
+          <TouchableOpacity onPress={() => void goBack()} style={styles.headerBack}>
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
           <View style={styles.headerText}>
