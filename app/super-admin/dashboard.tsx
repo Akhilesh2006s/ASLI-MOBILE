@@ -391,11 +391,6 @@ export default function SuperAdminDashboard() {
             </View>
             <View style={styles.settingsContainer}>
               <TouchableOpacity style={styles.settingsItem}>
-                <Ionicons name="notifications" size={24} color="#f97316" />
-                <Text style={styles.settingsText}>Notifications</Text>
-                <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.settingsItem}>
                 <Ionicons name="lock-closed" size={24} color="#f97316" />
                 <Text style={styles.settingsText}>Security</Text>
                 <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
@@ -418,7 +413,6 @@ export default function SuperAdminDashboard() {
         role="super-admin"
         userName={user.fullName}
         subtitle="Aslilearn AI Platform"
-        onNotification={() => router.push('/notifications')}
         onMenu={() => setModalVisible(true)}
       />
 

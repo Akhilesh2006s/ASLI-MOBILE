@@ -1,10 +1,21 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Modal, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useAnimatedProps } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
+import GlassCard from '../../../src/components/student/GlassCard';
+import ChipNav from '../../../src/components/student/ChipNav';
+import { ShimmerCard } from '../../../src/components/student/StudentShimmer';
+import { AnimatedStatInput, useCountUp } from '../../../src/hooks/useCountUp';
+import {
+  STUDENT,
+  STUDENT_RADIUS,
+  STUDENT_SPACING,
+  STUDENT_TYPO,
+} from '../../../src/theme/student';
 import {
   examMatchesStudentAssignedClass,
   getExamClassLabelsForStudent,
@@ -50,10 +61,36 @@ type ExamsViewProps = {
 };
 
 const ATTEMPTED_CARD_SCHEMES = [
-  { gradient: ['#fdba74', '#fb923c'] as const, typeBadgeBg: 'rgba(249,115,22,0.25)', typeBadgeText: '#fff7ed' },
-  { gradient: ['#7dd3fc', '#38bdf8'] as const, typeBadgeBg: 'rgba(14,165,233,0.25)', typeBadgeText: '#f0f9ff' },
-  { gradient: ['#2dd4bf', '#14b8a6'] as const, typeBadgeBg: 'rgba(20,184,166,0.25)', typeBadgeText: '#f0fdfa' },
+  { gradient: [STUDENT.warning, STUDENT.statGradients.today[0]] as const, typeBadgeBg: 'rgba(249,115,22,0.25)', typeBadgeText: STUDENT.textOnPrimary },
+  { gradient: [STUDENT.accent, STUDENT.statGradients.study[1]] as const, typeBadgeBg: 'rgba(14,165,233,0.25)', typeBadgeText: STUDENT.textOnPrimary },
+  { gradient: [STUDENT.primaryLight, STUDENT.primary] as const, typeBadgeBg: 'rgba(20,184,166,0.25)', typeBadgeText: STUDENT.textOnPrimary },
 ];
+
+function CountUpText({
+  target,
+  suffix = '',
+  prefix = '',
+  style,
+}: {
+  target: number;
+  suffix?: string;
+  prefix?: string;
+  style?: object;
+}) {
+  const value = useCountUp(target, 800);
+  const animatedProps = useAnimatedProps(() => ({
+    text: `${prefix}${Math.round(value.value)}${suffix}`,
+  }));
+
+  return (
+    <AnimatedStatInput
+      animatedProps={animatedProps as never}
+      editable={false}
+      style={style}
+      underlineColorAndroid="transparent"
+    />
+  );
+}
 
 export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) {
   const { width } = useWindowDimensions();
@@ -319,13 +356,13 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
     switch (type) {
       case 'mains':
       case 'advanced':
-        return { bg: '#dbeafe', text: '#2563eb' };
+        return { bg: STUDENT.accentSoft, text: STUDENT.accent };
       case 'weekend':
-        return { bg: '#d1fae5', text: '#10b981' };
+        return { bg: STUDENT.navActiveBg, text: STUDENT.success };
       case 'practice':
-        return { bg: '#fed7aa', text: '#ea580c' };
+        return { bg: 'rgba(245,158,11,0.15)', text: STUDENT.warning };
       default:
-        return { bg: '#f3f4f6', text: '#6b7280' };
+        return { bg: STUDENT.surfaceHover, text: STUDENT.textMuted };
     }
   };
 
@@ -342,6 +379,36 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
 
     router.push(`/exam/${exam._id}`);
   };
+
+  const examTabChips = useMemo(
+    () => [
+      { id: 'available', label: 'Available Exams' },
+      { id: 'attempted', label: 'Attempted Exams' },
+      { id: 'ranking', label: 'My Rankings' },
+      { id: 'upcoming', label: 'Upcoming' },
+    ],
+    []
+  );
+
+  const subjectChips = useMemo(
+    () => [
+      { id: 'all', label: 'All subjects' },
+      ...availableSubjectOptions.map((subject) => ({
+        id: subject,
+        label: subject.charAt(0).toUpperCase() + subject.slice(1),
+      })),
+    ],
+    [availableSubjectOptions]
+  );
+
+  const avgPercentile = rankings.length
+    ? Math.round(rankings.reduce((sum: number, r: any) => sum + (r.percentile || 0), 0) / rankings.length)
+    : 0;
+  const avgScore = rankings.length
+    ? Math.round(
+        (rankings.reduce((sum: number, r: any) => sum + (r.percentage || 0), 0) / rankings.length) * 10
+      ) / 10
+    : 0;
 
   return (
     <>
@@ -366,57 +433,31 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
           ) : null}
           <View style={styles.filterGroup}>
             <Text style={styles.filterLabel}>Subject</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.subjectChips}>
-              <TouchableOpacity
-                style={[styles.subjectChip, examSubjectFilter === 'all' && styles.subjectChipActive]}
-                onPress={() => setExamSubjectFilter('all')}
-              >
-                <Text style={[styles.subjectChipText, examSubjectFilter === 'all' && styles.subjectChipTextActive]}>
-                  All subjects
-                </Text>
-              </TouchableOpacity>
-              {availableSubjectOptions.map((subject) => (
-                <TouchableOpacity
-                  key={subject}
-                  style={[styles.subjectChip, examSubjectFilter === subject && styles.subjectChipActive]}
-                  onPress={() => setExamSubjectFilter(subject)}
-                >
-                  <Text style={[styles.subjectChipText, examSubjectFilter === subject && styles.subjectChipTextActive]}>
-                    {subject.charAt(0).toUpperCase() + subject.slice(1)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            <ChipNav
+              chips={subjectChips}
+              active={examSubjectFilter}
+              onChange={setExamSubjectFilter}
+            />
           </View>
         </View>
       </View>
 
       <View style={[styles.tabsContainer, compact && { marginBottom: 14 }]}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
-          {([
-            { id: 'available' as const, label: 'Available Exams' },
-            { id: 'attempted' as const, label: 'Attempted Exams' },
-            { id: 'ranking' as const, label: 'My Rankings' },
-            { id: 'upcoming' as const, label: 'Upcoming' },
-          ]).map((tab) => (
-            <TouchableOpacity
-              key={tab.id}
-              style={[styles.tab, activeTab === tab.id && styles.tabActive]}
-              onPress={() => setActiveTab(tab.id)}
-            >
-              <Text style={[styles.tabText, activeTab === tab.id && styles.tabTextActive]}>
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <ChipNav
+          chips={examTabChips}
+          active={activeTab}
+          onChange={(id) => setActiveTab(id as typeof activeTab)}
+        />
       </View>
 
       {/* Available Exams Tab */}
       {activeTab === 'available' && (
         <View style={styles.content}>
           {isLoading ? (
-            <ActivityIndicator size="large" color="#3b82f6" style={styles.loader} />
+            <View style={styles.shimmerWrap}>
+              <ShimmerCard />
+              <ShimmerCard />
+            </View>
           ) : availableActiveExams.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="document-text-outline" size={64} color="#d1d5db" />
@@ -432,11 +473,7 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
                 const typeColor = getExamTypeColor(exam.examType);
                 const classLabels = getExamClassLabelsForStudent(exam, user?.classNumber);
                 return (
-                  <TouchableOpacity
-                    key={exam._id}
-                    style={styles.examCard}
-                    onPress={() => handleStartExam(exam)}
-                  >
+                  <GlassCard key={exam._id} variant="elevated" padding={16} style={styles.examCardWrap} onPress={() => handleStartExam(exam)}>
                     <View style={styles.examHeader}>
                       <View style={[styles.examTypeBadge, { backgroundColor: typeColor.bg }]}>
                         <Text style={[styles.examTypeText, { color: typeColor.text }]}>
@@ -480,7 +517,7 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
                     >
                       <Text style={styles.startButtonText}>Start Exam</Text>
                     </TouchableOpacity>
-                  </TouchableOpacity>
+                  </GlassCard>
                 );
               })}
             </View>
@@ -540,11 +577,11 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
                     </View>
 
                     <View style={styles.attemptedScoreBox}>
-                      <Text style={styles.attemptedScoreMain}>
-                        {result.obtainedMarks || 0}
-                        <Text style={styles.attemptedScoreDenom}>/{totalMarksDisplay}</Text>
-                      </Text>
-                      <Text style={styles.attemptedScoreLabelDark}>marks</Text>
+                      <CountUpText
+                        target={result.obtainedMarks || 0}
+                        style={styles.attemptedScoreMain}
+                      />
+                      <Text style={styles.attemptedScoreDenom}>/{totalMarksDisplay} marks</Text>
                     </View>
 
                     <View style={styles.attemptedStatsList}>
@@ -655,30 +692,26 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
           ) : (
             <View style={styles.rankingsList}>
               {/* Overall Performance Summary */}
-              <View style={styles.summaryCard}>
+              <GlassCard variant="elevated" padding={16} style={styles.summaryCardWrap}>
                 <View style={styles.summaryHeader}>
-                  <Ionicons name="bar-chart" size={24} color="#9333ea" />
+                  <Ionicons name="bar-chart" size={24} color={STUDENT.statGradients.efficiency[0]} />
                   <Text style={styles.summaryTitle}>Overall Performance Summary</Text>
                 </View>
                 <View style={styles.summaryGrid}>
                   <View style={styles.summaryItem}>
                     <Text style={styles.summaryLabel}>Average Percentile</Text>
-                    <Text style={styles.summaryValue}>
-                      {Math.round(rankings.reduce((sum: number, r: any) => sum + (r.percentile || 0), 0) / rankings.length)}
-                    </Text>
+                    <CountUpText target={avgPercentile} style={styles.summaryValue} />
                   </View>
                   <View style={styles.summaryItem}>
                     <Text style={styles.summaryLabel}>Exams Completed</Text>
-                    <Text style={styles.summaryValue}>{rankings.length}</Text>
+                    <CountUpText target={rankings.length} style={styles.summaryValue} />
                   </View>
                   <View style={styles.summaryItem}>
                     <Text style={styles.summaryLabel}>Average Score</Text>
-                    <Text style={styles.summaryValue}>
-                      {(rankings.reduce((sum: number, r: any) => sum + (r.percentage || 0), 0) / rankings.length).toFixed(1)}%
-                    </Text>
+                    <CountUpText target={avgScore} suffix="%" style={styles.summaryValue} />
                   </View>
                 </View>
-              </View>
+              </GlassCard>
 
               {/* Individual Rankings */}
               {rankings.map((ranking: any, index: number) => {
@@ -692,7 +725,7 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
                   : { bg: '#f3f4f6', text: '#6b7280', label: 'Below 50%' };
                 
                 return (
-                  <View key={ranking._id || index} style={styles.rankingCard}>
+                  <GlassCard key={ranking._id || index} variant="elevated" padding={16} style={styles.rankingCardWrap}>
                     <View style={styles.rankingHeader}>
                       <View style={styles.rankingPosition}>
                         <Text style={styles.rankingPositionText}>#{ranking.rank || index + 1}</Text>
@@ -745,7 +778,7 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
                         </Text>
                       </View>
                     )}
-                  </View>
+                  </GlassCard>
                 );
               })}
             </View>
@@ -768,7 +801,7 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
                 const typeColor = getExamTypeColor(exam.examType);
                 const classLabels = getExamClassLabelsForStudent(exam, user?.classNumber);
                 return (
-                  <View key={exam._id} style={styles.examCard}>
+                  <GlassCard key={exam._id} variant="elevated" padding={16} style={styles.examCardWrap}>
                     <View style={styles.examHeader}>
                       <View style={[styles.examTypeBadge, { backgroundColor: typeColor.bg }]}>
                         <Text style={[styles.examTypeText, { color: typeColor.text }]}>
@@ -808,7 +841,7 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
                         <Text style={styles.examStatText}>{exam.totalQuestions} questions</Text>
                       </View>
                     </View>
-                  </View>
+                  </GlassCard>
                 );
               })}
             </View>
@@ -841,127 +874,84 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: STUDENT.bg,
   },
   scrollContent: {
     paddingBottom: 110,
     flexGrow: 1,
   },
   header: {
-    marginBottom: 20,
+    marginBottom: STUDENT_SPACING.xl,
   },
   headerTitle: {
+    ...STUDENT_TYPO.hero,
     fontSize: 30,
-    fontWeight: '800',
-    color: '#ea580c',
+    color: STUDENT.warning,
     marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#4b5563',
+    color: STUDENT.textSecondary,
   },
   filtersRow: {
     marginTop: 14,
-    gap: 12,
+    gap: STUDENT_SPACING.md,
   },
   filterGroup: {
     gap: 6,
   },
   filterLabel: {
     fontSize: 13,
-    color: '#4b5563',
+    color: STUDENT.textSecondary,
     fontWeight: '500',
   },
   classBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#e0e7ff',
+    backgroundColor: STUDENT.accentSoft,
     borderWidth: 1,
-    borderColor: '#c7d2fe',
-    borderRadius: 999,
+    borderColor: STUDENT.surfaceBorder,
+    borderRadius: STUDENT_RADIUS.full,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
   classBadgeText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#3730a3',
-  },
-  subjectChips: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingRight: 8,
-  },
-  subjectChip: {
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#fff',
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  subjectChipActive: {
-    backgroundColor: '#fff7ed',
-    borderColor: '#fdba74',
-  },
-  subjectChipText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#4b5563',
-  },
-  subjectChipTextActive: {
-    color: '#c2410c',
+    color: STUDENT.accent,
   },
   tabsContainer: {
-    marginBottom: 16,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 4,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    zIndex: 1,
+    marginBottom: STUDENT_SPACING.lg,
   },
-  tabsScroll: {
-    flexDirection: 'row',
-    gap: 4,
-  },
-  tab: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-  },
-  tabActive: {
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  tabText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6b7280',
-  },
-  tabTextActive: {
-    color: '#111827',
-    fontWeight: '800',
+  shimmerWrap: {
+    gap: STUDENT_SPACING.md,
+    marginTop: STUDENT_SPACING.sm,
   },
   classPill: {
     backgroundColor: 'rgba(255,255,255,0.9)',
-    borderRadius: 999,
+    borderRadius: STUDENT_RADIUS.full,
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
   classPillText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#111827',
+    color: STUDENT.text,
   },
   content: {
     paddingTop: 4,
   },
   attemptedListContent: {
-    paddingBottom: 24,
-    gap: 16,
+    paddingBottom: STUDENT_SPACING.xxl,
+    gap: STUDENT_SPACING.lg,
+  },
+  examCardWrap: {
+    marginBottom: STUDENT_SPACING.md,
+  },
+  rankingCardWrap: {
+    marginBottom: STUDENT_SPACING.md,
+  },
+  summaryCardWrap: {
+    marginBottom: STUDENT_SPACING.lg,
   },
   attemptedCard: {
     borderRadius: 16,
@@ -976,7 +966,7 @@ const styles = StyleSheet.create({
   attemptedCardTitle: {
     fontSize: 17,
     fontWeight: '800',
-    color: '#111827',
+    color: STUDENT.text,
   },
   attemptedCardDesc: {
     fontSize: 13,
@@ -1007,10 +997,7 @@ const styles = StyleSheet.create({
   attemptedClassBadgeText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#111827',
-  },
-  loader: {
-    marginTop: 40,
+    color: STUDENT.text,
   },
   emptyState: {
     alignItems: 'center',
@@ -1020,26 +1007,17 @@ const styles = StyleSheet.create({
   emptyStateTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#6b7280',
+    color: STUDENT.textMuted,
     marginTop: 16,
     marginBottom: 8,
   },
   emptyStateText: {
     fontSize: 14,
-    color: '#9ca3af',
+    color: STUDENT.navInactive,
     textAlign: 'center',
   },
   examsList: {
     gap: 0,
-  },
-  examCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
   },
   examHeader: {
     flexDirection: 'row',
@@ -1069,11 +1047,11 @@ const styles = StyleSheet.create({
   examTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
+    color: STUDENT.text,
   },
   examDescription: {
     fontSize: 14,
-    color: '#6b7280',
+    color: STUDENT.textMuted,
   },
   examStats: {
     flexDirection: 'row',
@@ -1087,20 +1065,17 @@ const styles = StyleSheet.create({
   },
   examStatText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: STUDENT.textMuted,
   },
   startButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: STUDENT.accent,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: STUDENT_RADIUS.sm,
     alignItems: 'center',
     marginTop: 8,
   },
-  viewButton: {
-    backgroundColor: '#10b981',
-  },
   startButtonText: {
-    color: '#fff',
+    color: STUDENT.textOnPrimary,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -1140,31 +1115,25 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   rankingsList: {
-    gap: 12,
-  },
-  rankingCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    gap: STUDENT_SPACING.md,
   },
   rankingHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: STUDENT_SPACING.md,
   },
   rankingPosition: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#3b82f6',
+    backgroundColor: STUDENT.accent,
     justifyContent: 'center',
     alignItems: 'center',
   },
   rankingPositionText: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#fff',
+    color: STUDENT.textOnPrimary,
   },
   rankingInfo: {
     flex: 1,
@@ -1173,11 +1142,11 @@ const styles = StyleSheet.create({
   rankingTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
+    color: STUDENT.text,
   },
   rankingSubtitle: {
     fontSize: 14,
-    color: '#6b7280',
+    color: STUDENT.textMuted,
   },
   rankingTrophy: {
     width: 40,
@@ -1195,17 +1164,12 @@ const styles = StyleSheet.create({
   attemptedScoreMain: {
     fontSize: 30,
     fontWeight: '800',
-    color: '#111827',
+    color: STUDENT.text,
   },
   attemptedScoreDenom: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#4b5563',
-  },
-  attemptedScoreLabelDark: {
-    fontSize: 13,
-    color: '#374151',
-    fontWeight: '600',
+    color: STUDENT.textSecondary,
     marginTop: 2,
   },
   attemptedStatsList: {
@@ -1253,51 +1217,39 @@ const styles = StyleSheet.create({
   attemptedDetailsButtonText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#111827',
+    color: STUDENT.text,
   },
-  sectionTitle: {
-    fontSize: 16,
+  summaryTitle: {
+    fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  summaryCard: {
-    backgroundColor: '#f3e8ff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    color: STUDENT.statGradients.efficiency[0],
   },
   summaryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 16,
-  },
-  summaryTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#9333ea',
+    marginBottom: STUDENT_SPACING.lg,
   },
   summaryGrid: {
     flexDirection: 'row',
-    gap: 12,
+    gap: STUDENT_SPACING.md,
   },
   summaryItem: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 8,
+    backgroundColor: STUDENT.surface,
+    borderRadius: STUDENT_RADIUS.sm,
     padding: 12,
     alignItems: 'center',
   },
   summaryLabel: {
     fontSize: 12,
-    color: '#6b7280',
+    color: STUDENT.textMuted,
     marginBottom: 8,
   },
   summaryValue: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#9333ea',
+    color: STUDENT.statGradients.efficiency[0],
   },
   rankingStats: {
     flexDirection: 'row',

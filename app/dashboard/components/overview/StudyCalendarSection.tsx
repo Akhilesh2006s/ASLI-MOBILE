@@ -2,11 +2,13 @@ import React, { memo, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import GlassCard from '../../../../src/components/student/GlassCard';
 import {
   buildExamCalendarEntries,
   formatCalendarDateKey,
   parseCalendarDate,
 } from '../../../../src/lib/exam-calendar-entries';
+import { STUDENT, STUDENT_RADIUS } from '../../../../src/theme/student';
 
 type CalendarEntry = {
   id: string;
@@ -103,7 +105,7 @@ function StudyCalendarSectionComponent({ incompleteQuizzes, exams, onOpenQuiz }:
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.calendarCard}>
+      <GlassCard variant="default" padding={14}>
         <View style={styles.calHeader}>
           <View>
             <Text style={styles.calTitle}>Study Calendar</Text>
@@ -115,7 +117,7 @@ function StudyCalendarSectionComponent({ incompleteQuizzes, exams, onOpenQuiz }:
                 setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
               }
             >
-              <Ionicons name="chevron-back" size={20} color="#374151" />
+              <Ionicons name="chevron-back" size={20} color={STUDENT.textSecondary} />
             </TouchableOpacity>
             <Text style={styles.monthLabel}>
               {calendarMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
@@ -125,7 +127,7 @@ function StudyCalendarSectionComponent({ incompleteQuizzes, exams, onOpenQuiz }:
                 setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
               }
             >
-              <Ionicons name="chevron-forward" size={20} color="#374151" />
+              <Ionicons name="chevron-forward" size={20} color={STUDENT.textSecondary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -135,6 +137,7 @@ function StudyCalendarSectionComponent({ incompleteQuizzes, exams, onOpenQuiz }:
             value={jumpDate}
             onChangeText={setJumpDate}
             placeholder="YYYY-MM-DD"
+            placeholderTextColor={STUDENT.textMuted}
           />
           <TouchableOpacity style={styles.goBtn} onPress={handleJump}>
             <Text style={styles.goBtnText}>Go</Text>
@@ -165,6 +168,7 @@ function StudyCalendarSectionComponent({ incompleteQuizzes, exams, onOpenQuiz }:
                 onPress={() => setSelectedDate(day)}
               >
                 <Text style={[styles.dayNum, isSelected && styles.dayNumSelected]}>{day.getDate()}</Text>
+                {isToday && !isSelected ? <View style={styles.todayDot} /> : null}
                 {count > 0 ? (
                   <View style={[styles.badge, isSelected && styles.badgeSelected]}>
                     <Text style={[styles.badgeText, isSelected && styles.badgeTextSelected]}>{count}</Text>
@@ -174,9 +178,9 @@ function StudyCalendarSectionComponent({ incompleteQuizzes, exams, onOpenQuiz }:
             );
           })}
         </View>
-      </View>
+      </GlassCard>
 
-      <View style={styles.eventsCard}>
+      <GlassCard variant="default" padding={14}>
         <Text style={styles.eventsTitle}>Study & exams</Text>
         <Text style={styles.eventsSub}>
           {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
@@ -184,7 +188,7 @@ function StudyCalendarSectionComponent({ incompleteQuizzes, exams, onOpenQuiz }:
         </Text>
         {selectedDateEntries.length === 0 ? (
           <View style={styles.eventsEmpty}>
-            <Ionicons name="calendar-outline" size={32} color="#d1d5db" />
+            <Ionicons name="calendar-outline" size={32} color={STUDENT.surfaceBorder} />
             <Text style={styles.eventsEmptyTitle}>No study tasks or exams</Text>
             <Text style={styles.eventsEmptySub}>Class sessions for this day are in the timetable table below.</Text>
           </View>
@@ -219,40 +223,33 @@ function StudyCalendarSectionComponent({ incompleteQuizzes, exams, onOpenQuiz }:
             );
           })
         )}
-      </View>
+      </GlassCard>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { gap: 12 },
-  calendarCard: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
   calHeader: { gap: 10, marginBottom: 10 },
-  calTitle: { fontSize: 18, fontWeight: '800', color: '#111827' },
-  calSub: { fontSize: 12, color: '#6b7280', marginTop: 2 },
+  calTitle: { fontSize: 18, fontWeight: '800', color: STUDENT.primary },
+  calSub: { fontSize: 12, color: STUDENT.textMuted, marginTop: 2 },
   monthNav: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  monthLabel: { fontSize: 14, fontWeight: '700', color: '#374151', minWidth: 140, textAlign: 'center' },
+  monthLabel: { fontSize: 14, fontWeight: '700', color: STUDENT.textSecondary, minWidth: 140, textAlign: 'center' },
   jumpRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
   dateInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: STUDENT.surfaceBorder,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 8,
     fontSize: 13,
-    color: '#111827',
+    color: STUDENT.text,
   },
-  goBtn: { backgroundColor: '#4f46e5', paddingHorizontal: 16, borderRadius: 8, justifyContent: 'center' },
-  goBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  goBtn: { backgroundColor: STUDENT.primary, paddingHorizontal: 16, borderRadius: 8, justifyContent: 'center' },
+  goBtnText: { color: STUDENT.textOnPrimary, fontWeight: '700', fontSize: 13 },
   weekHead: { flexDirection: 'row', marginBottom: 6 },
-  weekHeadText: { flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '700', color: '#6b7280' },
+  weekHeadText: { flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '700', color: STUDENT.textMuted },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   dayCell: {
     width: '14.28%',
@@ -263,50 +260,51 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     position: 'relative',
   },
-  daySelected: { backgroundColor: '#4f46e5' },
-  dayToday: { backgroundColor: '#eef2ff', borderWidth: 1, borderColor: '#c7d2fe' },
-  dayNum: { fontSize: 13, fontWeight: '600', color: '#374151' },
-  dayNumSelected: { color: '#fff' },
+  daySelected: { backgroundColor: STUDENT.primary },
+  dayToday: { backgroundColor: STUDENT.bgAccent, borderWidth: 1, borderColor: STUDENT.primaryLight },
+  todayDot: {
+    position: 'absolute',
+    top: 4,
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: STUDENT.primaryLight,
+  },
+  dayNum: { fontSize: 13, fontWeight: '600', color: STUDENT.textSecondary },
+  dayNumSelected: { color: STUDENT.textOnPrimary },
   badge: {
     position: 'absolute',
     bottom: 2,
     right: 4,
-    backgroundColor: '#ffedd5',
+    backgroundColor: `${STUDENT.warning}22`,
     borderRadius: 8,
     paddingHorizontal: 4,
     paddingVertical: 1,
   },
-  badgeSelected: { backgroundColor: '#fff' },
-  badgeText: { fontSize: 9, fontWeight: '800', color: '#c2410c' },
-  badgeTextSelected: { color: '#4f46e5' },
-  eventsCard: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  eventsTitle: { fontSize: 16, fontWeight: '800', color: '#111827' },
-  eventsSub: { fontSize: 12, color: '#6b7280', marginTop: 4, marginBottom: 10 },
+  badgeSelected: { backgroundColor: STUDENT.textOnPrimary },
+  badgeText: { fontSize: 9, fontWeight: '800', color: STUDENT.warning },
+  badgeTextSelected: { color: STUDENT.primary },
+  eventsTitle: { fontSize: 16, fontWeight: '800', color: STUDENT.text },
+  eventsSub: { fontSize: 12, color: STUDENT.textMuted, marginTop: 4, marginBottom: 10 },
   eventsEmpty: { alignItems: 'center', paddingVertical: 16, gap: 6 },
-  eventsEmptyTitle: { fontSize: 14, fontWeight: '600', color: '#4b5563' },
-  eventsEmptySub: { fontSize: 12, color: '#9ca3af', textAlign: 'center' },
+  eventsEmptyTitle: { fontSize: 14, fontWeight: '600', color: STUDENT.textSecondary },
+  eventsEmptySub: { fontSize: 12, color: STUDENT.textMuted, textAlign: 'center' },
   eventRow: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 10,
+    borderColor: STUDENT.surfaceBorder,
+    borderRadius: STUDENT_RADIUS.inner,
     padding: 12,
     marginBottom: 8,
   },
   eventTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  eventTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: '#111827' },
+  eventTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: STUDENT.text },
   typeBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  badgeExam: { backgroundColor: '#fee2e2' },
-  badgeQuiz: { backgroundColor: '#ffedd5' },
-  badgeClass: { backgroundColor: '#e0f2fe' },
-  typeBadgeText: { fontSize: 10, fontWeight: '800', color: '#374151' },
-  eventSubject: { fontSize: 12, color: '#6b7280', marginTop: 4 },
-  eventTime: { fontSize: 11, color: '#9ca3af', marginTop: 2 },
+  badgeExam: { backgroundColor: `${STUDENT.danger}18` },
+  badgeQuiz: { backgroundColor: `${STUDENT.warning}18` },
+  badgeClass: { backgroundColor: STUDENT.accentSoft },
+  typeBadgeText: { fontSize: 10, fontWeight: '800', color: STUDENT.textSecondary },
+  eventSubject: { fontSize: 12, color: STUDENT.textMuted, marginTop: 4 },
+  eventTime: { fontSize: 11, color: STUDENT.textMuted, marginTop: 2 },
 });
 
 export default memo(StudyCalendarSectionComponent);

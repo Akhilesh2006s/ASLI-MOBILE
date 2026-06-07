@@ -11,7 +11,6 @@ type Props = {
   subtitle?: string;
   badge?: string;
   onMenu?: () => void;
-  onNotification?: () => void;
   onProfile?: () => void;
 };
 
@@ -21,7 +20,6 @@ export default function RoleHeader({
   subtitle,
   badge,
   onMenu,
-  onNotification,
   onProfile,
 }: Props) {
   const { width } = useWindowDimensions();
@@ -59,11 +57,6 @@ export default function RoleHeader({
           </View>
         </Pressable>
         <View style={styles.actions}>
-          {onNotification ? (
-            <Pressable style={styles.iconBtn} onPress={onNotification}>
-              <Ionicons name="notifications-outline" size={22} color={COLORS.textInverse} />
-            </Pressable>
-          ) : null}
           {onMenu ? (
             <Pressable style={styles.iconBtn} onPress={onMenu}>
               <Ionicons name="menu" size={22} color={COLORS.textInverse} />

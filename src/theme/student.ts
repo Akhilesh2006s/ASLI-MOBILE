@@ -1,8 +1,10 @@
 /** Student theme — premium scholar UI */
 export const STUDENT = {
-  bg: '#f4f7fb',
+  bg: '#f0fdf4',
   bgAccent: '#ecfdf5',
   surface: '#ffffff',
+  surfaceGlass: 'rgba(255,255,255,0.72)',
+  surfaceDark: '#0f172a',
   surfaceElevated: '#ffffff',
   surfaceBorder: '#e2e8f0',
   surfaceHover: '#f8fafc',
@@ -21,8 +23,8 @@ export const STUDENT = {
   headerGradient: ['#047857', '#059669', '#10b981', '#34d399'] as const,
   heroGradient: ['#064e3b', '#047857', '#10b981'] as const,
   cardGradient: ['#ecfdf5', '#f0fdf4'] as const,
-  tabBarBg: 'rgba(255,255,255,0.94)',
-  tabBarBorder: 'rgba(16,185,129,0.18)',
+  tabBarBg: 'rgba(255,255,255,0.92)',
+  tabBarBorder: 'rgba(16,185,129,0.20)',
   navInactive: '#94a3b8',
   navActiveBg: '#d1fae5',
   navActiveText: '#047857',
@@ -36,6 +38,13 @@ export const STUDENT = {
     questions: ['#d97706', '#f59e0b'] as const,
   },
   shadow: {
+    soft: {
+      shadowColor: '#10b981',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.1,
+      shadowRadius: 24,
+      elevation: 8,
+    },
     sm: {
       shadowColor: '#0f172a',
       shadowOffset: { width: 0, height: 2 },
@@ -60,6 +69,8 @@ export const STUDENT = {
   },
 };
 
+export const STUDENT_SHADOW = STUDENT.shadow;
+
 export const STUDENT_SPACING = {
   xs: 4,
   sm: 8,
@@ -76,6 +87,8 @@ export const STUDENT_RADIUS = {
   lg: 18,
   xl: 22,
   xxl: 28,
+  card: 24,
+  inner: 16,
   full: 9999,
 };
 
@@ -84,6 +97,23 @@ export const STUDENT_ANIMATION = {
   normal: 280,
   slow: 420,
 };
+
+export const STUDENT_TYPO = {
+  hero: { fontSize: 36, fontWeight: '800' as const, letterSpacing: -1 },
+  section: { fontSize: 22, fontWeight: '800' as const, letterSpacing: -0.4 },
+  body: { fontSize: 15, fontWeight: '500' as const },
+  caption: { fontSize: 12, fontWeight: '600' as const },
+  label: { fontSize: 11, fontWeight: '700' as const },
+};
+
+export const SUBJECT_COLORS = [
+  '#2563eb',
+  '#10b981',
+  '#f59e0b',
+  '#8b5cf6',
+  '#ef4444',
+  '#06b6d4',
+] as const;
 
 export function studentGreeting(): string {
   const h = new Date().getHours();

@@ -1,16 +1,23 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import * as SecureStore from 'expo-secure-store';
 import { fetchStudentTimetable, timetableEntriesToSlots } from '../../src/lib/timetable-helpers';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import { EmptyState, ErrorState, LoadingState } from '../../src/components/ui';
-import { COLORS, FONT, RADIUS, SPACING } from '../../src/theme';
+import StudentScreenHeader from '../../src/components/student/StudentScreenHeader';
+import {
+  STUDENT,
+  STUDENT_ANIMATION,
+  STUDENT_RADIUS,
+  STUDENT_SPACING,
+  STUDENT_TYPO,
+  SUBJECT_COLORS,
+} from '../../src/theme/student';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-const SUBJECT_COLORS = ['#2563EB', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444', '#06B6D4'];
 
 type Slot = {
   day?: string;
@@ -49,33 +56,31 @@ export default function StudentTimetable() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={22} color={COLORS.text} />
-        </Pressable>
-        <Text style={styles.headerTitle}>Weekly Timetable</Text>
-        <View style={styles.backBtn} />
-      </View>
+      <StudentScreenHeader title="Weekly Timetable" onBack={() => router.back()} />
 
       {loading ? (
-        <LoadingState variant="cards" style={{ padding: SPACING.lg }} />
+        <LoadingState variant="cards" style={{ padding: STUDENT_SPACING.lg }} />
       ) : error ? (
-        <ErrorState message={error} onRetry={load} style={{ margin: SPACING.lg }} />
+        <ErrorState message={error} onRetry={load} style={{ margin: STUDENT_SPACING.lg }} />
       ) : slots.length === 0 ? (
         <EmptyState icon="calendar-outline" title="No timetable" subtitle="Your schedule will appear here." />
       ) : (
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.grid}>
-            <View style={styles.row}>
+            <Animated.View entering={FadeInDown.duration(STUDENT_ANIMATION.normal)} style={styles.row}>
               <View style={styles.corner} />
               {DAYS.map((d) => (
                 <View key={d} style={styles.dayHead}>
                   <Text style={styles.dayText}>{d}</Text>
                 </View>
               ))}
-            </View>
+            </Animated.View>
             {Array.from({ length: periods }).map((_, p) => (
-              <View key={p} style={styles.row}>
+              <Animated.View
+                key={p}
+                entering={FadeInDown.duration(STUDENT_ANIMATION.normal).delay((p + 1) * 60)}
+                style={styles.row}
+              >
                 <View style={styles.periodHead}>
                   <Text style={styles.periodText}>P{p + 1}</Text>
                 </View>
@@ -87,7 +92,13 @@ export default function StudentTimetable() {
                   );
                   const color = SUBJECT_COLORS[di % SUBJECT_COLORS.length];
                   return (
-                    <View key={`${day}-${p}`} style={[styles.cell, slot && { backgroundColor: `${color}15`, borderColor: `${color}40` }]}>
+                    <View
+                      key={`${day}-${p}`}
+                      style={[
+                        styles.cell,
+                        slot && { backgroundColor: `${color}15`, borderColor: `${color}40` },
+                      ]}
+                    >
                       {slot ? (
                         <>
                           <Text style={[styles.subject, { color }]} numberOfLines={2}>
@@ -103,7 +114,7 @@ export default function StudentTimetable() {
                     </View>
                   );
                 })}
-              </View>
+              </Animated.View>
             ))}
           </View>
         </ScrollView>
@@ -114,37 +125,25 @@ export default function StudentTimetable() {
 
 const CELL_W = 110;
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.bg },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    backgroundColor: COLORS.card,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: FONT.xl, fontWeight: FONT.bold, color: COLORS.text },
-  grid: { padding: SPACING.lg },
+  container: { flex: 1, backgroundColor: STUDENT.bg },
+  grid: { padding: STUDENT_SPACING.lg },
   row: { flexDirection: 'row' },
   corner: { width: 44, height: 44 },
   dayHead: { width: CELL_W, height: 44, alignItems: 'center', justifyContent: 'center' },
-  dayText: { fontWeight: FONT.bold, color: COLORS.text, fontSize: FONT.sm },
+  dayText: { ...STUDENT_TYPO.caption, color: STUDENT.text },
   periodHead: { width: 44, height: 72, alignItems: 'center', justifyContent: 'center' },
-  periodText: { fontSize: FONT.xs, color: COLORS.textMuted, fontWeight: FONT.semibold },
+  periodText: { ...STUDENT_TYPO.label, color: STUDENT.textMuted },
   cell: {
     width: CELL_W,
     height: 72,
     margin: 2,
-    borderRadius: RADIUS.sm,
+    borderRadius: STUDENT_RADIUS.sm,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.card,
-    padding: SPACING.xs,
+    borderColor: STUDENT.surfaceBorder,
+    backgroundColor: STUDENT.surface,
+    padding: STUDENT_SPACING.xs,
     justifyContent: 'center',
   },
-  subject: { fontSize: FONT.xs, fontWeight: FONT.bold },
-  teacher: { fontSize: 10, color: COLORS.textMuted, marginTop: 2 },
+  subject: { ...STUDENT_TYPO.label, fontSize: 11 },
+  teacher: { fontSize: 10, color: STUDENT.textMuted, marginTop: 2 },
 });

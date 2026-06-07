@@ -3,14 +3,17 @@ import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions } from 'r
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import GlassCard from '../../../../src/components/student/GlassCard';
+import PremiumSectionHeader from '../../../../src/components/student/PremiumSectionHeader';
+import { STUDENT, STUDENT_RADIUS } from '../../../../src/theme/student';
 
 const LIBRARY_ITEMS = [
-  { title: 'TextBook', type: 'TextBook', icon: 'book-outline' as const },
-  { title: 'Workbook', type: 'Workbook', icon: 'document-text-outline' as const },
-  { title: 'Material', type: 'Material', icon: 'document-outline' as const },
-  { title: 'Video', type: 'Video', icon: 'videocam-outline' as const },
-  { title: 'Audio', type: 'Audio', icon: 'headset-outline' as const },
-  { title: 'Homework', type: 'Homework', icon: 'clipboard-outline' as const },
+  { title: 'TextBook', type: 'TextBook', icon: 'book-outline' as const, color: STUDENT.accent },
+  { title: 'Workbook', type: 'Workbook', icon: 'document-text-outline' as const, color: STUDENT.primary },
+  { title: 'Material', type: 'Material', icon: 'document-outline' as const, color: STUDENT.textSecondary },
+  { title: 'Video', type: 'Video', icon: 'videocam-outline' as const, color: STUDENT.primary },
+  { title: 'Audio', type: 'Audio', icon: 'headset-outline' as const, color: STUDENT.warning },
+  { title: 'Homework', type: 'Homework', icon: 'clipboard-outline' as const, color: STUDENT.danger },
 ];
 
 function openLibraryType(type: string) {
@@ -26,15 +29,19 @@ interface DigitalLibraryModuleProps {
   dark?: boolean;
 }
 
-function DigitalLibraryModuleComponent({ onPressLibrary, dark }: DigitalLibraryModuleProps) {
+function DigitalLibraryModuleComponent({ dark }: DigitalLibraryModuleProps) {
   const { width } = useWindowDimensions();
   const compact = width < 380;
   const cardWidth = compact ? '48.2%' : '31.6%';
 
   return (
-    <View style={dark ? styles.sectionCardDark : styles.sectionCard}>
-      <Text style={dark ? styles.sectionTitleDark : styles.sectionTitle}>Digital Library</Text>
-      <Text style={styles.sectionSub}>Browse by Type</Text>
+    <GlassCard variant="elevated" padding={14}>
+      <PremiumSectionHeader
+        title="Digital Library"
+        subtitle="Browse by Type"
+        icon="library-outline"
+        accent={STUDENT.accent}
+      />
       <View style={styles.grid}>
         {LIBRARY_ITEMS.map((item) => (
           <TouchableOpacity
@@ -43,50 +50,21 @@ function DigitalLibraryModuleComponent({ onPressLibrary, dark }: DigitalLibraryM
             onPress={() => openLibraryType(item.type)}
             activeOpacity={0.85}
           >
-            <LinearGradient colors={['#60a5fa', '#8b5cf6']} style={styles.iconWrap}>
-              <Ionicons name={item.icon} size={16} color="#fff" />
+            <LinearGradient
+              colors={[`${item.color}33`, `${item.color}18`]}
+              style={styles.iconWrap}
+            >
+              <Ionicons name={item.icon} size={16} color={item.color} />
             </LinearGradient>
-            <Text style={styles.cardText}>{item.title}</Text>
+            <Text style={[styles.cardText, dark && styles.cardTextDark]}>{item.title}</Text>
           </TouchableOpacity>
         ))}
       </View>
-    </View>
+    </GlassCard>
   );
 }
 
 const styles = StyleSheet.create({
-  sectionCard: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 14,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  sectionCardDark: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 14,
-    padding: 14,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(99,102,241,0.12)',
-  },
-  sectionTitleDark: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#f1f5f9',
-  },
-  sectionSub: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginBottom: 10,
-    marginTop: 2,
-  },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -94,11 +72,11 @@ const styles = StyleSheet.create({
   },
   card: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 10,
+    borderColor: STUDENT.surfaceBorder,
+    borderRadius: STUDENT_RADIUS.inner,
     paddingVertical: 9,
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: STUDENT.surface,
   },
   iconWrap: {
     width: 30,
@@ -111,7 +89,10 @@ const styles = StyleSheet.create({
   cardText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#111827',
+    color: STUDENT.text,
+  },
+  cardTextDark: {
+    color: STUDENT.surfaceHover,
   },
 });
 

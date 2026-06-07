@@ -1,17 +1,59 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  Easing,
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated';
 import { router } from 'expo-router';
 import api from '../../../src/services/api/api';
-import { STUDENT, STUDENT_RADIUS } from '../../../src/theme/student';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import GlassCard from '../../../src/components/student/GlassCard';
+import ChipNav from '../../../src/components/student/ChipNav';
+import PremiumSectionHeader from '../../../src/components/student/PremiumSectionHeader';
+import { ShimmerCard } from '../../../src/components/student/StudentShimmer';
+import {
+  STUDENT,
+  STUDENT_ANIMATION,
+  STUDENT_RADIUS,
+  STUDENT_SPACING,
+  STUDENT_TYPO,
+  SUBJECT_COLORS,
+} from '../../../src/theme/student';
+
+function AnimatedProgressBar({ progress, delay = 0 }: { progress: number; delay?: number }) {
+  const width = useSharedValue(0);
+
+  useEffect(() => {
+    width.value = withDelay(
+      delay,
+      withTiming(Math.min(100, progress), { duration: 900, easing: Easing.out(Easing.quad) })
+    );
+  }, [progress, delay, width]);
+
+  const animStyle = useAnimatedStyle(() => ({
+    width: `${width.value}%`,
+  }));
+
+  return (
+    <View style={styles.progressTrack}>
+      <Animated.View style={[styles.progressFill, animStyle]} />
+    </View>
+  );
+}
 
 export default function LearningPathsView({ dark }: { dark?: boolean }) {
   const { width } = useWindowDimensions();
   const compact = width < 380;
   const isTablet = width >= 768;
-  const cardWidth = isTablet ? '31.5%' : '47%';
+  const scrollPad = 36;
+  const gap = STUDENT_SPACING.md;
+  const columns = isTablet ? 3 : 2;
+  const cardWidth = (width - scrollPad - gap * (columns - 1)) / columns;
   const [activeTab, setActiveTab] = useState<'subjects' | 'quizzes'>('subjects');
   const [subjects, setSubjects] = useState<any[]>([]);
   const [quizzes, setQuizzes] = useState<any[]>([]);
@@ -100,10 +142,15 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
     { key: 'homework', label: 'Homework', type: 'Homework', icon: 'clipboard-outline' as keyof typeof Ionicons.glyphMap },
   ];
 
+  const tabChips = [
+    { id: 'subjects', label: 'Browse by Subject' },
+    { id: 'quizzes', label: 'My Quizzes' },
+  ];
+
   return (
     <View style={[styles.container, dark && styles.containerDark]}>
       {!dark ? (
-        <Animated.View entering={FadeInDown.duration(280)}>
+        <Animated.View entering={FadeInDown.duration(STUDENT_ANIMATION.normal)}>
           <LinearGradient
             colors={[...STUDENT.heroGradient]}
             start={{ x: 0, y: 0 }}
@@ -116,52 +163,57 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
         </Animated.View>
       ) : null}
 
-      {/* Tabs */}
       <View style={styles.tabsContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'subjects' && styles.tabActive]}
-          onPress={() => setActiveTab('subjects')}
-        >
-          <Text style={[styles.tabText, activeTab === 'subjects' && styles.tabTextActive]}>
-            Browse by Subject
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'quizzes' && styles.tabActive]}
-          onPress={() => setActiveTab('quizzes')}
-        >
-          <Text style={[styles.tabText, activeTab === 'quizzes' && styles.tabTextActive]}>
-            My Quizzes
-          </Text>
-        </TouchableOpacity>
+        <ChipNav
+          chips={tabChips}
+          active={activeTab}
+          onChange={(id) => setActiveTab(id as 'subjects' | 'quizzes')}
+        />
       </View>
 
-      {/* Subjects Tab */}
       {activeTab === 'subjects' && (
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {isLoadingSubjects ? (
-            <ActivityIndicator size="large" color="#3b82f6" style={styles.loader} />
+            <View style={styles.shimmerWrap}>
+              <ShimmerCard />
+              <ShimmerCard />
+              <ShimmerCard />
+            </View>
           ) : subjects.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons name="book" size={64} color="#d1d5db" />
+              <Ionicons name="book" size={64} color={STUDENT.surfaceBorder} />
               <Text style={styles.emptyStateTitle}>No Subjects Available</Text>
               <Text style={styles.emptyStateText}>Check back later for new learning content.</Text>
             </View>
           ) : (
             <View style={styles.subjectsGrid}>
-              {subjects.map((subject: any) => {
+              {subjects.map((subject: any, index: number) => {
                 const iconName = getSubjectIcon(subject.name);
+                const color = SUBJECT_COLORS[index % SUBJECT_COLORS.length];
                 return (
-                  <TouchableOpacity
+                  <GlassCard
                     key={subject._id || subject.id}
-                    style={[styles.subjectCard, { width: cardWidth }]}
+                    variant="elevated"
+                    style={{ width: cardWidth }}
+                    padding={16}
+                    animate
+                    delay={index * 50}
                     onPress={() => router.push(`/subject/${subject._id || subject.id}`)}
                   >
-                    <View style={styles.subjectIconContainer}>
-                      <Ionicons name={iconName as any} size={40} color="#fff" />
+                    <View style={styles.subjectCardInner}>
+                      <LinearGradient
+                        colors={[color, `${color}cc`]}
+                        style={styles.subjectIconContainer}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                      >
+                        <Ionicons name={iconName as any} size={26} color={STUDENT.textOnPrimary} />
+                      </LinearGradient>
+                      <Text style={styles.subjectName} numberOfLines={2}>
+                        {subject.name}
+                      </Text>
                     </View>
-                    <Text style={styles.subjectName}>{subject.name}</Text>
-                  </TouchableOpacity>
+                  </GlassCard>
                 );
               })}
             </View>
@@ -169,134 +221,115 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
 
           {!isLoadingSubjects && subjects.length > 0 && (
             <>
-              <View style={styles.sectionCard}>
-                <Text style={styles.sectionTitle}>Digital Library</Text>
-                <Text style={styles.sectionSub}>Browse by Type</Text>
+              <GlassCard variant="default" padding={14} style={styles.sectionCard}>
+                <PremiumSectionHeader
+                  title="Digital Library"
+                  subtitle="Browse by Type"
+                  icon="library-outline"
+                />
                 <View style={styles.libraryGrid}>
-                  {libraryTiles.map((tile) => (
-                    <TouchableOpacity
-                      key={tile.key}
-                      style={[styles.libraryCard, { width: cardWidth }]}
-                      activeOpacity={0.85}
-                      onPress={() => openLibraryType(tile.type)}
-                    >
-                      <LinearGradient
-                        colors={['#60a5fa', '#8b5cf6']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.libraryIconWrap}
+                  {libraryTiles.map((tile, index) => (
+                    <View key={tile.key} style={styles.libraryTile}>
+                      <GlassCard
+                        variant="elevated"
+                        style={styles.libraryTileCard}
+                        padding={12}
+                        onPress={() => openLibraryType(tile.type)}
                       >
-                        <Ionicons name={tile.icon} size={24} color="#fff" />
-                      </LinearGradient>
-                      <Text style={styles.libraryTitle}>{tile.label}</Text>
-                      <Text style={styles.libraryCount}>
-                        {libraryCounts[tile.type] ?? 0} files
-                      </Text>
-                    </TouchableOpacity>
+                        <View style={styles.libraryCardInner}>
+                          <LinearGradient
+                            colors={[STUDENT.accent, SUBJECT_COLORS[index % SUBJECT_COLORS.length]]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={styles.libraryIconWrap}
+                          >
+                            <Ionicons name={tile.icon} size={22} color={STUDENT.textOnPrimary} />
+                          </LinearGradient>
+                          <Text style={styles.libraryTitle} numberOfLines={1}>
+                            {tile.label}
+                          </Text>
+                          <Text style={styles.libraryCount}>
+                            {libraryCounts[tile.type] ?? 0} files
+                          </Text>
+                        </View>
+                      </GlassCard>
+                    </View>
                   ))}
                 </View>
-              </View>
+              </GlassCard>
 
-              <View style={styles.sectionCard}>
-                <Text style={styles.sectionTitle}>Recommended for You</Text>
-                <View style={styles.recommendList}>
-                  <View style={styles.recommendCard}>
-                    <View style={styles.recommendIconPill}>
-                      <Ionicons name="flash-outline" size={16} color="#fb923c" />
-                    </View>
-                    <Text style={styles.recommendTitle}>IQ/Rank Boost Practice</Text>
-                    <Text style={styles.recommendDesc}>
-                      Boost your IQ and improve your rank with targeted practice.
-                    </Text>
-                    <TouchableOpacity
-                      style={styles.recommendButton}
-                      activeOpacity={0.85}
-                      onPress={() => router.push('/iq-rank-boost-subjects')}
-                    >
-                      <Text style={styles.recommendButtonText}>Start Learning</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  <View style={styles.recommendCard}>
-                    <View style={styles.recommendIconPill}>
-                      <Ionicons name="game-controller-outline" size={16} color="#3b82f6" />
-                    </View>
-                    <Text style={styles.recommendTitle}>Play Games</Text>
-                    <Text style={styles.recommendDesc}>
-                      Engage in fun educational games to enhance your learning experience.
-                    </Text>
-                    <View style={styles.comingSoonChip}>
-                      <Text style={styles.comingSoonText}>Coming Soon</Text>
-                    </View>
-                  </View>
-                </View>
-              </View>
             </>
           )}
         </ScrollView>
       )}
 
-      {/* Quizzes Tab */}
       {activeTab === 'quizzes' && (
         <View style={styles.content}>
           {isLoadingQuizzes ? (
-            <ActivityIndicator size="large" color="#3b82f6" style={styles.loader} />
+            <View style={styles.shimmerWrap}>
+              <ShimmerCard />
+              <ShimmerCard />
+            </View>
           ) : quizzes.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons name="document-text" size={64} color="#d1d5db" />
+              <Ionicons name="document-text" size={64} color={STUDENT.surfaceBorder} />
               <Text style={styles.emptyStateTitle}>No Quizzes Assigned</Text>
               <Text style={styles.emptyStateText}>Your teacher hasn't assigned any quizzes yet.</Text>
             </View>
           ) : (
             <View style={styles.quizzesList}>
-              {quizzes.map((quiz: any) => (
-                <TouchableOpacity
-                  key={quiz._id}
-                  style={styles.quizCard}
-                  onPress={() => router.push(`/quiz/${quiz._id}`)}
-                >
-                  <View style={styles.quizHeader}>
-                    <View style={styles.quizIconContainer}>
-                      <Ionicons name="document-text" size={24} color="#fff" />
-                    </View>
-                    {quiz.hasAttempted && (
-                      <View style={styles.completedBadge}>
-                        <Ionicons name="checkmark-circle" size={16} color="#10b981" />
-                        <Text style={styles.completedText}>Completed</Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text style={styles.quizTitle}>{quiz.title}</Text>
-                  <Text style={styles.quizDescription}>
-                    {quiz.description || `Quiz on ${quiz.subject?.name || quiz.subject}`}
-                  </Text>
-                  <View style={styles.quizStats}>
-                    <View style={styles.quizStat}>
-                      <Ionicons name="time" size={16} color="#fb923c" />
-                      <Text style={styles.quizStatText}>{quiz.duration || 60} min</Text>
-                    </View>
-                    <View style={styles.quizStat}>
-                      <Ionicons name="help-circle" size={16} color="#fb923c" />
-                      <Text style={styles.quizStatText}>
-                        {quiz.questions?.length || quiz.questionCount || 0} questions
-                      </Text>
-                    </View>
-                  </View>
-                  {quiz.hasAttempted && quiz.bestScore !== null && (
-                    <View style={styles.bestScoreContainer}>
-                      <Text style={styles.bestScoreLabel}>Best Score:</Text>
-                      <Text style={styles.bestScoreValue}>{quiz.bestScore}%</Text>
-                    </View>
-                  )}
+              {quizzes.map((quiz: any, index: number) => (
+                <GlassCard key={quiz._id} variant="elevated" padding={16} animate delay={index * 60}>
                   <TouchableOpacity
-                    style={styles.quizButton}
+                    activeOpacity={0.9}
                     onPress={() => router.push(`/quiz/${quiz._id}`)}
                   >
-                    <Text style={styles.quizButtonText}>
-                      {quiz.hasAttempted ? 'Review Quiz' : 'Start Quiz'}
+                    <View style={styles.quizHeader}>
+                      <View style={styles.quizIconContainer}>
+                        <Ionicons name="document-text" size={24} color={STUDENT.textOnPrimary} />
+                      </View>
+                      {quiz.hasAttempted && (
+                        <View style={styles.completedBadge}>
+                          <Ionicons name="checkmark-circle" size={16} color={STUDENT.success} />
+                          <Text style={styles.completedText}>Completed</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.quizTitle}>{quiz.title}</Text>
+                    <Text style={styles.quizDescription}>
+                      {quiz.description || `Quiz on ${quiz.subject?.name || quiz.subject}`}
                     </Text>
+                    <View style={styles.quizStats}>
+                      <View style={styles.quizStat}>
+                        <Ionicons name="time" size={16} color={STUDENT.warning} />
+                        <Text style={styles.quizStatText}>{quiz.duration || 60} min</Text>
+                      </View>
+                      <View style={styles.quizStat}>
+                        <Ionicons name="help-circle" size={16} color={STUDENT.warning} />
+                        <Text style={styles.quizStatText}>
+                          {quiz.questions?.length || quiz.questionCount || 0} questions
+                        </Text>
+                      </View>
+                    </View>
+                    {quiz.hasAttempted && quiz.bestScore !== null && (
+                      <View style={styles.bestScoreContainer}>
+                        <View style={styles.bestScoreHeader}>
+                          <Text style={styles.bestScoreLabel}>Best Score:</Text>
+                          <Text style={styles.bestScoreValue}>{quiz.bestScore}%</Text>
+                        </View>
+                        <AnimatedProgressBar progress={quiz.bestScore} delay={index * 80} />
+                      </View>
+                    )}
+                    <TouchableOpacity
+                      style={styles.quizButton}
+                      onPress={() => router.push(`/quiz/${quiz._id}`)}
+                    >
+                      <Text style={styles.quizButtonText}>
+                        {quiz.hasAttempted ? 'Review Quiz' : 'Start Quiz'}
+                      </Text>
+                    </TouchableOpacity>
                   </TouchableOpacity>
-                </TouchableOpacity>
+                </GlassCard>
               ))}
             </View>
           )}
@@ -317,13 +350,12 @@ const styles = StyleSheet.create({
     borderRadius: STUDENT_RADIUS.xxl,
     paddingHorizontal: 18,
     paddingVertical: 18,
-    marginBottom: 16,
+    marginBottom: STUDENT_SPACING.lg,
     ...STUDENT.shadow.md,
   },
   bannerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#fff',
+    ...STUDENT_TYPO.section,
+    color: STUDENT.textOnPrimary,
   },
   bannerSub: {
     marginTop: 4,
@@ -331,54 +363,19 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.9)',
   },
   tabsContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#f3f4f6',
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 20,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  tabActive: {
-    backgroundColor: '#fff',
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6b7280',
-  },
-  tabTextActive: {
-    color: '#111827',
+    marginBottom: STUDENT_SPACING.xl,
   },
   content: {
     flex: 1,
   },
+  shimmerWrap: {
+    gap: STUDENT_SPACING.md,
+    marginTop: STUDENT_SPACING.sm,
+  },
   sectionCard: {
-    marginTop: 16,
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    padding: 14,
-  },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  sectionSub: {
-    marginTop: 4,
-    marginBottom: 12,
-    fontSize: 13,
-    color: '#6b7280',
-  },
-  loader: {
-    marginTop: 40,
+    marginTop: STUDENT_SPACING.lg,
+    width: '100%',
+    alignSelf: 'stretch',
   },
   emptyState: {
     alignItems: 'center',
@@ -388,140 +385,80 @@ const styles = StyleSheet.create({
   emptyStateTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#6b7280',
+    color: STUDENT.textMuted,
     marginTop: 16,
     marginBottom: 8,
   },
   emptyStateText: {
     fontSize: 14,
-    color: '#9ca3af',
+    color: STUDENT.navInactive,
     textAlign: 'center',
   },
   subjectsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: STUDENT_SPACING.md,
+    width: '100%',
+    alignSelf: 'stretch',
   },
-  subjectCard: {
-    width: '47%',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
+  subjectCardInner: {
     alignItems: 'center',
-    gap: 12,
+    gap: STUDENT_SPACING.sm,
+    width: '100%',
   },
   subjectIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 16,
-    backgroundColor: '#3b82f6',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     justifyContent: 'center',
     alignItems: 'center',
   },
   subjectName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
+    ...STUDENT_TYPO.body,
+    fontWeight: '800',
+    color: STUDENT.text,
     textAlign: 'center',
+    width: '100%',
   },
   quizzesList: {
-    gap: 16,
+    gap: STUDENT_SPACING.lg,
   },
   libraryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    justifyContent: 'space-between',
+    width: '100%',
   },
-  libraryCard: {
+  libraryTile: {
     width: '48%',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
+    marginBottom: STUDENT_SPACING.sm,
+  },
+  libraryTileCard: {
+    width: '100%',
+  },
+  libraryCardInner: {
     alignItems: 'center',
-    backgroundColor: '#fff',
+    width: '100%',
   },
   libraryIconWrap: {
     width: 52,
     height: 52,
-    borderRadius: 12,
+    borderRadius: STUDENT_RADIUS.inner,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 10,
   },
   libraryTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
-    color: '#111827',
+    color: STUDENT.text,
+    textAlign: 'center',
   },
   libraryCount: {
     marginTop: 4,
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  recommendList: {
-    gap: 12,
-  },
-  recommendCard: {
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 12,
-    padding: 12,
-    backgroundColor: '#fff',
-  },
-  recommendIconPill: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    backgroundColor: '#fff7ed',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  recommendTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  recommendDesc: {
-    marginTop: 4,
-    fontSize: 13,
-    color: '#6b7280',
-  },
-  recommendButton: {
-    marginTop: 12,
-    alignSelf: 'flex-start',
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  recommendButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  comingSoonChip: {
-    marginTop: 12,
-    alignSelf: 'flex-start',
-    backgroundColor: '#dbeafe',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  comingSoonText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#2563eb',
-  },
-  quizCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    gap: 12,
+    fontSize: 11,
+    color: STUDENT.textMuted,
+    textAlign: 'center',
   },
   quizHeader: {
     flexDirection: 'row',
@@ -531,37 +468,40 @@ const styles = StyleSheet.create({
   quizIconContainer: {
     width: 48,
     height: 48,
-    borderRadius: 12,
-    backgroundColor: '#fb923c',
+    borderRadius: STUDENT_RADIUS.inner,
+    backgroundColor: STUDENT.warning,
     justifyContent: 'center',
     alignItems: 'center',
   },
   completedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#d1fae5',
+    backgroundColor: STUDENT.navActiveBg,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: STUDENT_RADIUS.sm,
     gap: 4,
   },
   completedText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#10b981',
+    color: STUDENT.success,
   },
   quizTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
+    color: STUDENT.text,
+    marginTop: STUDENT_SPACING.md,
   },
   quizDescription: {
     fontSize: 14,
-    color: '#6b7280',
+    color: STUDENT.textMuted,
+    marginTop: 4,
   },
   quizStats: {
     flexDirection: 'row',
-    gap: 16,
+    gap: STUDENT_SPACING.lg,
+    marginTop: STUDENT_SPACING.sm,
   },
   quizStat: {
     flexDirection: 'row',
@@ -570,41 +510,51 @@ const styles = StyleSheet.create({
   },
   quizStatText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: STUDENT.textMuted,
   },
   bestScoreContainer: {
+    backgroundColor: STUDENT.navActiveBg,
+    padding: 12,
+    borderRadius: STUDENT_RADIUS.sm,
+    marginTop: STUDENT_SPACING.sm,
+    gap: 8,
+  },
+  bestScoreHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#d1fae5',
-    padding: 12,
-    borderRadius: 8,
   },
   bestScoreLabel: {
     fontSize: 14,
-    color: '#10b981',
+    color: STUDENT.success,
     fontWeight: '600',
   },
   bestScoreValue: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#10b981',
+    color: STUDENT.success,
+  },
+  progressTrack: {
+    height: 6,
+    borderRadius: STUDENT_RADIUS.full,
+    backgroundColor: 'rgba(16,185,129,0.15)',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: 6,
+    borderRadius: STUDENT_RADIUS.full,
+    backgroundColor: STUDENT.primary,
   },
   quizButton: {
-    backgroundColor: '#fb923c',
+    backgroundColor: STUDENT.warning,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: STUDENT_RADIUS.sm,
     alignItems: 'center',
+    marginTop: STUDENT_SPACING.md,
   },
   quizButtonText: {
-    color: '#fff',
+    color: STUDENT.textOnPrimary,
     fontSize: 16,
     fontWeight: '700',
   },
 });
-
-
-
-
-
-

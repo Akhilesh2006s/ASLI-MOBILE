@@ -2,8 +2,9 @@ import React, { memo } from 'react';
 import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { FadeInDown } from 'react-native-reanimated';
-import { STUDENT, STUDENT_ANIMATION } from '../../../../src/theme/student';
+import Animated, { FadeInDown, useAnimatedProps } from 'react-native-reanimated';
+import { AnimatedStatInput, useCountUp } from '../../../../src/hooks/useCountUp';
+import { STUDENT, STUDENT_ANIMATION, STUDENT_RADIUS } from '../../../../src/theme/student';
 
 interface QuickStatsModuleProps {
   stats: {
@@ -14,27 +15,58 @@ interface QuickStatsModuleProps {
   dark?: boolean;
 }
 
+function StatValue({
+  target,
+  suffix = '',
+  prefix = '',
+}: {
+  target: number;
+  suffix?: string;
+  prefix?: string;
+}) {
+  const value = useCountUp(target, 800);
+  const animatedProps = useAnimatedProps(() => ({
+    text: `${prefix}${Math.round(value.value)}${suffix}`,
+  }));
+
+  return (
+    <AnimatedStatInput
+      animatedProps={animatedProps as never}
+      editable={false}
+      style={styles.value}
+      underlineColorAndroid="transparent"
+    />
+  );
+}
+
 const ITEMS = [
   {
     key: 'questions',
     label: 'Questions Solved',
     icon: 'checkmark-circle' as const,
     gradient: STUDENT.statGradients.questions,
-    getValue: (s: QuickStatsModuleProps['stats']) => s.questionsAnswered.toLocaleString(),
+    getTarget: (s: QuickStatsModuleProps['stats']) => s.questionsAnswered,
+    suffix: '',
+    prefix: '',
   },
   {
     key: 'accuracy',
     label: 'Accuracy Rate',
     icon: 'trending-up' as const,
     gradient: STUDENT.statGradients.accuracy,
-    getValue: (s: QuickStatsModuleProps['stats']) => `${s.accuracyRate}%`,
+    getTarget: (s: QuickStatsModuleProps['stats']) => s.accuracyRate,
+    suffix: '%',
+    prefix: '',
   },
   {
     key: 'rank',
     label: 'Rank',
     icon: 'bar-chart' as const,
     gradient: STUDENT.statGradients.rank,
-    getValue: (s: QuickStatsModuleProps['stats']) => (s.rank > 0 ? `#${s.rank}` : '—'),
+    getTarget: (s: QuickStatsModuleProps['stats']) => (s.rank > 0 ? s.rank : 0),
+    suffix: '',
+    prefix: '#',
+    showDash: (s: QuickStatsModuleProps['stats']) => s.rank <= 0,
   },
 ];
 
@@ -57,14 +89,20 @@ function QuickStatsModuleComponent({ stats }: QuickStatsModuleProps) {
             end={{ x: 1, y: 1 }}
           >
             <View style={styles.iconBubble}>
-              <Ionicons name={item.icon} size={compact ? 16 : 18} color="#fff" />
+              <Ionicons name={item.icon} size={compact ? 16 : 18} color={STUDENT.textOnPrimary} />
             </View>
             <Text style={[styles.label, compact && styles.labelCompact]} numberOfLines={1}>
               {item.label}
             </Text>
-            <Text style={[styles.value, compact && styles.valueCompact]} numberOfLines={1}>
-              {item.getValue(stats)}
-            </Text>
+            {'showDash' in item && item.showDash?.(stats) ? (
+              <Text style={[styles.value, compact && styles.valueCompact]}>—</Text>
+            ) : (
+              <StatValue
+                target={item.getTarget(stats)}
+                suffix={item.suffix}
+                prefix={item.prefix}
+              />
+            )}
           </LinearGradient>
         </Animated.View>
       ))}
@@ -80,7 +118,7 @@ const styles = StyleSheet.create({
   },
   cardWrap: { flex: 1 },
   card: {
-    borderRadius: 16,
+    borderRadius: STUDENT_RADIUS.card,
     paddingHorizontal: 12,
     paddingVertical: 14,
     minHeight: 108,
@@ -92,9 +130,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   iconBubble: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.22)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -106,14 +144,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   value: {
-    fontSize: 20,
-    color: '#fff',
+    fontSize: 24,
+    color: STUDENT.textOnPrimary,
     fontWeight: '800',
     marginTop: 2,
     letterSpacing: -0.3,
+    padding: 0,
+    margin: 0,
   },
   labelCompact: { fontSize: 10 },
-  valueCompact: { fontSize: 17 },
+  valueCompact: { fontSize: 20 },
 });
 
 export default memo(QuickStatsModuleComponent);

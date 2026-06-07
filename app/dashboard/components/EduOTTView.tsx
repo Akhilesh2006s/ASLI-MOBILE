@@ -5,9 +5,10 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { ShimmerCard } from '../../../src/components/student/StudentShimmer';
+import { STUDENT, STUDENT_RADIUS, STUDENT_SPACING, STUDENT_TYPO } from '../../../src/theme/student';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
@@ -568,14 +569,7 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
   const renderSkeletons = () => (
     <View style={styles.skeletonWrap}>
       {[1, 2, 3].map((n) => (
-        <View key={n} style={styles.skeletonCard}>
-          <View style={styles.skeletonThumb} />
-          <View style={{ flex: 1, gap: 8 }}>
-            <View style={styles.skeletonLineLg} />
-            <View style={styles.skeletonLineSm} />
-            <View style={styles.skeletonLineXs} />
-          </View>
-        </View>
+        <ShimmerCard key={n} />
       ))}
     </View>
   );
@@ -622,8 +616,10 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
   const renderLiveContent = () => {
     if (loadingSessions) {
       return (
-        <View style={styles.loader}>
-          <ActivityIndicator size="large" color="#2563eb" />
+        <View style={styles.skeletonWrap}>
+          <ShimmerCard />
+          <ShimmerCard />
+          <ShimmerCard />
         </View>
       );
     }
@@ -673,23 +669,21 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: STUDENT.bg,
+    paddingHorizontal: STUDENT_SPACING.lg,
+    paddingTop: STUDENT_SPACING.sm,
   },
   listContainer: {
-    paddingBottom: 20,
+    paddingBottom: STUDENT_SPACING.xl,
   },
   summaryCard: {
-    backgroundColor: '#f0f9ff',
-    borderRadius: 16,
+    backgroundColor: STUDENT.accentSoft,
+    borderRadius: STUDENT_RADIUS.inner,
     borderWidth: 1,
-    borderColor: '#dbeafe',
-    padding: 12,
-    marginBottom: 12,
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+    borderColor: STUDENT.surfaceBorder,
+    padding: STUDENT_SPACING.md,
+    marginBottom: STUDENT_SPACING.md,
+    ...STUDENT.shadow.sm,
   },
   summaryTop: {
     flexDirection: 'row',
@@ -700,19 +694,19 @@ const styles = StyleSheet.create({
   summaryIcon: {
     width: 36,
     height: 36,
-    borderRadius: 12,
-    backgroundColor: '#dbeafe',
+    borderRadius: STUDENT_RADIUS.md,
+    backgroundColor: STUDENT.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   summaryTitle: {
+    ...STUDENT_TYPO.section,
     fontSize: 18,
-    fontWeight: '700',
-    color: '#0f172a',
+    color: STUDENT.text,
   },
   summarySubtitle: {
     fontSize: 13,
-    color: '#64748B',
+    color: STUDENT.textMuted,
   },
   summaryStats: {
     flexDirection: 'row',
@@ -720,23 +714,23 @@ const styles = StyleSheet.create({
   },
   statChip: {
     flex: 1,
-    backgroundColor: '#ffffff',
-    borderRadius: 999,
+    backgroundColor: STUDENT.surface,
+    borderRadius: STUDENT_RADIUS.full,
     paddingVertical: 9,
     paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: STUDENT.surfaceBorder,
     alignItems: 'center',
   },
   statChipText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0f172a',
+    color: STUDENT.text,
   },
   resultsCount: {
-    fontSize: 12,
-    color: '#64748b',
-    marginBottom: 10,
+    ...STUDENT_TYPO.caption,
+    color: STUDENT.textMuted,
+    marginBottom: STUDENT_SPACING.sm,
   },
   activeFiltersRow: {
     flexDirection: 'row',
@@ -746,39 +740,34 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   activeFiltersLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#64748b',
+    ...STUDENT_TYPO.caption,
+    color: STUDENT.textMuted,
   },
   activeChip: {
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: '#e0f2fe',
+    borderRadius: STUDENT_RADIUS.full,
+    backgroundColor: STUDENT.accentSoft,
     borderWidth: 1,
-    borderColor: '#7dd3fc',
+    borderColor: STUDENT.surfaceBorder,
   },
   activeChipAlt: {
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: '#ede9fe',
+    borderRadius: STUDENT_RADIUS.full,
+    backgroundColor: STUDENT.navActiveBg,
     borderWidth: 1,
-    borderColor: '#c4b5fd',
+    borderColor: STUDENT.surfaceBorder,
   },
   activeChipText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#0f172a',
+    color: STUDENT.text,
   },
   clearAllText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#2563eb',
-  },
-  loader: {
-    marginTop: 40,
-    alignItems: 'center',
+    color: STUDENT.accent,
   },
   emptyState: {
     alignItems: 'center',
@@ -789,26 +778,22 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 16,
     fontWeight: '700',
-    color: '#334155',
+    color: STUDENT.textSecondary,
   },
   emptyText: {
     marginTop: 6,
     fontSize: 13,
-    color: '#64748b',
+    color: STUDENT.textMuted,
     textAlign: 'center',
   },
   sessionCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 10,
+    backgroundColor: STUDENT.surface,
+    borderRadius: STUDENT_RADIUS.inner,
+    padding: STUDENT_SPACING.md,
+    marginBottom: STUDENT_SPACING.sm,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    borderColor: STUDENT.surfaceBorder,
+    ...STUDENT.shadow.sm,
   },
   sessionTopRow: {
     flexDirection: 'row',
@@ -820,7 +805,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: '700',
-    color: '#0f172a',
+    color: STUDENT.text,
     marginRight: 8,
   },
   sessionStatus: {
@@ -835,7 +820,7 @@ const styles = StyleSheet.create({
   },
   sessionDescription: {
     fontSize: 13,
-    color: '#64748b',
+    color: STUDENT.textMuted,
     marginBottom: 8,
   },
   sessionMeta: {
@@ -845,45 +830,11 @@ const styles = StyleSheet.create({
   },
   sessionMetaText: {
     fontSize: 12,
-    color: '#64748b',
+    color: STUDENT.textMuted,
   },
   skeletonWrap: {
-    marginTop: 12,
-    gap: 10,
-  },
-  skeletonCard: {
-    flexDirection: 'row',
-    gap: 12,
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
-  skeletonThumb: {
-    width: 110,
-    height: 76,
-    borderRadius: 12,
-    backgroundColor: '#e2e8f0',
-  },
-  skeletonLineLg: {
-    height: 14,
-    borderRadius: 8,
-    backgroundColor: '#e2e8f0',
-    width: '90%',
-  },
-  skeletonLineSm: {
-    height: 12,
-    borderRadius: 8,
-    backgroundColor: '#e2e8f0',
-    width: '60%',
-  },
-  skeletonLineXs: {
-    height: 10,
-    borderRadius: 8,
-    backgroundColor: '#e2e8f0',
-    width: '50%',
-    marginTop: 2,
+    marginTop: STUDENT_SPACING.md,
+    gap: STUDENT_SPACING.sm,
   },
 });
 

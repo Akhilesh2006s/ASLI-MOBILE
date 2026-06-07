@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../services/api/api';
-import { STUDENT, STUDENT_RADIUS } from '../../theme/student';
+import { STUDENT, STUDENT_TYPO } from '../../theme/student';
 import GlassCard from './GlassCard';
+import { ShimmerCard } from './StudentShimmer';
+import PremiumSectionHeader from './PremiumSectionHeader';
 
 type Entry = {
   _id: string;
@@ -40,47 +43,42 @@ export default function TeacherDiaryFeed() {
   }, []);
 
   if (loading) {
-    return (
-      <GlassCard style={styles.wrap}>
-        <Text style={styles.muted}>Loading teacher notes…</Text>
-      </GlassCard>
-    );
+    return <ShimmerCard style={styles.wrap} />;
   }
 
   if (entries.length === 0) return null;
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.header}>
-        <Ionicons name="book-outline" size={18} color={STUDENT.primary} />
-        <Text style={styles.title}>Teacher Diary</Text>
-      </View>
-      {entries.map((e) => {
+      <PremiumSectionHeader title="Teacher Diary" icon="book-outline" accent={STUDENT.primary} />
+      {entries.map((e, index) => {
         const open = expanded === e._id;
         const teacher = e.teacherId?.fullName || 'Teacher';
         const preview = e.content?.slice(0, 120) || '';
         return (
-          <Pressable key={e._id} onPress={() => setExpanded(open ? null : e._id)}>
-            <GlassCard style={styles.card}>
-              <View style={styles.cardTop}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{teacher.charAt(0)}</Text>
+          <Animated.View key={e._id} entering={FadeInDown.duration(320).delay(index * 60)}>
+            <Pressable onPress={() => setExpanded(open ? null : e._id)}>
+              <GlassCard variant="default" style={styles.card}>
+                <View style={styles.cardTop}>
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>{teacher.charAt(0)}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.teacher}>{teacher}</Text>
+                    <Text style={styles.meta}>
+                      {e.classDisplay || 'Class'} ·{' '}
+                      {e.forDate ? new Date(e.forDate).toLocaleDateString() : 'Recent'}
+                    </Text>
+                  </View>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.teacher}>{teacher}</Text>
-                  <Text style={styles.meta}>
-                    {e.classDisplay || 'Class'} ·{' '}
-                    {e.forDate ? new Date(e.forDate).toLocaleDateString() : 'Recent'}
-                  </Text>
-                </View>
-              </View>
-              {e.title ? <Text style={styles.entryTitle}>{e.title}</Text> : null}
-              <Text style={styles.preview} numberOfLines={open ? undefined : 3}>
-                {open ? e.content : preview}
-                {!open && e.content.length > 120 ? '…' : ''}
-              </Text>
-            </GlassCard>
-          </Pressable>
+                {e.title ? <Text style={styles.entryTitle}>{e.title}</Text> : null}
+                <Text style={styles.preview} numberOfLines={open ? undefined : 3}>
+                  {open ? e.content : preview}
+                  {!open && e.content.length > 120 ? '…' : ''}
+                </Text>
+              </GlassCard>
+            </Pressable>
+          </Animated.View>
         );
       })}
     </View>
@@ -89,22 +87,19 @@ export default function TeacherDiaryFeed() {
 
 const styles = StyleSheet.create({
   wrap: { marginBottom: 14 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
-  title: { fontSize: 17, fontWeight: '800', color: STUDENT.text },
-  muted: { color: STUDENT.textMuted, textAlign: 'center' },
   card: { marginBottom: 8 },
   cardTop: { flexDirection: 'row', gap: 10, marginBottom: 8 },
   avatar: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(16,185,129,0.2)',
+    backgroundColor: `${STUDENT.primary}33`,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: { color: STUDENT.text, fontWeight: '800' },
   teacher: { fontWeight: '700', color: STUDENT.text, fontSize: 14 },
-  meta: { fontSize: 11, color: STUDENT.textMuted, marginTop: 2 },
+  meta: { ...STUDENT_TYPO.label, color: STUDENT.textMuted, marginTop: 2 },
   entryTitle: { fontWeight: '600', color: STUDENT.accent, marginBottom: 6, fontSize: 13 },
   preview: { fontSize: 13, color: STUDENT.textSecondary, lineHeight: 19 },
 });

@@ -1,8 +1,9 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { STUDENT, STUDENT_ANIMATION, STUDENT_RADIUS } from '../../theme/student';
+import { STUDENT, STUDENT_ANIMATION, STUDENT_RADIUS, STUDENT_TYPO } from '../../theme/student';
 
 type Props = {
   title: string;
@@ -11,6 +12,7 @@ type Props = {
   accent?: string;
   delay?: number;
   right?: React.ReactNode;
+  badge?: string;
 };
 
 export default function PremiumSectionHeader({
@@ -20,6 +22,7 @@ export default function PremiumSectionHeader({
   accent = STUDENT.primary,
   delay = 0,
   right,
+  badge,
 }: Props) {
   return (
     <Animated.View
@@ -28,12 +31,24 @@ export default function PremiumSectionHeader({
     >
       <View style={styles.left}>
         {icon ? (
-          <View style={[styles.iconWrap, { backgroundColor: `${accent}18` }]}>
-            <Ionicons name={icon} size={18} color={accent} />
-          </View>
+          <LinearGradient
+            colors={[accent, `${accent}cc`]}
+            style={styles.iconWrap}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+          >
+            <Ionicons name={icon} size={20} color={STUDENT.textOnPrimary} />
+          </LinearGradient>
         ) : null}
         <View style={styles.textWrap}>
-          <Text style={styles.title}>{title}</Text>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>{title}</Text>
+            {badge ? (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{badge}</Text>
+              </View>
+            ) : null}
+          </View>
           {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
         </View>
       </View>
@@ -52,18 +67,28 @@ const styles = StyleSheet.create({
   },
   left: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
   iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: STUDENT_RADIUS.md,
+    width: 40,
+    height: 40,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   textWrap: { flex: 1 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   title: {
-    fontSize: 20,
-    fontWeight: '800',
+    ...STUDENT_TYPO.section,
     color: STUDENT.text,
-    letterSpacing: -0.3,
+  },
+  badge: {
+    backgroundColor: STUDENT.accentSoft,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: STUDENT_RADIUS.full,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: STUDENT.accent,
   },
   subtitle: {
     fontSize: 13,

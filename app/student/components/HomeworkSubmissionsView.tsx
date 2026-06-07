@@ -1,8 +1,23 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
+import { useBackNavigation } from '../../../src/hooks/useBackNavigation';
+import { EmptyState } from '../../../src/components/ui';
+import StudentScreenHeader from '../../../src/components/student/StudentScreenHeader';
+import GlassCard from '../../../src/components/student/GlassCard';
+import {
+  STUDENT,
+  STUDENT_ANIMATION,
+  STUDENT_RADIUS,
+  STUDENT_SPACING,
+  STUDENT_TYPO,
+  SUBJECT_COLORS,
+} from '../../../src/theme/student';
 
 interface HomeworkSubmission {
   _id: string;
@@ -26,6 +41,8 @@ interface HomeworkSubmission {
 export default function StudentHomeworkSubmissionsView() {
   const [submissions, setSubmissions] = useState<HomeworkSubmission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  useBackNavigation('/dashboard', false);
 
   useEffect(() => {
     fetchSubmissions();
@@ -55,85 +72,96 @@ export default function StudentHomeworkSubmissionsView() {
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3b82f6" />
-        <Text style={styles.loadingText}>Loading submissions...</Text>
-      </View>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <StudentScreenHeader title="My Submissions" onBack={() => router.back()} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={STUDENT.primary} />
+          <Text style={styles.loadingText}>Loading submissions...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StudentScreenHeader title="My Submissions" onBack={() => router.back()} />
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {submissions.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="document-text-outline" size={64} color="#9ca3af" />
-            <Text style={styles.emptyText}>No submissions yet</Text>
-            <Text style={styles.emptySubtext}>Your homework submissions will appear here</Text>
-          </View>
+          <EmptyState
+            icon="document-text-outline"
+            title="No submissions yet"
+            subtitle="Your homework submissions will appear here"
+          />
         ) : (
-          submissions.map((submission) => {
+          submissions.map((submission, index) => {
             const subjectName = typeof submission.homework.subject === 'object'
               ? submission.homework.subject?.name
               : submission.homework.subject || 'General';
+            const subjectColor = SUBJECT_COLORS[index % SUBJECT_COLORS.length];
 
             return (
-              <View key={submission._id} style={styles.submissionCard}>
-                <View style={styles.submissionHeader}>
-                  <View style={styles.homeworkInfo}>
-                    <Text style={styles.homeworkTitle}>{submission.homework.title}</Text>
-                    <Text style={styles.homeworkSubject}>{subjectName}</Text>
+              <Animated.View
+                key={submission._id}
+                entering={FadeInDown.duration(STUDENT_ANIMATION.normal).delay(index * 60)}
+              >
+                <GlassCard variant="elevated" style={styles.submissionCard}>
+                  <View style={[styles.subjectStripe, { backgroundColor: subjectColor }]} />
+                  <View style={styles.submissionHeader}>
+                    <View style={styles.homeworkInfo}>
+                      <Text style={styles.homeworkTitle}>{submission.homework.title}</Text>
+                      <Text style={[styles.homeworkSubject, { color: subjectColor }]}>{subjectName}</Text>
+                    </View>
+                    <View style={[styles.statusBadge, styles[`statusBadge${submission.status}`]]}>
+                      <Text style={[styles.statusText, styles[`statusText${submission.status}`]]}>
+                        {submission.status.toUpperCase()}
+                      </Text>
+                    </View>
                   </View>
-                  <View style={[styles.statusBadge, styles[`statusBadge${submission.status}`]]}>
-                    <Text style={[styles.statusText, styles[`statusText${submission.status}`]]}>
-                      {submission.status.toUpperCase()}
-                    </Text>
-                  </View>
-                </View>
 
-                <View style={styles.submissionDetails}>
-                  <TouchableOpacity
-                    style={styles.linkButton}
-                    onPress={() => Linking.openURL(submission.submissionLink)}
-                  >
-                    <Ionicons name="link" size={16} color="#3b82f6" />
-                    <Text style={styles.linkText}>View Submission</Text>
-                  </TouchableOpacity>
-                  {submission.description && (
-                    <Text style={styles.description}>{submission.description}</Text>
+                  <View style={styles.submissionDetails}>
+                    <TouchableOpacity
+                      style={styles.linkButton}
+                      onPress={() => Linking.openURL(submission.submissionLink)}
+                    >
+                      <Ionicons name="link" size={16} color={STUDENT.accent} />
+                      <Text style={styles.linkText}>View Submission</Text>
+                    </TouchableOpacity>
+                    {submission.description && (
+                      <Text style={styles.description}>{submission.description}</Text>
+                    )}
+                  </View>
+
+                  {submission.grade !== undefined && (
+                    <View style={styles.gradeContainer}>
+                      <Text style={styles.gradeLabel}>Grade:</Text>
+                      <Text style={styles.gradeValue}>{submission.grade}/100</Text>
+                    </View>
                   )}
-                </View>
 
-                {submission.grade !== undefined && (
-                  <View style={styles.gradeContainer}>
-                    <Text style={styles.gradeLabel}>Grade:</Text>
-                    <Text style={styles.gradeValue}>{submission.grade}/100</Text>
-                  </View>
-                )}
+                  {submission.feedback && (
+                    <View style={styles.feedbackContainer}>
+                      <Text style={styles.feedbackLabel}>Teacher Feedback:</Text>
+                      <Text style={styles.feedbackText}>{submission.feedback}</Text>
+                    </View>
+                  )}
 
-                {submission.feedback && (
-                  <View style={styles.feedbackContainer}>
-                    <Text style={styles.feedbackLabel}>Teacher Feedback:</Text>
-                    <Text style={styles.feedbackText}>{submission.feedback}</Text>
-                  </View>
-                )}
-
-                <Text style={styles.submittedAt}>
-                  Submitted: {new Date(submission.submittedAt).toLocaleString()}
-                </Text>
-              </View>
+                  <Text style={styles.submittedAt}>
+                    Submitted: {new Date(submission.submittedAt).toLocaleString()}
+                  </Text>
+                </GlassCard>
+              </Animated.View>
             );
           })
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: STUDENT.bg,
   },
   loadingContainer: {
     flex: 1,
@@ -141,151 +169,131 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#6b7280',
+    marginTop: STUDENT_SPACING.md,
+    ...STUDENT_TYPO.body,
+    color: STUDENT.textMuted,
   },
   content: {
     flex: 1,
-    padding: 16,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 64,
-  },
-  emptyText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#6b7280',
-    textAlign: 'center',
+    padding: STUDENT_SPACING.lg,
   },
   submissionCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    marginBottom: STUDENT_SPACING.md,
+    overflow: 'hidden',
+  },
+  subjectStripe: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    borderTopLeftRadius: STUDENT_RADIUS.card,
+    borderBottomLeftRadius: STUDENT_RADIUS.card,
   },
   submissionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: STUDENT_SPACING.md,
   },
   homeworkInfo: {
     flex: 1,
+    paddingLeft: STUDENT_SPACING.sm,
   },
   homeworkTitle: {
-    fontSize: 16,
+    ...STUDENT_TYPO.body,
     fontWeight: '700',
-    color: '#111827',
+    color: STUDENT.text,
     marginBottom: 4,
   },
   homeworkSubject: {
-    fontSize: 14,
-    color: '#6b7280',
+    ...STUDENT_TYPO.caption,
+    fontWeight: '600',
   },
   statusBadge: {
-    paddingHorizontal: 12,
+    paddingHorizontal: STUDENT_SPACING.md,
     paddingVertical: 6,
-    borderRadius: 12,
+    borderRadius: STUDENT_RADIUS.md,
   },
   statusBadgepending: {
-    backgroundColor: '#fef3c7',
+    backgroundColor: STUDENT.bgAccent,
   },
   statusBadgereviewed: {
-    backgroundColor: '#dbeafe',
+    backgroundColor: STUDENT.accentSoft,
   },
   statusBadgegraded: {
-    backgroundColor: '#d1fae5',
+    backgroundColor: STUDENT.navActiveBg,
   },
   statusText: {
-    fontSize: 12,
-    fontWeight: '700',
+    ...STUDENT_TYPO.label,
   },
   statusTextpending: {
-    color: '#92400e',
+    color: STUDENT.warning,
   },
   statusTextreviewed: {
-    color: '#1e40af',
+    color: STUDENT.accent,
   },
   statusTextgraded: {
-    color: '#065f46',
+    color: STUDENT.primaryDark,
   },
   submissionDetails: {
-    marginBottom: 12,
-    paddingTop: 12,
+    marginBottom: STUDENT_SPACING.md,
+    paddingTop: STUDENT_SPACING.md,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: STUDENT.surfaceBorder,
   },
   linkButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
+    gap: STUDENT_SPACING.sm,
+    marginBottom: STUDENT_SPACING.sm,
   },
   linkText: {
-    fontSize: 14,
-    color: '#3b82f6',
-    fontWeight: '600',
+    ...STUDENT_TYPO.caption,
+    color: STUDENT.accent,
   },
   description: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 8,
+    ...STUDENT_TYPO.caption,
+    color: STUDENT.textMuted,
+    marginTop: STUDENT_SPACING.sm,
   },
   gradeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-    paddingTop: 12,
+    gap: STUDENT_SPACING.sm,
+    marginBottom: STUDENT_SPACING.md,
+    paddingTop: STUDENT_SPACING.md,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: STUDENT.surfaceBorder,
   },
   gradeLabel: {
-    fontSize: 14,
+    ...STUDENT_TYPO.caption,
     fontWeight: '600',
-    color: '#374151',
+    color: STUDENT.textSecondary,
   },
   gradeValue: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#10b981',
+    color: STUDENT.success,
   },
   feedbackContainer: {
-    marginBottom: 12,
-    padding: 12,
-    backgroundColor: '#f9fafb',
-    borderRadius: 8,
+    marginBottom: STUDENT_SPACING.md,
+    padding: STUDENT_SPACING.md,
+    backgroundColor: STUDENT.bgAccent,
+    borderRadius: STUDENT_RADIUS.inner,
   },
   feedbackLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6b7280',
+    ...STUDENT_TYPO.label,
+    color: STUDENT.textMuted,
     marginBottom: 4,
   },
   feedbackText: {
-    fontSize: 14,
-    color: '#111827',
+    ...STUDENT_TYPO.caption,
+    color: STUDENT.text,
   },
   submittedAt: {
-    fontSize: 12,
-    color: '#9ca3af',
+    ...STUDENT_TYPO.label,
+    color: STUDENT.textMuted,
     textAlign: 'right',
   },
 });
-
-

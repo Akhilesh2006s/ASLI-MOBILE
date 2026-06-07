@@ -17,6 +17,7 @@ import ClassTimetableSection from './overview/ClassTimetableSection';
 import MyHomeworkSection from './overview/MyHomeworkSection';
 import {
   buildTodaysTasksContentList,
+  capTodaysTasksForDay,
   getContentSubjectId,
   isVideoContentType,
   nextChapterCompletedDates,
@@ -37,9 +38,10 @@ interface OverviewViewProps {
   user: any;
   onGoExams?: () => void;
   onGoProfile?: () => void;
+  onLogout?: () => void;
 }
 
-const OverviewView = memo(function OverviewView({ user, onGoExams, onGoProfile }: OverviewViewProps) {
+const OverviewView = memo(function OverviewView({ user, onGoExams, onGoProfile, onLogout }: OverviewViewProps) {
   const { width } = useWindowDimensions();
   const compact = width < 380;
   const isTablet = width >= 768;
@@ -536,15 +538,21 @@ const OverviewView = memo(function OverviewView({ user, onGoExams, onGoProfile }
     });
   }, []);
 
+  const dailyTasks = useMemo(
+    () => capTodaysTasksForDay(incompleteQuizzes, incompleteContent),
+    [incompleteQuizzes, incompleteContent]
+  );
+
   const { totalTodos, completedTodos, todayProgress, efficiency } = useMemo(() => {
-    const total = incompleteContent.length + incompleteQuizzes.length;
+    const { quizzes, content } = dailyTasks;
+    const total = content.length + quizzes.length;
     const completed =
-      incompleteContent.filter((c: any) => completedScheduleIds.has(String(c._id || c.id))).length +
-      incompleteQuizzes.filter((q: any) => completedScheduleIds.has(String(q._id || q.id))).length;
+      content.filter((c: any) => completedScheduleIds.has(String(c._id || c.id))).length +
+      quizzes.filter((q: any) => completedScheduleIds.has(String(q._id || q.id))).length;
     const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
     const eff = total > 0 ? Math.round((completed / total) * 100) : 0;
     return { totalTodos: total, completedTodos: completed, todayProgress: progress, efficiency: eff };
-  }, [incompleteContent, incompleteQuizzes, completedScheduleIds]);
+  }, [dailyTasks, completedScheduleIds]);
 
   const dayStreak = Number(user?.dayStreak ?? 0);
   const schoolName = String(user?.assignedAdmin?.schoolName || user?.schoolName || '').trim();
@@ -555,6 +563,7 @@ const OverviewView = memo(function OverviewView({ user, onGoExams, onGoProfile }
         user={user}
         streak={dayStreak}
         onAvatarPress={onGoProfile}
+        onLogout={onLogout}
       />
 
       {/* Summary Statistics Cards — same 4 cards as web */}
@@ -567,7 +576,7 @@ const OverviewView = memo(function OverviewView({ user, onGoExams, onGoProfile }
           end={{ x: 1, y: 0 }}
         >
           <View style={styles.statCardContent}>
-            <Ionicons name="locate-outline" size={24} color="#fff" style={styles.statIcon} />
+            <Ionicons name="locate-outline" size={24} color={STUDENT.textOnPrimary} style={styles.statIcon} />
             <Text style={styles.statLabel}>Today's Progress</Text>
             <Text style={styles.statValue}>{completedTodos}/{totalTodos}</Text>
             <View style={styles.statProgressBar}>
@@ -585,7 +594,7 @@ const OverviewView = memo(function OverviewView({ user, onGoExams, onGoProfile }
           end={{ x: 1, y: 0 }}
         >
           <View style={styles.statCardContent}>
-            <Ionicons name="time" size={24} color="#fff" style={styles.statIcon} />
+            <Ionicons name="time" size={24} color={STUDENT.textOnPrimary} style={styles.statIcon} />
             <Text style={styles.statLabel}>Study Time</Text>
             <Text style={styles.statValue}>
               {studyTimeToday >= 60
@@ -606,7 +615,7 @@ const OverviewView = memo(function OverviewView({ user, onGoExams, onGoProfile }
           end={{ x: 1, y: 0 }}
         >
           <View style={styles.statCardContent}>
-            <Ionicons name="calendar" size={24} color="#fff" style={styles.statIcon} />
+            <Ionicons name="calendar" size={24} color={STUDENT.textOnPrimary} style={styles.statIcon} />
             <Text style={styles.statLabel}>This Week</Text>
             <Text style={styles.statValue}>
               {studyTimeThisWeek >= 60
@@ -627,7 +636,7 @@ const OverviewView = memo(function OverviewView({ user, onGoExams, onGoProfile }
           end={{ x: 1, y: 0 }}
         >
           <View style={styles.statCardContent}>
-            <Ionicons name="trending-up" size={24} color="#fff" style={styles.statIcon} />
+            <Ionicons name="trending-up" size={24} color={STUDENT.textOnPrimary} style={styles.statIcon} />
             <Text style={styles.statLabel}>Efficiency</Text>
             <Text style={styles.statValue}>{efficiency}%</Text>
             <Text style={styles.statSubtext}>Completion rate</Text>
@@ -644,8 +653,8 @@ const OverviewView = memo(function OverviewView({ user, onGoExams, onGoProfile }
       <ClassTimetableSection schoolName={schoolName} />
 
       <TodaysTasksSection
-        incompleteQuizzes={incompleteQuizzes}
-        incompleteContent={incompleteContent}
+        incompleteQuizzes={dailyTasks.quizzes}
+        incompleteContent={dailyTasks.content}
         completedScheduleIds={completedScheduleIds}
         isLoading={isLoadingSchedule}
         onToggleComplete={handleToggleScheduleComplete}
@@ -657,7 +666,7 @@ const OverviewView = memo(function OverviewView({ user, onGoExams, onGoProfile }
       {remarks.length > 0 ? (
         <View style={styles.sectionCard}>
           <View style={styles.remarksHeader}>
-            <Ionicons name="chatbubbles" size={20} color="#0ea5e9" />
+            <Ionicons name="chatbubbles" size={20} color={STUDENT.accent} />
             <Text style={styles.sectionTitle}>Teacher Remarks</Text>
           </View>
           {remarks.slice(0, 5).map((remark: any) => (
@@ -684,7 +693,7 @@ const OverviewView = memo(function OverviewView({ user, onGoExams, onGoProfile }
       {riskReports.length > 0 ? (
         <View style={styles.sectionCard}>
           <View style={styles.remarksHeader}>
-            <Ionicons name="warning" size={20} color="#ea580c" />
+            <Ionicons name="warning" size={20} color={STUDENT.warning} />
             <Text style={styles.sectionTitle}>AI Risk Analysis Reports</Text>
           </View>
           {riskReports.map((report: any) => (
@@ -816,7 +825,7 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: '47%',
-    borderRadius: 18,
+    borderRadius: 24,
     padding: 16,
     minHeight: 140,
     ...STUDENT.shadow.sm,
@@ -835,7 +844,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#fff',
+    color: STUDENT.textOnPrimary,
     marginBottom: 8,
   },
   statProgressBar: {
@@ -847,7 +856,7 @@ const styles = StyleSheet.create({
   },
   statProgressFill: {
     height: '100%',
-    backgroundColor: '#fff',
+    backgroundColor: STUDENT.textOnPrimary,
     borderRadius: 2,
   },
   statSubtext: {
@@ -859,9 +868,9 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 8,
   },
-  quickStatCard: {
+  quickStatCardAlt: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: STUDENT.surface,
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',

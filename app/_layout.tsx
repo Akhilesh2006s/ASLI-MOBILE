@@ -139,6 +139,8 @@ function AuthGate() {
       <Stack.Screen name="student/schedule" />
       <Stack.Screen name="student/results" />
       <Stack.Screen name="teacher/attendance" />
+      <Stack.Screen name="teacher/vidya-chat" />
+      <Stack.Screen name="teacher/subject/[id]" />
       <Stack.Screen name="admin/reports" />
       <Stack.Screen name="admin/school-settings" />
       <Stack.Screen name="super-admin/analytics" />

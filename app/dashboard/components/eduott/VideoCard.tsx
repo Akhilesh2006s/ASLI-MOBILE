@@ -1,6 +1,19 @@
-import React, { memo } from 'react';
+import React, { memo, useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+import GlassCard from '../../../../src/components/student/GlassCard';
+import {
+  STUDENT,
+  STUDENT_ANIMATION,
+  STUDENT_RADIUS,
+  SUBJECT_COLORS,
+} from '../../../../src/theme/student';
 
 interface VideoCardProps {
   title: string;
@@ -13,6 +26,36 @@ interface VideoCardProps {
   isYouTubeVideo?: boolean;
   onPress: () => void;
   onToggleBookmark: () => void;
+}
+
+function subjectAccent(name?: string): string {
+  if (!name) return SUBJECT_COLORS[0];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return SUBJECT_COLORS[Math.abs(hash) % SUBJECT_COLORS.length];
+}
+
+function AnimatedWatchProgress({ progress }: { progress: number }) {
+  const width = useSharedValue(0);
+
+  useEffect(() => {
+    width.value = withTiming(Math.min(100, progress * 100), {
+      duration: STUDENT_ANIMATION.slow,
+      easing: Easing.out(Easing.quad),
+    });
+  }, [progress, width]);
+
+  const animStyle = useAnimatedStyle(() => ({
+    width: `${width.value}%`,
+  }));
+
+  return (
+    <View style={styles.progressTrack}>
+      <Animated.View style={[styles.progressFill, animStyle]} />
+    </View>
+  );
 }
 
 function VideoCardComponent({
@@ -28,71 +71,57 @@ function VideoCardComponent({
   onToggleBookmark,
 }: VideoCardProps) {
   const progress = Math.max(0, Math.min(1, watchProgress || 0));
+  const accent = subjectAccent(subjectName || description);
 
   return (
-    <Pressable
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-      android_ripple={{ color: '#e2e8f0' }}
-      onPress={onPress}
-    >
-      <View style={styles.thumbnail}>
-        <Ionicons
-          name={isYouTubeVideo ? 'logo-youtube' : 'play-circle'}
-          size={34}
-          color={isYouTubeVideo ? '#ef4444' : '#1d4ed8'}
-        />
-        <Pressable onPress={onToggleBookmark} style={styles.bookmark} hitSlop={10}>
-          <Ionicons name={isBookmarked ? 'bookmark' : 'bookmark-outline'} size={16} color="#ffffff" />
-        </Pressable>
-      </View>
-
-      <View style={styles.content}>
-        <Text style={styles.title} numberOfLines={2}>
-          {title}
-        </Text>
-        <Text style={styles.subtitle} numberOfLines={1}>
-          {subjectName || description || 'Video lecture'}
-        </Text>
-        <View style={styles.metaRow}>
-          <Text style={styles.metaText}>{durationText}</Text>
-          <Text style={styles.dot}>•</Text>
-          <Text style={styles.metaText}>{views} views</Text>
+    <GlassCard variant="elevated" padding={12} style={styles.cardWrap} onPress={onPress}>
+      <View style={styles.row}>
+        <View style={[styles.thumbnail, { backgroundColor: `${accent}14` }]}>
+          <Ionicons
+            name={isYouTubeVideo ? 'logo-youtube' : 'play-circle'}
+            size={34}
+            color={isYouTubeVideo ? STUDENT.danger : accent}
+          />
+          <Pressable onPress={onToggleBookmark} style={styles.bookmark} hitSlop={10}>
+            <Ionicons
+              name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
+              size={16}
+              color={STUDENT.textOnPrimary}
+            />
+          </Pressable>
         </View>
-        {progress > 0 ? (
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` }]} />
+
+        <View style={styles.content}>
+          <Text style={styles.title} numberOfLines={2}>
+            {title}
+          </Text>
+          <Text style={styles.subtitle} numberOfLines={1}>
+            {subjectName || description || 'Video lecture'}
+          </Text>
+          <View style={styles.metaRow}>
+            <Text style={styles.metaText}>{durationText}</Text>
+            <Text style={styles.dot}>•</Text>
+            <Text style={styles.metaText}>{views} views</Text>
           </View>
-        ) : null}
+          {progress > 0 ? <AnimatedWatchProgress progress={progress} /> : null}
+        </View>
       </View>
-    </Pressable>
+    </GlassCard>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
+  cardWrap: {
+    marginBottom: 12,
+  },
+  row: {
     flexDirection: 'row',
     gap: 12,
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 2,
-  },
-  cardPressed: {
-    opacity: 0.95,
-    transform: [{ scale: 0.995 }],
   },
   thumbnail: {
     width: 110,
     height: 76,
-    borderRadius: 12,
-    backgroundColor: '#f1f5f9',
+    borderRadius: STUDENT_RADIUS.inner,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -103,7 +132,7 @@ const styles = StyleSheet.create({
     right: 6,
     width: 24,
     height: 24,
-    borderRadius: 8,
+    borderRadius: STUDENT_RADIUS.sm,
     backgroundColor: 'rgba(15,23,42,0.55)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -115,13 +144,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#0f172a',
+    color: STUDENT.text,
     lineHeight: 21,
   },
   subtitle: {
     marginTop: 2,
     fontSize: 13,
-    color: '#64748b',
+    color: STUDENT.textMuted,
   },
   metaRow: {
     marginTop: 6,
@@ -130,24 +159,24 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 12,
-    color: '#64748b',
+    color: STUDENT.textMuted,
   },
   dot: {
     fontSize: 12,
-    color: '#94a3b8',
+    color: STUDENT.navInactive,
     marginHorizontal: 6,
   },
   progressTrack: {
     marginTop: 8,
     height: 4,
-    borderRadius: 999,
-    backgroundColor: '#dbeafe',
+    borderRadius: STUDENT_RADIUS.full,
+    backgroundColor: STUDENT.accentSoft,
     overflow: 'hidden',
   },
   progressFill: {
     height: 4,
-    borderRadius: 999,
-    backgroundColor: '#2563eb',
+    borderRadius: STUDENT_RADIUS.full,
+    backgroundColor: STUDENT.accent,
   },
 });
 

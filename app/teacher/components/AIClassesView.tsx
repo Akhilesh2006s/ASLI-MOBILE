@@ -1,683 +1,255 @@
-import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useEffect, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
-import { API_BASE_URL } from '../../../src/lib/api-config';
-import * as SecureStore from 'expo-secure-store';
+import teacherService from '../../../src/services/api/teacherService';
+import { SubNavChips, TeacherShimmer, TeacherClassCard } from '../../../src/components/teacher';
+import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../../src/theme/teacher';
+import TimetableView from './TimetableView';
+import ScheduleCalendarView from './ScheduleCalendarView';
 
-interface Class {
+type ClassesSubTab = 'classes' | 'timetable' | 'schedule';
+
+interface ClassItem {
   id: string;
   name: string;
+  section: string;
   subject: string;
+  studentCount: number;
   schedule: string;
   room: string;
-  studentCount: number;
-  students?: Array<{
-    id: string;
-    name: string;
-    email: string;
-    status: string;
-  }>;
+  classNumber?: string;
+  students: Array<{ id: string; name: string; email: string; status: string }>;
 }
 
-interface Subject {
-  _id: string;
-  id: string;
-  name: string;
-  description?: string;
-  totalContent?: number;
-  videos?: any[];
-  assessments?: any[];
-  asliPrepContent?: any[];
-}
+type Props = {
+  stats: { totalStudents: number; totalClasses: number; totalVideos: number; pendingGrades?: number };
+  initialSubTab?: ClassesSubTab;
+  onOpenProgress?: (classNumber: string, studentId?: string) => void;
+};
 
-interface AIClassesViewProps {
-  stats: {
-    totalStudents: number;
-    totalClasses: number;
-    totalVideos: number;
-    averagePerformance: number;
-  };
-}
+const SUB_TABS = [
+  { id: 'classes', label: 'My Classes' },
+  { id: 'timetable', label: 'Timetable' },
+  { id: 'schedule', label: 'Schedule' },
+];
 
 function asText(value: unknown, fallback = 'N/A'): string {
   if (value == null || value === '') return fallback;
   if (typeof value === 'string') return value;
   if (typeof value === 'number' || typeof value === 'boolean') return String(value);
   if (typeof value === 'object' && value !== null && 'name' in value) {
-    const n = (value as { name?: unknown }).name;
-    return n != null ? asText(n, fallback) : fallback;
+    return asText((value as { name?: unknown }).name, fallback);
   }
   return String(value);
 }
 
-export default function AIClassesView({ stats }: AIClassesViewProps) {
-  const [assignedClasses, setAssignedClasses] = useState<Class[]>([]);
-  const [subjectsWithContent, setSubjectsWithContent] = useState<Subject[]>([]);
-  const [expandedClasses, setExpandedClasses] = useState<Set<string>>(new Set());
-  const [isLoadingClasses, setIsLoadingClasses] = useState(true);
-  const [isLoadingSubjects, setIsLoadingSubjects] = useState(true);
+/** Match web display: "7A", "8B" */
+function formatClassName(cls: any): string {
+  const num = cls.classNumber != null ? String(cls.classNumber) : '';
+  const sec = cls.section != null ? String(cls.section).trim() : '';
+  if (num && sec) return `${num}${sec}`;
+  if (cls.name && typeof cls.name === 'string') {
+    const n = cls.name.trim();
+    if (/^\d+[A-Za-z]$/.test(n.replace(/\s/g, ''))) return n.replace(/\s/g, '');
+    return n;
+  }
+  if (num) return num;
+  return 'Class';
+}
+
+function formatRoom(cls: any): string {
+  const room = asText(cls.room, '');
+  if (room && room !== 'N/A' && room !== '—') {
+    if (room.toLowerCase().startsWith('room')) return room;
+    return `Room ${room}`;
+  }
+  const num = cls.classNumber != null ? String(cls.classNumber) : '';
+  const sec = cls.section != null ? String(cls.section).trim() : '';
+  if (num && sec) return `Room ${num}${sec}`;
+  return '—';
+}
+
+export default function AIClassesView({ stats, initialSubTab, onOpenProgress }: Props) {
+  const [subTab, setSubTab] = useState<ClassesSubTab>(initialSubTab || 'classes');
+  const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const [stale, setStale] = useState(false);
 
   useEffect(() => {
-    fetchClasses();
-    fetchSubjects();
-  }, []);
+    if (initialSubTab) setSubTab(initialSubTab);
+  }, [initialSubTab]);
 
-  const fetchClasses = async () => {
+  useEffect(() => {
+    if (subTab === 'classes') loadClasses();
+  }, [subTab]);
+
+  const loadClasses = async () => {
+    setLoading(true);
     try {
-      setIsLoadingClasses(true);
-      const token = await SecureStore.getItemAsync('authToken');
-      console.log('[AIClassesView] Fetching classes...');
-      console.log('[AIClassesView] API URL:', `${API_BASE_URL}/api/teacher/classes`);
-      
-      const response = await fetch(`${API_BASE_URL}/api/teacher/classes`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const res = await teacherService.classes();
+      const data = res.data ?? [];
 
-      console.log('[AIClassesView] Classes response status:', response.status);
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('[AIClassesView] Classes data:', JSON.stringify(data, null, 2));
-        
-        const classesData = data.data || data || [];
-        const mappedClasses = (Array.isArray(classesData) ? classesData : []).map((cls: any) => ({
-          id: String(cls._id || cls.id || ''),
-          name: cls.name || `${cls.classNumber}${cls.section ? ` - ${cls.section}` : ''}`,
-          subject: asText(cls.subject, 'N/A'),
-          schedule: asText(cls.schedule, 'N/A'),
-          room: asText(cls.room, 'N/A'),
-          studentCount: cls.students?.length || cls.studentCount || 0,
-          students: Array.isArray(cls.students) ? cls.students : []
-        }));
-        console.log('[AIClassesView] Mapped classes:', mappedClasses.length);
-        setAssignedClasses(mappedClasses);
-      } else {
-        const errorText = await response.text();
-        console.error('[AIClassesView] Failed to fetch classes:', response.status, errorText);
-      }
-    } catch (error) {
-      console.error('[AIClassesView] Failed to fetch classes (catch):', error);
+      setClasses(
+        (Array.isArray(data) ? data : []).map((cls: any) => {
+          const schedule = asText(cls.schedule, '');
+          return {
+            id: String(cls._id || cls.id || ''),
+            name: formatClassName(cls),
+            section: asText(cls.section, ''),
+            subject: asText(cls.subject, 'General'),
+            studentCount: cls.students?.length || cls.studentCount || 0,
+            schedule: schedule || 'Not scheduled',
+            room: formatRoom(cls),
+            classNumber: cls.classNumber ? String(cls.classNumber) : undefined,
+            students: Array.isArray(cls.students)
+              ? cls.students.map((s: any) => ({
+                  id: String(s._id || s.id),
+                  name: s.fullName || s.name || 'Student',
+                  email: s.email || '',
+                  status: s.status || 'active',
+                }))
+              : [],
+          };
+        })
+      );
+      setStale(res.stale);
+    } catch {
+      setClasses([]);
     } finally {
-      setIsLoadingClasses(false);
+      setLoading(false);
     }
   };
 
-  const fetchSubjects = async () => {
-    try {
-      setIsLoadingSubjects(true);
-      const token = await SecureStore.getItemAsync('authToken');
-      console.log('[AIClassesView] Fetching subjects...');
-      console.log('[AIClassesView] API URL:', `${API_BASE_URL}/api/teacher/subjects`);
-      
-      const response = await fetch(`${API_BASE_URL}/api/teacher/subjects`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      console.log('[AIClassesView] Subjects response status:', response.status);
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('[AIClassesView] Subjects data:', JSON.stringify(data, null, 2));
-        
-        const subjectsData = data.data || data.subjects || data || [];
-        
-        // Fetch content for each subject
-        const subjectsWithContentResults = await Promise.allSettled(
-          (Array.isArray(subjectsData) ? subjectsData : []).map(async (subject: any) => {
-            try {
-              const subjectId = subject._id || subject.id;
-              const contentResponse = await fetch(
-                `${API_BASE_URL}/api/teacher/asli-prep-content?subject=${encodeURIComponent(subjectId)}`,
-                {
-                  headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                  }
-                }
-              );
-              
-              let asliPrepContent = [];
-              if (contentResponse.ok) {
-                const contentData = await contentResponse.json();
-                asliPrepContent = contentData.success ? (contentData.data || []) : (contentData || []);
-                if (!Array.isArray(asliPrepContent)) asliPrepContent = [];
-              }
-
-              return {
-                _id: subject._id || subject.id,
-                id: subject._id || subject.id,
-                name: subject.name || 'Unknown Subject',
-                description: subject.description || '',
-                totalContent: asliPrepContent.length,
-                videos: asliPrepContent.filter((c: any) => c.type === 'Video'),
-                assessments: asliPrepContent.filter((c: any) => c.type === 'Assessment'),
-                asliPrepContent
-              };
-            } catch (error) {
-              console.error(`Error fetching content for subject ${subject._id}:`, error);
-              return {
-                _id: subject._id || subject.id,
-                id: subject._id || subject.id,
-                name: subject.name || 'Unknown Subject',
-                description: subject.description || '',
-                totalContent: 0,
-                videos: [],
-                assessments: [],
-                asliPrepContent: []
-              };
-            }
-          })
-        );
-
-        const successfulSubjects = subjectsWithContentResults
-          .filter(result => result.status === 'fulfilled')
-          .map(result => (result as PromiseFulfilledResult<Subject>).value);
-
-        console.log('[AIClassesView] Processed subjects with content:', successfulSubjects.length);
-        setSubjectsWithContent(successfulSubjects);
-      } else {
-        const errorText = await response.text();
-        console.error('[AIClassesView] Failed to fetch subjects:', response.status, errorText);
-      }
-    } catch (error) {
-      console.error('[AIClassesView] Failed to fetch subjects (catch):', error);
-    } finally {
-      setIsLoadingSubjects(false);
-    }
-  };
-
-  const toggleClassExpansion = (classId: string) => {
-    setExpandedClasses(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(classId)) {
-        newSet.delete(classId);
-      } else {
-        newSet.add(classId);
-      }
-      return newSet;
+  const toggleExpanded = (id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
     });
   };
 
-  return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      {/* My Classes Section */}
-      <View style={styles.section}>
+  const renderClasses = () => {
+    if (loading) return <TeacherShimmer variant="card" count={3} />;
+
+    if (!classes.length) {
+      return (
+        <View style={styles.empty}>
+          <Ionicons name="school-outline" size={48} color={TEACHER.textMuted} />
+          <Text style={styles.emptyTitle}>No Classes Assigned</Text>
+          <Text style={styles.emptySub}>Contact your administrator to get class assignments.</Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.classesSection}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionIcon}>
-            <Ionicons name="people" size={24} color="#fff" />
+            <Ionicons name="people" size={18} color="#fff" />
           </View>
           <Text style={styles.sectionTitle}>My Classes</Text>
         </View>
 
-        {isLoadingClasses ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#10b981" />
-          </View>
-        ) : assignedClasses.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="school-outline" size={64} color="#d1d5db" />
-            <Text style={styles.emptyText}>No Classes Assigned</Text>
-            <Text style={styles.emptySubtext}>
-              You haven't been assigned to any classes yet. Contact your administrator.
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.classesGrid}>
-            {assignedClasses.map((classItem) => (
-              <View key={classItem.id} style={styles.classCard}>
-                <View style={styles.classCardHeader}>
-                  <Text style={styles.classCardName}>{classItem.name}</Text>
-                  <View style={styles.activeBadge}>
-                    <Text style={styles.activeBadgeText}>Active</Text>
-                  </View>
-                </View>
-                <View style={styles.classCardDetails}>
-                  <View style={styles.classDetailRow}>
-                    <Text style={styles.classDetailLabel}>Students:</Text>
-                    <Text style={styles.classDetailValue}>{classItem.studentCount}</Text>
-                  </View>
-                  <View style={styles.classDetailRow}>
-                    <Text style={styles.classDetailLabel}>Subject:</Text>
-                    <Text style={styles.classDetailValue}>{classItem.subject}</Text>
-                  </View>
-                  <View style={styles.classDetailRow}>
-                    <Text style={styles.classDetailLabel}>Schedule:</Text>
-                    <Text style={styles.classDetailValue}>{classItem.schedule}</Text>
-                  </View>
-                  <View style={styles.classDetailRow}>
-                    <Text style={styles.classDetailLabel}>Room:</Text>
-                    <Text style={styles.classDetailValue}>{classItem.room}</Text>
-                  </View>
-                </View>
-
-                {expandedClasses.has(classItem.id) &&
-                classItem.students &&
-                classItem.students.length > 0 ? (
-                  <View style={styles.studentsList}>
-                    <Text style={styles.studentsListTitle}>Students:</Text>
-                    {classItem.students.map((student) => (
-                      <View key={student.id} style={styles.studentItem}>
-                        <View style={styles.studentInfo}>
-                          <Text style={styles.studentName}>{String(student.name ?? '')}</Text>
-                          <Text style={styles.studentEmail}>{String(student.email ?? '')}</Text>
-                        </View>
-                        <View style={[styles.studentStatusBadge, student.status === 'active' ? styles.studentStatusActive : styles.studentStatusInactive]}>
-                          <Text style={styles.studentStatusText}>{String(student.status ?? '')}</Text>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                ) : null}
-
-                <TouchableOpacity
-                  style={styles.expandButton}
-                  onPress={() => toggleClassExpansion(classItem.id)}
-                >
-                  <Ionicons
-                    name={expandedClasses.has(classItem.id) ? 'chevron-up' : 'chevron-down'}
-                    size={20}
-                    color="#10b981"
-                  />
-                  <Text style={styles.expandButtonText}>
-                    {expandedClasses.has(classItem.id) ? 'Hide Students' : 'View Students'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
-        )}
+        {classes.map((cls) => (
+          <TeacherClassCard
+            key={cls.id}
+            name={cls.name}
+            subject={cls.subject}
+            studentCount={cls.studentCount}
+            schedule={cls.schedule}
+            room={cls.room}
+            expanded={expanded.has(cls.id)}
+            onToggleStudents={() => toggleExpanded(cls.id)}
+            students={cls.students}
+            onViewStudentAnalysis={(studentId) =>
+              onOpenProgress?.(cls.classNumber || cls.name, studentId)
+            }
+          />
+        ))}
       </View>
+    );
+  };
 
-      {/* Learning Paths Section */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <View style={[styles.sectionIcon, { backgroundColor: '#8b5cf6' }]}>
-            <Ionicons name="book" size={24} color="#fff" />
-          </View>
-          <Text style={[styles.sectionTitle, { color: '#8b5cf6' }]}>Learning Paths</Text>
+  return (
+    <View>
+      <SubNavChips items={SUB_TABS} active={subTab} onChange={(id: string) => setSubTab(id as ClassesSubTab)} />
+
+      {stale && subTab === 'classes' ? (
+        <View style={styles.staleBanner}>
+          <Ionicons name="cloud-offline-outline" size={14} color={TEACHER.secondary} />
+          <Text style={styles.staleBannerText}>Showing cached data</Text>
         </View>
+      ) : null}
 
-        {isLoadingSubjects ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#8b5cf6" />
-          </View>
-        ) : subjectsWithContent.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="book-outline" size={64} color="#d1d5db" />
-            <Text style={styles.emptyText}>No Subjects Available</Text>
-            <Text style={styles.emptySubtext}>No subjects have been assigned to you yet.</Text>
-          </View>
-        ) : (
-          <View style={styles.subjectsGrid}>
-            {subjectsWithContent.map((subject) => {
-              const subjectKey = String(subject.id ?? subject._id);
-              const getSubjectIcon = (subjectName: string) => {
-                const name = subjectName.toLowerCase();
-                if (name.includes('math')) return 'calculator';
-                if (name.includes('science') || name.includes('physics') || name.includes('chemistry')) return 'flash-outline';
-                if (name.includes('english')) return 'book';
-                return 'book';
-              };
+      {subTab === 'classes' && renderClasses()}
 
-              return (
-                <View key={subjectKey} style={styles.subjectCard}>
-                  <View style={styles.subjectCardHeader}>
-                    <View style={styles.subjectCardIcon}>
-                      <Ionicons name={getSubjectIcon(asText(subject.name, 'Unknown Subject')) as any} size={24} color="#fff" />
-                    </View>
-                    <View style={styles.subjectCardBadge}>
-                      <Text style={styles.subjectCardBadgeText}>
-                        {subject.totalContent || 0} items
-                      </Text>
-                    </View>
-                  </View>
-                  <Text style={styles.subjectCardName}>
-                    {typeof subject.name === 'string' ? subject.name : String(subject.name ?? '')}
-                  </Text>
-                  {typeof subject.description === 'string' && subject.description.trim() !== '' ? (
-                    <Text style={styles.subjectCardDescription}>{subject.description}</Text>
-                  ) : null}
-
-                  <View style={styles.subjectStats}>
-                    <View style={styles.subjectStatItem}>
-                      <Ionicons name="play" size={16} color="#3b82f6" />
-                      <Text style={styles.subjectStatValue}>{subject.videos?.length || 0}</Text>
-                      <Text style={styles.subjectStatLabel}>Videos</Text>
-                    </View>
-                    <View style={styles.subjectStatItem}>
-                      <Ionicons name="document-text" size={16} color="#10b981" />
-                      <Text style={styles.subjectStatValue}>{subject.assessments?.length || 0}</Text>
-                      <Text style={styles.subjectStatLabel}>Quizzes</Text>
-                    </View>
-                    <View style={styles.subjectStatItem}>
-                      <Ionicons name="bar-chart" size={16} color="#f59e0b" />
-                      <Text style={styles.subjectStatValue}>{subject.asliPrepContent?.length || 0}</Text>
-                      <Text style={styles.subjectStatLabel}>Content</Text>
-                    </View>
-                  </View>
-
-                  {Array.isArray(subject.videos) && subject.videos.length > 0 ? (
-                    <View style={styles.recentVideos}>
-                      <Text style={styles.recentVideosTitle}>Recent Videos:</Text>
-                      {subject.videos.slice(0, 2).map((video: any, idx: number) => (
-                        <View key={video._id || idx} style={styles.recentVideoItem}>
-                          <Text style={styles.recentVideoTitle} numberOfLines={1}>
-                            {video.title != null ? String(video.title) : 'Untitled Video'}
-                          </Text>
-                          {video.duration != null && video.duration !== '' ? (
-                            <Text style={styles.recentVideoDuration}>
-                              Duration: {String(video.duration)} min
-                            </Text>
-                          ) : null}
-                        </View>
-                      ))}
-                    </View>
-                  ) : null}
-
-                  <TouchableOpacity
-                    style={styles.viewContentButton}
-                    onPress={() => router.push(`/teacher/subject/${subjectKey}`)}
-                  >
-                    <Text style={styles.viewContentButtonText}>View Content</Text>
-                    <Ionicons name="arrow-forward" size={20} color="#fff" />
-                  </TouchableOpacity>
-                </View>
-              );
-            })}
-          </View>
-        )}
-      </View>
-    </ScrollView>
+      {subTab === 'timetable' && <TimetableView />}
+      {subTab === 'schedule' && <ScheduleCalendarView />}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingBottom: 20,
-  },
-  section: {
-    marginBottom: 24,
+  classesSection: {
+    paddingHorizontal: TEACHER_SPACING.lg,
+    paddingBottom: TEACHER_SPACING.xxl,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginBottom: 16,
+    marginBottom: TEACHER_SPACING.lg,
   },
   sectionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#10b981',
-    justifyContent: 'center',
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#7c3aed',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   sectionTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '800',
-    color: '#10b981',
+    color: TEACHER.text,
+    letterSpacing: -0.4,
   },
-  loadingContainer: {
-    padding: 40,
+  empty: {
     alignItems: 'center',
+    padding: TEACHER_SPACING.xxxl,
+    marginHorizontal: TEACHER_SPACING.lg,
+    backgroundColor: '#ffffff',
+    borderRadius: TEACHER_RADIUS.card,
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
   },
-  emptyContainer: {
-    alignItems: 'center',
-    padding: 40,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-  },
-  emptyText: {
+  emptyTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#111827',
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: TEACHER_SPACING.lg,
   },
-  emptySubtext: {
+  emptySub: {
     fontSize: 14,
     color: '#6b7280',
     textAlign: 'center',
+    marginTop: TEACHER_SPACING.sm,
   },
-  classesGrid: {
-    gap: 16,
-  },
-  classCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  classCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  classCardName: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  activeBadge: {
-    backgroundColor: '#d1fae5',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  activeBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#065f46',
-  },
-  classCardDetails: {
-    gap: 12,
-    marginBottom: 16,
-  },
-  classDetailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  classDetailLabel: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  classDetailValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  studentsList: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-  },
-  studentsListTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  studentItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#f9fafb',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-  },
-  studentInfo: {
-    flex: 1,
-  },
-  studentName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  studentEmail: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  studentStatusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  studentStatusActive: {
-    backgroundColor: '#d1fae5',
-  },
-  studentStatusInactive: {
-    backgroundColor: '#fee2e2',
-  },
-  studentStatusText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#111827',
-    textTransform: 'capitalize',
-  },
-  expandButton: {
+  staleBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 12,
-    backgroundColor: '#f0fdf4',
-    borderRadius: 12,
-    gap: 8,
+    gap: 6,
+    marginHorizontal: TEACHER_SPACING.lg,
+    marginBottom: TEACHER_SPACING.sm,
+    padding: TEACHER_SPACING.sm,
+    backgroundColor: 'rgba(245,158,11,0.1)',
+    borderRadius: TEACHER_RADIUS.sm,
   },
-  expandButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#10b981',
-  },
-  subjectsGrid: {
-    gap: 16,
-  },
-  subjectCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  subjectCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  subjectCardIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#8b5cf6',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  subjectCardBadge: {
-    backgroundColor: '#f3f4f6',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  subjectCardBadgeText: {
+  staleBannerText: {
     fontSize: 12,
+    color: TEACHER.secondary,
     fontWeight: '600',
-    color: '#6b7280',
-  },
-  subjectCardName: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  subjectCardDescription: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 16,
-  },
-  subjectStats: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 16,
-  },
-  subjectStatItem: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-    borderRadius: 8,
-    padding: 12,
-    alignItems: 'center',
-  },
-  subjectStatValue: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#111827',
-    marginTop: 4,
-  },
-  subjectStatLabel: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginTop: 2,
-  },
-  recentVideos: {
-    marginBottom: 16,
-  },
-  recentVideosTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  recentVideoItem: {
-    backgroundColor: '#f9fafb',
-    borderRadius: 8,
-    padding: 8,
-    marginBottom: 8,
-  },
-  recentVideoTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  recentVideoDuration: {
-    fontSize: 11,
-    color: '#6b7280',
-  },
-  viewContentButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#8b5cf6',
-    padding: 12,
-    borderRadius: 12,
-    gap: 8,
-  },
-  viewContentButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
   },
 });
-

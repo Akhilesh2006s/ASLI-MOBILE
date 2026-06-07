@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as SecureStore from 'expo-secure-store';
-import { API_BASE_URL } from '../../../src/lib/api-config';
+import teacherService, { asArray } from '../../../src/services/api/teacherService';
+import { TEACHER, TEACHER_SPACING } from '../../../src/theme/teacher';
 
 interface Assessment {
   _id: string;
@@ -45,17 +45,8 @@ export default function TeacherAssessmentsView() {
 
   const fetchSubjects = async () => {
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/teacher/subjects`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setSubjects(data.subjects || data.data || []);
-      }
+      const res = await teacherService.subjects();
+      setSubjects(asArray(res.data));
     } catch (error) {
       console.error('Failed to fetch subjects:', error);
     }
@@ -64,17 +55,8 @@ export default function TeacherAssessmentsView() {
   const fetchAssessments = async () => {
     try {
       setIsLoading(true);
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/teacher/assessments`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setAssessments(data.data || data || []);
-      }
+      const res = await teacherService.assessments();
+      setAssessments(asArray(res.data));
     } catch (error) {
       console.error('Failed to fetch assessments:', error);
     } finally {
@@ -89,34 +71,22 @@ export default function TeacherAssessmentsView() {
     }
 
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/teacher/assessments`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(newAssessment)
+      await teacherService.createAssessment(newAssessment);
+      Alert.alert('Success', 'Assessment created successfully');
+      setIsCreateModalOpen(false);
+      setNewAssessment({
+        title: '',
+        description: '',
+        subject: '',
+        type: 'quiz',
+        difficulty: 'medium',
+        duration: 60,
+        totalMarks: 100,
+        passingMarks: 50,
+        questions: 20,
       });
-
-      if (response.ok) {
-        Alert.alert('Success', 'Assessment created successfully');
-        setIsCreateModalOpen(false);
-        setNewAssessment({
-          title: '',
-          description: '',
-          subject: '',
-          type: 'quiz',
-          difficulty: 'medium',
-          duration: 60,
-          totalMarks: 100,
-          passingMarks: 50,
-          questions: 20
-        });
-        fetchAssessments();
-      } else {
-        Alert.alert('Error', 'Failed to create assessment');
-      }
+      await teacherService.invalidateCache('assessments');
+      fetchAssessments();
     } catch (error) {
       console.error('Failed to create assessment:', error);
       Alert.alert('Error', 'An error occurred');
@@ -375,7 +345,8 @@ export default function TeacherAssessmentsView() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: 'transparent',
+    paddingHorizontal: TEACHER_SPACING.lg,
   },
   loadingContainer: {
     flex: 1,

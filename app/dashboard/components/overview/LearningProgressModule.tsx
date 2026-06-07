@@ -1,7 +1,16 @@
-import React, { memo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { memo, useEffect } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  Easing,
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated';
+import { STUDENT, STUDENT_RADIUS, STUDENT_TYPO, SUBJECT_COLORS } from '../../../../src/theme/student';
 
 interface SubjectProgress {
   id: string;
@@ -10,15 +19,47 @@ interface SubjectProgress {
   currentTopic?: string;
 }
 
-function getSubjectIcon(name: string): { icon: keyof typeof Ionicons.glyphMap; bg: string; color: string } {
+function getSubjectIcon(name: string, index: number): {
+  icon: keyof typeof Ionicons.glyphMap;
+  color: string;
+} {
   const n = (name || '').toLowerCase();
-  if (n.includes('math')) return { icon: 'calculator-outline', bg: '#fff7ed', color: '#ea580c' };
-  if (n.includes('physics')) return { icon: 'planet-outline', bg: '#eff6ff', color: '#2563eb' };
-  if (n.includes('chem')) return { icon: 'flask-outline', bg: '#f0fdfa', color: '#0d9488' };
-  if (n.includes('bio') || n.includes('science')) return { icon: 'leaf-outline', bg: '#ecfdf5', color: '#16a34a' };
-  if (n.includes('english')) return { icon: 'book-outline', bg: '#eef2ff', color: '#4f46e5' };
-  if (n.includes('social')) return { icon: 'globe-outline', bg: '#fffbeb', color: '#b45309' };
-  return { icon: 'book-outline', bg: '#f8fafc', color: '#475569' };
+  const color = SUBJECT_COLORS[index % SUBJECT_COLORS.length];
+  if (n.includes('math')) return { icon: 'calculator-outline', color };
+  if (n.includes('physics')) return { icon: 'planet-outline', color };
+  if (n.includes('chem')) return { icon: 'flask-outline', color };
+  if (n.includes('bio') || n.includes('science')) return { icon: 'leaf-outline', color };
+  if (n.includes('english')) return { icon: 'book-outline', color };
+  if (n.includes('social')) return { icon: 'globe-outline', color };
+  return { icon: 'book-outline', color };
+}
+
+function AnimatedProgressBar({ progress, delay = 0 }: { progress: number; delay?: number }) {
+  const width = useSharedValue(0);
+
+  useEffect(() => {
+    width.value = withDelay(
+      delay,
+      withTiming(Math.min(100, progress), { duration: 900, easing: Easing.out(Easing.quad) })
+    );
+  }, [progress, delay, width]);
+
+  const animStyle = useAnimatedStyle(() => ({
+    width: `${width.value}%`,
+  }));
+
+  return (
+    <View style={styles.progressBar}>
+      <Animated.View style={[styles.progressFillWrap, animStyle]}>
+        <LinearGradient
+          colors={[STUDENT.primary, STUDENT.primaryDark]}
+          style={styles.progressFill}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+        />
+      </Animated.View>
+    </View>
+  );
 }
 
 interface LearningProgressModuleProps {
@@ -37,10 +78,10 @@ function LearningProgressModuleComponent({
   return (
     <View style={section}>
       <View style={styles.sectionHeader}>
-        <Text style={dark ? styles.sectionTitleDark : styles.sectionTitleGradient}>
+        <Text style={dark ? styles.sectionTitleDark : styles.sectionTitle}>
           Your Learning Progress
         </Text>
-        <LinearGradient colors={['#fb923c', '#14b8a6']} style={styles.badge}>
+        <LinearGradient colors={[STUDENT.warning, STUDENT.primary]} style={styles.badge}>
           <Text style={styles.badgeText}>Asli Learn</Text>
         </LinearGradient>
       </View>
@@ -50,24 +91,21 @@ function LearningProgressModuleComponent({
           <Text style={styles.progressLabel}>Overall Progress</Text>
           <Text style={styles.progressPercentage}>{overallProgress}%</Text>
         </View>
-        <View style={styles.progressBar}>
-          <LinearGradient
-            colors={['#fb923c', '#3b82f6', '#14b8a6']}
-            style={[styles.progressFill, { width: `${Math.min(100, overallProgress)}%` }]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-          />
-        </View>
+        <AnimatedProgressBar progress={overallProgress} />
       </View>
 
       <View style={styles.subjectProgressList}>
         {subjectProgress.length > 0 ? (
-          subjectProgress.map((subject) => {
-            const iconMeta = getSubjectIcon(subject.name);
+          subjectProgress.map((subject, index) => {
+            const iconMeta = getSubjectIcon(subject.name, index);
             return (
-              <View key={subject.id} style={styles.subjectCard}>
+              <Animated.View
+                key={subject.id}
+                entering={FadeInDown.duration(320).delay(index * 60)}
+                style={styles.subjectCard}
+              >
                 <View style={styles.subjectRow}>
-                  <View style={[styles.subjectIcon, { backgroundColor: iconMeta.bg }]}>
+                  <View style={[styles.subjectIcon, { backgroundColor: `${iconMeta.color}18` }]}>
                     <Ionicons name={iconMeta.icon} size={18} color={iconMeta.color} />
                   </View>
                   <View style={styles.subjectDetails}>
@@ -78,52 +116,44 @@ function LearningProgressModuleComponent({
                   </View>
                   <Text style={styles.subjectProgressPercent}>{subject.progress}%</Text>
                 </View>
-                <View style={styles.subjectProgressBar}>
-                  <LinearGradient
-                    colors={['#fb923c', '#3b82f6', '#14b8a6']}
-                    style={[styles.subjectProgressFill, { width: `${Math.min(100, subject.progress)}%` }]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                  />
-                </View>
-              </View>
+                <AnimatedProgressBar progress={subject.progress} delay={80 * index} />
+              </Animated.View>
             );
           })
         ) : (
           <Text style={styles.noProgressText}>Complete exams to see your subject-wise progress</Text>
         )}
       </View>
-
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   sectionCard: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
+    backgroundColor: STUDENT.surface,
+    borderRadius: STUDENT_RADIUS.card,
     padding: 14,
     marginTop: 8,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: STUDENT.surfaceBorder,
   },
   sectionCardDark: {
     backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 14,
+    borderRadius: STUDENT_RADIUS.card,
     padding: 14,
     marginTop: 8,
     borderWidth: 1,
     borderColor: 'rgba(99,102,241,0.12)',
   },
   sectionTitleDark: {
+    ...STUDENT_TYPO.section,
     fontSize: 17,
-    fontWeight: '800',
-    color: '#f1f5f9',
+    color: STUDENT.surfaceHover,
   },
-  sectionTitleGradient: {
+  sectionTitle: {
+    ...STUDENT_TYPO.section,
     fontSize: 17,
-    fontWeight: '800',
-    color: '#ea580c',
+    color: STUDENT.primaryDark,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -134,10 +164,10 @@ const styles = StyleSheet.create({
   badge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 999,
+    borderRadius: STUDENT_RADIUS.full,
   },
   badgeText: {
-    color: '#fff',
+    color: STUDENT.textOnPrimary,
     fontSize: 11,
     fontWeight: '700',
   },
@@ -153,32 +183,35 @@ const styles = StyleSheet.create({
   progressLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#374151',
+    color: STUDENT.textSecondary,
   },
   progressPercentage: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#2563eb',
+    color: STUDENT.accent,
   },
   progressBar: {
     height: 10,
-    backgroundColor: '#e5e7eb',
-    borderRadius: 999,
+    backgroundColor: STUDENT.surfaceBorder,
+    borderRadius: STUDENT_RADIUS.full,
     overflow: 'hidden',
+  },
+  progressFillWrap: {
+    height: '100%',
   },
   progressFill: {
     height: '100%',
-    borderRadius: 999,
+    borderRadius: STUDENT_RADIUS.full,
   },
   subjectProgressList: {
     gap: 10,
     marginBottom: 12,
   },
   subjectCard: {
-    borderRadius: 12,
+    borderRadius: STUDENT_RADIUS.inner,
     borderWidth: 1,
-    borderColor: '#fff7ed',
-    backgroundColor: '#fff',
+    borderColor: STUDENT.surfaceBorder,
+    backgroundColor: STUDENT.surface,
     padding: 12,
   },
   subjectRow: {
@@ -187,9 +220,9 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   subjectIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -200,33 +233,22 @@ const styles = StyleSheet.create({
   subjectName: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#111827',
+    color: STUDENT.text,
     textTransform: 'capitalize',
   },
   subjectTopic: {
     fontSize: 11,
-    color: '#6b7280',
+    color: STUDENT.textMuted,
     marginTop: 2,
   },
   subjectProgressPercent: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#0f172a',
-  },
-  subjectProgressBar: {
-    marginTop: 8,
-    height: 8,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 999,
-    overflow: 'hidden',
-  },
-  subjectProgressFill: {
-    height: '100%',
-    borderRadius: 999,
+    color: STUDENT.text,
   },
   noProgressText: {
     textAlign: 'center',
-    color: '#6b7280',
+    color: STUDENT.textMuted,
     paddingVertical: 14,
     fontSize: 12,
   },

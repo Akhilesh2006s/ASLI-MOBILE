@@ -104,7 +104,174 @@ export function filterIncompleteVideosForTodaysTasks(
   return visible;
 }
 
-export const TODAYS_TASKS_MAX_NON_VIDEO = 10;
+export const TODAYS_TASKS_DAILY_LIMIT = 4;
+/** Pool size before daily cap — large enough to include multiple content types. */
+export const TODAYS_TASKS_MAX_NON_VIDEO = 16;
+
+const CONTENT_TYPE_PICK_ORDER = [
+  'video',
+  'homework',
+  'material',
+  'textbook',
+  'workbook',
+  'audio',
+  'other',
+] as const;
+
+function normalizeContentTypeKey(type: string | undefined): string {
+  const t = String(type || 'other').toLowerCase();
+  if (t === 'video' || t === 'homework') return t;
+  if (t === 'textbook' || t === 'workbook') return t;
+  if (t === 'material' || t === 'audio') return t;
+  return 'other';
+}
+
+function getSubjectLabel(item: {
+  subject?: { _id?: string; id?: string; name?: string } | string;
+  subjectId?: { _id?: string; id?: string; name?: string } | string;
+}): string {
+  if (typeof item.subject === 'object' && item.subject?.name) return String(item.subject.name);
+  if (typeof item.subject === 'string' && item.subject.trim()) return item.subject.trim();
+  if (typeof item.subjectId === 'object' && item.subjectId?.name) return String(item.subjectId.name);
+  if (typeof item.subjectId === 'string' && item.subjectId.trim()) return item.subjectId.trim();
+  return '';
+}
+
+/** Stable subject bucket key for round-robin (prefer id, fall back to name). */
+export function getTaskSubjectKey(
+  item: {
+    subject?: { _id?: string; id?: string; name?: string } | string;
+    subjectId?: { _id?: string; id?: string; name?: string } | string;
+  },
+  isQuiz = false
+): string {
+  const id = getContentSubjectId(item);
+  if (id) return `id:${id}`;
+  const label = getSubjectLabel(item);
+  if (label) return `name:${label.toLowerCase()}`;
+  return isQuiz ? 'subject:general' : 'subject:unknown';
+}
+
+type SubjectTaskBucket<TQ, TC> = {
+  quizzes: TQ[];
+  contentByType: Map<string, TC[]>;
+};
+
+function groupBySubject<TQ, TC>(
+  quizzes: TQ[],
+  content: TC[],
+  getQuizSubject: (q: TQ) => string,
+  getContentSubject: (c: TC) => string
+): Map<string, SubjectTaskBucket<TQ, TC>> {
+  const buckets = new Map<string, SubjectTaskBucket<TQ, TC>>();
+
+  const ensure = (key: string) => {
+    if (!buckets.has(key)) {
+      buckets.set(key, { quizzes: [], contentByType: new Map() });
+    }
+    return buckets.get(key)!;
+  };
+
+  for (const quiz of quizzes) {
+    ensure(getQuizSubject(quiz)).quizzes.push(quiz);
+  }
+
+  for (const item of content) {
+    const bucket = ensure(getContentSubject(item));
+    const typeKey = normalizeContentTypeKey((item as { type?: string }).type);
+    if (!bucket.contentByType.has(typeKey)) bucket.contentByType.set(typeKey, []);
+    bucket.contentByType.get(typeKey)!.push(item);
+  }
+
+  return buckets;
+}
+
+function pickBestFromSubjectBucket<TQ, TC>(
+  bucket: SubjectTaskBucket<TQ, TC>
+): { kind: 'quiz'; item: TQ } | { kind: 'content'; item: TC } | null {
+  if (bucket.quizzes.length > 0) {
+    return { kind: 'quiz', item: bucket.quizzes.shift()! };
+  }
+  for (const typeKey of CONTENT_TYPE_PICK_ORDER) {
+    const pool = bucket.contentByType.get(typeKey);
+    if (pool?.length) {
+      return { kind: 'content', item: pool.shift()! };
+    }
+  }
+  for (const pool of bucket.contentByType.values()) {
+    if (pool.length > 0) {
+      return { kind: 'content', item: pool.shift()! };
+    }
+  }
+  return null;
+}
+
+/** Round-robin across subjects; within each subject pick best available type. */
+function pickSubjectWise<T extends { subject?: unknown; subjectId?: unknown }>(
+  items: T[],
+  maxItems: number,
+  getSubject: (item: T) => string
+): T[] {
+  const bySubject = new Map<string, T[]>();
+  for (const item of items) {
+    const key = getSubject(item);
+    if (!bySubject.has(key)) bySubject.set(key, []);
+    bySubject.get(key)!.push(item);
+  }
+
+  const subjectOrder = [...bySubject.keys()].sort((a, b) => a.localeCompare(b));
+  const picked: T[] = [];
+
+  while (picked.length < maxItems) {
+    let added = false;
+    for (const subject of subjectOrder) {
+      const pool = bySubject.get(subject)!;
+      if (!pool.length) continue;
+      picked.push(pool.shift()!);
+      added = true;
+      if (picked.length >= maxItems) break;
+    }
+    if (!added) break;
+  }
+
+  return picked;
+}
+
+/**
+ * Pick up to `limit` daily tasks — one pass per subject (round-robin),
+ * using the best content type available in that subject (quiz → video → homework → …).
+ */
+export function capTodaysTasksForDay<
+  T extends { _id?: string; id?: string; subject?: unknown; subjectId?: unknown },
+  U extends { type?: string; _id?: string; id?: string; subject?: unknown; subjectId?: unknown },
+>(quizzes: T[], content: U[], limit = TODAYS_TASKS_DAILY_LIMIT): { quizzes: T[]; content: U[] } {
+  const buckets = groupBySubject(
+    [...quizzes],
+    [...content],
+    (q) => getTaskSubjectKey(q, true),
+    (c) => getTaskSubjectKey(c, false)
+  );
+
+  const subjectOrder = [...buckets.keys()].sort((a, b) => a.localeCompare(b));
+  const pickedQuizzes: T[] = [];
+  const pickedContent: U[] = [];
+
+  while (pickedQuizzes.length + pickedContent.length < limit) {
+    let added = false;
+    for (const subjectKey of subjectOrder) {
+      if (pickedQuizzes.length + pickedContent.length >= limit) break;
+      const bucket = buckets.get(subjectKey)!;
+      const next = pickBestFromSubjectBucket(bucket);
+      if (!next) continue;
+      if (next.kind === 'quiz') pickedQuizzes.push(next.item);
+      else pickedContent.push(next.item);
+      added = true;
+    }
+    if (!added) break;
+  }
+
+  return { quizzes: pickedQuizzes, content: pickedContent };
+}
 
 function sortByNewestFirst(a: { createdAt?: string; date?: string }, b: { createdAt?: string; date?: string }) {
   const dateA = new Date(a.createdAt || a.date || 0).getTime();
@@ -169,7 +336,13 @@ export function buildTodaysTasksContentList(
   incompleteNonVideo.sort(sortByNewestFirst);
   gatedVideos.sort(sortByNewestFirst);
 
-  return [...incompleteNonVideo.slice(0, maxNonVideo), ...gatedVideos];
+  const diverseNonVideo = pickSubjectWise(incompleteNonVideo, maxNonVideo, (item) =>
+    getTaskSubjectKey(item, false)
+  );
+  const diverseVideos = pickSubjectWise(gatedVideos, gatedVideos.length, (item) =>
+    getTaskSubjectKey(item, false)
+  );
+  return [...diverseNonVideo, ...diverseVideos];
 }
 
 export function nextChapterCompletedDates(

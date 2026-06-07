@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import * as SecureStore from 'expo-secure-store';
-import { API_BASE_URL } from '../../../src/lib/api-config';
+import teacherService, { asArray } from '../../../src/services/api/teacherService';
+import { TEACHER, TEACHER_SPACING } from '../../../src/theme/teacher';
 
 interface Video {
   _id: string;
@@ -49,17 +49,8 @@ export default function TeacherVideosView() {
 
   const fetchSubjects = async () => {
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/teacher/subjects`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setSubjects(data.subjects || data.data || []);
-      }
+      const res = await teacherService.subjects();
+      setSubjects(asArray(res.data));
     } catch (error) {
       console.error('Failed to fetch subjects:', error);
     }
@@ -68,17 +59,8 @@ export default function TeacherVideosView() {
   const fetchVideos = async () => {
     try {
       setIsLoading(true);
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/teacher/videos`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setVideos(data.data || data || []);
-      }
+      const res = await teacherService.videos();
+      setVideos(asArray(res.data));
     } catch (error) {
       console.error('Failed to fetch videos:', error);
     } finally {
@@ -93,41 +75,28 @@ export default function TeacherVideosView() {
     }
 
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/teacher/videos`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ...newVideo,
-          subjectId: newVideo.subject
-        })
+      await teacherService.createVideo({
+        ...newVideo,
+        subjectId: newVideo.subject,
       });
-
-      if (response.ok) {
-        Alert.alert('Success', 'Video created successfully');
-        setIsCreateModalOpen(false);
-        setNewVideo({
-          title: '',
-          description: '',
-          subject: '',
-          subjectId: '',
-          duration: 30,
-          videoUrl: '',
-          youtubeUrl: '',
-          isYouTubeVideo: false,
-          difficulty: 'medium',
-          language: 'English'
-        });
-        fetchVideos();
-      } else {
-        Alert.alert('Error', 'Failed to create video');
-      }
-    } catch (error) {
-      console.error('Failed to create video:', error);
-      Alert.alert('Error', 'An error occurred');
+      Alert.alert('Success', 'Video created successfully');
+      setIsCreateModalOpen(false);
+      setNewVideo({
+        title: '',
+        description: '',
+        subject: '',
+        subjectId: '',
+        duration: 30,
+        videoUrl: '',
+        youtubeUrl: '',
+        isYouTubeVideo: false,
+        difficulty: 'medium',
+        language: 'English',
+      });
+      await teacherService.invalidateCache('videos');
+      fetchVideos();
+    } catch {
+      Alert.alert('Error', 'Failed to create video');
     }
   };
 
@@ -421,7 +390,8 @@ export default function TeacherVideosView() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: 'transparent',
+    paddingHorizontal: TEACHER_SPACING.lg,
   },
   loadingContainer: {
     flex: 1,

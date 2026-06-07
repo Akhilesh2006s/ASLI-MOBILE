@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as SecureStore from 'expo-secure-store';
-import { API_BASE_URL } from '../../../src/lib/api-config';
+import teacherService, { asArray } from '../../../src/services/api/teacherService';
 
 interface Remark {
   _id: string;
@@ -49,18 +48,8 @@ export default function TeacherRemarksView() {
   const fetchRemarks = async () => {
     try {
       setIsLoading(true);
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/teacher/remarks`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setRemarks(data.data || data || []);
-      }
+      const res = await teacherService.remarks();
+      setRemarks(asArray(res.data));
     } catch (error) {
       console.error('Failed to fetch remarks:', error);
     } finally {
@@ -70,18 +59,8 @@ export default function TeacherRemarksView() {
 
   const fetchStudents = async () => {
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/teacher/students`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setStudents(data.data || data || []);
-      }
+      const res = await teacherService.students();
+      setStudents(asArray(res.data));
     } catch (error) {
       console.error('Failed to fetch students:', error);
     }
@@ -89,18 +68,8 @@ export default function TeacherRemarksView() {
 
   const fetchSubjects = async () => {
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/teacher/subjects`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setSubjects(data.subjects || data.data || []);
-      }
+      const res = await teacherService.subjects();
+      setSubjects(asArray(res.data));
     } catch (error) {
       console.error('Failed to fetch subjects:', error);
     }
@@ -113,40 +82,27 @@ export default function TeacherRemarksView() {
     }
 
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/teacher/remarks`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          studentId: selectedStudent,
-          subject: selectedSubject,
-          text: remarkText.trim(),
-          isPositive
-        })
+      await teacherService.createRemark({
+        studentId: selectedStudent,
+        subject: selectedSubject,
+        text: remarkText.trim(),
+        isPositive,
       });
-
-      if (response.ok) {
-        Alert.alert('Success', 'Remark added successfully');
-        setIsCreateModalOpen(false);
-        setSelectedStudent('');
-        setRemarkText('');
-        setSelectedSubject('general');
-        setIsPositive(true);
-        fetchRemarks();
-      } else {
-        Alert.alert('Error', 'Failed to add remark');
-      }
-    } catch (error) {
-      console.error('Failed to create remark:', error);
-      Alert.alert('Error', 'An error occurred');
+      Alert.alert('Success', 'Remark added successfully');
+      setIsCreateModalOpen(false);
+      setSelectedStudent('');
+      setRemarkText('');
+      setSelectedSubject('general');
+      setIsPositive(true);
+      await teacherService.invalidateCache('remarks');
+      fetchRemarks();
+    } catch {
+      Alert.alert('Error', 'Failed to add remark');
     }
   };
 
   const filteredRemarks = remarks.filter(remark => {
-    const matchesStudent = filterStudent === 'all' || remark.student._id === filterStudent;
+    const matchesStudent = filterStudent === 'all' || remark.student?._id === filterStudent;
     const matchesSubject = filterSubject === 'all' || remark.subject === filterSubject;
     return matchesStudent && matchesSubject;
   });

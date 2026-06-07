@@ -184,7 +184,6 @@ export default function AdminDashboard() {
         role="admin"
         userName={userName}
         subtitle="School management"
-        onNotification={() => router.push('/notifications')}
         onMenu={() => setMoreOpen(true)}
       />
 

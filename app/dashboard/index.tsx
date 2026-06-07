@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { RefreshControl, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
+import { Alert, RefreshControl, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import Animated, { Easing, SlideInRight, SlideOutLeft } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import authService from '../../src/services/api/authService';
+import { useAuth } from '../../src/context/AuthContext';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import { StudentTabBar, StudentTab } from '../../src/components/student';
 import { LoadingState } from '../../src/components/ui';
@@ -28,6 +29,7 @@ const TABS: StudentTab[] = [
 ];
 
 export default function StudentDashboard() {
+  const { signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<TabId>('home');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -85,7 +87,21 @@ export default function StudentDashboard() {
     setRefreshing(false);
   };
 
-  const pad = { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 100 };
+  const handleLogout = () => {
+    Alert.alert('Logout', 'Sign out of your account?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          await signOut();
+          router.replace('/auth/login');
+        },
+      },
+    ]);
+  };
+
+  const pad = { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 120 };
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -104,6 +120,7 @@ export default function StudentDashboard() {
               user={user}
               onGoExams={() => setActiveTab('exams')}
               onGoProfile={() => setActiveTab('settings')}
+              onLogout={handleLogout}
             />
           </ScrollView>
         );
@@ -158,12 +175,10 @@ export default function StudentDashboard() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="dark-content" />
-      <View style={styles.bgAccent} />
-
       <Animated.View
         key={activeTab}
-        entering={FadeIn.duration(STUDENT_ANIMATION.normal)}
-        exiting={FadeOut.duration(STUDENT_ANIMATION.fast)}
+        entering={SlideInRight.duration(220).easing(Easing.inOut(Easing.ease))}
+        exiting={SlideOutLeft.duration(220).easing(Easing.inOut(Easing.ease))}
         style={styles.tabContent}
       >
         {renderTabContent()}
@@ -178,17 +193,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: STUDENT.bg,
-  },
-  bgAccent: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 220,
-    backgroundColor: STUDENT.bgAccent,
-    opacity: 0.55,
-    borderBottomLeftRadius: 40,
-    borderBottomRightRadius: 40,
   },
   tabContent: {
     flex: 1,

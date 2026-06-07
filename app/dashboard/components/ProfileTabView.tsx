@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Pressable,
   ScrollView,
@@ -10,9 +9,26 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  FadeInDown,
+  useAnimatedProps,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated';
 import * as SecureStore from 'expo-secure-store';
-import { STUDENT, STUDENT_ANIMATION, STUDENT_RADIUS } from '../../../src/theme/student';
+import GlassCard from '../../../src/components/student/GlassCard';
+import { ShimmerCard } from '../../../src/components/student/StudentShimmer';
+import { AnimatedStatInput, useCountUp } from '../../../src/hooks/useCountUp';
+import {
+  STUDENT,
+  STUDENT_ANIMATION,
+  STUDENT_RADIUS,
+  STUDENT_SPACING,
+  STUDENT_TYPO,
+} from '../../../src/theme/student';
 import { useAuth } from '../../../src/context/AuthContext';
 import studentService from '../../../src/services/api/studentService';
 import { API_BASE_URL } from '../../../src/lib/api-config';
@@ -45,6 +61,58 @@ function ProfileField({ label, value }: { label: string; value: string }) {
       <Text style={styles.fieldLabel}>{label}</Text>
       <Text style={styles.fieldValue}>{value || 'N/A'}</Text>
     </View>
+  );
+}
+
+function StatValue({
+  target,
+  suffix = '',
+  prefix = '',
+  color,
+}: {
+  target: number;
+  suffix?: string;
+  prefix?: string;
+  color: string;
+}) {
+  const value = useCountUp(target, 800);
+  const animatedProps = useAnimatedProps(() => ({
+    text: `${prefix}${Math.round(value.value)}${suffix}`,
+  }));
+
+  return (
+    <AnimatedStatInput
+      animatedProps={animatedProps as never}
+      editable={false}
+      style={[styles.metricValue, { color }]}
+      underlineColorAndroid="transparent"
+    />
+  );
+}
+
+function AnimatedWeekBar({ hours, completed, delay }: { hours: number; completed: boolean; delay: number }) {
+  const height = useSharedValue(8);
+
+  useEffect(() => {
+    const target = Math.max(8, Math.min(32, hours * 8 + 8));
+    height.value = withDelay(
+      delay,
+      withTiming(target, { duration: 700, easing: Easing.out(Easing.quad) })
+    );
+  }, [hours, delay, height]);
+
+  const animStyle = useAnimatedStyle(() => ({
+    height: height.value,
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        styles.weekHoursBox,
+        completed ? styles.weekHoursActive : styles.weekHoursIdle,
+        animStyle,
+      ]}
+    />
   );
 }
 
@@ -179,9 +247,11 @@ export default function ProfileTabView({ user, onLogout }: Props) {
       <Animated.View entering={FadeInDown.duration(STUDENT_ANIMATION.normal)}>
         <LinearGradient colors={[...STUDENT.heroGradient]} style={styles.profileHero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
           <View style={styles.headerTop}>
+          <View style={styles.avatarRing}>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>{getInitials(profile?.fullName)}</Text>
             </View>
+          </View>
             <View style={styles.headerInfo}>
               <Text style={styles.name}>{profile?.fullName || 'Student'}</Text>
               <Text style={styles.email}>{profile?.email || ''}</Text>
@@ -209,9 +279,9 @@ export default function ProfileTabView({ user, onLogout }: Props) {
         </LinearGradient>
       </Animated.View>
 
-      <View style={styles.card}>
+      <GlassCard variant="default" padding={16}>
         <View style={styles.cardTitleRow}>
-          <Ionicons name="settings-outline" size={20} color="#0f172a" />
+          <Ionicons name="settings-outline" size={20} color={STUDENT.text} />
           <Text style={styles.cardTitle}>Profile Settings</Text>
         </View>
         <View style={styles.fieldsGrid}>
@@ -223,67 +293,63 @@ export default function ProfileTabView({ user, onLogout }: Props) {
           <ProfileField label="School" value={profile?.schoolName || profile?.school?.name || ''} />
           <ProfileField label="Board" value={displayBoard} />
         </View>
-      </View>
+      </GlassCard>
 
-      <View style={styles.card}>
+      <GlassCard variant="elevated" padding={16}>
         <View style={styles.cardTitleRow}>
-          <Ionicons name="trending-up-outline" size={20} color="#0f172a" />
+          <Ionicons name="trending-up-outline" size={20} color={STUDENT.text} />
           <Text style={styles.cardTitle}>Performance Overview</Text>
         </View>
         {overviewLoading ? (
-          <ActivityIndicator color="#059669" style={{ marginVertical: 20 }} />
+          <ShimmerCard style={{ marginVertical: 8 }} />
         ) : (
           <View style={styles.metricsRow}>
             <View style={styles.metricItem}>
-              <Text style={[styles.metricValue, { color: '#ea580c' }]}>{stats.streak}</Text>
+              <StatValue target={stats.streak} color={STUDENT.warning} />
               <Text style={styles.metricLabel}>Day Streak</Text>
             </View>
             <View style={styles.metricItem}>
-              <Text style={[styles.metricValue, { color: '#16a34a' }]}>{stats.questionsAnswered}</Text>
+              <StatValue target={stats.questionsAnswered} color={STUDENT.success} />
               <Text style={styles.metricLabel}>Questions Solved</Text>
             </View>
             <View style={styles.metricItem}>
-              <Text style={[styles.metricValue, { color: '#2563eb' }]}>{stats.accuracyRate}%</Text>
+              <StatValue target={stats.accuracyRate} suffix="%" color={STUDENT.accent} />
               <Text style={styles.metricLabel}>Accuracy Rate</Text>
             </View>
             <View style={styles.metricItem}>
-              <Text style={[styles.metricValue, { color: '#7c3aed' }]}>
-                {stats.rank > 0 ? `#${stats.rank}` : '—'}
-              </Text>
+              {stats.rank > 0 ? (
+                <StatValue target={stats.rank} prefix="#" color={STUDENT.statGradients.efficiency[0]} />
+              ) : (
+                <Text style={[styles.metricValue, { color: STUDENT.textMuted }]}>—</Text>
+              )}
               <Text style={styles.metricLabel}>Avg Exam Rank</Text>
             </View>
           </View>
         )}
-      </View>
+      </GlassCard>
 
-      <View style={styles.card}>
+      <GlassCard variant="elevated" padding={16}>
         <View style={styles.cardTitleRow}>
-          <Ionicons name="calendar-outline" size={20} color="#0f172a" />
+          <Ionicons name="calendar-outline" size={20} color={STUDENT.text} />
           <Text style={styles.cardTitle}>This Week&apos;s Activity</Text>
         </View>
         {overviewLoading ? (
-          <ActivityIndicator color="#059669" style={{ marginVertical: 20 }} />
+          <ShimmerCard style={{ marginVertical: 8 }} />
         ) : (
           <>
             <View style={styles.weekRow}>
-              {weeklyStats.map((day) => (
+              {weeklyStats.map((day, index) => (
                 <View key={day.dateKey} style={styles.weekCell}>
                   <Text style={styles.weekDay}>{day.day}</Text>
-                  <View
+                  <AnimatedWeekBar hours={day.hours} completed={day.completed} delay={index * 60} />
+                  <Text
                     style={[
-                      styles.weekHoursBox,
-                      day.completed ? styles.weekHoursActive : styles.weekHoursIdle,
+                      styles.weekHoursText,
+                      day.completed ? styles.weekHoursTextActive : undefined,
                     ]}
                   >
-                    <Text
-                      style={[
-                        styles.weekHoursText,
-                        day.completed ? styles.weekHoursTextActive : undefined,
-                      ]}
-                    >
-                      {day.hours}h
-                    </Text>
-                  </View>
+                    {day.hours}h
+                  </Text>
                 </View>
               ))}
             </View>
@@ -291,7 +357,7 @@ export default function ProfileTabView({ user, onLogout }: Props) {
             <Text style={styles.weekSub}>From exam time and content study sessions.</Text>
           </>
         )}
-      </View>
+      </GlassCard>
 
       <Pressable style={styles.logoutBtn} onPress={logout}>
         <Ionicons name="log-out-outline" size={18} color="#dc2626" />
@@ -303,97 +369,98 @@ export default function ProfileTabView({ user, onLogout }: Props) {
 
 const styles = StyleSheet.create({
   wrap: { flex: 1 },
-  scroll: { paddingBottom: 100, gap: 14 },
+  scroll: { paddingBottom: 100, gap: STUDENT_SPACING.md },
   profileHero: {
     borderRadius: STUDENT_RADIUS.xxl,
-    padding: 18,
+    padding: STUDENT_SPACING.lg,
     marginBottom: 2,
     ...STUDENT.shadow.md,
-  },
-  card: {
-    backgroundColor: STUDENT.surface,
-    borderRadius: STUDENT_RADIUS.lg,
-    borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
-    padding: 16,
-    ...STUDENT.shadow.sm,
   },
   headerTop: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 12,
-    marginBottom: 12,
+    gap: STUDENT_SPACING.md,
+    marginBottom: STUDENT_SPACING.md,
+  },
+  avatarRing: {
+    width: 80,
+    height: 80,
+    borderRadius: 26,
+    padding: 3,
+    backgroundColor: 'rgba(255,255,255,0.25)',
   },
   avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 22,
+    flex: 1,
+    borderRadius: 23,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.35)',
   },
-  avatarText: { fontSize: 24, fontWeight: '800', color: '#fff' },
+  avatarText: { fontSize: 26, fontWeight: '800', color: STUDENT.textOnPrimary },
   headerInfo: { flex: 1, minWidth: 0 },
-  name: { fontSize: 22, fontWeight: '800', color: '#fff', letterSpacing: -0.3 },
+  name: { ...STUDENT_TYPO.section, color: STUDENT.textOnPrimary },
   email: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 4 },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
   heroBadge: {
-    borderRadius: 999,
+    borderRadius: STUDENT_RADIUS.full,
     paddingHorizontal: 10,
     paddingVertical: 5,
     backgroundColor: 'rgba(255,255,255,0.16)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
   },
-  heroBadgeText: { fontSize: 11, fontWeight: '700', color: '#fff' },
+  heroBadgeText: { fontSize: 11, fontWeight: '700', color: STUDENT.textOnPrimary },
   editBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'flex-end',
     gap: 6,
-    borderRadius: 12,
+    borderRadius: STUDENT_RADIUS.md,
     paddingHorizontal: 14,
     paddingVertical: 9,
-    backgroundColor: '#fff',
+    backgroundColor: STUDENT.surface,
   },
   editBtnText: { fontSize: 12, fontWeight: '700', color: STUDENT.primaryDark },
   cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
-  cardTitle: { fontSize: 18, fontWeight: '800', color: STUDENT.text },
+  cardTitle: { ...STUDENT_TYPO.section, fontSize: 18, color: STUDENT.text },
   fieldsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: STUDENT_SPACING.md,
   },
   field: { width: '47%', gap: 4 },
-  fieldLabel: { fontSize: 12, fontWeight: '600', color: '#6b7280' },
-  fieldValue: { fontSize: 16, fontWeight: '700', color: '#111827' },
+  fieldLabel: { ...STUDENT_TYPO.caption, color: STUDENT.textMuted },
+  fieldValue: { fontSize: 16, fontWeight: '700', color: STUDENT.text },
   metricsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    rowGap: 16,
+    rowGap: STUDENT_SPACING.lg,
   },
   metricItem: { width: '50%', alignItems: 'center' },
   metricValue: { fontSize: 28, fontWeight: '800', lineHeight: 34 },
-  metricLabel: { fontSize: 12, color: '#6b7280', fontWeight: '600', marginTop: 4, textAlign: 'center' },
-  weekRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 4 },
+  metricLabel: {
+    ...STUDENT_TYPO.caption,
+    color: STUDENT.textMuted,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  weekRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 4, alignItems: 'flex-end' },
   weekCell: { flex: 1, alignItems: 'center', minWidth: 36 },
-  weekDay: { fontSize: 11, color: '#6b7280', marginBottom: 6 },
+  weekDay: { fontSize: 11, color: STUDENT.textMuted, marginBottom: 6 },
   weekHoursBox: {
     width: '100%',
-    height: 32,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
+    minHeight: 8,
+    borderRadius: STUDENT_RADIUS.sm,
   },
-  weekHoursActive: { backgroundColor: '#dcfce7' },
-  weekHoursIdle: { backgroundColor: '#f3f4f6' },
-  weekHoursText: { fontSize: 11, fontWeight: '700', color: '#6b7280' },
-  weekHoursTextActive: { color: '#166534' },
-  weekTotal: { marginTop: 14, textAlign: 'center', fontSize: 13, color: '#6b7280' },
-  weekSub: { marginTop: 4, textAlign: 'center', fontSize: 12, color: '#9ca3af' },
+  weekHoursActive: { backgroundColor: STUDENT.navActiveBg },
+  weekHoursIdle: { backgroundColor: STUDENT.surfaceHover },
+  weekHoursText: { fontSize: 11, fontWeight: '700', color: STUDENT.textMuted, marginTop: 6 },
+  weekHoursTextActive: { color: STUDENT.primaryDark },
+  weekTotal: { marginTop: 14, textAlign: 'center', fontSize: 13, color: STUDENT.textMuted },
+  weekSub: { marginTop: 4, textAlign: 'center', fontSize: 12, color: STUDENT.navInactive },
   logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -401,10 +468,10 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 4,
     padding: 14,
-    borderRadius: 12,
-    backgroundColor: '#fef2f2',
+    borderRadius: STUDENT_RADIUS.md,
+    backgroundColor: 'rgba(239,68,68,0.08)',
     borderWidth: 1,
-    borderColor: '#fecaca',
+    borderColor: 'rgba(239,68,68,0.2)',
   },
-  logoutText: { fontSize: 15, fontWeight: '700', color: '#dc2626' },
+  logoutText: { fontSize: 15, fontWeight: '700', color: STUDENT.danger },
 });

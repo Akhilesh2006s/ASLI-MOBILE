@@ -1,8 +1,7 @@
 import React, { memo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { STUDENT, STUDENT_RADIUS } from '../../../../src/theme/student';
+import { STUDENT, STUDENT_RADIUS, STUDENT_TYPO } from '../../../../src/theme/student';
 
 interface HeaderProps {
   username: string;
@@ -13,7 +12,7 @@ function HeaderComponent({ username }: HeaderProps) {
 
   return (
     <LinearGradient
-      colors={[STUDENT.accent, '#06B6D4', STUDENT.primary]}
+      colors={[...STUDENT.heroGradient]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.container}
@@ -29,9 +28,6 @@ function HeaderComponent({ username }: HeaderProps) {
             <Text style={styles.subtitle}>Welcome back, {username}</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.notificationButton} activeOpacity={0.85}>
-          <Ionicons name="notifications-outline" size={18} color="#ffffff" />
-        </TouchableOpacity>
       </View>
     </LinearGradient>
   );
@@ -43,11 +39,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     marginBottom: 12,
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 4,
+    ...STUDENT.shadow.md,
   },
   topRow: {
     flexDirection: 'row',
@@ -72,7 +64,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.4)',
   },
   avatarText: {
-    color: '#ffffff',
+    color: STUDENT.textOnPrimary,
     fontWeight: '800',
     fontSize: 16,
   },
@@ -82,25 +74,14 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   title: {
-    color: '#ffffff',
-    fontSize: 24,
-    fontWeight: '800',
+    ...STUDENT_TYPO.section,
+    color: STUDENT.textOnPrimary,
     lineHeight: 28,
   },
   subtitle: {
     color: 'rgba(255,255,255,0.92)',
     fontSize: 13,
     marginTop: 2,
-  },
-  notificationButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
   },
 });
 

@@ -1,8 +1,9 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeInRight } from 'react-native-reanimated';
-import { STUDENT, STUDENT_ANIMATION, STUDENT_RADIUS } from '../../theme/student';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInRight, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { STUDENT, STUDENT_TYPO } from '../../theme/student';
 
 type Action = {
   id: string;
@@ -16,6 +17,41 @@ type Props = {
   actions: Action[];
 };
 
+const PRESS_SPRING = { damping: 15, stiffness: 260 };
+
+function ActionItem({ action, index }: { action: Action; index: number }) {
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <Animated.View entering={FadeInRight.duration(280).delay(index * 70)}>
+      <Pressable
+        onPress={action.onPress}
+        onPressIn={() => {
+          scale.value = withSpring(0.93, PRESS_SPRING);
+        }}
+        onPressOut={() => {
+          scale.value = withSpring(1, PRESS_SPRING);
+        }}
+      >
+        <Animated.View style={[styles.item, animStyle]}>
+          <LinearGradient
+            colors={[`${action.color}22`, `${action.color}0f`]}
+            style={[styles.iconCircle, { borderColor: `${action.color}30` }]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <Ionicons name={action.icon} size={22} color={action.color} />
+          </LinearGradient>
+          <Text style={styles.label}>{action.label}</Text>
+        </Animated.View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 export default function StudentQuickActions({ actions }: Props) {
   return (
     <ScrollView
@@ -24,17 +60,7 @@ export default function StudentQuickActions({ actions }: Props) {
       contentContainerStyle={styles.scroll}
     >
       {actions.map((action, index) => (
-        <Animated.View
-          key={action.id}
-          entering={FadeInRight.duration(STUDENT_ANIMATION.normal).delay(index * 60)}
-        >
-          <TouchableOpacity style={styles.item} onPress={action.onPress} activeOpacity={0.82}>
-            <View style={[styles.iconCircle, { backgroundColor: `${action.color}18` }]}>
-              <Ionicons name={action.icon} size={22} color={action.color} />
-            </View>
-            <Text style={styles.label}>{action.label}</Text>
-          </TouchableOpacity>
-        </Animated.View>
+        <ActionItem key={action.id} action={action} index={index} />
       ))}
     </ScrollView>
   );
@@ -52,19 +78,15 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   iconCircle: {
-    width: 58,
-    height: 58,
-    borderRadius: STUDENT_RADIUS.xl,
+    width: 64,
+    height: 64,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
-    backgroundColor: STUDENT.surface,
-    ...STUDENT.shadow.sm,
   },
   label: {
-    fontSize: 11,
-    fontWeight: '700',
+    ...STUDENT_TYPO.label,
     color: STUDENT.textSecondary,
     textAlign: 'center',
   },

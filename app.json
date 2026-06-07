@@ -27,6 +27,7 @@
       },
       "package": "com.aslilearn.mobile",
       "versionCode": 1,
+      "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "INTERNET",
         "READ_EXTERNAL_STORAGE",

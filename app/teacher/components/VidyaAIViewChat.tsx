@@ -1,208 +1,620 @@
-import { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  Pressable,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { API_BASE_URL } from '../../../src/lib/api-config';
-import * as SecureStore from 'expo-secure-store';
+import { useVidyaChat } from '../../../src/hooks/useVidyaChat';
+import SubjectPickerModal from '../../../src/components/vidya/SubjectPickerModal';
+import type { AIChatContext, TeachingTab } from '../../../src/types/vidya';
+import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../../src/theme/teacher';
+
+const TEACHING_MODES: Record<
+  TeachingTab,
+  {
+    label: string;
+    title: string;
+    subtitle: string;
+    icon: keyof typeof Ionicons.glyphMap;
+    quickA: { label: string; prompt: string };
+    quickB: { label: string; prompt: string };
+  }
+> = {
+  lesson: {
+    label: 'Lesson',
+    title: 'Lesson Planner AI',
+    subtitle: 'Plan outcomes, flow, and classroom activities.',
+    icon: 'book-outline',
+    quickA: { label: 'Plan Lesson', prompt: 'Create a 45-minute lesson plan with learning outcomes and activities.' },
+    quickB: { label: 'Explain Topic', prompt: 'Explain this topic with examples and misconceptions to avoid.' },
+  },
+  quiz: {
+    label: 'Quiz',
+    title: 'Assessment Builder AI',
+    subtitle: 'Generate quizzes, MCQs, and rubric-ready sets.',
+    icon: 'help-circle-outline',
+    quickA: { label: 'Create Quiz', prompt: 'Generate 10 MCQs with answers, bloom level, and difficulty tags.' },
+    quickB: { label: 'Worksheet', prompt: 'Create a worksheet with 3 easy, 3 medium, and 2 challenge questions.' },
+  },
+  help: {
+    label: 'Help',
+    title: 'Classroom Mentor AI',
+    subtitle: 'Get support for classroom management and teaching decisions.',
+    icon: 'bulb-outline',
+    quickA: { label: 'Engagement', prompt: 'Suggest practical strategies to improve classroom engagement.' },
+    quickB: { label: 'Mixed Ability', prompt: 'How should I support mixed-ability learners in this lesson?' },
+  },
+};
+
 
 interface VidyaAIViewChatProps {
   teacherId: string;
+  teacherName?: string;
+  subject?: string;
+  subjectOptions?: string[];
+  fullPage?: boolean;
+  standalone?: boolean;
 }
 
-export default function VidyaAIViewChat({ teacherId }: VidyaAIViewChatProps) {
-  const [messages, setMessages] = useState<any[]>([{
-    role: 'assistant',
-    content: 'Hello! I\'m Vidya AI. How can I help you with your teaching today?',
-    timestamp: new Date(),
-  }]);
-  const [inputText, setInputText] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+export default function VidyaAIViewChat({
+  teacherId,
+  teacherName,
+  subject,
+  subjectOptions = [],
+  fullPage = false,
+  standalone = false,
+}: VidyaAIViewChatProps) {
+  const insets = useSafeAreaInsets();
+  const [teachingTab, setTeachingTab] = useState<TeachingTab>('lesson');
+  const [subjectPickerOpen, setSubjectPickerOpen] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  useEffect(() => {
-    scrollViewRef.current?.scrollToEnd({ animated: true });
-  }, [messages]);
+  const chatContext = useMemo<AIChatContext>(
+    () => ({
+      studentName: teacherName || 'Teacher',
+      currentSubject: subject || subjectOptions[0] || 'General',
+      subjectOptions: subjectOptions.length > 0 ? subjectOptions : subject ? [subject] : ['General'],
+      teacherMode: teachingTab,
+    }),
+    [teacherName, subject, subjectOptions, teachingTab]
+  );
 
-  const sendMessage = async () => {
-    if (!inputText.trim() || isLoading || !teacherId) return;
-    const userMsg = { role: 'user', content: inputText, timestamp: new Date() };
-    setMessages(prev => [...prev, userMsg]);
-    const currentInput = inputText;
-    setInputText('');
-    setIsLoading(true);
+  const model = useVidyaChat({
+    userId: teacherId,
+    role: 'teacher',
+    context: chatContext,
+  });
 
-    try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/ai-chat`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          userId: teacherId,
-          message: currentInput,
-          context: {
-            studentName: 'Teacher',
-            currentSubject: 'General'
-          }
-        }),
-      });
+  const mode = TEACHING_MODES[teachingTab];
+  const inputPaddingBottom = Math.max(insets.bottom, TEACHER_SPACING.sm);
+  const showSubjectPicker = model.subjectOptions.length > 1;
 
-      if (response.ok) {
-        const result = await response.json();
-
-        if (result.session?.messages) {
-          setMessages(result.session.messages);
-        } else if (result.message) {
-          setMessages(prev => {
-            const lastMessage = prev[prev.length - 1];
-            if (lastMessage?.role === 'assistant' && lastMessage.content === result.message) {
-              return prev;
-            }
-            return [...prev, {
-              role: 'assistant',
-              content: result.message,
-              timestamp: new Date()
-            }];
-          });
-        } else {
-          setMessages(prev => [...prev, {
-            role: 'assistant',
-            content: result.response || 'I apologize, but I couldn\'t process that request.',
-            timestamp: new Date()
-          }]);
-        }
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('API Error:', response.status, errorData);
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: `Sorry, I encountered an error (${response.status}). Please try again.`,
-          timestamp: new Date()
-        }]);
-      }
-    } catch (error) {
-      console.error('Error sending message:', error);
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: 'Sorry, I encountered a network error. Please check your connection and try again.',
-        timestamp: new Date()
-      }]);
-    } finally {
-      setIsLoading(false);
-    }
+  const scrollToBottom = (animated = true) => {
+    scrollViewRef.current?.scrollToEnd({ animated });
   };
 
-  return (
-    <View style={styles.container}>
+  useEffect(() => {
+    scrollToBottom(true);
+  }, [model.displayMessages, model.isPending]);
+
+  if (model.isLoading) {
+    return (
+      <View style={styles.loadingWrap}>
+        <ActivityIndicator size="large" color={TEACHER.primaryLight} />
+      </View>
+    );
+  }
+
+  const content = (
+    <View style={[styles.chatRoot, fullPage && styles.chatRootFull]}>
       <ScrollView
         ref={scrollViewRef}
-        style={styles.messages}
-        contentContainerStyle={styles.messagesContent}
+        style={styles.mainScroll}
+        contentContainerStyle={styles.mainScrollContent}
+        showsVerticalScrollIndicator
+        nestedScrollEnabled
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
       >
-        {messages.map((msg, idx) => (
-          <View
-            key={idx}
-            style={[
-              styles.message,
-              msg.role === 'user' ? styles.userMessage : styles.assistantMessage
-            ]}
-          >
-            <Text style={msg.role === 'user' ? styles.userMessageText : styles.messageText}>
-              {msg.content}
-            </Text>
+        <View style={[styles.modeHeader, fullPage && styles.modeHeaderFull]}>
+          <View style={styles.modeHeaderRow}>
+            <Ionicons name={mode.icon} size={18} color={TEACHER.primaryLight} />
+            <Text style={styles.modeTitle}>{mode.title}</Text>
           </View>
-        ))}
-        {isLoading && (
-          <View style={[styles.message, styles.assistantMessage]}>
-            <Text style={styles.messageText}>Thinking...</Text>
-          </View>
-        )}
-      </ScrollView>
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          value={inputText}
-          onChangeText={setInputText}
-          placeholder="Ask Vidya AI..."
-          multiline
-          placeholderTextColor="#9ca3af"
-        />
-        <TouchableOpacity
-          style={styles.sendButton}
-          onPress={sendMessage}
-          disabled={isLoading || !inputText.trim()}
+          <Text style={styles.modeSubtitle}>{mode.subtitle}</Text>
+        </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          nestedScrollEnabled
+          style={styles.modeTabsScroll}
+          contentContainerStyle={styles.modeTabs}
         >
-          <Ionicons name="send" size={24} color="#fff" />
-        </TouchableOpacity>
+          {(Object.keys(TEACHING_MODES) as TeachingTab[]).map((tab) => {
+            const active = teachingTab === tab;
+            return (
+              <Pressable
+                key={tab}
+                style={[styles.modeTab, active && styles.modeTabActive]}
+                onPress={() => setTeachingTab(tab)}
+              >
+                <Text style={[styles.modeTabText, active && styles.modeTabTextActive]}>
+                  {TEACHING_MODES[tab].label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+
+        <View style={styles.quickRow}>
+          <Pressable
+            style={styles.subjectBadge}
+            onPress={() => showSubjectPicker && setSubjectPickerOpen(true)}
+            disabled={!showSubjectPicker}
+          >
+            <Text style={styles.subjectBadgeText}>{model.currentSubject}</Text>
+            {showSubjectPicker ? (
+              <Ionicons name="chevron-down" size={12} color={TEACHER.primaryLight} />
+            ) : null}
+          </Pressable>
+          <ScrollView
+            horizontal
+            nestedScrollEnabled
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.quickChips}
+          >
+            <Pressable style={styles.quickChip} onPress={() => model.onPromptClick(mode.quickA.prompt)}>
+              <Text style={styles.quickChipText}>{mode.quickA.label}</Text>
+            </Pressable>
+            <Pressable style={styles.quickChip} onPress={() => model.onPromptClick(mode.quickB.prompt)}>
+              <Text style={styles.quickChipText}>{mode.quickB.label}</Text>
+            </Pressable>
+          </ScrollView>
+        </View>
+
+        <View style={styles.messagesBlock}>
+          {model.displayMessages.length === 0 ? (
+            <View style={styles.starterBlock}>
+              <Text style={styles.starterTitle}>Start with a teaching prompt</Text>
+              <Text style={styles.starterSub}>Tap a suggestion below or type your own question.</Text>
+              <View style={styles.starterGrid}>
+                {model.quickQuestions.map((question) => (
+                  <Pressable
+                    key={question}
+                    style={styles.starterCard}
+                    onPress={() => model.onPromptClick(question)}
+                  >
+                    <Text style={styles.starterCardText}>{question}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          ) : (
+            model.displayMessages.map((msg, idx) => (
+              <View
+                key={`${msg.role}-${idx}`}
+                style={[
+                  styles.messageRow,
+                  msg.role === 'user' ? styles.messageRowUser : styles.messageRowAssistant,
+                ]}
+              >
+                {msg.role === 'assistant' ? (
+                  <View style={styles.avatarAssistant}>
+                    <Ionicons name="sparkles" size={14} color={TEACHER.primaryLight} />
+                  </View>
+                ) : null}
+                <View
+                  style={[
+                    styles.bubble,
+                    msg.role === 'user' ? styles.bubbleUser : styles.bubbleAssistant,
+                  ]}
+                >
+                  <Text style={[styles.bubbleText, msg.role === 'user' && styles.bubbleTextUser]}>
+                    {model.formatMessage(msg.content)}
+                  </Text>
+                </View>
+                {msg.role === 'user' ? (
+                  <View style={styles.avatarUser}>
+                    <Text style={styles.avatarInitial}>{model.userInitial}</Text>
+                  </View>
+                ) : null}
+              </View>
+            ))
+          )}
+
+          {model.isPending ? (
+            <View style={[styles.messageRow, styles.messageRowAssistant]}>
+              <View style={styles.avatarAssistant}>
+                <Ionicons name="sparkles" size={14} color={TEACHER.primaryLight} />
+              </View>
+              <View style={[styles.bubble, styles.bubbleAssistant, styles.thinkingBubble]}>
+                <ActivityIndicator size="small" color={TEACHER.primaryLight} />
+                <Text style={styles.thinkingText}>Thinking...</Text>
+              </View>
+            </View>
+          ) : null}
+        </View>
+      </ScrollView>
+
+      <View style={[styles.inputBar, { paddingBottom: inputPaddingBottom }]}>
+        <View style={styles.inputWrap}>
+          <Pressable style={styles.iconBtn} onPress={model.pickAndAnalyzeImage} disabled={model.isPending}>
+            <Ionicons name="image-outline" size={20} color={TEACHER.textMuted} />
+          </Pressable>
+          <Pressable
+            style={styles.iconBtn}
+            onPress={model.handleVoiceInput}
+            disabled={model.isPending || model.isListening}
+          >
+            <Ionicons
+              name="mic-outline"
+              size={20}
+              color={model.isListening ? '#ef4444' : TEACHER.textMuted}
+            />
+          </Pressable>
+          <TextInput
+            style={styles.input}
+            value={model.message}
+            onChangeText={model.setMessage}
+            placeholder={model.inputPlaceholder}
+            placeholderTextColor={TEACHER.textMuted}
+            multiline
+            maxLength={2000}
+            editable={!model.isPending}
+            onFocus={() => {
+              setTimeout(() => scrollToBottom(true), 120);
+            }}
+          />
+          <Pressable
+            style={[styles.sendButton, (!model.message.trim() || model.isPending) && styles.sendButtonDisabled]}
+            onPress={model.handleSendMessage}
+            disabled={model.isPending || !model.message.trim()}
+          >
+            <Ionicons
+              name="send"
+              size={18}
+              color={model.message.trim() && !model.isPending ? TEACHER.textOnPrimary : TEACHER.textMuted}
+            />
+          </Pressable>
+        </View>
       </View>
+
+      <SubjectPickerModal
+        visible={subjectPickerOpen}
+        subjects={model.subjectOptions}
+        selected={model.currentSubject}
+        onSelect={model.setSelectedSubject}
+        onClose={() => setSubjectPickerOpen(false)}
+        accentColor={TEACHER.primaryLight}
+      />
     </View>
+  );
+
+  if (standalone) {
+    return (
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
+      >
+        {content}
+      </KeyboardAvoidingView>
+    );
+  }
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? (fullPage ? 64 : 120) : 0}
+    >
+      {content}
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  flex: { flex: 1, minHeight: 0 },
+  loadingWrap: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: TEACHER.bg,
+  },
+  chatRoot: {
+    flex: 1,
+    minHeight: 0,
+    marginHorizontal: TEACHER_SPACING.lg,
+    marginTop: TEACHER_SPACING.md,
+    marginBottom: TEACHER_SPACING.sm,
+    borderRadius: TEACHER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
+    backgroundColor: TEACHER.surface,
+  },
+  chatRootFull: {
+    marginHorizontal: 0,
+    marginTop: 0,
+    marginBottom: 0,
+    borderRadius: 0,
+    borderWidth: 0,
+    backgroundColor: TEACHER.bg,
+  },
+  modeHeader: {
+    paddingHorizontal: TEACHER_SPACING.lg,
+    paddingTop: TEACHER_SPACING.lg,
+    paddingBottom: TEACHER_SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: TEACHER.surfaceBorder,
+    backgroundColor: TEACHER.navActiveBg,
+  },
+  modeHeaderFull: {
+    paddingTop: TEACHER_SPACING.md,
+    paddingBottom: TEACHER_SPACING.xs,
+  },
+  modeHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  modeTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: TEACHER.text,
+  },
+  modeSubtitle: {
+    marginTop: 4,
+    fontSize: 12,
+    color: TEACHER.textMuted,
+    lineHeight: 17,
+  },
+  modeTabsScroll: {
+    flexGrow: 0,
+    flexShrink: 0,
+    maxHeight: 48,
+  },
+  modeTabs: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: TEACHER_SPACING.lg,
+    paddingVertical: TEACHER_SPACING.sm,
+  },
+  modeTab: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: TEACHER_RADIUS.full,
+    backgroundColor: TEACHER.surfaceElevated,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
+  },
+  modeTabActive: {
+    backgroundColor: TEACHER.navActiveBg,
+    borderColor: TEACHER.primary,
+  },
+  modeTabText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: TEACHER.textMuted,
+  },
+  modeTabTextActive: {
+    color: TEACHER.primaryLight,
+  },
+  quickRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: TEACHER_SPACING.lg,
+    paddingVertical: TEACHER_SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: TEACHER.surfaceBorder,
+  },
+  subjectBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: TEACHER_RADIUS.full,
+    backgroundColor: TEACHER.navActiveBg,
+    borderWidth: 1,
+    borderColor: TEACHER.primary,
+  },
+  subjectBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: TEACHER.primaryLight,
+    maxWidth: 100,
+  },
+  quickChips: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  quickChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: TEACHER_RADIUS.full,
+    backgroundColor: TEACHER.surfaceElevated,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
+  },
+  quickChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: TEACHER.textSecondary,
   },
   messages: {
     flex: 1,
+    minHeight: 0,
+  },
+  mainScroll: {
+    flex: 1,
+    minHeight: 0,
+  },
+  mainScrollContent: {
+    flexGrow: 1,
+  },
+  messagesBlock: {
+    padding: TEACHER_SPACING.lg,
   },
   messagesContent: {
-    padding: 16,
+    padding: TEACHER_SPACING.lg,
   },
-  message: {
-    maxWidth: '80%',
-    padding: 12,
-    borderRadius: 16,
-    marginBottom: 12,
+  starterBlock: {
+    marginBottom: TEACHER_SPACING.lg,
   },
-  userMessage: {
-    alignSelf: 'flex-end',
-    backgroundColor: '#3b82f6',
+  starterTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: TEACHER.text,
+    textAlign: 'center',
   },
-  assistantMessage: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#fff',
+  starterSub: {
+    marginTop: 6,
+    fontSize: 13,
+    color: TEACHER.textMuted,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  starterGrid: {
+    marginTop: TEACHER_SPACING.lg,
+    gap: TEACHER_SPACING.sm,
+  },
+  starterCard: {
+    padding: TEACHER_SPACING.md,
+    borderRadius: TEACHER_RADIUS.md,
+    backgroundColor: TEACHER.surfaceElevated,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: TEACHER.surfaceBorder,
   },
-  messageText: {
-    fontSize: 16,
-    color: '#111827',
+  starterCardText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: TEACHER.textSecondary,
+    lineHeight: 18,
   },
-  userMessageText: {
-    fontSize: 16,
-    color: '#fff',
-  },
-  inputContainer: {
+  messageRow: {
     flexDirection: 'row',
-    padding: 16,
-    paddingBottom: 32,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
     alignItems: 'flex-end',
+    marginBottom: TEACHER_SPACING.md,
+    gap: 8,
+  },
+  messageRowUser: {
+    justifyContent: 'flex-end',
+  },
+  messageRowAssistant: {
+    justifyContent: 'flex-start',
+  },
+  avatarAssistant: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: TEACHER.navActiveBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
+  },
+  avatarUser: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: TEACHER.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitial: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: TEACHER.textOnPrimary,
+  },
+  bubble: {
+    maxWidth: '78%',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 16,
+  },
+  bubbleUser: {
+    backgroundColor: TEACHER.primary,
+    borderBottomRightRadius: 4,
+  },
+  bubbleAssistant: {
+    backgroundColor: TEACHER.surfaceElevated,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
+    borderBottomLeftRadius: 4,
+  },
+  bubbleText: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: TEACHER.text,
+  },
+  bubbleTextUser: {
+    color: TEACHER.textOnPrimary,
+  },
+  thinkingBubble: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  thinkingText: {
+    fontSize: 13,
+    color: TEACHER.textMuted,
+  },
+  inputBar: {
+    borderTopWidth: 1,
+    borderTopColor: TEACHER.surfaceBorder,
+    backgroundColor: TEACHER.bg,
+    paddingHorizontal: TEACHER_SPACING.md,
+    paddingTop: TEACHER_SPACING.sm,
+  },
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 4,
+    borderRadius: TEACHER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
+    backgroundColor: TEACHER.surfaceElevated,
+    paddingLeft: 4,
+    paddingRight: 6,
+    paddingVertical: 6,
+  },
+  iconBtn: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   input: {
     flex: 1,
-    backgroundColor: '#f9fafb',
-    borderRadius: 24,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    minHeight: 40,
     maxHeight: 100,
-    fontSize: 16,
-    color: '#111827',
+    fontSize: 15,
+    color: TEACHER.text,
+    paddingVertical: 8,
   },
   sendButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#3b82f6',
-    justifyContent: 'center',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: TEACHER.primary,
     alignItems: 'center',
-    marginLeft: 8,
+    justifyContent: 'center',
+  },
+  sendButtonDisabled: {
+    backgroundColor: TEACHER.surfaceElevated,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
   },
 });
-
-

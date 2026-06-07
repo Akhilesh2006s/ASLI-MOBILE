@@ -2,35 +2,35 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Modal, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { API_BASE_URL } from '../../../src/lib/api-config';
-import * as SecureStore from 'expo-secure-store';
+import teacherService, { asArray } from '../../../src/services/api/teacherService';
 import HomeworkSubmissionsView from './HomeworkSubmissionsView';
+import TrackProgressView from './TrackProgressView';
+import WorkDiaryView from './WorkDiaryView';
+import { SubNavChips, StudentListCard } from '../../../src/components/teacher';
+import { mergeStudentsWithPerformance, STUDENTS_UI, type StudentRow } from '../../../src/lib/students-ui';
+import { TEACHER, TEACHER_SPACING } from '../../../src/theme/teacher';
 
-type StudentsSubTab = 'list' | 'track-progress' | 'submissions';
+type StudentsSubTab = 'list' | 'track-progress' | 'submissions' | 'daily' | 'remarks';
 
-interface Student {
-  id: string;
-  name: string;
-  email: string;
-  classNumber: string;
-  phone?: string;
-  isActive?: boolean;
-  lastLogin?: string;
-  assignedClass?: {
-    classNumber?: string;
-    section?: string;
-  };
-  performance?: {
-    overallProgress?: number;
-    learningProgress?: number;
-    totalExams?: number;
-    averageMarks?: number;
-    averagePercentage?: number;
-  };
+const STUDENT_SUB_TABS = [
+  { id: 'list', label: 'Student List', icon: 'people' as const },
+  { id: 'track-progress', label: 'Track Progress', icon: 'bar-chart' as const },
+  { id: 'submissions', label: 'Submissions', icon: 'document-text' as const },
+  { id: 'daily', label: 'Daily', icon: 'bookmark' as const },
+];
+
+type Props = {
+  initialSubTab?: StudentsSubTab;
+  progressClassFilter?: string;
+  progressStudentId?: string;
+};
+
+interface Student extends StudentRow {
+  performance?: StudentRow['performance'];
 }
 
-export default function StudentsView() {
-  const [activeSubTab, setActiveSubTab] = useState<StudentsSubTab>('list');
+export default function StudentsView({ initialSubTab, progressClassFilter, progressStudentId }: Props) {
+  const [activeSubTab, setActiveSubTab] = useState<StudentsSubTab>(initialSubTab || 'list');
   const [students, setStudents] = useState<Student[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -47,84 +47,36 @@ export default function StudentsView() {
     fetchTeacherSubjects();
   }, []);
 
+  useEffect(() => {
+    if (initialSubTab) setActiveSubTab(initialSubTab);
+  }, [initialSubTab]);
+
   const fetchStudents = async () => {
     try {
       setIsLoading(true);
-      const token = await SecureStore.getItemAsync('authToken');
-      console.log('[StudentsView] Fetching students...');
-      console.log('[StudentsView] API URL:', `${API_BASE_URL}/api/teacher/students`);
-      console.log('[StudentsView] Token present:', token ? 'Yes' : 'No');
-      
-      const response = await fetch(`${API_BASE_URL}/api/teacher/students`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      console.log('[StudentsView] Response status:', response.status);
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('[StudentsView] Response data:', JSON.stringify(data, null, 2));
-        
-        const studentsData = data.data || data.students || data || [];
-        console.log('[StudentsView] Students data is array:', Array.isArray(studentsData));
-        console.log('[StudentsView] Students count:', Array.isArray(studentsData) ? studentsData.length : 0);
-        
-        const mappedStudents = (Array.isArray(studentsData) ? studentsData : []).map((student: any) => ({
-          id: student._id || student.id,
-          name: student.fullName || student.name || 'Unknown Student',
-          email: student.email || '',
-          classNumber: student.classNumber || 'N/A',
-          phone: student.phone || '',
-          isActive: student.isActive !== false,
-          lastLogin: student.lastLogin || null,
-          assignedClass: student.assignedClass || null,
-          performance: student.performance || {}
-        }));
-        
-        console.log('[StudentsView] Mapped students:', mappedStudents.length);
-        setStudents(mappedStudents);
-      } else {
-        const errorText = await response.text();
-        console.error('[StudentsView] Failed to fetch students:', response.status, errorText);
-      }
-    } catch (error) {
-      console.error('[StudentsView] Failed to fetch students (catch):', error);
+      const [studentsRes, perfRes] = await Promise.all([
+        teacherService.students(),
+        teacherService.studentsPerformance().catch(() => ({ data: [] as any[] })),
+      ]);
+      const studentsData = studentsRes.data ?? [];
+      const perfData = perfRes.data ?? [];
+      setStudents(mergeStudentsWithPerformance(
+        Array.isArray(studentsData) ? studentsData : [],
+        Array.isArray(perfData) ? perfData : []
+      ));
+    } catch {
+      setStudents([]);
     } finally {
       setIsLoading(false);
-      console.log('[StudentsView] Loading complete');
     }
   };
 
   const fetchTeacherSubjects = async () => {
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      console.log('[StudentsView] Fetching teacher subjects...');
-      
-      const response = await fetch(`${API_BASE_URL}/api/teacher/subjects`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      console.log('[StudentsView] Subjects response status:', response.status);
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('[StudentsView] Subjects data:', JSON.stringify(data, null, 2));
-        
-        const subjectsData = data.data || data.subjects || data || [];
-        setTeacherSubjects(Array.isArray(subjectsData) ? subjectsData : []);
-        console.log('[StudentsView] Subjects set:', Array.isArray(subjectsData) ? subjectsData.length : 0);
-      } else {
-        const errorText = await response.text();
-        console.error('[StudentsView] Failed to fetch subjects:', response.status, errorText);
-      }
+      const res = await teacherService.subjects();
+      setTeacherSubjects(asArray(res.data));
     } catch (error) {
-      console.error('[StudentsView] Failed to fetch subjects (catch):', error);
+      console.error('[StudentsView] Failed to fetch subjects:', error);
     }
   };
 
@@ -133,36 +85,18 @@ export default function StudentsView() {
 
     setIsSubmittingRemark(true);
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(
-        `${API_BASE_URL}/api/teacher/students/${selectedStudent.id}/remarks`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            remark: remarkText,
-            subject: selectedSubjectForRemark !== 'general' ? selectedSubjectForRemark : null,
-            isPositive: isPositiveRemark
-          })
-        }
-      );
-
-      if (response.ok) {
-        Alert.alert('Success', 'Remark added successfully!');
-        setIsRemarkModalVisible(false);
-        setRemarkText('');
-        setSelectedStudent(null);
-        setSelectedSubjectForRemark('general');
-        setIsPositiveRemark(true);
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        Alert.alert('Error', errorData.message || 'Failed to add remark');
-      }
-    } catch (error) {
-      console.error('Failed to add remark:', error);
+      await teacherService.sendRemark(selectedStudent.id, {
+        remark: remarkText,
+        subject: selectedSubjectForRemark !== 'general' ? selectedSubjectForRemark : null,
+        isPositive: isPositiveRemark,
+      });
+      Alert.alert('Success', 'Remark added successfully!');
+      setIsRemarkModalVisible(false);
+      setRemarkText('');
+      setSelectedStudent(null);
+      setSelectedSubjectForRemark('general');
+      setIsPositiveRemark(true);
+    } catch {
       Alert.alert('Error', 'Network error. Please try again.');
     } finally {
       setIsSubmittingRemark(false);
@@ -172,54 +106,23 @@ export default function StudentsView() {
   const filteredStudents = useMemo(() => {
     if (!searchTerm.trim()) return students;
     const searchLower = searchTerm.toLowerCase();
-    return students.filter(student =>
+    return students.filter((student) =>
       student.name.toLowerCase().includes(searchLower) ||
       student.email.toLowerCase().includes(searchLower) ||
+      (student.phone && student.phone.toLowerCase().includes(searchLower)) ||
       (student.classNumber && student.classNumber.toLowerCase().includes(searchLower))
     );
   }, [students, searchTerm]);
 
-  const renderStudentItem = useCallback(({ item: student }: { item: Student }) => {
-    const classDisplay = student.assignedClass
-      ? `${student.assignedClass.classNumber || student.classNumber}${student.assignedClass.section ? ` - ${student.assignedClass.section}` : ''}`
-      : student.classNumber;
-
-    return (
-      <View style={styles.studentCard}>
-        <View style={styles.studentCardHeader}>
-          <View style={styles.studentInfo}>
-            <Text style={styles.studentName}>{student.name}</Text>
-            <Text style={styles.studentEmail}>{student.email}</Text>
-          </View>
-          <View style={[styles.statusBadge, student.isActive ? styles.statusActive : styles.statusInactive]}>
-            <Text style={styles.statusText}>{student.isActive ? 'Active' : 'Inactive'}</Text>
-          </View>
-        </View>
-
-        <View style={styles.studentDetails}>
-          <View style={styles.detailRow}>
-            <Ionicons name="call" size={16} color="#6b7280" />
-            <Text style={styles.detailText}>{student.phone || 'No phone'}</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Ionicons name="school" size={16} color="#6b7280" />
-            <Text style={styles.detailText}>Class: {classDisplay}</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={styles.remarkButton}
-          onPress={() => {
-            setSelectedStudent(student);
-            setIsRemarkModalVisible(true);
-          }}
-        >
-          <Ionicons name="chatbubble-ellipses" size={20} color="#10b981" />
-          <Text style={styles.remarkButtonText}>Add Remark</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }, []);
+  const renderStudentItem = useCallback(({ item: student }: { item: Student }) => (
+    <StudentListCard
+      student={student}
+      onAddRemark={() => {
+        setSelectedStudent(student);
+        setIsRemarkModalVisible(true);
+      }}
+    />
+  ), []);
 
   const formatDate = useCallback((dateString: string) => {
     if (!dateString) return 'Never';
@@ -231,190 +134,81 @@ export default function StudentsView() {
     }
   }, []);
 
+  const listHeader = (
+    <>
+      <SubNavChips
+        items={STUDENT_SUB_TABS}
+        active={activeSubTab}
+        onChange={(id) => setActiveSubTab(id as StudentsSubTab)}
+        variant="students"
+      />
+      <View style={styles.searchCard}>
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={20} color="#9ca3af" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search students by name, email, or phone..."
+            value={searchTerm}
+            onChangeText={setSearchTerm}
+            placeholderTextColor="#9ca3af"
+          />
+        </View>
+      </View>
+    </>
+  );
+
   return (
     <View style={styles.container}>
-      {/* Sub-Tabs */}
-      <View style={styles.subTabsContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.subTabsScroll}>
-          <TouchableOpacity
-            style={[styles.subTab, activeSubTab === 'list' && styles.subTabActive]}
-            onPress={() => setActiveSubTab('list')}
-          >
-            <Ionicons name="people" size={16} color={activeSubTab === 'list' ? '#10b981' : '#6b7280'} />
-            <Text style={[styles.subTabText, activeSubTab === 'list' && styles.subTabTextActive]}>
-              Student List
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.subTab, activeSubTab === 'track-progress' && styles.subTabActive]}
-            onPress={() => setActiveSubTab('track-progress')}
-          >
-            <Ionicons name="bar-chart" size={16} color={activeSubTab === 'track-progress' ? '#10b981' : '#6b7280'} />
-            <Text style={[styles.subTabText, activeSubTab === 'track-progress' && styles.subTabTextActive]}>
-              Track Progress
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.subTab, activeSubTab === 'submissions' && styles.subTabActive]}
-            onPress={() => setActiveSubTab('submissions')}
-          >
-            <Ionicons name="document-text" size={16} color={activeSubTab === 'submissions' ? '#10b981' : '#6b7280'} />
-            <Text style={[styles.subTabText, activeSubTab === 'submissions' && styles.subTabTextActive]}>
-              Submissions
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
-
-      {/* Student List Tab */}
-      {activeSubTab === 'list' && (
-        <>
-          {/* Search Bar */}
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color="#9ca3af" style={styles.searchIcon} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search students by name, email, or phone..."
-              value={searchTerm}
-              onChangeText={setSearchTerm}
-              placeholderTextColor="#9ca3af"
-            />
-          </View>
-
-          {isLoading ? (
+      {activeSubTab === 'list' ? (
+        isLoading ? (
+          <>
+            {listHeader}
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#10b981" />
             </View>
-          ) : filteredStudents.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="people-outline" size={64} color="#d1d5db" />
-              <Text style={styles.emptyText}>No students found</Text>
-            </View>
-          ) : (
-            <FlatList
-              data={filteredStudents}
-              keyExtractor={(item) => item.id}
-              renderItem={renderStudentItem}
-              contentContainerStyle={styles.listContent}
-              style={styles.list}
-              removeClippedSubviews={true}
-              maxToRenderPerBatch={10}
-              updateCellsBatchingPeriod={50}
-              initialNumToRender={10}
-              windowSize={10}
-            />
-          )}
+          </>
+        ) : (
+          <FlatList
+            data={filteredStudents}
+            keyExtractor={(item) => item.id}
+            renderItem={renderStudentItem}
+            ListHeaderComponent={listHeader}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Ionicons name="people-outline" size={64} color="#d1d5db" />
+                <Text style={styles.emptyText}>No students found</Text>
+              </View>
+            }
+            contentContainerStyle={styles.listContent}
+            style={styles.list}
+            removeClippedSubviews
+            maxToRenderPerBatch={10}
+            updateCellsBatchingPeriod={50}
+            initialNumToRender={10}
+            windowSize={10}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          />
+        )
+      ) : (
+        <>
+          <SubNavChips
+            items={STUDENT_SUB_TABS}
+            active={activeSubTab}
+            onChange={(id) => setActiveSubTab(id as StudentsSubTab)}
+            variant="students"
+          />
+          <View style={styles.subTabBody}>
+            {activeSubTab === 'track-progress' && (
+              <TrackProgressView
+                initialClassFilter={progressClassFilter}
+                initialStudentId={progressStudentId}
+              />
+            )}
+            {activeSubTab === 'submissions' && <HomeworkSubmissionsView />}
+            {activeSubTab === 'daily' && <WorkDiaryView />}
+          </View>
         </>
-      )}
-
-      {/* Track Progress Tab */}
-      {activeSubTab === 'track-progress' && (
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {isLoading ? (
-            <View style={styles.emptyContainer}>
-              <ActivityIndicator size="large" color="#3b82f6" />
-              <Text style={styles.emptySubtext}>Loading progress data...</Text>
-            </View>
-          ) : filteredStudents.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="bar-chart-outline" size={64} color="#d1d5db" />
-              <Text style={styles.emptyText}>No Students</Text>
-              <Text style={styles.emptySubtext}>No students found to track progress</Text>
-            </View>
-          ) : (
-            <View style={styles.progressList}>
-              {filteredStudents.map((student) => {
-                const perf = student.performance || {};
-                const classDisplay = student.assignedClass
-                  ? `${student.assignedClass.classNumber || student.classNumber}${student.assignedClass.section || ''}`
-                  : student.classNumber;
-
-                return (
-                  <View key={student.id} style={styles.studentCard}>
-                    <View style={styles.studentCardHeader}>
-                      <View style={styles.studentInfo}>
-                        <Text style={styles.studentName}>{student.name}</Text>
-                        <Text style={styles.studentEmail}>{student.email}</Text>
-                      </View>
-                      <View style={[styles.statusBadge, student.isActive ? styles.statusActive : styles.statusInactive]}>
-                        <Text style={styles.statusText}>{student.isActive ? 'Active' : 'Inactive'}</Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.studentDetails}>
-                      <View style={styles.detailRow}>
-                        <Ionicons name="call" size={16} color="#6b7280" />
-                        <Text style={styles.detailText}>{student.phone || 'No phone'}</Text>
-                      </View>
-                      <View style={styles.detailRow}>
-                        <Ionicons name="school" size={16} color="#6b7280" />
-                        <Text style={styles.detailText}>Class: {classDisplay}</Text>
-                      </View>
-                      <View style={styles.detailRow}>
-                        <Ionicons name="time" size={16} color="#6b7280" />
-                        <Text style={styles.detailText}>Last Login: {formatDate(student.lastLogin || '')}</Text>
-                      </View>
-                    </View>
-
-                    {perf.overallProgress !== null && perf.overallProgress !== undefined && perf.overallProgress > 0 && (
-                      <View style={styles.progressSection}>
-                        <View style={styles.progressHeader}>
-                          <Text style={styles.progressLabel}>Overall Progress</Text>
-                          <Text style={[styles.progressValue, {
-                            color: perf.overallProgress >= 70 ? '#10b981' :
-                                   perf.overallProgress >= 50 ? '#f59e0b' : '#ef4444'
-                          }]}>
-                            {perf.overallProgress.toFixed(1)}%
-                          </Text>
-                        </View>
-                        <View style={styles.progressBar}>
-                          <View
-                            style={[
-                              styles.progressFill,
-                              {
-                                width: `${Math.min(perf.overallProgress, 100)}%`,
-                                backgroundColor: perf.overallProgress >= 70 ? '#10b981' :
-                                                 perf.overallProgress >= 50 ? '#f59e0b' : '#ef4444'
-                              }
-                            ]}
-                          />
-                        </View>
-                        {perf.totalExams > 0 && (
-                          <Text style={styles.progressSubtext}>
-                            {perf.totalExams} exam{perf.totalExams !== 1 ? 's' : ''} completed
-                          </Text>
-                        )}
-                      </View>
-                    )}
-
-                    <TouchableOpacity
-                      style={styles.addRemarkButton}
-                      onPress={() => {
-                        setSelectedStudent(student);
-                        setIsRemarkModalVisible(true);
-                      }}
-                    >
-                      <LinearGradient
-                        colors={['#8b5cf6', '#ec4899']}
-                        style={styles.addRemarkButtonGradient}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                      >
-                        <Ionicons name="chatbubble" size={18} color="#fff" />
-                        <Text style={styles.addRemarkButtonText}>Add Remark</Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  </View>
-                );
-              })}
-            </View>
-          )}
-            </ScrollView>
-      )}
-
-      {/* Homework Submissions Tab */}
-      {activeSubTab === 'submissions' && (
-        <HomeworkSubmissionsView />
       )}
 
       {/* Add Remark Modal */}
@@ -525,7 +319,7 @@ export default function StudentsView() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: 'transparent',
   },
   subTabsContainer: {
     backgroundColor: '#fff',
@@ -557,16 +351,28 @@ const styles = StyleSheet.create({
   subTabTextActive: {
     color: '#10b981',
   },
+  searchCard: {
+    marginHorizontal: TEACHER_SPACING.lg,
+    marginBottom: TEACHER_SPACING.sm,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: STUDENTS_UI.cardBorder,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 2,
+  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    margin: 20,
-    marginBottom: 0,
-    paddingHorizontal: 16,
-    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.9)',
     borderWidth: 1,
     borderColor: '#e5e7eb',
+    borderRadius: 12,
+    paddingHorizontal: 12,
   },
   searchIcon: {
     marginRight: 12,
@@ -575,14 +381,20 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 48,
     fontSize: 16,
-    color: '#111827',
+    color: STUDENTS_UI.text,
   },
   list: {
     flex: 1,
   },
   listContent: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 120,
     gap: 16,
+    flexGrow: 1,
+  },
+  subTabBody: {
+    flex: 1,
+    minHeight: 0,
   },
   studentCard: {
     backgroundColor: '#fff',

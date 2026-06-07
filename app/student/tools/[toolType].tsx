@@ -11,7 +11,6 @@ import {
   Share,
   Modal,
   Pressable,
-  useWindowDimensions,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -47,6 +46,14 @@ import {
   useCurriculumCascade,
   isGradeWithScienceCurriculumDropdowns,
 } from '../../../src/hooks/useCurriculumCascade';
+import StudentScreenHeader from '../../../src/components/student/StudentScreenHeader';
+import GlassCard from '../../../src/components/student/GlassCard';
+import {
+  STUDENT,
+  STUDENT_RADIUS,
+  STUDENT_SPACING,
+  STUDENT_TYPO,
+} from '../../../src/theme/student';
 
 function mergeSelectedIntoOptions(options: string[], selected: unknown): string[] {
   const v = typeof selected === 'string' ? selected.trim() : '';
@@ -91,7 +98,7 @@ function FormSection({
   children: ReactNode;
 }) {
   return (
-    <View style={styles.sectionCard}>
+    <GlassCard padding={0}>
       <View style={styles.sectionHeader}>
         <View style={[styles.sectionAccent, { backgroundColor: accent }]} />
         <View style={styles.sectionHeaderText}>
@@ -100,13 +107,11 @@ function FormSection({
         </View>
       </View>
       <View style={styles.sectionBody}>{children}</View>
-    </View>
+    </GlassCard>
   );
 }
 
 export default function StudentToolPage() {
-  const { width } = useWindowDimensions();
-  const isWide = width >= 480;
   const { toolType } = useLocalSearchParams<{ toolType: string }>();
   const [formParams, setFormParams] = useState<Record<string, any>>({});
   const [isGenerating, setIsGenerating] = useState(false);
@@ -581,7 +586,7 @@ export default function StudentToolPage() {
           >
             {display}
           </Text>
-          <Ionicons name="chevron-down" size={18} color={disabled ? '#cbd5e1' : '#64748b'} />
+          <Ionicons name="chevron-down" size={18} color={disabled ? STUDENT.navInactive : STUDENT.textMuted} />
           </TouchableOpacity>
         </View>
     );
@@ -603,7 +608,7 @@ export default function StudentToolPage() {
           <View style={styles.lockedField}>
             <Text style={styles.lockedValue}>{value}</Text>
             <View style={styles.lockedBadge}>
-              <Ionicons name="lock-closed" size={12} color="#64748b" />
+              <Ionicons name="lock-closed" size={12} color={STUDENT.textMuted} />
               <Text style={styles.lockedBadgeText}>Assigned</Text>
             </View>
           </View>
@@ -658,7 +663,7 @@ export default function StudentToolPage() {
             multiline
             numberOfLines={4}
             textAlignVertical="top"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={STUDENT.navInactive}
           />
         </View>
       );
@@ -681,7 +686,7 @@ export default function StudentToolPage() {
           value={value}
           onChangeText={(text) => handleInputChange(field.name, text)}
           keyboardType={field.type === 'number' ? 'numeric' : 'default'}
-          placeholderTextColor="#94a3b8"
+          placeholderTextColor={STUDENT.navInactive}
         />
       </View>
     );
@@ -691,9 +696,10 @@ export default function StudentToolPage() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
         <StatusBar style="dark" />
+        <StudentScreenHeader title="Tool not found" onBack={() => router.back()} />
         <View style={styles.errorContainer}>
           <View style={styles.errorIconWrap}>
-            <Ionicons name="alert-circle-outline" size={48} color="#ef4444" />
+            <Ionicons name="alert-circle-outline" size={48} color={STUDENT.danger} />
           </View>
           <Text style={styles.errorTitle}>Tool not found</Text>
           <Text style={styles.errorSubtitle}>This AI tool is not available on mobile yet.</Text>
@@ -711,41 +717,33 @@ export default function StudentToolPage() {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar style="light" />
 
-      <LinearGradient colors={[accent, `${accent}CC`]} style={styles.hero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-        <View style={styles.topBar}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} hitSlop={12}>
-            <Ionicons name="arrow-back" size={22} color="#fff" />
-          </TouchableOpacity>
-          <View style={styles.aiBadge}>
-            <Ionicons name="sparkles" size={12} color="#fff" />
-            <Text style={styles.aiBadgeText}>Vidya AI</Text>
-          </View>
-        </View>
+      <StudentScreenHeader
+        title={config.name}
+        subtitle={config.description}
+        onBack={() => router.back()}
+      />
 
-        <View style={[styles.heroBody, isWide && styles.heroBodyWide]}>
-          <View style={styles.heroIconWrap}>
-            <Ionicons name={config.icon} size={28} color="#fff" />
-          </View>
-          <View style={styles.heroTextWrap}>
-            <Text style={styles.heroTitle}>{config.name}</Text>
-            <Text style={styles.heroSubtitle} numberOfLines={3}>
-              {config.description}
-            </Text>
-          </View>
+      <View style={styles.toolMeta}>
+        <View style={[styles.heroIconWrap, { backgroundColor: `${accent}18` }]}>
+          <Ionicons name={config.icon} size={24} color={accent} />
         </View>
+        <View style={styles.aiBadge}>
+          <Ionicons name="sparkles" size={12} color={STUDENT.primary} />
+          <Text style={styles.aiBadgeText}>Vidya AI</Text>
+        </View>
+      </View>
 
-        <View style={styles.progressWrap}>
-          <View style={styles.progressMeta}>
-            <Text style={styles.progressLabel}>Form progress</Text>
-            <Text style={styles.progressValue}>
-              {completion.filled}/{completion.total} fields
-            </Text>
-          </View>
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${completion.percent}%` }]} />
-          </View>
+      <View style={styles.progressWrap}>
+        <View style={styles.progressMeta}>
+          <Text style={styles.progressLabel}>Form progress</Text>
+          <Text style={styles.progressValue}>
+            {completion.filled}/{completion.total} fields
+          </Text>
         </View>
-      </LinearGradient>
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: `${completion.percent}%`, backgroundColor: accent }]} />
+        </View>
+      </View>
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -772,7 +770,7 @@ export default function StudentToolPage() {
             {curriculumFields.map(renderField)}
             {isReadingPractice ? (
               <View style={styles.infoBanner}>
-                <Ionicons name="information-circle" size={18} color="#2563eb" />
+                <Ionicons name="information-circle" size={18} color={STUDENT.accent} />
                 <Text style={styles.infoBannerText}>
                   English and Hindi subjects only for this tool.
                 </Text>
@@ -793,7 +791,7 @@ export default function StudentToolPage() {
           ) : null}
 
           {generatedContent ? (
-            <View style={styles.resultCard}>
+            <GlassCard variant="gradient">
               <View style={styles.resultHeader}>
                 <View>
                   <Text style={styles.resultTitle}>Generated content</Text>
@@ -804,7 +802,7 @@ export default function StudentToolPage() {
                     style={[styles.resultActionBtn, copied && styles.resultActionBtnActive]}
                     onPress={handleCopy}
         >
-                    <Ionicons name={copied ? 'checkmark' : 'copy-outline'} size={18} color={copied ? '#059669' : accent} />
+                    <Ionicons name={copied ? 'checkmark' : 'copy-outline'} size={18} color={copied ? STUDENT.primaryDark : accent} />
         </TouchableOpacity>
                   <TouchableOpacity style={styles.resultActionBtn} onPress={handleShare}>
                     <Ionicons name="share-outline" size={18} color={accent} />
@@ -815,10 +813,10 @@ export default function StudentToolPage() {
               <Text style={styles.resultText} selectable>
                 {generatedContent}
               </Text>
-        </View>
+            </GlassCard>
           ) : (
             <View style={styles.emptyResult}>
-              <Ionicons name="document-text-outline" size={32} color="#cbd5e1" />
+              <Ionicons name="document-text-outline" size={32} color={STUDENT.navInactive} />
               <Text style={styles.emptyResultTitle}>Your AI output will appear here</Text>
               <Text style={styles.emptyResultText}>Fill the form above and tap Generate</Text>
         </View>
@@ -840,12 +838,12 @@ export default function StudentToolPage() {
           >
             {isGenerating ? (
                 <>
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={STUDENT.textOnPrimary} />
                   <Text style={styles.generateBtnText}>Generating...</Text>
                 </>
             ) : (
               <>
-                <Ionicons name="sparkles" size={20} color="#fff" />
+                <Ionicons name="sparkles" size={20} color={STUDENT.textOnPrimary} />
                   <Text style={styles.generateBtnText}>Generate with AI</Text>
               </>
             )}
@@ -895,26 +893,20 @@ export default function StudentToolPage() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f1f5f9' },
+  container: { flex: 1, backgroundColor: STUDENT.bg },
   flex: { flex: 1 },
-  hero: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 20,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-  },
-  topBar: {
+  toolMeta: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    paddingHorizontal: STUDENT_SPACING.xl,
+    paddingTop: STUDENT_SPACING.md,
+    paddingBottom: STUDENT_SPACING.sm,
   },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+  heroIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: STUDENT_RADIUS.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -922,260 +914,226 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: STUDENT.navActiveBg,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: STUDENT_RADIUS.full,
   },
-  aiBadgeText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  heroBody: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
-  heroBodyWide: { alignItems: 'center' },
-  heroIconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  aiBadgeText: { ...STUDENT_TYPO.label, color: STUDENT.primaryDark },
+  progressWrap: {
+    paddingHorizontal: STUDENT_SPACING.xl,
+    paddingBottom: STUDENT_SPACING.lg,
   },
-  heroTextWrap: { flex: 1 },
-  heroTitle: { fontSize: 22, fontWeight: '800', color: '#fff', marginBottom: 6 },
-  heroSubtitle: { fontSize: 13, color: 'rgba(255,255,255,0.92)', lineHeight: 19 },
-  progressWrap: { marginTop: 18 },
-  progressMeta: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  progressLabel: { fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
-  progressValue: { fontSize: 12, color: '#fff', fontWeight: '700' },
+  progressMeta: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: STUDENT_SPACING.sm },
+  progressLabel: { ...STUDENT_TYPO.caption, color: STUDENT.textMuted },
+  progressValue: { ...STUDENT_TYPO.caption, color: STUDENT.text, fontWeight: '700' },
   progressTrack: {
     height: 6,
-    borderRadius: 99,
-    backgroundColor: 'rgba(255,255,255,0.25)',
+    borderRadius: STUDENT_RADIUS.full,
+    backgroundColor: STUDENT.surfaceBorder,
     overflow: 'hidden',
   },
-  progressFill: { height: '100%', borderRadius: 99, backgroundColor: '#fff' },
+  progressFill: { height: '100%', borderRadius: STUDENT_RADIUS.full },
   scroll: { flex: 1 },
-  scrollContent: { padding: 16, gap: 14 },
-  sectionCard: {
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    overflow: 'hidden',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-  },
+  scrollContent: { padding: STUDENT_SPACING.lg, gap: 14 },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'stretch',
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    borderBottomColor: STUDENT.surfaceBorder,
   },
   sectionAccent: { width: 4 },
-  sectionHeaderText: { flex: 1, paddingHorizontal: 16, paddingVertical: 14 },
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: '#0f172a' },
-  sectionSubtitle: { fontSize: 12, color: '#64748b', marginTop: 2 },
-  sectionBody: { padding: 16, gap: 14 },
-  fieldBlock: { gap: 8 },
-  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sectionHeaderText: { flex: 1, paddingHorizontal: STUDENT_SPACING.lg, paddingVertical: 14 },
+  sectionTitle: { ...STUDENT_TYPO.body, fontWeight: '800', color: STUDENT.text },
+  sectionSubtitle: { ...STUDENT_TYPO.caption, color: STUDENT.textMuted, marginTop: 2 },
+  sectionBody: { padding: STUDENT_SPACING.lg, gap: 14 },
+  fieldBlock: { gap: STUDENT_SPACING.sm },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: STUDENT_SPACING.sm },
   fieldIconWrap: {
     width: 28,
     height: 28,
-    borderRadius: 8,
+    borderRadius: STUDENT_RADIUS.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  fieldLabel: { flex: 1, fontSize: 14, fontWeight: '700', color: '#334155' },
+  fieldLabel: { flex: 1, ...STUDENT_TYPO.body, fontWeight: '700', color: STUDENT.textSecondary },
   fieldSpinner: { marginLeft: 'auto' },
-  required: { color: '#ef4444' },
+  required: { color: STUDENT.danger },
   dropdownTrigger: {
     minHeight: 52,
-    borderRadius: 14,
+    borderRadius: STUDENT_RADIUS.md,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    backgroundColor: '#f8fafc',
+    borderColor: STUDENT.surfaceBorder,
+    backgroundColor: STUDENT.surfaceHover,
     paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 10,
   },
-  dropdownTriggerDisabled: { opacity: 0.55, backgroundColor: '#f1f5f9' },
-  dropdownValue: { flex: 1, fontSize: 15, fontWeight: '600', color: '#0f172a' },
-  dropdownPlaceholder: { color: '#94a3b8', fontWeight: '500' },
+  dropdownTriggerDisabled: { opacity: 0.55, backgroundColor: STUDENT.bgAccent },
+  dropdownValue: { flex: 1, ...STUDENT_TYPO.body, fontWeight: '600', color: STUDENT.text },
+  dropdownPlaceholder: { color: STUDENT.navInactive, fontWeight: '500' },
   lockedField: {
     minHeight: 52,
-    borderRadius: 14,
+    borderRadius: STUDENT_RADIUS.md,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    backgroundColor: '#f8fafc',
+    borderColor: STUDENT.surfaceBorder,
+    backgroundColor: STUDENT.surfaceHover,
     paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  lockedValue: { fontSize: 15, fontWeight: '700', color: '#0f172a' },
+  lockedValue: { ...STUDENT_TYPO.body, fontWeight: '700', color: STUDENT.text },
   lockedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#e2e8f0',
-    paddingHorizontal: 8,
+    backgroundColor: STUDENT.surfaceBorder,
+    paddingHorizontal: STUDENT_SPACING.sm,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: STUDENT_RADIUS.sm,
   },
-  lockedBadgeText: { fontSize: 11, fontWeight: '600', color: '#64748b' },
+  lockedBadgeText: { ...STUDENT_TYPO.label, color: STUDENT.textMuted },
   textInput: {
     minHeight: 52,
-    borderRadius: 14,
+    borderRadius: STUDENT_RADIUS.md,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    backgroundColor: '#f8fafc',
+    borderColor: STUDENT.surfaceBorder,
+    backgroundColor: STUDENT.surfaceHover,
     paddingHorizontal: 14,
     fontSize: 15,
-    color: '#0f172a',
+    color: STUDENT.text,
   },
   textArea: { minHeight: 110, paddingTop: 14, paddingBottom: 14 },
   infoBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#eff6ff',
-    borderRadius: 12,
-    padding: 12,
+    gap: STUDENT_SPACING.sm,
+    backgroundColor: STUDENT.accentSoft,
+    borderRadius: STUDENT_RADIUS.md,
+    padding: STUDENT_SPACING.md,
     borderWidth: 1,
-    borderColor: '#bfdbfe',
+    borderColor: STUDENT.surfaceBorder,
   },
-  infoBannerText: { flex: 1, fontSize: 13, color: '#1d4ed8', lineHeight: 18 },
+  infoBannerText: { flex: 1, ...STUDENT_TYPO.caption, color: STUDENT.accent, lineHeight: 18 },
   emptyResult: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 36,
-    paddingHorizontal: 24,
-    backgroundColor: '#fff',
-    borderRadius: 18,
+    paddingHorizontal: STUDENT_SPACING.xxl,
+    backgroundColor: STUDENT.surface,
+    borderRadius: STUDENT_RADIUS.lg,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: STUDENT.surfaceBorder,
     borderStyle: 'dashed',
   },
-  emptyResultTitle: { marginTop: 12, fontSize: 15, fontWeight: '700', color: '#64748b' },
-  emptyResultText: { marginTop: 4, fontSize: 13, color: '#94a3b8', textAlign: 'center' },
-  resultCard: {
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    padding: 16,
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
-  },
+  emptyResultTitle: { marginTop: STUDENT_SPACING.md, ...STUDENT_TYPO.body, fontWeight: '700', color: STUDENT.textMuted },
+  emptyResultText: { marginTop: 4, ...STUDENT_TYPO.caption, color: STUDENT.navInactive, textAlign: 'center' },
   resultHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  resultTitle: { fontSize: 17, fontWeight: '800', color: '#0f172a' },
-  resultMeta: { fontSize: 12, color: '#64748b', marginTop: 2 },
-  resultActions: { flexDirection: 'row', gap: 8 },
+  resultTitle: { ...STUDENT_TYPO.body, fontWeight: '800', color: STUDENT.text },
+  resultMeta: { ...STUDENT_TYPO.caption, color: STUDENT.textMuted, marginTop: 2 },
+  resultActions: { flexDirection: 'row', gap: STUDENT_SPACING.sm },
   resultActionBtn: {
     width: 40,
     height: 40,
-    borderRadius: 12,
+    borderRadius: STUDENT_RADIUS.md,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: STUDENT.surfaceBorder,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f8fafc',
+    backgroundColor: STUDENT.surface,
   },
-  resultActionBtnActive: { borderColor: '#86efac', backgroundColor: '#ecfdf5' },
-  resultDivider: { height: 1, backgroundColor: '#f1f5f9', marginVertical: 14 },
-  resultText: { fontSize: 15, color: '#1e293b', lineHeight: 24 },
+  resultActionBtnActive: { borderColor: STUDENT.primaryLight, backgroundColor: STUDENT.bgAccent },
+  resultDivider: { height: 1, backgroundColor: STUDENT.surfaceBorder, marginVertical: 14 },
+  resultText: { ...STUDENT_TYPO.body, color: STUDENT.textSecondary, lineHeight: 24 },
   footer: {
-    paddingHorizontal: 16,
+    paddingHorizontal: STUDENT_SPACING.lg,
     paddingTop: 10,
-    paddingBottom: 12,
-    backgroundColor: '#f1f5f9',
+    paddingBottom: STUDENT_SPACING.md,
+    backgroundColor: STUDENT.bg,
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
+    borderTopColor: STUDENT.surfaceBorder,
   },
-  generateBtn: { borderRadius: 16, overflow: 'hidden' },
+  generateBtn: { borderRadius: STUDENT_RADIUS.lg, overflow: 'hidden' },
   generateBtnDisabled: { opacity: 0.7 },
   generateBtnGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 16,
+    gap: STUDENT_SPACING.sm,
+    paddingVertical: STUDENT_SPACING.lg,
   },
-  generateBtnText: { fontSize: 16, fontWeight: '800', color: '#fff' },
+  generateBtnText: { fontSize: 16, fontWeight: '800', color: STUDENT.textOnPrimary },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(15,23,42,0.45)',
     justifyContent: 'flex-end',
   },
   modalSheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: STUDENT.surface,
+    borderTopLeftRadius: STUDENT_RADIUS.xxl,
+    borderTopRightRadius: STUDENT_RADIUS.xxl,
     maxHeight: '70%',
-    paddingBottom: 20,
+    paddingBottom: STUDENT_SPACING.xl,
   },
   modalHandle: {
     width: 40,
     height: 4,
-    borderRadius: 99,
-    backgroundColor: '#cbd5e1',
+    borderRadius: STUDENT_RADIUS.full,
+    backgroundColor: STUDENT.navInactive,
     alignSelf: 'center',
     marginTop: 10,
-    marginBottom: 12,
+    marginBottom: STUDENT_SPACING.md,
   },
   modalTitle: {
+    ...STUDENT_TYPO.section,
     fontSize: 18,
-    fontWeight: '800',
-    color: '#0f172a',
-    paddingHorizontal: 20,
-    marginBottom: 8,
+    color: STUDENT.text,
+    paddingHorizontal: STUDENT_SPACING.xl,
+    marginBottom: STUDENT_SPACING.sm,
   },
   modalList: { maxHeight: 360 },
   modalItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingHorizontal: STUDENT_SPACING.xl,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    borderBottomColor: STUDENT.surfaceBorder,
   },
-  modalItemSelected: { backgroundColor: '#f8fafc' },
-  modalItemText: { fontSize: 16, color: '#334155', flex: 1, paddingRight: 12 },
-  modalItemTextSelected: { fontWeight: '700', color: '#0f172a' },
+  modalItemSelected: { backgroundColor: STUDENT.surfaceHover },
+  modalItemText: { fontSize: 16, color: STUDENT.textSecondary, flex: 1, paddingRight: STUDENT_SPACING.md },
+  modalItemTextSelected: { fontWeight: '700', color: STUDENT.text },
   modalCloseBtn: {
-    marginHorizontal: 20,
+    marginHorizontal: STUDENT_SPACING.xl,
     marginTop: 10,
     paddingVertical: 14,
-    borderRadius: 14,
-    backgroundColor: '#f1f5f9',
+    borderRadius: STUDENT_RADIUS.md,
+    backgroundColor: STUDENT.bgAccent,
     alignItems: 'center',
   },
-  modalCloseText: { fontSize: 15, fontWeight: '700', color: '#475569' },
-  errorContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
+  modalCloseText: { ...STUDENT_TYPO.body, fontWeight: '700', color: STUDENT.textSecondary },
+  errorContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: STUDENT_SPACING.xxxl },
   errorIconWrap: {
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: '#fef2f2',
+    backgroundColor: STUDENT.bgAccent,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: STUDENT_SPACING.lg,
   },
-  errorTitle: { fontSize: 20, fontWeight: '800', color: '#0f172a' },
-  errorSubtitle: { fontSize: 14, color: '#64748b', marginTop: 8, textAlign: 'center' },
+  errorTitle: { ...STUDENT_TYPO.section, fontSize: 20, color: STUDENT.text },
+  errorSubtitle: { ...STUDENT_TYPO.caption, color: STUDENT.textMuted, marginTop: STUDENT_SPACING.sm, textAlign: 'center' },
   errorButton: {
-    marginTop: 24,
-    backgroundColor: '#3b82f6',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
+    marginTop: STUDENT_SPACING.xxl,
+    backgroundColor: STUDENT.accent,
+    paddingHorizontal: STUDENT_SPACING.xxl,
+    paddingVertical: STUDENT_SPACING.md,
+    borderRadius: STUDENT_RADIUS.md,
   },
-  errorButtonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  errorButtonText: { color: STUDENT.textOnPrimary, ...STUDENT_TYPO.body, fontWeight: '700' },
 });

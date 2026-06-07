@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { STUDENT, STUDENT_RADIUS } from '../../theme/student';
@@ -18,7 +19,7 @@ type Props = {
   onTabChange: (id: string) => void;
 };
 
-const SPRING = { damping: 18, stiffness: 220, mass: 0.8 };
+const SPRING = { damping: 15, stiffness: 260 };
 
 export default function StudentTabBar({ tabs, activeTab, onTabChange }: Props) {
   const insets = useSafeAreaInsets();
@@ -36,6 +37,11 @@ export default function StudentTabBar({ tabs, activeTab, onTabChange }: Props) {
     width: Math.max(tabWidth - 8, 0),
   }));
 
+  const handleTabPress = (id: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onTabChange(id);
+  };
+
   return (
     <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 12) }]}>
       <View
@@ -51,8 +57,8 @@ export default function StudentTabBar({ tabs, activeTab, onTabChange }: Props) {
           return (
             <Pressable
               key={tab.id}
-              onPress={() => onTabChange(tab.id)}
-              style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
+              onPress={() => handleTabPress(tab.id)}
+              style={styles.tab}
               accessibilityLabel={tab.label}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
@@ -62,6 +68,9 @@ export default function StudentTabBar({ tabs, activeTab, onTabChange }: Props) {
                 size={22}
                 color={active ? STUDENT.navActiveText : STUDENT.navInactive}
               />
+              <Text style={[styles.label, active ? styles.labelActive : styles.labelInactive]}>
+                {tab.label}
+              </Text>
             </Pressable>
           );
         })}
@@ -73,9 +82,9 @@ export default function StudentTabBar({ tabs, activeTab, onTabChange }: Props) {
 const styles = StyleSheet.create({
   wrap: {
     position: 'absolute',
-    left: 20,
-    right: 20,
-    bottom: 0,
+    left: 16,
+    right: 16,
+    bottom: 12,
   },
   bar: {
     flexDirection: 'row',
@@ -99,11 +108,18 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 46,
+    minHeight: 52,
     zIndex: 1,
+    gap: 2,
   },
-  pressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.94 }],
+  label: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  labelActive: {
+    color: STUDENT.navActiveText,
+  },
+  labelInactive: {
+    color: STUDENT.navInactive,
   },
 });

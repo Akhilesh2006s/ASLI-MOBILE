@@ -1,617 +1,430 @@
-import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, ActivityIndicator, Linking } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Alert,
+  Linking,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as SecureStore from 'expo-secure-store';
-import { API_BASE_URL } from '../../../src/lib/api-config';
+import { LinearGradient } from 'expo-linear-gradient';
+import teacherService from '../../../src/services/api/teacherService';
+import { TeacherShimmer } from '../../../src/components/teacher';
+import { STUDENTS_UI } from '../../../src/lib/students-ui';
+import { TEACHER_SPACING } from '../../../src/theme/teacher';
 
-interface HomeworkSubmission {
-  _id: string;
-  homework: {
-    _id: string;
-    title: string;
-    subject?: {
-      _id: string;
-      name: string;
-    } | string;
-    deadline?: string;
-  };
-  student: {
-    _id: string;
-    fullName: string;
-    email: string;
-  };
-  submissionLink: string;
-  description?: string;
-  status: 'pending' | 'reviewed' | 'graded';
-  grade?: number;
-  feedback?: string;
-  submittedAt: string;
-}
+type HomeworkGroup = {
+  homework: any;
+  submissions: any[];
+};
 
 export default function HomeworkSubmissionsView() {
-  const [submissions, setSubmissions] = useState<HomeworkSubmission[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'reviewed' | 'graded'>('all');
-  const [selectedSubmission, setSelectedSubmission] = useState<HomeworkSubmission | null>(null);
-  const [isGradeModalOpen, setIsGradeModalOpen] = useState(false);
+  const [groups, setGroups] = useState<HomeworkGroup[]>([]);
+  const [studentRows, setStudentRows] = useState<any[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedHw, setExpandedHw] = useState<Set<string>>(new Set());
+  const [expandedClasses, setExpandedClasses] = useState<Set<string>>(new Set());
+  const [showCreate, setShowCreate] = useState(false);
+  const [gradeTarget, setGradeTarget] = useState<any | null>(null);
   const [grade, setGrade] = useState('');
   const [feedback, setFeedback] = useState('');
-
-  useEffect(() => {
-    fetchSubmissions();
-  }, []);
-
-  const fetchSubmissions = async () => {
-    try {
-      setIsLoading(true);
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/teacher/homework-submissions`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const submissionsData = data.data || data || [];
-        setSubmissions(Array.isArray(submissionsData) ? submissionsData : []);
-      } else {
-        setSubmissions([]);
-      }
-    } catch (error) {
-      console.error('Failed to fetch submissions:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleGradeSubmission = async () => {
-    if (!selectedSubmission || !grade) return;
-
-    try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/teacher/homework-submissions/${selectedSubmission._id}/grade`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          grade: parseFloat(grade),
-          feedback: feedback.trim()
-        })
-      });
-
-      if (response.ok) {
-        setIsGradeModalOpen(false);
-        setGrade('');
-        setFeedback('');
-        setSelectedSubmission(null);
-        fetchSubmissions();
-      }
-    } catch (error) {
-      console.error('Failed to grade submission:', error);
-    }
-  };
-
-  const filteredSubmissions = (Array.isArray(submissions) ? submissions : []).filter(submission => {
-    const matchesSearch = 
-      submission.student?.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      submission.homework?.title?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || submission.status === filterStatus;
-    return matchesSearch && matchesStatus;
+  const [form, setForm] = useState({
+    title: '',
+    classNumber: '',
+    subject: '',
+    topic: '',
+    deadline: '',
+    description: '',
+    fileUrl: '',
   });
 
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3b82f6" />
-        <Text style={styles.loadingText}>Loading submissions...</Text>
-      </View>
-    );
-  }
+  useEffect(() => {
+    load();
+  }, []);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const [hwRes, classRes, subRes] = await Promise.all([
+        teacherService.homeworkSubmissionsGrouped(),
+        teacherService.classes(),
+        teacherService.subjects(),
+      ]);
+      const raw = hwRes.data?.homeworks ?? [];
+      setGroups(
+        (Array.isArray(raw) ? raw : []).map((item: any) => ({
+          homework: item.homework || item,
+          submissions: item.submissions || [],
+        }))
+      );
+      setStudentRows(Array.isArray(hwRes.data?.students) ? hwRes.data.students : []);
+      setClasses(Array.isArray(classRes.data) ? classRes.data : []);
+      setSubjects(Array.isArray(subRes.data) ? subRes.data : []);
+    } catch {
+      setGroups([]);
+      setStudentRows([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const classList = useMemo(() => {
+    const set = new Set<string>();
+    studentRows.forEach((row) => {
+      const cn = row.student?.classNumber || row.classNumber;
+      if (cn) set.add(String(cn));
+    });
+    classes.forEach((c) => {
+      if (c.classNumber) set.add(String(c.classNumber));
+    });
+    return Array.from(set).sort();
+  }, [studentRows, classes]);
+
+  const toggleHw = (id: string) => {
+    setExpandedHw((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleClass = (cn: string) => {
+    setExpandedClasses((prev) => {
+      const next = new Set(prev);
+      if (next.has(cn)) next.delete(cn);
+      else next.add(cn);
+      return next;
+    });
+  };
+
+  const submitHomework = async () => {
+    if (!form.title.trim()) {
+      Alert.alert('Required', 'Title is required.');
+      return;
+    }
+    try {
+      await teacherService.createHomework({
+        title: form.title,
+        classNumber: form.classNumber,
+        subject: form.subject,
+        topic: form.topic,
+        deadline: form.deadline,
+        description: form.description,
+        fileUrl: form.fileUrl,
+      });
+      setShowCreate(false);
+      setForm({ title: '', classNumber: '', subject: '', topic: '', deadline: '', description: '', fileUrl: '' });
+      load();
+      Alert.alert('Created', 'Homework assignment created.');
+    } catch {
+      Alert.alert('Error', 'Could not create homework.');
+    }
+  };
+
+  const submitGrade = async () => {
+    if (!gradeTarget || !grade) return;
+    try {
+      await teacherService.gradeHomework(gradeTarget._id, {
+        grade: parseFloat(grade),
+        feedback: feedback.trim(),
+      });
+      setGradeTarget(null);
+      setGrade('');
+      setFeedback('');
+      load();
+    } catch {
+      Alert.alert('Error', 'Could not save grade.');
+    }
+  };
+
+  if (loading) return <TeacherShimmer variant="list" count={4} />;
 
   return (
-    <View style={styles.container}>
-      {/* Search and Filters */}
-      <View style={styles.filtersContainer}>
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#6b7280" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search submissions..."
-            placeholderTextColor="#9ca3af"
-            value={searchTerm}
-            onChangeText={setSearchTerm}
-          />
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <View style={styles.headerCard}>
+        <View style={styles.headerLeft}>
+          <LinearGradient colors={['#9333ea', '#2563eb']} style={styles.headerIcon}>
+            <Ionicons name="document-text" size={22} color="#fff" />
+          </LinearGradient>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerTitle}>Homework Submissions</Text>
+            <Text style={styles.headerSub}>View and manage student homework submissions</Text>
+          </View>
         </View>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-          {['all', 'pending', 'reviewed', 'graded'].map(status => (
-            <TouchableOpacity
-              key={status}
-              style={[styles.filterChip, filterStatus === status && styles.filterChipActive]}
-              onPress={() => setFilterStatus(status as any)}
-            >
-              <Text style={[styles.filterChipText, filterStatus === status && styles.filterChipTextActive]}>
-                {status.charAt(0).toUpperCase() + status.slice(1)}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <Pressable onPress={() => setShowCreate(true)}>
+          <LinearGradient colors={['#9333ea', '#2563eb']} style={styles.createBtn}>
+            <Ionicons name="add" size={18} color="#fff" />
+            <Text style={styles.createBtnText}>Create Homework</Text>
+          </LinearGradient>
+        </Pressable>
       </View>
 
-      {/* Submissions List */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {filteredSubmissions.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="document-text-outline" size={64} color="#9ca3af" />
-            <Text style={styles.emptyText}>No submissions found</Text>
+      <View style={styles.sectionCard}>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="document-text" size={18} color={STUDENTS_UI.purple} />
+          <Text style={styles.sectionTitle}>Homework Submissions</Text>
+        </View>
+        {groups.length === 0 ? (
+          <View style={styles.empty}>
+            <Ionicons name="document-text-outline" size={48} color="#d1d5db" />
+            <Text style={styles.emptyText}>No homework assignments found for your assigned subjects</Text>
           </View>
         ) : (
-          filteredSubmissions.map((submission) => {
-            const subjectName = typeof submission.homework.subject === 'object'
-              ? submission.homework.subject?.name
-              : submission.homework.subject || 'General';
+          groups.map((group) => {
+            const hw = group.homework;
+            const id = String(hw._id || hw.id);
+            const isOpen = expandedHw.has(id);
+            const deadline = hw.deadline ? new Date(hw.deadline) : null;
+            const overdue = deadline && deadline < new Date() && group.submissions.length === 0;
 
             return (
-              <View key={submission._id} style={styles.submissionCard}>
-                <View style={styles.submissionHeader}>
-                  <View style={styles.studentInfo}>
-                    <View style={styles.studentAvatar}>
-                      <Text style={styles.studentAvatarText}>
-                        {submission.student.fullName.charAt(0).toUpperCase()}
+              <View key={id} style={styles.hwCard}>
+                <Pressable
+                  style={[styles.hwHeader, overdue && styles.hwOverdue]}
+                  onPress={() => toggleHw(id)}
+                >
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.hwTitleRow}>
+                      <Text style={styles.hwTitle}>{hw.title || 'Untitled Homework'}</Text>
+                      {overdue ? (
+                        <View style={styles.badgeRed}><Text style={styles.badgeRedText}>Overdue</Text></View>
+                      ) : deadline && deadline >= new Date() ? (
+                        <View style={styles.badgeYellow}><Text style={styles.badgeYellowText}>Active</Text></View>
+                      ) : null}
+                    </View>
+                    <Text style={styles.hwMeta}>
+                      Subject: {hw.subject?.name || hw.subject || 'N/A'}
+                      {hw.classNumber ? ` · Class: ${hw.classNumber}` : ''}
+                    </Text>
+                    {deadline ? (
+                      <Text style={[styles.deadline, overdue && { color: '#dc2626' }]}>
+                        Deadline: {deadline.toLocaleDateString()}
                       </Text>
-                    </View>
-                    <View style={styles.studentDetails}>
-                      <Text style={styles.studentName}>{submission.student.fullName}</Text>
-                      <Text style={styles.studentEmail}>{submission.student.email}</Text>
-                    </View>
+                    ) : null}
                   </View>
-                  <View style={[styles.statusBadge, styles[`statusBadge${submission.status}`]]}>
-                    <Text style={[styles.statusText, styles[`statusText${submission.status}`]]}>
-                      {submission.status.toUpperCase()}
-                    </Text>
+                  <Ionicons name={isOpen ? 'chevron-up' : 'chevron-down'} size={20} color={STUDENTS_UI.textMuted} />
+                </Pressable>
+                {isOpen ? (
+                  <View style={styles.subs}>
+                    {group.submissions.length === 0 ? (
+                      <Text style={styles.noSubs}>No submissions yet</Text>
+                    ) : (
+                      group.submissions.map((sub: any) => {
+                        const student = sub.student || sub.studentId || {};
+                        return (
+                          <View key={sub._id} style={styles.subRow}>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.subName}>{student.fullName || student.name || 'Student'}</Text>
+                              <Text style={styles.subMeta}>{student.email || ''}</Text>
+                              {sub.submittedAt ? (
+                                <Text style={styles.subMeta}>Submitted {new Date(sub.submittedAt).toLocaleString()}</Text>
+                              ) : null}
+                            </View>
+                            <Pressable style={styles.gradeBtn} onPress={() => {
+                              setGradeTarget(sub);
+                              setGrade(sub.grade != null ? String(sub.grade) : '');
+                              setFeedback(sub.feedback || '');
+                            }}>
+                              <Text style={styles.gradeBtnText}>Grade</Text>
+                            </Pressable>
+                          </View>
+                        );
+                      })
+                    )}
                   </View>
-                </View>
-
-                <View style={styles.homeworkInfo}>
-                  <Text style={styles.homeworkTitle}>{submission.homework.title}</Text>
-                  <Text style={styles.homeworkSubject}>{subjectName}</Text>
-                  {submission.homework.deadline && (
-                    <Text style={styles.deadline}>
-                      Deadline: {new Date(submission.homework.deadline).toLocaleDateString()}
-                    </Text>
-                  )}
-                </View>
-
-                <View style={styles.submissionDetails}>
-                  <TouchableOpacity
-                    style={styles.linkButton}
-                    onPress={() => Linking.openURL(submission.submissionLink)}
-                  >
-                    <Ionicons name="link" size={16} color="#3b82f6" />
-                    <Text style={styles.linkText}>View Submission</Text>
-                  </TouchableOpacity>
-                  {submission.description && (
-                    <Text style={styles.description} numberOfLines={2}>
-                      {submission.description}
-                    </Text>
-                  )}
-                </View>
-
-                {submission.grade !== undefined && (
-                  <View style={styles.gradeContainer}>
-                    <Text style={styles.gradeLabel}>Grade:</Text>
-                    <Text style={styles.gradeValue}>{submission.grade}/100</Text>
-                  </View>
-                )}
-
-                {submission.feedback && (
-                  <View style={styles.feedbackContainer}>
-                    <Text style={styles.feedbackLabel}>Feedback:</Text>
-                    <Text style={styles.feedbackText}>{submission.feedback}</Text>
-                  </View>
-                )}
-
-                {submission.status === 'pending' && (
-                  <TouchableOpacity
-                    style={styles.gradeButton}
-                    onPress={() => {
-                      setSelectedSubmission(submission);
-                      setIsGradeModalOpen(true);
-                    }}
-                  >
-                    <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                    <Text style={styles.gradeButtonText}>Grade Submission</Text>
-                  </TouchableOpacity>
-                )}
-
-                <Text style={styles.submittedAt}>
-                  Submitted: {new Date(submission.submittedAt).toLocaleString()}
-                </Text>
+                ) : null}
               </View>
             );
           })
         )}
-      </ScrollView>
+      </View>
 
-      {/* Grade Modal */}
-      <Modal
-        visible={isGradeModalOpen}
-        animationType="slide"
-        onRequestClose={() => setIsGradeModalOpen(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Grade Submission</Text>
-            <TouchableOpacity onPress={() => setIsGradeModalOpen(false)}>
-              <Ionicons name="close" size={24} color="#111827" />
-            </TouchableOpacity>
-          </View>
-
-          {selectedSubmission && (
-            <ScrollView style={styles.modalContent}>
-              <View style={styles.modalStudentInfo}>
-                <Text style={styles.modalStudentName}>{selectedSubmission.student.fullName}</Text>
-                <Text style={styles.modalHomeworkTitle}>{selectedSubmission.homework.title}</Text>
+      <View style={styles.sectionCard}>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="people" size={18} color={STUDENTS_UI.purple} />
+          <Text style={styles.sectionTitle}>Submissions by Students</Text>
+        </View>
+        {classList.length === 0 ? (
+          <Text style={styles.emptyText}>No classes assigned yet.</Text>
+        ) : (
+          classList.map((classNum) => {
+            const open = expandedClasses.has(classNum);
+            const rows = studentRows.filter((row) => {
+              const cn = row.student?.classNumber || row.classNumber;
+              return String(cn) === classNum;
+            });
+            return (
+              <View key={classNum} style={styles.classBlock}>
+                <Pressable style={styles.classHeader} onPress={() => toggleClass(classNum)}>
+                  <Ionicons name={open ? 'chevron-down' : 'chevron-forward'} size={16} color="#312e81" />
+                  <Text style={styles.classTitle}>{classNum}</Text>
+                  <Text style={styles.classCount}>{rows.length} student{rows.length !== 1 ? 's' : ''}</Text>
+                </Pressable>
+                {open ? (
+                  rows.map((row) => {
+                    const student = row.student || {};
+                    const subs = row.submissions || [];
+                    return (
+                      <View key={student._id || student.id || classNum} style={styles.studentSubBlock}>
+                        <Text style={styles.subName}>{student.fullName || student.name || 'Student'}</Text>
+                        <Text style={styles.subMeta}>{subs.length} submission{subs.length !== 1 ? 's' : ''}</Text>
+                        {subs.slice(0, 3).map((sub: any, i: number) => (
+                          <Text key={i} style={styles.subMeta}>
+                            {sub.homeworkId?.title || sub.title || 'Homework'}
+                            {sub.grade != null ? ` · Grade: ${sub.grade}%` : ''}
+                          </Text>
+                        ))}
+                      </View>
+                    );
+                  })
+                ) : null}
               </View>
+            );
+          })
+        )}
+      </View>
 
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Grade (0-100) *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter grade"
-                  keyboardType="numeric"
-                  value={grade}
-                  onChangeText={setGrade}
-                />
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Feedback (Optional)</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  placeholder="Add feedback..."
-                  value={feedback}
-                  onChangeText={setFeedback}
-                  multiline
-                  numberOfLines={6}
-                />
-              </View>
-
-              <TouchableOpacity
-                style={styles.submitButton}
-                onPress={handleGradeSubmission}
-              >
-                <Text style={styles.submitButtonText}>Submit Grade</Text>
-              </TouchableOpacity>
+      <Modal visible={showCreate} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <ScrollView contentContainerStyle={styles.modalCard}>
+            <Text style={styles.modalTitle}>Create Homework</Text>
+            <Text style={styles.label}>Title</Text>
+            <TextInput style={styles.input} value={form.title} onChangeText={(t) => setForm((f) => ({ ...f, title: t }))} placeholderTextColor={STUDENTS_UI.textLight} />
+            <Text style={styles.label}>Class</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+              {classes.map((c) => {
+                const num = String(c.classNumber || c.name);
+                const sel = form.classNumber === num;
+                return (
+                  <Pressable key={c._id || c.id} style={[styles.chip, sel && styles.chipActive]} onPress={() => setForm((f) => ({ ...f, classNumber: num }))}>
+                    <Text style={[styles.chipText, sel && styles.chipTextActive]}>{num}</Text>
+                  </Pressable>
+                );
+              })}
             </ScrollView>
-          )}
+            <Text style={styles.label}>Subject</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+              {subjects.map((s) => {
+                const name = s.name;
+                const sel = form.subject === name;
+                return (
+                  <Pressable key={s._id || s.id} style={[styles.chip, sel && styles.chipActive]} onPress={() => setForm((f) => ({ ...f, subject: name }))}>
+                    <Text style={[styles.chipText, sel && styles.chipTextActive]}>{name}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+            <Text style={styles.label}>Topic</Text>
+            <TextInput style={styles.input} value={form.topic} onChangeText={(t) => setForm((f) => ({ ...f, topic: t }))} placeholderTextColor={STUDENTS_UI.textLight} />
+            <Text style={styles.label}>Deadline (YYYY-MM-DD)</Text>
+            <TextInput style={styles.input} value={form.deadline} onChangeText={(t) => setForm((f) => ({ ...f, deadline: t }))} placeholderTextColor={STUDENTS_UI.textLight} />
+            <Text style={styles.label}>Description</Text>
+            <TextInput style={[styles.input, styles.area]} value={form.description} onChangeText={(t) => setForm((f) => ({ ...f, description: t }))} multiline placeholderTextColor={STUDENTS_UI.textLight} />
+            <Pressable onPress={submitHomework}>
+              <LinearGradient colors={['#9333ea', '#2563eb']} style={styles.saveBtn}>
+                <Text style={styles.saveBtnText}>Create</Text>
+              </LinearGradient>
+            </Pressable>
+            <Pressable style={styles.cancelBtn} onPress={() => setShowCreate(false)}>
+              <Text style={styles.cancelText}>Cancel</Text>
+            </Pressable>
+          </ScrollView>
         </View>
       </Modal>
-    </View>
+
+      <Modal visible={!!gradeTarget} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Grade Submission</Text>
+            <TextInput style={styles.input} value={grade} onChangeText={setGrade} keyboardType="numeric" placeholder="Marks" placeholderTextColor={STUDENTS_UI.textLight} />
+            <TextInput style={[styles.input, styles.area]} value={feedback} onChangeText={setFeedback} placeholder="Feedback" placeholderTextColor={STUDENTS_UI.textLight} multiline />
+            <Pressable onPress={submitGrade}>
+              <LinearGradient colors={['#9333ea', '#2563eb']} style={styles.saveBtn}>
+                <Text style={styles.saveBtnText}>Save Grade</Text>
+              </LinearGradient>
+            </Pressable>
+            <Pressable style={styles.cancelBtn} onPress={() => setGradeTarget(null)}>
+              <Text style={styles.cancelText}>Cancel</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#6b7280',
-  },
-  filtersContainer: {
+  scroll: { flex: 1 },
+  scrollContent: { paddingHorizontal: TEACHER_SPACING.lg, paddingBottom: 120, gap: 14 },
+  headerCard: {
     backgroundColor: '#fff',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f3f4f6',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    marginBottom: 12,
-    height: 48,
-  },
-  searchIcon: {
-    marginRight: 12,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#111827',
-  },
-  filterScroll: {
-    marginBottom: 8,
-  },
-  filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#f3f4f6',
-    marginRight: 8,
-  },
-  filterChipActive: {
-    backgroundColor: '#3b82f6',
-  },
-  filterChipText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  filterChipTextActive: {
-    color: '#fff',
-  },
-  content: {
-    flex: 1,
     padding: 16,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 64,
-  },
-  emptyText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-    marginTop: 16,
-  },
-  submissionCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  submissionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  studentInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: 12,
-  },
-  studentAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#3b82f6',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  studentAvatarText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  studentDetails: {
-    flex: 1,
-  },
-  studentName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  studentEmail: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  statusBadgepending: {
-    backgroundColor: '#fef3c7',
-  },
-  statusBadgereviewed: {
-    backgroundColor: '#dbeafe',
-  },
-  statusBadgegraded: {
-    backgroundColor: '#d1fae5',
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  statusTextpending: {
-    color: '#92400e',
-  },
-  statusTextreviewed: {
-    color: '#1e40af',
-  },
-  statusTextgraded: {
-    color: '#065f46',
-  },
-  homeworkInfo: {
-    marginBottom: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-  },
-  homeworkTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  homeworkSubject: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 4,
-  },
-  deadline: {
-    fontSize: 12,
-    color: '#ef4444',
-    fontWeight: '600',
-  },
-  submissionDetails: {
-    marginBottom: 12,
-  },
-  linkButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
-  linkText: {
-    fontSize: 14,
-    color: '#3b82f6',
-    fontWeight: '600',
-  },
-  description: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 8,
-  },
-  gradeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-  },
-  gradeLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  gradeValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#10b981',
-  },
-  feedbackContainer: {
-    marginBottom: 12,
-    padding: 12,
-    backgroundColor: '#f9fafb',
-    borderRadius: 8,
-  },
-  feedbackLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6b7280',
-    marginBottom: 4,
-  },
-  feedbackText: {
-    fontSize: 14,
-    color: '#111827',
-  },
-  gradeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#10b981',
-    padding: 12,
-    borderRadius: 8,
-    gap: 8,
-    marginBottom: 8,
-  },
-  gradeButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  submittedAt: {
-    fontSize: 12,
-    color: '#9ca3af',
-    textAlign: 'right',
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  modalContent: {
-    flex: 1,
-    padding: 16,
-  },
-  modalStudentInfo: {
-    marginBottom: 24,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  modalStudentName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  modalHomeworkTitle: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    color: '#111827',
+    borderColor: STUDENTS_UI.cardBorder,
+    gap: 14,
   },
-  textArea: {
-    height: 120,
-    textAlignVertical: 'top',
+  headerLeft: { flexDirection: 'row', gap: 12, alignItems: 'center' },
+  headerIcon: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 20, fontWeight: '800', color: STUDENTS_UI.purple },
+  headerSub: { fontSize: 13, color: STUDENTS_UI.textMuted, marginTop: 2 },
+  createBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 12, borderRadius: 12 },
+  createBtnText: { color: '#fff', fontWeight: '700' },
+  sectionCard: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: STUDENTS_UI.cardBorder,
+    gap: 10,
   },
-  submitButton: {
-    backgroundColor: '#10b981',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  sectionTitle: { fontSize: 17, fontWeight: '800', color: STUDENTS_UI.text },
+  empty: { alignItems: 'center', paddingVertical: 32 },
+  emptyText: { color: STUDENTS_UI.textMuted, textAlign: 'center', marginTop: 8 },
+  hwCard: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 14, overflow: 'hidden', marginBottom: 10 },
+  hwHeader: { flexDirection: 'row', alignItems: 'center', padding: 14, backgroundColor: '#faf5ff' },
+  hwOverdue: { borderLeftWidth: 4, borderLeftColor: '#ef4444' },
+  hwTitleRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
+  hwTitle: { fontSize: 15, fontWeight: '700', color: STUDENTS_UI.text },
+  hwMeta: { fontSize: 12, color: STUDENTS_UI.textMuted, marginTop: 4 },
+  deadline: { fontSize: 12, color: STUDENTS_UI.textMuted, marginTop: 2 },
+  badgeRed: { backgroundColor: '#fee2e2', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
+  badgeRedText: { fontSize: 10, fontWeight: '700', color: '#991b1b' },
+  badgeYellow: { backgroundColor: '#fef9c3', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
+  badgeYellowText: { fontSize: 10, fontWeight: '700', color: '#854d0e' },
+  subs: { padding: 12, backgroundColor: '#fff' },
+  noSubs: { fontSize: 13, color: STUDENTS_UI.textLight, fontStyle: 'italic' },
+  subRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#f3f4f6' },
+  subName: { fontSize: 14, fontWeight: '700', color: STUDENTS_UI.text },
+  subMeta: { fontSize: 11, color: STUDENTS_UI.textMuted, marginTop: 2 },
+  gradeBtn: { borderWidth: 1, borderColor: '#c7d2fe', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
+  gradeBtnText: { fontSize: 12, fontWeight: '700', color: STUDENTS_UI.indigo },
+  classBlock: { borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
+  classHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12 },
+  classTitle: { flex: 1, fontSize: 16, fontWeight: '700', color: '#312e81' },
+  classCount: { fontSize: 11, color: STUDENTS_UI.textMuted },
+  studentSubBlock: { marginLeft: 24, paddingBottom: 10, borderLeftWidth: 2, borderLeftColor: '#e0e7ff', paddingLeft: 12 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  modalCard: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20 },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: STUDENTS_UI.text, marginBottom: 12 },
+  label: { fontSize: 12, fontWeight: '700', color: STUDENTS_UI.textMuted, marginTop: 8, marginBottom: 6 },
+  input: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, padding: 12, color: STUDENTS_UI.text },
+  area: { minHeight: 80, textAlignVertical: 'top' },
+  chipRow: { gap: 8, paddingVertical: 4 },
+  chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, borderWidth: 1, borderColor: '#e5e7eb' },
+  chipActive: { borderColor: STUDENTS_UI.purple, backgroundColor: '#f5f3ff' },
+  chipText: { fontSize: 12, color: STUDENTS_UI.textMuted, fontWeight: '600' },
+  chipTextActive: { color: STUDENTS_UI.purple, fontWeight: '700' },
+  saveBtn: { padding: 14, borderRadius: 12, alignItems: 'center', marginTop: 16 },
+  saveBtnText: { color: '#fff', fontWeight: '700' },
+  cancelBtn: { alignItems: 'center', padding: 14 },
+  cancelText: { color: STUDENTS_UI.textMuted, fontWeight: '600' },
 });
-

@@ -1,13 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { filterVisibleStudentTools, type StudentAiTool } from '../../../src/lib/student-ai-tools';
-import { STUDENT, STUDENT_ANIMATION, STUDENT_RADIUS } from '../../../src/theme/student';
+import GlassCard from '../../../src/components/student/GlassCard';
+import { ShimmerCard } from '../../../src/components/student/StudentShimmer';
+import {
+  STUDENT,
+  STUDENT_ANIMATION,
+  STUDENT_RADIUS,
+  STUDENT_SPACING,
+  STUDENT_TYPO,
+} from '../../../src/theme/student';
 
 export default function VidyaAIView() {
   const { width } = useWindowDimensions();
@@ -15,9 +22,11 @@ export default function VidyaAIView() {
   const isTablet = width >= 768;
   const cardWidth = isTablet ? '31.5%' : '48%';
   const [subjectNames, setSubjectNames] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
+      setIsLoading(true);
       try {
         const token = await SecureStore.getItemAsync('authToken');
         if (!token) return;
@@ -34,6 +43,8 @@ export default function VidyaAIView() {
         }
       } catch {
         /* optional */
+      } finally {
+        setIsLoading(false);
       }
     })();
   }, []);
@@ -55,51 +66,56 @@ export default function VidyaAIView() {
         <Text style={styles.headerSubtitle}>Tap a tool to generate study content instantly</Text>
       </Animated.View>
 
-      <View style={styles.toolsGrid}>
-        {visibleTools.map((tool, index) => (
-          <Animated.View
-            key={tool.id}
-            entering={FadeInDown.duration(STUDENT_ANIMATION.normal).delay(80 + index * 45)}
-            style={{ width: cardWidth }}
-          >
-            <TouchableOpacity
-              style={[styles.toolCard, compact && { minHeight: 148, padding: 14 }]}
-              onPress={() => openTool(tool)}
-              activeOpacity={0.88}
+      {isLoading ? (
+        <View style={styles.shimmerGrid}>
+          <ShimmerCard style={{ width: cardWidth }} />
+          <ShimmerCard style={{ width: cardWidth }} />
+          <ShimmerCard style={{ width: cardWidth }} />
+          <ShimmerCard style={{ width: cardWidth }} />
+        </View>
+      ) : (
+        <View style={styles.toolsGrid}>
+          {visibleTools.map((tool, index) => (
+            <Animated.View
+              key={tool.id}
+              entering={FadeInDown.duration(STUDENT_ANIMATION.normal).delay(80 + index * 45)}
+              style={{ width: cardWidth }}
             >
-              <LinearGradient
-                colors={[`${tool.color}14`, `${tool.color}06`]}
-                style={styles.toolGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              />
-              <View style={styles.toolBadgeRow}>
-                <View style={[styles.toolIconContainer, { backgroundColor: `${tool.color}22` }]}>
-                  <Ionicons
-                    name={tool.icon as keyof typeof Ionicons.glyphMap}
-                    size={22}
-                    color={tool.color}
-                  />
+              <GlassCard
+                variant="elevated"
+                padding={compact ? 14 : 16}
+                style={compact ? { minHeight: 148 } : { minHeight: 168 }}
+                onPress={() => openTool(tool)}
+              >
+                <View style={[styles.toolTint, { backgroundColor: `${tool.color}08` }]} />
+                <View style={styles.toolBadgeRow}>
+                  <View style={[styles.toolIconContainer, { backgroundColor: `${tool.color}22` }]}>
+                    <Ionicons
+                      name={tool.icon as keyof typeof Ionicons.glyphMap}
+                      size={22}
+                      color={tool.color}
+                    />
+                  </View>
+                  <View style={styles.aiPoweredBadge}>
+                    <Ionicons name="sparkles" size={10} color={STUDENT.accent} />
+                    <Text style={styles.aiPoweredText}>AI</Text>
+                  </View>
                 </View>
-                <View style={styles.aiPoweredBadge}>
-                  <Ionicons name="sparkles" size={10} color="#0369a1" />
-                  <Text style={styles.aiPoweredText}>AI</Text>
+                <Text style={styles.toolTitle} numberOfLines={2}>
+                  {tool.name}
+                </Text>
+                <Text style={styles.toolDescription} numberOfLines={3}>
+                  {tool.description}
+                </Text>
+                <View style={styles.toolFooter}>
+                  <Text style={[styles.toolLink, { color: tool.color }]}>Open</Text>
+                  <Ionicons name="arrow-forward" size={14} color={tool.color} />
                 </View>
-              </View>
-              <Text style={styles.toolTitle} numberOfLines={2}>
-                {tool.name}
-              </Text>
-              <Text style={styles.toolDescription} numberOfLines={3}>
-                {tool.description}
-              </Text>
-              <View style={styles.toolFooter}>
-                <Text style={[styles.toolLink, { color: tool.color }]}>Open</Text>
-                <Ionicons name="arrow-forward" size={14} color={tool.color} />
-              </View>
-            </TouchableOpacity>
-          </Animated.View>
-        ))}
-      </View>
+              </GlassCard>
+            </Animated.View>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -107,36 +123,30 @@ export default function VidyaAIView() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '800',
+    ...STUDENT_TYPO.section,
     color: STUDENT.text,
-    letterSpacing: -0.4,
   },
   headerSubtitle: {
     marginTop: 4,
-    marginBottom: 16,
+    marginBottom: STUDENT_SPACING.lg,
     fontSize: 13,
     color: STUDENT.textMuted,
     lineHeight: 18,
   },
+  shimmerGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: STUDENT_SPACING.md,
+  },
   toolsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    paddingBottom: 12,
+    gap: STUDENT_SPACING.md,
+    paddingBottom: STUDENT_SPACING.md,
   },
-  toolCard: {
-    backgroundColor: STUDENT.surface,
-    borderRadius: STUDENT_RADIUS.lg,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
-    minHeight: 168,
-    overflow: 'hidden',
-    ...STUDENT.shadow.sm,
-  },
-  toolGradient: {
+  toolTint: {
     ...StyleSheet.absoluteFillObject,
+    borderRadius: STUDENT_RADIUS.card,
   },
   toolBadgeRow: {
     flexDirection: 'row',
@@ -147,7 +157,7 @@ const styles = StyleSheet.create({
   toolIconContainer: {
     width: 44,
     height: 44,
-    borderRadius: 14,
+    borderRadius: STUDENT_RADIUS.md,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -158,11 +168,11 @@ const styles = StyleSheet.create({
     backgroundColor: STUDENT.accentSoft,
     paddingHorizontal: 8,
     paddingVertical: 5,
-    borderRadius: 20,
+    borderRadius: STUDENT_RADIUS.full,
     borderWidth: 1,
-    borderColor: '#bfdbfe',
+    borderColor: STUDENT.surfaceBorder,
   },
-  aiPoweredText: { fontSize: 10, fontWeight: '800', color: '#0369a1' },
+  aiPoweredText: { fontSize: 10, fontWeight: '800', color: STUDENT.accent },
   toolTitle: {
     fontSize: 14,
     fontWeight: '800',

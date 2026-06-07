@@ -1,6 +1,8 @@
 import React, { memo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import {
   getContentTypeLabel,
   getSubjectName,
@@ -10,7 +12,7 @@ import {
   getVideoDisplayTitle,
   isVideoContentType,
 } from '../../../../src/lib/video-chapter-schedule';
-import { STUDENT } from '../../../../src/theme/student';
+import { STUDENT, STUDENT_RADIUS, STUDENT_TYPO, SUBJECT_COLORS } from '../../../../src/theme/student';
 
 type Props = {
   incompleteQuizzes: any[];
@@ -20,6 +22,10 @@ type Props = {
   onToggleComplete: (item: any, isQuiz: boolean) => void;
   onOpenItem: (item: any, isQuiz: boolean) => void;
 };
+
+function getSubjectColor(index: number): string {
+  return SUBJECT_COLORS[index % SUBJECT_COLORS.length];
+}
 
 function TodaysTasksSectionComponent({
   incompleteQuizzes,
@@ -35,13 +41,25 @@ function TodaysTasksSectionComponent({
     day: 'numeric',
   });
 
+  const allItems = [
+    ...incompleteQuizzes.map((q, i) => ({ item: q, isQuiz: true, index: i })),
+    ...incompleteContent.map((c, i) => ({
+      item: c,
+      isQuiz: false,
+      index: incompleteQuizzes.length + i,
+    })),
+  ];
+
   return (
     <View style={styles.card}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <View style={styles.headerIcon}>
-            <Ionicons name="checkmark-circle-outline" size={20} color="#6b7280" />
-          </View>
+          <LinearGradient
+            colors={[STUDENT.primary, STUDENT.primaryDark]}
+            style={styles.headerIcon}
+          >
+            <Ionicons name="checkmark-circle-outline" size={20} color={STUDENT.textOnPrimary} />
+          </LinearGradient>
           <Text style={styles.headerTitle}>TODAY&apos;S TASKS</Text>
         </View>
         <Text style={styles.headerDate}>{dateLabel}</Text>
@@ -54,131 +72,141 @@ function TodaysTasksSectionComponent({
         </View>
       ) : incompleteQuizzes.length === 0 && incompleteContent.length === 0 ? (
         <View style={styles.center}>
-          <Ionicons name="checkmark-circle" size={44} color="#22c55e" />
+          <Ionicons name="checkmark-circle" size={44} color={STUDENT.primary} />
           <Text style={styles.emptyTitle}>All caught up!</Text>
           <Text style={styles.emptySub}>No pending content or quizzes</Text>
         </View>
       ) : (
         <View style={styles.list}>
-          {incompleteQuizzes.map((quiz) => {
-            const id = String(quiz._id || quiz.id);
+          {allItems.map(({ item, isQuiz, index }) => {
+            const id = String(item._id || item.id);
             const isCompleted = completedScheduleIds.has(id);
-            const timeLabel = getTaskTimeLabel(quiz, true);
-            return (
-              <TouchableOpacity
-                key={`quiz-${id}`}
-                style={[styles.row, isCompleted && styles.rowDone]}
-                onPress={() => onOpenItem(quiz, true)}
-                activeOpacity={0.85}
-              >
-                <TouchableOpacity
-                  style={styles.checkWrap}
-                  onPress={(e) => {
-                    e.stopPropagation?.();
-                    onToggleComplete(quiz, true);
-                  }}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  {isCompleted ? (
-                    <View style={styles.checkDone}>
-                      <Ionicons name="checkmark" size={14} color="#fff" />
-                    </View>
-                  ) : (
-                    <View style={styles.checkEmpty} />
-                  )}
-                </TouchableOpacity>
-                <View style={styles.rowBody}>
-                  <Text style={[styles.rowTitle, isCompleted && styles.rowTitleDone]} numberOfLines={2}>
-                    Complete {quiz.title || 'Quiz'}
-                  </Text>
-                  <View style={styles.metaRow}>
-                    <Text style={styles.metaText} numberOfLines={1}>
-                      {typeof quiz.subject === 'string'
-                        ? quiz.subject
-                        : quiz.subject?.name || 'Unknown Subject'}
-                    </Text>
-                    <View style={styles.typePill}>
-                      <Text style={styles.typePillText}>Quiz</Text>
-                    </View>
-                  </View>
-                </View>
-                <View style={styles.timePill}>
-                  <Text style={styles.timePillText}>{isCompleted ? 'Done' : timeLabel}</Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+            const subjectColor = getSubjectColor(index);
+            const timeLabel = getTaskTimeLabel(item, isQuiz);
 
-          {incompleteContent.map((content) => {
-            const id = String(content._id || content.id);
-            const isCompleted = completedScheduleIds.has(id);
-            const isVideo = isVideoContentType(content.type);
-            const isHomework = String(content.type || '').toLowerCase() === 'homework';
-            const subjectName = getSubjectName(content);
-            const timeLabel = getTaskTimeLabel(content, false);
-            const deadline = content.deadline ? new Date(content.deadline) : null;
+            if (isQuiz) {
+              return (
+                <Animated.View key={`quiz-${id}`} entering={FadeInDown.duration(320).delay(index * 60)}>
+                  <TouchableOpacity
+                    style={[
+                      styles.row,
+                      { borderLeftColor: subjectColor },
+                      isCompleted && styles.rowDone,
+                    ]}
+                    onPress={() => onOpenItem(item, true)}
+                    activeOpacity={0.85}
+                  >
+                    <TouchableOpacity
+                      style={styles.checkWrap}
+                      onPress={(e) => {
+                        e.stopPropagation?.();
+                        onToggleComplete(item, true);
+                      }}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      {isCompleted ? (
+                        <View style={styles.checkDone}>
+                          <Ionicons name="checkmark" size={14} color={STUDENT.textOnPrimary} />
+                        </View>
+                      ) : (
+                        <View style={styles.checkEmpty} />
+                      )}
+                    </TouchableOpacity>
+                    <View style={styles.rowBody}>
+                      <Text style={[styles.rowTitle, isCompleted && styles.rowTitleDone]} numberOfLines={2}>
+                        Complete {item.title || 'Quiz'}
+                      </Text>
+                      <View style={styles.metaRow}>
+                        <Text style={styles.metaText} numberOfLines={1}>
+                          {typeof item.subject === 'string'
+                            ? item.subject
+                            : item.subject?.name || 'Unknown Subject'}
+                        </Text>
+                        <View style={styles.typePill}>
+                          <Text style={styles.typePillText}>Quiz</Text>
+                        </View>
+                      </View>
+                    </View>
+                    <View style={styles.timePill}>
+                      <Text style={styles.timePillText}>{isCompleted ? 'Done' : timeLabel}</Text>
+                    </View>
+                  </TouchableOpacity>
+                </Animated.View>
+              );
+            }
+
+            const isVideo = isVideoContentType(item.type);
+            const isHomework = String(item.type || '').toLowerCase() === 'homework';
+            const subjectName = getSubjectName(item);
+            const deadline = item.deadline ? new Date(item.deadline) : null;
             const isOverdue = deadline && deadline < new Date() && !isCompleted;
             const title = isVideo
-              ? getVideoDisplayTitle(content)
-              : `${getContentTypeLabel(content.type || 'Material')} ${content.title || 'Content'}`;
+              ? getVideoDisplayTitle(item)
+              : `${getContentTypeLabel(item.type || 'Material')} ${item.title || 'Content'}`;
 
             return (
-              <TouchableOpacity
-                key={`content-${id}`}
-                style={[styles.row, isCompleted && styles.rowDone, isOverdue && styles.rowOverdue]}
-                onPress={() => onOpenItem(content, false)}
-                activeOpacity={0.85}
-              >
+              <Animated.View key={`content-${id}`} entering={FadeInDown.duration(320).delay(index * 60)}>
                 <TouchableOpacity
-                  style={styles.checkWrap}
-                  onPress={(e) => {
-                    e.stopPropagation?.();
-                    if (isVideo && !isCompleted) {
-                      onOpenItem(content, false);
-                      return;
-                    }
-                    onToggleComplete(content, false);
-                  }}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={[
+                    styles.row,
+                    { borderLeftColor: subjectColor },
+                    isCompleted && styles.rowDone,
+                    isOverdue && styles.rowOverdue,
+                  ]}
+                  onPress={() => onOpenItem(item, false)}
+                  activeOpacity={0.85}
                 >
-                  {isCompleted ? (
-                    <View style={styles.checkDone}>
-                      <Ionicons name="checkmark" size={14} color="#fff" />
-                    </View>
-                  ) : isVideo ? (
-                    <View style={styles.playCircle}>
-                      <Ionicons name="play" size={12} color="#0284c7" />
-                    </View>
-                  ) : (
-                    <View style={styles.checkEmpty} />
-                  )}
-                </TouchableOpacity>
-                <View style={styles.rowBody}>
-                  <Text style={[styles.rowTitle, isCompleted && styles.rowTitleDone]} numberOfLines={2}>
-                    {title}
-                  </Text>
-                  <View style={styles.metaRow}>
-                    <Text style={styles.metaText} numberOfLines={1}>
-                      {subjectName}
+                  <TouchableOpacity
+                    style={styles.checkWrap}
+                    onPress={(e) => {
+                      e.stopPropagation?.();
+                      if (isVideo && !isCompleted) {
+                        onOpenItem(item, false);
+                        return;
+                      }
+                      onToggleComplete(item, false);
+                    }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    {isCompleted ? (
+                      <View style={styles.checkDone}>
+                        <Ionicons name="checkmark" size={14} color={STUDENT.textOnPrimary} />
+                      </View>
+                    ) : isVideo ? (
+                      <View style={styles.playCircle}>
+                        <Ionicons name="play" size={12} color={STUDENT.accent} />
+                      </View>
+                    ) : (
+                      <View style={styles.checkEmpty} />
+                    )}
+                  </TouchableOpacity>
+                  <View style={styles.rowBody}>
+                    <Text style={[styles.rowTitle, isCompleted && styles.rowTitleDone]} numberOfLines={2}>
+                      {title}
                     </Text>
-                    {content.type ? (
-                      <View style={styles.typePill}>
-                        <Text style={styles.typePillText}>{content.type}</Text>
-                      </View>
-                    ) : null}
-                    {isHomework && deadline ? (
-                      <View style={[styles.duePill, isOverdue && styles.duePillOverdue]}>
-                        <Text style={[styles.dueText, isOverdue && styles.dueTextOverdue]}>
-                          Due: {deadline.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </Text>
-                      </View>
-                    ) : null}
+                    <View style={styles.metaRow}>
+                      <Text style={styles.metaText} numberOfLines={1}>
+                        {subjectName}
+                      </Text>
+                      {item.type ? (
+                        <View style={styles.typePill}>
+                          <Text style={styles.typePillText}>{item.type}</Text>
+                        </View>
+                      ) : null}
+                      {isHomework && deadline ? (
+                        <View style={[styles.duePill, isOverdue && styles.duePillOverdue]}>
+                          <Text style={[styles.dueText, isOverdue && styles.dueTextOverdue]}>
+                            Due: {deadline.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
                   </View>
-                </View>
-                <View style={styles.timePill}>
-                  <Text style={styles.timePillText}>{isCompleted ? 'Done' : timeLabel}</Text>
-                </View>
-              </TouchableOpacity>
+                  <View style={styles.timePill}>
+                    <Text style={styles.timePillText}>{isCompleted ? 'Done' : timeLabel}</Text>
+                  </View>
+                </TouchableOpacity>
+              </Animated.View>
             );
           })}
         </View>
@@ -189,16 +217,12 @@ function TodaysTasksSectionComponent({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
+    backgroundColor: STUDENT.surface,
+    borderRadius: STUDENT_RADIUS.card,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    borderColor: STUDENT.surfaceBorder,
+    ...STUDENT.shadow.sm,
   },
   header: {
     flexDirection: 'row',
@@ -208,24 +232,23 @@ const styles = StyleSheet.create({
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
   headerIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#f3f4f6',
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 17,
+    ...STUDENT_TYPO.caption,
     fontWeight: '800',
-    color: '#374151',
+    color: STUDENT.text,
     letterSpacing: 0.3,
   },
-  headerDate: { fontSize: 12, color: '#6b7280', fontWeight: '600' },
+  headerDate: { fontSize: 12, color: STUDENT.textMuted, fontWeight: '600' },
   center: { alignItems: 'center', paddingVertical: 24, gap: 8 },
-  loadingText: { fontSize: 13, color: '#6b7280' },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: '#374151' },
-  emptySub: { fontSize: 13, color: '#6b7280' },
+  loadingText: { fontSize: 13, color: STUDENT.textMuted },
+  emptyTitle: { fontSize: 16, fontWeight: '700', color: STUDENT.text },
+  emptySub: { fontSize: 13, color: STUDENT.textMuted },
   list: { gap: 0 },
   row: {
     flexDirection: 'row',
@@ -233,23 +256,25 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: STUDENT.surfaceBorder,
+    borderLeftWidth: 3,
+    paddingLeft: 9,
   },
-  rowDone: { backgroundColor: '#ecfdf5' },
-  rowOverdue: { backgroundColor: '#fef2f2' },
+  rowDone: { backgroundColor: STUDENT.bgAccent },
+  rowOverdue: { backgroundColor: `${STUDENT.danger}0f` },
   checkWrap: { padding: 2 },
   checkEmpty: {
     width: 26,
     height: 26,
     borderRadius: 13,
     borderWidth: 2,
-    borderColor: '#d1d5db',
+    borderColor: STUDENT.surfaceBorder,
   },
   checkDone: {
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: '#10b981',
+    backgroundColor: STUDENT.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -258,37 +283,37 @@ const styles = StyleSheet.create({
     height: 26,
     borderRadius: 13,
     borderWidth: 2,
-    borderColor: '#38bdf8',
-    backgroundColor: '#f0f9ff',
+    borderColor: STUDENT.accent,
+    backgroundColor: STUDENT.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
     paddingLeft: 2,
   },
   rowBody: { flex: 1, minWidth: 0 },
-  rowTitle: { fontSize: 14, fontWeight: '700', color: '#111827' },
-  rowTitleDone: { textDecorationLine: 'line-through', color: '#9ca3af' },
+  rowTitle: { fontSize: 14, fontWeight: '700', color: STUDENT.text },
+  rowTitleDone: { textDecorationLine: 'line-through', color: STUDENT.textMuted },
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 4 },
-  metaText: { fontSize: 11, color: '#6b7280', maxWidth: '45%' },
+  metaText: { fontSize: 11, color: STUDENT.textMuted, maxWidth: '45%' },
   typePill: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: STUDENT.surfaceHover,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,
   },
-  typePillText: { fontSize: 10, fontWeight: '600', color: '#4b5563' },
+  typePillText: { fontSize: 10, fontWeight: '600', color: STUDENT.textSecondary },
   duePill: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  duePillOverdue: { backgroundColor: '#fee2e2' },
-  dueText: { fontSize: 10, fontWeight: '600', color: '#dc2626' },
-  dueTextOverdue: { color: '#b91c1c' },
+  duePillOverdue: { backgroundColor: `${STUDENT.danger}18` },
+  dueText: { fontSize: 10, fontWeight: '600', color: STUDENT.danger },
+  dueTextOverdue: { color: STUDENT.danger },
   timePill: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#fff',
+    borderColor: STUDENT.surfaceBorder,
+    backgroundColor: STUDENT.surface,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 20,
   },
-  timePillText: { fontSize: 11, fontWeight: '600', color: '#4b5563' },
+  timePillText: { fontSize: 11, fontWeight: '600', color: STUDENT.textSecondary },
 });
 
 export default memo(TodaysTasksSectionComponent);

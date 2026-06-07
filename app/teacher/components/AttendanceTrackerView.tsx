@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as SecureStore from 'expo-secure-store';
-import { API_BASE_URL } from '../../../src/services/api/api';
+import teacherService from '../../../src/services/api/teacherService';
 import { ActionButton, EmptyState, ErrorState, LoadingState } from '../../../src/components/ui';
 import { COLORS, FONT, RADIUS, SPACING } from '../../../src/theme';
 
@@ -26,12 +25,8 @@ export default function AttendanceTrackerView() {
   const load = useCallback(async () => {
     try {
       setError('');
-      const token = await SecureStore.getItemAsync('authToken');
-      const res = await fetch(`${API_BASE_URL}/api/teacher/attendance`, {
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      });
-      if (!res.ok) throw new Error('Failed to load attendance');
-      const data = await res.json();
+      const res = await teacherService.attendance();
+      const data = res.data || {};
       const roster = data?.students || data?.roster || data?.data?.students || [];
       const hist = data?.history || data?.records || [];
       setStudents(
@@ -61,13 +56,8 @@ export default function AttendanceTrackerView() {
   const submit = async () => {
     setSubmitting(true);
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const res = await fetch(`${API_BASE_URL}/api/teacher/attendance`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ students }),
-      });
-      if (!res.ok) throw new Error('Failed to submit attendance');
+      await teacherService.markAttendance({ students });
+      await teacherService.invalidateCache('attendance');
       await load();
     } catch (e: any) {
       setError(e?.message || 'Could not submit attendance');

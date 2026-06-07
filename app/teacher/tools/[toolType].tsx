@@ -1,455 +1,527 @@
-import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Alert, Share } from 'react-native';
+import { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  Share,
+  Modal,
+  Pressable,
+  KeyboardAvoidingView,
+  Platform,
+  StatusBar,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { API_BASE_URL } from '../../../src/lib/api-config';
-import * as SecureStore from 'expo-secure-store';
 import * as Clipboard from 'expo-clipboard';
-import { useBackNavigation, getDashboardPath } from '../../../src/hooks/useBackNavigation';
+import { useBackNavigation } from '../../../src/hooks/useBackNavigation';
+import {
+  filterSubjectsForAiTool,
+  isStoryPassageLanguageSubject,
+  isStoryLanguageTool,
+} from '../../../src/lib/student-ai-tools';
+import {
+  getTeacherToolConfig,
+  isTeacherToolType,
+  CLASS_OPTIONS,
+  type TeacherToolFieldConfig,
+} from '../../../src/lib/teacher-ai-tool-configs';
+import { stripStructuredAiToolMetadata } from '../../../src/lib/strip-ai-tool-metadata';
+import {
+  getAiToolBoardOptions,
+  getDefaultAiToolBoard,
+  mapGradeLevelForIitBoard,
+  resolveCurriculumBoardForAiTools,
+  resolveIsAsliPrepExclusive,
+} from '../../../src/lib/school-program-ai';
+import {
+  useCurriculumCascade,
+  isGradeWithScienceCurriculumDropdowns,
+} from '../../../src/hooks/useCurriculumCascade';
+import teacherService, { asArray } from '../../../src/services/api/teacherService';
+import {
+  TEACHER,
+  TEACHER_RADIUS,
+  TEACHER_SPACING,
+  TEACHER_TYPO,
+} from '../../../src/theme/teacher';
 
-interface ToolConfig {
-  name: string;
-  description: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  color: string;
-  fields: Array<{
-    name: string;
-    label: string;
-    type: 'text' | 'textarea' | 'select' | 'number';
-    placeholder?: string;
-    options?: string[];
-    required?: boolean;
-    dependsOn?: string;
-    getOptions?: (value: string) => string[];
-    isStudentSelect?: boolean;
-  }>;
+function mergeSelectedIntoOptions(options: string[], selected: unknown): string[] {
+  const v = typeof selected === 'string' ? selected.trim() : '';
+  if (!v) return options;
+  if (options.includes(v)) return options;
+  return [v, ...options];
 }
 
-// Class-wise subjects mapping
-const CLASS_SUBJECTS: Record<string, string[]> = {
-  'Class 6': [
-    'Mathematics',
-    'Science',
-    'English',
-    'Hindi',
-    'Social Studies',
-    'Computer Science',
-    'Physical Education',
-    'Art',
-    'Music'
-  ],
-  'Class 7': [
-    'Mathematics',
-    'Science',
-    'English',
-    'Hindi',
-    'Social Studies',
-    'Computer Science',
-    'Physical Education',
-    'Art',
-    'Music'
-  ],
-  'Class 8': [
-    'Mathematics',
-    'Science',
-    'English',
-    'Hindi',
-    'Social Studies',
-    'Computer Science',
-    'Physical Education',
-    'Art',
-    'Music'
-  ],
-  'Class 9': [
-    'Mathematics',
-    'Science',
-    'Physics',
-    'Chemistry',
-    'Biology',
-    'English',
-    'Hindi',
-    'Social Studies',
-    'History',
-    'Geography',
-    'Civics',
-    'Economics',
-    'Computer Science',
-    'Physical Education',
-    'Art',
-    'Music'
-  ],
-  'Class 10': [
-    'Mathematics',
-    'Science',
-    'Physics',
-    'Chemistry',
-    'Biology',
-    'English',
-    'Hindi',
-    'Social Studies',
-    'History',
-    'Geography',
-    'Civics',
-    'Economics',
-    'Computer Science',
-    'Physical Education',
-    'Art',
-    'Music'
-  ],
-  'Class 11': [
-    'Mathematics',
-    'Physics',
-    'Chemistry',
-    'Biology',
-    'English',
-    'Hindi',
-    'Computer Science',
-    'Physical Education',
-    'Economics',
-    'Business Studies',
-    'Accountancy',
-    'History',
-    'Geography',
-    'Political Science',
-    'Psychology',
-    'Sociology',
-    'Philosophy',
-    'Fine Arts',
-    'Music'
-  ],
-  'Class 12': [
-    'Mathematics',
-    'Physics',
-    'Chemistry',
-    'Biology',
-    'English',
-    'Hindi',
-    'Computer Science',
-    'Physical Education',
-    'Economics',
-    'Business Studies',
-    'Accountancy',
-    'History',
-    'Geography',
-    'Political Science',
-    'Psychology',
-    'Sociology',
-    'Philosophy',
-    'Fine Arts',
-    'Music'
-  ],
-  'Dropper Batch': [
-    'Mathematics',
-    'Physics',
-    'Chemistry',
-    'Biology',
-    'English'
-  ]
+const FIELD_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  board: 'school-outline',
+  gradeLevel: 'layers-outline',
+  subject: 'book-outline',
+  topic: 'document-text-outline',
+  chapter: 'document-text-outline',
+  subTopic: 'list-outline',
+  concept: 'bulb-outline',
+  projectTopic: 'construct-outline',
+  questionCount: 'help-circle-outline',
+  difficulty: 'speedometer-outline',
+  duration: 'time-outline',
+  focusAreas: 'telescope-outline',
+  questionType: 'help-circle-outline',
+  length: 'resize-outline',
+  date: 'calendar-outline',
+  timeSlots: 'time-outline',
+  className: 'people-outline',
 };
 
-const CLASS_OPTIONS = ['Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10', 'Class 11', 'Class 12', 'Dropper Batch'];
-
-const TOOL_CONFIGS: Record<string, ToolConfig> = {
-  'activity-project-generator': {
-    name: 'Activity & Project Generator',
-    description: 'Create engaging activities and projects tailored to your curriculum',
-    icon: 'sparkles',
-    color: '#f97316',
-    fields: [
-      { name: 'gradeLevel', label: 'Class *', type: 'select', required: true, options: CLASS_OPTIONS },
-      { name: 'subject', label: 'Subject *', type: 'select', required: true, dependsOn: 'gradeLevel', getOptions: (classValue) => CLASS_SUBJECTS[classValue] || [] },
-      { name: 'topic', label: 'Topic *', type: 'text', required: true, placeholder: 'Enter topic name' },
-      { name: 'subTopic', label: 'Sub Topic', type: 'text', required: false, placeholder: 'Enter sub topic (optional)' },
-      { name: 'className', label: 'Section (Optional)', type: 'text', placeholder: 'e.g., A, B, C' }
-    ]
-  },
-  'worksheet-mcq-generator': {
-    name: 'Worksheet & MCQ Generator',
-    description: 'Design custom worksheets and MCQs with various question types',
-    icon: 'document-text',
-    color: '#8b5cf6',
-    fields: [
-      { name: 'gradeLevel', label: 'Class *', type: 'select', required: true, options: CLASS_OPTIONS },
-      { name: 'subject', label: 'Subject *', type: 'select', required: true, dependsOn: 'gradeLevel', getOptions: (classValue) => CLASS_SUBJECTS[classValue] || [] },
-      { name: 'topic', label: 'Topic *', type: 'text', required: true, placeholder: 'Enter topic name' },
-      { name: 'subTopic', label: 'Sub Topic', type: 'text', required: false, placeholder: 'Enter sub topic (optional)' },
-      { name: 'questionType', label: 'Question Type *', type: 'select', required: true, options: ['Single Option', 'Multiple Option', 'Integer Type', 'All Types'], placeholder: 'Select question type' },
-      { name: 'questionCount', label: 'Number of Questions', type: 'number', placeholder: '10' },
-      { name: 'difficulty', label: 'Difficulty', type: 'select', options: ['easy', 'medium', 'hard'] }
-    ]
-  },
-  'concept-mastery-helper': {
-    name: 'Concept Mastery Helper',
-    description: 'Break down complex concepts into digestible lessons',
-    icon: 'bulb',
-    color: '#14b8a6',
-    fields: [
-      { name: 'gradeLevel', label: 'Class *', type: 'select', required: true, options: CLASS_OPTIONS },
-      { name: 'subject', label: 'Subject *', type: 'select', required: true, dependsOn: 'gradeLevel', getOptions: (classValue) => CLASS_SUBJECTS[classValue] || [] },
-      { name: 'concept', label: 'Topic/Concept *', type: 'text', required: true, placeholder: 'Enter concept or topic name' },
-      { name: 'subTopic', label: 'Sub Topic', type: 'text', required: false, placeholder: 'Enter sub topic (optional)' }
-    ]
-  },
-  'lesson-planner': {
-    name: 'Lesson Planner',
-    description: 'Plan structured lessons with objectives and activities',
-    icon: 'calendar',
-    color: '#f97316',
-    fields: [
-      { name: 'gradeLevel', label: 'Class *', type: 'select', required: true, options: CLASS_OPTIONS },
-      { name: 'subject', label: 'Subject *', type: 'select', required: true, dependsOn: 'gradeLevel', getOptions: (classValue) => CLASS_SUBJECTS[classValue] || [] },
-      { name: 'topic', label: 'Topic *', type: 'text', required: true, placeholder: 'Enter topic name' },
-      { name: 'subTopic', label: 'Sub Topic', type: 'text', required: false, placeholder: 'Enter sub topic (optional)' },
-      { name: 'duration', label: 'Duration (minutes)', type: 'number', placeholder: '90' }
-    ]
-  },
-  'homework-creator': {
-    name: 'Homework Creator',
-    description: 'Generate meaningful homework assignments',
-    icon: 'rocket',
-    color: '#f97316',
-    fields: [
-      { name: 'gradeLevel', label: 'Class *', type: 'select', required: true, options: CLASS_OPTIONS },
-      { name: 'subject', label: 'Subject *', type: 'select', required: true, dependsOn: 'gradeLevel', getOptions: (classValue) => CLASS_SUBJECTS[classValue] || [] },
-      { name: 'topic', label: 'Topic *', type: 'text', required: true, placeholder: 'Enter topic name' },
-      { name: 'subTopic', label: 'Sub Topic', type: 'text', required: false, placeholder: 'Enter sub topic (optional)' },
-      { name: 'duration', label: 'Expected Duration (minutes)', type: 'number', placeholder: '30' }
-    ]
-  },
-  'rubrics-evaluation-generator': {
-    name: 'Rubrics & Evaluation Generator',
-    description: 'Create clear assessment criteria and rubrics',
-    icon: 'scale',
-    color: '#8b5cf6',
-    fields: [
-      { name: 'gradeLevel', label: 'Class *', type: 'select', required: true, options: CLASS_OPTIONS },
-      { name: 'subject', label: 'Subject *', type: 'select', required: true, dependsOn: 'gradeLevel', getOptions: (classValue) => CLASS_SUBJECTS[classValue] || [] },
-      { name: 'assignmentType', label: 'Assignment Type *', type: 'text', required: true, placeholder: 'e.g., Project, Essay, Lab Report' },
-      { name: 'subTopic', label: 'Sub Topic', type: 'text', required: false, placeholder: 'Enter sub topic (optional)' }
-    ]
-  },
-  'learning-outcomes-generator': {
-    name: 'Learning Outcomes Generator',
-    description: 'Define measurable learning outcomes for your courses',
-    icon: 'locate-outline',
-    color: '#14b8a6',
-    fields: [
-      { name: 'gradeLevel', label: 'Class *', type: 'select', required: true, options: CLASS_OPTIONS },
-      { name: 'subject', label: 'Subject *', type: 'select', required: true, dependsOn: 'gradeLevel', getOptions: (classValue) => CLASS_SUBJECTS[classValue] || [] },
-      { name: 'topic', label: 'Topic *', type: 'text', required: true, placeholder: 'Enter topic name' },
-      { name: 'subTopic', label: 'Sub Topic', type: 'text', required: false, placeholder: 'Enter sub topic (optional)' }
-    ]
-  },
-  'story-passage-creator': {
-    name: 'Story & Passage Creator',
-    description: 'Generate engaging stories and reading passages',
-    icon: 'book',
-    color: '#f97316',
-    fields: [
-      { name: 'gradeLevel', label: 'Class *', type: 'select', required: true, options: CLASS_OPTIONS },
-      { name: 'subject', label: 'Subject *', type: 'select', required: true, dependsOn: 'gradeLevel', getOptions: (classValue) => CLASS_SUBJECTS[classValue] || [] },
-      { name: 'topic', label: 'Topic *', type: 'text', required: true, placeholder: 'Enter topic name' },
-      { name: 'subTopic', label: 'Sub Topic', type: 'text', required: false, placeholder: 'Enter sub topic (optional)' },
-      { name: 'length', label: 'Length', type: 'select', options: ['short', 'medium', 'long'] }
-    ]
-  },
-  'short-notes-summaries-maker': {
-    name: 'Short Notes & Summaries Maker',
-    description: 'Condense complex topics into concise notes',
-    icon: 'layers',
-    color: '#14b8a6',
-    fields: [
-      { name: 'gradeLevel', label: 'Class *', type: 'select', required: true, options: CLASS_OPTIONS },
-      { name: 'subject', label: 'Subject *', type: 'select', required: true, dependsOn: 'gradeLevel', getOptions: (classValue) => CLASS_SUBJECTS[classValue] || [] },
-      { name: 'topic', label: 'Topic *', type: 'text', required: true, placeholder: 'Enter topic name' },
-      { name: 'subTopic', label: 'Sub Topic', type: 'text', required: false, placeholder: 'Enter sub topic (optional)' }
-    ]
-  },
-  'flashcard-generator': {
-    name: 'Flashcard Generator',
-    description: 'Build study flashcards for quick revision',
-    icon: 'card',
-    color: '#f97316',
-    fields: [
-      { name: 'gradeLevel', label: 'Class *', type: 'select', required: true, options: CLASS_OPTIONS },
-      { name: 'subject', label: 'Subject *', type: 'select', required: true, dependsOn: 'gradeLevel', getOptions: (classValue) => CLASS_SUBJECTS[classValue] || [] },
-      { name: 'topic', label: 'Topic *', type: 'text', required: true, placeholder: 'Enter topic name' },
-      { name: 'subTopic', label: 'Sub Topic', type: 'text', required: false, placeholder: 'Enter sub topic (optional)' },
-      { name: 'cardCount', label: 'Number of Cards', type: 'number', placeholder: '20' }
-    ]
-  },
-  'report-card-generator': {
-    name: 'Report Card Generator',
-    description: 'Generate comprehensive student progress reports with feedback',
-    icon: 'checkmark-circle',
-    color: '#8b5cf6',
-    fields: [
-      { name: 'studentName', label: 'Student Name *', type: 'select', required: true, placeholder: 'Select student', isStudentSelect: true },
-      { name: 'gradeLevel', label: 'Class *', type: 'select', required: true, options: CLASS_OPTIONS },
-      { name: 'subject', label: 'Subject *', type: 'select', required: true, dependsOn: 'gradeLevel', getOptions: (classValue) => CLASS_SUBJECTS[classValue] || [] },
-      { name: 'subTopic', label: 'Sub Topic', type: 'text', required: false, placeholder: 'Enter sub topic (optional)' },
-      { name: 'term', label: 'Term', type: 'text', placeholder: 'e.g., First Term' }
-    ]
-  },
-  'student-skill-tracker': {
-    name: 'Student Skill Tracker',
-    description: 'Monitor and track student skill development',
-    icon: 'trending-up',
-    color: '#14b8a6',
-    fields: [
-      { name: 'studentName', label: 'Student Name *', type: 'select', required: true, placeholder: 'Select student', isStudentSelect: true },
-      { name: 'gradeLevel', label: 'Class *', type: 'select', required: true, options: CLASS_OPTIONS },
-      { name: 'subject', label: 'Subject *', type: 'select', required: true, dependsOn: 'gradeLevel', getOptions: (classValue) => CLASS_SUBJECTS[classValue] || [] },
-      { name: 'subTopic', label: 'Sub Topic', type: 'text', required: false, placeholder: 'Enter sub topic (optional)' }
-    ]
-  },
-  'daily-class-plan-maker': {
-    name: 'Daily Class Plan Maker',
-    description: 'Organize your daily teaching schedule efficiently',
-    icon: 'checkbox-outline',
-    color: '#14b8a6',
-    fields: [
-      { name: 'date', label: 'Date', type: 'text', placeholder: 'e.g., 2025-01-15' },
-      { name: 'gradeLevel', label: 'Class *', type: 'select', required: true, options: CLASS_OPTIONS },
-      { name: 'subjects', label: 'Subjects *', type: 'text', required: true, placeholder: 'e.g., Physics, Chemistry, Mathematics' },
-      { name: 'subTopic', label: 'Sub Topic', type: 'text', required: false, placeholder: 'Enter sub topic (optional)' },
-      { name: 'timeSlots', label: 'Time Slots', type: 'text', placeholder: 'e.g., 9:00-10:00, 10:15-11:15' }
-    ]
-  },
-  'exam-question-paper-generator': {
-    name: 'Exam Question Paper Generator',
-    description: 'Create comprehensive exam papers with varying difficulty',
-    icon: 'help-circle',
-    color: '#8b5cf6',
-    fields: [
-      { name: 'gradeLevel', label: 'Class *', type: 'select', required: true, options: CLASS_OPTIONS },
-      { name: 'subject', label: 'Subject *', type: 'select', required: true, dependsOn: 'gradeLevel', getOptions: (classValue) => CLASS_SUBJECTS[classValue] || [] },
-      { name: 'topic', label: 'Topic *', type: 'text', required: true, placeholder: 'Enter topic name' },
-      { name: 'subTopic', label: 'Sub Topic', type: 'text', required: false, placeholder: 'Enter sub topic (optional)' },
-      { name: 'duration', label: 'Exam Duration (minutes)', type: 'number', placeholder: '90' },
-      { name: 'difficulty', label: 'Difficulty Mix', type: 'select', options: ['easy', 'medium', 'hard', 'mixed'] }
-    ]
-  },
+type DropdownState = {
+  fieldName: string;
+  title: string;
+  options: string[];
+  value: string;
+  disabled: boolean;
 };
+
+function normalizeSubjectName(value: string) {
+  let compact = String(value || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (compact === 'maths') return 'mathematics';
+  if (compact === 'socialscience' || compact === 'socialstudies' || compact === 'sst') return 'socialscience';
+  if (compact.startsWith('biology')) return 'biology';
+  if (compact.startsWith('physics')) return 'physics';
+  if (compact.startsWith('chemistry')) return 'chemistry';
+  if (compact.startsWith('math')) return 'mathematics';
+  return compact;
+}
+
+function uniquePreserveOrder(items: string[]) {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const item of items) {
+    const key = normalizeSubjectName(item);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    result.push(String(item).trim());
+  }
+  return result;
+}
+
+function FormSection({
+  title,
+  subtitle,
+  accent,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  accent: string;
+  children: ReactNode;
+}) {
+  return (
+    <View style={styles.sectionCard}>
+      <View style={styles.sectionHeader}>
+        <View style={[styles.sectionAccent, { backgroundColor: accent }]} />
+        <View style={styles.sectionHeaderText}>
+          <Text style={styles.sectionTitle}>{title}</Text>
+          {subtitle ? <Text style={styles.sectionSubtitle}>{subtitle}</Text> : null}
+        </View>
+      </View>
+      <View style={styles.sectionBody}>{children}</View>
+    </View>
+  );
+}
+
+function TeacherToolHeader({
+  title,
+  subtitle,
+  onBack,
+}: {
+  title: string;
+  subtitle?: string;
+  onBack: () => void;
+}) {
+  return (
+    <View style={styles.header}>
+      <Pressable onPress={onBack} style={styles.backBtn} hitSlop={8}>
+        <Ionicons name="arrow-back" size={22} color={TEACHER.text} />
+      </Pressable>
+      <View style={styles.headerText}>
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text style={styles.headerSubtitle} numberOfLines={2}>
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
+      <View style={styles.headerIcon}>
+        <Ionicons name="sparkles" size={20} color={TEACHER.primaryLight} />
+      </View>
+    </View>
+  );
+}
 
 export default function TeacherToolPage() {
-  const { toolType } = useLocalSearchParams<{ toolType: string }>();
+  const { toolType: rawToolType } = useLocalSearchParams<{ toolType: string }>();
+  const toolType = rawToolType || '';
   const [formParams, setFormParams] = useState<Record<string, any>>({});
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedContent, setGeneratedContent] = useState('');
   const [copied, setCopied] = useState(false);
-  const [assignedStudents, setAssignedStudents] = useState<Array<{id: string, name: string, classNumber?: string}>>([]);
-  const [isLoadingStudents, setIsLoadingStudents] = useState(false);
-  const [dashboardPath, setDashboardPath] = useState<string>('/teacher/dashboard');
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
+  const [assignedSubjectNames, setAssignedSubjectNames] = useState<string[]>([]);
+  const [availableNCERTTopics, setAvailableNCERTTopics] = useState<string[]>([]);
+  const [schoolBoardName, setSchoolBoardName] = useState('CBSE');
+  const [isAsliPrepExclusive, setIsAsliPrepExclusive] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState<DropdownState | null>(null);
 
-  const config = toolType ? TOOL_CONFIGS[toolType] : null;
+  const config = toolType && isTeacherToolType(toolType) ? getTeacherToolConfig(toolType) : null;
+  const accent = config?.color || TEACHER.primary;
+
+  const boardOptions = getAiToolBoardOptions(isAsliPrepExclusive, schoolBoardName);
+  const selectedBoard = formParams.board || getDefaultAiToolBoard(isAsliPrepExclusive, schoolBoardName);
+  const cascadeTopic = formParams.topic || formParams.chapter || '';
+
+  const cascade = useCurriculumCascade(
+    formParams.gradeLevel,
+    formParams.subject,
+    cascadeTopic,
+    selectedBoard
+  );
+
+  const classSelectOptions =
+    cascade.classOptions.length > 0 ? cascade.classOptions : CLASS_OPTIONS;
+
+  const restrictToAssignedSubjects = useCallback(
+    (subjects: string[]) => {
+      if (assignedSubjectNames.length === 0) return subjects;
+      const allowed = new Set(assignedSubjectNames.map(normalizeSubjectName));
+      const restricted = uniquePreserveOrder(
+        subjects.filter((subject) => allowed.has(normalizeSubjectName(subject)))
+      );
+      return restricted.length > 0 ? restricted : subjects;
+    },
+    [assignedSubjectNames]
+  );
+
+  const availableSubjects = useMemo(() => {
+    const gv = formParams.gradeLevel;
+    if (!gv || !isGradeWithScienceCurriculumDropdowns(gv)) return [];
+    const raw = cascade.subjects;
+    if (cascade.loadingSubjects && raw.length === 0) return [];
+    if (raw.length === 0) return [];
+    return restrictToAssignedSubjects(raw);
+  }, [
+    formParams.gradeLevel,
+    cascade.subjects,
+    cascade.loadingSubjects,
+    restrictToAssignedSubjects,
+  ]);
+
+  const subjectsForTool = useMemo(
+    () => filterSubjectsForAiTool(toolType, availableSubjects),
+    [toolType, availableSubjects]
+  );
+
+  const displayGeneratedContent = useMemo(
+    () => stripStructuredAiToolMetadata(generatedContent),
+    [generatedContent]
+  );
+
+  const { curriculumFields, topicFields, extraFields } = useMemo(() => {
+    if (!config) return { curriculumFields: [], topicFields: [], extraFields: [] };
+    const curriculum: TeacherToolFieldConfig[] = [];
+    const topic: TeacherToolFieldConfig[] = [];
+    const extra: TeacherToolFieldConfig[] = [];
+    for (const field of config.fields) {
+      if (field.name === 'gradeLevel' || field.name === 'subject') {
+        curriculum.push(field);
+      } else if (field.isNCERT || field.isCascadeSubtopic) {
+        topic.push(field);
+      } else {
+        extra.push(field);
+      }
+    }
+    return { curriculumFields: curriculum, topicFields: topic, extraFields: extra };
+  }, [config]);
+
+  const completion = useMemo(() => {
+    if (!config) return { filled: 0, total: 1, percent: 0 };
+    const required = [
+      { name: 'board', label: 'Board' },
+      ...config.fields.filter((f) => f.required).map((f) => ({ name: f.name, label: f.label })),
+    ];
+    const filled = required.filter((f) => Boolean(formParams[f.name])).length;
+    return {
+      filled,
+      total: required.length,
+      percent: Math.round((filled / required.length) * 100),
+    };
+  }, [config, formParams]);
+
+  useBackNavigation('/teacher/dashboard', false);
 
   useEffect(() => {
-    // Get dashboard path for back navigation
-    getDashboardPath().then(path => {
-      if (path) setDashboardPath(path);
-    });
-    // Fetch assigned students if this tool needs student selection
-    if (toolType === 'student-skill-tracker' || toolType === 'report-card-generator') {
-      fetchStudents();
-    }
-  }, [toolType]);
-
-  // Navigate back to dashboard when back button is pressed
-  useBackNavigation(dashboardPath, false);
-
-  const fetchStudents = async () => {
-    try {
-      setIsLoadingStudents(true);
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/teacher/students`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const studentsData = data.data || data.students || data || [];
-        const mappedStudents = (Array.isArray(studentsData) ? studentsData : []).map((student: any) => ({
-          id: student._id || student.id,
-          name: student.fullName || student.name || 'Unknown Student',
-          classNumber: student.classNumber || student.assignedClass?.classNumber
+    (async () => {
+      try {
+        const meRes = await teacherService.me();
+        const user = meRes.data?.user ?? meRes.data ?? meRes.user;
+        const exclusive = resolveIsAsliPrepExclusive(user);
+        setIsAsliPrepExclusive(exclusive);
+        const curriculumBoard = resolveCurriculumBoardForAiTools(user);
+        const defaultBoard = getDefaultAiToolBoard(exclusive, curriculumBoard);
+        setSchoolBoardName(curriculumBoard);
+        setFormParams((prev) => ({
+          ...prev,
+          board: prev.board || defaultBoard,
         }));
-        setAssignedStudents(mappedStudents);
+      } catch (error) {
+        console.error('Failed to fetch teacher profile:', error);
+      } finally {
+        setIsLoadingUser(false);
       }
-    } catch (error) {
-      console.error('Failed to fetch students:', error);
-    } finally {
-      setIsLoadingStudents(false);
+
+      try {
+        const subsRes = await teacherService.subjects();
+        const rows = asArray<any>(subsRes.data ?? subsRes);
+        const names = rows
+          .map((subj: any) => String(subj?.name || subj?.displayName || '').trim())
+          .filter(Boolean);
+        setAssignedSubjectNames(uniquePreserveOrder(names));
+      } catch (error) {
+        console.error('Failed to fetch teacher assigned subjects:', error);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (isLoadingUser || !formParams.board) return;
+    if (!boardOptions.includes(formParams.board)) {
+      const fallback = getDefaultAiToolBoard(isAsliPrepExclusive, schoolBoardName);
+      setFormParams((prev) => ({ ...prev, board: fallback }));
     }
-  };
+  }, [boardOptions, formParams.board, isAsliPrepExclusive, isLoadingUser, schoolBoardName]);
 
-  if (!config) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle" size={64} color="#ef4444" />
-          <Text style={styles.errorText}>Tool not found</Text>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.replace(dashboardPath)}
-          >
-            <Text style={styles.backButtonText}>Go Back</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  useEffect(() => {
+    const classValue = formParams.gradeLevel;
+    const subjectValue = formParams.subject;
+    if (!classValue || !subjectValue) {
+      setAvailableNCERTTopics([]);
+      return;
+    }
+    if (cascade.loadingTopics && cascade.topics.length === 0) {
+      setAvailableNCERTTopics([]);
+      return;
+    }
+    setAvailableNCERTTopics([...cascade.topics]);
+  }, [formParams.gradeLevel, formParams.subject, cascade.topics, cascade.loadingTopics]);
 
-  const handleInputChange = (fieldName: string, value: any) => {
-    setFormParams(prev => {
-      const updated = { ...prev, [fieldName]: value };
-      
-      // If gradeLevel changes, clear dependent fields (like subject)
-      if (fieldName === 'gradeLevel') {
-        Object.keys(updated).forEach(key => {
-          const field = config.fields.find(f => f.name === key);
-          if (field?.dependsOn === 'gradeLevel') {
-            delete updated[key];
-          }
-        });
+  useEffect(() => {
+    if (!isStoryLanguageTool(toolType)) return;
+    const sub = formParams.subject;
+    if (!sub || isStoryPassageLanguageSubject(sub)) return;
+    setFormParams((prev) => {
+      const next = { ...prev };
+      delete next.subject;
+      delete next.topic;
+      delete next.subTopic;
+      return next;
+    });
+  }, [toolType, formParams.subject]);
+
+  useEffect(() => {
+    if (!formParams.gradeLevel || subjectsForTool.length === 0) return;
+    setFormParams((prev) => {
+      const currentSubject = prev.subject;
+      const hasCurrent =
+        currentSubject &&
+        subjectsForTool.some(
+          (s) => normalizeSubjectName(s) === normalizeSubjectName(String(currentSubject))
+        );
+      if (hasCurrent) return prev;
+      return { ...prev, subject: subjectsForTool[0] };
+    });
+  }, [subjectsForTool, formParams.gradeLevel]);
+
+  const handleInputChange = (name: string, value: any) => {
+    setFormParams((prev) => {
+      const newParams = { ...prev, [name]: value };
+
+      if (name === 'gradeLevel') {
+        delete newParams.subject;
+        delete newParams.topic;
+        delete newParams.subTopic;
+        delete newParams.concept;
+        delete newParams.chapter;
+        delete newParams.projectTopic;
       }
-      
-      return updated;
+      if (name === 'subject') {
+        delete newParams.topic;
+        delete newParams.subTopic;
+        delete newParams.concept;
+        delete newParams.chapter;
+        delete newParams.projectTopic;
+      }
+      if (name === 'topic' || name === 'chapter') {
+        delete newParams.subTopic;
+      }
+      if (name === 'board') {
+        delete newParams.subject;
+        delete newParams.topic;
+        delete newParams.subTopic;
+        delete newParams.concept;
+        delete newParams.chapter;
+        delete newParams.projectTopic;
+        if (String(value).toUpperCase() === 'IIT') {
+          const iitClass = cascade.classOptions.find((c) => /iit/i.test(c)) || 'Class 6';
+          newParams.gradeLevel = iitClass;
+        }
+      }
+
+      return newParams;
     });
   };
 
-  const getFieldOptions = (field: ToolConfig['fields'][0]): string[] => {
-    if (field.options) {
-      return field.options;
-    }
-    
-    if (field.dependsOn && field.getOptions) {
-      const dependencyValue = formParams[field.dependsOn];
-      if (dependencyValue) {
-        return field.getOptions(dependencyValue);
+  const getFieldOptions = useCallback(
+    (field: TeacherToolFieldConfig): string[] => {
+      if (field.options) return field.options;
+
+      if (field.name === 'subject' && field.dependsOn === 'gradeLevel') {
+        const classValue = formParams[field.dependsOn];
+        if (classValue && subjectsForTool.length > 0) return subjectsForTool;
+        return [];
       }
+
+      if (field.isCascadeSubtopic && field.name === 'subTopic') {
+        return cascade.subtopics;
+      }
+
+      if (
+        field.isNCERT &&
+        (field.name === 'topic' ||
+          field.name === 'concept' ||
+          field.name === 'chapter' ||
+          field.name === 'projectTopic')
+      ) {
+        return availableNCERTTopics;
+      }
+
       return [];
+    },
+    [formParams, subjectsForTool, cascade.subtopics, availableNCERTTopics]
+  );
+
+  const getFieldDisabledState = (field: TeacherToolFieldConfig) => {
+    let isDisabled = !!(field.dependsOn && !formParams[field.dependsOn]);
+    let loading = false;
+
+    if (field.name === 'gradeLevel') {
+      isDisabled = cascade.loadingClasses && classSelectOptions.length === 0;
+      loading = cascade.loadingClasses;
+    } else if (field.name === 'subject' && field.dependsOn === 'gradeLevel') {
+      loading = cascade.loadingSubjects;
+      isDisabled = !formParams.gradeLevel || cascade.loadingSubjects || isLoadingUser;
+    } else if (
+      field.isNCERT &&
+      (field.name === 'topic' ||
+        field.name === 'concept' ||
+        field.name === 'chapter' ||
+        field.name === 'projectTopic')
+    ) {
+      loading = cascade.loadingTopics;
+      isDisabled = !formParams.gradeLevel || !formParams.subject || cascade.loadingTopics;
+    } else if (field.isCascadeSubtopic && field.name === 'subTopic') {
+      loading = cascade.loadingSubtopics;
+      isDisabled =
+        !formParams.gradeLevel ||
+        !formParams.subject ||
+        !(formParams.topic || formParams.chapter) ||
+        cascade.loadingSubtopics;
     }
-    
-    if (field.isStudentSelect) {
-      return assignedStudents.map(s => s.name);
+
+    return { isDisabled, loading };
+  };
+
+  const getPlaceholderHint = (
+    field: TeacherToolFieldConfig,
+    fieldOptions: string[],
+    isDisabled: boolean
+  ) => {
+    if (!isDisabled) return field.placeholder || `Select ${field.label.replace(' *', '')}`;
+
+    if (field.name === 'gradeLevel' && cascade.loadingClasses) return 'Loading classes...';
+    if (field.name === 'subject') {
+      if (!formParams.gradeLevel || cascade.loadingSubjects) return 'Select class first';
+      if (subjectsForTool.length === 0) {
+        return isStoryLanguageTool(toolType) ? 'English or Hindi only' : 'No subjects available';
+      }
     }
-    
-    return [];
+    if (
+      field.isNCERT &&
+      (field.name === 'topic' ||
+        field.name === 'concept' ||
+        field.name === 'chapter' ||
+        field.name === 'projectTopic')
+    ) {
+      if (!formParams.gradeLevel) return 'Select class first';
+      if (!formParams.subject || cascade.loadingTopics) return 'Select subject first';
+      if (cascade.loadingTopics) return 'Loading topics...';
+      if (fieldOptions.length === 0) return 'No topics available';
+    }
+    if (field.isCascadeSubtopic) {
+      if (!(formParams.topic || formParams.chapter)) return 'Select topic first';
+      if (cascade.loadingSubtopics) return 'Loading subtopics...';
+      if (cascade.subtopics.length === 0 && !String(formParams.subTopic || '').trim()) {
+        return 'No subtopics available';
+      }
+    }
+    if (fieldOptions.length === 0 && field.dependsOn) {
+      const parent = config?.fields.find((f) => f.name === field.dependsOn);
+      return `Select ${parent?.label.replace(' *', '') || 'class'} first`;
+    }
+    return field.placeholder || 'No options available';
+  };
+
+  const openDropdown = (
+    fieldName: string,
+    title: string,
+    options: string[],
+    value: string,
+    disabled: boolean
+  ) => {
+    if (disabled || options.length === 0) return;
+    setActiveDropdown({ fieldName, title, options, value, disabled });
   };
 
   const handleGenerate = async () => {
-    // Validate required fields
-    const requiredFields = config.fields.filter(f => f.required);
-    const missingFields = requiredFields.filter(f => !formParams[f.name]);
-    
+    if (!config || !toolType) return;
+
+    const requiredFields = config.fields.filter((f) => f.required);
+    const missingFields = requiredFields.filter((f) => !formParams[f.name]);
+
     if (missingFields.length > 0) {
-      Alert.alert('Validation Error', `Please fill in: ${missingFields.map(f => f.label).join(', ')}`);
+      Alert.alert('Validation Error', `Please fill in: ${missingFields.map((f) => f.label).join(', ')}`);
+      return;
+    }
+
+    if (!formParams.board) {
+      Alert.alert('Validation Error', 'Please select a board.');
+      return;
+    }
+
+    if (
+      toolType === 'story-passage-creator' &&
+      !isStoryPassageLanguageSubject(String(formParams.subject || ''))
+    ) {
+      Alert.alert(
+        'English or Hindi only',
+        'Story & Passage Creator works only with English or Hindi subjects.'
+      );
       return;
     }
 
@@ -457,37 +529,39 @@ export default function TeacherToolPage() {
     setGeneratedContent('');
 
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      
-      const response = await fetch(`${API_BASE_URL}/api/teacher/ai/tool`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          toolType,
-          ...formParams
-        })
-      });
+      const selectedClass = mapGradeLevelForIitBoard(selectedBoard, formParams.gradeLevel);
+      const selectedSubject = formParams.subject || formParams.subjects;
+      const selectedTopic = formParams.topic || '';
+      const selectedSubTopic = formParams.subTopic || '';
+      const selectedSection = formParams.section || formParams.className || '';
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setGeneratedContent(data.data?.content || data.content || 'No content generated.');
-        } else {
-          throw new Error(data.message || 'Failed to generate content');
-        }
+      const requestBody: Record<string, unknown> = {
+        toolType,
+        classNumber: selectedClass
+          ? selectedClass === 'IIT-6' || selectedClass === 'Class-6-IIT'
+            ? 'IIT-6'
+            : parseInt(String(selectedClass).replace('Class ', ''), 10)
+          : undefined,
+        subject: selectedSubject,
+        topic: selectedTopic,
+        subTopic: selectedSubTopic,
+        section: selectedSection,
+        questionCount: formParams.questionCount ? parseInt(formParams.questionCount, 10) : undefined,
+        duration: formParams.duration ? parseInt(formParams.duration, 10) : undefined,
+        ...formParams,
+        board: selectedBoard,
+        gradeLevel: selectedClass,
+      };
+
+      const data = await teacherService.generateAiToolContent(
+        requestBody as Record<string, unknown> & { toolType: string }
+      );
+
+      if (data.success) {
+        const content = data.data?.content || data.content || '';
+        setGeneratedContent(content || 'No content generated.');
       } else {
-        const errorText = await response.text();
-        let errorMessage = `Server error: ${response.status}`;
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage = errorData.message || errorMessage;
-        } catch {
-          errorMessage = errorText || errorMessage;
-        }
-        throw new Error(errorMessage);
+        throw new Error(data.message || 'Failed to generate content');
       }
     } catch (error: any) {
       console.error('Generation error:', error);
@@ -499,10 +573,9 @@ export default function TeacherToolPage() {
 
   const handleCopy = async () => {
     try {
-      await Clipboard.setStringAsync(generatedContent);
+      await Clipboard.setStringAsync(displayGeneratedContent);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-      Alert.alert('Copied', 'Content copied to clipboard!');
     } catch (error) {
       console.error('Copy error:', error);
       Alert.alert('Error', 'Failed to copy to clipboard');
@@ -511,370 +584,629 @@ export default function TeacherToolPage() {
 
   const handleShare = async () => {
     try {
-      await Share.share({
-        message: generatedContent,
-        title: config.name
-      });
+      await Share.share({ message: displayGeneratedContent, title: config?.name });
     } catch (error) {
       console.error('Share error:', error);
     }
   };
 
-  const renderField = (field: ToolConfig['fields'][0]) => {
+  const renderDropdownTrigger = (
+    fieldName: string,
+    label: string,
+    value: string,
+    hint: string,
+    options: string[],
+    disabled: boolean,
+    loading: boolean,
+    required?: boolean
+  ) => {
+    const icon = FIELD_ICONS[fieldName] || 'chevron-down-circle-outline';
+    const display = value || hint;
+    const isPlaceholder = !value;
+
+    return (
+      <View style={styles.fieldBlock}>
+        <View style={styles.labelRow}>
+          <View style={[styles.fieldIconWrap, { backgroundColor: `${accent}22` }]}>
+            <Ionicons name={icon} size={16} color={accent} />
+          </View>
+          <Text style={styles.fieldLabel}>
+            {label.replace(' *', '')}
+            {required ? <Text style={styles.required}> *</Text> : null}
+          </Text>
+          {loading ? <ActivityIndicator size="small" color={accent} style={styles.fieldSpinner} /> : null}
+        </View>
+        <TouchableOpacity
+          style={[styles.dropdownTrigger, disabled && styles.dropdownTriggerDisabled]}
+          onPress={() => openDropdown(fieldName, label.replace(' *', ''), options, value, disabled)}
+          activeOpacity={0.75}
+          disabled={disabled}
+        >
+          <Text
+            style={[styles.dropdownValue, isPlaceholder && styles.dropdownPlaceholder]}
+            numberOfLines={2}
+          >
+            {display}
+          </Text>
+          <Ionicons name="chevron-down" size={18} color={disabled ? TEACHER.navInactive : TEACHER.textMuted} />
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const renderSelectField = (field: TeacherToolFieldConfig) => {
     const value = formParams[field.name] || '';
+    const { isDisabled, loading } = getFieldDisabledState(field);
+
+    let fieldOptions = getFieldOptions(field);
+    if (field.name === 'gradeLevel') fieldOptions = classSelectOptions;
+    else if (field.name === 'subject' && field.dependsOn === 'gradeLevel') fieldOptions = subjectsForTool;
+    fieldOptions = mergeSelectedIntoOptions(fieldOptions, value);
+    const hint = getPlaceholderHint(field, fieldOptions, isDisabled);
+
+    return (
+      <View key={field.name}>
+        {renderDropdownTrigger(
+          field.name,
+          field.label,
+          value,
+          hint,
+          fieldOptions,
+          isDisabled,
+          loading,
+          field.required
+        )}
+      </View>
+    );
+  };
+
+  const renderField = (field: TeacherToolFieldConfig) => {
+    const value = formParams[field.name] || '';
+
+    if (field.type === 'select') return renderSelectField(field);
 
     if (field.type === 'textarea') {
       return (
-        <View key={field.name} style={styles.fieldContainer}>
-          <Text style={styles.label}>
-            {field.label} {field.required && <Text style={styles.required}>*</Text>}
-          </Text>
+        <View key={field.name} style={styles.fieldBlock}>
+          <View style={styles.labelRow}>
+            <View style={[styles.fieldIconWrap, { backgroundColor: `${accent}22` }]}>
+              <Ionicons name={FIELD_ICONS[field.name] || 'create-outline'} size={16} color={accent} />
+            </View>
+            <Text style={styles.fieldLabel}>
+              {field.label.replace(' *', '')}
+              {field.required ? <Text style={styles.required}> *</Text> : null}
+            </Text>
+          </View>
           <TextInput
-            style={[styles.textArea, styles.input]}
+            style={[styles.textArea, styles.textInput]}
             placeholder={field.placeholder}
             value={value}
             onChangeText={(text) => handleInputChange(field.name, text)}
             multiline
             numberOfLines={4}
             textAlignVertical="top"
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor={TEACHER.navInactive}
           />
         </View>
       );
     }
 
-    if (field.type === 'select') {
-      const options = getFieldOptions(field);
-      
-      return (
-        <View key={field.name} style={styles.fieldContainer}>
-          <Text style={styles.label}>
-            {field.label} {field.required && <Text style={styles.required}>*</Text>}
-          </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.selectContainer}>
-            {options.length > 0 ? (
-              options.map((option) => (
-                <TouchableOpacity
-                  key={option}
-                  style={[styles.selectOption, value === option && styles.selectOptionActive]}
-                  onPress={() => handleInputChange(field.name, option)}
-                >
-                  <Text style={[styles.selectOptionText, value === option && styles.selectOptionTextActive]}>
-                    {option}
-                  </Text>
-                </TouchableOpacity>
-              ))
-            ) : (
-              <Text style={styles.noOptionsText}>
-                {field.dependsOn ? 'Please select ' + config.fields.find(f => f.name === field.dependsOn)?.label.toLowerCase() : 'No options available'}
-              </Text>
-            )}
-          </ScrollView>
-        </View>
-      );
-    }
-
     return (
-      <View key={field.name} style={styles.fieldContainer}>
-        <Text style={styles.label}>
-          {field.label} {field.required && <Text style={styles.required}>*</Text>}
-        </Text>
+      <View key={field.name} style={styles.fieldBlock}>
+        <View style={styles.labelRow}>
+          <View style={[styles.fieldIconWrap, { backgroundColor: `${accent}22` }]}>
+            <Ionicons name={FIELD_ICONS[field.name] || 'options-outline'} size={16} color={accent} />
+          </View>
+          <Text style={styles.fieldLabel}>
+            {field.label.replace(' *', '')}
+            {field.required ? <Text style={styles.required}> *</Text> : null}
+          </Text>
+        </View>
         <TextInput
-          style={styles.input}
+          style={styles.textInput}
           placeholder={field.placeholder}
           value={value}
           onChangeText={(text) => handleInputChange(field.name, text)}
           keyboardType={field.type === 'number' ? 'numeric' : 'default'}
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor={TEACHER.navInactive}
         />
       </View>
     );
   };
 
+  if (!config) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <StatusBar barStyle="light-content" />
+        <TeacherToolHeader title="Tool not found" onBack={() => router.back()} />
+        <View style={styles.errorContainer}>
+          <View style={styles.errorIconWrap}>
+            <Ionicons name="alert-circle-outline" size={48} color={TEACHER.danger} />
+          </View>
+          <Text style={styles.errorTitle}>Tool not found</Text>
+          <Text style={styles.errorSubtitle}>This AI tool is not available on mobile yet.</Text>
+          <TouchableOpacity style={styles.errorButton} onPress={() => router.back()}>
+            <Text style={styles.errorButtonText}>Go back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const wordCount = displayGeneratedContent.trim()
+    ? displayGeneratedContent.trim().split(/\s+/).length
+    : 0;
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <LinearGradient
-        colors={[config.color, config.color + 'DD']}
-        style={styles.header}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <StatusBar barStyle="light-content" />
+
+      <TeacherToolHeader
+        title={config.name}
+        subtitle={config.description}
+        onBack={() => router.back()}
+      />
+
+      <View style={styles.toolMeta}>
+        <View style={[styles.heroIconWrap, { backgroundColor: `${accent}22` }]}>
+          <Ionicons name={config.icon} size={24} color={accent} />
+        </View>
+        <View style={styles.aiBadge}>
+          <Ionicons name="sparkles" size={12} color={TEACHER.primaryLight} />
+          <Text style={styles.aiBadgeText}>Vidya AI</Text>
+        </View>
+      </View>
+
+      <View style={styles.progressWrap}>
+        <View style={styles.progressMeta}>
+          <Text style={styles.progressLabel}>Form progress</Text>
+          <Text style={styles.progressValue}>
+            {completion.filled}/{completion.total} fields
+          </Text>
+        </View>
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: `${completion.percent}%`, backgroundColor: accent }]} />
+        </View>
+      </View>
+
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
       >
-        <TouchableOpacity
-          style={styles.backButtonHeader}
-          onPress={() => router.replace(dashboardPath)}
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: generatedContent ? 24 : 100 }]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <Ionicons name="arrow-back" size={24} color="#fff" />
-        </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <View style={styles.headerIcon}>
-            <Ionicons name={config.icon} size={32} color="#fff" />
-          </View>
-          <View style={styles.headerText}>
-            <Text style={styles.headerTitle}>{config.name}</Text>
-            <Text style={styles.headerSubtitle}>{config.description}</Text>
-          </View>
-        </View>
-      </LinearGradient>
-
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-        {/* Form Fields */}
-        <View style={styles.formSection}>
-          <Text style={styles.sectionTitle}>Tool Parameters</Text>
-          {config.fields.map(renderField)}
-        </View>
-
-        {/* Generate Button */}
-        <TouchableOpacity
-          style={[styles.generateButton, isGenerating && styles.generateButtonDisabled]}
-          onPress={handleGenerate}
-          disabled={isGenerating}
-        >
-          <LinearGradient
-            colors={[config.color, config.color + 'DD']}
-            style={styles.generateButtonGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-          >
-            {isGenerating ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <>
-                <Ionicons name="sparkles" size={20} color="#fff" />
-                <Text style={styles.generateButtonText}>Generate</Text>
-              </>
+          <FormSection title="Curriculum" subtitle="Board and class details" accent={accent}>
+            {renderDropdownTrigger(
+              'board',
+              'Board',
+              selectedBoard,
+              'Select board',
+              boardOptions,
+              isLoadingUser,
+              false,
+              true
             )}
-          </LinearGradient>
-        </TouchableOpacity>
-
-        {/* Generated Content */}
-        {generatedContent && (
-          <View style={styles.resultSection}>
-            <View style={styles.resultHeader}>
-              <Text style={styles.resultTitle}>Generated Content</Text>
-              <View style={styles.resultActions}>
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={handleCopy}
-                >
-                  <Ionicons name={copied ? "checkmark" : "copy"} size={20} color={config.color} />
-                  <Text style={[styles.actionButtonText, { color: config.color }]}>
-                    {copied ? 'Copied' : 'Copy'}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={handleShare}
-                >
-                  <Ionicons name="share" size={20} color={config.color} />
-                  <Text style={[styles.actionButtonText, { color: config.color }]}>Share</Text>
-                </TouchableOpacity>
+            {curriculumFields.map(renderField)}
+            {isStoryLanguageTool(toolType) ? (
+              <View style={styles.infoBanner}>
+                <Ionicons name="information-circle" size={18} color={TEACHER.primaryLight} />
+                <Text style={styles.infoBannerText}>
+                  English and Hindi subjects only for this tool.
+                </Text>
               </View>
+            ) : null}
+          </FormSection>
+
+          {topicFields.length > 0 ? (
+            <FormSection title="Topic details" subtitle="Pick chapter and sub-topic from syllabus" accent={accent}>
+              {topicFields.map(renderField)}
+            </FormSection>
+          ) : null}
+
+          {extraFields.length > 0 ? (
+            <FormSection title="Options" subtitle="Customize your output" accent={accent}>
+              {extraFields.map(renderField)}
+            </FormSection>
+          ) : null}
+
+          {displayGeneratedContent ? (
+            <View style={styles.resultCard}>
+              <View style={styles.resultHeader}>
+                <View>
+                  <Text style={styles.resultTitle}>Generated content</Text>
+                  <Text style={styles.resultMeta}>{wordCount.toLocaleString()} words</Text>
+                </View>
+                <View style={styles.resultActions}>
+                  <TouchableOpacity
+                    style={[styles.resultActionBtn, copied && styles.resultActionBtnActive]}
+                    onPress={handleCopy}
+                  >
+                    <Ionicons
+                      name={copied ? 'checkmark' : 'copy-outline'}
+                      size={18}
+                      color={copied ? TEACHER.primaryLight : accent}
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.resultActionBtn} onPress={handleShare}>
+                    <Ionicons name="share-outline" size={18} color={accent} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+              <View style={styles.resultDivider} />
+              <Text style={styles.resultText} selectable>
+                {displayGeneratedContent}
+              </Text>
             </View>
-            <View style={styles.resultContent}>
-              <Text style={styles.resultText}>{generatedContent}</Text>
+          ) : (
+            <View style={styles.emptyResult}>
+              <Ionicons name="document-text-outline" size={32} color={TEACHER.navInactive} />
+              <Text style={styles.emptyResultTitle}>Your AI output will appear here</Text>
+              <Text style={styles.emptyResultText}>Fill the form above and tap Generate</Text>
             </View>
-          </View>
-        )}
-      </ScrollView>
+          )}
+        </ScrollView>
+
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={[styles.generateBtn, isGenerating && styles.generateBtnDisabled]}
+            onPress={handleGenerate}
+            disabled={isGenerating}
+            activeOpacity={0.9}
+          >
+            <LinearGradient
+              colors={[accent, `${accent}DD`]}
+              style={styles.generateBtnGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              {isGenerating ? (
+                <>
+                  <ActivityIndicator size="small" color={TEACHER.textOnPrimary} />
+                  <Text style={styles.generateBtnText}>Generating...</Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="sparkles" size={20} color={TEACHER.textOnPrimary} />
+                  <Text style={styles.generateBtnText}>Generate with AI</Text>
+                </>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+
+      <Modal
+        visible={!!activeDropdown}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setActiveDropdown(null)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setActiveDropdown(null)}>
+          <Pressable style={styles.modalSheet} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>{activeDropdown?.title}</Text>
+            <ScrollView style={styles.modalList} keyboardShouldPersistTaps="handled">
+              {(activeDropdown?.options || []).map((option) => {
+                const selected = activeDropdown?.value === option;
+                return (
+                  <TouchableOpacity
+                    key={option}
+                    style={[styles.modalItem, selected && styles.modalItemSelected]}
+                    onPress={() => {
+                      if (activeDropdown) handleInputChange(activeDropdown.fieldName, option);
+                      setActiveDropdown(null);
+                    }}
+                  >
+                    <Text style={[styles.modalItemText, selected && styles.modalItemTextSelected]}>
+                      {option.charAt(0).toUpperCase() + option.slice(1)}
+                    </Text>
+                    {selected ? <Ionicons name="checkmark-circle" size={20} color={accent} /> : null}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setActiveDropdown(null)}>
+              <Text style={styles.modalCloseText}>Close</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  errorText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginTop: 16,
-    marginBottom: 24,
-  },
+  container: { flex: 1, backgroundColor: TEACHER.bg },
+  flex: { flex: 1 },
   header: {
-    paddingTop: 50,
-    paddingBottom: 24,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-  },
-  backButtonHeader: {
-    marginBottom: 16,
-  },
-  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    paddingHorizontal: TEACHER_SPACING.lg,
+    paddingVertical: TEACHER_SPACING.md,
+    gap: TEACHER_SPACING.md,
   },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: TEACHER_RADIUS.md,
+    backgroundColor: TEACHER.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerText: { flex: 1 },
+  headerTitle: { ...TEACHER_TYPO.section, fontSize: 18, color: TEACHER.text },
+  headerSubtitle: { ...TEACHER_TYPO.caption, color: TEACHER.textMuted, marginTop: 2 },
   headerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: TEACHER_RADIUS.md,
+    backgroundColor: TEACHER.navActiveBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toolMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: TEACHER_SPACING.xl,
+    paddingTop: TEACHER_SPACING.sm,
+    paddingBottom: TEACHER_SPACING.sm,
+  },
+  heroIconWrap: {
     width: 48,
     height: 48,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerText: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#fff',
-    opacity: 0.9,
-  },
-  content: {
-    flex: 1,
-  },
-  contentContainer: {
-    padding: 20,
-  },
-  formSection: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#111827',
-    marginBottom: 16,
-  },
-  fieldContainer: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  required: {
-    color: '#ef4444',
-  },
-  input: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: '#111827',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  textArea: {
-    minHeight: 100,
-  },
-  selectContainer: {
-    flexDirection: 'row',
-  },
-  selectOption: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    marginRight: 8,
-  },
-  selectOptionActive: {
-    backgroundColor: '#3b82f6',
-    borderColor: '#3b82f6',
-  },
-  selectOptionText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6b7280',
-  },
-  selectOptionTextActive: {
-    color: '#fff',
-  },
-  noOptionsText: {
-    fontSize: 14,
-    color: '#9ca3af',
-    fontStyle: 'italic',
-    padding: 12,
-  },
-  generateButton: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 24,
-  },
-  generateButtonDisabled: {
-    opacity: 0.6,
-  },
-  generateButtonGradient: {
-    flexDirection: 'row',
+    borderRadius: TEACHER_RADIUS.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
-    gap: 8,
   },
-  generateButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  resultSection: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  resultHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  resultTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  resultActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  actionButton: {
+  aiBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    backgroundColor: TEACHER.navActiveBg,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: TEACHER_RADIUS.full,
   },
-  actionButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
+  aiBadgeText: { ...TEACHER_TYPO.label, color: TEACHER.primaryLight },
+  progressWrap: {
+    paddingHorizontal: TEACHER_SPACING.xl,
+    paddingBottom: TEACHER_SPACING.lg,
   },
-  resultContent: {
-    paddingTop: 16,
+  progressMeta: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: TEACHER_SPACING.sm },
+  progressLabel: { ...TEACHER_TYPO.caption, color: TEACHER.textMuted },
+  progressValue: { ...TEACHER_TYPO.caption, color: TEACHER.text, fontWeight: '700' },
+  progressTrack: {
+    height: 6,
+    borderRadius: TEACHER_RADIUS.full,
+    backgroundColor: TEACHER.surfaceBorder,
+    overflow: 'hidden',
+  },
+  progressFill: { height: '100%', borderRadius: TEACHER_RADIUS.full },
+  scroll: { flex: 1 },
+  scrollContent: { padding: TEACHER_SPACING.lg, gap: 14 },
+  sectionCard: {
+    backgroundColor: TEACHER.surface,
+    borderRadius: TEACHER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
+    overflow: 'hidden',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    borderBottomWidth: 1,
+    borderBottomColor: TEACHER.surfaceBorder,
+  },
+  sectionAccent: { width: 4 },
+  sectionHeaderText: { flex: 1, paddingHorizontal: TEACHER_SPACING.lg, paddingVertical: 14 },
+  sectionTitle: { ...TEACHER_TYPO.body, fontWeight: '800', color: TEACHER.text },
+  sectionSubtitle: { ...TEACHER_TYPO.caption, color: TEACHER.textMuted, marginTop: 2 },
+  sectionBody: { padding: TEACHER_SPACING.lg, gap: 14 },
+  fieldBlock: { gap: TEACHER_SPACING.sm },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: TEACHER_SPACING.sm },
+  fieldIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: TEACHER_RADIUS.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fieldLabel: { flex: 1, ...TEACHER_TYPO.body, fontWeight: '700', color: TEACHER.textSecondary },
+  fieldSpinner: { marginLeft: 'auto' },
+  required: { color: TEACHER.danger },
+  dropdownTrigger: {
+    minHeight: 52,
+    borderRadius: TEACHER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
+    backgroundColor: TEACHER.surfaceHover,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  dropdownTriggerDisabled: { opacity: 0.55, backgroundColor: TEACHER.surface },
+  dropdownValue: { flex: 1, ...TEACHER_TYPO.body, fontWeight: '600', color: TEACHER.text },
+  dropdownPlaceholder: { color: TEACHER.navInactive, fontWeight: '500' },
+  textInput: {
+    minHeight: 52,
+    borderRadius: TEACHER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
+    backgroundColor: TEACHER.surfaceHover,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    color: TEACHER.text,
+  },
+  textArea: { minHeight: 110, paddingTop: 14, paddingBottom: 14 },
+  infoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: TEACHER_SPACING.sm,
+    backgroundColor: TEACHER.navActiveBg,
+    borderRadius: TEACHER_RADIUS.md,
+    padding: TEACHER_SPACING.md,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
+  },
+  infoBannerText: { flex: 1, ...TEACHER_TYPO.caption, color: TEACHER.primaryLight, lineHeight: 18 },
+  emptyResult: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 36,
+    paddingHorizontal: TEACHER_SPACING.xxl,
+    backgroundColor: TEACHER.surface,
+    borderRadius: TEACHER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
+    borderStyle: 'dashed',
+  },
+  emptyResultTitle: {
+    marginTop: TEACHER_SPACING.md,
+    ...TEACHER_TYPO.body,
+    fontWeight: '700',
+    color: TEACHER.textMuted,
+  },
+  emptyResultText: {
+    marginTop: 4,
+    ...TEACHER_TYPO.caption,
+    color: TEACHER.navInactive,
+    textAlign: 'center',
+  },
+  resultCard: {
+    backgroundColor: TEACHER.surfaceElevated,
+    borderRadius: TEACHER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
+    padding: TEACHER_SPACING.lg,
+  },
+  resultHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  resultTitle: { ...TEACHER_TYPO.body, fontWeight: '800', color: TEACHER.text },
+  resultMeta: { ...TEACHER_TYPO.caption, color: TEACHER.textMuted, marginTop: 2 },
+  resultActions: { flexDirection: 'row', gap: TEACHER_SPACING.sm },
+  resultActionBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: TEACHER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: TEACHER.surface,
+  },
+  resultActionBtnActive: { borderColor: TEACHER.primaryLight, backgroundColor: TEACHER.navActiveBg },
+  resultDivider: { height: 1, backgroundColor: TEACHER.surfaceBorder, marginVertical: 14 },
+  resultText: { ...TEACHER_TYPO.body, color: TEACHER.textSecondary, lineHeight: 24 },
+  footer: {
+    paddingHorizontal: TEACHER_SPACING.lg,
+    paddingTop: 10,
+    paddingBottom: TEACHER_SPACING.md,
+    backgroundColor: TEACHER.bg,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: TEACHER.surfaceBorder,
   },
-  resultText: {
+  generateBtn: { borderRadius: TEACHER_RADIUS.lg, overflow: 'hidden' },
+  generateBtnDisabled: { opacity: 0.7 },
+  generateBtnGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: TEACHER_SPACING.sm,
+    paddingVertical: TEACHER_SPACING.lg,
+  },
+  generateBtnText: { fontSize: 16, fontWeight: '800', color: TEACHER.textOnPrimary },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15,23,42,0.65)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: TEACHER.bg,
+    borderTopLeftRadius: TEACHER_RADIUS.xl,
+    borderTopRightRadius: TEACHER_RADIUS.xl,
+    maxHeight: '70%',
+    paddingBottom: TEACHER_SPACING.xl,
+    borderTopWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: TEACHER_RADIUS.full,
+    backgroundColor: TEACHER.navInactive,
+    alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: TEACHER_SPACING.md,
+  },
+  modalTitle: {
+    ...TEACHER_TYPO.section,
+    fontSize: 18,
+    color: TEACHER.text,
+    paddingHorizontal: TEACHER_SPACING.xl,
+    marginBottom: TEACHER_SPACING.sm,
+  },
+  modalList: { maxHeight: 360 },
+  modalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: TEACHER_SPACING.xl,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: TEACHER.surfaceBorder,
+  },
+  modalItemSelected: { backgroundColor: TEACHER.surfaceHover },
+  modalItemText: {
     fontSize: 16,
-    color: '#111827',
-    lineHeight: 24,
+    color: TEACHER.textSecondary,
+    flex: 1,
+    paddingRight: TEACHER_SPACING.md,
   },
-  backButton: {
-    backgroundColor: '#3b82f6',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+  modalItemTextSelected: { fontWeight: '700', color: TEACHER.text },
+  modalCloseBtn: {
+    marginHorizontal: TEACHER_SPACING.xl,
+    marginTop: 10,
+    paddingVertical: 14,
+    borderRadius: TEACHER_RADIUS.md,
+    backgroundColor: TEACHER.surface,
+    alignItems: 'center',
   },
-  backButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
+  modalCloseText: { ...TEACHER_TYPO.body, fontWeight: '700', color: TEACHER.textSecondary },
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: TEACHER_SPACING.xxxl,
   },
+  errorIconWrap: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: TEACHER.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: TEACHER_SPACING.lg,
+  },
+  errorTitle: { ...TEACHER_TYPO.section, fontSize: 20, color: TEACHER.text },
+  errorSubtitle: {
+    ...TEACHER_TYPO.caption,
+    color: TEACHER.textMuted,
+    marginTop: TEACHER_SPACING.sm,
+    textAlign: 'center',
+  },
+  errorButton: {
+    marginTop: TEACHER_SPACING.xxl,
+    backgroundColor: TEACHER.primary,
+    paddingHorizontal: TEACHER_SPACING.xxl,
+    paddingVertical: TEACHER_SPACING.md,
+    borderRadius: TEACHER_RADIUS.md,
+  },
+  errorButtonText: { color: TEACHER.textOnPrimary, ...TEACHER_TYPO.body, fontWeight: '700' },
 });

@@ -444,15 +444,6 @@ export default function Profile() {
                 </View>
                 <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/notifications')}>
-                <View style={styles.menuLeft}>
-                  <View style={styles.menuIcon}>
-                    <Ionicons name="notifications-outline" size={18} color="#dc2626" />
-                  </View>
-                  <Text style={styles.menuText}>Notifications</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
-              </TouchableOpacity>
               <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/attendance')}>
                 <View style={styles.menuLeft}>
                   <View style={styles.menuIcon}>

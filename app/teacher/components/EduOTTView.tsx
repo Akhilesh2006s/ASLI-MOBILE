@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Modal, Linking, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Video, ResizeMode } from 'expo-av';
-import { API_BASE_URL } from '../../../src/lib/api-config';
-import * as SecureStore from 'expo-secure-store';
+import { Video as ExpoVideo, ResizeMode } from 'expo-av';
+import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../../src/theme/teacher';
+import teacherService, { asArray } from '../../../src/services/api/teacherService';
 
 type EduOTTSubTab = 'videos' | 'live-sessions';
 
-interface Video {
+interface EduVideo {
   _id: string;
   title: string;
   description?: string;
@@ -23,7 +23,8 @@ interface Video {
 
 export default function EduOTTView() {
   const [activeSubTab, setActiveSubTab] = useState<EduOTTSubTab>('videos');
-  const [videos, setVideos] = useState<Video[]>([]);
+  const [selectedClass, setSelectedClass] = useState('all');
+  const [videos, setVideos] = useState<EduVideo[]>([]);
   const [liveSessions, setLiveSessions] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [sessionSearchTerm, setSessionSearchTerm] = useState('');
@@ -32,9 +33,9 @@ export default function EduOTTView() {
   const [teacherSubjects, setTeacherSubjects] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
-  const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
+  const [selectedVideo, setSelectedVideo] = useState<EduVideo | null>(null);
   const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
-  const videoRef = useRef<Video>(null);
+  const videoRef = useRef<ExpoVideo>(null);
 
   useEffect(() => {
     fetchTeacherSubjects();
@@ -50,19 +51,8 @@ export default function EduOTTView() {
 
   const fetchTeacherSubjects = async () => {
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/teacher/subjects`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const subjectsData = data.data || data.subjects || data || [];
-        setTeacherSubjects(Array.isArray(subjectsData) ? subjectsData : []);
-      }
+      const res = await teacherService.subjects();
+      setTeacherSubjects(asArray(res.data));
     } catch (error) {
       console.error('Failed to fetch subjects:', error);
     }
@@ -71,50 +61,39 @@ export default function EduOTTView() {
   const fetchVideos = async () => {
     try {
       setIsLoading(true);
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/teacher/asli-prep-content?type=Video`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+      const res = await teacherService.asliPrepContent({ type: 'Video' });
+      const videosArray = asArray<any>(res.data);
+
+      const mappedVideos = videosArray.map((content: any) => {
+        const videoFileUrl = content.fileUrls && content.fileUrls.length > 0
+          ? content.fileUrls[0]
+          : (content.fileUrl || content.videoUrl || '');
+
+        const isYouTube = !!content.youtubeUrl || (videoFileUrl && (
+          videoFileUrl.includes('youtube.com') ||
+          videoFileUrl.includes('youtu.be')
+        ));
+
+        const durationInMinutes = content.duration && content.duration > 0
+          ? Number(content.duration)
+          : 0;
+
+        return {
+          _id: content._id || content.id,
+          title: content.title || 'Untitled Video',
+          description: content.description || '',
+          duration: durationInMinutes * 60,
+          views: content.views || 0,
+          createdAt: content.createdAt || new Date().toISOString(),
+          videoUrl: videoFileUrl,
+          youtubeUrl: content.youtubeUrl || (isYouTube ? videoFileUrl : ''),
+          isYouTubeVideo: isYouTube,
+          fileUrl: videoFileUrl,
+          subjectName: content.subject?.name || content.subject || 'Unknown Subject',
+        };
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        const videosList = data.success ? (data.data || []) : (data.data || data || []);
-        const videosArray = Array.isArray(videosList) ? videosList : [];
-
-        const mappedVideos = videosArray.map((content: any) => {
-          const videoFileUrl = content.fileUrls && content.fileUrls.length > 0
-            ? content.fileUrls[0]
-            : (content.fileUrl || content.videoUrl || '');
-          
-          const isYouTube = !!content.youtubeUrl || (videoFileUrl && (
-            videoFileUrl.includes('youtube.com') ||
-            videoFileUrl.includes('youtu.be')
-          ));
-
-          const durationInMinutes = content.duration && content.duration > 0
-            ? Number(content.duration)
-            : 0;
-
-          return {
-            _id: content._id || content.id,
-            title: content.title || 'Untitled Video',
-            description: content.description || '',
-            duration: durationInMinutes * 60, // Convert to seconds
-            views: content.views || 0,
-            createdAt: content.createdAt || new Date().toISOString(),
-            videoUrl: videoFileUrl,
-            youtubeUrl: content.youtubeUrl || (isYouTube ? videoFileUrl : ''),
-            isYouTubeVideo: isYouTube,
-            fileUrl: videoFileUrl,
-            subjectName: content.subject?.name || content.subject || 'Unknown Subject'
-          };
-        });
-
-        setVideos(mappedVideos);
-      }
+      setVideos(mappedVideos);
     } catch (error) {
       console.error('Failed to fetch videos:', error);
       setVideos([]);
@@ -126,19 +105,8 @@ export default function EduOTTView() {
   const fetchLiveSessions = async () => {
     try {
       setIsLoadingSessions(true);
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/teacher/live-sessions`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const sessionsList = data.data || data || [];
-        setLiveSessions(Array.isArray(sessionsList) ? sessionsList : []);
-      }
+      const res = await teacherService.liveSessions();
+      setLiveSessions(asArray(res.data));
     } catch (error) {
       console.error('Failed to fetch live sessions:', error);
       setLiveSessions([]);
@@ -161,13 +129,8 @@ export default function EduOTTView() {
     return matchesSearch && matchesStatus;
   });
 
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
 
-  const handlePlayVideo = async (video: Video) => {
+  const handlePlayVideo = async (video: EduVideo) => {
     if (video.isYouTubeVideo && video.youtubeUrl) {
       let videoId = '';
       if (video.youtubeUrl.includes('youtu.be/')) {
@@ -193,17 +156,9 @@ export default function EduOTTView() {
     }
   };
 
-  const getVideoUrl = (video: Video) => {
-    if (video.videoUrl) {
-      return video.videoUrl.startsWith('http')
-        ? video.videoUrl
-        : `${API_BASE_URL}${video.videoUrl}`;
-    }
-    if (video.fileUrl) {
-      return video.fileUrl.startsWith('http')
-        ? video.fileUrl
-        : `${API_BASE_URL}${video.fileUrl}`;
-    }
+  const getVideoUrl = (video: EduVideo) => {
+    if (video.videoUrl) return teacherService.resolveMediaUrl(video.videoUrl);
+    if (video.fileUrl) return teacherService.resolveMediaUrl(video.fileUrl);
     return '';
   };
 
@@ -305,19 +260,9 @@ export default function EduOTTView() {
                   )}
                   <View style={styles.videoStats}>
                     <View style={styles.statItem}>
-                      <Ionicons name="time" size={16} color="#6b7280" />
-                      <Text style={styles.statText}>{formatDuration(video.duration)}</Text>
-                    </View>
-                    <View style={styles.statItem}>
                       <Ionicons name="eye" size={16} color="#6b7280" />
                       <Text style={styles.statText}>{video.views} views</Text>
                     </View>
-                    {video.isYouTubeVideo && (
-                      <View style={styles.statItem}>
-                        <Ionicons name="logo-youtube" size={16} color="#ef4444" />
-                        <Text style={styles.statText}>YouTube</Text>
-                      </View>
-                    )}
                   </View>
                 </TouchableOpacity>
               ))}
@@ -375,11 +320,24 @@ export default function EduOTTView() {
                     )}
                     {session.viewerCount !== undefined && (
                       <View style={styles.detailRow}>
-                        <Ionicons name="eye" size={16} color="#6b7280" />
+                        <Ionicons name="eye" size={16} color={TEACHER.textMuted} />
                         <Text style={styles.detailText}>{session.viewerCount} viewers</Text>
                       </View>
                     )}
                   </View>
+                  {(session.status === 'live' || session.status === 'Live') &&
+                  (session.hlsUrl || session.playbackUrl || session.streamUrl) ? (
+                    <TouchableOpacity
+                      style={styles.watchLiveBtn}
+                      onPress={() => {
+                        const url = session.hlsUrl || session.playbackUrl || session.streamUrl;
+                        Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open stream.'));
+                      }}
+                    >
+                      <Ionicons name="radio" size={16} color="#fff" />
+                      <Text style={styles.watchLiveText}>Watch Live</Text>
+                    </TouchableOpacity>
+                  ) : null}
                 </View>
               ))}
             </ScrollView>
@@ -405,7 +363,7 @@ export default function EduOTTView() {
 
           {selectedVideo && !selectedVideo.isYouTubeVideo && (
             <View style={styles.videoPlayerContainer}>
-              <Video
+              <ExpoVideo
                 ref={videoRef}
                 style={styles.videoPlayer}
                 source={{ uri: getVideoUrl(selectedVideo) }}
@@ -447,7 +405,7 @@ export default function EduOTTView() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: 'transparent',
   },
   header: {
     flexDirection: 'row',
@@ -621,6 +579,17 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     marginBottom: 12,
   },
+  watchLiveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: TEACHER.danger,
+    padding: 12,
+    borderRadius: TEACHER_RADIUS.md,
+    marginTop: 8,
+  },
+  watchLiveText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   sessionDetails: {
     gap: 8,
   },

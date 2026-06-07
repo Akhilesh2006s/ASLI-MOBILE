@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ActivityIndicator,
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +12,11 @@ import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 import { API_BASE_URL } from '../../../../src/lib/api-config';
+import GlassCard from '../../../../src/components/student/GlassCard';
+import PremiumSectionHeader from '../../../../src/components/student/PremiumSectionHeader';
+import { ShimmerCard } from '../../../../src/components/student/StudentShimmer';
+import { STUDENT, STUDENT_RADIUS } from '../../../../src/theme/student';
+import { capAdaptiveRecommendationsPerSubject } from '../../../../src/lib/adaptive-learning-helpers';
 
 interface RecommendedItem {
   kind: string;
@@ -56,17 +60,17 @@ function parseAdaptivePayload(json: Record<string, unknown>) {
 }
 
 function priorityStyle(priority: string) {
-  if (priority === 'High') return { bg: '#ffe4e6', text: '#be123c', border: '#fecdd3' };
-  if (priority === 'Medium') return { bg: '#fef3c7', text: '#b45309', border: '#fde68a' };
-  return { bg: '#f1f5f9', text: '#475569', border: '#e2e8f0' };
+  if (priority === 'High') return { bg: `${STUDENT.danger}18`, text: STUDENT.danger, border: `${STUDENT.danger}33` };
+  if (priority === 'Medium') return { bg: `${STUDENT.warning}18`, text: STUDENT.warning, border: `${STUDENT.warning}33` };
+  return { bg: STUDENT.surfaceHover, text: STUDENT.textSecondary, border: STUDENT.surfaceBorder };
 }
 
 function typeStyle(displayType: string) {
   const d = displayType.toLowerCase();
-  if (d === 'video') return { bg: '#ede9fe', text: '#6d28d9' };
-  if (d === 'pdf') return { bg: '#fee2e2', text: '#b91c1c' };
-  if (d === 'practice') return { bg: '#ffedd5', text: '#c2410c' };
-  return { bg: '#f3f4f6', text: '#374151' };
+  if (d === 'video') return { bg: `${STUDENT.accent}18`, text: STUDENT.accent };
+  if (d === 'pdf') return { bg: `${STUDENT.danger}18`, text: STUDENT.danger };
+  if (d === 'practice') return { bg: `${STUDENT.warning}18`, text: STUDENT.warning };
+  return { bg: STUDENT.surfaceHover, text: STUDENT.textSecondary };
 }
 
 function getSubjectIcon(name: string): keyof typeof Ionicons.glyphMap {
@@ -143,33 +147,20 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
   };
 
   return (
-    <View style={[dark ? styles.sectionCardDark : styles.sectionCard, styles.gradientBorder]}>
-      <View style={styles.headerBlock}>
-        <View style={styles.headerLeft}>
-          <LinearGradient colors={['#9333ea', '#2563eb']} style={styles.brainIcon}>
-            <Ionicons name="bulb-outline" size={22} color="#fff" />
-          </LinearGradient>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.title}>Adaptive Learning</Text>
-            <Text style={styles.subtitle}>
-              Personalized resources from your performance — only content available in your library
-            </Text>
-          </View>
-        </View>
-        <LinearGradient colors={['#a855f7', '#3b82f6']} style={styles.aiBadge}>
-          <Ionicons name="sparkles" size={12} color="#fff" />
-          <Text style={styles.aiBadgeText}>AI Powered</Text>
-        </LinearGradient>
-      </View>
+    <GlassCard variant="gradient" padding={14} style={dark ? styles.darkWrap : undefined}>
+      <PremiumSectionHeader
+        title="Adaptive Learning"
+        subtitle="Personalized resources from your performance — only content available in your library"
+        icon="bulb-outline"
+        accent={STUDENT.accent}
+        badge="AI Powered"
+      />
 
       {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator color="#9333ea" />
-          <Text style={styles.muted}>Analyzing your weak topics…</Text>
-        </View>
+        <ShimmerCard />
       ) : error ? (
         <View style={styles.center}>
-          <Ionicons name="alert-circle-outline" size={28} color="#dc2626" />
+          <Ionicons name="alert-circle-outline" size={28} color={STUDENT.danger} />
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity onPress={fetchAdaptive}>
             <Text style={styles.retry}>Try again</Text>
@@ -187,17 +178,21 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
           {cards.map((rec) => {
             const examScore = rec.examScorePercent ?? rec.progressPercent;
             const pri = priorityStyle(rec.priority);
+            const displayContent = capAdaptiveRecommendationsPerSubject(rec.recommendedContent ?? []);
             return (
               <View key={rec.subjectId} style={styles.subjectCard}>
                 <View style={styles.subjectTop}>
-                  <LinearGradient colors={['#a855f7', '#3b82f6']} style={styles.subjectIcon}>
-                    <Ionicons name={getSubjectIcon(rec.subjectName)} size={16} color="#fff" />
+                  <LinearGradient colors={[STUDENT.accent, STUDENT.primary]} style={styles.subjectIcon}>
+                    <Ionicons name={getSubjectIcon(rec.subjectName)} size={16} color={STUDENT.textOnPrimary} />
                   </LinearGradient>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.subjectName}>{rec.subjectName}</Text>
                     <Text style={styles.subjectMeta}>
                       Exam score {Math.round(examScore)}% · Weak topics: {rec.weakTopicCount}
                     </Text>
+                    <View style={styles.progressBar}>
+                      <View style={[styles.progressFill, { width: `${Math.min(100, examScore)}%` }]} />
+                    </View>
                   </View>
                   <View style={[styles.priorityBadge, { backgroundColor: pri.bg, borderColor: pri.border }]}>
                     <Text style={[styles.priorityText, { color: pri.text }]}>
@@ -206,12 +201,12 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
                   </View>
                 </View>
 
-                {rec.recommendedContent?.length > 0 ? (
+                {displayContent.length > 0 ? (
                   <>
                     <Text style={styles.recLabel}>
-                      📖 {rec.usesLibraryFallback ? 'RECOMMENDED FROM YOUR LIBRARY' : 'RECOMMENDED FOR YOUR WEAK AREAS'}
+                      {rec.usesLibraryFallback ? 'RECOMMENDED FROM YOUR LIBRARY' : 'RECOMMENDED FOR YOUR WEAK AREAS'}
                     </Text>
-                    {rec.recommendedContent.map((item) => {
+                    {displayContent.map((item) => {
                       const ts = typeStyle(item.displayType);
                       const actionLabel =
                         item.kind === 'quiz' || item.kind === 'exam'
@@ -228,7 +223,7 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
                           onPress={() => openResource(item)}
                           activeOpacity={0.85}
                         >
-                          <Ionicons name="document-text-outline" size={16} color="#7c3aed" />
+                          <Ionicons name="document-text-outline" size={16} color={STUDENT.accent} />
                           <View style={{ flex: 1 }}>
                             <Text style={styles.recTitle} numberOfLines={2}>
                               {item.title}
@@ -243,7 +238,7 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
                             <Text style={[styles.typeBadgeText, { color: ts.text }]}>{item.displayType}</Text>
                           </View>
                           <Text style={styles.actionLabel}>{actionLabel}</Text>
-                          <Ionicons name="chevron-forward" size={14} color="#9ca3af" />
+                          <Ionicons name="chevron-forward" size={14} color={STUDENT.textMuted} />
                         </TouchableOpacity>
                       );
                     })}
@@ -267,70 +262,33 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
           })}
         </ScrollView>
       )}
-    </View>
+    </GlassCard>
   );
 }
 
 const styles = StyleSheet.create({
-  sectionCard: {
-    backgroundColor: '#faf5ff',
-    borderRadius: 16,
-    padding: 14,
-    marginTop: 8,
-    borderWidth: 2,
-    borderColor: '#e9d5ff',
-  },
-  sectionCardDark: {
-    backgroundColor: 'rgba(88,28,135,0.15)',
-    borderRadius: 16,
-    padding: 14,
-    marginTop: 8,
-    borderWidth: 2,
-    borderColor: 'rgba(168,85,247,0.3)',
-  },
-  gradientBorder: {},
-  headerBlock: { marginBottom: 12, gap: 10 },
-  headerLeft: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  brainIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: { fontSize: 20, fontWeight: '800', color: '#7c3aed' },
-  subtitle: { fontSize: 12, color: '#6b7280', marginTop: 4, lineHeight: 17 },
-  aiBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-  },
-  aiBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  darkWrap: { opacity: 0.95 },
   center: { alignItems: 'center', paddingVertical: 20, gap: 8 },
-  muted: { fontSize: 13, color: '#6b7280', textAlign: 'center' },
-  mutedSmall: { fontSize: 12, color: '#9ca3af', fontStyle: 'italic' },
-  errorText: { fontSize: 13, color: '#dc2626', textAlign: 'center' },
-  retry: { fontSize: 13, fontWeight: '700', color: '#7c3aed' },
+  muted: { fontSize: 13, color: STUDENT.textMuted, textAlign: 'center' },
+  mutedSmall: { fontSize: 12, color: STUDENT.textMuted, fontStyle: 'italic' },
+  errorText: { fontSize: 13, color: STUDENT.danger, textAlign: 'center' },
+  retry: { fontSize: 13, fontWeight: '700', color: STUDENT.accent },
   emptyBox: {
-    backgroundColor: 'rgba(255,255,255,0.8)',
-    borderRadius: 12,
+    backgroundColor: STUDENT.surface,
+    borderRadius: STUDENT_RADIUS.inner,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#e9d5ff',
+    borderColor: STUDENT.surfaceBorder,
   },
-  emptySub: { fontSize: 12, color: '#9ca3af', textAlign: 'center', marginTop: 6 },
+  emptySub: { fontSize: 12, color: STUDENT.textMuted, textAlign: 'center', marginTop: 6 },
   cardsScroll: { maxHeight: 420 },
   subjectCard: {
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderRadius: 12,
+    backgroundColor: STUDENT.surface,
+    borderRadius: STUDENT_RADIUS.inner,
     padding: 12,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#e9d5ff',
+    borderColor: STUDENT.surfaceBorder,
   },
   subjectTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10 },
   subjectIcon: {
@@ -340,8 +298,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  subjectName: { fontSize: 15, fontWeight: '800', color: '#111827' },
-  subjectMeta: { fontSize: 11, color: '#6b7280', marginTop: 2 },
+  subjectName: { fontSize: 15, fontWeight: '800', color: STUDENT.text },
+  subjectMeta: { fontSize: 11, color: STUDENT.textMuted, marginTop: 2 },
+  progressBar: {
+    height: 4,
+    backgroundColor: STUDENT.surfaceBorder,
+    borderRadius: 2,
+    marginTop: 6,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: STUDENT.primary,
+    borderRadius: 2,
+  },
   priorityBadge: {
     borderWidth: 1,
     borderRadius: 6,
@@ -352,7 +322,7 @@ const styles = StyleSheet.create({
   recLabel: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#6b7280',
+    color: STUDENT.textMuted,
     letterSpacing: 0.5,
     marginBottom: 6,
   },
@@ -362,23 +332,23 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
+    borderTopColor: STUDENT.surfaceBorder,
   },
-  recTitle: { fontSize: 13, fontWeight: '600', color: '#1f2937' },
-  recHint: { fontSize: 11, color: '#6b7280', marginTop: 2 },
+  recTitle: { fontSize: 13, fontWeight: '600', color: STUDENT.text },
+  recHint: { fontSize: 11, color: STUDENT.textMuted, marginTop: 2 },
   typeBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
   typeBadgeText: { fontSize: 9, fontWeight: '800' },
-  actionLabel: { fontSize: 10, fontWeight: '700', color: '#7c3aed' },
+  actionLabel: { fontSize: 10, fontWeight: '700', color: STUDENT.accent },
   gapBox: {
     marginTop: 8,
-    backgroundColor: '#fffbeb',
+    backgroundColor: `${STUDENT.warning}12`,
     borderRadius: 8,
     padding: 8,
     borderWidth: 1,
-    borderColor: '#fde68a',
+    borderColor: `${STUDENT.warning}33`,
   },
-  gapTitle: { fontSize: 9, fontWeight: '800', color: '#92400e', marginBottom: 4 },
-  gapItem: { fontSize: 11, color: '#b45309' },
+  gapTitle: { fontSize: 9, fontWeight: '800', color: STUDENT.warning, marginBottom: 4 },
+  gapItem: { fontSize: 11, color: STUDENT.warning },
 });
 
 export default memo(AdaptiveLearningModuleComponent);
