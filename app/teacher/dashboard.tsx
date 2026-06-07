@@ -1,28 +1,53 @@
-import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../src/lib/api-config';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import { useAuth } from '../../src/context/AuthContext';
 import authService from '../../src/services/api/authService';
+import {
+  RoleHeader,
+  BottomTabBar,
+  LoadingState,
+  BottomSheet,
+  TabItem,
+  StatCard,
+} from '../../src/components/ui';
+import { COLORS, SPACING, getRoleColor } from '../../src/theme';
 import AIClassesView from './components/AIClassesView';
 import StudentsView from './components/StudentsView';
-import ClassDashboardView from './components/ClassDashboardView';
-import EduOTTView from './components/EduOTTView';
+import TeacherAssessmentsView from './components/AssessmentsView';
+import TeacherVideosView from './components/VideosView';
 import VidyaAIView from './components/VidyaAIView';
 
-type TeacherView = 'ai-classes' | 'students' | 'class-dashboard' | 'eduott' | 'vidya-ai';
+type TeacherView = 'ai-classes' | 'students' | 'assessments' | 'videos' | 'vidya-ai';
+
+const TEACHER_TABS: TabItem[] = [
+  { id: 'ai-classes', label: 'Classes', icon: 'school-outline', activeIcon: 'school' },
+  { id: 'students', label: 'Students', icon: 'people-outline', activeIcon: 'people' },
+  { id: 'assessments', label: 'Tests', icon: 'clipboard-outline', activeIcon: 'clipboard' },
+  { id: 'videos', label: 'Videos', icon: 'videocam-outline', activeIcon: 'videocam' },
+  { id: 'vidya-ai', label: 'AI', icon: 'sparkles-outline', activeIcon: 'sparkles' },
+];
+
+const MORE_ITEMS: { id: string; label: string; icon: keyof typeof Ionicons.glyphMap; route?: string }[] = [
+  { id: 'attendance', label: 'Attendance', icon: 'calendar-outline', route: '/teacher/attendance' },
+  { id: 'class-dashboard', label: 'Class Dashboard', icon: 'stats-chart-outline' },
+  { id: 'remarks', label: 'Remarks', icon: 'chatbox-outline' },
+  { id: 'homework', label: 'Homework', icon: 'document-outline' },
+];
 
 export default function TeacherDashboard() {
   const { signOut } = useAuth();
   const [currentView, setCurrentView] = useState<TeacherView>('ai-classes');
-  const [modalVisible, setModalVisible] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [userName, setUserName] = useState('Teacher');
   const [stats, setStats] = useState({
     totalStudents: 0,
     totalClasses: 0,
@@ -30,56 +55,44 @@ export default function TeacherDashboard() {
     averagePerformance: 0,
   });
 
+  useBackNavigation('/teacher/dashboard', true);
+
   useEffect(() => {
-    console.log('Teacher Dashboard: Component mounted');
     checkAuth();
     fetchStats();
   }, []);
-
-  // Prevent back navigation from dashboard - user should stay in dashboard until logout
-  useBackNavigation('/teacher/dashboard', true);
 
   const checkAuth = async () => {
     try {
       const token = await SecureStore.getItemAsync('authToken');
       const userRole = await SecureStore.getItemAsync('userRole');
-      
+
       if (!token) {
-        console.log('No token found, redirecting to login');
         router.replace('/auth/login');
         return;
       }
 
-      // Quick check with stored role first
       if (userRole === 'teacher') {
         setIsAuthenticated(true);
         setIsLoading(false);
-        // Still verify with API in background
         verifyAuth(token);
         return;
       }
 
       const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       });
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Teacher Dashboard: Auth response:', data.user?.role);
-        if (data.user && data.user.role === 'teacher') {
-          console.log('Teacher Dashboard: Authentication successful');
+        if (data.user?.role === 'teacher') {
           setIsAuthenticated(true);
+          setUserName(data.user.fullName || 'Teacher');
           await SecureStore.setItemAsync('userRole', 'teacher');
         } else {
-          console.log('Teacher Dashboard: User role is not teacher:', data.user?.role);
           router.replace('/auth/login');
         }
       } else {
-        const errorText = await response.text();
-        console.log('Teacher Dashboard: Auth check failed with status:', response.status, errorText);
         router.replace('/auth/login');
       }
     } catch (error) {
@@ -93,15 +106,12 @@ export default function TeacherDashboard() {
   const verifyAuth = async (token: string) => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       });
-
       if (response.ok) {
         const data = await response.json();
-        if (data.user && data.user.role === 'teacher') {
+        if (data.user?.role === 'teacher') {
+          setUserName(data.user.fullName || 'Teacher');
           await SecureStore.setItemAsync('userRole', 'teacher');
         } else {
           router.replace('/auth/login');
@@ -115,71 +125,49 @@ export default function TeacherDashboard() {
   const fetchStats = async () => {
     try {
       const token = await SecureStore.getItemAsync('authToken');
-      console.log('[Mobile Debug] Fetching teacher stats...');
-      console.log('[Mobile Debug] API URL:', `${API_BASE_URL}/api/teacher/dashboard`);
-      console.log('[Mobile Debug] Token present:', token ? 'Yes' : 'No');
-      
       const response = await fetch(`${API_BASE_URL}/api/teacher/dashboard`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       });
 
-      console.log('[Mobile Debug] Response status:', response.status);
-      
       if (response.ok) {
         const data = await response.json();
-        console.log('[Mobile Debug] Response data:', JSON.stringify(data, null, 2));
-        
         if (data.success && data.data) {
-          // Stats are nested inside data.data.stats
           const statsData = data.data.stats || data.data;
           const students = data.data.students || [];
           const assignedClasses = data.data.assignedClasses || [];
           const videos = data.data.videos || [];
-          
-          // Calculate stats from actual data if not provided in stats object
-          const calculatedStats = {
+          setStats({
             totalStudents: statsData.totalStudents ?? students.length ?? 0,
             totalClasses: statsData.totalClasses ?? assignedClasses.length ?? 0,
             totalVideos: statsData.totalVideos ?? videos.length ?? 0,
             averagePerformance: statsData.averagePerformance ?? 0,
-          };
-          
-          console.log('[Mobile Debug] Setting stats:', calculatedStats);
-          setStats(calculatedStats);
-        } else {
-          console.log('[Mobile Debug] API returned success: false or no data');
+          });
         }
-      } else {
-        const errorText = await response.text();
-        console.error('[Mobile Debug] Failed to fetch stats:', response.status, errorText);
       }
     } catch (error) {
-      console.error('[Mobile Debug] Failed to fetch stats (catch):', error);
+      console.error('Failed to fetch stats:', error);
     }
   };
 
-  const handleLogout = async () => {
-    setModalVisible(false);
-    try {
-      await signOut();
-    } catch (error) {
-      console.error('Logout failed:', error);
-      await authService.clearAuth();
-    } finally {
-      router.replace('/auth/login');
-    }
+  const handleLogout = () => {
+    Alert.alert('Logout', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          setMenuOpen(false);
+          try {
+            await signOut();
+          } catch {
+            await authService.clearAuth();
+          } finally {
+            router.replace('/auth/login');
+          }
+        },
+      },
+    ]);
   };
-
-  const navigationItems: { view: TeacherView; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-    { view: 'ai-classes', label: 'AI Classes', icon: 'school' },
-    { view: 'students', label: 'Students', icon: 'people' },
-    { view: 'class-dashboard', label: 'Class Dashboard', icon: 'stats-chart' },
-    { view: 'eduott', label: 'EduOTT', icon: 'play' },
-    { view: 'vidya-ai', label: 'Vidya AI', icon: 'sparkles' },
-  ];
 
   const renderContent = () => {
     switch (currentView) {
@@ -187,10 +175,10 @@ export default function TeacherDashboard() {
         return <AIClassesView stats={stats} />;
       case 'students':
         return <StudentsView />;
-      case 'class-dashboard':
-        return <ClassDashboardView />;
-      case 'eduott':
-        return <EduOTTView />;
+      case 'assessments':
+        return <TeacherAssessmentsView />;
+      case 'videos':
+        return <TeacherVideosView />;
       case 'vidya-ai':
         return <VidyaAIView />;
       default:
@@ -200,423 +188,85 @@ export default function TeacherDashboard() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.loadingContainer} edges={['top']}>
-        <ActivityIndicator size="large" color="#10b981" />
-        <Text style={styles.loadingText}>Loading...</Text>
-        <Text style={styles.loadingSubtext}>Preparing your teacher dashboard</Text>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <LoadingState variant="stats" style={{ padding: SPACING.lg }} />
       </SafeAreaView>
     );
   }
 
-  if (!isAuthenticated) {
-    return (
-      <SafeAreaView style={styles.loadingContainer} edges={['top']}>
-        <ActivityIndicator size="large" color="#10b981" />
-        <Text style={styles.loadingText}>Verifying authentication...</Text>
-      </SafeAreaView>
-    );
-  }
+  if (!isAuthenticated) return null;
+
+  const isFullHeight = currentView === 'vidya-ai';
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <LinearGradient
-        colors={['#10b981', '#059669', '#047857']}
-        style={styles.header}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-      >
-        <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.headerSubtitle}>Teacher Dashboard</Text>
-            <Text style={styles.headerTitle}>
-              {navigationItems.find(item => item.view === currentView)?.label || 'AI Classes'}
-            </Text>
-            <Text style={styles.headerDescription}>Manage your classes and students</Text>
-          </View>
-        </View>
-      </LinearGradient>
+      <RoleHeader
+        role="teacher"
+        userName={userName}
+        onNotification={() => router.push('/notifications')}
+        onMenu={() => setMenuOpen(true)}
+        onProfile={() => router.push('/profile')}
+      />
 
-      {/* Stats Cards - Only show on AI Classes view */}
       {currentView === 'ai-classes' && (
-        <View style={styles.statsContainer}>
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <LinearGradient
-                colors={['#10b981', '#059669']}
-                style={styles.statCardGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <View style={styles.statCardContent}>
-                  <Ionicons name="people" size={32} color="#fff" />
-                  <View style={styles.statCardText}>
-                    <Text style={styles.statCardValue}>{stats.totalStudents}</Text>
-                    <Text style={styles.statCardLabel}>Students</Text>
-                  </View>
-                </View>
-              </LinearGradient>
-            </View>
-
-            <View style={styles.statCard}>
-              <LinearGradient
-                colors={['#3b82f6', '#2563eb']}
-                style={styles.statCardGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <View style={styles.statCardContent}>
-                  <Ionicons name="school" size={32} color="#fff" />
-                  <View style={styles.statCardText}>
-                    <Text style={styles.statCardValue}>{stats.totalClasses}</Text>
-                    <Text style={styles.statCardLabel}>Classes</Text>
-                  </View>
-                </View>
-              </LinearGradient>
-            </View>
-
-            <View style={styles.statCard}>
-              <LinearGradient
-                colors={['#8b5cf6', '#7c3aed']}
-                style={styles.statCardGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <View style={styles.statCardContent}>
-                  <Ionicons name="play" size={32} color="#fff" />
-                  <View style={styles.statCardText}>
-                    <Text style={styles.statCardValue}>{stats.totalVideos}</Text>
-                    <Text style={styles.statCardLabel}>Videos</Text>
-                  </View>
-                </View>
-              </LinearGradient>
-            </View>
-
-            <View style={styles.statCard}>
-              <LinearGradient
-                colors={['#f59e0b', '#d97706']}
-                style={styles.statCardGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <View style={styles.statCardContent}>
-                  <Ionicons name="trending-up" size={32} color="#fff" />
-                  <View style={styles.statCardText}>
-                    <Text style={styles.statCardValue}>{stats.averagePerformance.toFixed(0)}%</Text>
-                    <Text style={styles.statCardLabel}>Performance</Text>
-                  </View>
-                </View>
-              </LinearGradient>
-            </View>
-          </View>
-        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statsRow}>
+          <StatCard icon="people" label="Students" value={stats.totalStudents} color={COLORS.teacher} compact />
+          <StatCard icon="school" label="Classes" value={stats.totalClasses} color={COLORS.info} compact />
+          <StatCard icon="clipboard" label="Pending" value="—" color={COLORS.warning} compact />
+          <StatCard icon="trending-up" label="Avg %" value={`${stats.averagePerformance.toFixed(0)}%`} color={COLORS.success} compact />
+        </ScrollView>
       )}
 
-      {/* Content — use View, not ScrollView: child views (e.g. StudentsView FlatList) own vertical scrolling */}
-      <View style={[styles.content, styles.contentPadding]}>
+      <Animated.View
+        entering={FadeIn.duration(200)}
+        style={[styles.content, isFullHeight && styles.contentFull, { paddingHorizontal: SPACING.lg }]}
+      >
         {renderContent()}
-      </View>
+      </Animated.View>
 
-      {/* Navigation FAB */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => setModalVisible(true)}
-      >
-        <LinearGradient
-          colors={['#10b981', '#059669']}
-          style={styles.fabGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <Ionicons name="menu" size={28} color="#fff" />
-        </LinearGradient>
-      </TouchableOpacity>
+      <BottomTabBar
+        tabs={TEACHER_TABS}
+        activeTab={currentView}
+        onTabChange={(id) => setCurrentView(id as TeacherView)}
+        roleColor={getRoleColor('teacher')}
+      />
 
-      {/* Navigation Modal */}
-      <Modal
-        visible={modalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setModalVisible(false)}
-        >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <View style={styles.modalHeaderLeft}>
-                <View style={styles.modalLogo}>
-                  <Ionicons name="school" size={24} color="#fff" />
-                </View>
-                <View>
-                  <Text style={styles.modalTitle}>Teacher Dashboard</Text>
-                  <Text style={styles.modalSubtitle}>Manage your classes</Text>
-                </View>
-              </View>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={28} color="#fff" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.modalNav}>
-              {navigationItems.map((item) => (
-                <TouchableOpacity
-                  key={item.view}
-                  style={[
-                    styles.modalNavItem,
-                    currentView === item.view && styles.modalNavItemActive
-                  ]}
-                  onPress={() => {
-                    setCurrentView(item.view);
-                    setModalVisible(false);
-                  }}
-                >
-                  <Ionicons
-                    name={item.icon}
-                    size={20}
-                    color={currentView === item.view ? '#10b981' : '#fff'}
-                  />
-                  <Text
-                    style={[
-                      styles.modalNavItemText,
-                      currentView === item.view && styles.modalNavItemTextActive
-                    ]}
-                  >
-                    {item.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-
-              <TouchableOpacity
-                style={styles.modalLogout}
-                onPress={handleLogout}
-              >
-                <Ionicons name="log-out" size={20} color="#ef4444" />
-                <Text style={styles.modalLogoutText}>Logout</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+      <BottomSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title="More">
+        {MORE_ITEMS.map((item) => (
+          <Pressable
+            key={item.id}
+            style={styles.menuItem}
+            onPress={() => {
+              setMenuOpen(false);
+              if (item.route) router.push(item.route as any);
+            }}
+          >
+            <Ionicons name={item.icon} size={20} color={COLORS.text} />
+            <Text style={styles.menuText}>{item.label}</Text>
+          </Pressable>
+        ))}
+        <Pressable style={[styles.menuItem, styles.logoutItem]} onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={20} color={COLORS.danger} />
+          <Text style={[styles.menuText, { color: COLORS.danger }]}>Logout</Text>
+        </Pressable>
+      </BottomSheet>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f0fdf4',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f0fdf4',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#10b981',
-    marginBottom: 8,
-  },
-  loadingSubtext: {
-    fontSize: 14,
-    color: '#64748b',
-  },
-  header: {
-    paddingTop: 50,
-    paddingBottom: 24,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-    marginBottom: 4,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  headerDescription: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
-    opacity: 0.9,
-  },
-  statsContainer: {
-    padding: 20,
-    paddingTop: 16,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    minWidth: '47%',
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  statCardGradient: {
-    padding: 16,
-    minHeight: 100,
-  },
-  statCardContent: {
+  container: { flex: 1, backgroundColor: COLORS.bg },
+  statsRow: { paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md, gap: SPACING.md },
+  content: { flex: 1, paddingBottom: 96, paddingTop: SPACING.sm, minHeight: 0 },
+  contentFull: { paddingBottom: 88 },
+  menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  statCardText: {
-    flex: 1,
-  },
-  statCardValue: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  statCardLabel: {
-    fontSize: 12,
-    color: '#fff',
-    opacity: 0.9,
-  },
-  content: {
-    flex: 1,
-    minHeight: 0,
-  },
-  contentPadding: {
-    padding: 20,
-    paddingBottom: 20,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  fabGradient: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#10b981',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '80%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 16,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
+    gap: SPACING.md,
+    paddingVertical: SPACING.md,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.2)',
+    borderBottomColor: COLORS.divider,
   },
-  modalHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  modalLogo: {
-    width: 48,
-    height: 48,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#fff',
-  },
-  modalSubtitle: {
-    fontSize: 12,
-    color: '#fff',
-    opacity: 0.9,
-  },
-  modalNav: {
-    padding: 16,
-  },
-  modalNavItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 8,
-    gap: 12,
-  },
-  modalNavItemActive: {
-    backgroundColor: '#fff',
-  },
-  modalNavItemText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  modalNavItemTextActive: {
-    color: '#10b981',
-  },
-  modalLogout: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 8,
-    marginBottom: 20,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    gap: 12,
-  },
-  modalLogoutText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ef4444',
-  },
+  menuText: { fontSize: 16, fontWeight: '600', color: COLORS.text },
+  logoutItem: { borderBottomWidth: 0, marginTop: SPACING.sm },
 });
-

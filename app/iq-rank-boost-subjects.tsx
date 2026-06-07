@@ -55,19 +55,19 @@ export default function IQRankBoostSubjects() {
       setIsLoading(true);
       const token = await SecureStore.getItemAsync('authToken');
       
-      const [quizzesResponse, resultsResponse] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/student/iq-rank-quizzes`, {
+      const [questionsResponse, resultsResponse] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/student/iq-rank-questions`, {
           headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
         }),
         fetch(`${API_BASE_URL}/api/student/iq-rank-quiz-results`, {
           headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        })
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }),
       ]);
 
       const quizResultsMapLocal = new Map<string, { score: number; completedAt: string }>();
@@ -75,77 +75,73 @@ export default function IQRankBoostSubjects() {
         const resultsData = await resultsResponse.json();
         const results = resultsData.data || [];
         results.forEach((result: any) => {
-          const key = result.quizId || result.subjectId;
+          const key = result.subjectId;
           if (key) {
             quizResultsMapLocal.set(key.toString(), {
               score: result.score,
-              completedAt: result.completedAt
+              completedAt: result.completedAt,
             });
           }
         });
       }
       setQuizResultsMap(quizResultsMapLocal);
 
-      if (quizzesResponse.ok) {
-        const quizzesData = await quizzesResponse.json();
-        const quizzes: Quiz[] = quizzesData.data || quizzesData.quizzes || [];
+      if (questionsResponse.ok) {
+        const questionsData = await questionsResponse.json();
+        const questions: any[] = questionsData.data || questionsData.questions || [];
 
-        if (quizzesData.classNumber) {
-          setStudentClass(quizzesData.classNumber);
-        } else if (quizzes.length > 0 && quizzes[0].classNumber) {
-          setStudentClass(quizzes[0].classNumber);
+        if (questionsData.classNumber) {
+          setStudentClass(questionsData.classNumber);
         }
 
-        // Group quizzes by subject
-        const subjectMap = new Map<string, { name: string; quizzes: Quiz[]; difficulties: Set<string> }>();
+        const subjectMap = new Map<
+          string,
+          { name: string; questions: any[]; difficulties: Set<string> }
+        >();
 
-        quizzes.forEach((quiz: Quiz) => {
-          const subjectId = quiz.subject?._id || quiz.subject;
-          const subjectName = quiz.subject?.name || 'Unknown Subject';
-
+        questions.forEach((q: any) => {
+          const subjectId =
+            typeof q.subject === 'object' ? q.subject?._id : q.subject;
+          const subjectName =
+            typeof q.subject === 'object' ? q.subject?.name : 'Unknown Subject';
           if (!subjectId) return;
 
           if (!subjectMap.has(subjectId)) {
             subjectMap.set(subjectId, {
               name: subjectName,
-              quizzes: [],
-              difficulties: new Set()
+              questions: [],
+              difficulties: new Set(),
             });
           }
-
           const subjectData = subjectMap.get(subjectId)!;
-          subjectData.quizzes.push(quiz);
-          if (quiz.difficulty) {
-            subjectData.difficulties.add(quiz.difficulty);
-          }
+          subjectData.questions.push(q);
+          if (q.difficulty) subjectData.difficulties.add(q.difficulty);
         });
 
-        const subjectsArray: SubjectWithQuizzes[] = Array.from(subjectMap.entries()).map(([id, data]) => {
-          let latestScore: number | undefined;
-          let latestCompletedAt: string | undefined;
-          
-          for (const quiz of data.quizzes) {
-            const result = quizResultsMapLocal.get(quiz._id);
-            if (result) {
-              latestScore = result.score;
-              latestCompletedAt = result.completedAt;
-              break;
-            }
+        const subjectsArray: SubjectWithQuizzes[] = Array.from(subjectMap.entries()).map(
+          ([id, data]) => {
+            const result = quizResultsMapLocal.get(id);
+            const pseudoQuiz: Quiz = {
+              _id: id,
+              title: `${data.name} IQ Quiz`,
+              subject: { _id: id, name: data.name },
+              classNumber: questionsData.classNumber || '',
+              difficulty: Array.from(data.difficulties)[0] || 'medium',
+              totalQuestions: data.questions.length,
+              createdAt: new Date().toISOString(),
+            };
+            return {
+              _id: id,
+              name: data.name,
+              quizzes: [pseudoQuiz],
+              totalQuizzes: 1,
+              totalQuestions: data.questions.length,
+              difficulties: Array.from(data.difficulties),
+              latestScore: result?.score,
+              latestCompletedAt: result?.completedAt,
+            };
           }
-
-          const totalQuestions = data.quizzes.reduce((sum, q) => sum + (q.totalQuestions || 0), 0);
-
-          return {
-            _id: id,
-            name: data.name,
-            quizzes: data.quizzes.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-            totalQuizzes: data.quizzes.length,
-            totalQuestions: totalQuestions,
-            difficulties: Array.from(data.difficulties),
-            latestScore: latestScore,
-            latestCompletedAt: latestCompletedAt
-          };
-        });
+        );
 
         setSubjects(subjectsArray);
       }

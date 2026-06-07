@@ -8,6 +8,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
 import { useAuth } from '../src/context/AuthContext';
 import studentService from '../src/services/api/studentService';
+import * as SecureStore from 'expo-secure-store';
+import { API_BASE_URL } from '../src/lib/api-config';
+import { dedupeStudentExamResults } from '../src/lib/dedupe-exam-results';
+import {
+  buildWeeklyActivityStats,
+  computeProfileOverviewStats,
+  getExamIdFromResult,
+} from '../src/lib/profile-overview-stats';
+import { getMergedStudyTime } from '../src/lib/session-time-sync';
 
 type ProfileTab = 'overview' | 'achievements' | 'progress' | 'settings';
 
@@ -21,6 +30,10 @@ export default function Profile() {
   const [profileData, setProfileData] = useState<any>(null);
   const [dashboardPath, setDashboardPath] = useState<string>('/dashboard');
   const [activeTab, setActiveTab] = useState<ProfileTab>('overview');
+  const [weeklyActivity, setWeeklyActivity] = useState<{ day: string; hours: number }[]>([]);
+  const [weeklyTotalHours, setWeeklyTotalHours] = useState(0);
+  const [testsCompleted, setTestsCompleted] = useState(0);
+  const [studyHours, setStudyHours] = useState(0);
 
   const firstName = useMemo(() => {
     const fromName = profileData?.fullName || user?.fullName;
@@ -55,6 +68,48 @@ export default function Profile() {
       setProfileData(apiUser || null);
       setUserEmail(apiUser?.email || null);
       setUserRole(apiUser?.role || role || null);
+
+      const token = await SecureStore.getItemAsync('authToken');
+      if (token) {
+        const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+        const [resultsRes, rankingsRes, focusRes, progressRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/student/exam-results`, { headers }),
+          fetch(`${API_BASE_URL}/api/student/rankings`, { headers }),
+          fetch(`${API_BASE_URL}/api/vidya/student/focus-card`, { headers }).catch(() => null),
+          fetch(`${API_BASE_URL}/api/student/learning-progress`, { headers }),
+        ]);
+
+        let examResults: any[] = [];
+        let rankings: any[] = [];
+        let progressRecords: any[] = [];
+        let streak = 0;
+
+        if (resultsRes.ok) {
+          const json = await resultsRes.json();
+          examResults = dedupeStudentExamResults(Array.isArray(json.data) ? json.data : [], getExamIdFromResult);
+        }
+        if (rankingsRes.ok) {
+          const json = await rankingsRes.json();
+          rankings = Array.isArray(json.data) ? json.data : [];
+        }
+        if (focusRes && 'ok' in focusRes && focusRes.ok) {
+          const focusJson = await focusRes.json();
+          streak = Number(focusJson?.studyStreak?.current ?? focusJson?.studyStreak?.count ?? 0);
+        }
+        if (progressRes.ok) {
+          const progressJson = await progressRes.json();
+          progressRecords = progressJson?.data?.progressRecords || [];
+        }
+
+        const stats = computeProfileOverviewStats(examResults, rankings, streak);
+        setProfileData((prev: any) => ({ ...prev, ...stats, dayStreak: stats.streak }));
+        setTestsCompleted(examResults.length);
+        const weekly = buildWeeklyActivityStats(examResults, progressRecords);
+        setWeeklyActivity(weekly.map((d) => ({ day: d.day, hours: d.hours })));
+        setWeeklyTotalHours(Math.round(weekly.reduce((s, d) => s + d.hours, 0) * 10) / 10);
+        const study = await getMergedStudyTime();
+        setStudyHours(Math.round((study.thisWeek / 60) * 10) / 10);
+      }
     } catch (_) {
       setProfileData(user || null);
       setUserEmail(user?.email || null);
@@ -168,22 +223,22 @@ export default function Profile() {
             <View style={styles.sectionCard}>
               <Text style={styles.sectionTitle}>This Week&apos;s Activity</Text>
               <View style={styles.activityRow}>
-                {[
-                  { day: 'Mon', hrs: '2.5h' },
-                  { day: 'Tue', hrs: '3h' },
-                  { day: 'Wed', hrs: '1.8h' },
-                  { day: 'Thu', hrs: '2.2h' },
-                  { day: 'Fri', hrs: '2.8h' },
-                  { day: 'Sat', hrs: '4h' },
-                  { day: 'Sun', hrs: '1.5h' },
-                ].map((item) => (
+                {(weeklyActivity.length ? weeklyActivity : [
+                  { day: 'Mon', hours: 0 },
+                  { day: 'Tue', hours: 0 },
+                  { day: 'Wed', hours: 0 },
+                  { day: 'Thu', hours: 0 },
+                  { day: 'Fri', hours: 0 },
+                  { day: 'Sat', hours: 0 },
+                  { day: 'Sun', hours: 0 },
+                ]).map((item) => (
                   <View key={item.day} style={styles.activityPill}>
                     <Text style={styles.activityDay}>{item.day}</Text>
-                    <Text style={styles.activityHrs}>{item.hrs}</Text>
+                    <Text style={styles.activityHrs}>{item.hours > 0 ? `${item.hours}h` : '—'}</Text>
                   </View>
                 ))}
               </View>
-              <Text style={styles.activityTotal}>Total: 17.8 hours this week</Text>
+              <Text style={styles.activityTotal}>Total: {weeklyTotalHours} hours this week</Text>
             </View>
           </>
         )}
@@ -259,7 +314,7 @@ export default function Profile() {
             <Text style={styles.sectionTitle}>Progress Snapshot</Text>
             <View style={styles.quickGrid}>
               <View style={styles.quickCard}>
-                <Text style={styles.quickValue}>1</Text>
+                <Text style={styles.quickValue}>{testsCompleted}</Text>
                 <Text style={styles.quickLabel}>Tests Completed</Text>
               </View>
               <View style={styles.quickCard}>
@@ -267,7 +322,7 @@ export default function Profile() {
                 <Text style={styles.quickLabel}>Best Score</Text>
               </View>
               <View style={styles.quickCard}>
-                <Text style={styles.quickValue}>17.8h</Text>
+                <Text style={styles.quickValue}>{studyHours}h</Text>
                 <Text style={styles.quickLabel}>Study Hours</Text>
               </View>
               <View style={styles.quickCard}>
@@ -313,7 +368,88 @@ export default function Profile() {
                   <View style={styles.menuIcon}>
                     <Ionicons name="book-outline" size={18} color="#16a34a" />
                   </View>
-                  <Text style={styles.menuText}>My Courses</Text>
+                  <Text style={styles.menuText}>Learning Paths</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/asli-prep-content')}>
+                <View style={styles.menuLeft}>
+                  <View style={styles.menuIcon}>
+                    <Ionicons name="library-outline" size={18} color="#2563eb" />
+                  </View>
+                  <Text style={styles.menuText}>Digital Library</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/student/timetable')}>
+                <View style={styles.menuLeft}>
+                  <View style={styles.menuIcon}>
+                    <Ionicons name="calendar-outline" size={18} color="#0d9488" />
+                  </View>
+                  <Text style={styles.menuText}>Class Timetable</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/student/schedule')}>
+                <View style={styles.menuLeft}>
+                  <View style={styles.menuIcon}>
+                    <Ionicons name="today-outline" size={18} color="#0d9488" />
+                  </View>
+                  <Text style={styles.menuText}>Study Schedule</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/student/results')}>
+                <View style={styles.menuLeft}>
+                  <View style={styles.menuIcon}>
+                    <Ionicons name="trophy-outline" size={18} color="#f59e0b" />
+                  </View>
+                  <Text style={styles.menuText}>Exam Results</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/student-exams')}>
+                <View style={styles.menuLeft}>
+                  <View style={styles.menuIcon}>
+                    <Ionicons name="school-outline" size={18} color="#7c3aed" />
+                  </View>
+                  <Text style={styles.menuText}>My Exams</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/practice-tests')}>
+                <View style={styles.menuLeft}>
+                  <View style={styles.menuIcon}>
+                    <Ionicons name="fitness-outline" size={18} color="#ea580c" />
+                  </View>
+                  <Text style={styles.menuText}>Practice Tests</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/ai-tutor')}>
+                <View style={styles.menuLeft}>
+                  <View style={styles.menuIcon}>
+                    <Ionicons name="sparkles-outline" size={18} color="#8b5cf6" />
+                  </View>
+                  <Text style={styles.menuText}>Vidya AI</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/drive-viewer')}>
+                <View style={styles.menuLeft}>
+                  <View style={styles.menuIcon}>
+                    <Ionicons name="folder-outline" size={18} color="#2563eb" />
+                  </View>
+                  <Text style={styles.menuText}>My Drive</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/notifications')}>
+                <View style={styles.menuLeft}>
+                  <View style={styles.menuIcon}>
+                    <Ionicons name="notifications-outline" size={18} color="#dc2626" />
+                  </View>
+                  <Text style={styles.menuText}>Notifications</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
               </TouchableOpacity>

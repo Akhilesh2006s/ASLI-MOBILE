@@ -4,8 +4,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import api from '../../../src/services/api/api';
+import { STUDENT, STUDENT_RADIUS } from '../../../src/theme/student';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
-export default function LearningPathsView() {
+export default function LearningPathsView({ dark }: { dark?: boolean }) {
   const { width } = useWindowDimensions();
   const compact = width < 380;
   const isTablet = width >= 768;
@@ -19,7 +21,30 @@ export default function LearningPathsView() {
   useEffect(() => {
     fetchSubjects();
     fetchQuizzes();
+    fetchLibraryCounts();
   }, []);
+
+  const fetchLibraryCounts = async () => {
+    try {
+      const { data } = await api.get('/api/student/asli-prep-content');
+      const allContent = data.data || data || [];
+      const counts: Record<string, number> = {
+        TextBook: 0,
+        Workbook: 0,
+        Material: 0,
+        Video: 0,
+        Audio: 0,
+        Homework: 0,
+      };
+      (Array.isArray(allContent) ? allContent : []).forEach((item: any) => {
+        const t = item.type || 'Material';
+        counts[t] = (counts[t] || 0) + 1;
+      });
+      setLibraryCounts(counts);
+    } catch (error) {
+      console.error('Failed to fetch library counts:', error);
+    }
+  };
 
   const fetchSubjects = async () => {
     try {
@@ -56,26 +81,40 @@ export default function LearningPathsView() {
     return 'book';
   };
 
+  const [libraryCounts, setLibraryCounts] = useState<Record<string, number>>({});
+
+  const openLibraryType = (type: string) => {
+    if (type === 'Homework') {
+      router.push('/assignments');
+      return;
+    }
+    router.push({ pathname: '/asli-prep-content', params: { type } });
+  };
+
   const libraryTiles = [
-    { key: 'textbook', label: 'TextBook', count: '3 files', icon: 'book-outline' as keyof typeof Ionicons.glyphMap },
-    { key: 'workbook', label: 'Workbook', count: '0 files', icon: 'document-text-outline' as keyof typeof Ionicons.glyphMap },
-    { key: 'material', label: 'Material', count: '0 files', icon: 'document-outline' as keyof typeof Ionicons.glyphMap },
-    { key: 'video', label: 'Video', count: '78 files', icon: 'videocam-outline' as keyof typeof Ionicons.glyphMap },
-    { key: 'audio', label: 'Audio', count: '0 files', icon: 'headset-outline' as keyof typeof Ionicons.glyphMap },
-    { key: 'homework', label: 'Homework', count: '0 files', icon: 'clipboard-outline' as keyof typeof Ionicons.glyphMap },
+    { key: 'textbook', label: 'TextBook', type: 'TextBook', icon: 'book-outline' as keyof typeof Ionicons.glyphMap },
+    { key: 'workbook', label: 'Workbook', type: 'Workbook', icon: 'document-text-outline' as keyof typeof Ionicons.glyphMap },
+    { key: 'material', label: 'Material', type: 'Material', icon: 'document-outline' as keyof typeof Ionicons.glyphMap },
+    { key: 'video', label: 'Video', type: 'Video', icon: 'videocam-outline' as keyof typeof Ionicons.glyphMap },
+    { key: 'audio', label: 'Audio', type: 'Audio', icon: 'headset-outline' as keyof typeof Ionicons.glyphMap },
+    { key: 'homework', label: 'Homework', type: 'Homework', icon: 'clipboard-outline' as keyof typeof Ionicons.glyphMap },
   ];
 
   return (
-    <View style={styles.container}>
-      <LinearGradient
-        colors={['#3b82f6', '#2563eb']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={[styles.banner, compact && { paddingHorizontal: 12 }]}
-      >
-        <Text style={styles.bannerTitle}>Learning Paths for You</Text>
-        <Text style={styles.bannerSub}>Choose your learning journey and master your subjects.</Text>
-      </LinearGradient>
+    <View style={[styles.container, dark && styles.containerDark]}>
+      {!dark ? (
+        <Animated.View entering={FadeInDown.duration(280)}>
+          <LinearGradient
+            colors={[...STUDENT.heroGradient]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.banner, compact && { paddingHorizontal: 14 }]}
+          >
+            <Text style={styles.bannerTitle}>Learning Paths</Text>
+            <Text style={styles.bannerSub}>Subjects, quizzes, and your digital library in one place.</Text>
+          </LinearGradient>
+        </Animated.View>
+      ) : null}
 
       {/* Tabs */}
       <View style={styles.tabsContainer}>
@@ -135,7 +174,12 @@ export default function LearningPathsView() {
                 <Text style={styles.sectionSub}>Browse by Type</Text>
                 <View style={styles.libraryGrid}>
                   {libraryTiles.map((tile) => (
-                    <TouchableOpacity key={tile.key} style={[styles.libraryCard, { width: cardWidth }]} activeOpacity={0.85}>
+                    <TouchableOpacity
+                      key={tile.key}
+                      style={[styles.libraryCard, { width: cardWidth }]}
+                      activeOpacity={0.85}
+                      onPress={() => openLibraryType(tile.type)}
+                    >
                       <LinearGradient
                         colors={['#60a5fa', '#8b5cf6']}
                         start={{ x: 0, y: 0 }}
@@ -145,7 +189,9 @@ export default function LearningPathsView() {
                         <Ionicons name={tile.icon} size={24} color="#fff" />
                       </LinearGradient>
                       <Text style={styles.libraryTitle}>{tile.label}</Text>
-                      <Text style={styles.libraryCount}>{tile.count}</Text>
+                      <Text style={styles.libraryCount}>
+                        {libraryCounts[tile.type] ?? 0} files
+                      </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -162,7 +208,11 @@ export default function LearningPathsView() {
                     <Text style={styles.recommendDesc}>
                       Boost your IQ and improve your rank with targeted practice.
                     </Text>
-                    <TouchableOpacity style={styles.recommendButton} activeOpacity={0.85}>
+                    <TouchableOpacity
+                      style={styles.recommendButton}
+                      activeOpacity={0.85}
+                      onPress={() => router.push('/iq-rank-boost-subjects')}
+                    >
                       <Text style={styles.recommendButtonText}>Start Learning</Text>
                     </TouchableOpacity>
                   </View>
@@ -260,11 +310,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  containerDark: {
+    backgroundColor: 'transparent',
+  },
   banner: {
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    marginBottom: 14,
+    borderRadius: STUDENT_RADIUS.xxl,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+    marginBottom: 16,
+    ...STUDENT.shadow.md,
   },
   bannerTitle: {
     fontSize: 20,

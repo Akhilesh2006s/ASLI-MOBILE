@@ -53,20 +53,25 @@ export default function IQRankBoostQuiz() {
     try {
       setIsLoading(true);
       const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/student/iq-rank-quizzes/${quizId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      const response = await fetch(
+        `${API_BASE_URL}/api/student/iq-rank-questions?subject=${encodeURIComponent(quizId)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
         }
-      });
+      );
 
       if (response.ok) {
         const data = await response.json();
-        const quiz = data.data || data;
-        setQuestions(quiz.questions || []);
-        setSubjectName(
-          typeof quiz.subject === 'object' ? quiz.subject?.name : 'Subject'
-        );
+        const fetched = data.data || data.questions || [];
+        const shuffled = [...fetched].sort(() => Math.random() - 0.5);
+        setQuestions(shuffled);
+        if (shuffled.length > 0) {
+          const sub = shuffled[0].subject;
+          setSubjectName(typeof sub === 'object' ? sub?.name || 'Subject' : 'Subject');
+        }
       }
     } catch (error) {
       console.error('Error fetching quiz:', error);
@@ -84,35 +89,48 @@ export default function IQRankBoostQuiz() {
   };
 
   const handleSubmit = async () => {
+    let correct = 0;
+    let incorrect = 0;
+    let unattempted = 0;
+
+    questions.forEach((question) => {
+      const userAnswer = answers[question._id];
+      if (!userAnswer) unattempted++;
+      else if (userAnswer === question.correctAnswer) correct++;
+      else incorrect++;
+    });
+
+    const score = questions.length > 0 ? Math.round((correct / questions.length) * 100) : 0;
+    setResults({ total: questions.length, correct, incorrect, unattempted, score });
+    setIsSubmitted(true);
+
     try {
       const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/student/iq-rank-quiz-results`, {
+      const subjectId =
+        questions.length > 0 && questions[0].subject
+          ? typeof questions[0].subject === 'object'
+            ? questions[0].subject._id
+            : questions[0].subject
+          : quizId;
+
+      await fetch(`${API_BASE_URL}/api/student/iq-rank-quiz-result`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          quizId,
-          answers
-        })
+          subjectId,
+          totalQuestions: questions.length,
+          correctAnswers: correct,
+          incorrectAnswers: incorrect,
+          unattempted,
+          score,
+          answers,
+        }),
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        const result = data.data || data;
-        setResults({
-          total: questions.length,
-          correct: result.correctAnswers || 0,
-          incorrect: result.wrongAnswers || 0,
-          unattempted: result.unattempted || 0,
-          score: result.score || 0
-        });
-        setIsSubmitted(true);
-      }
     } catch (error) {
       console.error('Error submitting quiz:', error);
-      Alert.alert('Error', 'Failed to submit quiz. Please try again.');
     }
   };
 

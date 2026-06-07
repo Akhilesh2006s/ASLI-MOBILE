@@ -21,10 +21,9 @@ export default function StudentExams() {
 
   useBackNavigation(dashboardPath, false);
 
-  // If examId is provided, navigate to quiz page
   useEffect(() => {
     if (examId) {
-      router.replace(`/quiz/${examId}`);
+      router.replace(`/exam/${examId}`);
     }
   }, [examId]);
 
@@ -58,7 +57,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9fafb',
   },
   header: {
-    paddingTop: 50,
+    paddingTop: 12,
     paddingBottom: 20,
     paddingHorizontal: 20,
   },

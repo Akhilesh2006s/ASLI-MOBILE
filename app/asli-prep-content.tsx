@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Alert, Linking, Platform } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Linking, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import * as SecureStore from 'expo-secure-store';
 import * as FileSystem from 'expo-file-system';
@@ -29,12 +30,19 @@ interface Content {
   createdAt: string;
 }
 
+const VALID_TYPES = ['TextBook', 'Workbook', 'Material', 'Video', 'Audio'] as const;
+
 export default function AsliPrepContent() {
+  const { type: typeParam } = useLocalSearchParams<{ type?: string }>();
+  const initialType =
+    typeof typeParam === 'string' && VALID_TYPES.includes(typeParam as typeof VALID_TYPES[number])
+      ? typeParam
+      : 'all';
   const [contents, setContents] = useState<Content[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState({
     subject: 'all',
-    type: 'all',
+    type: initialType,
     topic: ''
   });
   const [subjects, setSubjects] = useState<any[]>([]);
@@ -156,7 +164,11 @@ export default function AsliPrepContent() {
 
   const filteredContents = useMemo(() => {
     return contents.filter(content => {
-      const matchesSubject = filters.subject === 'all' || content.subject._id === filters.subject;
+      const subjectId =
+        typeof content.subject === 'string'
+          ? content.subject
+          : content.subject?._id;
+      const matchesSubject = filters.subject === 'all' || subjectId === filters.subject;
       const matchesType = filters.type === 'all' || content.type === filters.type;
       const matchesTopic = !filters.topic || content.topic?.toLowerCase().includes(filters.topic.toLowerCase());
       return matchesSubject && matchesType && matchesTopic;
@@ -269,8 +281,15 @@ export default function AsliPrepContent() {
     }
   }, [getFileExtension]);
 
+  const getSubjectName = useCallback((subject: Content['subject'] | string | undefined) => {
+    if (!subject) return '';
+    if (typeof subject === 'string') return subject;
+    return subject.name || '';
+  }, []);
+
   const renderContentItem = useCallback(({ item: content }: { item: Content }) => {
     const typeColor = getTypeColor(content.type);
+    const subjectName = getSubjectName(content.subject as Content['subject'] | string | undefined);
     return (
       <TouchableOpacity
         style={styles.contentCard}
@@ -288,42 +307,42 @@ export default function AsliPrepContent() {
                 {content.type}
               </Text>
             </View>
-            {content.subject && (
+            {subjectName ? (
               <View style={styles.subjectBadge}>
-                <Text style={styles.subjectBadgeText}>{content.subject.name}</Text>
+                <Text style={styles.subjectBadgeText}>{subjectName}</Text>
               </View>
-            )}
+            ) : null}
           </View>
           
           <Text style={styles.contentTitle} numberOfLines={2}>
             {content.title}
           </Text>
           
-          {content.description && (
+          {typeof content.description === 'string' && content.description.length > 0 ? (
             <Text style={styles.contentDescription} numberOfLines={2}>
               {content.description}
             </Text>
-          )}
+          ) : null}
           
           <View style={styles.contentMeta}>
-            {content.duration && (
+            {content.duration != null && content.duration > 0 ? (
               <View style={styles.metaItem}>
                 <Ionicons name="time" size={14} color="#6b7280" />
                 <Text style={styles.metaText}>{formatDuration(content.duration)}</Text>
               </View>
-            )}
-            {content.size && (
+            ) : null}
+            {content.size != null && content.size > 0 ? (
               <View style={styles.metaItem}>
                 <Ionicons name="document" size={14} color="#6b7280" />
                 <Text style={styles.metaText}>{formatFileSize(content.size)}</Text>
               </View>
-            )}
-            {content.views !== undefined && (
+            ) : null}
+            {typeof content.views === 'number' ? (
               <View style={styles.metaItem}>
                 <Ionicons name="eye" size={14} color="#6b7280" />
                 <Text style={styles.metaText}>{content.views} views</Text>
               </View>
-            )}
+            ) : null}
           </View>
         </View>
         
@@ -338,12 +357,13 @@ export default function AsliPrepContent() {
         </TouchableOpacity>
       </TouchableOpacity>
     );
-  }, [handleDownload, getFileExtension]);
+  }, [handleDownload, getSubjectName]);
 
   const keyExtractor = useCallback((item: Content) => item._id, []);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar style="light" />
       <LinearGradient
         colors={['#9333ea', '#c026d3']}
         style={styles.header}
@@ -357,9 +377,11 @@ export default function AsliPrepContent() {
               <View style={styles.headerIcon}>
                 <Ionicons name="book" size={24} color="#fff" />
               </View>
-              <Text style={styles.headerTitle}>AsliLearn Exclusive</Text>
+              <View style={styles.headerTitleBlock}>
+                <Text style={styles.headerTitle}>AsliLearn Exclusive</Text>
+                <Text style={styles.headerSubtitle}>Premium study materials</Text>
+              </View>
             </View>
-            <Text style={styles.headerSubtitle}>Premium study materials</Text>
           </View>
         </View>
       </LinearGradient>
@@ -451,9 +473,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9fafb',
   },
   header: {
-    paddingTop: 50,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
   },
   headerContent: {
     flexDirection: 'row',
@@ -469,7 +491,10 @@ const styles = StyleSheet.create({
   headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+  },
+  headerTitleBlock: {
+    flex: 1,
+    minWidth: 0,
   },
   headerIcon: {
     width: 40,
@@ -481,14 +506,14 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '800',
     color: '#fff',
   },
   headerSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: 'rgba(255, 255, 255, 0.9)',
-    marginLeft: 52,
+    marginTop: 2,
   },
   filtersContainer: {
     backgroundColor: '#fff',

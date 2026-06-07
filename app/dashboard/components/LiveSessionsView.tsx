@@ -38,7 +38,7 @@ export default function LiveSessionsView() {
     try {
       setIsLoading(true);
       const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/student/live-sessions`, {
+      const response = await fetch(`${API_BASE_URL}/api/student/streams`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

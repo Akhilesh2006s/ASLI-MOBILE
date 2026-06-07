@@ -53,15 +53,14 @@ export default function AITutor() {
 
     try {
       const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/ai/chat`, {
+      const response = await fetch(`${API_BASE_URL}/api/vidya/student/chat`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          message: inputText,
-          context: 'general',
+          message: userMessage.content,
         }),
       });
 
@@ -69,7 +68,7 @@ export default function AITutor() {
 
       const assistantMessage: Message = {
         role: 'assistant',
-        content: data.response || data.message || 'I apologize, but I couldn\'t process that request.',
+        content: data.message || data.response || 'I apologize, but I couldn\'t process that request.',
         timestamp: new Date(),
       };
 

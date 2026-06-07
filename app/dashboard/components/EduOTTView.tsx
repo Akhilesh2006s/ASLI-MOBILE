@@ -6,9 +6,9 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  Linking,
   RefreshControl,
 } from 'react-native';
+import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
@@ -378,14 +378,12 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
     return cl ? `${plain} · Class ${cl}` : plain;
   }, []);
 
-  const handlePlayVideo = useCallback(async (video: VideoItem) => {
-    if (video.videoUrl) {
-      try {
-        await Linking.openURL(video.videoUrl);
-      } catch (error) {
-        console.error('Failed to open video URL:', error);
-      }
-    }
+  const handlePlayVideo = useCallback((video: VideoItem) => {
+    if (!video._id) return;
+    router.push({
+      pathname: '/video-player',
+      params: { videoId: video._id, isContentItem: 'true' },
+    });
   }, []);
 
   const formatDuration = useCallback((seconds: number): string => {
@@ -394,13 +392,12 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   }, []);
 
-  const handleJoinLive = useCallback(async (session: LiveSession) => {
-    if (!session.streamUrl) return;
-    try {
-      await Linking.openURL(session.streamUrl);
-    } catch (error) {
-      console.error('Failed to open stream URL:', error);
-    }
+  const handleJoinLive = useCallback((session: LiveSession) => {
+    if (!session._id) return;
+    router.push({
+      pathname: '/live-stream',
+      params: { sessionId: session._id },
+    });
   }, []);
 
   const onRefresh = useCallback(async () => {

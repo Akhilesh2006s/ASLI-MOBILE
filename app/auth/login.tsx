@@ -6,9 +6,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  ActivityIndicator,
   Image,
   useWindowDimensions,
+  Pressable,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -17,20 +17,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../src/services/api/api';
-import authService from '../../src/services/api/authService';
 import { useAuth } from '../../src/context/AuthContext';
-
-const THEME = {
-  primary: '#2563eb',
-  primaryDark: '#1d4ed8',
-  accent: '#6d94db',
-  text: '#111827',
-  textMuted: '#6b7280',
-  border: '#e5e7eb',
-  inputBg: '#f9fafb',
-  dangerBg: '#fee2e2',
-  dangerText: '#dc2626',
-};
+import { ActionButton } from '../../src/components/ui';
+import { COLORS, FONT, RADIUS, SHADOW, SPACING } from '../../src/theme';
 
 export default function Login() {
   const router = useRouter();
@@ -98,38 +87,32 @@ export default function Login() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <StatusBar style="dark" />
-      <LinearGradient colors={['#e0f2fe', '#dbeafe', '#cffafe']} style={StyleSheet.absoluteFill} />
+      <StatusBar style="light" />
+      <LinearGradient colors={[...COLORS.gradientBlue]} style={StyleSheet.absoluteFill} />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={[styles.card, { width: cardWidth, padding: compact ? 20 : 24 }]}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={20} color="#374151" />
-          </TouchableOpacity>
+        <View style={styles.logoWrap}>
+          <Image source={require('../../image.png')} style={styles.logo} resizeMode="contain" />
+        </View>
 
-          <View style={styles.header}>
-            <View style={styles.brandRow}>
-              <Image source={require('../../image.png')} style={styles.brandIcon} resizeMode="contain" />
-              <Text style={styles.brandText}>ASLILEARN AI</Text>
-            </View>
-            <Text style={[styles.title, compact && { fontSize: 26 }]}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in to continue your learning journey</Text>
-          </View>
+        <View style={[styles.card, { width: cardWidth, padding: compact ? SPACING.xl : SPACING.xxl }]}>
+          <Text style={[styles.title, compact && { fontSize: FONT.xxxl }]}>Welcome Back</Text>
+          <Text style={styles.subtitle}>Sign in to continue</Text>
 
           {error ? (
             <View style={styles.errorContainer}>
-              <Ionicons name="alert-circle" size={18} color={THEME.dangerText} style={styles.errorIcon} />
+              <Ionicons name="alert-circle" size={18} color={COLORS.danger} />
               <Text style={styles.errorText}>{error}</Text>
             </View>
           ) : null}
 
           <View style={styles.form}>
             <View style={styles.inputContainer}>
-              <Ionicons name="mail" size={18} color={THEME.accent} style={styles.inputIcon} />
+              <Ionicons name="mail-outline" size={18} color={COLORS.textMuted} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="Email Address"
-                placeholderTextColor="#9ca3af"
+                placeholder="Email address"
+                placeholderTextColor={COLORS.textMuted}
                 value={formData.email}
                 onChangeText={(email) => setFormData((prev) => ({ ...prev, email }))}
                 keyboardType="email-address"
@@ -139,51 +122,35 @@ export default function Login() {
             </View>
 
             <View style={styles.inputContainer}>
-              <Ionicons name="lock-closed" size={18} color={THEME.accent} style={styles.inputIcon} />
+              <Ionicons name="lock-closed-outline" size={18} color={COLORS.textMuted} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, styles.passwordInput]}
                 placeholder="Password"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={COLORS.textMuted}
                 value={formData.password}
                 onChangeText={(password) => setFormData((prev) => ({ ...prev, password }))}
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
               />
-              <TouchableOpacity style={styles.eyeButton} onPress={() => setShowPassword((v) => !v)}>
-                <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color="#9ca3af" />
-              </TouchableOpacity>
+              <Pressable style={styles.eyeButton} onPress={() => setShowPassword((v) => !v)}>
+                <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={COLORS.textMuted} />
+              </Pressable>
             </View>
 
-            <TouchableOpacity style={styles.rememberRow} onPress={() => setRememberMe((v) => !v)} activeOpacity={0.85}>
+            <Pressable style={styles.rememberRow} onPress={() => setRememberMe((v) => !v)}>
               <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
-                {rememberMe ? <Ionicons name="checkmark" size={14} color="#fff" /> : null}
+                {rememberMe ? <Ionicons name="checkmark" size={14} color={COLORS.textInverse} /> : null}
               </View>
               <Text style={styles.rememberText}>Remember me</Text>
-            </TouchableOpacity>
+            </Pressable>
 
-            <TouchableOpacity
-              style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+            <ActionButton
+              label="Sign In"
               onPress={handleSubmit}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="flash" size={18} color="#fff" />
-                  <Text style={styles.submitButtonText}>Sign In</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              Don't have an account?{' '}
-              <Text style={styles.footerLink} onPress={() => router.push('/auth/register')}>
-                Sign up
-              </Text>
-            </Text>
+              loading={isSubmitting}
+              icon="log-in-outline"
+              gradient={COLORS.gradientBlue}
+            />
           </View>
         </View>
       </ScrollView>
@@ -197,89 +164,80 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 16,
+    padding: SPACING.lg,
+  },
+  logoWrap: {
+    alignItems: 'center',
+    marginBottom: SPACING.xxl,
+  },
+  logo: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: 'rgba(255,255,255,0.15)',
   },
   card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.96)',
-    borderRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 18,
-    elevation: 8,
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.xl,
+    ...SHADOW.lg,
   },
-  backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#f3f4f6',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
+  title: {
+    fontSize: FONT.h1,
+    fontWeight: FONT.extrabold,
+    color: COLORS.text,
+    textAlign: 'center',
+    marginBottom: SPACING.xs,
   },
-  header: { alignItems: 'center', marginBottom: 26 },
-  brandRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  brandIcon: { width: 32, height: 32, marginRight: 8 },
-  brandText: { fontSize: 19, fontWeight: '800', color: THEME.accent, letterSpacing: 0.4 },
-  title: { fontSize: 28, fontWeight: '800', color: THEME.text, marginBottom: 6 },
-  subtitle: { fontSize: 14, color: THEME.textMuted, textAlign: 'center' },
+  subtitle: {
+    fontSize: FONT.base,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    marginBottom: SPACING.xxl,
+  },
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: THEME.dangerBg,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 14,
+    gap: SPACING.sm,
+    backgroundColor: '#FEF2F2',
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    padding: SPACING.md,
+    marginBottom: SPACING.lg,
   },
-  errorIcon: { marginRight: 8, marginTop: 1 },
-  errorText: { flex: 1, color: THEME.dangerText, fontSize: 13, lineHeight: 18 },
-  form: { gap: 14 },
+  errorText: {
+    flex: 1,
+    color: COLORS.danger,
+    fontSize: FONT.sm,
+    lineHeight: 18,
+  },
+  form: { gap: SPACING.md },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.inputBg,
-    borderRadius: 14,
+    backgroundColor: COLORS.bg,
+    borderRadius: RADIUS.lg,
     borderWidth: 1,
-    borderColor: THEME.border,
-    height: 54,
-    paddingHorizontal: 14,
+    borderColor: COLORS.border,
+    height: 52,
+    paddingHorizontal: SPACING.lg,
   },
-  inputIcon: { marginRight: 10 },
-  input: { flex: 1, fontSize: 16, color: THEME.text },
-  passwordInput: { paddingRight: 44 },
-  eyeButton: { padding: 4 },
-  rememberRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
+  inputIcon: { marginRight: SPACING.sm },
+  input: { flex: 1, fontSize: FONT.lg, color: COLORS.text },
+  passwordInput: { paddingRight: 40 },
+  eyeButton: { padding: SPACING.xs },
+  rememberRow: { flexDirection: 'row', alignItems: 'center', marginTop: SPACING.xs },
   checkbox: {
     width: 20,
     height: 20,
     borderRadius: 6,
     borderWidth: 1.5,
-    borderColor: '#9ca3af',
+    borderColor: COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
-    marginRight: 10,
+    backgroundColor: COLORS.card,
+    marginRight: SPACING.sm,
   },
-  checkboxChecked: { backgroundColor: THEME.primary, borderColor: THEME.primary },
-  rememberText: { color: '#374151', fontSize: 14, fontWeight: '500' },
-  submitButton: {
-    marginTop: 6,
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: THEME.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  submitButtonDisabled: { opacity: 0.65 },
-  submitButtonText: { color: '#fff', fontSize: 16, fontWeight: '700', marginLeft: 8 },
-  footer: {
-    marginTop: 20,
-    paddingTop: 18,
-    borderTopColor: THEME.border,
-    borderTopWidth: 1,
-    alignItems: 'center',
-  },
-  footerText: { color: THEME.textMuted, fontSize: 14 },
-  footerLink: { color: THEME.primaryDark, fontWeight: '700' },
+  checkboxChecked: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  rememberText: { color: COLORS.textSecondary, fontSize: FONT.base, fontWeight: FONT.medium },
 });

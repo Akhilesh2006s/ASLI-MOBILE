@@ -1,6 +1,9 @@
 import React, { memo } from 'react';
 import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { STUDENT, STUDENT_ANIMATION } from '../../../../src/theme/student';
 
 interface QuickStatsModuleProps {
   stats: {
@@ -8,31 +11,63 @@ interface QuickStatsModuleProps {
     accuracyRate: number;
     rank: number;
   };
+  dark?: boolean;
 }
+
+const ITEMS = [
+  {
+    key: 'questions',
+    label: 'Questions Solved',
+    icon: 'checkmark-circle' as const,
+    gradient: STUDENT.statGradients.questions,
+    getValue: (s: QuickStatsModuleProps['stats']) => s.questionsAnswered.toLocaleString(),
+  },
+  {
+    key: 'accuracy',
+    label: 'Accuracy Rate',
+    icon: 'trending-up' as const,
+    gradient: STUDENT.statGradients.accuracy,
+    getValue: (s: QuickStatsModuleProps['stats']) => `${s.accuracyRate}%`,
+  },
+  {
+    key: 'rank',
+    label: 'Rank',
+    icon: 'bar-chart' as const,
+    gradient: STUDENT.statGradients.rank,
+    getValue: (s: QuickStatsModuleProps['stats']) => (s.rank > 0 ? `#${s.rank}` : '—'),
+  },
+];
 
 function QuickStatsModuleComponent({ stats }: QuickStatsModuleProps) {
   const { width } = useWindowDimensions();
   const compact = width < 380;
-  const isTablet = width >= 768;
-  const iconSize = compact ? 18 : 22;
 
   return (
     <View style={styles.grid}>
-      <View style={[styles.card, isTablet && styles.cardTablet]}>
-        <Ionicons name="checkmark-circle" size={iconSize} color="#f97316" />
-        <Text style={[styles.label, compact && styles.labelCompact]} numberOfLines={1}>Questions Solved</Text>
-        <Text style={[styles.value, compact && styles.valueCompact]} numberOfLines={1}>{stats.questionsAnswered.toLocaleString()}</Text>
-      </View>
-      <View style={[styles.card, isTablet && styles.cardTablet]}>
-        <Ionicons name="trending-up" size={iconSize} color="#2563eb" />
-        <Text style={[styles.label, compact && styles.labelCompact]} numberOfLines={1}>Accuracy Rate</Text>
-        <Text style={[styles.value, compact && styles.valueCompact]} numberOfLines={1}>{stats.accuracyRate}%</Text>
-      </View>
-      <View style={[styles.card, isTablet && styles.cardTablet]}>
-        <Ionicons name="bar-chart" size={iconSize} color="#0f766e" />
-        <Text style={[styles.label, compact && styles.labelCompact]} numberOfLines={1}>Rank</Text>
-        <Text style={[styles.value, compact && styles.valueCompact]} numberOfLines={1}>#{stats.rank || 0}</Text>
-      </View>
+      {ITEMS.map((item, index) => (
+        <Animated.View
+          key={item.key}
+          entering={FadeInDown.duration(STUDENT_ANIMATION.normal).delay(index * 70)}
+          style={styles.cardWrap}
+        >
+          <LinearGradient
+            colors={[...item.gradient]}
+            style={[styles.card, compact && styles.cardCompact]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <View style={styles.iconBubble}>
+              <Ionicons name={item.icon} size={compact ? 16 : 18} color="#fff" />
+            </View>
+            <Text style={[styles.label, compact && styles.labelCompact]} numberOfLines={1}>
+              {item.label}
+            </Text>
+            <Text style={[styles.value, compact && styles.valueCompact]} numberOfLines={1}>
+              {item.getValue(stats)}
+            </Text>
+          </LinearGradient>
+        </Animated.View>
+      ))}
     </View>
   );
 }
@@ -43,37 +78,42 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 4,
   },
+  cardWrap: { flex: 1 },
   card: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-    borderRadius: 14,
+    borderRadius: 16,
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    alignItems: 'center',
-    gap: 4,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
+    paddingVertical: 14,
+    minHeight: 108,
+    justifyContent: 'space-between',
+    ...STUDENT.shadow.sm,
   },
-  cardTablet: {
-    minHeight: 94,
+  cardCompact: {
+    minHeight: 96,
+    paddingVertical: 12,
+  },
+  iconBubble: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
   },
   label: {
     fontSize: 11,
-    color: '#64748b',
-    textAlign: 'center',
+    color: 'rgba(255,255,255,0.9)',
     fontWeight: '600',
   },
   value: {
-    fontSize: 18,
-    color: '#0f172a',
+    fontSize: 20,
+    color: '#fff',
     fontWeight: '800',
+    marginTop: 2,
+    letterSpacing: -0.3,
   },
-  labelCompact: {
-    fontSize: 10,
-  },
-  valueCompact: {
-    fontSize: 15,
-  },
+  labelCompact: { fontSize: 10 },
+  valueCompact: { fontSize: 17 },
 });
 
 export default memo(QuickStatsModuleComponent);

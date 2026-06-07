@@ -58,7 +58,7 @@ export default function LiveStream() {
     try {
       setIsLoading(true);
       const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/student/live-sessions/${sessionId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/streams/${sessionId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -67,7 +67,14 @@ export default function LiveStream() {
 
       if (response.ok) {
         const data = await response.json();
-        setSession(data.data || data);
+        const stream = data.data || data;
+        setSession({
+          ...stream,
+          title: stream.title || stream.name || 'Live Session',
+          hlsUrl: stream.hlsUrl || stream.playbackUrl,
+          playbackUrl: stream.playbackUrl || stream.streamUrl,
+          chatEnabled: false,
+        });
       }
     } catch (error) {
       console.error('Error fetching session:', error);
@@ -77,57 +84,8 @@ export default function LiveStream() {
   };
 
   const handleSendMessage = async () => {
-    if (!chatInput.trim() || !sessionId) return;
-
-    try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/student/live-sessions/${sessionId}/chat`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ message: chatInput.trim() })
-      });
-
-      if (response.ok) {
-        setChatInput('');
-        // Refresh chat messages
-        fetchChatMessages();
-      }
-    } catch (error) {
-      console.error('Error sending message:', error);
-    }
+    // Live chat is not available on the student streams API yet.
   };
-
-  const fetchChatMessages = async () => {
-    if (!sessionId) return;
-
-    try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/student/live-sessions/${sessionId}/chat`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setChatMessages(data.data || data || []);
-      }
-    } catch (error) {
-      console.error('Error fetching chat messages:', error);
-    }
-  };
-
-  useEffect(() => {
-    if (session?.chatEnabled && sessionId) {
-      fetchChatMessages();
-      const interval = setInterval(fetchChatMessages, 2000);
-      return () => clearInterval(interval);
-    }
-  }, [sessionId, session?.chatEnabled]);
 
   if (isLoading) {
     return (

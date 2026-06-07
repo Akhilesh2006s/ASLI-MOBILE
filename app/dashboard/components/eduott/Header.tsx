@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { STUDENT, STUDENT_RADIUS } from '../../../../src/theme/student';
 
 interface HeaderProps {
   username: string;
@@ -12,7 +13,7 @@ function HeaderComponent({ username }: HeaderProps) {
 
   return (
     <LinearGradient
-      colors={['#3B82F6', '#06B6D4']}
+      colors={[STUDENT.accent, '#06B6D4', STUDENT.primary]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.container}
@@ -38,7 +39,7 @@ function HeaderComponent({ username }: HeaderProps) {
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 24,
+    borderRadius: STUDENT_RADIUS.xxl,
     paddingHorizontal: 16,
     paddingVertical: 14,
     marginBottom: 12,

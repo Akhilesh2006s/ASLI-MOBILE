@@ -6,24 +6,40 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
-import {
-  getTodayStudyTime,
-  getWeeklyStudyTime,
-  getWeeklyStudyData,
-  updateStudyTime,
-  setupAppStateListener,
-} from '../../../src/utils/studyTimeTracker';
-import VidyaAICornerButton from './VidyaAICornerButton';
+import { setupAppStateListener } from '../../../src/utils/studyTimeTracker';
+import { setupSessionTimeSync } from '../../../src/lib/session-time-sync';
 import QuickStatsModule from './overview/QuickStatsModule';
 import LearningProgressModule from './overview/LearningProgressModule';
 import AdaptiveLearningModule from './overview/AdaptiveLearningModule';
-import DigitalLibraryModule from './overview/DigitalLibraryModule';
+import TodaysTasksSection from './overview/TodaysTasksSection';
+import StudyCalendarSection from './overview/StudyCalendarSection';
+import ClassTimetableSection from './overview/ClassTimetableSection';
+import MyHomeworkSection from './overview/MyHomeworkSection';
+import {
+  buildTodaysTasksContentList,
+  getContentSubjectId,
+  isVideoContentType,
+  nextChapterCompletedDates,
+  type ChapterCompletedDates,
+} from '../../../src/lib/video-chapter-schedule';
+import {
+  collectCompletedContentIds,
+  loadCompletedScheduleIds,
+  saveCompletedScheduleIds,
+} from '../../../src/lib/todays-tasks-helpers';
+import { StudentHomeHeader } from '../../../src/components/student';
+import TeacherDiaryFeed from '../../../src/components/student/TeacherDiaryFeed';
+import { STUDENT } from '../../../src/theme/student';
+
+/** Web-parity home modules only — no RemarksView/DigitalLibrary extras */
 
 interface OverviewViewProps {
   user: any;
+  onGoExams?: () => void;
+  onGoProfile?: () => void;
 }
 
-const OverviewView = memo(function OverviewView({ user }: OverviewViewProps) {
+const OverviewView = memo(function OverviewView({ user, onGoExams, onGoProfile }: OverviewViewProps) {
   const { width } = useWindowDimensions();
   const compact = width < 380;
   const isTablet = width >= 768;
@@ -42,36 +58,16 @@ const OverviewView = memo(function OverviewView({ user }: OverviewViewProps) {
   const [incompleteQuizzes, setIncompleteQuizzes] = useState<any[]>([]);
   const [homeworkSubmissions, setHomeworkSubmissions] = useState<any[]>([]);
   const [completedScheduleIds, setCompletedScheduleIds] = useState<Set<string>>(new Set());
+  const [scheduleAllContent, setScheduleAllContent] = useState<any[]>([]);
+  const [videoChapterProgressBySubject, setVideoChapterProgressBySubject] = useState<
+    Record<string, ChapterCompletedDates>
+  >({});
+  const [exams, setExams] = useState<any[]>([]);
+  const [remarks, setRemarks] = useState<any[]>([]);
+  const [riskReports, setRiskReports] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    fetchDashboardData();
-    setupAppStateListener();
-    
-    // Initial load
-    updateStudyTime().then(timeData => {
-      setStudyTimeToday(timeData.today);
-      setStudyTimeThisWeek(timeData.thisWeek);
-    });
-    
-    // Update study time + weekly chart data periodically (aligned with website dashboard)
-    const interval = setInterval(async () => {
-      const timeData = await updateStudyTime();
-      setStudyTimeToday(timeData.today);
-      setStudyTimeThisWeek(timeData.thisWeek);
-      const w = await getWeeklyStudyData();
-      setWeeklyStudyData(w);
-    }, 300000);
-
-    (async () => {
-      const w = await getWeeklyStudyData();
-      setWeeklyStudyData(w);
-    })();
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, [fetchDashboardData]);
+  const [isLoadingSchedule, setIsLoadingSchedule] = useState(true);
+  const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -116,10 +112,11 @@ const OverviewView = memo(function OverviewView({ user }: OverviewViewProps) {
 
       clearTimeout(timeoutId);
 
-      let examsData = [];
+      let examsData: any[] = [];
       if (examsRes.ok) {
         const examsJson = await examsRes.json();
         examsData = examsJson.data || examsJson.exams || [];
+        setExams(examsData);
       }
 
       let resultsData = [];
@@ -198,11 +195,19 @@ const OverviewView = memo(function OverviewView({ user }: OverviewViewProps) {
         }
       });
 
-      const mergedProgress = new Map<string, { id: string; name: string; progress: number }>();
+      const mergedProgress = new Map<
+        string,
+        { id: string; name: string; progress: number; currentTopic: string }
+      >();
       Array.from(examSubjectMap.entries()).forEach(([key, value]) => {
         const progress = value.total > 0 ? Math.round((value.correct / value.total) * 100) : 0;
         const name = subjectNameMap.get(key.toLowerCase()) || key.charAt(0).toUpperCase() + key.slice(1);
-        mergedProgress.set(key.toLowerCase(), { id: key.toLowerCase(), name, progress });
+        mergedProgress.set(key.toLowerCase(), {
+          id: key.toLowerCase(),
+          name,
+          progress,
+          currentTopic: `${name} - Recent Exams`,
+        });
       });
 
       for (const subject of subjectsList) {
@@ -237,11 +242,13 @@ const OverviewView = memo(function OverviewView({ user }: OverviewViewProps) {
         const existing = Array.from(mergedProgress.values()).find((s) => s.name === subjectName);
         if (existing) {
           existing.progress = Math.round((existing.progress + learningPathProgress) / 2);
+          existing.currentTopic = `${subjectName} - Learning Path`;
         } else if (learningPathProgress > 0) {
           mergedProgress.set(String(subjectId), {
             id: String(subjectId),
             name: subjectName,
             progress: learningPathProgress,
+            currentTopic: `${subjectName} - Learning Path`,
           });
         }
       }
@@ -288,8 +295,9 @@ const OverviewView = memo(function OverviewView({ user }: OverviewViewProps) {
         }
       }
 
-      // Fetch incomplete content and quizzes for schedule
-      const [contentRes, quizzesRes, homeworkRes] = await Promise.all([
+      setIsLoadingSchedule(true);
+      const subjectIds = subjectsList.map((s: any) => String(s._id || s.id)).filter(Boolean);
+      const [contentRes, quizzesRes, homeworkRes, chapterProgressRes] = await Promise.all([
         fetch(`${API_BASE_URL}/api/student/asli-prep-content`, {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -308,16 +316,35 @@ const OverviewView = memo(function OverviewView({ user }: OverviewViewProps) {
             'Content-Type': 'application/json'
           }
         }),
+        fetch(`${API_BASE_URL}/api/student/video-chapter-progress`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }),
       ]);
+
+      let chapterProgressBySubject: Record<string, ChapterCompletedDates> = {};
+      if (chapterProgressRes.ok) {
+        const progressJson = await chapterProgressRes.json();
+        if (progressJson.success && progressJson.data) {
+          chapterProgressBySubject = progressJson.data;
+        }
+      }
+      setVideoChapterProgressBySubject(chapterProgressBySubject);
 
       if (contentRes.ok) {
         const contentData = await contentRes.json();
         const allContent = contentData.data || contentData || [];
-        const incomplete = allContent.filter((content: any) => {
-          const contentId = content._id || content.id;
-          return !completedScheduleIds.has(contentId);
-        });
-        setIncompleteContent(incomplete.slice(0, 10));
+        setScheduleAllContent(allContent);
+        const completedContentIds = await collectCompletedContentIds(subjectIds);
+        const slicedContent = buildTodaysTasksContentList(
+          allContent,
+          completedContentIds,
+          chapterProgressBySubject,
+          { includeHomework: true }
+        );
+        setIncompleteContent(slicedContent);
       }
 
       if (quizzesRes.ok) {
@@ -326,13 +353,46 @@ const OverviewView = memo(function OverviewView({ user }: OverviewViewProps) {
         const incompleteQuiz = allQuizzes.filter((quiz: any) => {
           return !quiz.hasAttempted || !quiz.completedAt;
         });
+        incompleteQuiz.sort((a: any, b: any) => {
+          const dateA = new Date(a.createdAt || 0).getTime();
+          const dateB = new Date(b.createdAt || 0).getTime();
+          return dateB - dateA;
+        });
         setIncompleteQuizzes(incompleteQuiz.slice(0, 10));
       }
+      setIsLoadingSubmissions(true);
       if (homeworkRes.ok) {
         const homeworkData = await homeworkRes.json();
-        setHomeworkSubmissions(homeworkData?.data || []);
+        setHomeworkSubmissions(
+          homeworkData?.success ? homeworkData.data || [] : homeworkData?.data || []
+        );
       } else {
         setHomeworkSubmissions([]);
+      }
+      setIsLoadingSubmissions(false);
+
+      try {
+        const remarksRes = await fetch(`${API_BASE_URL}/api/student/remarks`, {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        });
+        if (remarksRes.ok) {
+          const remarksData = await remarksRes.json();
+          setRemarks(remarksData?.success ? remarksData.data || [] : []);
+        }
+      } catch {
+        setRemarks([]);
+      }
+
+      try {
+        const riskRes = await fetch(`${API_BASE_URL}/api/student/risk-analysis-reports`, {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        });
+        if (riskRes.ok) {
+          const riskData = await riskRes.json();
+          setRiskReports(riskData?.success ? riskData.data || [] : []);
+        }
+      } catch {
+        setRiskReports([]);
       }
 
     } catch (error: any) {
@@ -343,90 +403,165 @@ const OverviewView = memo(function OverviewView({ user }: OverviewViewProps) {
       }
     } finally {
       setIsLoading(false);
+      setIsLoadingSchedule(false);
     }
-  }, [completedScheduleIds]);
+  }, []);
+
+  useEffect(() => {
+    loadCompletedScheduleIds().then(setCompletedScheduleIds);
+    fetchDashboardData();
+    setupAppStateListener();
+    const cleanupSessionSync = setupSessionTimeSync((times) => {
+      setStudyTimeToday(times.today);
+      setStudyTimeThisWeek(times.thisWeek);
+    });
+    return () => cleanupSessionSync();
+  }, [fetchDashboardData]);
+
+  const handleToggleScheduleComplete = useCallback(
+    async (item: any, isQuiz: boolean) => {
+      const itemId = String(item._id || item.id);
+      const newCompleted = new Set(completedScheduleIds);
+      const isCurrentlyCompleted = newCompleted.has(itemId);
+
+      if (isCurrentlyCompleted) newCompleted.delete(itemId);
+      else newCompleted.add(itemId);
+
+      setCompletedScheduleIds(newCompleted);
+      await saveCompletedScheduleIds(newCompleted);
+
+      const subjectId = !isQuiz ? getContentSubjectId(item) : '';
+      if (!isQuiz && subjectId) {
+        const subjectKey = `completed_content_${subjectId}`;
+        try {
+          const stored = await SecureStore.getItemAsync(subjectKey);
+          let completed: string[] = stored ? JSON.parse(stored) : [];
+          if (isCurrentlyCompleted) {
+            completed = completed.filter((id) => String(id) !== itemId);
+          } else if (!completed.includes(itemId)) {
+            completed.push(itemId);
+          }
+          await SecureStore.setItemAsync(subjectKey, JSON.stringify(completed));
+        } catch {
+          /* ignore */
+        }
+      }
+
+      if (!isQuiz && isVideoContentType(item.type)) {
+        const token = await SecureStore.getItemAsync('authToken');
+        if (token) {
+          fetch(`${API_BASE_URL}/api/student/content-progress`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              contentId: itemId,
+              completed: !isCurrentlyCompleted,
+              progress: !isCurrentlyCompleted ? 100 : 0,
+            }),
+          }).catch(() => undefined);
+        }
+      }
+
+      const subjectIds = scheduleAllContent
+        .map((c) => getContentSubjectId(c))
+        .filter(Boolean);
+      const mergedCompleted = await collectCompletedContentIds([...new Set(subjectIds)]);
+      newCompleted.forEach((id) => mergedCompleted.add(id));
+
+      let chapterProgressForRebuild = videoChapterProgressBySubject;
+      if (!isQuiz && isVideoContentType(item.type) && subjectId && scheduleAllContent.length > 0 && !isCurrentlyCompleted) {
+        const currentDates = videoChapterProgressBySubject[subjectId] || {};
+        const updatedDates = nextChapterCompletedDates(
+          subjectId,
+          scheduleAllContent,
+          mergedCompleted,
+          currentDates
+        );
+        if (updatedDates) {
+          chapterProgressForRebuild = {
+            ...videoChapterProgressBySubject,
+            [subjectId]: updatedDates,
+          };
+          setVideoChapterProgressBySubject(chapterProgressForRebuild);
+          const token = await SecureStore.getItemAsync('authToken');
+          if (token) {
+            fetch(`${API_BASE_URL}/api/student/video-chapter-progress`, {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ subjectId, chapterDates: updatedDates }),
+            }).catch(() => undefined);
+          }
+        }
+      }
+
+      if (scheduleAllContent.length > 0) {
+        setIncompleteContent(
+          buildTodaysTasksContentList(
+            scheduleAllContent,
+            mergedCompleted,
+            chapterProgressForRebuild,
+            { includeHomework: true }
+          )
+        );
+      }
+    },
+    [completedScheduleIds, scheduleAllContent, videoChapterProgressBySubject]
+  );
+
+  const handleOpenScheduleItem = useCallback((item: any, isQuiz: boolean) => {
+    if (isQuiz) {
+      router.push(`/quiz/${item._id || item.id}`);
+      return;
+    }
+    if (isVideoContentType(item.type)) {
+      router.push({
+        pathname: '/video-player',
+        params: { videoId: String(item._id || item.id), isContentItem: 'true' },
+      });
+      return;
+    }
+    if (String(item.type || '').toLowerCase() === 'homework') {
+      router.push('/assignments');
+      return;
+    }
+    router.push({
+      pathname: '/asli-prep-content',
+      params: item.type ? { type: item.type } : {},
+    });
+  }, []);
 
   const { totalTodos, completedTodos, todayProgress, efficiency } = useMemo(() => {
     const total = incompleteContent.length + incompleteQuizzes.length;
-    const completed = incompleteContent.filter((c: any) => completedScheduleIds.has(c._id)).length + 
-                      incompleteQuizzes.filter((q: any) => completedScheduleIds.has(q._id)).length;
+    const completed =
+      incompleteContent.filter((c: any) => completedScheduleIds.has(String(c._id || c.id))).length +
+      incompleteQuizzes.filter((q: any) => completedScheduleIds.has(String(q._id || q.id))).length;
     const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
     const eff = total > 0 ? Math.round((completed / total) * 100) : 0;
     return { totalTodos: total, completedTodos: completed, todayProgress: progress, efficiency: eff };
   }, [incompleteContent, incompleteQuizzes, completedScheduleIds]);
 
-  /** Monday–Sunday of current week — same idea as website Weekly Overview */
-  const weekBarRows = useMemo(() => {
-    const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const today = new Date();
-    const dayOfWeek = today.getDay();
-    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-    const monday = new Date(today);
-    monday.setHours(0, 0, 0, 0);
-    monday.setDate(today.getDate() - daysFromMonday);
-    const maxHours = 8;
-    return labels.map((label, index) => {
-      const d = new Date(monday);
-      d.setDate(monday.getDate() + index);
-      const dateKey = d.toDateString();
-      const minutes = weeklyStudyData[dateKey] || 0;
-      const studyHours = (minutes / 60).toFixed(1);
-      const pct = Math.min((minutes / 60 / maxHours) * 100, 100);
-      return { label, studyHours, pct };
-    });
-  }, [weeklyStudyData]);
+  const dayStreak = Number(user?.dayStreak ?? 0);
+  const schoolName = String(user?.assignedAdmin?.schoolName || user?.schoolName || '').trim();
 
   return (
     <View style={styles.container}>
-      {/* Welcome — matches website gradient (blue → teal) */}
-      <LinearGradient
-        colors={['#3b82f6', '#38bdf8', '#2dd4bf']}
-        style={[styles.welcomeCard, compact && { padding: 16 }]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <View style={[styles.welcomeContent, compact && { flexDirection: 'column', alignItems: 'flex-start' }]}>
-          <View style={styles.welcomeTextContainer}>
-            <Text style={styles.welcomeTitle}>
-              Welcome back, {user?.email?.split('@')[0] || user?.fullName?.split(' ')[0] || 'Student'}!
-            </Text>
-            <Text style={styles.welcomeSubtitle}>
-              Ready to continue your {user?.educationStream || 'JEE'} preparation journey? Your Vidya AI has personalized recommendations waiting.
-            </Text>
-            <View style={[styles.welcomeActions, compact && { flexDirection: 'column', width: '100%' }]}>
-              <TouchableOpacity
-                style={[styles.welcomeButton, compact && { width: '100%', alignItems: 'center' }]}
-                onPress={() => router.push('/learning-paths')}
-              >
-                <Text style={styles.welcomeButtonText}>Continue Learning</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.welcomeButton, styles.welcomeButtonOutline, compact && { width: '100%', alignItems: 'center' }]}
-                onPress={() => router.push('/ai-tutor')}
-              >
-                <Text style={[styles.welcomeButtonText, styles.welcomeButtonTextOutline]}>Ask Vidya AI</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-          {/* Vidya AI Image */}
-          <View style={[styles.vidyaImageContainer, compact && { width: 84, height: 84 }]}>
-            <View style={styles.vidyaImageWrapper}>
-              <Image
-                source={require('../../../assets/Vidya-ai.jpg')}
-                style={styles.vidyaImage}
-                contentFit="contain"
-                transition={200}
-              />
-            </View>
-          </View>
-        </View>
-      </LinearGradient>
+      <StudentHomeHeader
+        user={user}
+        streak={dayStreak}
+        onAvatarPress={onGoProfile}
+      />
 
-      {/* Summary Statistics Cards */}
+      {/* Summary Statistics Cards — same 4 cards as web */}
       <View style={styles.statsGrid}>
         {/* Today's Progress */}
         <LinearGradient
-          colors={['#fb923c', '#f97316']}
+          colors={[...STUDENT.statGradients.today]}
           style={[styles.statCard, { width: statCardWidth }]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
@@ -444,7 +579,7 @@ const OverviewView = memo(function OverviewView({ user }: OverviewViewProps) {
 
         {/* Study Time */}
         <LinearGradient
-          colors={['#3b82f6', '#2563eb']}
+          colors={[...STUDENT.statGradients.study]}
           style={[styles.statCard, { width: statCardWidth }]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
@@ -465,7 +600,7 @@ const OverviewView = memo(function OverviewView({ user }: OverviewViewProps) {
 
         {/* This Week */}
         <LinearGradient
-          colors={['#14b8a6', '#0d9488']}
+          colors={[...STUDENT.statGradients.week]}
           style={[styles.statCard, { width: statCardWidth }]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
@@ -486,7 +621,7 @@ const OverviewView = memo(function OverviewView({ user }: OverviewViewProps) {
 
         {/* Efficiency */}
         <LinearGradient
-          colors={['#fb923c', '#f97316']}
+          colors={[...STUDENT.statGradients.efficiency]}
           style={[styles.statCard, { width: statCardWidth }]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
@@ -500,166 +635,84 @@ const OverviewView = memo(function OverviewView({ user }: OverviewViewProps) {
         </LinearGradient>
       </View>
 
-      {/* Weekly Overview — same section as website */}
-      <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>Weekly Overview</Text>
-        <Text style={styles.sectionSub}>Your study plan for this week</Text>
-        <View style={styles.weeklyList}>
-          {weekBarRows.map((row) => (
-            <View key={row.label} style={styles.weeklyRow}>
-              <Text style={styles.weeklyDay}>{row.label}</Text>
-              <View style={styles.weeklyBarTrack}>
-                <View style={[styles.weeklyBarFill, { width: `${row.pct}%` }]} />
-              </View>
-              <Text style={styles.weeklyHours}>{row.studyHours}h</Text>
+      <StudyCalendarSection
+        incompleteQuizzes={incompleteQuizzes}
+        exams={exams}
+        onOpenQuiz={(quiz) => router.push(`/quiz/${quiz._id || quiz.id}`)}
+      />
+
+      <ClassTimetableSection schoolName={schoolName} />
+
+      <TodaysTasksSection
+        incompleteQuizzes={incompleteQuizzes}
+        incompleteContent={incompleteContent}
+        completedScheduleIds={completedScheduleIds}
+        isLoading={isLoadingSchedule}
+        onToggleComplete={handleToggleScheduleComplete}
+        onOpenItem={handleOpenScheduleItem}
+      />
+
+      <TeacherDiaryFeed />
+
+      {remarks.length > 0 ? (
+        <View style={styles.sectionCard}>
+          <View style={styles.remarksHeader}>
+            <Ionicons name="chatbubbles" size={20} color="#0ea5e9" />
+            <Text style={styles.sectionTitle}>Teacher Remarks</Text>
+          </View>
+          {remarks.slice(0, 5).map((remark: any) => (
+            <View
+              key={remark._id}
+              style={[
+                styles.remarkCard,
+                remark.isPositive ? styles.remarkPositive : styles.remarkNeutral,
+              ]}
+            >
+              <Text style={styles.remarkTeacher}>
+                {remark.teacherId?.fullName || 'Teacher'}
+                {remark.subject?.name ? ` · ${remark.subject.name}` : ''}
+              </Text>
+              <Text style={styles.remarkText}>{remark.remark}</Text>
+              <Text style={styles.remarkDate}>
+                {new Date(remark.createdAt).toLocaleDateString()}
+              </Text>
             </View>
           ))}
         </View>
-      </View>
+      ) : null}
 
-      {/* To-Dos — incomplete quizzes & content (website To-Dos) */}
-      <View style={styles.sectionCard}>
-        <View style={styles.todoHeader}>
-          <View style={styles.todoIconWrap}>
-            <Ionicons name="checkmark-circle" size={22} color="#0d9488" />
+      {riskReports.length > 0 ? (
+        <View style={styles.sectionCard}>
+          <View style={styles.remarksHeader}>
+            <Ionicons name="warning" size={20} color="#ea580c" />
+            <Text style={styles.sectionTitle}>AI Risk Analysis Reports</Text>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.sectionTitle}>To-Dos</Text>
-            <Text style={styles.sectionSub}>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</Text>
-          </View>
+          {riskReports.map((report: any) => (
+            <View key={report._id} style={styles.riskCard}>
+              <Text style={styles.riskTitle}>Performance Risk Analysis Report</Text>
+              <Text style={styles.riskMeta}>
+                Sent by {report.adminId?.fullName || 'Administrator'} on{' '}
+                {new Date(report.sentAt).toLocaleDateString()}
+              </Text>
+            </View>
+          ))}
         </View>
-        {incompleteQuizzes.length === 0 && incompleteContent.length === 0 ? (
-          <View style={styles.todoEmpty}>
-            <Ionicons name="checkmark-circle" size={40} color="#22c55e" />
-            <Text style={styles.todoEmptyTitle}>All caught up!</Text>
-            <Text style={styles.todoEmptySub}>No pending content or quizzes</Text>
-          </View>
-        ) : (
-          <View style={styles.todoList}>
-            {incompleteQuizzes.slice(0, 8).map((quiz: any) => (
-              <TouchableOpacity
-                key={quiz._id || quiz.id}
-                style={styles.todoItem}
-                onPress={() => router.push('/learning-paths')}
-                activeOpacity={0.8}
-              >
-                <View style={styles.todoDot} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.todoItemTitle} numberOfLines={2}>
-                    Complete {quiz.title || 'Quiz'}
-                  </Text>
-                  <Text style={styles.todoItemMeta} numberOfLines={1}>
-                    {typeof quiz.subject === 'string' ? quiz.subject : quiz.subject?.name || 'Subject'} · {quiz.duration || 30} min
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-            {incompleteContent.slice(0, 8).map((content: any) => (
-              <TouchableOpacity
-                key={content._id || content.id}
-                style={styles.todoItem}
-                onPress={() => router.push('/learning-paths')}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.todoDot, content.type === 'Homework' && styles.todoDotHomework]} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.todoItemTitle} numberOfLines={2}>
-                    {content.type === 'Homework' ? 'Homework: ' : ''}
-                    {content.title || 'Content'}
-                  </Text>
-                  <Text style={styles.todoItemMeta} numberOfLines={1}>
-                    {content.type || 'Material'}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-      </View>
+      ) : null}
+
+      <MyHomeworkSection
+        allContent={scheduleAllContent}
+        homeworkSubmissions={homeworkSubmissions}
+        isLoading={isLoadingSubmissions}
+      />
 
       <QuickStatsModule stats={stats} />
-
-      {/* My Homework Submissions */}
-      <View style={styles.sectionCard}>
-        <View style={styles.homeworkHeader}>
-          <View style={styles.homeworkIcon}>
-            <Ionicons name="document-text-outline" size={18} color="#ea580c" />
-          </View>
-          <Text style={styles.homeworkTitle}>My Homework Submissions</Text>
-        </View>
-        {homeworkSubmissions.length === 0 ? (
-          <View style={styles.homeworkEmpty}>
-            <Ionicons name="document-outline" size={44} color="#9ca3af" />
-            <Text style={styles.homeworkEmptyTitle}>No homework submissions yet</Text>
-            <Text style={styles.homeworkEmptySub}>Submit your homework assignments to see them here</Text>
-          </View>
-        ) : (
-          <View style={styles.todoList}>
-            {homeworkSubmissions.slice(0, 5).map((item: any) => (
-              <TouchableOpacity
-                key={item._id || item.id}
-                style={styles.todoItem}
-                onPress={() => router.push('/learning-paths')}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.todoDot, styles.todoDotHomework]} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.todoItemTitle} numberOfLines={2}>
-                    {item.homework?.title || item.title || 'Homework'}
-                  </Text>
-                  <Text style={styles.todoItemMeta} numberOfLines={1}>
-                    {item.subject?.name || item.homework?.subject?.name || item.subject || 'Subject'}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-      </View>
 
       <LearningProgressModule
         overallProgress={overallProgress}
         subjectProgress={subjectProgress}
-        onPressViewPath={() => router.push('/learning-paths')}
       />
 
-      <AdaptiveLearningModule subjectProgress={subjectProgress} />
-
-      {/* Learning Paths */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Learning Paths</Text>
-        </View>
-        <View style={styles.pathTabs}>
-          <TouchableOpacity style={[styles.pathTab, styles.pathTabActive]} onPress={() => router.push('/learning-paths')}>
-            <Text style={[styles.pathTabText, styles.pathTabTextActive]}>Browse by Subject</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.pathTab} onPress={() => router.push('/learning-paths')}>
-            <Text style={styles.pathTabText}>My Quizzes</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <DigitalLibraryModule onPressLibrary={() => router.push('/learning-paths')} />
-
-      {/* Recommended for You */}
-      <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>Recommended for You</Text>
-        <View style={styles.recommendedList}>
-          <View style={styles.recommendedCard}>
-            <Text style={styles.recommendedTitle}>IQ/Rank Boost Practice</Text>
-            <Text style={styles.recommendedText}>Boost your IQ and improve your rank with targeted practice.</Text>
-          </View>
-          <View style={styles.recommendedCard}>
-            <Text style={styles.recommendedTitle}>Play Games</Text>
-            <Text style={styles.recommendedText}>Engage in educational games to enhance your learning experience.</Text>
-            <View style={styles.recommendedChip}>
-              <Text style={styles.recommendedChipText}>Coming Soon</Text>
-            </View>
-          </View>
-        </View>
-      </View>
-      <VidyaAICornerButton />
+      <AdaptiveLearningModule />
     </View>
   );
 });
@@ -670,6 +723,28 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     gap: 16,
+  },
+  quickStatsScroll: {
+    gap: 10,
+    paddingBottom: 4,
+    marginBottom: 10,
+  },
+  quickStatCard: {
+    width: 108,
+    borderRadius: 14,
+    padding: 12,
+    gap: 4,
+    marginRight: 10,
+  },
+  qsValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  qsLabel: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '600',
   },
   welcomeCard: {
     borderRadius: 16,
@@ -741,9 +816,10 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: '47%',
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 16,
     minHeight: 140,
+    ...STUDENT.shadow.sm,
   },
   statCardContent: {
     flex: 1,
@@ -802,10 +878,13 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   sectionCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
+    backgroundColor: STUDENT.surface,
+    borderRadius: 18,
     padding: 20,
     marginTop: 8,
+    borderWidth: 1,
+    borderColor: STUDENT.surfaceBorder,
+    ...STUDENT.shadow.sm,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -816,7 +895,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#111827',
+    color: STUDENT.text,
   },
   badge: {
     backgroundColor: '#fb923c',
@@ -1044,11 +1123,83 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 12,
   },
+  quickLinksScroll: {
+    gap: 8,
+    paddingBottom: 4,
+    marginBottom: 4,
+  },
+  quickLinkChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: STUDENT.surface,
+    borderWidth: 1,
+    borderColor: STUDENT.surfaceBorder,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  quickLinkText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: STUDENT.text,
+  },
+  remarksHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  remarkCard: {
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 8,
+    borderLeftWidth: 4,
+  },
+  remarkPositive: {
+    backgroundColor: '#ecfdf5',
+    borderLeftColor: '#22c55e',
+  },
+  remarkNeutral: {
+    backgroundColor: '#fff7ed',
+    borderLeftColor: '#f97316',
+  },
+  remarkTeacher: { fontSize: 13, fontWeight: '700', color: '#111827' },
+  remarkText: { fontSize: 13, color: '#374151', marginTop: 6 },
+  remarkDate: { fontSize: 11, color: '#9ca3af', marginTop: 6 },
+  riskCard: {
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 8,
+    backgroundColor: '#fff7ed',
+    borderLeftWidth: 4,
+    borderLeftColor: '#f97316',
+  },
+  riskTitle: { fontSize: 14, fontWeight: '700', color: '#111827' },
+  riskMeta: { fontSize: 12, color: '#6b7280', marginTop: 4 },
   homeworkHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     marginBottom: 10,
+  },
+  viewAllLink: {
+    marginLeft: 'auto',
+    fontSize: 13,
+    fontWeight: '700',
+    color: STUDENT.primary,
+  },
+  homeworkCta: {
+    marginTop: 12,
+    backgroundColor: STUDENT.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  homeworkCtaText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 13,
   },
   homeworkIcon: {
     width: 28,
@@ -1059,6 +1210,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   homeworkTitle: {
+    flex: 1,
     fontSize: 18,
     fontWeight: '800',
     color: '#111827',

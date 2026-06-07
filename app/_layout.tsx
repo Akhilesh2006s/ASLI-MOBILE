@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 import { useEffect } from 'react';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { LoadingState } from '../src/components/ui';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { usePathname, useRouter } from 'expo-router';
 import { queryClient } from '../src/lib/queryClient';
@@ -27,6 +28,7 @@ function canAccessPath(pathname: string, role: string | null) {
   if (!role) return false;
   if (pathname.startsWith('/super-admin/') || pathname.startsWith('/super-admin-dashboard')) return role === 'super-admin';
   if (pathname.startsWith('/admin/')) return role === 'admin';
+  if (pathname === '/notifications') return true;
   if (pathname.startsWith('/teacher/')) return role === 'teacher';
 
   // Student app shell only — not used by admin/teacher dashboards
@@ -45,8 +47,10 @@ function canAccessPath(pathname: string, role: string | null) {
     pathname.startsWith('/learning-paths') ||
     pathname.startsWith('/subject/') ||
     pathname.startsWith('/quiz/') ||
+    pathname.startsWith('/exam/') ||
     pathname.startsWith('/practice-tests') ||
     pathname.startsWith('/profile') ||
+    pathname.startsWith('/notifications') ||
     pathname.startsWith('/video-') ||
     pathname.startsWith('/live-stream') ||
     pathname.startsWith('/drive-viewer') ||
@@ -90,7 +94,7 @@ function AuthGate() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2563eb" />
+        <LoadingState variant="stats" style={{ width: '100%', paddingHorizontal: 24 }} />
       </View>
     );
   }
@@ -111,6 +115,7 @@ function AuthGate() {
       <Stack.Screen name="learning-paths" />
       <Stack.Screen name="subject/[id]" />
       <Stack.Screen name="quiz/[id]" />
+      <Stack.Screen name="exam/[id]" />
       <Stack.Screen name="ai-tutor" />
       <Stack.Screen name="profile" />
       <Stack.Screen name="admin/dashboard" />
@@ -129,6 +134,13 @@ function AuthGate() {
       <Stack.Screen name="iq-rank-boost-subjects" />
       <Stack.Screen name="iq-rank-boost-quiz/[quizId]" />
       <Stack.Screen name="onboarding" />
+      <Stack.Screen name="notifications" />
+      <Stack.Screen name="student/timetable" />
+      <Stack.Screen name="student/schedule" />
+      <Stack.Screen name="student/results" />
+      <Stack.Screen name="teacher/attendance" />
+      <Stack.Screen name="admin/reports" />
+      <Stack.Screen name="admin/school-settings" />
       <Stack.Screen name="super-admin/analytics" />
       <Stack.Screen name="super-admin/detailed-ai-analytics" />
     </Stack>

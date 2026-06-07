@@ -22,8 +22,12 @@ config.resolver = {
         };
       }
     }
-    // Use default resolution for other modules
-    return context.resolveRequest(context, moduleName, platform);
+    // Fall back to Metro's default resolver (avoid recursive custom handler)
+    return context.resolveRequest(
+      { ...context, resolveRequest: undefined },
+      moduleName,
+      platform
+    );
   },
 };
 

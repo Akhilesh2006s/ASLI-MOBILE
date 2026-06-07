@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, ActivityIndicator, RefreshControl } from 'react-native';
+import { Alert, Pressable, View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, { FadeIn } from 'react-native-reanimated';
+import { RoleHeader, BottomTabBar, BottomSheet, TabItem } from '../../src/components/ui';
+import { COLORS, SPACING, getRoleColor } from '../../src/theme';
 import * as SecureStore from 'expo-secure-store';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import api, { API_BASE_URL } from '../../src/services/api/api';
@@ -26,6 +28,14 @@ interface MenuItem {
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
 }
+
+const SUPER_TABS: TabItem[] = [
+  { id: 'dashboard', label: 'Dashboard', icon: 'stats-chart-outline', activeIcon: 'stats-chart' },
+  { id: 'admins', label: 'Schools', icon: 'shield-outline', activeIcon: 'shield' },
+  { id: 'subjects', label: 'Content', icon: 'document-text-outline', activeIcon: 'document-text' },
+  { id: 'analytics', label: 'Analytics', icon: 'bar-chart-outline', activeIcon: 'bar-chart' },
+  { id: 'more', label: 'More', icon: 'ellipsis-horizontal', activeIcon: 'ellipsis-horizontal' },
+];
 
 const menuItems: MenuItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: 'stats-chart' },
@@ -144,18 +154,40 @@ export default function SuperAdminDashboard() {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await signOut();
-      await SecureStore.deleteItemAsync('token');
-      await SecureStore.deleteItemAsync('accessToken');
-      await SecureStore.deleteItemAsync('jwtToken');
-    } catch (error) {
-      console.error('Logout failed:', error);
-    } finally {
-      router.replace('/auth/login');
-    }
+  const handleLogout = () => {
+    Alert.alert('Logout', 'Sign out of super admin panel?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          setModalVisible(false);
+          try {
+            await signOut();
+            await SecureStore.deleteItemAsync('token');
+            await SecureStore.deleteItemAsync('accessToken');
+            await SecureStore.deleteItemAsync('jwtToken');
+          } catch (error) {
+            console.error('Logout failed:', error);
+          } finally {
+            router.replace('/auth/login');
+          }
+        },
+      },
+    ]);
   };
+
+  const onTabChange = (id: string) => {
+    if (id === 'more') {
+      setModalVisible(true);
+      return;
+    }
+    handleViewChange(id as SuperAdminView);
+  };
+
+  const activeTab = ['dashboard', 'admins', 'subjects', 'analytics'].includes(currentView)
+    ? currentView
+    : 'more';
 
   const renderDashboardContent = () => (
     <ScrollView 
@@ -382,96 +414,43 @@ export default function SuperAdminDashboard() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar style="dark" />
-      <LinearGradient
-        colors={['#fb923c', '#f97316']}
-        style={StyleSheet.absoluteFill}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
+      <RoleHeader
+        role="super-admin"
+        userName={user.fullName}
+        subtitle="Aslilearn AI Platform"
+        onNotification={() => router.push('/notifications')}
+        onMenu={() => setModalVisible(true)}
       />
 
-      {/* Header */}
-      <View style={styles.topHeader}>
-        <View>
-          <Text style={styles.topHeaderTitle}>Aslilearn AI</Text>
-          <Text style={styles.topHeaderSubtitle}>Super Admin</Text>
-        </View>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-          <Ionicons name="log-out-outline" size={24} color="#fff" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Main Content */}
-      <View style={styles.mainContent}>
+      <Animated.View entering={FadeIn.duration(200)} style={styles.mainContent}>
         {renderContent()}
-      </View>
+      </Animated.View>
 
-      {/* Bottom Right Navigation Button */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => setModalVisible(true)}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="menu" size={28} color="#fff" />
-      </TouchableOpacity>
+      <BottomTabBar
+        tabs={SUPER_TABS}
+        activeTab={activeTab}
+        onTabChange={onTabChange}
+        roleColor={getRoleColor('super-admin')}
+      />
 
-      {/* Navigation Modal */}
-      <Modal
-        visible={modalVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setModalVisible(false)}
-        >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Navigation</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={28} color="#fff" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.menuList} showsVerticalScrollIndicator={false}>
-              {menuItems.map((item) => {
-                const isActive = currentView === item.id;
-                return (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[styles.menuItem, isActive && styles.menuItemActive]}
-                    onPress={() => handleViewChange(item.id)}
-                  >
-                    <View style={[styles.menuIconContainer, isActive && styles.menuIconContainerActive]}>
-                      <Ionicons name={item.icon} size={24} color={isActive ? '#f97316' : '#fff'} />
-                    </View>
-                    <Text style={[styles.menuItemText, isActive && styles.menuItemTextActive]}>
-                      {item.label}
-                    </Text>
-                    {isActive && (
-                      <Ionicons name="checkmark-circle" size={20} color="#f97316" />
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-
-            <View style={styles.modalFooter}>
-              <View style={styles.userInfo}>
-                <View style={styles.userAvatar}>
-                  <Ionicons name="person-circle" size={32} color="#f97316" />
-                </View>
-                <View>
-                  <Text style={styles.userName}>{user.fullName}</Text>
-                  <Text style={styles.userEmail}>{user.email || 'Super Administrator'}</Text>
-                </View>
-              </View>
-            </View>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+      <BottomSheet visible={modalVisible} onClose={() => setModalVisible(false)} title="More">
+        {menuItems
+          .filter((item) => !['dashboard', 'admins', 'subjects', 'analytics'].includes(item.id))
+          .map((item) => (
+            <Pressable
+              key={item.id}
+              style={styles.sheetItem}
+              onPress={() => handleViewChange(item.id)}
+            >
+              <Ionicons name={item.icon} size={20} color={COLORS.text} />
+              <Text style={styles.sheetText}>{item.label}</Text>
+            </Pressable>
+          ))}
+        <Pressable style={[styles.sheetItem, styles.logoutSheet]} onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={20} color={COLORS.danger} />
+          <Text style={[styles.sheetText, { color: COLORS.danger }]}>Logout</Text>
+        </Pressable>
+      </BottomSheet>
     </SafeAreaView>
   );
 }
@@ -479,7 +458,18 @@ export default function SuperAdminDashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: COLORS.bg,
   },
+  sheetItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+  sheetText: { fontSize: 16, fontWeight: '600', color: COLORS.text },
+  logoutSheet: { borderBottomWidth: 0, marginTop: SPACING.sm },
   topHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -503,10 +493,8 @@ const styles = StyleSheet.create({
   },
   mainContent: {
     flex: 1,
-    backgroundColor: '#f9fafb',
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    overflow: 'hidden',
+    paddingBottom: 96,
+    minHeight: 0,
   },
   content: {
     flex: 1,
