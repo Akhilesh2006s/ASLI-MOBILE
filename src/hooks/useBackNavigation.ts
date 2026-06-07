@@ -52,20 +52,21 @@ function dashboardPathForRole(role: string | null): string {
 
 /**
  * Navigate to a dashboard section (EduOTT or Learning Paths).
+ * Uses navigate (not replace) so an existing dashboard in the stack is reused.
  */
-export function navigateToDashboardSection(
+export async function navigateToDashboardSection(
   router: ReturnType<typeof useRouter>,
   returnTo: ContentReturnTarget
 ) {
-  SecureStore.getItemAsync('userRole').then((role) => {
-    const pathname = dashboardPathForRole(role);
-    if (returnTo === 'eduott') {
-      router.replace({ pathname, params: { tab: 'eduott' } });
-      return;
-    }
-    const tab = role === 'student' ? 'learning' : 'learning-paths';
-    router.replace({ pathname, params: { tab } });
-  });
+  const role = await SecureStore.getItemAsync('userRole');
+  const pathname = dashboardPathForRole(role);
+  const tab =
+    returnTo === 'eduott'
+      ? 'eduott'
+      : role === 'student'
+        ? 'learning'
+        : 'learning-paths';
+  router.navigate({ pathname, params: { tab } });
 }
 
 /** @deprecated use navigateToDashboardSection */
@@ -81,15 +82,19 @@ export function useContentViewerBack(returnTo?: string) {
 
   const goBack = useCallback(async () => {
     if (returnTo === 'eduott') {
-      navigateToDashboardSection(router, 'eduott');
+      await navigateToDashboardSection(router, 'eduott');
       return;
     }
     if (returnTo === 'learning') {
-      navigateToDashboardSection(router, 'learning');
+      await navigateToDashboardSection(router, 'learning');
+      return;
+    }
+    if (router.canGoBack()) {
+      router.back();
       return;
     }
     const path = await getDashboardPath();
-    router.replace(path || '/dashboard');
+    router.navigate(path || '/dashboard');
   }, [returnTo, router]);
 
   useEffect(() => {

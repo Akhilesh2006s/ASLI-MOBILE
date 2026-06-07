@@ -103,33 +103,33 @@ export default function DriveViewer() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+  const renderBody = () => {
+    if (isLoading) {
+      return (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#6366F1" />
           <Text style={styles.loadingText}>Loading preview…</Text>
         </View>
-      </SafeAreaView>
-    );
-  }
+      );
+    }
 
-  if (!previewUrl) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+    if (!previewUrl) {
+      return (
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle" size={64} color="#ef4444" />
           <Text style={styles.errorText}>File not found</Text>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => void goBack()}
-          >
-            <Text style={styles.backButtonText}>Go Back</Text>
-          </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      );
+    }
+
+    return (
+      <MediaPreviewPanel
+        fileUrl={previewUrl}
+        title={previewTitle}
+        contentType={contentType || file?.fileType}
+      />
     );
-  }
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -148,19 +148,17 @@ export default function DriveViewer() {
               </Text>
             ) : null}
           </View>
-          <TouchableOpacity onPress={handleOpenInBrowser} style={styles.openButton}>
-            <Ionicons name="open-outline" size={22} color="#fff" />
-          </TouchableOpacity>
+          {previewUrl ? (
+            <TouchableOpacity onPress={handleOpenInBrowser} style={styles.openButton}>
+              <Ionicons name="open-outline" size={22} color="#fff" />
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.openButton} />
+          )}
         </View>
       </LinearGradient>
 
-      <View style={styles.previewContainer}>
-        <MediaPreviewPanel
-          fileUrl={previewUrl}
-          title={previewTitle}
-          contentType={contentType || file?.fileType}
-        />
-      </View>
+      <View style={styles.previewContainer}>{renderBody()}</View>
     </SafeAreaView>
   );
 }
@@ -193,23 +191,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#0F172A',
     marginTop: 16,
-    marginBottom: 24,
-  },
-  backButton: {
-    backgroundColor: '#6366F1',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  backButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
   },
   header: {
     paddingTop: 8,
     paddingBottom: 14,
     paddingHorizontal: 16,
+    zIndex: 20,
+    elevation: 20,
   },
   headerContent: {
     flexDirection: 'row',
@@ -234,6 +222,7 @@ const styles = StyleSheet.create({
   },
   openButton: {
     padding: 4,
+    width: 30,
   },
   previewContainer: {
     flex: 1,

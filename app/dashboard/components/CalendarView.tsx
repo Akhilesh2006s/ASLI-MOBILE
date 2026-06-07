@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { openContentPreview } from '../../../src/utils/openContentPreview';
 import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
 import { filterContentsBySchoolProgram } from '../../../src/lib/school-program';
@@ -54,6 +54,15 @@ export default function CalendarView({ contents: propContents, onMarkAsDone, com
     }
     fetchContents();
   }, [isAsliPrepExclusive, propContents]);
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        setIsPreviewOpen(false);
+        setSelectedContent(null);
+      };
+    }, [])
+  );
 
   const fetchContents = async () => {
     try {
@@ -228,6 +237,8 @@ export default function CalendarView({ contents: propContents, onMarkAsDone, com
   };
 
   const handleDownload = (content: ContentItem) => {
+    setIsPreviewOpen(false);
+    setSelectedContent(null);
     openContentPreview(router, content);
   };
 

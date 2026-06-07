@@ -18,9 +18,16 @@ type Props = {
   title?: string;
   contentType?: string;
   youtubeUrl?: string;
+  onPreviewBusyChange?: (busy: boolean) => void;
 };
 
-export default function MediaPreviewPanel({ fileUrl, title, contentType, youtubeUrl }: Props) {
+export default function MediaPreviewPanel({
+  fileUrl,
+  title,
+  contentType,
+  youtubeUrl,
+  onPreviewBusyChange,
+}: Props) {
   const resolvedUrl = resolveContentUrl(fileUrl);
   const ytSource = youtubeUrl || resolvedUrl;
   const kind = getPreviewKind(resolvedUrl, contentType, youtubeUrl);
@@ -130,7 +137,12 @@ export default function MediaPreviewPanel({ fileUrl, title, contentType, youtube
   if (kind === 'pdf') {
     return (
       <View style={styles.flex}>
-        <PdfPreviewWebView fileUrl={fileUrl} title={title} style={styles.flex} />
+        <PdfPreviewWebView
+          fileUrl={fileUrl}
+          title={title}
+          style={styles.flex}
+          onBusyChange={onPreviewBusyChange}
+        />
       </View>
     );
   }
