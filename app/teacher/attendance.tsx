@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
-import AttendanceTrackerView from './components/AttendanceTrackerView';
+import AttendanceTrackerView from './_components/AttendanceTrackerView';
 import { TEACHER, TEACHER_SPACING, TEACHER_TYPO } from '../../src/theme/teacher';
 
 export default function TeacherAttendanceScreen() {

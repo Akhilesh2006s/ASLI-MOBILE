@@ -8,7 +8,7 @@ import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import { collectVidyaSubjectLabels } from '../../src/lib/vidya-subjects';
 import teacherService, { asArray } from '../../src/services/api/teacherService';
 import { TEACHER, TEACHER_SPACING } from '../../src/theme/teacher';
-import VidyaAIViewChat from './components/VidyaAIViewChat';
+import VidyaAIViewChat from './_components/VidyaAIViewChat';
 
 function extractSubjectNames(subs: any[]): string[] {
   return subs

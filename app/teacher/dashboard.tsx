@@ -20,13 +20,13 @@ import { BottomSheet } from '../../src/components/ui';
 import type { TeacherTab } from '../../src/components/teacher';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, teacherGreeting } from '../../src/theme/teacher';
 import { Ionicons } from '@expo/vector-icons';
-import AIClassesView from './components/AIClassesView';
-import StudentsView from './components/StudentsView';
-import EduOTTView from './components/EduOTTView';
-import LearningPathsView from './components/LearningPathsView';
-import VidyaAIView from './components/VidyaAIView';
-import ContentView from './components/ContentView';
-import ProfileView from './components/ProfileView';
+import AIClassesView from './_components/AIClassesView';
+import StudentsView from './_components/StudentsView';
+import EduOTTView from './_components/EduOTTView';
+import LearningPathsView from './_components/LearningPathsView';
+import VidyaAIView from './_components/VidyaAIView';
+import ContentView from './_components/ContentView';
+import ProfileView from './_components/ProfileView';
 
 /** Matches web teacher dashboard tabs */
 type TabId = 'dashboard' | 'students' | 'eduott' | 'learning-paths' | 'vidya-ai';
