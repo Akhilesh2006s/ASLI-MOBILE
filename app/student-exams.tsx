@@ -7,7 +7,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../src/lib/api-config';
 import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
-import ExamsView from './dashboard/components/ExamsView';
+import ExamsView from './dashboard/_components/ExamsView';
 
 export default function StudentExams() {
   const { examId } = useLocalSearchParams<{ examId?: string }>();

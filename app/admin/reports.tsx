@@ -8,7 +8,7 @@ import { router } from 'expo-router';
 import adminService from '../../src/services/api/adminService';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import { ErrorState, LoadingState } from '../../src/components/ui';
-import { AdminScalePressable, AdminSectionHeader, useAdminTheme } from './ui';
+import { AdminScalePressable, AdminSectionHeader, useAdminTheme } from './_ui';
 
 const REPORTS = [
   { id: 'attendance', label: 'Attendance Report', icon: 'calendar-outline' as const, desc: 'Daily & monthly attendance summaries' },

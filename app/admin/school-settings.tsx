@@ -7,7 +7,7 @@ import { router } from 'expo-router';
 import adminService from '../../src/services/api/adminService';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import { ErrorState, LoadingState } from '../../src/components/ui';
-import { AdminScalePressable, AdminSectionHeader, AdminSkeletonStats, useAdminTheme } from './ui';
+import { AdminScalePressable, AdminSectionHeader, AdminSkeletonStats, useAdminTheme } from './_ui';
 
 export default function SchoolSettings() {
   const { colors, spacing, radius } = useAdminTheme();

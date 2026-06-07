@@ -9,13 +9,13 @@ import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import { StudentTabBar, StudentTab } from '../../src/components/student';
 import { LoadingState } from '../../src/components/ui';
 import { STUDENT, STUDENT_ANIMATION } from '../../src/theme/student';
-import OverviewView from './components/OverviewView';
-import LearningPathsView from './components/LearningPathsView';
-import EduOTTView from './components/EduOTTView';
+import OverviewView from './_components/OverviewView';
+import LearningPathsView from './_components/LearningPathsView';
+import EduOTTView from './_components/EduOTTView';
 import { EduOTTFilterProvider } from '../../src/contexts/edu-ott-filter-context';
-import ExamsTabView from './components/ExamsTabView';
-import AITabView from './components/AITabView';
-import ProfileTabView from './components/ProfileTabView';
+import ExamsTabView from './_components/ExamsTabView';
+import AITabView from './_components/AITabView';
+import ProfileTabView from './_components/ProfileTabView';
 
 type TabId = 'home' | 'learning' | 'eduott' | 'exams' | 'vidya' | 'settings';
 
