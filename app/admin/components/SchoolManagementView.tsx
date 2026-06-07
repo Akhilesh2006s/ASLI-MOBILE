@@ -1,8 +1,30 @@
-import { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, ActivityIndicator, Switch, Alert } from 'react-native';
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  Modal,
+  Switch,
+  Alert,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
+import {
+  AdminScreenShell,
+  AdminSectionHeader,
+  AdminSearchBar,
+  AdminStatCard,
+  AdminGlassCard,
+  AdminEmptyState,
+  AdminSkeletonList,
+  AdminFAB,
+  AdminModalShell,
+  AdminScalePressable,
+  useAdminTheme,
+} from '../ui';
 
 interface AdminItem {
   id: string;
@@ -29,8 +51,10 @@ const STATE_OPTIONS = [
 ];
 
 export default function SchoolManagementView() {
+  const { colors, spacing, radius } = useAdminTheme();
   const [admins, setAdmins] = useState<AdminItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -49,7 +73,7 @@ export default function SchoolManagementView() {
     isActive: true,
   });
 
-  const fetchAdmins = async () => {
+  const fetchAdmins = useCallback(async () => {
     try {
       const token = await SecureStore.getItemAsync('authToken');
       const response = await fetch(`${API_BASE_URL}/api/super-admin/admins`, {
@@ -66,12 +90,18 @@ export default function SchoolManagementView() {
       Alert.alert('Error', error?.message || 'Failed to fetch schools');
     } finally {
       setIsLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchAdmins();
-  }, []);
+  }, [fetchAdmins]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchAdmins();
+  }, [fetchAdmins]);
 
   const filteredAdmins = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -218,195 +248,218 @@ export default function SchoolManagementView() {
 
   const renderPicker = (title: string, options: string[], onSelect: (v: string) => void, onClose: () => void) => (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.pickerOverlay}>
-        <View style={styles.pickerSheet}>
-          <Text style={styles.modalTitle}>{title}</Text>
+      <View style={[styles.pickerOverlay, { backgroundColor: colors.overlay }]}>
+        <View style={[styles.pickerSheet, { backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]}>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>{title}</Text>
           <ScrollView style={{ maxHeight: 320 }}>
             {options.map((option) => (
-              <TouchableOpacity key={option} style={styles.pickerItem} onPress={() => { onSelect(option); onClose(); }}>
-                <Text style={styles.pickerItemText}>{option}</Text>
-              </TouchableOpacity>
+              <AdminScalePressable
+                key={option}
+                onPress={() => { onSelect(option); onClose(); }}
+                style={[styles.pickerItem, { borderBottomColor: colors.surfaceBorder }]}
+              >
+                <Text style={[styles.pickerItemText, { color: colors.text }]}>{option}</Text>
+              </AdminScalePressable>
             ))}
           </ScrollView>
-          <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-            <Text style={styles.cancelButtonText}>Close</Text>
-          </TouchableOpacity>
+          <AdminScalePressable
+            onPress={onClose}
+            style={[styles.cancelButton, { borderColor: colors.surfaceBorder, borderRadius: radius.sm }]}
+          >
+            <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>Close</Text>
+          </AdminScalePressable>
         </View>
       </View>
     </Modal>
   );
 
-  return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.headerRow}>
-        <View>
-          <Text style={styles.title}>School Management</Text>
-          <Text style={styles.subtitle}>Web content adapted for mobile</Text>
-        </View>
-        <TouchableOpacity style={styles.addButton} onPress={() => { resetForm(); setShowAddModal(true); }}>
-          <Ionicons name="add" size={18} color="#fff" />
-          <Text style={styles.addButtonText}>Add School</Text>
-        </TouchableOpacity>
-      </View>
+  const inputStyle = [
+    styles.input,
+    { borderColor: colors.inputBorder, color: colors.text, backgroundColor: colors.inputBg, borderRadius: radius.sm },
+  ];
 
-      <View style={styles.searchBox}>
-        <Ionicons name="search" size={18} color="#9ca3af" />
-        <TextInput
-          style={styles.searchInput}
+  if (isLoading && !refreshing) {
+    return <AdminSkeletonList count={4} />;
+  }
+
+  return (
+    <>
+      <AdminScreenShell refreshing={refreshing} onRefresh={onRefresh}>
+        <AdminSectionHeader
+          icon="business"
+          title="School Management"
+          subtitle="Web content adapted for mobile"
+        />
+
+        <AdminSearchBar
           placeholder="Search by school, contact, email, board..."
           value={searchQuery}
           onChangeText={setSearchQuery}
-          placeholderTextColor="#9ca3af"
+          style={{ marginBottom: spacing.md }}
         />
-      </View>
 
-      <View style={styles.statsRow}>
-        <View style={[styles.statCard, styles.orange]}>
-          <Text style={styles.statLabel}>Total Schools</Text>
-          <Text style={styles.statValue}>{admins.length}</Text>
+        <View style={styles.statsRow}>
+          <AdminStatCard label="Total Schools" value={admins.length} icon="business" gradientIndex={0} />
+          <AdminStatCard label="Total Students" value={totalStudents} icon="people" gradientIndex={1} />
         </View>
-        <View style={[styles.statCard, styles.blue]}>
-          <Text style={styles.statLabel}>Total Students</Text>
-          <Text style={styles.statValue}>{totalStudents}</Text>
+        <View style={{ marginBottom: spacing.md }}>
+          <AdminStatCard label="Total Teachers" value={totalTeachers} icon="person" gradientIndex={2} />
         </View>
-        <View style={[styles.statCard, styles.teal]}>
-          <Text style={styles.statLabel}>Total Teachers</Text>
-          <Text style={styles.statValue}>{totalTeachers}</Text>
-        </View>
-      </View>
 
-      {isLoading ? (
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color="#fb923c" />
-        </View>
-      ) : (
-        filteredAdmins.map((admin) => (
-          <View key={admin.id} style={styles.schoolCard}>
-            <View style={styles.schoolHeader}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.schoolName}>{admin.schoolName || admin.name}</Text>
-                <Text style={styles.schoolMeta}>{admin.name}</Text>
-                <Text style={styles.schoolMeta}>{admin.email}</Text>
-                <View style={styles.badgesRow}>
-                  {!!admin.board && <Text style={styles.badge}>{admin.board}</Text>}
-                  {!!admin.state && <Text style={styles.badge}>{admin.state}</Text>}
+        {filteredAdmins.length === 0 ? (
+          <AdminEmptyState icon="school-outline" title="No schools found" />
+        ) : (
+          filteredAdmins.map((admin, index) => (
+            <AdminGlassCard key={admin.id} delay={index * 50} style={{ marginBottom: spacing.sm }}>
+              <View style={styles.schoolHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.schoolName, { color: colors.text }]}>
+                    {admin.schoolName || admin.name}
+                  </Text>
+                  <Text style={[styles.schoolMeta, { color: colors.textMuted }]}>{admin.name}</Text>
+                  <Text style={[styles.schoolMeta, { color: colors.textMuted }]}>{admin.email}</Text>
+                  <View style={styles.badgesRow}>
+                    {!!admin.board && (
+                      <Text style={[styles.badge, { backgroundColor: colors.primaryMuted, color: colors.primary }]}>
+                        {admin.board}
+                      </Text>
+                    )}
+                    {!!admin.state && (
+                      <Text style={[styles.badge, { backgroundColor: colors.bgElevated, color: colors.textSecondary }]}>
+                        {admin.state}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+                <Text
+                  style={[
+                    styles.statusPill,
+                    (admin.status || '').toLowerCase() === 'active'
+                      ? { backgroundColor: colors.successMuted, color: colors.success }
+                      : { backgroundColor: colors.dangerMuted, color: colors.danger },
+                  ]}
+                >
+                  {admin.status || 'inactive'}
+                </Text>
+              </View>
+
+              <View style={styles.miniStats}>
+                <View style={[styles.miniStat, { backgroundColor: colors.bgElevated, borderRadius: radius.sm }]}>
+                  <Text style={[styles.miniValue, { color: colors.text }]}>{admin.stats?.students || 0}</Text>
+                  <Text style={[styles.miniLabel, { color: colors.textMuted }]}>Students</Text>
+                </View>
+                <View style={[styles.miniStat, { backgroundColor: colors.bgElevated, borderRadius: radius.sm }]}>
+                  <Text style={[styles.miniValue, { color: colors.text }]}>{admin.stats?.teachers || 0}</Text>
+                  <Text style={[styles.miniLabel, { color: colors.textMuted }]}>Teachers</Text>
                 </View>
               </View>
-              <Text style={[styles.statusPill, (admin.status || '').toLowerCase() === 'active' ? styles.active : styles.inactive]}>
-                {admin.status || 'inactive'}
-              </Text>
-            </View>
 
-            <View style={styles.miniStats}>
-              <View style={styles.miniStat}><Text style={styles.miniValue}>{admin.stats?.students || 0}</Text><Text style={styles.miniLabel}>Students</Text></View>
-              <View style={styles.miniStat}><Text style={styles.miniValue}>{admin.stats?.teachers || 0}</Text><Text style={styles.miniLabel}>Teachers</Text></View>
-            </View>
+              <View style={styles.actionsRow}>
+                <AdminScalePressable
+                  onPress={() => openEdit(admin)}
+                  style={[styles.iconBtn, { borderColor: colors.surfaceBorder, borderRadius: radius.sm }]}
+                >
+                  <Ionicons name="create-outline" size={18} color={colors.primary} />
+                </AdminScalePressable>
+                <AdminScalePressable
+                  onPress={() => handleDelete(admin.id)}
+                  style={[styles.iconBtn, { borderColor: colors.surfaceBorder, borderRadius: radius.sm }]}
+                >
+                  <Ionicons name="trash-outline" size={18} color={colors.danger} />
+                </AdminScalePressable>
+              </View>
+            </AdminGlassCard>
+          ))
+        )}
+      </AdminScreenShell>
 
-            <View style={styles.actionsRow}>
-              <TouchableOpacity style={styles.iconBtn} onPress={() => openEdit(admin)}>
-                <Ionicons name="create-outline" size={18} color="#2563eb" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.iconBtn} onPress={() => handleDelete(admin.id)}>
-                <Ionicons name="trash-outline" size={18} color="#ef4444" />
-              </TouchableOpacity>
-            </View>
-          </View>
-        ))
-      )}
+      <AdminFAB onPress={() => { resetForm(); setShowAddModal(true); }} icon="add" />
 
-      <Modal visible={showAddModal || showEditModal} transparent animationType="slide" onRequestClose={() => { setShowAddModal(false); setShowEditModal(false); }}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>{showEditModal ? 'Edit School' : 'Add New School'}</Text>
-            <ScrollView>
-              <TextInput style={styles.input} placeholder="Full name" value={form.name} onChangeText={(v) => setForm((p) => ({ ...p, name: v }))} />
-              <TextInput style={styles.input} placeholder="Email" value={form.email} onChangeText={(v) => setForm((p) => ({ ...p, email: v }))} />
-              {!showEditModal ? (
-                <TextInput style={styles.input} placeholder="Password (optional)" value={form.password} secureTextEntry onChangeText={(v) => setForm((p) => ({ ...p, password: v }))} />
-              ) : null}
-              <TouchableOpacity style={styles.pickerTrigger} onPress={() => setShowBoardPicker(true)}>
-                <Text style={styles.pickerTriggerText}>{form.board || 'Select board'}</Text>
-                <Ionicons name="chevron-down" size={16} color="#6b7280" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.pickerTrigger} onPress={() => setShowStatePicker(true)}>
-                <Text style={styles.pickerTriggerText}>{form.state || 'Select state'}</Text>
-                <Ionicons name="chevron-down" size={16} color="#6b7280" />
-              </TouchableOpacity>
-              <TextInput style={styles.input} placeholder="School name" value={form.schoolName} onChangeText={(v) => setForm((p) => ({ ...p, schoolName: v }))} />
-              {showEditModal ? (
-                <View style={styles.switchRow}>
-                  <Text style={styles.switchLabel}>Active Account</Text>
-                  <Switch value={form.isActive} onValueChange={(v) => setForm((p) => ({ ...p, isActive: v }))} />
-                </View>
-              ) : null}
-            </ScrollView>
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.cancelButton} onPress={() => { setShowAddModal(false); setShowEditModal(false); }}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.saveButton} onPress={showEditModal ? handleUpdate : handleCreate} disabled={submitting}>
-                <Text style={styles.saveButtonText}>{submitting ? 'Saving...' : showEditModal ? 'Update' : 'Add School'}</Text>
-              </TouchableOpacity>
+      <AdminModalShell
+        visible={showAddModal || showEditModal}
+        title={showEditModal ? 'Edit School' : 'Add New School'}
+        onClose={() => { setShowAddModal(false); setShowEditModal(false); }}
+      >
+        <ScrollView style={{ maxHeight: 400 }}>
+          <TextInput style={inputStyle} placeholder="Full name" placeholderTextColor={colors.textMuted} value={form.name} onChangeText={(v) => setForm((p) => ({ ...p, name: v }))} />
+          <TextInput style={inputStyle} placeholder="Email" placeholderTextColor={colors.textMuted} value={form.email} onChangeText={(v) => setForm((p) => ({ ...p, email: v }))} />
+          {!showEditModal ? (
+            <TextInput style={inputStyle} placeholder="Password (optional)" placeholderTextColor={colors.textMuted} value={form.password} secureTextEntry onChangeText={(v) => setForm((p) => ({ ...p, password: v }))} />
+          ) : null}
+          <AdminScalePressable
+            onPress={() => setShowBoardPicker(true)}
+            style={[styles.pickerTrigger, { borderColor: colors.inputBorder, borderRadius: radius.sm }]}
+          >
+            <Text style={[styles.pickerTriggerText, { color: colors.text }]}>{form.board || 'Select board'}</Text>
+            <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
+          </AdminScalePressable>
+          <AdminScalePressable
+            onPress={() => setShowStatePicker(true)}
+            style={[styles.pickerTrigger, { borderColor: colors.inputBorder, borderRadius: radius.sm }]}
+          >
+            <Text style={[styles.pickerTriggerText, { color: colors.text }]}>{form.state || 'Select state'}</Text>
+            <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
+          </AdminScalePressable>
+          <TextInput style={inputStyle} placeholder="School name" placeholderTextColor={colors.textMuted} value={form.schoolName} onChangeText={(v) => setForm((p) => ({ ...p, schoolName: v }))} />
+          {showEditModal ? (
+            <View style={styles.switchRow}>
+              <Text style={[styles.switchLabel, { color: colors.textSecondary }]}>Active Account</Text>
+              <Switch value={form.isActive} onValueChange={(v) => setForm((p) => ({ ...p, isActive: v }))} trackColor={{ true: colors.primary }} />
             </View>
-          </View>
+          ) : null}
+        </ScrollView>
+        <View style={styles.modalActions}>
+          <AdminScalePressable
+            onPress={() => { setShowAddModal(false); setShowEditModal(false); }}
+            style={[styles.cancelButton, { borderColor: colors.surfaceBorder, borderRadius: radius.sm }]}
+          >
+            <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>Cancel</Text>
+          </AdminScalePressable>
+          <AdminScalePressable
+            onPress={showEditModal ? handleUpdate : handleCreate}
+            disabled={submitting}
+            style={[styles.saveButton, { backgroundColor: colors.primary, borderRadius: radius.sm }]}
+          >
+            <Text style={[styles.saveButtonText, { color: colors.textInverse }]}>
+              {submitting ? 'Saving...' : showEditModal ? 'Update' : 'Add School'}
+            </Text>
+          </AdminScalePressable>
         </View>
-      </Modal>
+      </AdminModalShell>
 
       {renderPicker('Select Board', BOARD_OPTIONS, (v) => setForm((p) => ({ ...p, board: v })), () => setShowBoardPicker(false))}
       {renderPicker('Select State', STATE_OPTIONS, (v) => setForm((p) => ({ ...p, state: v })), () => setShowStatePicker(false))}
-    </ScrollView>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc' },
-  content: { padding: 14, paddingBottom: 30, gap: 12 },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  title: { fontSize: 22, fontWeight: '800', color: '#111827' },
-  subtitle: { color: '#6b7280', fontSize: 12, marginTop: 2 },
-  addButton: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#2563eb', paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10 },
-  addButtonText: { color: '#fff', fontWeight: '700', fontSize: 12 },
-  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', paddingHorizontal: 12, marginBottom: 10 },
-  searchInput: { flex: 1, height: 42, color: '#111827' },
-  statsRow: { gap: 10, marginBottom: 6 },
-  statCard: { borderRadius: 12, padding: 12 },
-  orange: { backgroundColor: '#fb923c' },
-  blue: { backgroundColor: '#38bdf8' },
-  teal: { backgroundColor: '#14b8a6' },
-  statLabel: { color: '#fff', fontSize: 12, opacity: 0.95 },
-  statValue: { color: '#fff', fontSize: 24, fontWeight: '800', marginTop: 2 },
-  loadingWrap: { padding: 30, alignItems: 'center' },
-  schoolCard: { backgroundColor: '#fff', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', marginBottom: 10 },
+  statsRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
   schoolHeader: { flexDirection: 'row', gap: 8 },
-  schoolName: { fontSize: 16, fontWeight: '800', color: '#111827' },
-  schoolMeta: { fontSize: 12, color: '#6b7280', marginTop: 2 },
+  schoolName: { fontSize: 16, fontWeight: '800' },
+  schoolMeta: { fontSize: 12, marginTop: 2 },
   badgesRow: { flexDirection: 'row', gap: 6, marginTop: 8, flexWrap: 'wrap' },
-  badge: { fontSize: 11, color: '#374151', backgroundColor: '#f3f4f6', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 },
+  badge: { fontSize: 11, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 },
   statusPill: { fontSize: 11, fontWeight: '700', paddingHorizontal: 8, paddingVertical: 5, borderRadius: 999, alignSelf: 'flex-start', overflow: 'hidden' },
-  active: { backgroundColor: '#dcfce7', color: '#166534' },
-  inactive: { backgroundColor: '#fee2e2', color: '#991b1b' },
   miniStats: { flexDirection: 'row', gap: 10, marginTop: 12 },
-  miniStat: { flex: 1, alignItems: 'center', backgroundColor: '#f8fafc', borderRadius: 10, paddingVertical: 8 },
-  miniValue: { fontSize: 18, fontWeight: '800', color: '#111827' },
-  miniLabel: { fontSize: 11, color: '#6b7280' },
+  miniStat: { flex: 1, alignItems: 'center', paddingVertical: 8 },
+  miniValue: { fontSize: 18, fontWeight: '800' },
+  miniLabel: { fontSize: 11 },
   actionsRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 10 },
-  iconBtn: { width: 34, height: 34, borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb', alignItems: 'center', justifyContent: 'center' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 14, maxHeight: '85%' },
-  modalTitle: { fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 12 },
-  input: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 10, color: '#111827' },
-  pickerTrigger: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 12, marginBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  pickerTriggerText: { color: '#111827', fontSize: 14 },
+  iconBtn: { width: 34, height: 34, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  input: { borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 10 },
+  pickerTrigger: { borderWidth: 1, paddingHorizontal: 12, paddingVertical: 12, marginBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  pickerTriggerText: { fontSize: 14 },
   switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, marginBottom: 12 },
-  switchLabel: { color: '#374151', fontSize: 14, fontWeight: '600' },
-  modalActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
-  cancelButton: { flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, alignItems: 'center', paddingVertical: 12 },
-  cancelButtonText: { color: '#374151', fontWeight: '700' },
-  saveButton: { flex: 1, backgroundColor: '#2563eb', borderRadius: 10, alignItems: 'center', paddingVertical: 12 },
-  saveButtonText: { color: '#fff', fontWeight: '700' },
-  pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  pickerSheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 14 },
-  pickerItem: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
-  pickerItemText: { color: '#111827', fontSize: 14 },
+  switchLabel: { fontSize: 14, fontWeight: '600' },
+  modalActions: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  cancelButton: { flex: 1, borderWidth: 1, alignItems: 'center', paddingVertical: 12 },
+  cancelButtonText: { fontWeight: '700' },
+  saveButton: { flex: 1, alignItems: 'center', paddingVertical: 12 },
+  saveButtonText: { fontWeight: '700' },
+  pickerOverlay: { flex: 1, justifyContent: 'flex-end' },
+  pickerSheet: { padding: 14 },
+  modalTitle: { fontSize: 18, fontWeight: '800', marginBottom: 12 },
+  pickerItem: { paddingVertical: 12, borderBottomWidth: 1 },
+  pickerItemText: { fontSize: 14 },
 });
-

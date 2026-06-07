@@ -7,7 +7,7 @@ export interface VidyaMessage {
   type?: 'text' | 'voice' | 'image';
 }
 
-export type VidyaChatRole = 'teacher' | 'student' | 'admin';
+export type VidyaChatRole = 'teacher' | 'student' | 'admin' | 'super_admin';
 
 export type TeachingTab = 'lesson' | 'quiz' | 'help';
 

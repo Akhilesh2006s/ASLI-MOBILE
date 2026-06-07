@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, Fragment } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import {
   View,
@@ -7,13 +7,24 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  ActivityIndicator,
   Alert,
   Modal,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInUp } from 'react-native-reanimated';
 import api from '../../../src/services/api/api';
+import {
+  AdminScreenShell,
+  AdminSectionHeader,
+  AdminSearchBar,
+  AdminStatCard,
+  AdminGlassCard,
+  AdminEmptyState,
+  AdminSkeletonList,
+  AdminFAB,
+  AdminScalePressable,
+  useAdminTheme,
+} from '../ui';
 import {
   SvgCheckbox,
   SvgIconBook,
@@ -76,6 +87,8 @@ const formatClassLabels = (subject: Subject) => {
 };
 
 export default function SubjectsView() {
+  const { colors, spacing, radius } = useAdminTheme();
+  const [refreshing, setRefreshing] = useState(false);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -168,6 +181,12 @@ export default function SubjectsView() {
       setIsLoading(false);
     }
   }, []);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([fetchSubjects(), fetchClasses()]);
+    setRefreshing(false);
+  }, [fetchSubjects, fetchClasses]);
 
   const filteredSubjects = useMemo(() => {
     if (!searchTerm.trim()) return subjects;
@@ -347,10 +366,10 @@ export default function SubjectsView() {
     </View>
   );
 
-  const renderSubjectCard = (subject: Subject) => (
-    <View style={styles.subjectCard}>
+  const renderSubjectCard = (subject: Subject, index: number) => (
+    <AdminGlassCard key={String(subject.id || subject.code || subject.name || `subject-${index}`)} delay={index * 60} style={styles.subjectCard}>
       <View style={styles.cardTopRow}>
-        <View style={styles.subjectAvatar}>
+        <View style={[styles.subjectAvatar, { backgroundColor: colors.primary }]}>
           <Text style={styles.subjectAvatarText}>{(subject.name || 'S').charAt(0).toUpperCase()}</Text>
         </View>
         <View style={styles.cardTitleBlock}>
@@ -372,7 +391,7 @@ export default function SubjectsView() {
 
       <View style={styles.kvBlock}>
         <DetailRow
-          icon={<SvgIconBook size={18} color="#64748b" />}
+          icon={<SvgIconBook size={18} color={colors.textMuted} />}
           label="Code:"
           value={subject.code?.trim() ? subject.code : '—'}
         />
@@ -387,12 +406,12 @@ export default function SubjectsView() {
           value={subject.department?.trim() ? subject.department : '—'}
         />
         <DetailRow
-          icon={<SvgIconBook size={18} color="#64748b" />}
+          icon={<SvgIconBook size={18} color={colors.textMuted} />}
           label="Grade:"
           value={subject.grade?.trim() ? subject.grade : '—'}
         />
         <DetailRow
-          icon={<SvgIconPeople size={18} color="#64748b" />}
+          icon={<SvgIconPeople size={18} color={colors.textMuted} />}
           label="Teacher:"
           value={subject.teacher?.fullName?.trim() ? subject.teacher.fullName : 'No teacher assigned'}
           valueMuted={!subject.teacher}
@@ -414,11 +433,11 @@ export default function SubjectsView() {
             showsVerticalScrollIndicator
           >
             {subject.classes!.map((cls) => (
-              <View key={cls.id} style={styles.assignedClassItem}>
-                <View style={styles.assignedClassIconWrap}>
-                  <SvgIconSchool size={16} color="#0284c7" />
+              <View key={cls.id} style={[styles.assignedClassItem, { backgroundColor: colors.primaryMuted, borderColor: colors.surfaceBorder }]}>
+                <View style={[styles.assignedClassIconWrap, { backgroundColor: colors.surface }]}>
+                  <SvgIconSchool size={16} color={colors.primary} />
                 </View>
-                <Text style={styles.assignedClassItemText}>{getClassItemLabel(cls)}</Text>
+                <Text style={[styles.assignedClassItemText, { color: colors.text }]}>{getClassItemLabel(cls)}</Text>
               </View>
             ))}
           </ScrollView>
@@ -430,106 +449,70 @@ export default function SubjectsView() {
       </View>
 
       <View style={styles.cardActions}>
-        <TouchableOpacity
-          style={[styles.squircleBtn, styles.squircleBtnBlue]}
+        <AdminScalePressable
+          style={[styles.squircleBtn, { borderColor: colors.primaryLight }]}
           onPress={() => showSubjectDetail(subject)}
           accessibilityLabel="View subject"
         >
-          <SvgIconEye color="#0284c7" size={22} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.squircleBtn, styles.squircleBtnTeal]}
+          <SvgIconEye color={colors.primary} size={22} />
+        </AdminScalePressable>
+        <AdminScalePressable
+          style={[styles.squircleBtn, { borderColor: colors.success }]}
           onPress={() => openEditSubject(subject)}
           accessibilityLabel="Edit subject"
         >
-          <SvgIconPencil color="#0d9488" size={22} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.squircleBtn, styles.squircleBtnRed]}
+          <SvgIconPencil color={colors.success} size={22} />
+        </AdminScalePressable>
+        <AdminScalePressable
+          style={[styles.squircleBtn, { borderColor: colors.danger }]}
           onPress={() => handleDeleteSubject(subject.id, subject.name)}
           accessibilityLabel="Delete subject"
         >
-          <SvgIconTrash color="#b91c1c" size={22} />
-        </TouchableOpacity>
+          <SvgIconTrash color={colors.danger} size={22} />
+        </AdminScalePressable>
       </View>
-    </View>
+    </AdminGlassCard>
   );
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.contentContainer}
-      showsVerticalScrollIndicator
+    <>
+    <AdminScreenShell
+      refreshing={refreshing}
+      onRefresh={onRefresh}
       nestedScrollEnabled
       keyboardShouldPersistTaps="handled"
     >
-      <View style={styles.pageIntro}>
-        <Text style={styles.pageTitle}>Subject Management</Text>
-        <Text style={styles.pageSubtitle}>Manage subjects and their assignments</Text>
-      </View>
+      <AdminSectionHeader
+        title="Subject Management"
+        subtitle="Manage subjects and their assignments"
+        icon="book-outline"
+      />
 
       <View style={styles.statsRow}>
-        <View style={[styles.summaryTile, { borderLeftColor: '#fb923c' }]}>
-          <View style={[styles.summaryIconWrap, { backgroundColor: '#fff7ed' }]}>
-            <MaterialCommunityIcons name="book-open-variant" size={18} color="#ea580c" allowFontScaling={false} />
-          </View>
-          <Text style={styles.summaryTileLabel}>Total</Text>
-          <Text style={styles.summaryTileValue}>{totalSubjects}</Text>
-        </View>
-        <View style={[styles.summaryTile, { borderLeftColor: '#38bdf8' }]}>
-          <View style={[styles.summaryIconWrap, { backgroundColor: '#eff6ff' }]}>
-            <MaterialCommunityIcons name="check-circle" size={18} color="#0284c7" allowFontScaling={false} />
-          </View>
-          <Text style={styles.summaryTileLabel}>Active</Text>
-          <Text style={styles.summaryTileValue}>{activeSubjects}</Text>
-        </View>
-        <View style={[styles.summaryTile, { borderLeftColor: '#14b8a6' }]}>
-          <View style={[styles.summaryIconWrap, { backgroundColor: '#f0fdfa' }]}>
-            <MaterialCommunityIcons name="account-group" size={18} color="#0d9488" allowFontScaling={false} />
-          </View>
-          <Text style={styles.summaryTileLabel}>Assigned</Text>
-          <Text style={styles.summaryTileValue}>{assignedSubjects}</Text>
-        </View>
+        <AdminStatCard label="Total" value={totalSubjects} icon="book" gradientIndex={0} delay={0} />
+        <AdminStatCard label="Active" value={activeSubjects} icon="checkmark-circle" gradientIndex={2} delay={50} />
+        <AdminStatCard label="Assigned" value={assignedSubjects} icon="people" gradientIndex={1} delay={100} />
       </View>
 
-      <View style={styles.toolbarCard}>
-        <View style={styles.searchWrap}>
-          <View style={[styles.searchIconSlot, styles.toolbarIconWrap]}>
-            <MaterialCommunityIcons name="magnify" size={22} color="#94a3b8" allowFontScaling={false} />
-          </View>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search subjects by name, code, teacher…"
-            value={searchTerm}
-            onChangeText={setSearchTerm}
-            placeholderTextColor="#94a3b8"
-          />
-        </View>
-        <TouchableOpacity style={styles.addSubjectBtn} onPress={() => setIsAddModalVisible(true)} activeOpacity={0.88}>
-          <MaterialCommunityIcons name="plus" size={22} color="#fff" allowFontScaling={false} />
-          <Text style={styles.addSubjectBtnText}>Add subject</Text>
-        </TouchableOpacity>
-      </View>
+      <AdminGlassCard delay={80} style={{ marginBottom: spacing.md, padding: spacing.md, gap: spacing.sm }}>
+        <AdminSearchBar
+          placeholder="Search subjects by name, code, teacher…"
+          value={searchTerm}
+          onChangeText={setSearchTerm}
+        />
+      </AdminGlassCard>
 
       {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0d9488" />
-        </View>
+        <AdminSkeletonList count={4} />
       ) : filteredSubjects.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <View style={styles.emptyIconWrap}>
-            <SvgIconBook size={48} color="#0d9488" />
-          </View>
-          <Text style={styles.emptyText}>No subjects found</Text>
-          <Text style={styles.emptyHint}>Try a different search or add a new subject.</Text>
-        </View>
+        <AdminEmptyState
+          title="No subjects found"
+          message="Try a different search or add a new subject."
+          icon="book-outline"
+        />
       ) : (
         <View style={styles.listContent}>
-          {filteredSubjects.map((subject, index) => (
-            <Fragment key={String(subject.id || subject.code || subject.name || `subject-${index}`)}>
-              {renderSubjectCard(subject)}
-            </Fragment>
-          ))}
+          {filteredSubjects.map((subject, index) => renderSubjectCard(subject, index))}
         </View>
       )}
 
@@ -543,7 +526,7 @@ export default function SubjectsView() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <LinearGradient
-              colors={['#0d9488', '#0f766e']}
+              colors={[...colors.fabGradient]}
               style={styles.modalHeader}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -612,7 +595,7 @@ export default function SubjectsView() {
               <TouchableOpacity style={styles.cancelButton} onPress={() => setIsAddModalVisible(false)}>
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.submitButtonSolid} onPress={handleAddSubject} activeOpacity={0.88}>
+              <TouchableOpacity style={[styles.submitButtonSolid, { backgroundColor: colors.primary }]} onPress={handleAddSubject} activeOpacity={0.88}>
                 <Text style={styles.submitButtonSolidText}>Add Subject</Text>
               </TouchableOpacity>
             </View>
@@ -630,7 +613,7 @@ export default function SubjectsView() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <LinearGradient
-              colors={['#0d9488', '#0f766e']}
+              colors={[...colors.fabGradient]}
               style={styles.modalHeader}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -696,154 +679,32 @@ export default function SubjectsView() {
               <TouchableOpacity style={styles.cancelButton} onPress={() => setIsEditModalVisible(false)}>
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.submitButtonSolid} onPress={handleUpdateSubject} activeOpacity={0.88}>
+              <TouchableOpacity style={[styles.submitButtonSolid, { backgroundColor: colors.primary }]} onPress={handleUpdateSubject} activeOpacity={0.88}>
                 <Text style={styles.submitButtonSolidText}>Save changes</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
-    </ScrollView>
+    </AdminScreenShell>
+    <AdminFAB onPress={() => setIsAddModalVisible(true)} />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  contentContainer: {
-    paddingBottom: 100,
-  },
-  pageIntro: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-  },
-  pageTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#0f172a',
-    letterSpacing: -0.3,
-    marginBottom: 4,
-  },
-  pageSubtitle: {
-    fontSize: 14,
-    color: '#64748b',
-    lineHeight: 20,
-  },
   statsRow: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
+    flexWrap: 'wrap',
     gap: 8,
     marginBottom: 12,
   },
-  summaryTile: {
-    flex: 1,
-    minWidth: 0,
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderLeftWidth: 4,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  summaryIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-  },
-  summaryTileLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#64748b',
-    marginBottom: 2,
-    textAlign: 'center',
-  },
-  summaryTileValue: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#0f172a',
-  },
-  toolbarCard: {
-    marginHorizontal: 16,
-    marginBottom: 14,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  searchWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f1f5f9',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
-  searchIconSlot: {
-    marginRight: 8,
-  },
-  toolbarIconWrap: {
-    width: 24,
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  searchInput: {
-    flex: 1,
-    height: 46,
-    fontSize: 15,
-    color: '#0f172a',
-  },
-  addSubjectBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#0d9488',
-    paddingVertical: 14,
-    borderRadius: 12,
-  },
-  addSubjectBtnText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '800',
-  },
   listContent: {
-    paddingHorizontal: 16,
     gap: 12,
     paddingBottom: 8,
   },
   subjectCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
     padding: 14,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
   },
   cardTopRow: {
     flexDirection: 'row',
@@ -855,7 +716,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#0d9488',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -937,7 +797,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   kvValueMuted: {
-    color: '#0d9488',
+    color: '#4F46E5',
     fontWeight: '600',
   },
   cardActions: {
@@ -958,43 +818,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1.5,
   },
-  squircleBtnBlue: {
-    borderColor: '#7dd3fc',
-  },
-  squircleBtnTeal: {
-    borderColor: '#99f6e4',
-  },
-  squircleBtnRed: {
-    borderColor: '#fca5a5',
-  },
-  loadingContainer: {
-    paddingVertical: 40,
-    alignItems: 'center',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    padding: 28,
-  },
-  emptyIconWrap: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: '#f0fdfa',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyText: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#0f172a',
-    marginTop: 12,
-  },
-  emptyHint: {
-    fontSize: 14,
-    color: '#64748b',
-    marginTop: 6,
-    textAlign: 'center',
-  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -1004,7 +827,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: '#fff',
-    borderRadius: 16,
+    borderRadius: 20,
     width: '100%',
     maxHeight: '85%',
     overflow: 'hidden',
@@ -1035,13 +858,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   formInput: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 10,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
     padding: 10,
     fontSize: 14,
-    color: '#111827',
+    color: '#0F172A',
   },
   formTextArea: {
     height: 72,
@@ -1069,8 +892,7 @@ const styles = StyleSheet.create({
   submitButtonSolid: {
     flex: 1,
     padding: 12,
-    borderRadius: 10,
-    backgroundColor: '#0d9488',
+    borderRadius: 12,
     alignItems: 'center',
   },
   submitButtonSolidText: {
@@ -1080,15 +902,15 @@ const styles = StyleSheet.create({
   },
   classPickerEmpty: {
     fontSize: 13,
-    color: '#0284c7',
+    color: '#4F46E5',
     paddingVertical: 8,
   },
   classPickerScroll: {
     maxHeight: 180,
     borderWidth: 1,
-    borderColor: '#bae6fd',
+    borderColor: '#E2E8F0',
     borderRadius: 12,
-    backgroundColor: '#f0f9ff',
+    backgroundColor: '#F8FAFC',
     padding: 8,
   },
   classPickRow: {
@@ -1101,13 +923,13 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   classPickRowActive: {
-    backgroundColor: '#e0f2fe',
+    backgroundColor: 'rgba(79, 70, 229, 0.12)',
   },
   classPickLabel: {
     flex: 1,
     fontSize: 14,
     fontWeight: '600',
-    color: '#0c4a6e',
+    color: '#0F172A',
   },
   assignedClassesBlock: {
     marginBottom: 12,
@@ -1133,19 +955,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#f0f9ff',
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 12,
     marginBottom: 6,
     borderWidth: 1,
-    borderColor: '#bae6fd',
   },
   assignedClassIconWrap: {
     width: 28,
     height: 28,
     borderRadius: 8,
-    backgroundColor: '#e0f2fe',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1153,7 +972,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: '700',
-    color: '#0c4a6e',
   },
   noClassesAssignedWrap: {
     paddingVertical: 4,

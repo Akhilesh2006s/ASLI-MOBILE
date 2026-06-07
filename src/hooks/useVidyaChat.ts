@@ -24,7 +24,7 @@ const CONTROL_ASSISTANT_QUICK_QUESTIONS = [
 ];
 
 const QUICK_QUESTIONS_BY_ROLE: Record<
-  'student' | 'teacher' | 'admin',
+  'student' | 'teacher' | 'admin' | 'super_admin',
   string[]
 > = {
   student: [
@@ -46,19 +46,29 @@ const QUICK_QUESTIONS_BY_ROLE: Record<
     'Schedule an exam for Grade 10',
     'Assign teachers to subjects',
   ],
+  super_admin: [
+    'Show AI usage statistics across schools',
+    'Detect anomalies in AI responses',
+    'Configure model behavior',
+    'Generate system performance report',
+  ],
 };
 
-const INPUT_PLACEHOLDER_BY_ROLE: Record<'student' | 'teacher' | 'admin', string> = {
+const INPUT_PLACEHOLDER_BY_ROLE: Record<
+  'student' | 'teacher' | 'admin' | 'super_admin',
+  string
+> = {
   student: 'Type your question or upload a problem...',
   teacher: 'Ask about teaching, lessons, or doubts...',
   admin: 'Ask about school management...',
+  super_admin: 'Ask about system analytics, AI monitoring...',
 };
 
 const CONTROL_INPUT_PLACEHOLDER =
   'Ask for live metrics: students, teachers, exams, attendance, AI generations…';
 
 export function useVidyaChat({ userId, role, context }: UseVidyaChatOptions): UseVidyaChatResult {
-  const isDatabaseBackedAssistant = role === 'admin';
+  const isDatabaseBackedAssistant = role === 'admin' || role === 'super_admin';
   const isStudentMentorMode = role === 'student';
   const queryClient = useQueryClient();
 
@@ -339,7 +349,7 @@ export function useVidyaChat({ userId, role, context }: UseVidyaChatOptions): Us
   );
 
   const pickAndAnalyzeImage = useCallback(async () => {
-    if (isDatabaseBackedAssistant) {
+    if (isDatabaseBackedAssistant && role !== 'super_admin') {
       Alert.alert('Not available', 'Image upload is not supported for school AI assistant.');
       return;
     }
@@ -360,7 +370,7 @@ export function useVidyaChat({ userId, role, context }: UseVidyaChatOptions): Us
     } catch {
       Alert.alert('Error', 'Could not open image. Please try again.');
     }
-  }, [analyzeImageMutation, isDatabaseBackedAssistant, sendMessageMutation.isPending]);
+  }, [analyzeImageMutation, isDatabaseBackedAssistant, role, sendMessageMutation.isPending]);
 
   const clearChatMutation = useMutation({
     mutationFn: async () => {
@@ -423,7 +433,10 @@ export function useVidyaChat({ userId, role, context }: UseVidyaChatOptions): Us
     currentSubject: selectedSubject,
     subjectOptions: mergedSubjectOptions,
     setSelectedSubject,
-    userInitial: context?.studentName?.charAt(0)?.toUpperCase() || 'A',
+    userInitial:
+      role === 'super_admin'
+        ? 'SA'
+        : context?.studentName?.charAt(0)?.toUpperCase() || 'A',
     handleSendMessage,
     sendSpecificMessage,
     pickAndAnalyzeImage,

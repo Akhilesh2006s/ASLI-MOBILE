@@ -1,67 +1,85 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  FadeIn,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
+import { useAdminTheme } from '../ui/useAdminTheme';
+import AdminScalePressable from '../ui/AdminScalePressable';
+
 interface VidyaAICornerButtonProps {
   onPress?: () => void;
 }
 
 const messages = [
-  "Need help managing your school?",
-  "Ask me about student management",
-  "Need help with class assignments?",
-  "Ask me about teacher management?"
+  'Need help managing your school?',
+  'Ask me about student management',
+  'Need help with class assignments?',
+  'Ask me about teacher management?',
 ];
 
 export default function VidyaAICornerButton({ onPress }: VidyaAICornerButtonProps) {
+  const { colors, radius } = useAdminTheme();
   const [currentMessage, setCurrentMessage] = useState(0);
-  const [fadeAnim] = useState(new Animated.Value(1));
+  const opacity = useSharedValue(1);
+  const pulse = useSharedValue(1);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      Animated.sequence([
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      opacity.value = withSequence(
+        withTiming(0, { duration: 250 }),
+        withTiming(1, { duration: 250 })
+      );
       setCurrentMessage((prev) => (prev + 1) % messages.length);
-    }, 3000);
+    }, 3500);
     return () => clearInterval(interval);
-  }, []);
+  }, [opacity]);
 
-  const handlePress = () => {
-    if (onPress) {
-      onPress();
-    }
-  };
+  useEffect(() => {
+    pulse.value = withRepeat(
+      withSequence(withTiming(1.08, { duration: 1400 }), withTiming(1, { duration: 1400 })),
+      -1,
+      false
+    );
+  }, [pulse]);
+
+  const bubbleStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  const btnStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
 
   return (
     <View style={styles.container}>
-      {/* Message Popup */}
-      <Animated.View style={[styles.messageContainer, { opacity: fadeAnim }]}>
-        <View style={styles.messageBubble}>
-          <Text style={styles.messageText}>{messages[currentMessage]}</Text>
-          {/* Speech bubble tail */}
-          <View style={styles.messageTail} />
+      <Animated.View style={[styles.messageContainer, bubbleStyle]}>
+        <View
+          style={[
+            styles.messageBubble,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.primaryMuted,
+              borderRadius: radius.md,
+            },
+          ]}
+        >
+          <Text style={[styles.messageText, { color: colors.text }]}>{messages[currentMessage]}</Text>
+          <View style={[styles.messageTail, { borderTopColor: colors.primaryMuted }]} />
         </View>
       </Animated.View>
 
-      {/* Vidya AI Image/Button */}
-      <TouchableOpacity
-        style={styles.imageButton}
-        onPress={handlePress}
-        activeOpacity={0.8}
-      >
-        <View style={styles.imageContainer}>
-          <Ionicons name="bulb" size={32} color="#fb923c" />
-        </View>
-      </TouchableOpacity>
+      <Animated.View style={btnStyle}>
+        <AdminScalePressable onPress={onPress} scaleTo={0.9}>
+          <LinearGradient
+            colors={[...colors.fabGradient]}
+            style={[styles.imageButton, { borderRadius: radius.full }]}
+          >
+            <Ionicons name="sparkles" size={28} color="#fff" />
+          </LinearGradient>
+        </AdminScalePressable>
+      </Animated.View>
     </View>
   );
 }
@@ -75,31 +93,27 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   messageContainer: {
-    marginBottom: 8,
+    marginBottom: 10,
   },
   messageBubble: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 10,
-    shadowColor: '#000',
+    padding: 12,
+    borderWidth: 1,
+    maxWidth: 220,
+    shadowColor: '#4F46E5',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
-    elevation: 8,
-    borderWidth: 2,
-    borderColor: '#fed7aa',
-    position: 'relative',
-    maxWidth: 200,
+    elevation: 6,
   },
   messageText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#111827',
+    lineHeight: 17,
   },
   messageTail: {
     position: 'absolute',
     bottom: -8,
-    left: 32,
+    left: 28,
     width: 0,
     height: 0,
     borderLeftWidth: 8,
@@ -107,27 +121,16 @@ const styles = StyleSheet.create({
     borderTopWidth: 8,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderTopColor: '#fed7aa',
   },
   imageButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    width: 58,
+    height: 58,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
     shadowRadius: 12,
     elevation: 8,
-  },
-  imageContainer: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#fff',
-    borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fb923c',
   },
 });

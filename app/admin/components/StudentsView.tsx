@@ -7,7 +7,6 @@ import {
   TextInput,
   TouchableOpacity,
   Modal,
-  ActivityIndicator,
   Alert,
   Share,
   Pressable,
@@ -16,6 +15,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as DocumentPicker from 'expo-document-picker';
 import api from '../../../src/services/api/api';
+import {
+  AdminScreenShell,
+  AdminSectionHeader,
+  AdminSearchBar,
+  AdminStatCard,
+  AdminGlassCard,
+  AdminEmptyState,
+  AdminSkeletonList,
+  AdminFilterChips,
+  AdminScalePressable,
+  useAdminTheme,
+} from '../ui';
 
 interface Student {
   id: string;
@@ -103,6 +114,8 @@ const sortByClassLabel = (a: string, b: string) => {
 };
 
 export default function StudentsView() {
+  const { colors, spacing } = useAdminTheme();
+  const [refreshing, setRefreshing] = useState(false);
   const [students, setStudents] = useState<Student[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
@@ -177,7 +190,7 @@ export default function StudentsView() {
           (typeof user.assignedClass === 'object' ? user.assignedClass?.section : '') ||
           '',
         phone: user.phone || '',
-        status: user.isActive ? 'active' : 'inactive',
+        status: user.isActive ? ('active' as const) : ('inactive' as const),
         createdAt: user.createdAt || new Date().toISOString(),
         lastLogin: user.lastLogin || null,
         assignedClass: user.assignedClass?._id || user.assignedClass || null,
@@ -189,6 +202,12 @@ export default function StudentsView() {
       setIsLoading(false);
     }
   };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([fetchStudents(), fetchClasses()]);
+    setRefreshing(false);
+  }, []);
 
   const allClasses = useMemo(
     () =>
@@ -493,13 +512,13 @@ export default function StudentsView() {
   };
 
   const renderStudentCard = useCallback(
-    (student: Student) => (
-      <View key={String(student.id ?? student.email)} style={styles.studentCard}>
+    (student: Student, index: number) => (
+      <AdminGlassCard key={String(student.id ?? student.email)} delay={index * 40} style={styles.studentCard}>
         <View style={styles.studentCardContent}>
           <View style={styles.studentHeader}>
             <View style={styles.studentAvatarContainer}>
               <LinearGradient
-                colors={['#0ea5e9', '#2563eb']}
+                colors={[...colors.fabGradient]}
                 style={styles.studentAvatar}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -531,21 +550,21 @@ export default function StudentsView() {
                 {student.email || 'No email'}
               </Text>
             </View>
-            <View style={styles.classBadge}>
-              <Text style={styles.classBadgeText}>{student.classNumber || 'N/A'}</Text>
+            <View style={[styles.classBadge, { backgroundColor: colors.primaryMuted, borderColor: colors.surfaceBorder }]}>
+              <Text style={[styles.classBadgeText, { color: colors.primary }]}>{student.classNumber || 'N/A'}</Text>
             </View>
           </View>
 
           <View style={styles.studentMeta}>
             {student.phone ? (
               <View style={styles.metaItem}>
-                <Ionicons name="call-outline" size={14} color="#0369a1" />
-                <Text style={styles.metaItemText}>{student.phone}</Text>
+                <Ionicons name="call-outline" size={14} color={colors.primary} />
+                <Text style={[styles.metaItemText, { color: colors.textSecondary }]}>{student.phone}</Text>
               </View>
             ) : null}
             <View style={styles.metaItem}>
-              <Ionicons name="time-outline" size={14} color="#0369a1" />
-              <Text style={styles.metaItemText}>
+              <Ionicons name="time-outline" size={14} color={colors.primary} />
+              <Text style={[styles.metaItemText, { color: colors.textSecondary }]}>
                 Last login:{' '}
                 {student.lastLogin ? new Date(student.lastLogin).toLocaleDateString() : 'Never'}
               </Text>
@@ -553,33 +572,33 @@ export default function StudentsView() {
           </View>
 
           <View style={styles.studentActions}>
-            <TouchableOpacity
-              style={styles.iconActionBtn}
+            <AdminScalePressable
+              style={[styles.iconActionBtn, { backgroundColor: colors.primaryMuted }]}
               onPress={() => handleEditStudent(student)}
             >
-              <Ionicons name="create-outline" size={18} color="#0284c7" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.iconActionBtn}
+              <Ionicons name="create-outline" size={18} color={colors.primary} />
+            </AdminScalePressable>
+            <AdminScalePressable
+              style={[styles.iconActionBtn, { backgroundColor: colors.dangerMuted }]}
               onPress={() => handleDeleteStudent(student.id, student.name)}
             >
-              <Ionicons name="trash-outline" size={18} color="#dc2626" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.assignClassBtn}
+              <Ionicons name="trash-outline" size={18} color={colors.danger} />
+            </AdminScalePressable>
+            <AdminScalePressable
+              style={[styles.assignClassBtn, { borderColor: colors.surfaceBorder, backgroundColor: colors.primaryMuted }]}
               onPress={() => {
                 setSelectedStudentForClass(student);
                 setIsAssignClassModalVisible(true);
               }}
             >
-              <Ionicons name="school-outline" size={16} color="#0284c7" />
-              <Text style={styles.assignClassBtnText}>Assign Class</Text>
-            </TouchableOpacity>
+              <Ionicons name="school-outline" size={16} color={colors.primary} />
+              <Text style={[styles.assignClassBtnText, { color: colors.primary }]}>Assign Class</Text>
+            </AdminScalePressable>
           </View>
         </View>
-      </View>
+      </AdminGlassCard>
     ),
-    []
+    [colors]
   );
 
   const renderPickerModal = (
@@ -613,7 +632,7 @@ export default function StudentsView() {
                   {opt.label}
                 </Text>
                 {selected === opt.value && (
-                  <Ionicons name="checkmark" size={18} color="#0284c7" />
+                  <Ionicons name="checkmark" size={18} color={colors.primary} />
                 )}
               </TouchableOpacity>
             ))}
@@ -625,38 +644,32 @@ export default function StudentsView() {
 
   const renderDirectoryContent = () => {
     if (isLoading) {
-      return (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0ea5e9" />
-        </View>
-      );
+      return <AdminSkeletonList count={5} />;
     }
 
     if (filteredStudents.length === 0) {
       return (
-        <View style={styles.emptyContainer}>
-          <View style={styles.emptyIcon}>
-            <Ionicons name="people-outline" size={48} color="#0ea5e9" />
-          </View>
-          <Text style={styles.emptyTitle}>No students found</Text>
-          <Text style={styles.emptySubtitle}>
-            Try adjusting your search criteria or add new students
-          </Text>
-          <TouchableOpacity
-            style={styles.addFirstButton}
-            onPress={() => setIsAddModalVisible(true)}
-          >
-            <Ionicons name="person-add" size={20} color="#fff" />
-            <Text style={styles.addFirstButtonText}>Add First Student</Text>
-          </TouchableOpacity>
-        </View>
+        <AdminEmptyState
+          title="No students found"
+          message="Try adjusting your search criteria or add new students"
+          icon="people-outline"
+          action={
+            <AdminScalePressable
+              style={[styles.addFirstButton, { backgroundColor: colors.primary }]}
+              onPress={() => setIsAddModalVisible(true)}
+            >
+              <Ionicons name="person-add" size={20} color="#fff" />
+              <Text style={styles.addFirstButtonText}>Add First Student</Text>
+            </AdminScalePressable>
+          }
+        />
       );
     }
 
     if (studentViewMode === 'all') {
       return (
         <View style={styles.studentsList}>
-          {filteredStudents.map((student) => renderStudentCard(student))}
+          {filteredStudents.map((student, index) => renderStudentCard(student, index))}
         </View>
       );
     }
@@ -680,7 +693,7 @@ export default function StudentsView() {
                       <Ionicons
                         name={isClassCollapsed ? 'chevron-forward' : 'chevron-down'}
                         size={18}
-                        color="#0369a1"
+                        color={colors.primary}
                       />
                       <Text style={styles.accordionTitle}>{classKey}</Text>
                     </View>
@@ -709,7 +722,7 @@ export default function StudentsView() {
                                   <Ionicons
                                     name={isSectionCollapsed ? 'chevron-forward' : 'chevron-down'}
                                     size={16}
-                                    color="#0d9488"
+                                    color={colors.success}
                                   />
                                   <Text style={styles.sectionTitle}>{sectionKey}</Text>
                                 </View>
@@ -721,7 +734,7 @@ export default function StudentsView() {
                               </TouchableOpacity>
                               {!isSectionCollapsed && (
                                 <View style={styles.sectionStudents}>
-                                  {sectionStudents.map((student) => renderStudentCard(student))}
+                                  {sectionStudents.map((student, idx) => renderStudentCard(student, idx))}
                                 </View>
                               )}
                             </View>
@@ -754,7 +767,7 @@ export default function StudentsView() {
                     <Ionicons
                       name={isSectionCollapsed ? 'chevron-forward' : 'chevron-down'}
                       size={18}
-                      color="#0d9488"
+                      color={colors.success}
                     />
                     <Text style={[styles.accordionTitle, styles.sectionAccordionTitle]}>
                       {sectionKey}
@@ -782,7 +795,7 @@ export default function StudentsView() {
                               </View>
                             </View>
                             <View style={styles.sectionStudents}>
-                              {classStudents.map((student) => renderStudentCard(student))}
+                              {classStudents.map((student, idx) => renderStudentCard(student, idx))}
                             </View>
                           </View>
                         );
@@ -797,60 +810,45 @@ export default function StudentsView() {
   };
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.contentContainer}
-      showsVerticalScrollIndicator
-    >
-      {/* Stats */}
+    <>
+    <AdminScreenShell refreshing={refreshing} onRefresh={onRefresh} showsVerticalScrollIndicator>
+      <AdminSectionHeader
+        title="Students Directory"
+        subtitle={`${filteredStudents.length} students found`}
+        icon="people-outline"
+      />
+
       <View style={styles.statsRow}>
-        <View style={[styles.summaryTile, { borderLeftColor: '#3b82f6' }]}>
-          <View style={[styles.summaryIconWrap, { backgroundColor: '#eff6ff' }]}>
-            <Ionicons name="people" size={18} color="#2563eb" />
-          </View>
-          <Text style={styles.summaryTileLabel}>Total</Text>
-          <Text style={styles.summaryTileValue}>{stats.total}</Text>
-        </View>
-        <View style={[styles.summaryTile, { borderLeftColor: '#10b981' }]}>
-          <View style={[styles.summaryIconWrap, { backgroundColor: '#ecfdf5' }]}>
-            <Ionicons name="checkmark-circle" size={18} color="#059669" />
-          </View>
-          <Text style={styles.summaryTileLabel}>Active</Text>
-          <Text style={styles.summaryTileValue}>{stats.active}</Text>
-        </View>
-        <View style={[styles.summaryTile, { borderLeftColor: '#f97316' }]}>
-          <View style={[styles.summaryIconWrap, { backgroundColor: '#fff7ed' }]}>
-            <Ionicons name="school-outline" size={18} color="#ea580c" />
-          </View>
-          <Text style={styles.summaryTileLabel}>Classes</Text>
-          <Text style={styles.summaryTileValue}>{stats.classes}</Text>
-        </View>
-        <View style={[styles.summaryTile, { borderLeftColor: '#0ea5e9' }]}>
-          <View style={[styles.summaryIconWrap, { backgroundColor: '#f0f9ff' }]}>
-            <Ionicons name="person-add-outline" size={18} color="#0284c7" />
-          </View>
-          <Text style={styles.summaryTileLabel}>New</Text>
-          <Text style={styles.summaryTileValue}>{stats.newThisMonth}</Text>
-        </View>
+        <AdminStatCard label="Total" value={stats.total} icon="people" gradientIndex={0} delay={0} />
+        <AdminStatCard label="Active" value={stats.active} icon="checkmark-circle" gradientIndex={2} delay={50} />
+        <AdminStatCard label="Classes" value={stats.classes} icon="school-outline" gradientIndex={4} delay={100} />
+        <AdminStatCard label="New" value={stats.newThisMonth} icon="person-add-outline" gradientIndex={1} delay={150} />
       </View>
 
-      {/* Action bar — matches web */}
-      <View style={styles.toolbarCard}>
+      <AdminGlassCard delay={80} style={{ marginBottom: spacing.md, padding: spacing.md, gap: spacing.sm }}>
         <View style={styles.filterRow}>
-          <TouchableOpacity style={styles.selectTrigger} onPress={() => setClassPickerOpen(true)}>
-            <Text style={styles.selectTriggerText} numberOfLines={1}>
+          <TouchableOpacity
+            style={[styles.selectTrigger, { borderColor: colors.surfaceBorder, backgroundColor: colors.surface }]}
+            onPress={() => setClassPickerOpen(true)}
+          >
+            <Text style={[styles.selectTriggerText, { color: colors.text }]} numberOfLines={1}>
               {selectedClassFilter === 'all' ? 'Select Class' : selectedClassFilter}
             </Text>
-            <Ionicons name="chevron-down" size={16} color="#0369a1" />
+            <Ionicons name="chevron-down" size={16} color={colors.primary} />
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.selectTrigger, selectedClassFilter === 'all' && styles.selectDisabled]}
+            style={[
+              styles.selectTrigger,
+              { borderColor: colors.surfaceBorder, backgroundColor: colors.surface },
+              selectedClassFilter === 'all' && styles.selectDisabled,
+            ]}
             onPress={() => selectedClassFilter !== 'all' && setSectionPickerOpen(true)}
             disabled={selectedClassFilter === 'all'}
           >
             <Text
               style={[
                 styles.selectTriggerText,
+                { color: colors.text },
                 selectedClassFilter === 'all' && styles.selectDisabledText,
               ]}
               numberOfLines={1}
@@ -860,82 +858,49 @@ export default function StudentsView() {
             <Ionicons
               name="chevron-down"
               size={16}
-              color={selectedClassFilter === 'all' ? '#94a3b8' : '#0369a1'}
+              color={selectedClassFilter === 'all' ? colors.textMuted : colors.primary}
             />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.searchWrap}>
-          <Ionicons name="search" size={20} color="#94a3b8" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search students by name, email, or class..."
-            value={searchTerm}
-            onChangeText={setSearchTerm}
-            placeholderTextColor="#94a3b8"
-          />
-        </View>
+        <AdminSearchBar
+          placeholder="Search students by name, email, or class..."
+          value={searchTerm}
+          onChangeText={setSearchTerm}
+        />
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.viewModeScroll}>
-          <View style={styles.viewModeGroup}>
-            {(
-              [
-                { id: 'all', label: 'All Students' },
-                { id: 'class-wise', label: 'Class-wise View' },
-                { id: 'section-wise', label: 'Section-wise View' },
-              ] as const
-            ).map((mode) => (
-              <TouchableOpacity
-                key={mode.id}
-                style={[
-                  styles.viewModeBtn,
-                  studentViewMode === mode.id && styles.viewModeBtnActive,
-                ]}
-                onPress={() => setStudentViewMode(mode.id)}
-              >
-                {studentViewMode === mode.id ? (
-                  <LinearGradient
-                    colors={['#0ea5e9', '#06b6d4']}
-                    style={styles.viewModeBtnGradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                  >
-                    <Text style={styles.viewModeBtnTextActive}>{mode.label}</Text>
-                  </LinearGradient>
-                ) : (
-                  <Text style={styles.viewModeBtnText}>{mode.label}</Text>
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
-        </ScrollView>
+        <AdminFilterChips
+          chips={[
+            { id: 'all', label: 'All Students' },
+            { id: 'class-wise', label: 'Class-wise' },
+            { id: 'section-wise', label: 'Section-wise' },
+          ]}
+          selected={studentViewMode}
+          onSelect={(id) => setStudentViewMode(id as ViewMode)}
+        />
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.actionButtonsRow}>
-            <TouchableOpacity style={styles.exportBtn} onPress={handleExportStudents}>
+            <AdminScalePressable style={[styles.exportBtn, { backgroundColor: colors.warning }]} onPress={handleExportStudents}>
               <Ionicons name="download-outline" size={16} color="#fff" />
               <Text style={styles.actionBtnText}>Export</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.uploadBtn}
+            </AdminScalePressable>
+            <AdminScalePressable
+              style={[styles.uploadBtn, { backgroundColor: colors.success }]}
               onPress={() => setIsUploadModalVisible(true)}
             >
               <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
               <Text style={styles.actionBtnText}>Upload CSV</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.addBtn} onPress={() => setIsAddModalVisible(true)}>
-              <LinearGradient
-                colors={['#f97316', '#14b8a6']}
-                style={styles.addBtnGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <Ionicons name="person-add" size={16} color="#fff" />
-                <Text style={styles.actionBtnText}>Add New Student</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.deleteAllBtn}
+            </AdminScalePressable>
+            <AdminScalePressable
+              style={[styles.addBtn, { backgroundColor: colors.primary }]}
+              onPress={() => setIsAddModalVisible(true)}
+            >
+              <Ionicons name="person-add" size={16} color="#fff" />
+              <Text style={styles.actionBtnText}>Add Student</Text>
+            </AdminScalePressable>
+            <AdminScalePressable
+              style={[styles.deleteAllBtn, { backgroundColor: colors.danger }]}
               onPress={() => {
                 setDeleteAllConfirmStep(1);
                 setIsDeleteAllModalVisible(true);
@@ -943,23 +908,22 @@ export default function StudentsView() {
             >
               <Ionicons name="trash-outline" size={16} color="#fff" />
               <Text style={styles.actionBtnText}>Delete All</Text>
-            </TouchableOpacity>
+            </AdminScalePressable>
           </View>
         </ScrollView>
-      </View>
+      </AdminGlassCard>
 
-      {/* Students Directory */}
-      <View style={styles.directoryContainer}>
-        <View style={styles.directoryHeader}>
+      <AdminGlassCard delay={120} style={styles.directoryContainer}>
+        <View style={[styles.directoryHeader, { borderBottomColor: colors.surfaceBorder, backgroundColor: colors.bg }]}>
           <View style={styles.directoryHeaderLeft}>
-            <Text style={styles.directoryTitle}>Students Directory</Text>
-            <Text style={styles.directorySubtitle}>
+            <Text style={[styles.directoryTitle, { color: colors.text }]}>Students Directory</Text>
+            <Text style={[styles.directorySubtitle, { color: colors.primary }]}>
               {filteredStudents.length} students found
             </Text>
           </View>
-          <TouchableOpacity style={styles.exportDataBtn} onPress={handleExportStudents}>
+          <AdminScalePressable style={styles.exportDataBtn} onPress={handleExportStudents}>
             <LinearGradient
-              colors={['#0ea5e9', '#2563eb']}
+              colors={[...colors.fabGradient]}
               style={styles.exportDataGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -967,10 +931,10 @@ export default function StudentsView() {
               <Ionicons name="download-outline" size={16} color="#fff" />
               <Text style={styles.exportDataText}>Export Data</Text>
             </LinearGradient>
-          </TouchableOpacity>
+          </AdminScalePressable>
         </View>
         {renderDirectoryContent()}
-      </View>
+      </AdminGlassCard>
 
       {/* Class picker */}
       {renderPickerModal(
@@ -1007,7 +971,7 @@ export default function StudentsView() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Upload Students CSV</Text>
               <TouchableOpacity onPress={() => setIsUploadModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#0c4a6e" />
+                <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.modalBody}>
@@ -1015,7 +979,7 @@ export default function StudentsView() {
                 CSV columns: name, email, classnumber, section, phone, password
               </Text>
               <TouchableOpacity style={styles.filePickArea} onPress={pickCsvFile}>
-                <Ionicons name="document-text-outline" size={40} color="#0284c7" />
+                <Ionicons name="document-text-outline" size={40} color={colors.primary} />
                 <Text style={styles.filePickTitle}>Tap to select CSV file</Text>
                 {selectedFile ? (
                   <Text style={styles.filePickName}>{selectedFile.name}</Text>
@@ -1038,13 +1002,13 @@ export default function StudentsView() {
                 disabled={!selectedFile || isUploading}
               >
                 <LinearGradient
-                  colors={['#0ea5e9', '#2563eb']}
+                  colors={[...colors.fabGradient]}
                   style={styles.submitButtonGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                 >
                   {isUploading ? (
-                    <ActivityIndicator color="#fff" size="small" />
+                    <Text style={styles.submitButtonText}>Uploading…</Text>
                   ) : (
                     <Text style={styles.submitButtonText}>Upload Students</Text>
                   )}
@@ -1133,7 +1097,7 @@ export default function StudentsView() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Add New Student</Text>
               <TouchableOpacity onPress={() => setIsAddModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#0c4a6e" />
+                <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.modalBody}>
@@ -1217,7 +1181,7 @@ export default function StudentsView() {
                     <Ionicons
                       name={showNewStudentPassword ? 'eye-off-outline' : 'eye-outline'}
                       size={20}
-                      color="#0284c7"
+                      color={colors.primary}
                     />
                   </TouchableOpacity>
                 </View>
@@ -1232,7 +1196,7 @@ export default function StudentsView() {
               </TouchableOpacity>
               <TouchableOpacity style={styles.submitButton} onPress={handleAddStudent}>
                 <LinearGradient
-                  colors={['#0ea5e9', '#2563eb']}
+                  colors={[...colors.fabGradient]}
                   style={styles.submitButtonGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
@@ -1257,7 +1221,7 @@ export default function StudentsView() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Edit Student Details</Text>
               <TouchableOpacity onPress={() => setIsEditModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#0c4a6e" />
+                <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.modalBody}>
@@ -1302,7 +1266,7 @@ export default function StudentsView() {
                 <Ionicons
                   name={editStudent.isActive ? 'checkbox' : 'square-outline'}
                   size={22}
-                  color="#0284c7"
+                      color={colors.primary}
                 />
                 <Text style={styles.checkboxLabel}>Active Account</Text>
               </TouchableOpacity>
@@ -1316,7 +1280,7 @@ export default function StudentsView() {
               </TouchableOpacity>
               <TouchableOpacity style={styles.submitButton} onPress={handleUpdateStudent}>
                 <LinearGradient
-                  colors={['#0ea5e9', '#2563eb']}
+                  colors={[...colors.fabGradient]}
                   style={styles.submitButtonGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
@@ -1341,7 +1305,7 @@ export default function StudentsView() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Assign Class to Student</Text>
               <TouchableOpacity onPress={() => setIsAssignClassModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#0c4a6e" />
+                <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.modalBody}>
@@ -1372,7 +1336,7 @@ export default function StudentsView() {
                         </Text>
                       </View>
                       {isSelected && (
-                        <Ionicons name="checkmark-circle" size={22} color="#0284c7" />
+                        <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
                       )}
                     </TouchableOpacity>
                   );
@@ -1382,25 +1346,18 @@ export default function StudentsView() {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+    </AdminScreenShell>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f0f9ff',
-    minHeight: 0,
-  },
-  contentContainer: {
-    paddingBottom: 100,
-  },
   statsRow: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
+    flexWrap: 'wrap',
     gap: 8,
+    paddingTop: 4,
+    paddingBottom: 8,
   },
   summaryTile: {
     flex: 1,
@@ -1410,10 +1367,10 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 8,
     borderWidth: 1,
-    borderColor: '#bae6fd',
+    borderColor: '#E2E8F0',
     borderLeftWidth: 4,
     alignItems: 'center',
-    shadowColor: '#0284c7',
+    shadowColor: '#4F46E5',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
@@ -1437,7 +1394,7 @@ const styles = StyleSheet.create({
   summaryTileValue: {
     fontSize: 17,
     fontWeight: '800',
-    color: '#0c4a6e',
+    color: '#0F172A',
   },
   toolbarCard: {
     marginHorizontal: 16,
@@ -1446,8 +1403,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#bae6fd',
-    shadowColor: '#0284c7',
+    borderColor: '#E2E8F0',
+    shadowColor: '#4F46E5',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -1465,7 +1422,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#bae6fd',
+    borderColor: '#E2E8F0',
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 12,
@@ -1477,7 +1434,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: '600',
-    color: '#0c4a6e',
+    color: '#0F172A',
     marginRight: 8,
   },
   selectDisabledText: {
@@ -1508,7 +1465,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#bae6fd',
+    borderColor: '#E2E8F0',
     backgroundColor: '#fff',
     padding: 4,
     gap: 4,
@@ -1525,7 +1482,7 @@ const styles = StyleSheet.create({
   viewModeBtnText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#0369a1',
+    color: '#4338CA',
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
@@ -1543,7 +1500,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#f97316',
+    backgroundColor: '#6366F1',
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
@@ -1558,15 +1515,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   addBtn: {
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  addBtnGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 14,
     paddingVertical: 10,
+    borderRadius: 12,
   },
   deleteAllBtn: {
     flexDirection: 'row',
@@ -1583,18 +1537,9 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   directoryContainer: {
-    backgroundColor: '#fff',
-    marginHorizontal: 16,
     marginBottom: 16,
-    borderRadius: 16,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#bae6fd',
-    shadowColor: '#0284c7',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    padding: 0,
   },
   directoryHeader: {
     flexDirection: 'row',
@@ -1603,7 +1548,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0f2fe',
+    borderBottomColor: 'rgba(79, 70, 229, 0.12)',
     backgroundColor: '#f8fafc',
     gap: 12,
   },
@@ -1614,11 +1559,11 @@ const styles = StyleSheet.create({
   directoryTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#0c4a6e',
+    color: '#0F172A',
   },
   directorySubtitle: {
     fontSize: 13,
-    color: '#0284c7',
+    color: '#4F46E5',
     marginTop: 4,
     fontWeight: '500',
   },
@@ -1645,7 +1590,7 @@ const styles = StyleSheet.create({
   accordionCard: {
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#bae6fd',
+    borderColor: '#E2E8F0',
     backgroundColor: '#f8fafc',
     overflow: 'hidden',
   },
@@ -1668,15 +1613,15 @@ const styles = StyleSheet.create({
   accordionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#0c4a6e',
+    color: '#0F172A',
   },
   sectionAccordionTitle: {
     color: '#0f766e',
   },
   countBadge: {
-    backgroundColor: '#e0f2fe',
+    backgroundColor: 'rgba(79, 70, 229, 0.12)',
     borderWidth: 1,
-    borderColor: '#bae6fd',
+    borderColor: '#E2E8F0',
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -1684,7 +1629,7 @@ const styles = StyleSheet.create({
   countBadgeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#0369a1',
+    color: '#4338CA',
   },
   accordionBody: {
     paddingHorizontal: 12,
@@ -1694,7 +1639,7 @@ const styles = StyleSheet.create({
   sectionCard: {
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e0f2fe',
+    borderColor: 'rgba(79, 70, 229, 0.12)',
     backgroundColor: '#fff',
     overflow: 'hidden',
   },
@@ -1717,7 +1662,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#0c4a6e',
+    color: '#0F172A',
   },
   sectionCountBadge: {
     backgroundColor: '#ccfbf1',
@@ -1741,15 +1686,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   studentCard: {
-    backgroundColor: '#fff',
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#bae6fd',
-    shadowColor: '#0284c7',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
   },
   studentCardContent: {
     padding: 14,
@@ -1799,7 +1736,7 @@ const styles = StyleSheet.create({
   studentName: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#0c4a6e',
+    color: '#0F172A',
     marginBottom: 2,
   },
   studentEmail: {
@@ -1807,9 +1744,9 @@ const styles = StyleSheet.create({
     color: '#64748b',
   },
   classBadge: {
-    backgroundColor: '#e0f2fe',
+    backgroundColor: 'rgba(79, 70, 229, 0.12)',
     borderWidth: 1,
-    borderColor: '#bae6fd',
+    borderColor: '#E2E8F0',
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -1817,7 +1754,7 @@ const styles = StyleSheet.create({
   classBadgeText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#0369a1',
+    color: '#4338CA',
   },
   studentMeta: {
     marginTop: 10,
@@ -1830,7 +1767,7 @@ const styles = StyleSheet.create({
   },
   metaItemText: {
     fontSize: 12,
-    color: '#0369a1',
+    color: '#4338CA',
     flex: 1,
   },
   studentActions: {
@@ -1840,7 +1777,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#e0f2fe',
+    borderTopColor: 'rgba(79, 70, 229, 0.12)',
   },
   iconActionBtn: {
     width: 36,
@@ -1848,7 +1785,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f0f9ff',
+    backgroundColor: '#F1F5F9',
   },
   assignClassBtn: {
     flex: 1,
@@ -1859,13 +1796,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#bae6fd',
-    backgroundColor: '#f0f9ff',
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F1F5F9',
   },
   assignClassBtnText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#0284c7',
+    color: '#4F46E5',
   },
   loadingContainer: {
     justifyContent: 'center',
@@ -1880,7 +1817,7 @@ const styles = StyleSheet.create({
   emptyIcon: {
     width: 80,
     height: 80,
-    backgroundColor: '#e0f2fe',
+    backgroundColor: 'rgba(79, 70, 229, 0.12)',
     borderRadius: 40,
     justifyContent: 'center',
     alignItems: 'center',
@@ -1889,7 +1826,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#0c4a6e',
+    color: '#0F172A',
     marginBottom: 8,
   },
   emptySubtitle: {
@@ -1901,7 +1838,7 @@ const styles = StyleSheet.create({
   addFirstButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0ea5e9',
+    backgroundColor: '#4F46E5',
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 12,
@@ -1927,7 +1864,7 @@ const styles = StyleSheet.create({
   pickerTitle: {
     fontSize: 17,
     fontWeight: '800',
-    color: '#0c4a6e',
+    color: '#0F172A',
     marginBottom: 12,
   },
   pickerList: {
@@ -1941,20 +1878,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 10,
     marginBottom: 6,
-    backgroundColor: '#f0f9ff',
+    backgroundColor: '#F1F5F9',
   },
   pickerItemActive: {
-    backgroundColor: '#e0f2fe',
+    backgroundColor: 'rgba(79, 70, 229, 0.12)',
     borderWidth: 1,
-    borderColor: '#7dd3fc',
+    borderColor: '#C7D2FE',
   },
   pickerItemText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#075985',
+    color: '#4338CA',
   },
   pickerItemTextActive: {
-    color: '#0284c7',
+    color: '#4F46E5',
   },
   modalOverlay: {
     flex: 1,
@@ -1973,12 +1910,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0f2fe',
+    borderBottomColor: 'rgba(79, 70, 229, 0.12)',
   },
   modalTitle: {
     fontSize: 17,
     fontWeight: '800',
-    color: '#0c4a6e',
+    color: '#0F172A',
   },
   modalBody: {
     padding: 14,
@@ -1996,17 +1933,17 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#075985',
+    color: '#4338CA',
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#f0f9ff',
+    backgroundColor: '#F1F5F9',
     borderRadius: 10,
     padding: 12,
     fontSize: 14,
-    color: '#0c4a6e',
+    color: '#0F172A',
     borderWidth: 1,
-    borderColor: '#bae6fd',
+    borderColor: '#E2E8F0',
   },
   disabledInput: {
     backgroundColor: '#e2e8f0',
@@ -2014,7 +1951,7 @@ const styles = StyleSheet.create({
   },
   helperText: {
     fontSize: 12,
-    color: '#0284c7',
+    color: '#4F46E5',
     marginTop: 4,
   },
   passwordRow: {
@@ -2027,9 +1964,9 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 0,
   },
   eyeBtn: {
-    backgroundColor: '#e0f2fe',
+    backgroundColor: 'rgba(79, 70, 229, 0.12)',
     borderWidth: 1,
-    borderColor: '#bae6fd',
+    borderColor: '#E2E8F0',
     borderLeftWidth: 0,
     borderTopRightRadius: 10,
     borderBottomRightRadius: 10,
@@ -2044,7 +1981,7 @@ const styles = StyleSheet.create({
   checkboxLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#0c4a6e',
+    color: '#0F172A',
   },
   uploadHint: {
     fontSize: 13,
@@ -2054,21 +1991,21 @@ const styles = StyleSheet.create({
   filePickArea: {
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: '#7dd3fc',
+    borderColor: '#C7D2FE',
     borderRadius: 14,
     padding: 24,
     alignItems: 'center',
-    backgroundColor: '#f0f9ff',
+    backgroundColor: '#F1F5F9',
     gap: 8,
   },
   filePickTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#075985',
+    color: '#4338CA',
   },
   filePickName: {
     fontSize: 13,
-    color: '#0284c7',
+    color: '#4F46E5',
     marginTop: 4,
   },
   warningBox: {
@@ -2097,19 +2034,19 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#bae6fd',
+    borderColor: '#E2E8F0',
     backgroundColor: '#fff',
     marginBottom: 8,
   },
   classPickItemActive: {
-    backgroundColor: '#e0f2fe',
-    borderColor: '#0284c7',
+    backgroundColor: 'rgba(79, 70, 229, 0.12)',
+    borderColor: '#4F46E5',
     borderWidth: 2,
   },
   classPickName: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#0c4a6e',
+    color: '#0F172A',
   },
   classPickMeta: {
     fontSize: 12,
@@ -2121,7 +2058,7 @@ const styles = StyleSheet.create({
     gap: 10,
     padding: 14,
     borderTopWidth: 1,
-    borderTopColor: '#e0f2fe',
+    borderTopColor: 'rgba(79, 70, 229, 0.12)',
   },
   cancelButton: {
     flex: 1,
@@ -2130,12 +2067,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#f1f5f9',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#bae6fd',
+    borderColor: '#E2E8F0',
   },
   cancelButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#075985',
+    color: '#4338CA',
   },
   submitButton: {
     flex: 1,

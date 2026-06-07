@@ -1,29 +1,35 @@
 import { useEffect, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import { useAuth } from '../../src/context/AuthContext';
 import authService from '../../src/services/api/authService';
-import { RoleHeader, LoadingState } from '../../src/components/ui';
-import { COLORS, SPACING } from '../../src/theme';
+import { LoadingState } from '../../src/components/ui';
 import OverviewView from './components/OverviewView';
+import AnalyticsDashboardView from './components/AnalyticsDashboardView';
 import StudentsView from './components/StudentsView';
 import ClassesView from './components/ClassesView';
 import TeachersView from './components/TeachersView';
 import SubjectsView from './components/SubjectsView';
 import ExamsView from './components/ExamsView';
+import AssessmentsView from './components/AssessmentsView';
+import QuizzesView from './components/QuizzesView';
 import LearningPathsView from './components/LearningPathsView';
 import EduOTTView from './components/EduOTTView';
+import VideosView from './components/VideosView';
 import TimetableView from './components/TimetableView';
 import CalendarView from './components/CalendarView';
+import SchoolManagementView from './components/SchoolManagementView';
 import VidyaAIView from './components/VidyaAIView';
 import AdminNavDrawer, { adminNavLabel, type AdminNavView } from './components/AdminNavDrawer';
+import { AdminHeader, AdminGridBackground, useAdminTheme } from './ui';
 
 export default function AdminDashboard() {
   const { signOut } = useAuth();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
+  const { colors, spacing } = useAdminTheme();
   const [currentView, setCurrentView] = useState<AdminNavView>('overview');
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -111,7 +117,9 @@ export default function AdminDashboard() {
   const renderContent = () => {
     switch (currentView) {
       case 'overview':
-        return <OverviewView />;
+        return <OverviewView onNavigate={onSelectView} />;
+      case 'analytics':
+        return <AnalyticsDashboardView />;
       case 'students':
         return <StudentsView />;
       case 'classes':
@@ -122,48 +130,55 @@ export default function AdminDashboard() {
         return <SubjectsView />;
       case 'exams':
         return <ExamsView />;
+      case 'assessments':
+        return <AssessmentsView />;
+      case 'quizzes':
+        return <QuizzesView />;
       case 'learning-paths':
         return <LearningPathsView />;
       case 'eduott':
         return <EduOTTView />;
+      case 'videos':
+        return <VideosView />;
       case 'timetable':
         return <TimetableView />;
       case 'calendar':
         return <CalendarView />;
+      case 'school-management':
+        return <SchoolManagementView />;
       case 'vidya-ai':
         return <VidyaAIView />;
       default:
-        return <OverviewView />;
+        return <OverviewView onNavigate={onSelectView} />;
     }
   };
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <LoadingState variant="stats" style={{ padding: SPACING.lg }} />
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]} edges={['bottom']}>
+        <LoadingState variant="stats" style={{ padding: spacing.lg, flex: 1 }} />
       </SafeAreaView>
     );
   }
 
   if (!isAuthenticated) return null;
 
-  const isFullHeight = currentView === 'vidya-ai';
+  const isDashboard = currentView === 'overview';
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <RoleHeader
-        role="admin"
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]} edges={['bottom']}>
+      <AdminHeader
         userName={userName}
-        subtitle={adminNavLabel(currentView)}
+        subtitle={isDashboard ? 'Dashboard' : adminNavLabel(currentView)}
         onMenu={() => setMenuOpen(true)}
       />
 
-      <Animated.View
-        entering={FadeIn.duration(200)}
-        style={[styles.content, isFullHeight && styles.contentFull]}
-      >
-        {renderContent()}
-      </Animated.View>
+      <View style={styles.contentWrap}>
+        <AdminGridBackground />
+        <Animated.View entering={FadeInDown.duration(280).springify()} style={styles.content}>
+          {renderContent()}
+        </Animated.View>
+      </View>
 
       <AdminNavDrawer
         visible={menuOpen}
@@ -178,13 +193,16 @@ export default function AdminDashboard() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.bg },
+  container: { flex: 1 },
+  contentWrap: {
+    flex: 1,
+    minHeight: 0,
+    position: 'relative',
+    overflow: 'hidden',
+  },
   content: {
     flex: 1,
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.lg,
-    paddingTop: SPACING.sm,
     minHeight: 0,
+    backgroundColor: 'transparent',
   },
-  contentFull: { paddingBottom: 0 },
 });

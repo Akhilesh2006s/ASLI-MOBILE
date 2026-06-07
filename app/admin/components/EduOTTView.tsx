@@ -1,11 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TextInput,
-  TouchableOpacity,
   ActivityIndicator,
   Linking,
   Alert,
@@ -13,13 +11,22 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { router } from 'expo-router';
-import { TEACHER, TEACHER_RADIUS, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
 import api from '../../../src/services/api/api';
 import { openContentPreview } from '../../../src/utils/openContentPreview';
 import EduOTTVideoCard from '../../../src/components/eduott/EduOTTVideoCard';
 import { resolveContentDurationSeconds } from '../../../src/utils/eduottVideoUtils';
 import { extractPlainSubjectName, getSubjectClassLabel } from '../../../src/lib/subject-names';
 import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
+import {
+  AdminScreenShell,
+  AdminSectionHeader,
+  AdminSearchBar,
+  AdminFilterChips,
+  AdminGlassCard,
+  AdminEmptyState,
+  AdminScalePressable,
+  useAdminTheme,
+} from '../ui';
 
 type EduOTTSubTab = 'videos' | 'live-sessions';
 
@@ -46,6 +53,7 @@ function asArray(payload: any): any[] {
 }
 
 export default function EduOTTView() {
+  const { colors, spacing, radius } = useAdminTheme();
   const { isAsliPrepExclusive } = useSchoolProgram();
   const [activeSubTab, setActiveSubTab] = useState<EduOTTSubTab>('videos');
   const [videos, setVideos] = useState<EduVideo[]>([]);
@@ -56,21 +64,9 @@ export default function EduOTTView() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    if (activeSubTab === 'videos') {
-      if (isAsliPrepExclusive) {
-        fetchVideos();
-      } else {
-        setVideos([]);
-        setIsLoading(false);
-      }
-    } else if (activeSubTab === 'live-sessions') {
-      fetchLiveSessions();
-    }
-  }, [activeSubTab, selectedSubject, isAsliPrepExclusive]);
-
-  const fetchVideos = async () => {
+  const fetchVideos = useCallback(async () => {
     try {
       setIsLoading(true);
       let response;
@@ -127,10 +123,11 @@ export default function EduOTTView() {
       setVideos([]);
     } finally {
       setIsLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
 
-  const fetchLiveSessions = async () => {
+  const fetchLiveSessions = useCallback(async () => {
     try {
       setIsLoadingSessions(true);
       const response = await api.get('/api/admin/streams');
@@ -140,8 +137,33 @@ export default function EduOTTView() {
       setLiveSessions([]);
     } finally {
       setIsLoadingSessions(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (activeSubTab === 'videos') {
+      if (isAsliPrepExclusive) {
+        fetchVideos();
+      } else {
+        setVideos([]);
+        setIsLoading(false);
+      }
+    } else if (activeSubTab === 'live-sessions') {
+      fetchLiveSessions();
+    }
+  }, [activeSubTab, selectedSubject, isAsliPrepExclusive, fetchVideos, fetchLiveSessions]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    if (activeSubTab === 'videos' && isAsliPrepExclusive) {
+      fetchVideos();
+    } else if (activeSubTab === 'live-sessions') {
+      fetchLiveSessions();
+    } else {
+      setRefreshing(false);
+    }
+  }, [activeSubTab, isAsliPrepExclusive, fetchVideos, fetchLiveSessions]);
 
   const filteredVideos = videos.filter((video) => {
     const matchesSearch =
@@ -176,97 +198,137 @@ export default function EduOTTView() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'live':
-        return TEACHER.danger;
+        return colors.danger;
       case 'scheduled':
-        return TEACHER.primary;
+        return colors.primary;
       case 'ended':
-        return TEACHER.textMuted;
+        return colors.textMuted;
       case 'cancelled':
-        return TEACHER.warning;
+        return colors.warning;
       default:
-        return TEACHER.textMuted;
+        return colors.textMuted;
     }
   };
 
-  return (
-    <View style={styles.container}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-      <View style={styles.header}>
-        <View style={styles.headerIcon}>
-          <Ionicons name="play" size={32} color={TEACHER.primaryLight} />
-        </View>
-        <View>
-          <Text style={styles.headerTitle}>EduOTT</Text>
-          <Text style={styles.headerSubtitle}>Educational videos and live sessions</Text>
-        </View>
-      </View>
+  const subjectOptions = [
+    { id: 'all', label: 'All Subjects' },
+    ...Array.from(new Set(videos.map((v) => v.subjectName).filter(Boolean))).map((name) => ({
+      id: name as string,
+      label: name as string,
+    })),
+  ];
 
-      <View style={styles.subTabsContainer}>
-        <TouchableOpacity
-          style={[styles.subTab, activeSubTab === 'videos' && styles.subTabActive]}
+  const statusChips = [
+    { id: 'all', label: 'All' },
+    { id: 'live', label: 'Live' },
+    { id: 'scheduled', label: 'Scheduled' },
+    { id: 'ended', label: 'Ended' },
+  ];
+
+  return (
+    <AdminScreenShell refreshing={refreshing} onRefresh={onRefresh}>
+      <AdminSectionHeader
+        icon="play-circle"
+        title="EduOTT"
+        subtitle="Educational videos and live sessions"
+      />
+
+      <View style={[styles.subTabsContainer, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder, borderRadius: radius.md }]}>
+        <AdminScalePressable
           onPress={() => setActiveSubTab('videos')}
+          style={[
+            styles.subTab,
+            {
+              borderRadius: radius.sm,
+              backgroundColor: activeSubTab === 'videos' ? colors.primaryMuted : colors.bgElevated,
+              borderColor: activeSubTab === 'videos' ? colors.primary : 'transparent',
+              borderWidth: activeSubTab === 'videos' ? 1 : 0,
+            },
+          ]}
         >
           <Ionicons
             name="play"
             size={16}
-            color={activeSubTab === 'videos' ? TEACHER.primaryLight : TEACHER.textMuted}
+            color={activeSubTab === 'videos' ? colors.primary : colors.textMuted}
           />
-          <Text style={[styles.subTabText, activeSubTab === 'videos' && styles.subTabTextActive]}>
+          <Text
+            style={[
+              styles.subTabText,
+              { color: activeSubTab === 'videos' ? colors.primary : colors.textMuted },
+            ]}
+          >
             Videos
           </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.subTab, activeSubTab === 'live-sessions' && styles.subTabActive]}
+        </AdminScalePressable>
+        <AdminScalePressable
           onPress={() => setActiveSubTab('live-sessions')}
+          style={[
+            styles.subTab,
+            {
+              borderRadius: radius.sm,
+              backgroundColor: activeSubTab === 'live-sessions' ? colors.primaryMuted : colors.bgElevated,
+              borderColor: activeSubTab === 'live-sessions' ? colors.primary : 'transparent',
+              borderWidth: activeSubTab === 'live-sessions' ? 1 : 0,
+            },
+          ]}
         >
           <Ionicons
             name="radio"
             size={16}
-            color={activeSubTab === 'live-sessions' ? TEACHER.primaryLight : TEACHER.textMuted}
+            color={activeSubTab === 'live-sessions' ? colors.primary : colors.textMuted}
           />
           <Text
-            style={[styles.subTabText, activeSubTab === 'live-sessions' && styles.subTabTextActive]}
+            style={[
+              styles.subTabText,
+              { color: activeSubTab === 'live-sessions' ? colors.primary : colors.textMuted },
+            ]}
           >
             Live Sessions
           </Text>
-        </TouchableOpacity>
+        </AdminScalePressable>
       </View>
 
       {activeSubTab === 'videos' && (
         <>
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color={TEACHER.textMuted} style={styles.searchIcon} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search videos by title..."
-              value={searchTerm}
-              onChangeText={setSearchTerm}
-              placeholderTextColor={TEACHER.textMuted}
-            />
-          </View>
+          <AdminSearchBar
+            placeholder="Search videos by title..."
+            value={searchTerm}
+            onChangeText={setSearchTerm}
+            style={{ marginTop: spacing.md, marginBottom: spacing.sm }}
+          />
 
-          {isLoading ? (
+          {subjectOptions.length > 1 ? (
+            <AdminFilterChips
+              chips={subjectOptions}
+              selected={selectedSubject}
+              onSelect={setSelectedSubject}
+            />
+          ) : null}
+
+          {isLoading && !refreshing ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={TEACHER.primary} />
+              <ActivityIndicator size="large" color={colors.primary} />
             </View>
           ) : filteredVideos.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="play-outline" size={64} color="#d1d5db" />
-              <Text style={styles.emptyText}>
-                {!isAsliPrepExclusive
+            <AdminEmptyState
+              icon="play-outline"
+              title={
+                !isAsliPrepExclusive
+                  ? 'Asli Prep only'
+                  : searchTerm
+                    ? 'No matches'
+                    : 'No videos found'
+              }
+              message={
+                !isAsliPrepExclusive
                   ? 'Videos are available for Asli Prep schools only.'
                   : searchTerm
                     ? 'No videos match your search'
-                    : 'No videos found'}
-              </Text>
-            </View>
+                    : 'No videos found'
+              }
+            />
           ) : (
-            <View style={styles.listSection}>
+            <View style={[styles.listSection, { marginTop: spacing.md }]}>
               {filteredVideos.map((video, index) => (
                 <Animated.View
                   key={video._id}
@@ -300,32 +362,29 @@ export default function EduOTTView() {
 
       {activeSubTab === 'live-sessions' && (
         <>
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color={TEACHER.textMuted} style={styles.searchIcon} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search live sessions..."
-              value={sessionSearchTerm}
-              onChangeText={setSessionSearchTerm}
-              placeholderTextColor={TEACHER.textMuted}
-            />
-          </View>
+          <AdminSearchBar
+            placeholder="Search live sessions..."
+            value={sessionSearchTerm}
+            onChangeText={setSessionSearchTerm}
+            style={{ marginTop: spacing.md, marginBottom: spacing.sm }}
+          />
 
-          {isLoadingSessions ? (
+          <AdminFilterChips chips={statusChips} selected={filterStatus} onSelect={setFilterStatus} />
+
+          {isLoadingSessions && !refreshing ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={TEACHER.primary} />
+              <ActivityIndicator size="large" color={colors.primary} />
             </View>
           ) : filteredSessions.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="radio-outline" size={64} color="#d1d5db" />
-              <Text style={styles.emptyText}>No live sessions found</Text>
-            </View>
+            <AdminEmptyState icon="radio-outline" title="No live sessions found" />
           ) : (
-            <View style={styles.listSection}>
-              {filteredSessions.map((session) => (
-                <View key={session._id} style={styles.sessionCard}>
+            <View style={[styles.listSection, { marginTop: spacing.md, gap: spacing.sm }]}>
+              {filteredSessions.map((session, index) => (
+                <AdminGlassCard key={session._id} delay={index * 50}>
                   <View style={styles.sessionCardHeader}>
-                    <Text style={styles.sessionTitle}>{session.title || 'Untitled Session'}</Text>
+                    <Text style={[styles.sessionTitle, { color: colors.text }]}>
+                      {session.title || 'Untitled Session'}
+                    </Text>
                     <View
                       style={[
                         styles.sessionStatusBadge,
@@ -340,81 +399,57 @@ export default function EduOTTView() {
                     </View>
                   </View>
                   {session.description ? (
-                    <Text style={styles.sessionDescription}>{session.description}</Text>
+                    <Text style={[styles.sessionDescription, { color: colors.textMuted }]}>
+                      {session.description}
+                    </Text>
                   ) : null}
                   <View style={styles.sessionDetails}>
                     {session.streamer ? (
                       <View style={styles.detailRow}>
-                        <Ionicons name="person" size={16} color={TEACHER.textMuted} />
-                        <Text style={styles.detailText}>
+                        <Ionicons name="person" size={16} color={colors.textMuted} />
+                        <Text style={[styles.detailText, { color: colors.textSecondary }]}>
                           {session.streamer.fullName || session.streamer.email}
                         </Text>
                       </View>
                     ) : null}
                     {session.viewerCount !== undefined ? (
                       <View style={styles.detailRow}>
-                        <Ionicons name="eye" size={16} color={TEACHER.textMuted} />
-                        <Text style={styles.detailText}>{session.viewerCount} viewers</Text>
+                        <Ionicons name="eye" size={16} color={colors.textMuted} />
+                        <Text style={[styles.detailText, { color: colors.textSecondary }]}>
+                          {session.viewerCount} viewers
+                        </Text>
                       </View>
                     ) : null}
                   </View>
                   {(session.status === 'live' || session.status === 'Live') &&
                   (session.hlsUrl || session.playbackUrl || session.streamUrl) ? (
-                    <TouchableOpacity
-                      style={styles.watchLiveBtn}
+                    <AdminScalePressable
                       onPress={() => {
                         const url = session.hlsUrl || session.playbackUrl || session.streamUrl;
                         Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open stream.'));
                       }}
+                      style={[styles.watchLiveBtn, { backgroundColor: colors.danger, borderRadius: radius.sm }]}
                     >
-                      <Ionicons name="radio" size={16} color={TEACHER.textOnPrimary} />
-                      <Text style={styles.watchLiveText}>Watch Live</Text>
-                    </TouchableOpacity>
+                      <Ionicons name="radio" size={16} color={colors.textInverse} />
+                      <Text style={[styles.watchLiveText, { color: colors.textInverse }]}>Watch Live</Text>
+                    </AdminScalePressable>
                   ) : null}
-                </View>
+                </AdminGlassCard>
               ))}
             </View>
           )}
         </>
       )}
-      </ScrollView>
-    </View>
+    </AdminScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: TEACHER.bg },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: TEACHER.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: TEACHER.surfaceBorder,
-    gap: 12,
-  },
-  headerIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: TEACHER.surfaceElevated,
-    borderWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: { ...TEACHER_TYPO.section, color: TEACHER.primaryLight },
-  headerSubtitle: { fontSize: 14, color: TEACHER.textMuted },
   subTabsContainer: {
     flexDirection: 'row',
-    backgroundColor: TEACHER.surface,
     padding: 8,
-    margin: 20,
-    marginBottom: 0,
-    borderRadius: TEACHER_RADIUS.lg,
     gap: 8,
     borderWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
   },
   subTab: {
     flex: 1,
@@ -422,59 +457,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 12,
-    borderRadius: TEACHER_RADIUS.sm,
-    backgroundColor: TEACHER.surfaceElevated,
     gap: 8,
   },
-  subTabActive: {
-    backgroundColor: TEACHER.navActiveBg,
-    borderWidth: 1,
-    borderColor: TEACHER.primary,
-  },
-  subTabText: { fontSize: 14, fontWeight: '600', color: TEACHER.textMuted },
-  subTabTextActive: { color: TEACHER.primaryLight },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: TEACHER.surface,
-    margin: 20,
-    marginBottom: 0,
-    paddingHorizontal: 16,
-    borderRadius: TEACHER_RADIUS.lg,
-    borderWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
-  },
-  searchIcon: { marginRight: 12 },
-  searchInput: { flex: 1, height: 48, fontSize: 16, color: TEACHER.text },
-  scroll: { flex: 1 },
-  scrollContent: { paddingBottom: 120 },
-  listSection: { padding: 20, gap: 16 },
-  sessionCard: { ...glassCard, borderRadius: TEACHER_RADIUS.lg, padding: 16 },
+  subTabText: { fontSize: 14, fontWeight: '600' },
+  listSection: { gap: 16 },
   sessionCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
+    gap: 8,
   },
-  sessionTitle: { fontSize: 18, fontWeight: '700', color: TEACHER.text, flex: 1 },
+  sessionTitle: { fontSize: 18, fontWeight: '700', flex: 1 },
   sessionStatusBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
   sessionStatusText: { fontSize: 12, fontWeight: '600', textTransform: 'capitalize' },
-  sessionDescription: { fontSize: 14, color: TEACHER.textMuted, marginBottom: 12 },
+  sessionDescription: { fontSize: 14, marginBottom: 12 },
   watchLiveBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: TEACHER.danger,
     padding: 12,
-    borderRadius: TEACHER_RADIUS.md,
     marginTop: 8,
   },
-  watchLiveText: { color: TEACHER.textOnPrimary, fontWeight: '700', fontSize: 14 },
+  watchLiveText: { fontWeight: '700', fontSize: 14 },
   sessionDetails: { gap: 8 },
   detailRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  detailText: { fontSize: 14, color: TEACHER.textMuted },
+  detailText: { fontSize: 14 },
   loadingContainer: { minHeight: 240, justifyContent: 'center', alignItems: 'center' },
-  emptyContainer: { minHeight: 240, justifyContent: 'center', alignItems: 'center', padding: 40 },
-  emptyText: { fontSize: 18, fontWeight: '700', color: TEACHER.text, marginTop: 16 },
 });

@@ -4,17 +4,25 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
-  Modal,
   TextInput,
   Alert,
   Image,
-  ActivityIndicator,
   Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../../src/services/api/api';
 import { API_BASE_URL } from '../../../src/lib/api-config';
+import {
+  AdminScreenShell,
+  AdminSectionHeader,
+  AdminGlassCard,
+  AdminEmptyState,
+  AdminSkeletonList,
+  AdminFAB,
+  AdminModalShell,
+  AdminScalePressable,
+  useAdminTheme,
+} from '../ui';
 
 interface Event {
   _id?: string;
@@ -73,9 +81,10 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const EVENT_COLORS = ['#10b981', '#3b82f6', '#ec4899', '#8b5cf6', '#f59e0b', '#ef4444'];
+const EVENT_COLORS = ['#10b981', '#6366F1', '#ec4899', '#8b5cf6', '#f59e0b', '#ef4444'];
 
 export default function CalendarView() {
+  const { colors, spacing, radius } = useAdminTheme();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -83,6 +92,7 @@ export default function CalendarView() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isUrlModalOpen, setIsUrlModalOpen] = useState(false);
@@ -136,10 +146,16 @@ export default function CalendarView() {
       setEvents([]);
     } finally {
       setIsLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
+    fetchEvents();
+  }, [fetchEvents]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
     fetchEvents();
   }, [fetchEvents]);
 
@@ -205,7 +221,7 @@ export default function CalendarView() {
     date.getFullYear() === currentDate.getFullYear();
 
   const getEventColor = (event: Event, index: number) => {
-    if (event.type === 'exam') return '#2563eb';
+    if (event.type === 'exam') return colors.primary;
     return EVENT_COLORS[index % EVENT_COLORS.length];
   };
 
@@ -322,61 +338,52 @@ export default function CalendarView() {
     setEditingEvent(null);
   };
 
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#fb923c" />
-        <Text style={styles.loadingText}>Loading calendar...</Text>
-      </View>
-    );
+  if (isLoading && !refreshing) {
+    return <AdminSkeletonList count={4} />;
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.scrollContent}
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={styles.header}>
-        <View style={styles.headerTextWrap}>
-          <Text style={styles.headerTitle}>Calendar</Text>
-          <Text style={styles.headerSubtitle}>Manage and view your events</Text>
-        </View>
-        <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.todayButton} onPress={() => setCurrentDate(new Date())}>
-            <Text style={styles.todayButtonText}>Today</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.addButton} onPress={() => openAddEvent(new Date())}>
-            <Ionicons name="add" size={22} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      </View>
+    <>
+    <AdminScreenShell refreshing={refreshing} onRefresh={onRefresh}>
+      <AdminSectionHeader
+        icon="calendar"
+        title="Calendar"
+        subtitle="Manage and view your events"
+        action={
+          <AdminScalePressable
+            onPress={() => setCurrentDate(new Date())}
+            style={[styles.todayButton, { borderColor: colors.surfaceBorder, borderRadius: radius.sm, backgroundColor: colors.surface }]}
+          >
+            <Text style={[styles.todayButtonText, { color: colors.text }]}>Today</Text>
+          </AdminScalePressable>
+        }
+      />
 
-      <View style={styles.calendarCard}>
+      <AdminGlassCard noAnimation style={{ marginBottom: spacing.md }}>
         <View style={styles.calendarNav}>
-          <TouchableOpacity
+          <AdminScalePressable
             onPress={() =>
               setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))
             }
           >
-            <Ionicons name="chevron-back" size={24} color="#111827" />
-          </TouchableOpacity>
-          <Text style={styles.monthText}>
+            <Ionicons name="chevron-back" size={24} color={colors.text} />
+          </AdminScalePressable>
+          <Text style={[styles.monthText, { color: colors.text }]}>
             {MONTH_NAMES[currentDate.getMonth()]} {currentDate.getFullYear()}
           </Text>
-          <TouchableOpacity
+          <AdminScalePressable
             onPress={() =>
               setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))
             }
           >
-            <Ionicons name="chevron-forward" size={24} color="#111827" />
-          </TouchableOpacity>
+            <Ionicons name="chevron-forward" size={24} color={colors.text} />
+          </AdminScalePressable>
         </View>
 
         <View style={styles.miniGrid}>
           {DAY_NAMES.map((day) => (
             <View key={day} style={styles.dayHeader}>
-              <Text style={styles.dayHeaderText}>{day.slice(0, 1)}</Text>
+              <Text style={[styles.dayHeaderText, { color: colors.textMuted }]}>{day.slice(0, 1)}</Text>
             </View>
           ))}
           {calendarDays.map((date, index) => {
@@ -390,15 +397,21 @@ export default function CalendarView() {
                 style={[
                   styles.miniDay,
                   !isCurrentMonthDay && styles.miniDayOtherMonth,
-                  isTodayDate && styles.miniDayToday,
+                  isTodayDate && {
+                    backgroundColor: colors.primaryMuted,
+                    borderWidth: 1,
+                    borderColor: colors.primary,
+                    borderRadius: radius.sm,
+                  },
                 ]}
                 onPress={() => openAddEvent(date)}
               >
                 <Text
                   style={[
                     styles.miniDayNumber,
-                    !isCurrentMonthDay && styles.miniDayNumberMuted,
-                    isTodayDate && styles.miniDayNumberToday,
+                    { color: colors.textSecondary },
+                    !isCurrentMonthDay && { color: colors.textMuted },
+                    isTodayDate && { color: colors.primary, fontWeight: '800' },
                   ]}
                 >
                   {date.getDate()}
@@ -417,51 +430,68 @@ export default function CalendarView() {
             );
           })}
         </View>
-      </View>
+      </AdminGlassCard>
 
       <View style={styles.agendaSection}>
         <View style={styles.agendaHeader}>
-          <Text style={styles.agendaTitle}>This Month</Text>
-          <Text style={styles.agendaCount}>{monthlyEvents.length} scheduled</Text>
+          <Text style={[styles.agendaTitle, { color: colors.text }]}>This Month</Text>
+          <Text style={[styles.agendaCount, { color: colors.primary }]}>{monthlyEvents.length} scheduled</Text>
         </View>
 
         {monthlyEventsByDate.length === 0 ? (
-          <View style={styles.emptyAgenda}>
-            <Ionicons name="calendar-outline" size={40} color="#cbd5e1" />
-            <Text style={styles.emptyAgendaText}>No events or exams scheduled this month.</Text>
-            <TouchableOpacity style={styles.emptyAddBtn} onPress={() => openAddEvent(new Date())}>
-              <Text style={styles.emptyAddBtnText}>Add Event</Text>
-            </TouchableOpacity>
-          </View>
+          <AdminEmptyState
+            icon="calendar-outline"
+            title="No events this month"
+            message="No events or exams scheduled this month."
+            action={
+              <AdminScalePressable
+                onPress={() => openAddEvent(new Date())}
+                style={[styles.emptyAddBtn, { backgroundColor: colors.primary, borderRadius: radius.sm }]}
+              >
+                <Text style={[styles.emptyAddBtnText, { color: colors.textInverse }]}>Add Event</Text>
+              </AdminScalePressable>
+            }
+          />
         ) : (
           monthlyEventsByDate.map(([dateKey, dayEvents]) => (
             <View key={dateKey} style={styles.agendaDayGroup}>
-              <Text style={styles.agendaDayLabel}>
+              <Text style={[styles.agendaDayLabel, { color: colors.primary }]}>
                 {formatDisplayDate(dateKey)}
               </Text>
               {dayEvents.map((event, idx) => (
-                <TouchableOpacity
+                <AdminScalePressable
                   key={event._id || event.id || `${event.name}-${idx}`}
-                  style={styles.agendaItem}
                   onPress={() => handleViewEvent(event)}
-                  activeOpacity={0.85}
+                  style={[
+                    styles.agendaItem,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.surfaceBorder,
+                      borderRadius: radius.md,
+                    },
+                  ]}
                 >
                   <View style={[styles.agendaStripe, { backgroundColor: getEventColor(event, idx) }]} />
                   <View style={styles.agendaItemBody}>
                     <View style={styles.agendaItemTop}>
-                      <Text style={styles.agendaItemTitle} numberOfLines={2}>
+                      <Text style={[styles.agendaItemTitle, { color: colors.text }]} numberOfLines={2}>
                         {event.type === 'exam' ? `Exam: ${event.name}` : event.name}
                       </Text>
                       <View
                         style={[
                           styles.typeBadge,
-                          event.type === 'exam' ? styles.typeBadgeExam : styles.typeBadgeEvent,
+                          {
+                            backgroundColor:
+                              event.type === 'exam' ? colors.primaryMuted : colors.warningMuted,
+                          },
                         ]}
                       >
                         <Text
                           style={[
                             styles.typeBadgeText,
-                            event.type === 'exam' ? styles.typeBadgeTextExam : styles.typeBadgeTextEvent,
+                            {
+                              color: event.type === 'exam' ? colors.primary : colors.warning,
+                            },
                           ]}
                         >
                           {event.type === 'exam' ? 'Exam' : 'Event'}
@@ -469,419 +499,224 @@ export default function CalendarView() {
                       </View>
                     </View>
                     {event.description ? (
-                      <Text style={styles.agendaItemDesc} numberOfLines={2}>
+                      <Text style={[styles.agendaItemDesc, { color: colors.textMuted }]} numberOfLines={2}>
                         {event.description}
                       </Text>
                     ) : null}
                     {event.endDate &&
                     parseEventDateKey(event.endDate) !== parseEventDateKey(event.startDate || event.date) ? (
-                      <Text style={styles.agendaItemRange}>
+                      <Text style={[styles.agendaItemRange, { color: colors.primary }]}>
                         {formatDisplayDate(event.startDate || event.date)} – {formatDisplayDate(event.endDate)}
                       </Text>
                     ) : null}
                   </View>
-                </TouchableOpacity>
+                </AdminScalePressable>
               ))}
             </View>
           ))
         )}
       </View>
+    </AdminScreenShell>
 
-      <Modal visible={isEventModalOpen} animationType="slide" transparent onRequestClose={() => setIsEventModalOpen(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{isEditMode ? 'Edit Event' : 'Add Event'}</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setIsEventModalOpen(false);
-                  resetForm();
-                }}
-              >
-                <Ionicons name="close" size={24} color="#111827" />
-              </TouchableOpacity>
-            </View>
+    <AdminFAB onPress={() => openAddEvent(new Date())} icon="add" />
 
-            <ScrollView style={styles.modalBody} keyboardShouldPersistTaps="handled">
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Event Name *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={eventForm.name}
-                  onChangeText={(text) => setEventForm({ ...eventForm, name: text })}
-                  placeholder="Enter event name"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Date * (YYYY-MM-DD)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={eventForm.date}
-                  onChangeText={(text) => setEventForm({ ...eventForm, date: text })}
-                  placeholder="2026-06-07"
-                  autoCapitalize="none"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Description</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  value={eventForm.description}
-                  onChangeText={(text) => setEventForm({ ...eventForm, description: text })}
-                  placeholder="Enter event description"
-                  multiline
-                  numberOfLines={4}
-                />
-              </View>
-
-              <View style={styles.modalActions}>
-                <TouchableOpacity
-                  style={[styles.button, styles.cancelButton]}
-                  onPress={() => {
-                    setIsEventModalOpen(false);
-                    resetForm();
-                  }}
-                >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.button, styles.submitButton]} onPress={handleEventSubmit}>
-                  <Text style={styles.submitButtonText}>
-                    {isEditMode ? 'Update Event' : 'Create Event'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-          </View>
+    <AdminModalShell
+      visible={isEventModalOpen}
+      title={isEditMode ? 'Edit Event' : 'Add Event'}
+      onClose={() => { setIsEventModalOpen(false); resetForm(); }}
+    >
+      <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 400 }}>
+        <View style={styles.inputGroup}>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>Event Name *</Text>
+          <TextInput
+            style={[styles.input, { borderColor: colors.inputBorder, color: colors.text, backgroundColor: colors.inputBg }]}
+            value={eventForm.name}
+            onChangeText={(text) => setEventForm({ ...eventForm, name: text })}
+            placeholder="Enter event name"
+            placeholderTextColor={colors.textMuted}
+          />
         </View>
-      </Modal>
-
-      <Modal visible={isViewModalOpen} animationType="slide" transparent onRequestClose={() => setIsViewModalOpen(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{selectedEvent?.name}</Text>
-              <TouchableOpacity onPress={() => setIsViewModalOpen(false)}>
-                <Ionicons name="close" size={24} color="#111827" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.modalBody}>
-              {selectedEvent?.photo ? (
-                <Image
-                  source={{ uri: resolvePhotoUrl(selectedEvent.photo) }}
-                  style={styles.viewPhoto}
-                />
-              ) : null}
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Date</Text>
-                <Text style={styles.viewText}>
-                  {formatDisplayDate(selectedEvent?.startDate || selectedEvent?.date)}
-                </Text>
-              </View>
-
-              {selectedEvent?.endDate &&
-              parseEventDateKey(selectedEvent.endDate) !==
-                parseEventDateKey(selectedEvent.startDate || selectedEvent.date) ? (
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>End Date</Text>
-                  <Text style={styles.viewText}>{formatDisplayDate(selectedEvent.endDate)}</Text>
-                </View>
-              ) : null}
-
-              {selectedEvent?.type === 'exam' ? (
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Type</Text>
-                  <Text style={styles.viewText}>
-                    Exam ({selectedEvent.examType || 'scheduled'})
-                  </Text>
-                </View>
-              ) : null}
-
-              {selectedEvent?.description ? (
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Description</Text>
-                  <Text style={styles.viewText}>{selectedEvent.description}</Text>
-                </View>
-              ) : null}
-
-              {selectedEvent?.type !== 'exam' ? (
-                <View style={styles.modalActions}>
-                  <TouchableOpacity
-                    style={[styles.button, styles.editButton]}
-                    onPress={() => selectedEvent && handleEditEvent(selectedEvent)}
-                  >
-                    <Ionicons name="create" size={20} color="#fff" />
-                    <Text style={styles.editButtonText}>Edit</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.button, styles.deleteButton]}
-                    onPress={() => selectedEvent && handleDeleteEvent(selectedEvent)}
-                  >
-                    <Ionicons name="trash" size={20} color="#fff" />
-                    <Text style={styles.deleteButtonText}>Delete</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : null}
-            </ScrollView>
-          </View>
+        <View style={styles.inputGroup}>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>Date * (YYYY-MM-DD)</Text>
+          <TextInput
+            style={[styles.input, { borderColor: colors.inputBorder, color: colors.text, backgroundColor: colors.inputBg }]}
+            value={eventForm.date}
+            onChangeText={(text) => setEventForm({ ...eventForm, date: text })}
+            placeholder="2026-06-07"
+            placeholderTextColor={colors.textMuted}
+            autoCapitalize="none"
+          />
         </View>
-      </Modal>
-
-      <Modal visible={isUrlModalOpen} animationType="slide" transparent onRequestClose={() => setIsUrlModalOpen(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Enter Image URL</Text>
-              <TouchableOpacity onPress={() => setIsUrlModalOpen(false)}>
-                <Ionicons name="close" size={24} color="#111827" />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.modalBody}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Image URL</Text>
-                <TextInput
-                  style={styles.input}
-                  value={imageUrlInput}
-                  onChangeText={setImageUrlInput}
-                  placeholder="https://..."
-                  autoCapitalize="none"
-                  keyboardType="url"
-                />
-              </View>
-              <View style={styles.modalActions}>
-                <TouchableOpacity
-                  style={[styles.button, styles.cancelButton]}
-                  onPress={() => {
-                    setIsUrlModalOpen(false);
-                    setImageUrlInput('');
-                  }}
-                >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.button, styles.submitButton]}
-                  onPress={() => {
-                    if (imageUrlInput.trim()) {
-                      setEventForm({ ...eventForm, photoUrl: imageUrlInput.trim() });
-                    }
-                    setIsUrlModalOpen(false);
-                    setImageUrlInput('');
-                  }}
-                >
-                  <Text style={styles.submitButtonText}>Add URL</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
+        <View style={styles.inputGroup}>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>Description</Text>
+          <TextInput
+            style={[styles.input, styles.textArea, { borderColor: colors.inputBorder, color: colors.text, backgroundColor: colors.inputBg }]}
+            value={eventForm.description}
+            onChangeText={(text) => setEventForm({ ...eventForm, description: text })}
+            placeholder="Enter event description"
+            placeholderTextColor={colors.textMuted}
+            multiline
+            numberOfLines={4}
+          />
         </View>
-      </Modal>
-    </ScrollView>
+        <View style={styles.modalActions}>
+          <AdminScalePressable
+            onPress={() => { setIsEventModalOpen(false); resetForm(); }}
+            style={[styles.button, { backgroundColor: colors.bgElevated, borderRadius: radius.sm }]}
+          >
+            <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>Cancel</Text>
+          </AdminScalePressable>
+          <AdminScalePressable
+            onPress={handleEventSubmit}
+            style={[styles.button, { backgroundColor: colors.primary, borderRadius: radius.sm }]}
+          >
+            <Text style={[styles.submitButtonText, { color: colors.textInverse }]}>
+              {isEditMode ? 'Update Event' : 'Create Event'}
+            </Text>
+          </AdminScalePressable>
+        </View>
+      </ScrollView>
+    </AdminModalShell>
+
+    <AdminModalShell
+      visible={isViewModalOpen}
+      title={selectedEvent?.name || 'Event'}
+      onClose={() => setIsViewModalOpen(false)}
+    >
+      <ScrollView style={{ maxHeight: 440 }}>
+        {selectedEvent?.photo ? (
+          <Image source={{ uri: resolvePhotoUrl(selectedEvent.photo) }} style={[styles.viewPhoto, { borderRadius: radius.sm }]} />
+        ) : null}
+        <View style={styles.inputGroup}>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>Date</Text>
+          <Text style={[styles.viewText, { color: colors.text }]}>
+            {formatDisplayDate(selectedEvent?.startDate || selectedEvent?.date)}
+          </Text>
+        </View>
+        {selectedEvent?.endDate &&
+        parseEventDateKey(selectedEvent.endDate) !== parseEventDateKey(selectedEvent.startDate || selectedEvent.date) ? (
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>End Date</Text>
+            <Text style={[styles.viewText, { color: colors.text }]}>{formatDisplayDate(selectedEvent.endDate)}</Text>
+          </View>
+        ) : null}
+        {selectedEvent?.type === 'exam' ? (
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>Type</Text>
+            <Text style={[styles.viewText, { color: colors.text }]}>
+              Exam ({selectedEvent.examType || 'scheduled'})
+            </Text>
+          </View>
+        ) : null}
+        {selectedEvent?.description ? (
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>Description</Text>
+            <Text style={[styles.viewText, { color: colors.text }]}>{selectedEvent.description}</Text>
+          </View>
+        ) : null}
+        {selectedEvent?.type !== 'exam' ? (
+          <View style={styles.modalActions}>
+            <AdminScalePressable
+              onPress={() => selectedEvent && handleEditEvent(selectedEvent)}
+              style={[styles.button, { backgroundColor: colors.primary, borderRadius: radius.sm }]}
+            >
+              <Ionicons name="create" size={20} color={colors.textInverse} />
+              <Text style={[styles.editButtonText, { color: colors.textInverse }]}>Edit</Text>
+            </AdminScalePressable>
+            <AdminScalePressable
+              onPress={() => selectedEvent && handleDeleteEvent(selectedEvent)}
+              style={[styles.button, { backgroundColor: colors.danger, borderRadius: radius.sm }]}
+            >
+              <Ionicons name="trash" size={20} color={colors.textInverse} />
+              <Text style={[styles.deleteButtonText, { color: colors.textInverse }]}>Delete</Text>
+            </AdminScalePressable>
+          </View>
+        ) : null}
+      </ScrollView>
+    </AdminModalShell>
+
+    <AdminModalShell
+      visible={isUrlModalOpen}
+      title="Enter Image URL"
+      onClose={() => setIsUrlModalOpen(false)}
+    >
+      <View style={styles.inputGroup}>
+        <Text style={[styles.label, { color: colors.textSecondary }]}>Image URL</Text>
+        <TextInput
+          style={[styles.input, { borderColor: colors.inputBorder, color: colors.text, backgroundColor: colors.inputBg }]}
+          value={imageUrlInput}
+          onChangeText={setImageUrlInput}
+          placeholder="https://..."
+          placeholderTextColor={colors.textMuted}
+          autoCapitalize="none"
+          keyboardType="url"
+        />
+      </View>
+      <View style={styles.modalActions}>
+        <AdminScalePressable
+          onPress={() => { setIsUrlModalOpen(false); setImageUrlInput(''); }}
+          style={[styles.button, { backgroundColor: colors.bgElevated, borderRadius: radius.sm }]}
+        >
+          <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>Cancel</Text>
+        </AdminScalePressable>
+        <AdminScalePressable
+          onPress={() => {
+            if (imageUrlInput.trim()) {
+              setEventForm({ ...eventForm, photoUrl: imageUrlInput.trim() });
+            }
+            setIsUrlModalOpen(false);
+            setImageUrlInput('');
+          }}
+          style={[styles.button, { backgroundColor: colors.primary, borderRadius: radius.sm }]}
+        >
+          <Text style={[styles.submitButtonText, { color: colors.textInverse }]}>Add URL</Text>
+        </AdminScalePressable>
+      </View>
+    </AdminModalShell>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f0f9ff' },
-  scrollContent: { paddingBottom: 32 },
-  loadingContainer: {
-    minHeight: 240,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 12,
-  },
-  loadingText: { fontSize: 16, color: '#64748b' },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingTop: 8,
-    paddingBottom: 12,
-    gap: 12,
-  },
-  headerTextWrap: { flex: 1 },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: '#111827' },
-  headerSubtitle: { fontSize: 14, color: '#6b7280', marginTop: 4 },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  todayButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  todayButtonText: { fontSize: 14, fontWeight: '600', color: '#111827' },
-  addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: '#fb923c',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  calendarCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    marginBottom: 16,
-  },
-  calendarNav: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  monthText: { fontSize: 18, fontWeight: '700', color: '#111827' },
+  todayButton: { paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1 },
+  todayButtonText: { fontSize: 14, fontWeight: '600' },
+  calendarNav: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  monthText: { fontSize: 18, fontWeight: '700' },
   miniGrid: { flexDirection: 'row', flexWrap: 'wrap' },
   dayHeader: { width: '14.28%', alignItems: 'center', paddingVertical: 4 },
-  dayHeaderText: { fontSize: 11, fontWeight: '700', color: '#6b7280' },
-  miniDay: {
-    width: '14.28%',
-    aspectRatio: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-    marginBottom: 2,
-  },
+  dayHeaderText: { fontSize: 11, fontWeight: '700' },
+  miniDay: { width: '14.28%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
   miniDayOtherMonth: { opacity: 0.35 },
-  miniDayToday: {
-    backgroundColor: '#fff7ed',
-    borderWidth: 1,
-    borderColor: '#fb923c',
-  },
-  miniDayNumber: { fontSize: 13, fontWeight: '600', color: '#374151' },
-  miniDayNumberMuted: { color: '#9ca3af' },
-  miniDayNumberToday: { color: '#ea580c', fontWeight: '800' },
+  miniDayNumber: { fontSize: 13, fontWeight: '600' },
   dotRow: { flexDirection: 'row', gap: 2, marginTop: 2 },
   dot: { width: 4, height: 4, borderRadius: 2 },
   agendaSection: { gap: 12 },
-  agendaHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  agendaTitle: { fontSize: 18, fontWeight: '700', color: '#0c4a6e' },
-  agendaCount: { fontSize: 12, color: '#0284c7', fontWeight: '600' },
-  emptyAgenda: {
-    alignItems: 'center',
-    paddingVertical: 32,
-    paddingHorizontal: 20,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#e0f2fe',
-  },
-  emptyAgendaText: {
-    fontSize: 14,
-    color: '#64748b',
-    textAlign: 'center',
-    marginTop: 12,
-  },
-  emptyAddBtn: {
-    marginTop: 16,
-    backgroundColor: '#fb923c',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  emptyAddBtnText: { color: '#fff', fontWeight: '700' },
+  agendaHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  agendaTitle: { fontSize: 18, fontWeight: '700' },
+  agendaCount: { fontSize: 12, fontWeight: '600' },
+  emptyAddBtn: { paddingHorizontal: 20, paddingVertical: 10 },
+  emptyAddBtnText: { fontWeight: '700' },
   agendaDayGroup: { gap: 8 },
-  agendaDayLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#0369a1',
-    marginTop: 4,
-  },
-  agendaItem: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e0f2fe',
-    overflow: 'hidden',
-  },
+  agendaDayLabel: { fontSize: 13, fontWeight: '700', marginTop: 4 },
+  agendaItem: { flexDirection: 'row', borderWidth: 1, overflow: 'hidden' },
   agendaStripe: { width: 4 },
   agendaItemBody: { flex: 1, padding: 12, gap: 4 },
-  agendaItemTop: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  agendaItemTitle: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#0f172a',
-  },
-  typeBadge: {
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  typeBadgeExam: { backgroundColor: '#dbeafe' },
-  typeBadgeEvent: { backgroundColor: '#ffedd5' },
+  agendaItemTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
+  agendaItemTitle: { flex: 1, fontSize: 15, fontWeight: '700' },
+  typeBadge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
   typeBadgeText: { fontSize: 11, fontWeight: '700' },
-  typeBadgeTextExam: { color: '#1d4ed8' },
-  typeBadgeTextEvent: { color: '#c2410c' },
-  agendaItemDesc: { fontSize: 13, color: '#64748b', lineHeight: 18 },
-  agendaItemRange: { fontSize: 12, color: '#0284c7', marginTop: 2 },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '90%',
-    paddingBottom: 20,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  modalTitle: { fontSize: 20, fontWeight: '800', color: '#111827', flex: 1, marginRight: 12 },
-  modalBody: { padding: 20 },
+  agendaItemDesc: { fontSize: 13, lineHeight: 18 },
+  agendaItemRange: { fontSize: 12, marginTop: 2 },
   inputGroup: { marginBottom: 16 },
-  label: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    color: '#111827',
-    backgroundColor: '#fff',
-  },
+  label: { fontSize: 14, fontWeight: '600', marginBottom: 8 },
+  input: { borderWidth: 1, borderRadius: 12, padding: 12, fontSize: 16 },
   textArea: { minHeight: 100, textAlignVertical: 'top' },
-  viewPhoto: { width: '100%', height: 220, borderRadius: 8, marginBottom: 16 },
-  viewText: { fontSize: 16, color: '#374151', lineHeight: 24 },
+  viewPhoto: { width: '100%', height: 220, marginBottom: 16 },
+  viewText: { fontSize: 16, lineHeight: 24 },
   modalActions: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  button: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 14,
-    borderRadius: 8,
-    gap: 8,
-  },
-  cancelButton: { backgroundColor: '#f3f4f6' },
-  cancelButtonText: { color: '#374151', fontSize: 16, fontWeight: '600' },
-  submitButton: { backgroundColor: '#fb923c' },
-  submitButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  editButton: { backgroundColor: '#3b82f6' },
-  editButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  deleteButton: { backgroundColor: '#ef4444' },
-  deleteButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  button: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 14, gap: 8 },
+  cancelButtonText: { fontSize: 16, fontWeight: '600' },
+  submitButtonText: { fontSize: 16, fontWeight: '600' },
+  editButtonText: { fontSize: 16, fontWeight: '600' },
+  deleteButtonText: { fontSize: 16, fontWeight: '600' },
 });

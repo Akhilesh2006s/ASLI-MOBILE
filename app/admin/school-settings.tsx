@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import adminService from '../../src/services/api/adminService';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
-import { ActionButton, ErrorState, LoadingState } from '../../src/components/ui';
-import { COLORS, FONT, RADIUS, SPACING } from '../../src/theme';
+import { ErrorState, LoadingState } from '../../src/components/ui';
+import { AdminScalePressable, AdminSectionHeader, AdminSkeletonStats, useAdminTheme } from './ui';
 
 export default function SchoolSettings() {
+  const { colors, spacing, radius } = useAdminTheme();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -54,35 +56,75 @@ export default function SchoolSettings() {
     }
   };
 
+  const fields = [
+    { key: 'schoolName' as const, label: 'School Name', icon: 'business-outline' as const, placeholder: 'Enter school name' },
+    { key: 'board' as const, label: 'Board / Curriculum', icon: 'book-outline' as const, placeholder: 'e.g. CBSE, ICSE' },
+    { key: 'workingHours' as const, label: 'Working Hours', icon: 'time-outline' as const, placeholder: 'e.g. 8:00 AM – 3:00 PM' },
+  ];
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={22} color={COLORS.text} />
-        </Pressable>
-        <Text style={styles.headerTitle}>School Settings</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]} edges={['top']}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.surfaceBorder }]}>
+        <AdminScalePressable onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: colors.bgElevated, borderRadius: radius.full }]}>
+          <Ionicons name="chevron-back" size={22} color={colors.text} />
+        </AdminScalePressable>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>School Settings</Text>
         <View style={styles.backBtn} />
       </View>
 
       {loading ? (
-        <LoadingState variant="cards" style={{ padding: SPACING.lg }} />
+        <AdminSkeletonStats />
       ) : (
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView contentContainerStyle={[styles.content, { padding: spacing.lg }]}>
           {error ? <ErrorState message={error} onRetry={load} /> : null}
-          {(['schoolName', 'board', 'workingHours'] as const).map((key) => (
-            <View key={key} style={styles.field}>
-              <Text style={styles.label}>
-                {key === 'schoolName' ? 'School Name' : key === 'board' ? 'Board / Curriculum' : 'Working Hours'}
-              </Text>
+
+          <AdminSectionHeader
+            title="General Settings"
+            subtitle="Configure your school profile"
+            icon="settings-outline"
+          />
+
+          {fields.map((field) => (
+            <View key={field.key} style={styles.field}>
+              <View style={styles.labelRow}>
+                <Ionicons name={field.icon} size={16} color={colors.primary} />
+                <Text style={[styles.label, { color: colors.textSecondary }]}>{field.label}</Text>
+              </View>
               <TextInput
-                style={styles.input}
-                value={form[key]}
-                onChangeText={(v) => setForm((f) => ({ ...f, [key]: v }))}
-                placeholderTextColor={COLORS.textMuted}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: colors.inputBg,
+                    borderColor: colors.inputBorder,
+                    color: colors.text,
+                    borderRadius: radius.md,
+                  },
+                ]}
+                value={form[field.key]}
+                onChangeText={(v) => setForm((f) => ({ ...f, [field.key]: v }))}
+                placeholder={field.placeholder}
+                placeholderTextColor={colors.textMuted}
               />
             </View>
           ))}
-          <ActionButton label="Save Settings" onPress={save} loading={saving} gradient={COLORS.gradientAdmin} />
+
+          <AdminScalePressable onPress={save} disabled={saving} scaleTo={0.98}>
+            <LinearGradient
+              colors={[...colors.fabGradient]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[styles.saveBtn, { borderRadius: radius.md, opacity: saving ? 0.6 : 1 }]}
+            >
+              {saving ? (
+                <Text style={styles.saveBtnText}>Saving...</Text>
+              ) : (
+                <>
+                  <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                  <Text style={styles.saveBtnText}>Save Settings</Text>
+                </>
+              )}
+            </LinearGradient>
+          </AdminScalePressable>
         </ScrollView>
       )}
     </SafeAreaView>
@@ -90,30 +132,35 @@ export default function SchoolSettings() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.bg },
+  container: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    backgroundColor: COLORS.card,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
   },
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: FONT.xl, fontWeight: FONT.bold, color: COLORS.text },
-  content: { padding: SPACING.lg, gap: SPACING.lg, paddingBottom: SPACING.xxxl },
-  field: { gap: SPACING.sm },
-  label: { fontSize: FONT.sm, fontWeight: FONT.semibold, color: COLORS.textSecondary },
+  headerTitle: { fontSize: 18, fontWeight: '800' },
+  content: { gap: 20, paddingBottom: 40 },
+  field: { gap: 8 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  label: { fontSize: 13, fontWeight: '600' },
   input: {
-    backgroundColor: COLORS.card,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    fontSize: FONT.base,
-    color: COLORS.text,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    fontWeight: '500',
   },
+  saveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
+    marginTop: 8,
+  },
+  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

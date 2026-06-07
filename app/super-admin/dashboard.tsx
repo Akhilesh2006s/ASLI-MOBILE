@@ -1,16 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Alert, Pressable, View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import { Alert, StyleSheet, View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeIn } from 'react-native-reanimated';
-import { RoleHeader, BottomTabBar, BottomSheet, TabItem } from '../../src/components/ui';
-import { COLORS, SPACING, getRoleColor } from '../../src/theme';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import * as SecureStore from 'expo-secure-store';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import api, { API_BASE_URL } from '../../src/services/api/api';
 import { useAuth } from '../../src/context/AuthContext';
+import { BottomTabBar, type TabItem } from '../../src/components/ui';
 import AdminsView from './components/AdminsView';
 import ListView from './components/ListView';
 import VidyaAIView from './components/VidyaAIView';
@@ -18,44 +17,35 @@ import BoardDashboardView from './components/BoardDashboardView';
 import SubjectContentManagementView from './components/SubjectContentManagementView';
 import ExamManagementView from './components/ExamManagementView';
 import IQRankBoostView from './components/IQRankBoostView';
+import SuperAdminCalendarView from './components/SuperAdminCalendarView';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { EXAM_CALENDAR_PREFILL_KEY, type ExamCalendarPrefill } from '../../src/lib/super-admin-calendar';
 import AnalyticsView from './components/AnalyticsView';
 import AIAnalyticsView from './components/AIAnalyticsView';
-
-type SuperAdminView = 'dashboard' | 'admins' | 'analytics' | 'ai-analytics' | 'subscriptions' | 'settings' | 'board-comparison' | 'content' | 'board' | 'subjects' | 'exams' | 'iq-rank-boost' | 'vidya-ai';
-
-interface MenuItem {
-  id: SuperAdminView;
-  label: string;
-  icon: keyof typeof Ionicons.glyphMap;
-}
+import QuestionGeneratorView from './components/QuestionGeneratorView';
+import ContentManagementView from './components/ContentManagementView';
+import AiToolTopicsView from './components/AiToolTopicsView';
+import SuperAdminNavDrawer, {
+  superAdminNavLabel,
+  SUPER_ADMIN_BOTTOM_TABS,
+  type SuperAdminView,
+} from './components/SuperAdminNavDrawer';
+import { SuperAdminHeader, SuperAdminGridBackground, useSuperAdminTheme } from './ui';
 
 const SUPER_TABS: TabItem[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'stats-chart-outline', activeIcon: 'stats-chart' },
-  { id: 'admins', label: 'Schools', icon: 'shield-outline', activeIcon: 'shield' },
-  { id: 'subjects', label: 'Content', icon: 'document-text-outline', activeIcon: 'document-text' },
-  { id: 'analytics', label: 'Analytics', icon: 'bar-chart-outline', activeIcon: 'bar-chart' },
-  { id: 'more', label: 'More', icon: 'ellipsis-horizontal', activeIcon: 'ellipsis-horizontal' },
-];
-
-const menuItems: MenuItem[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'stats-chart' },
-  { id: 'board', label: 'Board Management', icon: 'people' },
-  { id: 'admins', label: 'School Management', icon: 'shield' },
-  { id: 'subjects', label: 'Subject & Content', icon: 'document-text' },
-  { id: 'exams', label: 'Exam Management', icon: 'document' },
-  { id: 'iq-rank-boost', label: 'IQ/Rank Boost', icon: 'trophy' },
-  { id: 'vidya-ai', label: 'Vidya AI', icon: 'sparkles' },
-  { id: 'analytics', label: 'Analytics', icon: 'bar-chart' },
-  { id: 'ai-analytics', label: 'AI Analytics', icon: 'bulb' },
-  { id: 'subscriptions', label: 'Subscriptions', icon: 'card' },
-  { id: 'settings', label: 'Settings', icon: 'settings' },
+  { id: 'dashboard', label: 'Dashboard', icon: 'bar-chart-outline', activeIcon: 'bar-chart' },
+  { id: 'board', label: 'Board', icon: 'people-outline', activeIcon: 'people' },
+  { id: 'admins', label: 'School', icon: 'shield-outline', activeIcon: 'shield' },
+  { id: 'subjects-and-content', label: 'Content', icon: 'list-outline', activeIcon: 'list' },
+  { id: 'exams', label: 'Exams', icon: 'document-text-outline', activeIcon: 'document-text' },
 ];
 
 export default function SuperAdminDashboard() {
   const router = useRouter();
   const { token: authToken, signOut } = useAuth();
+  const { colors } = useSuperAdminTheme();
   const [currentView, setCurrentView] = useState<SuperAdminView>('dashboard');
-  const [modalVisible, setModalVisible] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalStudents: 0,
@@ -147,8 +137,7 @@ export default function SuperAdminDashboard() {
 
   const handleViewChange = (view: SuperAdminView) => {
     setCurrentView(view);
-    setModalVisible(false);
-    // If board view, set the board code
+    setMenuOpen(false);
     if (view === 'board') {
       setSelectedBoard('ASLI_EXCLUSIVE_SCHOOLS');
     }
@@ -161,7 +150,7 @@ export default function SuperAdminDashboard() {
         text: 'Logout',
         style: 'destructive',
         onPress: async () => {
-          setModalVisible(false);
+          setMenuOpen(false);
           try {
             await signOut();
             await SecureStore.deleteItemAsync('token');
@@ -177,24 +166,15 @@ export default function SuperAdminDashboard() {
     ]);
   };
 
-  const onTabChange = (id: string) => {
-    if (id === 'more') {
-      setModalVisible(true);
-      return;
-    }
-    handleViewChange(id as SuperAdminView);
+  const onSelectView = (view: SuperAdminView) => {
+    handleViewChange(view);
   };
 
-  const activeTab = ['dashboard', 'admins', 'subjects', 'analytics'].includes(currentView)
-    ? currentView
-    : 'more';
-
   const renderDashboardContent = () => (
-    <ScrollView 
+    <ScrollView
       style={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
-      {/* Welcome Header - Exact match to web */}
       <View style={styles.welcomeHeader}>
         <View style={styles.welcomeTextContainer}>
           <Text style={styles.welcomeTitle}>Welcome back, Super Admin</Text>
@@ -206,7 +186,7 @@ export default function SuperAdminDashboard() {
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#f97316" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
         <>
@@ -217,10 +197,9 @@ export default function SuperAdminDashboard() {
             </View>
           ) : null}
 
-          {/* Board Management Section - Orange gradient card */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Board Management</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.boardCard}
               onPress={() => {
                 setSelectedBoard('ASLI_EXCLUSIVE_SCHOOLS');
@@ -245,12 +224,10 @@ export default function SuperAdminDashboard() {
             </TouchableOpacity>
           </View>
 
-          {/* Content Management & AI Analytics - Two column grid */}
           <View style={styles.twoColumnGrid}>
-            {/* Content Management - Sky blue gradient */}
             <TouchableOpacity
               style={styles.featureCard}
-              onPress={() => handleViewChange('subjects')}
+              onPress={() => handleViewChange('subjects-and-content')}
               activeOpacity={0.9}
             >
               <LinearGradient
@@ -271,7 +248,6 @@ export default function SuperAdminDashboard() {
               </LinearGradient>
             </TouchableOpacity>
 
-            {/* AI Analytics - Teal gradient (same structure as Content Management for equal height & corners) */}
             <TouchableOpacity
               style={styles.featureCard}
               onPress={() => handleViewChange('ai-analytics')}
@@ -296,15 +272,13 @@ export default function SuperAdminDashboard() {
             </TouchableOpacity>
           </View>
 
-          {/* Stats Widgets Row - White cards with charts */}
           <View style={styles.statsRow}>
-            {/* Total Students Widget */}
             <View style={styles.statsWidget}>
               <View style={styles.statsWidgetContent}>
                 <View>
                   <Text style={styles.statsWidgetLabel}>Total Students</Text>
                   <Text style={styles.statsWidgetValue}>
-                    {isLoading ? '...' : (stats.totalStudents || 5230).toLocaleString()}
+                    {(stats.totalStudents || 0).toLocaleString()}
                   </Text>
                 </View>
                 <View style={styles.chartPlaceholder}>
@@ -313,7 +287,6 @@ export default function SuperAdminDashboard() {
               </View>
             </View>
 
-            {/* Pass Rate Widget */}
             <View style={styles.statsWidget}>
               <View style={styles.statsWidgetContent}>
                 <View>
@@ -327,8 +300,7 @@ export default function SuperAdminDashboard() {
             </View>
           </View>
 
-          {/* Vidya AI Card - White with orange border */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.vidyaCard}
             onPress={() => handleViewChange('vidya-ai')}
             activeOpacity={0.9}
@@ -338,7 +310,7 @@ export default function SuperAdminDashboard() {
               <View style={styles.vidyaCardText}>
                 <Text style={styles.vidyaCardTitle}>Vidya AI</Text>
                 <Text style={styles.vidyaCardSubtitle}>24/7 AI Tutor Support</Text>
-                <Text style={styles.vidyaCardClick}>Click to access Vidya AI →</Text>
+                <Text style={styles.vidyaCardClick}>Tap to access Vidya AI →</Text>
               </View>
               <View style={styles.vidyaCardImage}>
                 <Ionicons name="sparkles" size={64} color="#f97316" />
@@ -350,7 +322,6 @@ export default function SuperAdminDashboard() {
     </ScrollView>
   );
 
-
   const renderContent = () => {
     switch (currentView) {
       case 'dashboard':
@@ -359,7 +330,7 @@ export default function SuperAdminDashboard() {
         return <AdminsView />;
       case 'board':
         return (
-          <BoardDashboardView 
+          <BoardDashboardView
             boardCode={selectedBoard || 'ASLI_EXCLUSIVE_SCHOOLS'}
             onBack={() => {
               setSelectedBoard(null);
@@ -367,22 +338,64 @@ export default function SuperAdminDashboard() {
             }}
           />
         );
+      case 'subjects-and-content':
+      case 'content':
       case 'subjects':
         return <SubjectContentManagementView />;
       case 'exams':
         return <ExamManagementView />;
       case 'iq-rank-boost':
         return <IQRankBoostView />;
+      case 'calendar':
+        return (
+          <SuperAdminCalendarView
+            onNavigateToExams={async (prefill: ExamCalendarPrefill) => {
+              await AsyncStorage.setItem(EXAM_CALENDAR_PREFILL_KEY, JSON.stringify(prefill));
+              handleViewChange('exams');
+            }}
+          />
+        );
       case 'vidya-ai':
-        return <VidyaAIView />;
+        return (
+          <VidyaAIView
+            onOpenAnalytics={() => handleViewChange('analytics')}
+            onOpenSettings={() => handleViewChange('settings')}
+          />
+        );
       case 'analytics':
         return <AnalyticsView />;
       case 'ai-analytics':
         return <AIAnalyticsView />;
       case 'board-comparison':
-        return <ListView title="Board Comparison" endpoint="/api/super-admin/boards/analytics/comparison" icon="stats-chart" />;
+        return (
+          <ListView
+            title="Board Comparison"
+            endpoint="/api/super-admin/boards/analytics/comparison"
+            icon="stats-chart-outline"
+          />
+        );
+      case 'ai-tool-generations':
+        return (
+          <ListView
+            title="AI Tool Data"
+            endpoint="/api/super-admin/ai-tool-generations/records"
+            icon="folder-outline"
+          />
+        );
+      case 'ai-tool-topics':
+        return <AiToolTopicsView />;
+      case 'ai-content-engine':
+        return <ContentManagementView />;
+      case 'ai-generator':
+        return <QuestionGeneratorView />;
       case 'subscriptions':
-        return <ListView title="Subscriptions" endpoint="/api/super-admin/subscriptions" icon="card" />;
+        return (
+          <ListView
+            title="Subscriptions"
+            endpoint="/api/super-admin/subscriptions"
+            icon="card-outline"
+          />
+        );
       case 'settings':
         return (
           <ScrollView style={styles.content}>
@@ -391,7 +404,7 @@ export default function SuperAdminDashboard() {
             </View>
             <View style={styles.settingsContainer}>
               <TouchableOpacity style={styles.settingsItem}>
-                <Ionicons name="lock-closed" size={24} color="#f97316" />
+                <Ionicons name="lock-closed" size={24} color={colors.primary} />
                 <Text style={styles.settingsText}>Security</Text>
                 <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
               </TouchableOpacity>
@@ -407,92 +420,67 @@ export default function SuperAdminDashboard() {
     }
   };
 
+  const isDashboard = currentView === 'dashboard';
+
+  const bottomTabActive = SUPER_ADMIN_BOTTOM_TABS.some((t) => t.id === currentView)
+    ? currentView
+    : '__none__';
+
+  const onBottomTabChange = (id: string) => {
+    handleViewChange(id as SuperAdminView);
+  };
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <RoleHeader
-        role="super-admin"
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]} edges={['bottom']}>
+      <SuperAdminHeader
         userName={user.fullName}
-        subtitle="Aslilearn AI Platform"
-        onMenu={() => setModalVisible(true)}
+        subtitle={isDashboard ? 'Aslilearn AI Platform' : superAdminNavLabel(currentView)}
+        onMenu={() => setMenuOpen(true)}
       />
 
-      <Animated.View entering={FadeIn.duration(200)} style={styles.mainContent}>
-        {renderContent()}
-      </Animated.View>
+      <View style={styles.contentWrap}>
+        <SuperAdminGridBackground />
+        <Animated.View entering={FadeInDown.duration(280).springify()} style={styles.mainContent}>
+          {renderContent()}
+        </Animated.View>
+      </View>
 
       <BottomTabBar
         tabs={SUPER_TABS}
-        activeTab={activeTab}
-        onTabChange={onTabChange}
-        roleColor={getRoleColor('super-admin')}
+        activeTab={bottomTabActive}
+        onTabChange={onBottomTabChange}
+        roleColor={colors.primary}
       />
 
-      <BottomSheet visible={modalVisible} onClose={() => setModalVisible(false)} title="More">
-        {menuItems
-          .filter((item) => !['dashboard', 'admins', 'subjects', 'analytics'].includes(item.id))
-          .map((item) => (
-            <Pressable
-              key={item.id}
-              style={styles.sheetItem}
-              onPress={() => handleViewChange(item.id)}
-            >
-              <Ionicons name={item.icon} size={20} color={COLORS.text} />
-              <Text style={styles.sheetText}>{item.label}</Text>
-            </Pressable>
-          ))}
-        <Pressable style={[styles.sheetItem, styles.logoutSheet]} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={20} color={COLORS.danger} />
-          <Text style={[styles.sheetText, { color: COLORS.danger }]}>Logout</Text>
-        </Pressable>
-      </BottomSheet>
+      <SuperAdminNavDrawer
+        visible={menuOpen}
+        activeView={currentView}
+        userName={user.fullName}
+        onClose={() => setMenuOpen(false)}
+        onSelect={onSelectView}
+        onLogout={handleLogout}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  container: { flex: 1 },
+  contentWrap: {
     flex: 1,
-    backgroundColor: COLORS.bg,
-  },
-  sheetItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md,
-    paddingVertical: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
-  },
-  sheetText: { fontSize: 16, fontWeight: '600', color: COLORS.text },
-  logoutSheet: { borderBottomWidth: 0, marginTop: SPACING.sm },
-  topHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 14,
-  },
-  topHeaderTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#fff',
-  },
-  topHeaderSubtitle: {
-    fontSize: 12,
-    color: '#fff',
-    opacity: 0.9,
-  },
-  logoutButton: {
-    padding: 8,
+    minHeight: 0,
+    position: 'relative',
+    overflow: 'hidden',
   },
   mainContent: {
     flex: 1,
-    paddingBottom: 96,
     minHeight: 0,
+    backgroundColor: 'transparent',
+    paddingBottom: 88,
   },
-  content: {
-    flex: 1,
-  },
+  content: { flex: 1 },
+  header: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
+  headerTitle: { fontSize: 21, fontWeight: '800', color: '#111827' },
   welcomeHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',

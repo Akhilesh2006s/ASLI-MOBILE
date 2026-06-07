@@ -143,6 +143,7 @@ function AuthGate() {
       <Stack.Screen name="teacher/subject/[id]" />
       <Stack.Screen name="super-admin/analytics" />
       <Stack.Screen name="super-admin/detailed-ai-analytics" />
+      <Stack.Screen name="super-admin/schools/[id]" />
     </Stack>
   );
 }

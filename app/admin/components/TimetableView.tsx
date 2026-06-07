@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import {
-  ActivityIndicator,
   Modal,
   Pressable,
   ScrollView,
@@ -18,6 +17,15 @@ import {
   teacherSlotLabel,
   type TimetableEntryLike,
 } from '../../../src/lib/timetable-utils';
+import {
+  AdminScreenShell,
+  AdminSectionHeader,
+  AdminGlassCard,
+  AdminEmptyState,
+  AdminSkeletonList,
+  AdminScalePressable,
+  useAdminTheme,
+} from '../ui';
 
 function asArray(payload: any): any[] {
   if (Array.isArray(payload)) return payload;
@@ -26,8 +34,10 @@ function asArray(payload: any): any[] {
 }
 
 export default function TimetableView() {
+  const { colors, spacing, radius } = useAdminTheme();
   const [entries, setEntries] = useState<TimetableEntryLike[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [classFilter, setClassFilter] = useState('all');
   const [pickerOpen, setPickerOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<TimetableEntryLike | null>(null);
@@ -35,11 +45,7 @@ export default function TimetableView() {
   const weekStart = useMemo(() => getWeekStart(), []);
   const weekRange = useMemo(() => formatWeekRange(weekStart), [weekStart]);
 
-  useEffect(() => {
-    loadTimetable();
-  }, []);
-
-  const loadTimetable = async () => {
+  const loadTimetable = useCallback(async () => {
     setLoading(true);
     try {
       const response = await api.get('/api/timetable');
@@ -49,8 +55,18 @@ export default function TimetableView() {
       setEntries([]);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadTimetable();
+  }, [loadTimetable]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadTimetable();
+  }, [loadTimetable]);
 
   const classOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -71,74 +87,86 @@ export default function TimetableView() {
     [filteredEntries]
   );
 
-  if (loading) {
-    return (
-      <View style={styles.loadingWrap}>
-        <ActivityIndicator size="large" color="#fb923c" />
-      </View>
-    );
+  if (loading && !refreshing) {
+    return <AdminSkeletonList count={3} />;
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <View style={styles.headerTop}>
-            <View style={styles.headerLeft}>
-              <View style={styles.headerIcon}>
-                <Ionicons name="calendar" size={22} color="#fff" />
+    <>
+      <AdminScreenShell refreshing={refreshing} onRefresh={onRefresh} noPadding>
+        <View style={{ padding: spacing.md }}>
+          <AdminGlassCard noAnimation>
+            <View style={styles.cardHeader}>
+              <View style={styles.headerTop}>
+                <View style={styles.headerLeft}>
+                  <View style={[styles.headerIcon, { backgroundColor: colors.primary }]}>
+                    <Ionicons name="calendar" size={22} color={colors.textInverse} />
+                  </View>
+                  <View style={styles.headerText}>
+                    <AdminSectionHeader
+                      title="Timetable"
+                      subtitle={`Monday – Saturday · ${weekRange}`}
+                    />
+                  </View>
+                </View>
+                <View style={[styles.sessionBadge, { backgroundColor: colors.primaryMuted, borderColor: colors.primary + '40' }]}>
+                  <Text style={[styles.sessionBadgeText, { color: colors.primary }]}>
+                    {sessionCount} {sessionCount === 1 ? 'session' : 'sessions'}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.headerText}>
-                <Text style={styles.title}>Timetable</Text>
-                <Text style={styles.subtitle}>
-                  Monday – Saturday · {weekRange}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.sessionBadge}>
-              <Text style={styles.sessionBadgeText}>
-                {sessionCount} {sessionCount === 1 ? 'session' : 'sessions'}
-              </Text>
-            </View>
-          </View>
 
-          {classOptions.length > 0 ? (
-            <Pressable style={styles.filterTrigger} onPress={() => setPickerOpen(true)}>
-              <Text style={styles.filterTriggerText} numberOfLines={1}>
-                {classFilter === 'all' ? 'All classes' : classFilter}
-              </Text>
-              <Ionicons name="chevron-down" size={16} color="#6b7280" />
-            </Pressable>
-          ) : null}
+              {classOptions.length > 0 ? (
+                <AdminScalePressable
+                  onPress={() => setPickerOpen(true)}
+                  style={[
+                    styles.filterTrigger,
+                    {
+                      borderColor: colors.surfaceBorder,
+                      backgroundColor: colors.bgElevated,
+                      borderRadius: radius.sm,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.filterTriggerText, { color: colors.text }]} numberOfLines={1}>
+                    {classFilter === 'all' ? 'All classes' : classFilter}
+                  </Text>
+                  <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
+                </AdminScalePressable>
+              ) : null}
+            </View>
+
+            {sessionCount === 0 ? (
+              <AdminEmptyState
+                icon="calendar-outline"
+                title="No timetable entries yet"
+                message="Add schedule entries from the web admin Timetable section to see them here."
+              />
+            ) : (
+              <View style={styles.gridWrap}>
+                <WeeklyTimetableGrid
+                  entries={filteredEntries}
+                  onEntryClick={(entry) => setSelectedSlot(entry)}
+                />
+              </View>
+            )}
+          </AdminGlassCard>
         </View>
-
-        {sessionCount === 0 ? (
-          <View style={styles.empty}>
-            <Ionicons name="calendar-outline" size={40} color="#d1d5db" />
-            <Text style={styles.emptyTitle}>No timetable entries yet</Text>
-            <Text style={styles.emptySub}>
-              Add schedule entries from the web admin Timetable section to see them here.
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.gridWrap}>
-            <WeeklyTimetableGrid
-              entries={filteredEntries}
-              onEntryClick={(entry) => setSelectedSlot(entry)}
-            />
-          </View>
-        )}
-      </View>
+      </AdminScreenShell>
 
       <Modal visible={pickerOpen} transparent animationType="fade">
-        <Pressable style={styles.pickerOverlay} onPress={() => setPickerOpen(false)}>
-          <View style={styles.pickerSheet}>
-            <Text style={styles.pickerTitle}>Filter by class</Text>
+        <Pressable style={[styles.pickerOverlay, { backgroundColor: colors.overlay }]} onPress={() => setPickerOpen(false)}>
+          <View style={[styles.pickerSheet, { backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]}>
+            <Text style={[styles.pickerTitle, { color: colors.text }]}>Filter by class</Text>
             <ScrollView style={{ maxHeight: 320 }}>
               {['all', ...classOptions].map((opt) => (
                 <Pressable
                   key={opt}
-                  style={[styles.pickerItem, classFilter === opt && styles.pickerItemActive]}
+                  style={[
+                    styles.pickerItem,
+                    { borderBottomColor: colors.surfaceBorder },
+                    classFilter === opt && { backgroundColor: colors.primaryMuted },
+                  ]}
                   onPress={() => {
                     setClassFilter(opt);
                     setPickerOpen(false);
@@ -147,13 +175,14 @@ export default function TimetableView() {
                   <Text
                     style={[
                       styles.pickerItemText,
+                      { color: classFilter === opt ? colors.primary : colors.textSecondary },
                       classFilter === opt && styles.pickerItemTextActive,
                     ]}
                   >
                     {opt === 'all' ? 'All classes' : opt}
                   </Text>
                   {classFilter === opt ? (
-                    <Ionicons name="checkmark" size={18} color="#ea580c" />
+                    <Ionicons name="checkmark" size={18} color={colors.primary} />
                   ) : null}
                 </Pressable>
               ))}
@@ -163,201 +192,84 @@ export default function TimetableView() {
       </Modal>
 
       <Modal visible={!!selectedSlot} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>
+        <View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
+          <View style={[styles.modalCard, { backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
               {selectedSlot?.subject ||
                 (selectedSlot ? teacherSlotLabel(selectedSlot) : '') ||
                 'Class Details'}
             </Text>
-            <Text style={styles.modalMeta}>
+            <Text style={[styles.modalMeta, { color: colors.textMuted }]}>
               {selectedSlot?.dayOfWeek || selectedSlot?.day} · {selectedSlot?.startTime} –{' '}
               {selectedSlot?.endTime}
             </Text>
             {selectedSlot ? (
-              <Text style={styles.modalMeta}>{teacherSlotLabel(selectedSlot)}</Text>
+              <Text style={[styles.modalMeta, { color: colors.textMuted }]}>
+                {teacherSlotLabel(selectedSlot)}
+              </Text>
             ) : null}
-            <Pressable style={styles.modalClose} onPress={() => setSelectedSlot(null)}>
-              <Text style={styles.modalCloseText}>Close</Text>
-            </Pressable>
+            <AdminScalePressable onPress={() => setSelectedSlot(null)} style={styles.modalClose}>
+              <Text style={[styles.modalCloseText, { color: colors.textSecondary }]}>Close</Text>
+            </AdminScalePressable>
           </View>
         </View>
       </Modal>
-    </ScrollView>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollContent: {
-    paddingBottom: 32,
-  },
-  loadingWrap: {
-    minHeight: 240,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    overflow: 'hidden',
-  },
-  cardHeader: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    gap: 12,
-  },
+  cardHeader: { padding: 16, gap: 12 },
   headerTop: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: 12,
   },
-  headerLeft: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
+  headerLeft: { flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   headerIcon: {
     width: 44,
     height: 44,
-    borderRadius: 12,
-    backgroundColor: '#fb923c',
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 4,
   },
   headerText: { flex: 1 },
-  title: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  subtitle: {
-    fontSize: 13,
-    color: '#6b7280',
-    marginTop: 2,
-  },
   sessionBadge: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#fed7aa',
-    backgroundColor: '#fff7ed',
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  sessionBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#ea580c',
-  },
+  sessionBadgeText: { fontSize: 12, fontWeight: '700' },
   filterTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#f9fafb',
     paddingHorizontal: 14,
     paddingVertical: 12,
     maxWidth: 280,
   },
-  filterTriggerText: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-    marginRight: 8,
-  },
-  gridWrap: {
-    padding: 12,
-  },
-  empty: {
-    alignItems: 'center',
-    paddingVertical: 48,
-    paddingHorizontal: 24,
-  },
-  emptyTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#111827',
-    marginTop: 12,
-  },
-  emptySub: {
-    fontSize: 12,
-    color: '#6b7280',
-    textAlign: 'center',
-    marginTop: 6,
-    lineHeight: 18,
-  },
-  pickerOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    justifyContent: 'flex-end',
-  },
-  pickerSheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    paddingBottom: 32,
-  },
-  pickerTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#111827',
-    marginBottom: 12,
-  },
+  filterTriggerText: { flex: 1, fontSize: 14, fontWeight: '600', marginRight: 8 },
+  gridWrap: { padding: 12 },
+  pickerOverlay: { flex: 1, justifyContent: 'flex-end' },
+  pickerSheet: { padding: 20, paddingBottom: 32 },
+  pickerTitle: { fontSize: 16, fontWeight: '800', marginBottom: 12 },
   pickerItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
   },
-  pickerItemActive: {
-    backgroundColor: '#fff7ed',
-  },
-  pickerItemText: {
-    fontSize: 15,
-    color: '#6b7280',
-  },
-  pickerItemTextActive: {
-    fontWeight: '700',
-    color: '#ea580c',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    justifyContent: 'flex-end',
-  },
-  modalCard: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  modalMeta: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 6,
-  },
-  modalClose: {
-    alignItems: 'center',
-    marginTop: 20,
-    paddingVertical: 12,
-  },
-  modalCloseText: {
-    color: '#6b7280',
-    fontWeight: '600',
-  },
+  pickerItemText: { fontSize: 15 },
+  pickerItemTextActive: { fontWeight: '700' },
+  modalOverlay: { flex: 1, justifyContent: 'flex-end' },
+  modalCard: { padding: 24 },
+  modalTitle: { fontSize: 18, fontWeight: '800' },
+  modalMeta: { fontSize: 14, marginTop: 6 },
+  modalClose: { alignItems: 'center', marginTop: 20, paddingVertical: 12 },
+  modalCloseText: { fontWeight: '600' },
 });

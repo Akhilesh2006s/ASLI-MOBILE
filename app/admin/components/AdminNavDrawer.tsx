@@ -10,20 +10,26 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAdminTheme } from '../ui/useAdminTheme';
 
 export type AdminNavView =
   | 'overview'
+  | 'analytics'
   | 'students'
   | 'classes'
   | 'teachers'
   | 'subjects'
   | 'exams'
+  | 'assessments'
+  | 'quizzes'
   | 'learning-paths'
   | 'eduott'
+  | 'videos'
   | 'timetable'
   | 'calendar'
+  | 'school-management'
   | 'vidya-ai';
 
 type NavItem = {
@@ -69,26 +75,34 @@ export default function AdminNavDrawer({
 }: Props) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  const { colors } = useAdminTheme();
   const drawerWidth = Math.min(width * 0.82, 320);
   const translateX = useSharedValue(-drawerWidth);
+  const backdropOpacity = useSharedValue(0);
 
   useEffect(() => {
-    translateX.value = withTiming(visible ? 0 : -drawerWidth, { duration: 260 });
-  }, [visible, drawerWidth, translateX]);
+    translateX.value = withSpring(visible ? 0 : -drawerWidth, { damping: 20, stiffness: 240 });
+    backdropOpacity.value = withTiming(visible ? 1 : 0, { duration: 260 });
+  }, [visible, drawerWidth, translateX, backdropOpacity]);
 
   const drawerStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
   }));
 
+  const backdropStyle = useAnimatedStyle(() => ({
+    opacity: backdropOpacity.value,
+  }));
+
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       <View style={styles.root}>
-        <Pressable style={styles.backdrop} onPress={onClose} />
+        <Animated.View style={[styles.backdrop, backdropStyle]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        </Animated.View>
+
         <Animated.View style={[styles.drawer, { width: drawerWidth, paddingTop: insets.top }, drawerStyle]}>
-          <LinearGradient
-            colors={['#fb923c', '#f97316']}
-            style={StyleSheet.absoluteFill}
-          />
+          <LinearGradient colors={[...colors.drawerGradient]} style={StyleSheet.absoluteFill} />
+
           <View style={styles.logoSection}>
             <View style={styles.logoBadge}>
               <Text style={styles.logoBadgeText}>AS</Text>
@@ -115,9 +129,15 @@ export default function AdminNavDrawer({
                   <Ionicons
                     name={item.icon}
                     size={20}
-                    color={isActive ? '#ea580c' : '#fff'}
+                    color={isActive ? colors.navActiveColor : '#fff'}
                   />
-                  <Text style={[styles.navLabel, isActive && styles.navLabelActive]} numberOfLines={1}>
+                  <Text
+                    style={[
+                      styles.navLabel,
+                      isActive && [styles.navLabelActive, { color: colors.navActiveColor }],
+                    ]}
+                    numberOfLines={1}
+                  >
                     {item.label}
                   </Text>
                 </Pressable>
@@ -234,7 +254,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   navLabelActive: {
-    color: '#ea580c',
     fontWeight: '700',
   },
   footer: {

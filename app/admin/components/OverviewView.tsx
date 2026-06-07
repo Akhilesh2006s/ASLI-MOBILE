@@ -1,18 +1,31 @@
-import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  RefreshControl,
+  useWindowDimensions,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInUp } from 'react-native-reanimated';
 import api from '../../../src/services/api/api';
+import type { AdminNavView } from './AdminNavDrawer';
+import {
+  AdminScalePressable,
+  AdminSkeletonStats,
+  AdminAnimatedProgress,
+  useAdminTheme,
+} from '../ui';
+import { ADMIN_SHADOW } from '../../../src/theme/admin';
 
 interface Stats {
   totalStudents: number;
   totalTeachers: number;
   totalClasses: number;
-  totalVideos: number;
-  totalQuizzes: number;
-  totalAssessments: number;
   activeUsers: number;
-  totalContent: number;
 }
 
 interface StudentAnalytics {
@@ -25,64 +38,133 @@ interface StudentAnalytics {
   subjectPerformance: Array<{ subject?: string; name?: string; averageScore: number }>;
 }
 
-export default function OverviewView() {
+type Props = {
+  onNavigate?: (view: AdminNavView) => void;
+};
+
+function StatCard({
+  label,
+  value,
+  icon,
+  gradient,
+  delay = 0,
+  loading,
+}: {
+  label: string;
+  value: string | number;
+  icon: keyof typeof Ionicons.glyphMap;
+  gradient: readonly [string, string];
+  delay?: number;
+  loading?: boolean;
+}) {
+  const { radius } = useAdminTheme();
+
+  return (
+    <Animated.View
+      entering={FadeInUp.delay(delay).duration(450).springify()}
+      style={[styles.statCard, { borderRadius: radius.lg }, ADMIN_SHADOW.md]}
+    >
+      <LinearGradient
+        colors={[...gradient]}
+        style={[styles.statGradient, { borderRadius: radius.lg }]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={styles.statIconWrap}>
+          <Ionicons name={icon} size={24} color="#fff" />
+        </View>
+        <View style={styles.statTextWrap}>
+          <Text style={styles.statLabel}>{label}</Text>
+          <Text style={styles.statValue}>{loading ? '—' : value}</Text>
+        </View>
+      </LinearGradient>
+    </Animated.View>
+  );
+}
+
+function AnalysisPanel({
+  title,
+  icon,
+  iconColor,
+  children,
+}: {
+  title: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  iconColor: string;
+  children: React.ReactNode;
+}) {
+  const { colors, radius } = useAdminTheme();
+
+  return (
+    <View
+      style={[
+        styles.panel,
+        {
+          backgroundColor: colors.surface,
+          borderRadius: radius.md,
+          borderColor: colors.surfaceBorder,
+        },
+        ADMIN_SHADOW.sm,
+      ]}
+    >
+      <View style={styles.panelHeader}>
+        <View style={[styles.panelIcon, { backgroundColor: `${iconColor}18` }]}>
+          <Ionicons name={icon} size={16} color={iconColor} />
+        </View>
+        <Text style={[styles.panelTitle, { color: colors.text }]}>{title}</Text>
+      </View>
+      {children}
+    </View>
+  );
+}
+
+export default function OverviewView({ onNavigate }: Props) {
+  const { colors, spacing, radius } = useAdminTheme();
+  const { width } = useWindowDimensions();
+  const isWide = width >= 680;
+
   const [stats, setStats] = useState<Stats>({
     totalStudents: 0,
     totalTeachers: 0,
     totalClasses: 0,
-    totalVideos: 0,
-    totalQuizzes: 0,
-    totalAssessments: 0,
     activeUsers: 0,
-    totalContent: 0,
   });
   const [studentAnalytics, setStudentAnalytics] = useState<StudentAnalytics>({
     classDistribution: [],
-    performanceMetrics: {
-      averageScore: 0,
-      totalExamsTaken: 0,
-      topPerformers: [],
-    },
+    performanceMetrics: { averageScore: 0, totalExamsTaken: 0, topPerformers: [] },
     subjectPerformance: [],
   });
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    fetchAdminStats();
-    fetchStudentAnalytics();
-  }, []);
-
-  const fetchAdminStats = async () => {
+  const fetchAdminStats = useCallback(async () => {
     try {
-      setIsLoadingStats(true);
       const response = await api.get('/api/admin/dashboard/stats');
       const payload = response?.data?.data || response?.data || {};
       setStats({
         totalStudents: payload.totalStudents || 0,
         totalTeachers: payload.totalTeachers || 0,
         totalClasses: payload.totalClasses || 0,
-        totalVideos: payload.totalVideos || 0,
-        totalQuizzes: payload.totalQuizzes || 0,
-        totalAssessments: payload.totalAssessments || 0,
         activeUsers: payload.activeUsers || 0,
-        totalContent: payload.totalContent || 0,
       });
     } catch (error) {
       console.error('Failed to fetch admin stats:', error);
-    } finally {
-      setIsLoadingStats(false);
     }
-  };
+  }, []);
 
-  const fetchStudentAnalytics = async () => {
+  const fetchStudentAnalytics = useCallback(async () => {
     try {
       setIsLoadingAnalytics(true);
       const response = await api.get('/api/admin/students/analytics');
       const payload = response?.data?.data || response?.data || {};
       setStudentAnalytics({
         classDistribution: payload.classDistribution || [],
-        performanceMetrics: payload.performanceMetrics || { averageScore: 0, totalExamsTaken: 0, topPerformers: [] },
+        performanceMetrics: payload.performanceMetrics || {
+          averageScore: 0,
+          totalExamsTaken: 0,
+          topPerformers: [],
+        },
         subjectPerformance: payload.subjectPerformance || [],
       });
     } catch (error) {
@@ -90,589 +172,440 @@ export default function OverviewView() {
     } finally {
       setIsLoadingAnalytics(false);
     }
+  }, []);
+
+  const loadAll = useCallback(async () => {
+    setIsLoadingStats(true);
+    await Promise.all([fetchAdminStats(), fetchStudentAnalytics()]);
+    setIsLoadingStats(false);
+  }, [fetchAdminStats, fetchStudentAnalytics]);
+
+  useEffect(() => {
+    loadAll();
+  }, [loadAll]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadAll();
+    setRefreshing(false);
   };
 
   const topClassDistribution = studentAnalytics.classDistribution?.slice(0, 5) || [];
   const topSubjectPerformance = studentAnalytics.subjectPerformance?.slice(0, 4) || [];
+  const statGradients = colors.statGradients;
+
+  if (isLoadingStats && !refreshing) {
+    return <AdminSkeletonStats />;
+  }
 
   return (
-    <ScrollView 
-      style={styles.container} 
-      contentContainerStyle={styles.contentContainer}
-      showsVerticalScrollIndicator={true}
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={{ padding: spacing.md, paddingBottom: 32, gap: spacing.md }}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+      }
     >
-      {/* Stats Cards */}
+      {/* Stat cards */}
       <View style={styles.statsGrid}>
-        {/* Total Students */}
-        <View style={styles.statCard}>
-          <LinearGradient
-            colors={['#fdba74', '#fb923c']}
-            style={styles.statCardGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-          >
-            <View style={styles.statCardContent}>
-              <View style={styles.statCardIcon}>
-                <Ionicons name="people" size={22} color="#fff" />
-              </View>
-              <View style={styles.statCardText}>
-                <Text style={styles.statCardLabel}>Total Students</Text>
-                <Text style={styles.statCardValue}>
-                  {isLoadingStats ? '...' : stats.totalStudents}
-                </Text>
-              </View>
-            </View>
-          </LinearGradient>
-        </View>
-
-        {/* Active Classes */}
-        <View style={styles.statCard}>
-          <LinearGradient
-            colors={['#7dd3fc', '#38bdf8']}
-            style={styles.statCardGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={styles.statCardContent}>
-              <View style={styles.statCardIcon}>
-                <Ionicons name="school" size={26} color="#fff" />
-              </View>
-              <View style={styles.statCardText}>
-                <Text style={styles.statCardLabel}>Active Classes</Text>
-                <Text style={styles.statCardValue}>
-                  {isLoadingStats ? '...' : stats.totalClasses}
-                </Text>
-              </View>
-            </View>
-          </LinearGradient>
-        </View>
-
-        {/* Active Users */}
-        <View style={styles.statCard}>
-          <LinearGradient
-            colors={['#2dd4bf', '#14b8a6']}
-            style={styles.statCardGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={styles.statCardContent}>
-              <View style={styles.statCardIcon}>
-                <Ionicons name="pulse" size={22} color="#fff" />
-              </View>
-              <View style={styles.statCardText}>
-                <Text style={styles.statCardLabel}>Active Users</Text>
-                <Text style={styles.statCardValue}>
-                  {isLoadingStats ? '...' : stats.activeUsers}
-                </Text>
-              </View>
-            </View>
-          </LinearGradient>
-        </View>
-
-        {/* Teachers */}
-        <View style={styles.statCard}>
-          <LinearGradient
-            colors={['#fdba74', '#fb923c']}
-            style={styles.statCardGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-          >
-            <View style={styles.statCardContent}>
-              <View style={styles.statCardIcon}>
-                <Ionicons name="people" size={22} color="#fff" />
-              </View>
-              <View style={styles.statCardText}>
-                <Text style={styles.statCardLabel}>Teachers</Text>
-                <Text style={styles.statCardValue}>
-                  {isLoadingStats ? '...' : (stats.totalTeachers || 0)}
-                </Text>
-              </View>
-            </View>
-          </LinearGradient>
-        </View>
-
-        {/* Videos */}
-        <View style={styles.statCard}>
-          <LinearGradient
-            colors={['#7dd3fc', '#38bdf8']}
-            style={styles.statCardGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={styles.statCardContent}>
-              <View style={styles.statCardIcon}>
-                <Ionicons name="play" size={22} color="#fff" />
-              </View>
-              <View style={styles.statCardText}>
-                <Text style={styles.statCardLabel}>Videos</Text>
-                <Text style={styles.statCardValue}>
-                  {isLoadingStats ? '...' : (stats.totalVideos || 0)}
-                </Text>
-              </View>
-            </View>
-          </LinearGradient>
-        </View>
-
-        {/* Assessments */}
-        <View style={styles.statCard}>
-          <LinearGradient
-            colors={['#2dd4bf', '#14b8a6']}
-            style={styles.statCardGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={styles.statCardContent}>
-              <View style={styles.statCardIcon}>
-                <Ionicons name="locate" size={26} color="#fff" />
-              </View>
-              <View style={styles.statCardText}>
-                <Text style={styles.statCardLabel}>Assessments</Text>
-                <Text style={styles.statCardValue}>
-                  {isLoadingStats ? '...' : (stats.totalAssessments || 0)}
-                </Text>
-              </View>
-            </View>
-          </LinearGradient>
-        </View>
+        <StatCard
+          label="Total Students"
+          value={stats.totalStudents}
+          icon="people"
+          gradient={statGradients[0]}
+          delay={0}
+        />
+        <StatCard
+          label="Active Classes"
+          value={stats.totalClasses}
+          icon="school"
+          gradient={statGradients[1]}
+          delay={60}
+        />
+        <StatCard
+          label="Active Users"
+          value={stats.activeUsers}
+          icon="pulse"
+          gradient={statGradients[2]}
+          delay={120}
+        />
+        <StatCard
+          label="Teachers"
+          value={stats.totalTeachers}
+          icon="person"
+          gradient={statGradients[3]}
+          delay={180}
+        />
       </View>
 
-      {/* Detailed School Analysis */}
-      <LinearGradient
-        colors={['#f8fafc', '#f1f5f9']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.analysisCard}
-      >
-        <View style={styles.analysisHeader}>
-          <LinearGradient
-            colors={['#fb923c', '#f97316']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.analysisIcon}
-          >
-            <Ionicons name="bar-chart" size={26} color="#fff" />
-          </LinearGradient>
-          <View>
-            <Text style={styles.analysisTitle}>Detailed School Analysis</Text>
-            <Text style={styles.analysisSubtitle}>Comprehensive insights about your students</Text>
+      {/* School analysis */}
+      <Animated.View entering={FadeInUp.delay(200).duration(500)}>
+        <View
+          style={[
+            styles.analysisWrap,
+            {
+              backgroundColor: colors.surface,
+              borderRadius: radius.xl,
+              borderColor: colors.surfaceBorder,
+            },
+            ADMIN_SHADOW.md,
+          ]}
+        >
+          <View style={styles.analysisHeader}>
+            <LinearGradient
+              colors={[...colors.fabGradient]}
+              style={[styles.analysisIconBox, { borderRadius: radius.md }]}
+            >
+              <Ionicons name="bar-chart" size={22} color="#fff" />
+            </LinearGradient>
+            <View style={styles.analysisHeaderText}>
+              <Text style={[styles.analysisTitle, { color: colors.primary }]}>Detailed School Analysis</Text>
+              <Text style={[styles.analysisSubtitle, { color: colors.textMuted }]}>
+                Comprehensive insights about your students
+              </Text>
+            </View>
           </View>
-        </View>
 
-        {isLoadingAnalytics ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color="#fb923c" />
-          </View>
-        ) : (
-          <View style={styles.analysisContent}>
-            {/* Class Distribution */}
-            <View style={styles.analysisSection}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="school" size={17} color="#fb923c" />
-                <Text style={styles.sectionTitle}>Class Distribution</Text>
-              </View>
-              <View style={styles.sectionContent}>
+          {isLoadingAnalytics ? (
+            <ActivityIndicator size="small" color={colors.primary} style={{ padding: 24 }} />
+          ) : (
+            <View style={[styles.panelsRow, isWide && styles.panelsRowWide]}>
+              <AnalysisPanel title="Class Distribution" icon="school" iconColor={colors.primary}>
                 {topClassDistribution.length > 0 ? (
                   topClassDistribution.map((item, idx) => (
-                    <View key={idx} style={styles.distributionItem}>
-                      <Text style={styles.distributionLabel}>
+                    <View
+                      key={idx}
+                      style={[
+                        styles.rowItem,
+                        idx < topClassDistribution.length - 1 && {
+                          borderBottomWidth: 1,
+                          borderBottomColor: colors.surfaceBorder,
+                        },
+                      ]}
+                    >
+                      <Text style={[styles.rowLabel, { color: colors.textSecondary }]}>
                         {item.className || item.class || 'Unknown'}
                       </Text>
-                      <Text style={styles.distributionValue}>{item.count || 0} students</Text>
+                      <View style={[styles.countBadge, { backgroundColor: colors.primaryMuted }]}>
+                        <Text style={[styles.countText, { color: colors.primary }]}>{item.count || 0}</Text>
+                      </View>
                     </View>
                   ))
                 ) : (
-                  <Text style={styles.emptyText}>No class data available</Text>
+                  <Text style={[styles.empty, { color: colors.textMuted }]}>No class data</Text>
                 )}
-              </View>
-            </View>
+              </AnalysisPanel>
 
-            {/* Performance Metrics */}
-            <View style={styles.analysisSection}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="trending-up" size={17} color="#10b981" />
-                <Text style={styles.sectionTitle}>Performance Metrics</Text>
-              </View>
-              <View style={styles.sectionContent}>
-                <View style={styles.metricItem}>
-                  <Text style={styles.metricLabel}>Average Score</Text>
-                  <Text style={styles.metricValue}>
+              <AnalysisPanel title="Performance Metrics" icon="trending-up" iconColor={colors.success}>
+                <View style={styles.rowItem}>
+                  <Text style={[styles.rowLabel, { color: colors.textMuted }]}>Average Score</Text>
+                  <Text style={[styles.metricHighlight, { color: colors.success }]}>
                     {studentAnalytics.performanceMetrics?.averageScore || 0}%
                   </Text>
                 </View>
-                <View style={styles.metricItem}>
-                  <Text style={styles.metricLabel}>Total Exams Taken</Text>
-                  <Text style={styles.metricValue}>
+                <View style={styles.rowItem}>
+                  <Text style={[styles.rowLabel, { color: colors.textMuted }]}>Total Exams Taken</Text>
+                  <Text style={[styles.metricHighlight, { color: colors.primary }]}>
                     {studentAnalytics.performanceMetrics?.totalExamsTaken || 0}
                   </Text>
                 </View>
-                {studentAnalytics.performanceMetrics?.topPerformers &&
-                  studentAnalytics.performanceMetrics.topPerformers.length > 0 && (
-                    <View style={styles.topPerformer}>
-                      <Text style={styles.topPerformerLabel}>Top Performer</Text>
-                      <Text style={styles.topPerformerName}>
-                        {studentAnalytics.performanceMetrics.topPerformers[0]?.studentName || 'N/A'}
-                      </Text>
-                      <Text style={styles.topPerformerScore}>
-                        {studentAnalytics.performanceMetrics.topPerformers[0]?.averageScore || 0}% avg
-                      </Text>
-                    </View>
-                  )}
-              </View>
-            </View>
+                {studentAnalytics.performanceMetrics?.topPerformers?.[0] ? (
+                  <View style={[styles.topBox, { backgroundColor: colors.bg, borderRadius: radius.sm }]}>
+                    <Text style={[styles.topLabel, { color: colors.textMuted }]}>Top Performer</Text>
+                    <Text style={[styles.topName, { color: colors.text }]}>
+                      {studentAnalytics.performanceMetrics.topPerformers[0].studentName}
+                    </Text>
+                    <Text style={[styles.topScore, { color: colors.textSecondary }]}>
+                      {studentAnalytics.performanceMetrics.topPerformers[0].averageScore}% avg
+                    </Text>
+                  </View>
+                ) : null}
+              </AnalysisPanel>
 
-            {/* Subject Performance */}
-            <View style={styles.analysisSection}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="book" size={17} color="#fb923c" />
-                <Text style={styles.sectionTitle}>Subject Performance</Text>
-              </View>
-              <View style={styles.sectionContent}>
+              <AnalysisPanel title="Subject Performance" icon="book" iconColor={colors.primary}>
                 {topSubjectPerformance.length > 0 ? (
                   topSubjectPerformance.map((subject, idx) => (
-                    <View key={idx} style={styles.subjectItem}>
-                      <View style={styles.subjectInfo}>
-                        <Text style={styles.subjectName}>
-                          {(subject.subject || subject.name || 'Unknown').toUpperCase()}
-                        </Text>
-                        <Text style={styles.subjectScore}>
-                          {subject.averageScore || 0}%
-                        </Text>
-                      </View>
-                      <View style={styles.progressBar}>
-                        <View
-                          style={[
-                            styles.progressFill,
-                            {
-                              width: `${Math.min(subject.averageScore || 0, 100)}%`,
-                            }
-                          ]}
-                        />
-                      </View>
-                    </View>
+                    <AdminAnimatedProgress
+                      key={idx}
+                      label={(subject.subject || subject.name || 'Unknown').toUpperCase()}
+                      value={subject.averageScore || 0}
+                      color={colors.primary}
+                      height={6}
+                    />
                   ))
                 ) : (
-                  <Text style={styles.emptyText}>No subject data available</Text>
+                  <Text style={[styles.empty, { color: colors.textMuted }]}>No subject data</Text>
                 )}
-              </View>
+              </AnalysisPanel>
             </View>
-          </View>
-        )}
-      </LinearGradient>
+          )}
+        </View>
+      </Animated.View>
 
-      {/* Admin-Specific Data */}
-      <View style={styles.adminCards}>
-        <View style={styles.adminCard}>
+      {/* Assigned cards */}
+      <View style={[styles.assignRow, isWide && styles.assignRowWide]}>
+        <AdminScalePressable
+          onPress={() => onNavigate?.('students')}
+          style={[styles.assignCard, ADMIN_SHADOW.lg]}
+        >
           <LinearGradient
-            colors={['#7dd3fc', '#38bdf8']}
-            style={styles.adminCardGradient}
+            colors={[...statGradients[1]]}
+            style={[styles.assignGradient, { borderRadius: radius.xl }]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
-            <View style={styles.adminCardContent}>
-              <View style={styles.adminCardIcon}>
-                <Ionicons name="people" size={22} color="#fff" />
-              </View>
-              <View>
-                <Text style={styles.adminCardLabel}>Total Students Assigned</Text>
-                <Text style={styles.adminCardValue}>
-                  {isLoadingStats ? '...' : stats.totalStudents}
-                </Text>
-                <Text style={styles.adminCardSubtext}>
-                  These are the students specifically assigned to your admin account
-                </Text>
-              </View>
+            <View style={styles.assignIcon}>
+              <Ionicons name="people" size={26} color="#fff" />
+            </View>
+            <Text style={styles.assignHeading}>Your Students</Text>
+            <Text style={styles.assignSub}>Total Students Assigned</Text>
+            <Text style={styles.assignValue}>{stats.totalStudents}</Text>
+            <Text style={styles.assignDesc}>
+              Students specifically assigned to your admin account
+            </Text>
+            <View style={styles.assignCta}>
+              <Text style={styles.assignCtaText}>View details</Text>
+              <Ionicons name="arrow-forward" size={14} color="#fff" />
             </View>
           </LinearGradient>
-        </View>
+        </AdminScalePressable>
 
-        <View style={styles.adminCard}>
+        <AdminScalePressable
+          onPress={() => onNavigate?.('teachers')}
+          style={[styles.assignCard, ADMIN_SHADOW.lg]}
+        >
           <LinearGradient
-            colors={['#10b981', '#059669']}
-            style={styles.adminCardGradient}
+            colors={[...statGradients[4]]}
+            style={[styles.assignGradient, { borderRadius: radius.xl }]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
-            <View style={styles.adminCardContent}>
-              <View style={styles.adminCardIcon}>
-                <Ionicons name="school" size={26} color="#fff" />
-              </View>
-              <View>
-                <Text style={styles.adminCardLabel}>Total Teachers Assigned</Text>
-                <Text style={styles.adminCardValue}>
-                  {isLoadingStats ? '...' : (stats.totalTeachers || 0)}
-                </Text>
-                <Text style={styles.adminCardSubtext}>
-                  These are the teachers specifically assigned to your admin account
-                </Text>
-              </View>
+            <View style={styles.assignIcon}>
+              <Ionicons name="school" size={26} color="#fff" />
+            </View>
+            <Text style={styles.assignHeading}>Your Teachers</Text>
+            <Text style={styles.assignSub}>Total Teachers Assigned</Text>
+            <Text style={styles.assignValue}>{stats.totalTeachers}</Text>
+            <Text style={styles.assignDesc}>
+              Teachers specifically assigned to your admin account
+            </Text>
+            <View style={styles.assignCta}>
+              <Text style={styles.assignCtaText}>View details</Text>
+              <Ionicons name="arrow-forward" size={14} color="#fff" />
             </View>
           </LinearGradient>
-        </View>
+        </AdminScalePressable>
       </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    minHeight: 0,
-  },
-  contentContainer: {
-    paddingHorizontal: 10,
-    paddingTop: 8,
-    paddingBottom: 14,
-  },
+  container: { flex: 1, minHeight: 0 },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 14,
+    gap: 10,
   },
   statCard: {
     flex: 1,
-    minWidth: '47%',
-    borderRadius: 12,
+    minWidth: '46%',
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 4,
   },
-  statCardGradient: {
-    padding: 11,
-    minHeight: 82,
-  },
-  statCardContent: {
+  statGradient: {
+    padding: 16,
+    minHeight: 88,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 12,
   },
-  statCardIcon: {
-    width: 40,
-    height: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 10,
+  statIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
   },
-  statCardText: {
-    flex: 1,
-    alignItems: 'flex-end',
+  statTextWrap: { flex: 1 },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.9)',
+    letterSpacing: 0.2,
   },
-  statCardLabel: {
-    fontSize: 10,
-    color: '#fff',
-    opacity: 0.9,
-    marginBottom: 2,
-  },
-  statCardValue: {
-    fontSize: 22,
+  statValue: {
+    fontSize: 26,
     fontWeight: '800',
     color: '#fff',
+    letterSpacing: -0.5,
+    marginTop: 2,
   },
-  analysisCard: {
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+  analysisWrap: {
+    padding: 18,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
     overflow: 'hidden',
   },
   analysisHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
+    gap: 12,
+    marginBottom: 16,
   },
-  analysisIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    justifyContent: 'center',
+  analysisIconBox: {
+    width: 44,
+    height: 44,
     alignItems: 'center',
-    overflow: 'hidden',
+    justifyContent: 'center',
   },
+  analysisHeaderText: { flex: 1 },
   analysisTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '800',
-    color: '#fb923c',
+    letterSpacing: -0.3,
   },
   analysisSubtitle: {
-    fontSize: 11,
-    color: '#64748b',
+    fontSize: 13,
+    marginTop: 2,
+    lineHeight: 18,
   },
-  loadingContainer: {
-    padding: 22,
+  panelsRow: { gap: 10 },
+  panelsRowWide: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  panel: {
+    flex: 1,
+    minWidth: 200,
+    padding: 14,
+    borderWidth: 1,
+    gap: 8,
+  },
+  panelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  panelIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  panelTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  rowItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  rowLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    flex: 1,
+  },
+  countBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    minWidth: 36,
     alignItems: 'center',
   },
-  analysisContent: {
-    gap: 12,
+  countText: {
+    fontSize: 13,
+    fontWeight: '800',
   },
-  analysisSection: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 11,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+  metricHighlight: {
+    fontSize: 16,
+    fontWeight: '800',
   },
-  sectionHeader: {
+  topBox: {
+    padding: 10,
+    marginTop: 4,
+    gap: 2,
+  },
+  topLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  topName: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  topScore: {
+    fontSize: 12,
+  },
+  empty: {
+    fontSize: 12,
+    textAlign: 'center',
+    paddingVertical: 12,
+  },
+  assignRow: { gap: 12 },
+  assignRowWide: {
+    flexDirection: 'row',
+  },
+  assignCard: {
+    flex: 1,
+    minWidth: 280,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  assignGradient: {
+    padding: 20,
+  },
+  assignIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  assignHeading: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  assignSub: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.88)',
+    marginTop: 2,
+  },
+  assignValue: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -1,
+    marginVertical: 6,
+  },
+  assignDesc: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.85)',
+    lineHeight: 17,
+    marginBottom: 14,
+  },
+  assignCta: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginBottom: 8,
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
   },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  sectionContent: {
-    gap: 8,
-  },
-  distributionItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  distributionLabel: {
-    fontSize: 12,
-    color: '#374151',
-  },
-  distributionValue: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#fb923c',
-  },
-  metricItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  metricLabel: {
-    fontSize: 12,
-    color: '#64748b',
-  },
-  metricValue: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#10b981',
-  },
-  topPerformer: {
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-  },
-  topPerformerLabel: {
-    fontSize: 10,
-    color: '#9ca3af',
-    marginBottom: 2,
-  },
-  topPerformerName: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 2,
-  },
-  topPerformerScore: {
-    fontSize: 11,
-    color: '#64748b',
-  },
-  subjectItem: {
-    marginBottom: 8,
-  },
-  subjectInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  subjectName: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  subjectScore: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#fb923c',
-  },
-  progressBar: {
-    height: 6,
-    backgroundColor: '#e5e7eb',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#fb923c',
-    borderRadius: 3,
-  },
-  emptyText: {
-    fontSize: 12,
-    color: '#9ca3af',
-    textAlign: 'center',
-    padding: 12,
-  },
-  adminCards: {
-    gap: 10,
-  },
-  adminCard: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  adminCardGradient: {
-    padding: 14,
-  },
-  adminCardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  adminCardIcon: {
-    width: 46,
-    height: 46,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  adminCardLabel: {
-    fontSize: 12,
+  assignCtaText: {
     color: '#fff',
-    opacity: 0.9,
-    marginBottom: 4,
-  },
-  adminCardValue: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  adminCardSubtext: {
-    fontSize: 10,
-    color: '#fff',
-    opacity: 0.8,
-    lineHeight: 14,
+    fontSize: 12,
+    fontWeight: '700',
   },
 });
-
-
-
-

@@ -5,13 +5,15 @@ import {
   StyleSheet,
   Modal,
   ScrollView,
-  TouchableOpacity,
   ActivityIndicator,
   Pressable,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Animated, { SlideInDown } from 'react-native-reanimated';
 import { SvgIconBookMarked, SvgIconClose } from './TeachersCardIcons';
 import api from '../../../src/services/api/api';
+import { useAdminTheme } from '../ui/useAdminTheme';
+import AdminScalePressable from '../ui/AdminScalePressable';
 
 export type AssignedClassOption = {
   id: string;
@@ -105,6 +107,7 @@ export default function AdminTeacherDailyModal({
   teacherName,
   assignedClasses = [],
 }: Props) {
+  const { colors, radius } = useAdminTheme();
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
@@ -155,37 +158,62 @@ export default function AdminTeacherDailyModal({
   }, [visible, teacherId, load]);
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.sheet}>
-          <View style={styles.header}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={[styles.overlay, { backgroundColor: colors.overlay }]}>
+        <Animated.View
+          entering={SlideInDown.springify().damping(20)}
+          style={[
+            styles.sheet,
+            {
+              backgroundColor: colors.surface,
+              borderTopLeftRadius: radius.xl,
+              borderTopRightRadius: radius.xl,
+            },
+          ]}
+        >
+          <View style={[styles.handle, { backgroundColor: colors.bgElevated }]} />
+          <View style={[styles.header, { borderBottomColor: colors.surfaceBorder }]}>
             <View style={styles.headerLeft}>
-              <View style={styles.headerIconWrap}>
+              <View style={[styles.headerIconWrap, { backgroundColor: colors.primary, borderRadius: radius.sm }]}>
                 <SvgIconBookMarked size={18} color="#fff" />
               </View>
               <View style={styles.headerTextWrap}>
-                <Text style={styles.title} numberOfLines={1}>
+                <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
                   Daily — {teacherName}
                 </Text>
-                <Text style={styles.subtitle}>Class updates logged by this teacher (newest first).</Text>
+                <Text style={[styles.subtitle, { color: colors.textMuted }]}>
+                  Class updates logged by this teacher (newest first).
+                </Text>
               </View>
             </View>
-            <TouchableOpacity onPress={onClose} hitSlop={12}>
-              <SvgIconClose size={22} color="#64748b" />
-            </TouchableOpacity>
+            <AdminScalePressable onPress={onClose}>
+              <SvgIconClose size={22} color={colors.textMuted} />
+            </AdminScalePressable>
           </View>
 
           {assignedClasses.length > 0 ? (
-            <View style={styles.filterSection}>
-              <MaterialCommunityIcons name="school-outline" size={16} color="#4338ca" />
-              <Text style={styles.filterLabel}>Assigned:</Text>
+            <View style={[styles.filterSection, { borderBottomColor: colors.surfaceBorder }]}>
+              <MaterialCommunityIcons name="school-outline" size={16} color={colors.primary} />
+              <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>Assigned:</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View style={styles.filterChips}>
                   <Pressable
-                    style={[styles.chip, selectedClassId === null && styles.chipActive]}
+                    style={[
+                      styles.chip,
+                      {
+                        borderColor: colors.primaryMuted,
+                        backgroundColor: selectedClassId === null ? colors.primary : colors.primaryMuted,
+                        borderRadius: radius.sm,
+                      },
+                    ]}
                     onPress={() => setSelectedClassId(null)}
                   >
-                    <Text style={[styles.chipText, selectedClassId === null && styles.chipTextActive]}>
+                    <Text
+                      style={[
+                        styles.chipText,
+                        { color: selectedClassId === null ? '#fff' : colors.primary },
+                      ]}
+                    >
                       All
                     </Text>
                   </Pressable>
@@ -194,10 +222,19 @@ export default function AdminTeacherDailyModal({
                     return (
                       <Pressable
                         key={c.id}
-                        style={[styles.chip, isActive && styles.chipActive]}
+                        style={[
+                          styles.chip,
+                          {
+                            borderColor: colors.primaryMuted,
+                            backgroundColor: isActive ? colors.primary : colors.primaryMuted,
+                            borderRadius: radius.sm,
+                          },
+                        ]}
                         onPress={() => setSelectedClassId(isActive ? null : c.id)}
                       >
-                        <Text style={[styles.chipText, isActive && styles.chipTextActive]}>{c.label}</Text>
+                        <Text style={[styles.chipText, { color: isActive ? '#fff' : colors.primary }]}>
+                          {c.label}
+                        </Text>
                       </Pressable>
                     );
                   })}
@@ -209,15 +246,35 @@ export default function AdminTeacherDailyModal({
           <ScrollView style={styles.entriesScroll} showsVerticalScrollIndicator>
             {loading ? (
               <View style={styles.centered}>
-                <ActivityIndicator size="large" color="#4338ca" />
+                <ActivityIndicator size="large" color={colors.primary} />
               </View>
             ) : entries.length === 0 ? (
-              <View style={styles.emptyBox}>
-                <Text style={styles.emptyText}>No daily entries yet for this teacher.</Text>
+              <View
+                style={[
+                  styles.emptyBox,
+                  {
+                    borderColor: colors.surfaceBorder,
+                    backgroundColor: colors.bgElevated,
+                    borderRadius: radius.md,
+                  },
+                ]}
+              >
+                <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+                  No daily entries yet for this teacher.
+                </Text>
               </View>
             ) : filteredEntries.length === 0 ? (
-              <View style={styles.emptyBox}>
-                <Text style={styles.emptyText}>
+              <View
+                style={[
+                  styles.emptyBox,
+                  {
+                    borderColor: colors.surfaceBorder,
+                    backgroundColor: colors.bgElevated,
+                    borderRadius: radius.md,
+                  },
+                ]}
+              >
+                <Text style={[styles.emptyText, { color: colors.textMuted }]}>
                   No daily entries for{' '}
                   {selectedClassId ? classById.get(selectedClassId) ?? 'this class' : 'this class'} yet.
                 </Text>
@@ -226,27 +283,41 @@ export default function AdminTeacherDailyModal({
               filteredEntries.map((entry) => {
                 const classLabel = resolveEntryClassLabel(entry, classById);
                 return (
-                  <View key={entry._id} style={styles.entryCard}>
+                  <View
+                    key={entry._id}
+                    style={[
+                      styles.entryCard,
+                      {
+                        borderColor: colors.surfaceBorder,
+                        backgroundColor: colors.bgElevated,
+                        borderRadius: radius.md,
+                      },
+                    ]}
+                  >
                     <View style={styles.entryHeader}>
-                      <Text style={styles.entryDate}>{formatDay(entry.forDate)}</Text>
+                      <Text style={[styles.entryDate, { color: colors.primary }]}>{formatDay(entry.forDate)}</Text>
                       {classLabel ? (
-                        <View style={styles.classBadge}>
+                        <View style={[styles.classBadge, { backgroundColor: colors.primary, borderRadius: radius.sm }]}>
                           <Text style={styles.classBadgeText}>{classLabel}</Text>
                         </View>
                       ) : (
-                        <View style={styles.classBadgeMuted}>
-                          <Text style={styles.classBadgeMutedText}>Class not specified</Text>
+                        <View style={[styles.classBadgeMuted, { borderColor: colors.surfaceBorder, borderRadius: radius.sm }]}>
+                          <Text style={[styles.classBadgeMutedText, { color: colors.textMuted }]}>
+                            Class not specified
+                          </Text>
                         </View>
                       )}
                     </View>
-                    {entry.title ? <Text style={styles.entryTitle}>{entry.title}</Text> : null}
-                    <Text style={styles.entryContent}>{entry.content}</Text>
+                    {entry.title ? (
+                      <Text style={[styles.entryTitle, { color: colors.text }]}>{entry.title}</Text>
+                    ) : null}
+                    <Text style={[styles.entryContent, { color: colors.textSecondary }]}>{entry.content}</Text>
                   </View>
                 );
               })
             )}
           </ScrollView>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -255,15 +326,19 @@ export default function AdminTeacherDailyModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
     maxHeight: '88%',
     paddingBottom: 16,
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: 4,
   },
   header: {
     flexDirection: 'row',

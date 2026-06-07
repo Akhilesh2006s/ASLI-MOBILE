@@ -4,15 +4,24 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
   ActivityIndicator,
   Modal,
-  TouchableOpacity,
-  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInUp } from 'react-native-reanimated';
 import api from '../../../src/services/api/api';
+import {
+  AdminScreenShell,
+  AdminSectionHeader,
+  AdminSearchBar,
+  AdminGlassCard,
+  AdminEmptyState,
+  AdminSkeletonList,
+  AdminAnimatedProgress,
+  AdminScalePressable,
+  AdminStatCard,
+  useAdminTheme,
+} from '../ui';
 
 interface Exam {
   _id: string;
@@ -96,13 +105,8 @@ function getExamStatus(exam: Exam) {
   return { label: 'Active', tone: 'active' as const };
 }
 
-const CARD_SCHEMES = [
-  { colors: ['#fdba74', '#fb923c'] as [string, string], badge: 'rgba(0,0,0,0.12)' },
-  { colors: ['#7dd3fc', '#38bdf8'] as [string, string], badge: 'rgba(0,0,0,0.12)' },
-  { colors: ['#2dd4bf', '#14b8a6'] as [string, string], badge: 'rgba(0,0,0,0.12)' },
-];
-
 export default function ExamsView() {
+  const { colors, spacing, radius, typo } = useAdminTheme();
   const [exams, setExams] = useState<Exam[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -177,160 +181,198 @@ export default function ExamsView() {
     return d.toLocaleDateString();
   };
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.intro}>
-        <Text style={styles.introTitle}>Exams (View Only)</Text>
-        <Text style={styles.introSubtitle}>View exams created by Super Admin for your board.</Text>
-      </View>
+  const statusColors = {
+    ended: colors.danger,
+    active: colors.success,
+    upcoming: colors.warning,
+    unknown: colors.textMuted,
+  };
 
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={18} color="#9ca3af" style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
+  if (isLoading && !refreshing) {
+    return <AdminSkeletonList count={4} />;
+  }
+
+  return (
+    <>
+      <AdminScreenShell refreshing={refreshing} onRefresh={onRefresh}>
+        <AdminSectionHeader
+          icon="eye-outline"
+          title="Exams (View Only)"
+          subtitle="View exams created by Super Admin for your board."
+        />
+
+        <AdminSearchBar
           placeholder="Search exams..."
           value={searchTerm}
           onChangeText={setSearchTerm}
-          placeholderTextColor="#9ca3af"
+          style={{ marginBottom: spacing.sm }}
         />
-      </View>
 
-      <View style={styles.body}>
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#fb923c" />
-            <Text style={styles.loadingHint}>Loading exams…</Text>
-          </View>
-        ) : filteredExams.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="eye-outline" size={52} color="#d1d5db" />
-            <Text style={styles.emptyText}>No exams available</Text>
-            <Text style={styles.emptySub}>Exams are created by Super Admin.</Text>
-          </View>
+        {filteredExams.length === 0 ? (
+          <AdminEmptyState
+            icon="eye-outline"
+            title="No exams available"
+            message="Exams are created by Super Admin."
+          />
         ) : (
-          <ScrollView
-            style={styles.list}
-            contentContainerStyle={styles.listContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fb923c" />}
-          >
-            {filteredExams.map((exam, index) => {
-              const status = getExamStatus(exam);
-              const scheme = CARD_SCHEMES[index % CARD_SCHEMES.length];
-              return (
-                <LinearGradient
-                  key={exam._id}
-                  colors={scheme.colors}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.examCard}
+          filteredExams.map((exam, index) => {
+            const status = getExamStatus(exam);
+            return (
+              <AdminGlassCard key={exam._id} delay={index * 60} style={{ marginBottom: spacing.sm }}>
+                <View style={styles.cardTop}>
+                  <Text style={[typo.section, { color: colors.text }]} numberOfLines={2}>
+                    {exam.title}
+                  </Text>
+                  <View style={styles.badgeRow}>
+                    <View style={[styles.typeBadge, { backgroundColor: colors.primaryMuted }]}>
+                      <Text style={[styles.typeBadgeText, { color: colors.primary }]}>
+                        {(exam.examType || 'practice').toUpperCase()}
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        { backgroundColor: statusColors[status.tone] + '20' },
+                      ]}
+                    >
+                      <Text style={[styles.statusBadgeText, { color: statusColors[status.tone] }]}>
+                        {status.label}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+                {!!exam.description && (
+                  <Text style={[styles.examDescription, { color: colors.textSecondary }]} numberOfLines={2}>
+                    {exam.description}
+                  </Text>
+                )}
+                <View style={[styles.metaBlock, { borderTopColor: colors.surfaceBorder }]}>
+                  <View style={styles.metaRow}>
+                    <Ionicons name="time-outline" size={16} color={colors.primary} />
+                    <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                      {exam.duration} minutes
+                    </Text>
+                  </View>
+                  <View style={styles.metaRow}>
+                    <Ionicons name="book-outline" size={16} color={colors.primary} />
+                    <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                      {exam.totalQuestions} questions • {exam.totalMarks} marks
+                    </Text>
+                  </View>
+                  <View style={styles.metaRow}>
+                    <Ionicons name="calendar-outline" size={16} color={colors.primary} />
+                    <Text style={[styles.metaDate, { color: colors.textMuted }]}>
+                      {formatDateShort(exam.startDate)} — {formatDateShort(exam.endDate)}
+                    </Text>
+                  </View>
+                  {exam.createdBy?.fullName ? (
+                    <Text style={[styles.createdBy, { color: colors.textMuted }]}>
+                      Created by: {exam.createdBy.fullName}
+                    </Text>
+                  ) : null}
+                </View>
+                <AdminScalePressable
+                  onPress={() => openExamDetail(exam)}
+                  style={[
+                    styles.ctaButton,
+                    { backgroundColor: colors.primaryMuted, borderRadius: radius.sm },
+                  ]}
                 >
-                  <View style={styles.cardTop}>
-                    <Text style={styles.examTitle} numberOfLines={2}>
-                      {exam.title}
-                    </Text>
-                    <View style={styles.badgeRow}>
-                      <View style={[styles.typeBadge, { backgroundColor: scheme.badge }]}>
-                        <Text style={styles.typeBadgeText}>{(exam.examType || 'practice').toUpperCase()}</Text>
-                      </View>
-                      <View
-                        style={[
-                          styles.statusBadge,
-                          status.tone === 'ended' && styles.statusEnded,
-                          status.tone === 'active' && styles.statusActive,
-                          status.tone === 'upcoming' && styles.statusUpcoming,
-                          status.tone === 'unknown' && styles.statusUnknown,
-                        ]}
-                      >
-                        <Text style={styles.statusBadgeText}>{status.label}</Text>
-                      </View>
-                    </View>
-                  </View>
-                  {!!exam.description && (
-                    <Text style={styles.examDescription} numberOfLines={2}>
-                      {exam.description}
-                    </Text>
-                  )}
-                  <View style={styles.metaBlock}>
-                    <View style={styles.metaRow}>
-                      <Ionicons name="time-outline" size={16} color="#111827" />
-                      <Text style={styles.metaText}>{exam.duration} minutes</Text>
-                    </View>
-                    <View style={styles.metaRow}>
-                      <Ionicons name="book-outline" size={16} color="#111827" />
-                      <Text style={styles.metaText}>
-                        {exam.totalQuestions} questions • {exam.totalMarks} marks
-                      </Text>
-                    </View>
-                    <View style={styles.metaRow}>
-                      <Ionicons name="calendar-outline" size={16} color="#111827" />
-                      <Text style={styles.metaDate}>
-                        {formatDateShort(exam.startDate)} — {formatDateShort(exam.endDate)}
-                      </Text>
-                    </View>
-                    {exam.createdBy?.fullName ? (
-                      <Text style={styles.createdBy}>Created by: {exam.createdBy.fullName}</Text>
-                    ) : null}
-                  </View>
-                  <TouchableOpacity style={styles.ctaButton} onPress={() => openExamDetail(exam)} activeOpacity={0.85}>
-                    <Ionicons name="eye" size={18} color="#111827" />
-                    <Text style={styles.ctaText}>View Results & Analytics</Text>
-                  </TouchableOpacity>
-                </LinearGradient>
-              );
-            })}
-          </ScrollView>
+                  <Ionicons name="eye" size={18} color={colors.primary} />
+                  <Text style={[styles.ctaText, { color: colors.primary }]}>
+                    View Results & Analytics
+                  </Text>
+                </AdminScalePressable>
+              </AdminGlassCard>
+            );
+          })
         )}
-      </View>
+      </AdminScreenShell>
 
       <Modal visible={detailVisible} animationType="slide" transparent onRequestClose={() => setDetailVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle} numberOfLines={2}>
+        <View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
+          <Animated.View
+            entering={FadeInUp.duration(350).springify()}
+            style={[
+              styles.modalSheet,
+              {
+                backgroundColor: colors.surface,
+                borderTopLeftRadius: radius.xl,
+                borderTopRightRadius: radius.xl,
+              },
+            ]}
+          >
+            <View style={[styles.modalHeader, { borderBottomColor: colors.surfaceBorder }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]} numberOfLines={2}>
                 {selectedExam?.title || 'Exam'}
               </Text>
-              <TouchableOpacity onPress={() => setDetailVisible(false)} hitSlop={12}>
-                <Ionicons name="close" size={26} color="#111827" />
-              </TouchableOpacity>
+              <AdminScalePressable onPress={() => setDetailVisible(false)}>
+                <Ionicons name="close" size={26} color={colors.textSecondary} />
+              </AdminScalePressable>
             </View>
             {detailLoading ? (
               <View style={styles.modalLoading}>
-                <ActivityIndicator size="large" color="#fb923c" />
+                <ActivityIndicator size="large" color={colors.primary} />
               </View>
             ) : (
               <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalScrollContent}>
                 {analytics && (
                   <View style={styles.statsGrid}>
-                    <View style={styles.statBox}>
-                      <Text style={styles.statLabel}>Attempted</Text>
-                      <Text style={styles.statVal}>{analytics.attemptedCount ?? '—'}</Text>
-                    </View>
-                    <View style={styles.statBox}>
-                      <Text style={styles.statLabel}>Not attempted</Text>
-                      <Text style={styles.statVal}>{analytics.notAttemptedCount ?? '—'}</Text>
-                    </View>
-                    <View style={styles.statBox}>
-                      <Text style={styles.statLabel}>Avg score</Text>
-                      <Text style={styles.statVal}>{analytics.averageScore ?? '—'}%</Text>
-                    </View>
+                    <AdminStatCard
+                      label="Attempted"
+                      value={analytics.attemptedCount ?? 0}
+                      icon="checkmark-circle"
+                      gradientIndex={0}
+                    />
+                    <AdminStatCard
+                      label="Not attempted"
+                      value={analytics.notAttemptedCount ?? 0}
+                      icon="close-circle"
+                      gradientIndex={1}
+                    />
+                    <AdminStatCard
+                      label="Avg score"
+                      value={`${analytics.averageScore ?? '—'}%`}
+                      icon="stats-chart"
+                      gradientIndex={2}
+                    />
                   </View>
                 )}
-                <Text style={styles.resultsHeading}>Student results ({results.length})</Text>
+                <Text style={[styles.resultsHeading, { color: colors.text }]}>
+                  Student results ({results.length})
+                </Text>
                 {results.length === 0 ? (
-                  <Text style={styles.noResults}>No results found for your students yet.</Text>
+                  <Text style={[styles.noResults, { color: colors.textMuted }]}>
+                    No results found for your students yet.
+                  </Text>
                 ) : (
                   results.slice(0, 50).map((r, i) => (
-                    <View key={r._id || `r-${i}`} style={styles.resultRow}>
+                    <View
+                      key={r._id || `r-${i}`}
+                      style={[styles.resultRow, { borderBottomColor: colors.surfaceBorder }]}
+                    >
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.resultName}>{r.userId?.fullName || 'Student'}</Text>
-                        <Text style={styles.resultEmail}>{r.userId?.email || ''}</Text>
-                        <Text style={styles.resultClass}>Class {r.userId?.classNumber || '—'}</Text>
+                        <Text style={[styles.resultName, { color: colors.text }]}>
+                          {r.userId?.fullName || 'Student'}
+                        </Text>
+                        <Text style={[styles.resultEmail, { color: colors.textMuted }]}>
+                          {r.userId?.email || ''}
+                        </Text>
+                        <Text style={[styles.resultClass, { color: colors.textMuted }]}>
+                          Class {r.userId?.classNumber || '—'}
+                        </Text>
+                        <AdminAnimatedProgress
+                          label=""
+                          value={Number(r.percentage) || 0}
+                          showLabel={false}
+                          height={6}
+                        />
                       </View>
                       <View style={styles.resultMarks}>
-                        <Text style={styles.resultPct}>{Number(r.percentage).toFixed(1)}%</Text>
-                        <Text style={styles.resultFrac}>
+                        <Text style={[styles.resultPct, { color: colors.primary }]}>
+                          {Number(r.percentage).toFixed(1)}%
+                        </Text>
+                        <Text style={[styles.resultFrac, { color: colors.textMuted }]}>
                           {r.obtainedMarks}/{r.totalMarks}
                         </Text>
                       </View>
@@ -339,302 +381,63 @@ export default function ExamsView() {
                 )}
               </ScrollView>
             )}
-          </View>
+          </Animated.View>
         </View>
       </Modal>
-    </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-    minHeight: 0,
-  },
-  intro: {
-    paddingHorizontal: 14,
-    paddingTop: 8,
-    paddingBottom: 10,
-  },
-  introTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  introSubtitle: {
-    fontSize: 13,
-    color: '#6b7280',
-    marginTop: 4,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    marginHorizontal: 14,
-    marginBottom: 8,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    height: 42,
-    fontSize: 14,
-    color: '#111827',
-  },
-  body: {
-    flex: 1,
-    minHeight: 0,
-  },
-  list: {
-    flex: 1,
-  },
-  listContent: {
-    padding: 14,
-    paddingBottom: 24,
-  },
-  examCard: {
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  cardTop: {
-    marginBottom: 8,
-  },
-  examTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  badgeRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 8,
-  },
-  typeBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  typeBadgeText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.35)',
-  },
-  statusEnded: {
-    backgroundColor: '#dc2626',
-  },
-  statusActive: {
-    backgroundColor: '#0d9488',
-  },
-  statusUpcoming: {
-    backgroundColor: '#ca8a04',
-  },
-  statusUnknown: {
-    backgroundColor: '#6b7280',
-  },
-  statusBadgeText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#fff',
-  },
-  examDescription: {
-    fontSize: 13,
-    color: 'rgba(17,24,39,0.85)',
-    marginBottom: 10,
-  },
-  metaBlock: {
-    gap: 6,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(17,24,39,0.12)',
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  metaText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  metaDate: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  createdBy: {
-    fontSize: 11,
-    color: 'rgba(17,24,39,0.75)',
-    marginTop: 4,
-  },
+  cardTop: { marginBottom: 8 },
+  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  typeBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  typeBadgeText: { fontSize: 11, fontWeight: '800' },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  statusBadgeText: { fontSize: 11, fontWeight: '800' },
+  examDescription: { fontSize: 13, marginBottom: 10 },
+  metaBlock: { gap: 6, paddingTop: 8, borderTopWidth: 1 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  metaText: { fontSize: 13, fontWeight: '600' },
+  metaDate: { fontSize: 12, fontWeight: '600' },
+  createdBy: { fontSize: 11, marginTop: 4 },
   ctaButton: {
     marginTop: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: 'rgba(255,255,255,0.92)',
     paddingVertical: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.5)',
   },
-  ctaText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  loadingHint: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 28,
-  },
-  emptyText: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#374151',
-    marginTop: 12,
-  },
-  emptySub: {
-    fontSize: 13,
-    color: '#6b7280',
-    marginTop: 6,
-    textAlign: 'center',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'flex-end',
-  },
-  modalSheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    maxHeight: '88%',
-    paddingBottom: 24,
-  },
+  ctaText: { fontSize: 14, fontWeight: '700' },
+  modalOverlay: { flex: 1, justifyContent: 'flex-end' },
+  modalSheet: { maxHeight: '88%', paddingBottom: 24 },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
     gap: 12,
   },
-  modalTitle: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  modalLoading: {
-    padding: 40,
-    alignItems: 'center',
-  },
-  modalScroll: {
-    maxHeight: 520,
-  },
-  modalScrollContent: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 16,
-  },
-  statBox: {
-    flex: 1,
-    minWidth: '28%',
-    backgroundColor: '#f3f4f6',
-    borderRadius: 10,
-    padding: 12,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: '#6b7280',
-    fontWeight: '600',
-  },
-  statVal: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#111827',
-    marginTop: 4,
-  },
-  resultsHeading: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#111827',
-    marginBottom: 10,
-  },
-  noResults: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
+  modalTitle: { flex: 1, fontSize: 18, fontWeight: '800' },
+  modalLoading: { padding: 40, alignItems: 'center' },
+  modalScroll: { maxHeight: 520 },
+  modalScrollContent: { padding: 16, paddingBottom: 32 },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+  resultsHeading: { fontSize: 15, fontWeight: '800', marginBottom: 10 },
+  noResults: { fontSize: 14 },
   resultRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    gap: 12,
   },
-  resultName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  resultEmail: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  resultClass: {
-    fontSize: 11,
-    color: '#9ca3af',
-    marginTop: 2,
-  },
-  resultMarks: {
-    alignItems: 'flex-end',
-  },
-  resultPct: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#0ea5e9',
-  },
-  resultFrac: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
+  resultName: { fontSize: 14, fontWeight: '700' },
+  resultEmail: { fontSize: 12 },
+  resultClass: { fontSize: 11, marginTop: 2, marginBottom: 4 },
+  resultMarks: { alignItems: 'flex-end' },
+  resultPct: { fontSize: 15, fontWeight: '800' },
+  resultFrac: { fontSize: 12 },
 });

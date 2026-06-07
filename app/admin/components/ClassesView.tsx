@@ -15,6 +15,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SvgCheckbox } from './TeachersCardIcons';
 import api from '../../../src/services/api/api';
+import {
+  AdminScreenShell,
+  AdminSectionHeader,
+  AdminSearchBar,
+  AdminStatCard,
+  AdminGlassCard,
+  AdminEmptyState,
+  AdminSkeletonList,
+  AdminFAB,
+  AdminScalePressable,
+  useAdminTheme,
+} from '../ui';
 
 type ClassTab = 'classes' | 'assign-subjects' | 'promote-class';
 
@@ -76,6 +88,8 @@ const subjectRowMatchesStoredId = (row: SubjectRow, storedId: string) => {
 };
 
 export default function ClassesView() {
+  const { colors, spacing } = useAdminTheme();
+  const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<ClassTab>('classes');
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
@@ -177,6 +191,12 @@ export default function ClassesView() {
       setIsLoading(false);
     }
   }, []);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([fetchClasses(), fetchSubjects()]);
+    setRefreshing(false);
+  }, [fetchClasses, fetchSubjects]);
 
   const findClassForAssignSelection = useCallback(
     (classNumber: string, section: string): ClassItem | undefined => {
@@ -515,15 +535,15 @@ export default function ClassesView() {
     </Modal>
   );
 
-  const renderClassCard = (cls: ClassItem) => {
+  const renderClassCard = (cls: ClassItem, index: number) => {
     const isExpanded = expandedClassId === cls.id;
     const teacherCount = cls.teachers?.length ?? 0;
 
     return (
-      <View key={cls.id} style={styles.classCard}>
+      <AdminGlassCard key={cls.id} delay={index * 60} style={styles.classCard}>
         <View style={styles.classHeader}>
-          <View style={styles.classIconWrap}>
-            <Ionicons name="school" size={22} color="#0284c7" />
+          <View style={[styles.classIconWrap, { backgroundColor: colors.primaryMuted }]}>
+            <Ionicons name="school" size={22} color={colors.primary} />
           </View>
           <View style={styles.classInfo}>
             <Text style={styles.className} numberOfLines={2}>
@@ -541,17 +561,17 @@ export default function ClassesView() {
         <View style={styles.statsBlock}>
           <View style={styles.statRow}>
             <View style={styles.statLeft}>
-              <Ionicons name="people-outline" size={16} color="#0284c7" />
-              <Text style={styles.statLabel}>Students:</Text>
+              <Ionicons name="people-outline" size={16} color={colors.primary} />
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Students:</Text>
             </View>
-            <Text style={styles.statValue}>{cls.studentCount ?? 0}</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>{cls.studentCount ?? 0}</Text>
           </View>
           <View style={styles.statRow}>
             <View style={styles.statLeft}>
-              <Ionicons name="person-add-outline" size={16} color="#0284c7" />
-              <Text style={styles.statLabel}>Teachers:</Text>
+              <Ionicons name="person-add-outline" size={16} color={colors.primary} />
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Teachers:</Text>
             </View>
-            <Text style={[styles.statValue, teacherCount === 0 && styles.statValueMuted]}>
+            <Text style={[styles.statValue, { color: teacherCount === 0 ? colors.primary : colors.text }]}>
               {teacherCount > 0
                 ? `${teacherCount} ${teacherCount === 1 ? 'teacher' : 'teachers'}`
                 : 'No teachers assigned'}
@@ -560,10 +580,10 @@ export default function ClassesView() {
           {cls.section ? (
             <View style={styles.statRow}>
               <View style={styles.statLeft}>
-                <Ionicons name="school-outline" size={16} color="#0284c7" />
-                <Text style={styles.statLabel}>Section:</Text>
+                <Ionicons name="school-outline" size={16} color={colors.primary} />
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Section:</Text>
               </View>
-              <Text style={styles.statValue}>{cls.section}</Text>
+              <Text style={[styles.statValue, { color: colors.text }]}>{cls.section}</Text>
             </View>
           ) : null}
         </View>
@@ -573,8 +593,8 @@ export default function ClassesView() {
             <Text style={styles.blockTitle}>Assigned Teachers:</Text>
             <ScrollView style={styles.teachersScroll} nestedScrollEnabled showsVerticalScrollIndicator>
               {cls.teachers!.map((teacher) => (
-                <View key={teacher.id} style={styles.teacherItem}>
-                  <View style={styles.teacherAvatar}>
+                <View key={teacher.id} style={[styles.teacherItem, { backgroundColor: colors.primaryMuted, borderColor: colors.surfaceBorder }]}>
+                  <View style={[styles.teacherAvatar, { backgroundColor: colors.primary }]}>
                     <Text style={styles.teacherAvatarText}>
                       {(teacher.name || 'T').charAt(0).toUpperCase()}
                     </Text>
@@ -603,8 +623,8 @@ export default function ClassesView() {
               style={styles.viewToggleBtn}
               onPress={() => setExpandedClassId(isExpanded ? null : cls.id)}
             >
-              <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={14} color="#0284c7" />
-              <Text style={styles.viewToggleText}>{isExpanded ? 'Hide' : 'View'}</Text>
+              <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={14} color={colors.primary} />
+              <Text style={[styles.viewToggleText, { color: colors.primary }]}>{isExpanded ? 'Hide' : 'View'}</Text>
             </TouchableOpacity>
           </View>
           {isExpanded && (
@@ -640,13 +660,13 @@ export default function ClassesView() {
         </View>
 
         <TouchableOpacity
-          style={styles.deleteClassBtn}
+          style={[styles.deleteClassBtn, { borderColor: colors.dangerMuted, backgroundColor: colors.dangerMuted }]}
           onPress={() => handleDeleteClass(cls.id)}
         >
-          <Ionicons name="trash-outline" size={16} color="#dc2626" />
-          <Text style={styles.deleteClassBtnText}>Delete</Text>
+          <Ionicons name="trash-outline" size={16} color={colors.danger} />
+          <Text style={[styles.deleteClassBtnText, { color: colors.danger }]}>Delete</Text>
         </TouchableOpacity>
-      </View>
+      </AdminGlassCard>
     );
   };
 
@@ -680,26 +700,27 @@ export default function ClassesView() {
   }, [classes]);
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.contentContainer}
-      showsVerticalScrollIndicator
+    <>
+    <AdminScreenShell
+      refreshing={refreshing}
+      onRefresh={onRefresh}
       nestedScrollEnabled
       keyboardShouldPersistTaps="handled"
     >
-      <View style={styles.pageIntro}>
-        <Text style={styles.pageTitle}>Class Management</Text>
-        <Text style={styles.pageSubtitle}>Organize and manage your classes and students</Text>
-      </View>
+      <AdminSectionHeader
+        title="Class Management"
+        subtitle="Organize and manage your classes and students"
+        icon="school-outline"
+      />
 
-      {/* Tabs — all three visible in one row (matches web) */}
-      <View style={styles.tabBarWrap}>
+      {/* Tabs */}
+      <View style={[styles.tabBarWrap, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder }]}>
         <View style={styles.tabRow}>
           {CLASS_TABS.map((tab) => {
             const active = activeTab === tab.id;
             const content = (
               <View style={styles.tabBtnContent}>
-                <Ionicons name={tab.icon} size={20} color={active ? '#fff' : '#64748b'} />
+                <Ionicons name={tab.icon} size={20} color={active ? '#fff' : colors.textMuted} />
                 <View style={styles.tabLabelWrap}>
                   {tab.lines.map((line, idx) => (
                     <Text
@@ -728,7 +749,7 @@ export default function ClassesView() {
               >
                 {active ? (
                   <LinearGradient
-                    colors={['#a855f7', '#ec4899']}
+                    colors={[...colors.fabGradient]}
                     style={styles.tabBtnGradient}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
@@ -736,7 +757,7 @@ export default function ClassesView() {
                     {content}
                   </LinearGradient>
                 ) : (
-                  <View style={styles.tabBtnInner}>{content}</View>
+                  <View style={[styles.tabBtnInner, { backgroundColor: colors.bg }]}>{content}</View>
                 )}
               </TouchableOpacity>
             );
@@ -745,108 +766,70 @@ export default function ClassesView() {
       </View>
 
       <View style={styles.statsRow}>
-        <View style={[styles.summaryTile, { borderLeftColor: '#fb923c' }]}>
-          <View style={[styles.summaryIconWrap, { backgroundColor: '#fff7ed' }]}>
-            <Ionicons name="school" size={18} color="#ea580c" />
-          </View>
-          <Text style={styles.summaryTileLabel}>Classes</Text>
-          <Text style={styles.summaryTileValue}>{classes.length}</Text>
-        </View>
-        <View style={[styles.summaryTile, { borderLeftColor: '#38bdf8' }]}>
-          <View style={[styles.summaryIconWrap, { backgroundColor: '#eff6ff' }]}>
-            <Ionicons name="people" size={18} color="#0284c7" />
-          </View>
-          <Text style={styles.summaryTileLabel}>Students</Text>
-          <Text style={styles.summaryTileValue}>{totalStudents}</Text>
-        </View>
-        <View style={[styles.summaryTile, { borderLeftColor: '#14b8a6' }]}>
-          <View style={[styles.summaryIconWrap, { backgroundColor: '#f0fdfa' }]}>
-            <Ionicons name="stats-chart" size={18} color="#0d9488" />
-          </View>
-          <Text style={styles.summaryTileLabel}>Avg size</Text>
-          <Text style={styles.summaryTileValue}>{avgClassSize}</Text>
-        </View>
-        <View style={[styles.summaryTile, { borderLeftColor: '#a855f7' }]}>
-          <View style={[styles.summaryIconWrap, { backgroundColor: '#f5f3ff' }]}>
-            <Ionicons name="book-outline" size={18} color="#7c3aed" />
-          </View>
-          <Text style={styles.summaryTileLabel}>Subjects</Text>
-          <Text style={styles.summaryTileValue}>{classSubjects.length}</Text>
-        </View>
+        <AdminStatCard label="Classes" value={classes.length} icon="school" gradientIndex={0} delay={0} />
+        <AdminStatCard label="Students" value={totalStudents} icon="people" gradientIndex={1} delay={50} />
+        <AdminStatCard label="Avg size" value={avgClassSize} icon="stats-chart" gradientIndex={2} delay={100} />
+        <AdminStatCard label="Subjects" value={classSubjects.length} icon="book-outline" gradientIndex={3} delay={150} />
       </View>
 
       {activeTab === 'classes' && (
         <>
-          <View style={styles.toolbarCard}>
-            <View style={styles.searchWrap}>
-              <Ionicons name="search" size={20} color="#94a3b8" style={styles.searchIcon} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search classes..."
-                value={searchTerm}
-                onChangeText={setSearchTerm}
-                placeholderTextColor="#94a3b8"
-              />
-            </View>
+          <AdminGlassCard delay={80} style={{ marginBottom: spacing.md, padding: spacing.md, gap: spacing.sm }}>
+            <AdminSearchBar
+              placeholder="Search classes..."
+              value={searchTerm}
+              onChangeText={setSearchTerm}
+            />
 
             <TouchableOpacity
-              style={styles.selectTrigger}
+              style={[styles.selectTrigger, { borderColor: colors.surfaceBorder, backgroundColor: colors.surface }]}
               onPress={() => setSubjectPickerOpen(true)}
             >
-              <Text style={styles.selectTriggerText}>
+              <Text style={[styles.selectTriggerText, { color: colors.text }]}>
                 {selectedSubject === 'all' ? 'All Subjects' : selectedSubject}
               </Text>
-              <Ionicons name="chevron-down" size={16} color="#64748b" />
+              <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
             </TouchableOpacity>
 
             <View style={styles.actionRow}>
               {classes.length > 0 && (
-                <TouchableOpacity
-                  style={styles.deleteAllBtn}
+                <AdminScalePressable
+                  style={[styles.deleteAllBtn, { backgroundColor: colors.danger }]}
                   onPress={() => setIsDeleteAllModalVisible(true)}
                 >
                   <Ionicons name="trash-outline" size={16} color="#fff" />
                   <Text style={styles.deleteAllBtnText}>Delete All</Text>
-                </TouchableOpacity>
+                </AdminScalePressable>
               )}
-              <TouchableOpacity
-                style={styles.addClassBtn}
+              <AdminScalePressable
+                style={[styles.addClassBtn, { backgroundColor: colors.primary }]}
                 onPress={() => setIsAddClassModalVisible(true)}
               >
-                <LinearGradient
-                  colors={['#0ea5e9', '#2563eb']}
-                  style={styles.addClassGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <Ionicons name="add" size={18} color="#fff" />
-                  <Text style={styles.addClassBtnText}>Add Class</Text>
-                </LinearGradient>
-              </TouchableOpacity>
+                <Ionicons name="add" size={18} color="#fff" />
+                <Text style={styles.addClassBtnText}>Add Class</Text>
+              </AdminScalePressable>
             </View>
-          </View>
+          </AdminGlassCard>
 
           {isLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#0284c7" />
-            </View>
+            <AdminSkeletonList count={4} />
           ) : filteredClasses.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="school-outline" size={48} color="#94a3b8" />
-              <Text style={styles.emptyText}>No classes found</Text>
-              <Text style={styles.emptyHint}>Create your first class using Add Class above.</Text>
-            </View>
+            <AdminEmptyState
+              title="No classes found"
+              message="Create your first class using Add Class above."
+              icon="school-outline"
+            />
           ) : (
             <View style={styles.listContent}>
-              {filteredClasses.map((cls) => renderClassCard(cls))}
+              {filteredClasses.map((cls, index) => renderClassCard(cls, index))}
             </View>
           )}
         </>
       )}
 
       {activeTab === 'assign-subjects' && (
-        <View style={styles.panelCard}>
-          <Text style={styles.panelTitle}>Assign Subjects to Class</Text>
+        <AdminGlassCard delay={80} style={styles.panelCard}>
+          <Text style={[styles.panelTitle, { color: colors.primary }]}>Assign Subjects to Class</Text>
           <Text style={styles.panelSubtitle}>
             Select a class, section, and subjects for that section only
           </Text>
@@ -940,7 +923,7 @@ export default function ClassesView() {
               }
             >
               <LinearGradient
-                colors={['#9333ea', '#ec4899']}
+                colors={[...colors.fabGradient]}
                 style={styles.saveBtnGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
@@ -953,12 +936,12 @@ export default function ClassesView() {
               </LinearGradient>
             </TouchableOpacity>
           </View>
-        </View>
+        </AdminGlassCard>
       )}
 
       {activeTab === 'promote-class' && (
-        <View style={styles.panelCard}>
-          <Text style={[styles.panelTitle, { color: '#059669' }]}>Promote Classes</Text>
+        <AdminGlassCard delay={80} style={styles.panelCard}>
+          <Text style={[styles.panelTitle, { color: colors.success }]}>Promote Classes</Text>
           <Text style={styles.panelSubtitle}>
             Promote classes to the next grade level. Class 12 becomes Finished Academic Career.
           </Text>
@@ -1033,7 +1016,7 @@ export default function ClassesView() {
               disabled={isPromoting || selectedClassesForPromotion.size === 0}
             >
               <LinearGradient
-                colors={['#059669', '#10b981']}
+                colors={[colors.success, '#10b981']}
                 style={styles.saveBtnGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
@@ -1052,7 +1035,7 @@ export default function ClassesView() {
               </LinearGradient>
             </TouchableOpacity>
           </View>
-        </View>
+        </AdminGlassCard>
       )}
 
       {renderPickerModal(
@@ -1145,7 +1128,7 @@ export default function ClassesView() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <View style={styles.modalHeaderSky}>
+            <View style={[styles.modalHeaderSky, { backgroundColor: colors.primary }]}>
               <Text style={styles.modalTitleWhite}>Add New Class</Text>
               <TouchableOpacity onPress={() => setIsAddClassModalVisible(false)}>
                 <Ionicons name="close" size={24} color="#fff" />
@@ -1198,7 +1181,7 @@ export default function ClassesView() {
               </TouchableOpacity>
               <TouchableOpacity style={styles.submitButtonWrap} onPress={handleAddClass}>
                 <LinearGradient
-                  colors={['#0ea5e9', '#2563eb']}
+                  colors={[...colors.fabGradient]}
                   style={styles.submitButtonGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
@@ -1210,58 +1193,28 @@ export default function ClassesView() {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+    </AdminScreenShell>
+    {activeTab === 'classes' ? <AdminFAB onPress={() => setIsAddClassModalVisible(true)} /> : null}
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc' },
-  contentContainer: { paddingBottom: 100 },
-  pageIntro: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },
-  pageTitle: { fontSize: 22, fontWeight: '800', color: '#0f172a', marginBottom: 4 },
-  pageSubtitle: { fontSize: 14, color: '#64748b', lineHeight: 20 },
-  statsRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 8, marginBottom: 12 },
-  summaryTile: {
-    flex: 1,
-    minWidth: 0,
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderLeftWidth: 4,
-    alignItems: 'center',
-    elevation: 2,
-  },
-  summaryIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-  },
-  summaryTileLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#64748b',
-    marginBottom: 2,
-    textAlign: 'center',
-  },
-  summaryTileValue: { fontSize: 17, fontWeight: '800', color: '#0f172a' },
-  tabBarWrap: {
-    marginHorizontal: 16,
+  statsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
     marginBottom: 12,
+  },
+  tabBarWrap: {
+    marginBottom: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 6,
   },
   tabRow: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 6,
     gap: 6,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
     alignItems: 'stretch',
   },
   tabBtn: {
@@ -1286,7 +1239,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     paddingVertical: 10,
     minHeight: 72,
-    backgroundColor: '#f8fafc',
     borderRadius: 12,
   },
   tabBtnContent: {
@@ -1354,36 +1306,28 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   deleteAllBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  addClassBtn: { flex: 1, borderRadius: 12, overflow: 'hidden' },
-  addClassGradient: {
+  addClassBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 12,
+    borderRadius: 12,
   },
   addClassBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  listContent: { paddingHorizontal: 16, gap: 12, paddingBottom: 8 },
-  classCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    elevation: 3,
-    marginBottom: 12,
-  },
+  listContent: { gap: 12, paddingBottom: 8 },
+  classCard: { padding: 14, marginBottom: 0 },
   classHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 12 },
   classIconWrap: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#e0f2fe',
     alignItems: 'center',
     justifyContent: 'center',
   },
   classInfo: { flex: 1, minWidth: 0 },
-  className: { fontSize: 17, fontWeight: '800', color: '#0c4a6e', marginBottom: 2 },
+  className: { fontSize: 17, fontWeight: '800', color: '#0F172A', marginBottom: 2 },
   classDescription: { fontSize: 12, color: '#64748b' },
   statusBadge: {
     backgroundColor: '#d1fae5',
@@ -1489,17 +1433,8 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   deleteClassBtnText: { fontSize: 13, fontWeight: '700', color: '#dc2626' },
-  panelCard: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    elevation: 2,
-  },
-  panelTitle: { fontSize: 20, fontWeight: '800', color: '#7c3aed', marginBottom: 6 },
+  panelCard: { marginBottom: 16, padding: 16 },
+  panelTitle: { fontSize: 20, fontWeight: '800', marginBottom: 6 },
   panelSubtitle: { fontSize: 14, color: '#64748b', marginBottom: 16, lineHeight: 20 },
   fieldLabel: { fontSize: 14, fontWeight: '700', color: '#0f172a', marginBottom: 8, marginTop: 8 },
   assignHint: { fontSize: 13, color: '#64748b', marginVertical: 8 },
@@ -1515,7 +1450,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     marginBottom: 8,
   },
-  subjectPickRowActive: { borderColor: '#a855f7', backgroundColor: '#faf5ff' },
+  subjectPickRowActive: { borderColor: '#4F46E5', backgroundColor: 'rgba(79, 70, 229, 0.08)' },
   subjectPickText: { flex: 1 },
   subjectPickName: { fontSize: 15, fontWeight: '700', color: '#0f172a' },
   subjectPickMeta: { fontSize: 12, color: '#64748b', marginTop: 2 },
@@ -1606,9 +1541,9 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     backgroundColor: '#f8fafc',
   },
-  pickerItemActive: { backgroundColor: '#e0f2fe' },
+  pickerItemActive: { backgroundColor: 'rgba(79, 70, 229, 0.12)' },
   pickerItemText: { fontSize: 15, fontWeight: '600', color: '#334155' },
-  pickerItemTextActive: { color: '#0284c7' },
+  pickerItemTextActive: { color: '#4F46E5' },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -1634,7 +1569,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 14,
-    backgroundColor: '#0284c7',
   },
   modalTitleDanger: { fontSize: 17, fontWeight: '800', color: '#991b1b', flex: 1 },
   modalTitleWhite: { fontSize: 17, fontWeight: '800', color: '#fff' },

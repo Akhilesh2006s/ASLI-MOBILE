@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useMemo, Fragment } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { ReactNode } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, Modal } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import {
   SvgCheckbox,
@@ -16,6 +16,18 @@ import {
 import AdminTeacherDailyModal from './AdminTeacherDailyModal';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../../src/services/api/api';
+import {
+  AdminScreenShell,
+  AdminSectionHeader,
+  AdminSearchBar,
+  AdminStatCard,
+  AdminGlassCard,
+  AdminEmptyState,
+  AdminSkeletonList,
+  AdminFAB,
+  AdminScalePressable,
+  useAdminTheme,
+} from '../ui';
 
 interface Teacher {
   id: string;
@@ -83,6 +95,8 @@ const getClassSubjectLine = (classItem: ClassOption | undefined, teacherSubjects
 };
 
 export default function TeachersView() {
+  const { colors, spacing } = useAdminTheme();
+  const [refreshing, setRefreshing] = useState(false);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -298,6 +312,12 @@ export default function TeachersView() {
     }
   }, []);
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([fetchTeachers(), fetchSubjectsList(), fetchClassesList()]);
+    setRefreshing(false);
+  }, [fetchTeachers, fetchSubjectsList, fetchClassesList]);
+
   const openAssignSubjectsModal = useCallback((teacher: Teacher) => {
     setAssigningForTeacher(teacher);
     const ids = (teacher.subjects || [])
@@ -375,7 +395,7 @@ export default function TeachersView() {
     }
   };
 
-  const renderTeacherCard = (teacher: Teacher) => {
+  const renderTeacherCard = (teacher: Teacher, index: number) => {
     const subjectNames = (teacher.subjects || [])
       .map((s: any) => s?.name || s?.title || '')
       .filter(Boolean);
@@ -413,10 +433,10 @@ export default function TeachersView() {
     );
 
     return (
-      <View style={styles.teacherCard}>
+      <AdminGlassCard key={String(teacher.id || teacher.email || `teacher-${index}`)} delay={index * 60} style={styles.teacherCard}>
         <View style={styles.teacherTopRow}>
           <View style={styles.teacherAvatarContainer}>
-            <View style={styles.teacherAvatar}>
+            <View style={[styles.teacherAvatar, { backgroundColor: colors.primary }]}>
               <Text style={styles.teacherAvatarText}>
                 {(teacher.fullName || 'T').charAt(0).toUpperCase()}
               </Text>
@@ -460,7 +480,7 @@ export default function TeachersView() {
             value={teacher.department?.trim() ? teacher.department : '—'}
           />
           <DetailRow
-            icon={<SvgIconBook size={18} color="#64748b" />}
+            icon={<SvgIconBook size={18} color={colors.textMuted} />}
             label="Subjects:"
             value={subjectsValue}
             valueMuted={subjectNames.length === 0}
@@ -542,130 +562,79 @@ export default function TeachersView() {
         </View>
 
         <View style={styles.teacherActions}>
-          <TouchableOpacity
-            style={[styles.squircleBtn, styles.squircleBtnOrange]}
+          <AdminScalePressable
+            style={[styles.squircleBtn, { borderColor: colors.warning }]}
             onPress={() => openAssignClassesModal(teacher)}
-            activeOpacity={0.85}
             accessibilityLabel="Assign classes"
           >
-            <SvgIconPeople color="#c2410c" size={22} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.squircleBtn, styles.squircleBtnGreen]}
+            <SvgIconPeople color={colors.warning} size={22} />
+          </AdminScalePressable>
+          <AdminScalePressable
+            style={[styles.squircleBtn, { borderColor: colors.success }]}
             onPress={() => openAssignSubjectsModal(teacher)}
-            activeOpacity={0.85}
             accessibilityLabel="Assign subjects"
           >
-            <SvgIconBook color="#047857" size={22} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.squircleBtn, styles.squircleBtnPurple]}
+            <SvgIconBook color={colors.success} size={22} />
+          </AdminScalePressable>
+          <AdminScalePressable
+            style={[styles.squircleBtn, { borderColor: colors.primaryLight }]}
             onPress={() => setDailyDialogTeacher(teacher)}
-            activeOpacity={0.85}
             accessibilityLabel="View daily diary"
           >
-            <SvgIconBookMarked color="#4338ca" size={22} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.squircleBtn, styles.squircleBtnRed]}
+            <SvgIconBookMarked color={colors.primary} size={22} />
+          </AdminScalePressable>
+          <AdminScalePressable
+            style={[styles.squircleBtn, { borderColor: colors.danger }]}
             onPress={() => handleDeleteTeacher(teacher.id, teacher.fullName)}
-            activeOpacity={0.85}
             accessibilityLabel="Delete teacher"
           >
-            <SvgIconTrash color="#b91c1c" size={22} />
-          </TouchableOpacity>
+            <SvgIconTrash color={colors.danger} size={22} />
+          </AdminScalePressable>
         </View>
-      </View>
+      </AdminGlassCard>
     );
   };
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.contentContainer}
-      showsVerticalScrollIndicator
+    <>
+    <AdminScreenShell
+      refreshing={refreshing}
+      onRefresh={onRefresh}
       nestedScrollEnabled
       keyboardShouldPersistTaps="handled"
     >
-      <View style={styles.pageIntro}>
-        <Text style={styles.pageTitle}>Teacher Management</Text>
-        <Text style={styles.pageSubtitle}>Manage teachers and their assignments</Text>
-      </View>
+      <AdminSectionHeader
+        title="Teacher Management"
+        subtitle="Manage teachers and their assignments"
+        icon="people-outline"
+      />
 
       <View style={styles.statsRow}>
-        <View style={[styles.summaryTile, { borderLeftColor: '#fb923c' }]}>
-          <View style={[styles.summaryIconWrap, { backgroundColor: '#fff7ed' }]}>
-            <MaterialCommunityIcons name="account-group" size={18} color="#ea580c" allowFontScaling={false} />
-          </View>
-          <Text style={styles.summaryTileLabel}>Total</Text>
-          <Text style={styles.summaryTileValue}>{totalTeachers}</Text>
-        </View>
-        <View style={[styles.summaryTile, { borderLeftColor: '#38bdf8' }]}>
-          <View style={[styles.summaryIconWrap, { backgroundColor: '#eff6ff' }]}>
-            <MaterialCommunityIcons name="check-circle" size={18} color="#0284c7" allowFontScaling={false} />
-          </View>
-          <Text style={styles.summaryTileLabel}>Active</Text>
-          <Text style={styles.summaryTileValue}>{activeTeachers}</Text>
-        </View>
-        <View style={[styles.summaryTile, { borderLeftColor: '#14b8a6' }]}>
-          <View style={[styles.summaryIconWrap, { backgroundColor: '#f0fdfa' }]}>
-            <MaterialCommunityIcons name="domain" size={18} color="#0d9488" allowFontScaling={false} />
-          </View>
-          <Text style={styles.summaryTileLabel}>Depts</Text>
-          <Text style={styles.summaryTileValue}>{departments.length}</Text>
-        </View>
-        <View style={[styles.summaryTile, { borderLeftColor: '#a855f7' }]}>
-          <View style={[styles.summaryIconWrap, { backgroundColor: '#f5f3ff' }]}>
-            <MaterialCommunityIcons name="book-open-variant" size={18} color="#7c3aed" allowFontScaling={false} />
-          </View>
-          <Text style={styles.summaryTileLabel}>Subjects</Text>
-          <Text style={styles.summaryTileValue}>{totalSubjects}</Text>
-        </View>
+        <AdminStatCard label="Total" value={totalTeachers} icon="people" gradientIndex={0} delay={0} />
+        <AdminStatCard label="Active" value={activeTeachers} icon="checkmark-circle" gradientIndex={2} delay={50} />
+        <AdminStatCard label="Depts" value={departments.length} icon="business" gradientIndex={3} delay={100} />
+        <AdminStatCard label="Subjects" value={totalSubjects} icon="book" gradientIndex={1} delay={150} />
       </View>
 
-      <View style={styles.toolbarCard}>
-        <View style={styles.searchWrap}>
-          <View style={[styles.searchIcon, styles.toolbarIconWrap]}>
-            <MaterialCommunityIcons name="magnify" size={22} color="#94a3b8" allowFontScaling={false} />
-          </View>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search teachers by name, email, or department…"
-            value={searchTerm}
-            onChangeText={setSearchTerm}
-            placeholderTextColor="#94a3b8"
-          />
-        </View>
-        <TouchableOpacity
-          style={styles.addTeacherBtn}
-          onPress={() => setIsAddModalVisible(true)}
-          activeOpacity={0.88}
-        >
-          <MaterialCommunityIcons name="plus" size={22} color="#fff" allowFontScaling={false} />
-          <Text style={styles.addTeacherBtnText}>Add teacher</Text>
-        </TouchableOpacity>
-      </View>
+      <AdminGlassCard delay={80} style={{ marginBottom: spacing.md, padding: spacing.md }}>
+        <AdminSearchBar
+          placeholder="Search teachers by name, email, or department…"
+          value={searchTerm}
+          onChangeText={setSearchTerm}
+        />
+      </AdminGlassCard>
 
-      {/* Teachers List */}
       {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0d9488" />
-        </View>
+        <AdminSkeletonList count={4} />
       ) : filteredTeachers.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <View style={styles.emptyIconWrap}>
-            <MaterialCommunityIcons name="account-group-outline" size={48} color="#0d9488" allowFontScaling={false} />
-          </View>
-          <Text style={styles.emptyText}>No teachers found</Text>
-          <Text style={styles.emptyHint}>Try a different search or add a new teacher.</Text>
-        </View>
+        <AdminEmptyState
+          title="No teachers found"
+          message="Try a different search or add a new teacher."
+          icon="people-outline"
+        />
       ) : (
         <View style={styles.listContent}>
-          {filteredTeachers.map((teacher, index) => (
-            <Fragment key={String(teacher.id || teacher.email || `teacher-${index}`)}>
-              {renderTeacherCard(teacher)}
-            </Fragment>
-          ))}
+          {filteredTeachers.map((teacher, index) => renderTeacherCard(teacher, index))}
         </View>
       )}
 
@@ -679,7 +648,7 @@ export default function TeachersView() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <LinearGradient
-              colors={['#fb923c', '#f97316']}
+              colors={[...colors.fabGradient]}
               style={styles.modalHeader}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -765,7 +734,7 @@ export default function TeachersView() {
                 activeOpacity={0.8}
               >
                 <LinearGradient
-                  colors={['#fb923c', '#f97316']}
+                  colors={[...colors.fabGradient]}
                   style={styles.submitButtonGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
@@ -788,7 +757,7 @@ export default function TeachersView() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <LinearGradient
-              colors={['#fb923c', '#f97316']}
+              colors={[...colors.fabGradient]}
               style={styles.modalHeader}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -874,7 +843,7 @@ export default function TeachersView() {
                 activeOpacity={0.8}
               >
                 <LinearGradient
-                  colors={['#fb923c', '#f97316']}
+                  colors={[...colors.fabGradient]}
                   style={styles.submitButtonGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
@@ -957,7 +926,7 @@ export default function TeachersView() {
                 <Text style={styles.assignCancelBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.assignPrimaryBtn, assignSubmitting && styles.assignPrimaryBtnDisabled]}
+                style={[styles.assignPrimaryBtn, { backgroundColor: colors.primary }, assignSubmitting && styles.assignPrimaryBtnDisabled]}
                 onPress={handleAssignSubjectsSubmit}
                 disabled={assignSubmitting}
               >
@@ -1041,7 +1010,7 @@ export default function TeachersView() {
                 <Text style={styles.assignCancelBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.assignPrimaryBtn, assignSubmitting && styles.assignPrimaryBtnDisabled]}
+                style={[styles.assignPrimaryBtn, { backgroundColor: colors.primary }, assignSubmitting && styles.assignPrimaryBtnDisabled]}
                 onPress={handleAssignClassesSubmit}
                 disabled={assignSubmitting}
               >
@@ -1063,141 +1032,25 @@ export default function TeachersView() {
           dailyDialogTeacher ? getAssignedClassOptions(dailyDialogTeacher) : []
         }
       />
-    </ScrollView>
+    </AdminScreenShell>
+    <AdminFAB onPress={() => setIsAddModalVisible(true)} />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  contentContainer: {
-    paddingBottom: 100,
-  },
-  pageIntro: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-  },
-  pageTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#0f172a',
-    letterSpacing: -0.3,
-    marginBottom: 4,
-  },
-  pageSubtitle: {
-    fontSize: 14,
-    color: '#64748b',
-    lineHeight: 20,
-  },
   statsRow: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
+    flexWrap: 'wrap',
     gap: 8,
     marginBottom: 12,
   },
-  summaryTile: {
-    flex: 1,
-    minWidth: 0,
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderLeftWidth: 4,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  summaryIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-  },
-  summaryTileLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#64748b',
-    marginBottom: 2,
-    textAlign: 'center',
-  },
-  summaryTileValue: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#0f172a',
-  },
-  toolbarCard: {
-    marginHorizontal: 16,
-    marginBottom: 14,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  searchWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f1f5f9',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    height: 46,
-    fontSize: 15,
-    color: '#0f172a',
-  },
-  addTeacherBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#0d9488',
-    paddingVertical: 14,
-    borderRadius: 12,
-  },
-  addTeacherBtnText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '800',
-  },
   listContent: {
-    paddingHorizontal: 16,
     gap: 12,
     paddingBottom: 8,
   },
   teacherCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
     padding: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
   },
   teacherTopRow: {
     flexDirection: 'row',
@@ -1214,7 +1067,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0d9488',
   },
   teacherAvatarText: {
     fontSize: 18,
@@ -1319,7 +1171,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   kvValueMuted: {
-    color: '#0d9488',
+    color: '#4F46E5',
     fontWeight: '600',
   },
   assignedClassesBlock: {
@@ -1418,50 +1270,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-  },
-  squircleBtnOrange: {
-    borderColor: '#fdba74',
-  },
-  squircleBtnGreen: {
-    borderColor: '#6ee7b7',
-  },
-  squircleBtnPurple: {
-    borderColor: '#a5b4fc',
-  },
-  squircleBtnRed: {
-    borderColor: '#fca5a5',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 24,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 28,
-  },
-  emptyIconWrap: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: '#f0fdfa',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyText: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#0f172a',
-    marginTop: 12,
-  },
-  emptyHint: {
-    fontSize: 14,
-    color: '#64748b',
-    marginTop: 6,
-    textAlign: 'center',
   },
   modalOverlay: {
     flex: 1,
@@ -1669,7 +1477,6 @@ const styles = StyleSheet.create({
     color: '#374151',
   },
   assignPrimaryBtn: {
-    backgroundColor: '#ea580c',
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 12,
