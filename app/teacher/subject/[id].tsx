@@ -16,6 +16,7 @@ import { openContentPreview } from '../../../src/utils/openContentPreview';
 import { SubNavChips, TeacherShimmer } from '../../../src/components/teacher';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../../src/theme/teacher';
 import { useContentViewerBack } from '../../../src/hooks/useBackNavigation';
+import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
 import { filterContentsBySchoolProgram } from '../../../src/lib/school-program';
 
 type ContentItem = {

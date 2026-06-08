@@ -409,7 +409,22 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
     if (!video._id) return;
     router.push({
       pathname: '/video-player',
-      params: { videoId: video._id, isContentItem: 'true', returnTo: 'eduott' },
+      params: {
+        videoId: video._id,
+        isContentItem: 'true',
+        contentData: JSON.stringify({
+          _id: video._id,
+          title: video.title,
+          description: video.description,
+          fileUrl: video.fileUrl || video.videoUrl,
+          videoUrl: video.videoUrl || video.fileUrl,
+          youtubeUrl: video.youtubeUrl,
+          duration: video.duration,
+          type: 'Video',
+          subject: video.subjectName,
+        }),
+        returnTo: 'eduott',
+      },
     });
   }, []);
 

@@ -23,37 +23,54 @@ function pickParam(v: string | string[] | undefined): string {
   return typeof s === 'string' ? s : '';
 }
 
-function transformAsliPrepItemToVideo(contentData: any) {
-  const videoFileUrl = contentData.fileUrl || contentData.videoUrl || '';
-  const isYouTube = !!contentData.youtubeUrl || (videoFileUrl && (
-    videoFileUrl.includes('youtube.com') ||
-    videoFileUrl.includes('youtu.be')
-  ));
-  return {
-    _id: contentData._id || contentData.id,
-    title: contentData.title || 'Untitled Video',
-    description: contentData.description || '',
-    duration: contentData.duration ? (contentData.duration > 100 ? contentData.duration : contentData.duration * 60) : 0,
-    views: contentData.views || 0,
-    createdAt: contentData.createdAt || new Date().toISOString(),
-    videoUrl: videoFileUrl,
-    youtubeUrl: contentData.youtubeUrl || (isYouTube ? videoFileUrl : ''),
-    isYouTubeVideo: isYouTube,
-    thumbnailUrl: contentData.thumbnailUrl || null,
-    subject: contentData.subject?.name || contentData.subject || 'Unknown',
-    aiFeatures: {
-      hasNotes: false,
-      hasMindMap: false,
-      hasVoiceQA: false
-    }
-  };
+function extractApiList(data: unknown): any[] {
+  if (Array.isArray(data)) return data;
+  if (data && typeof data === 'object') {
+    const obj = data as Record<string, unknown>;
+    if (Array.isArray(obj.data)) return obj.data;
+    if (Array.isArray(obj.videos)) return obj.videos;
+  }
+  return [];
 }
 
-function findAsliPrepById(contentsList: unknown, videoId: string) {
-  const contentArray = Array.isArray(contentsList) ? contentsList : [];
-  return contentArray.find((item: any) =>
-    (item._id === videoId) || (item.id === videoId)
+function findByIdInList(list: unknown, videoId: string) {
+  const id = String(videoId);
+  return extractApiList(list).find(
+    (item: any) => String(item?._id) === id || String(item?.id) === id
   );
+}
+
+function transformLibraryVideo(videoData: any) {
+  const videoFileUrl = videoData.videoUrl || videoData.fileUrl || '';
+  const isYouTube =
+    !!videoData.isYouTubeVideo ||
+    !!videoData.youtubeUrl ||
+    (videoFileUrl &&
+      (videoFileUrl.includes('youtube.com') || videoFileUrl.includes('youtu.be')));
+  return {
+    _id: videoData._id || videoData.id,
+    title: videoData.title || 'Untitled Video',
+    description: videoData.description || '',
+    duration: videoData.duration
+      ? videoData.duration > 100
+        ? videoData.duration
+        : videoData.duration * 60
+      : 0,
+    views: videoData.views || 0,
+    createdAt: videoData.createdAt || new Date().toISOString(),
+    videoUrl: videoFileUrl,
+    youtubeUrl: videoData.youtubeUrl || (isYouTube ? videoFileUrl : ''),
+    isYouTubeVideo: isYouTube,
+    thumbnailUrl: videoData.thumbnailUrl || null,
+    subject: videoData.subject?.name || videoData.subject || 'Unknown',
+    difficulty: videoData.difficulty,
+    language: videoData.language,
+    aiFeatures: videoData.aiFeatures || {
+      hasAutoNotes: !!videoData.aiFeatures?.hasNotes,
+      hasVisualMaps: !!videoData.aiFeatures?.hasMindMap,
+      hasVoiceQA: !!videoData.aiFeatures?.hasVoiceQA,
+    },
+  };
 }
 
 interface Video {
@@ -142,31 +159,23 @@ export default function VideoPlayer() {
     try {
       setIsLoading(true);
 
-      try {
-        const { data } = await api.get(`/api/student/videos/${encodeURIComponent(videoId)}`);
-        const videoData = data?.data ?? data;
-        if (videoData && (videoData._id || videoData.title)) {
-          setVideo(videoData);
-          return;
-        }
-      } catch {
-        // 404 / network — try asli-prep fallbacks
-      }
-
-      const asliPrepAttempts: Array<() => Promise<{ data: any }>> = [
-        () => api.get('/api/admin/asli-prep-content', { params: { type: 'Video' } }),
-        () => api.get('/api/admin/asli-prep-content'),
+      const libraryAttempts: Array<() => Promise<{ data: any }>> = [
+        () => api.get('/api/teacher/asli-prep-content', { params: { type: 'Video' } }),
+        () => api.get('/api/teacher/asli-prep-content'),
         () => api.get('/api/student/asli-prep-content', { params: { type: 'Video' } }),
         () => api.get('/api/student/asli-prep-content'),
+        () => api.get('/api/admin/asli-prep-content', { params: { type: 'Video' } }),
+        () => api.get('/api/admin/asli-prep-content'),
+        () => api.get('/api/teacher/videos'),
+        () => api.get('/api/student/videos'),
       ];
 
-      for (const run of asliPrepAttempts) {
+      for (const run of libraryAttempts) {
         try {
           const { data } = await run();
-          const contentsList = data?.data ?? data ?? [];
-          const contentData = findAsliPrepById(contentsList, videoId);
-          if (contentData) {
-            setVideo(transformAsliPrepItemToVideo(contentData));
+          const match = findByIdInList(data, videoId);
+          if (match) {
+            setVideo(transformLibraryVideo(match));
             return;
           }
         } catch {

@@ -109,7 +109,7 @@ const teacherService = {
   videos: () => cachedFetch<any[]>('videos', '/api/teacher/videos'),
   homework: () => cachedFetch<any[]>('homework', '/api/teacher/homework-submissions'),
   homeworkSubmissions: () => cachedFetch<any>('hw_subs', '/api/teacher/homework-submissions'),
-  liveSessions: () => cachedFetch<any[]>('live_sessions', '/api/teacher/live-sessions'),
+  liveSessions: () => cachedFetch<any[]>('live_sessions', '/api/teacher/streams'),
   homeworkSubmissionsGrouped: async (): Promise<CachedResult<{ homeworks: any[]; students: any[] }>> => {
     const cached = await getCached<{ homeworks: any[]; students: any[] }>('hw_grouped');
     try {

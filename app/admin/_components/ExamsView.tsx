@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import api from '../../../src/services/api/api';
+import authService from '../../../src/services/api/authService';
 import {
   AdminScreenShell,
   AdminSectionHeader,
@@ -35,6 +36,10 @@ interface Exam {
   endDate: string;
   isActive: boolean;
   createdBy?: { fullName?: string; email?: string };
+  isSchoolSpecific?: boolean;
+  isBoardSpecific?: boolean;
+  isAllBoards?: boolean;
+  targetSchools?: Array<{ _id?: string; schoolName?: string; fullName?: string } | string>;
 }
 
 interface ExamResultRow {
@@ -73,7 +78,26 @@ function normalizeExam(raw: any): Exam {
     endDate: raw?.endDate ? String(raw.endDate) : '',
     isActive: raw?.isActive !== false,
     createdBy: raw?.createdBy,
+    isSchoolSpecific: !!raw?.isSchoolSpecific,
+    isBoardSpecific: !!raw?.isBoardSpecific,
+    isAllBoards: !!raw?.isAllBoards,
+    targetSchools: Array.isArray(raw?.targetSchools) ? raw.targetSchools : [],
   };
+}
+
+function getExamAudienceLabel(exam: Exam): string {
+  if (exam.isAllBoards) return 'All schools & boards';
+  if (exam.isSchoolSpecific && exam.targetSchools?.length) {
+    const names = exam.targetSchools
+      .map((school) => {
+        if (typeof school === 'string') return school;
+        return school.schoolName || school.fullName || '';
+      })
+      .filter(Boolean);
+    return names.length ? names.join(', ') : 'Selected schools';
+  }
+  if (exam.isBoardSpecific) return 'Schools on your board';
+  return 'All schools';
 }
 
 function parseExamsResponse(responseData: any): Exam[] {
@@ -116,6 +140,21 @@ export default function ExamsView() {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [results, setResults] = useState<ExamResultRow[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [viewerLabel, setViewerLabel] = useState('School Admin');
+
+  useEffect(() => {
+    authService
+      .me()
+      .then((data) => {
+        const user = data?.user ?? data;
+        const school = user?.schoolName || user?.fullName || user?.email || 'School Admin';
+        const board = user?.board ? String(user.board).replace(/_/g, ' ') : '';
+        setViewerLabel(board ? `${school} (${board})` : school);
+      })
+      .catch(() => {
+        setViewerLabel('School Admin');
+      });
+  }, []);
 
   const fetchExams = useCallback(async () => {
     try {
@@ -195,11 +234,19 @@ export default function ExamsView() {
   return (
     <>
       <AdminScreenShell refreshing={refreshing} onRefresh={onRefresh}>
-        <AdminSectionHeader
-          icon="eye-outline"
-          title="Exams (View Only)"
-          subtitle="View exams created by Super Admin for your board."
-        />
+        <AdminGlassCard noAnimation style={{ marginBottom: spacing.sm, padding: spacing.md }}>
+          <AdminSectionHeader
+            icon="eye-outline"
+            title="Exams (View Only)"
+            subtitle="Exams created by Super Admin that your school can access."
+          />
+          <View style={[styles.viewerChip, { backgroundColor: colors.primaryMuted, borderColor: colors.primary + '33' }]}>
+            <Ionicons name="person-circle-outline" size={16} color={colors.primary} />
+            <Text style={[styles.viewerChipText, { color: colors.primary }]}>
+              Viewing as {viewerLabel}
+            </Text>
+          </View>
+        </AdminGlassCard>
 
         <AdminSearchBar
           placeholder="Search exams..."
@@ -246,6 +293,15 @@ export default function ExamsView() {
                     {exam.description}
                   </Text>
                 )}
+                <View style={[styles.audienceBanner, { backgroundColor: colors.primaryMuted }]}>
+                  <Ionicons name="people-outline" size={15} color={colors.primary} />
+                  <View style={styles.audienceTextWrap}>
+                    <Text style={[styles.audienceLabel, { color: colors.textMuted }]}>Who can see this exam</Text>
+                    <Text style={[styles.audienceValue, { color: colors.text }]}>
+                      {getExamAudienceLabel(exam)}
+                    </Text>
+                  </View>
+                </View>
                 <View style={[styles.metaBlock, { borderTopColor: colors.surfaceBorder }]}>
                   <View style={styles.metaRow}>
                     <Ionicons name="time-outline" size={16} color={colors.primary} />
@@ -265,11 +321,9 @@ export default function ExamsView() {
                       {formatDateShort(exam.startDate)} — {formatDateShort(exam.endDate)}
                     </Text>
                   </View>
-                  {exam.createdBy?.fullName ? (
-                    <Text style={[styles.createdBy, { color: colors.textMuted }]}>
-                      Created by: {exam.createdBy.fullName}
-                    </Text>
-                  ) : null}
+                  <Text style={[styles.createdBy, { color: colors.textMuted }]}>
+                    Created by: {exam.createdBy?.fullName || 'Super Admin'}
+                  </Text>
                 </View>
                 <AdminScalePressable
                   onPress={() => openExamDetail(exam)}
@@ -389,6 +443,29 @@ export default function ExamsView() {
 }
 
 const styles = StyleSheet.create({
+  viewerChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  viewerChipText: { fontSize: 12, fontWeight: '700' },
+  audienceBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    padding: 10,
+    borderRadius: 10,
+    marginBottom: 8,
+  },
+  audienceTextWrap: { flex: 1, gap: 2 },
+  audienceLabel: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
+  audienceValue: { fontSize: 13, fontWeight: '700', lineHeight: 18 },
   cardTop: { marginBottom: 8 },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   typeBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },

@@ -38,25 +38,40 @@ const PANEL_TABS: { id: ProgressPanel; label: string; icon: keyof typeof Ionicon
   { id: 'report', label: 'Report', icon: 'document-text-outline' },
 ];
 
+const AI_SUMMARY_GRADIENT = ['#EEF2FF', '#F5F3FF', '#FAF5FF'] as const;
+
 function SectionCard({
   title,
   icon,
   iconColor,
   children,
-  accent,
+  variant = 'default',
 }: {
   title: string;
   icon: keyof typeof Ionicons.glyphMap;
   iconColor: string;
   children: ReactNode;
-  accent?: string;
+  variant?: 'default' | 'ai';
 }) {
+  const header = (
+    <View style={styles.sectionHeader}>
+      <Ionicons name={icon} size={20} color={iconColor} />
+      <Text style={styles.sectionTitle}>{title}</Text>
+    </View>
+  );
+
+  if (variant === 'ai') {
+    return (
+      <LinearGradient colors={[...AI_SUMMARY_GRADIENT]} style={styles.aiSummaryCard}>
+        {header}
+        {children}
+      </LinearGradient>
+    );
+  }
+
   return (
-    <View style={[styles.sectionCard, accent ? { backgroundColor: accent } : null]}>
-      <View style={styles.sectionHeader}>
-        <Ionicons name={icon} size={20} color={iconColor} />
-        <Text style={styles.sectionTitle}>{title}</Text>
-      </View>
+    <View style={styles.sectionCard}>
+      {header}
       {children}
     </View>
   );
@@ -269,7 +284,7 @@ export default function TrackProgressView({ initialClassFilter, initialStudentId
         </View>
       </View>
 
-      <SectionCard title="Class AI Summary" icon="sparkles" iconColor={TEACHER.primaryLight} accent="rgba(123,80,255,0.07)">
+      <SectionCard title="Class AI Summary" icon="sparkles" iconColor={TEACHER.primary} variant="ai">
         <View style={styles.aiHeader}>
           <Text style={styles.sectionHint}>Quick class-wide improvement overview</Text>
           <Pressable style={styles.refreshBtn} onPress={refreshClassAi} disabled={aiLoading}>
@@ -641,6 +656,14 @@ const styles = StyleSheet.create({
     borderRadius: TEACHER_RADIUS.xl,
     padding: 14,
     gap: 10,
+  },
+  aiSummaryCard: {
+    borderRadius: TEACHER_RADIUS.xl,
+    padding: 14,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(99,102,241,0.2)',
+    ...TEACHER.shadow.sm,
   },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sectionTitle: { ...TEACHER_TYPO.body, fontWeight: '800', color: TEACHER.text },

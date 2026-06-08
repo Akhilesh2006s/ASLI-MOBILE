@@ -39,25 +39,20 @@ export function openContentPreview(
     getPreviewKind(rawUrl, item.type, item.youtubeUrl) === 'youtube';
 
   if (isVideoType) {
-    if (contentId) {
-      router.push({
-        pathname: '/video-player',
-        params: { videoId: String(contentId), ...returnParams },
-      });
-      return;
-    }
-
+    const contentPayload = {
+      _id: contentId || 'preview',
+      title: item.title || 'Video',
+      fileUrl: resolveContentUrl(rawUrl),
+      youtubeUrl: item.youtubeUrl,
+      videoUrl: item.videoUrl,
+      type: item.type || 'Video',
+    };
     router.push({
       pathname: '/video-player',
       params: {
+        ...(contentId ? { videoId: String(contentId) } : {}),
         isContentItem: 'true',
-        contentData: JSON.stringify({
-          _id: 'preview',
-          title: item.title || 'Video',
-          fileUrl: resolveContentUrl(rawUrl),
-          youtubeUrl: item.youtubeUrl,
-          type: item.type || 'Video',
-        }),
+        contentData: JSON.stringify(contentPayload),
         ...returnParams,
       },
     });
