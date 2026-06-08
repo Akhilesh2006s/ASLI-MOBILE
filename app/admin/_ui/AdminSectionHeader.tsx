@@ -17,7 +17,7 @@ export default function AdminSectionHeader({ title, subtitle, icon, action }: Pr
     <View style={styles.row}>
       <View style={styles.left}>
         {icon ? (
-          <View style={[styles.iconWrap, { backgroundColor: colors.primaryMuted }]}>
+          <View style={[styles.iconWrap, { backgroundColor: colors.inputBg, borderColor: colors.surfaceBorder }]}>
             <Ionicons name={icon} size={18} color={colors.primary} />
           </View>
         ) : null}
@@ -53,6 +53,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
   },
   textBlock: {
     flex: 1,

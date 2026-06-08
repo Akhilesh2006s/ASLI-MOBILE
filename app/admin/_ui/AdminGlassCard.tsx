@@ -11,10 +11,10 @@ type Props = {
 };
 
 export default function AdminGlassCard({ children, style, delay = 0, noAnimation }: Props) {
-  const { glassCard, colors } = useAdminTheme();
+  const { glassCard, spacing } = useAdminTheme();
 
   const content = (
-    <View style={[glassCard, styles.inner, { backgroundColor: colors.surface }, style]}>
+    <View style={[glassCard, styles.inner, { padding: spacing.md }, style]}>
       {children}
     </View>
   );

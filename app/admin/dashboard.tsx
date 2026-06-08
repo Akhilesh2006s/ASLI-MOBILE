@@ -24,7 +24,7 @@ import CalendarView from './_components/CalendarView';
 import SchoolManagementView from './_components/SchoolManagementView';
 import VidyaAIView from './_components/VidyaAIView';
 import AdminNavDrawer, { adminNavLabel, type AdminNavView } from './_components/AdminNavDrawer';
-import { AdminHeader, AdminGridBackground, useAdminTheme } from './_ui';
+import { AdminHeader, useAdminTheme } from './_ui';
 
 export default function AdminDashboard() {
   const { signOut } = useAuth();
@@ -173,8 +173,7 @@ export default function AdminDashboard() {
         onMenu={() => setMenuOpen(true)}
       />
 
-      <View style={styles.contentWrap}>
-        <AdminGridBackground />
+      <View style={[styles.contentWrap, { backgroundColor: colors.bg }]}>
         <Animated.View entering={FadeInDown.duration(280).springify()} style={styles.content}>
           {renderContent()}
         </Animated.View>

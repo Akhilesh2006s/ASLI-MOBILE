@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -21,9 +21,112 @@ import {
 } from '../../lib/timetable-utils';
 import { TEACHER } from '../../theme/teacher';
 
+type GridVariant = 'teacher' | 'admin';
+
+type GridTheme = {
+  shellBorder: string;
+  shellBg: string;
+  headerGradient: readonly [string, string];
+  cornerBg: string;
+  cornerIcon: string;
+  cornerText: string;
+  timeBorder: string;
+  timeDot: string;
+  timeLabel: string;
+  timeRange: string;
+  dayBg: string;
+  dayTodayBg: string;
+  dayBorder: string;
+  todayAccent: string;
+  dayLabel: string;
+  dayLabelToday: string;
+  todayBadge: string;
+  slotBg: string;
+  slotAltBg: string;
+  emptyBorder: string;
+  emptyBg: string;
+  entryBg: string;
+  entryBorder: string;
+  entryText: string;
+  success: string;
+  footerBg: string;
+  footerBorder: string;
+  footerDotBorder: string;
+  footerDotBg: string;
+  footerText: string;
+};
+
+const TEACHER_THEME: GridTheme = {
+  shellBorder: TEACHER.surfaceBorder,
+  shellBg: TEACHER.cardBg,
+  headerGradient: ['#EEF2FF', '#E0E7FF'],
+  cornerBg: TEACHER.surfaceHover,
+  cornerIcon: TEACHER.primaryDark,
+  cornerText: TEACHER.primaryDark,
+  timeBorder: TEACHER.surfaceBorder,
+  timeDot: TEACHER.primary,
+  timeLabel: TEACHER.text,
+  timeRange: TEACHER.textMuted,
+  dayBg: TEACHER.surface,
+  dayTodayBg: TEACHER.surfaceHover,
+  dayBorder: TEACHER.surfaceBorder,
+  todayAccent: TEACHER.primary,
+  dayLabel: TEACHER.textSecondary,
+  dayLabelToday: TEACHER.primaryDark,
+  todayBadge: TEACHER.primary,
+  slotBg: TEACHER.cardBg,
+  slotAltBg: TEACHER.surface,
+  emptyBorder: TEACHER.surfaceBorder,
+  emptyBg: TEACHER.surface,
+  entryBg: TEACHER.surfaceHover,
+  entryBorder: 'rgba(99,102,241,0.20)',
+  entryText: TEACHER.text,
+  success: TEACHER.success,
+  footerBg: TEACHER.surface,
+  footerBorder: TEACHER.surfaceBorder,
+  footerDotBorder: TEACHER.primary,
+  footerDotBg: TEACHER.cardBg,
+  footerText: TEACHER.textMuted,
+};
+
+const ADMIN_THEME: GridTheme = {
+  shellBorder: 'rgba(251, 146, 60, 0.45)',
+  shellBg: '#FFFFFF',
+  headerGradient: ['#EA580C', '#F59E0B'],
+  cornerBg: 'rgba(194, 65, 12, 0.92)',
+  cornerIcon: '#FFFFFF',
+  cornerText: '#FFFFFF',
+  timeBorder: 'rgba(255, 255, 255, 0.25)',
+  timeDot: '#FFFFFF',
+  timeLabel: '#FFFFFF',
+  timeRange: 'rgba(255, 255, 255, 0.85)',
+  dayBg: '#F8FAFC',
+  dayTodayBg: '#FFEDD5',
+  dayBorder: 'rgba(251, 146, 60, 0.25)',
+  todayAccent: '#EA580C',
+  dayLabel: '#475569',
+  dayLabelToday: '#9A3412',
+  todayBadge: '#EA580C',
+  slotBg: '#FFFFFF',
+  slotAltBg: '#FFF7ED',
+  emptyBorder: 'rgba(251, 146, 60, 0.35)',
+  emptyBg: '#FFFBEB',
+  entryBg: '#FFF7ED',
+  entryBorder: 'rgba(234, 88, 12, 0.28)',
+  entryText: '#7C2D12',
+  success: '#10B981',
+  footerBg: '#FFF7ED',
+  footerBorder: 'rgba(251, 146, 60, 0.25)',
+  footerDotBorder: '#EA580C',
+  footerDotBg: '#FFFFFF',
+  footerText: '#9A3412',
+};
+
 type Props = {
   entries: TimetableEntryLike[];
+  variant?: GridVariant;
   onEntryClick?: (entry: TimetableEntryLike) => void;
+  footerHint?: string;
 };
 
 const DAY_COL = 84;
@@ -39,11 +142,11 @@ function usePressScale(to = 0.96) {
 
 function EntryCard({
   entry,
-  hour,
+  theme,
   onEntryClick,
 }: {
   entry: TimetableEntryLike;
-  hour: number;
+  theme: GridTheme;
   onEntryClick?: (entry: TimetableEntryLike) => void;
 }) {
   const press = usePressScale();
@@ -56,43 +159,74 @@ function EntryCard({
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
     >
-      <Animated.View style={[styles.entryCard, done && styles.entryDone, press.style]}>
-        <Text style={styles.entryText} numberOfLines={3}>
+      <Animated.View
+        style={[
+          styles.entryCard,
+          {
+            backgroundColor: theme.entryBg,
+            borderColor: theme.entryBorder,
+          },
+          done && styles.entryDone,
+          press.style,
+        ]}
+      >
+        <Text style={[styles.entryText, { color: theme.entryText }]} numberOfLines={3}>
           {label}
         </Text>
         {done ? (
-          <Ionicons name="checkmark-circle" size={12} color={TEACHER.success} style={styles.doneIcon} />
+          <Ionicons name="checkmark-circle" size={12} color={theme.success} style={styles.doneIcon} />
         ) : null}
       </Animated.View>
     </Pressable>
   );
 }
 
-export default function WeeklyTimetableGrid({ entries, onEntryClick }: Props) {
+export default function WeeklyTimetableGrid({
+  entries,
+  variant = 'teacher',
+  onEntryClick,
+  footerHint,
+}: Props) {
+  const theme = variant === 'admin' ? ADMIN_THEME : TEACHER_THEME;
   const placements = buildWeekdayPlacements(entries);
   const timeSlots = getTimeSlots();
   const todayIdx = todayWeekdayIndex(new Date());
   const minWidth = DAY_COL + timeSlots.length * TIME_COL;
+  const defaultFooterHint =
+    variant === 'admin'
+      ? 'Tap a session for details · manage entries on web'
+      : onEntryClick
+        ? 'Tap a class to mark as completed'
+        : undefined;
+  const hint = footerHint ?? defaultFooterHint;
+
+  const shellStyle = useMemo(
+    () => ({
+      borderColor: theme.shellBorder,
+      backgroundColor: theme.shellBg,
+    }),
+    [theme]
+  );
 
   return (
-    <View style={styles.shell}>
+    <View style={[styles.shell, shellStyle]}>
       <ScrollView horizontal showsHorizontalScrollIndicator bounces={false}>
         <View style={{ minWidth }}>
           <LinearGradient
-            colors={['#EEF2FF', '#E0E7FF']}
+            colors={[...theme.headerGradient]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.headerRow}
           >
-            <View style={[styles.cornerCell, { width: DAY_COL }]}>
-              <Ionicons name="time-outline" size={14} color="rgba(255,255,255,0.9)" />
-              <Text style={styles.cornerText}>TIME</Text>
+            <View style={[styles.cornerCell, { width: DAY_COL, backgroundColor: theme.cornerBg, borderRightColor: theme.timeBorder }]}>
+              <Ionicons name="time-outline" size={14} color={theme.cornerIcon} />
+              <Text style={[styles.cornerText, { color: theme.cornerText }]}>TIME</Text>
             </View>
             {timeSlots.map((hour) => (
-              <View key={hour} style={[styles.timeHeader, { width: TIME_COL }]}>
-                <View style={styles.timeDot} />
-                <Text style={styles.timeHeaderLabel}>{formatHourLabel(hour)}</Text>
-                <Text style={styles.timeHeaderRange}>{formatSlotRange(hour)}</Text>
+              <View key={hour} style={[styles.timeHeader, { width: TIME_COL, borderRightColor: theme.timeBorder }]}>
+                <View style={[styles.timeDot, { backgroundColor: theme.timeDot }]} />
+                <Text style={[styles.timeHeaderLabel, { color: theme.timeLabel }]}>{formatHourLabel(hour)}</Text>
+                <Text style={[styles.timeHeaderRange, { color: theme.timeRange }]}>{formatSlotRange(hour)}</Text>
               </View>
             ))}
           </LinearGradient>
@@ -100,20 +234,26 @@ export default function WeeklyTimetableGrid({ entries, onEntryClick }: Props) {
           {WEEKDAY_LABELS.map((label, dayIndex) => {
             const isToday = todayIdx === dayIndex;
             return (
-              <View key={label} style={styles.dayRow}>
+              <View key={label} style={[styles.dayRow, { borderBottomColor: theme.dayBorder }]}>
                 <View
                   style={[
                     styles.dayCell,
-                    { width: DAY_COL },
-                    isToday && styles.dayCellToday,
+                    {
+                      width: DAY_COL,
+                      backgroundColor: isToday ? theme.dayTodayBg : theme.dayBg,
+                      borderRightColor: theme.dayBorder,
+                    },
                   ]}
                 >
-                  {isToday ? <View style={styles.todayAccent} /> : null}
-                  <Text style={[styles.dayLabel, isToday && styles.dayLabelToday]} numberOfLines={1}>
+                  {isToday ? <View style={[styles.todayAccent, { backgroundColor: theme.todayAccent }]} /> : null}
+                  <Text
+                    style={[styles.dayLabel, { color: isToday ? theme.dayLabelToday : theme.dayLabel }]}
+                    numberOfLines={1}
+                  >
                     {label.slice(0, 3).toUpperCase()}
                   </Text>
                   {isToday ? (
-                    <View style={styles.todayBadge}>
+                    <View style={[styles.todayBadge, { backgroundColor: theme.todayBadge }]}>
                       <Text style={styles.todayBadgeText}>Today</Text>
                     </View>
                   ) : null}
@@ -126,18 +266,26 @@ export default function WeeklyTimetableGrid({ entries, onEntryClick }: Props) {
                       key={`${dayIndex}-${hour}`}
                       style={[
                         styles.slotCell,
-                        { width: TIME_COL },
-                        colIdx % 2 === 0 ? styles.slotCellAlt : null,
+                        {
+                          width: TIME_COL,
+                          borderRightColor: theme.dayBorder,
+                          backgroundColor: colIdx % 2 === 0 ? theme.slotBg : theme.slotAltBg,
+                        },
                       ]}
                     >
                       {cellEntries.length === 0 ? (
-                        <View style={styles.emptyCell} />
+                        <View
+                          style={[
+                            styles.emptyCell,
+                            { borderColor: theme.emptyBorder, backgroundColor: theme.emptyBg },
+                          ]}
+                        />
                       ) : (
                         cellEntries.map((entry) => (
                           <EntryCard
                             key={entry._id || entry.id || `${teacherSlotLabel(entry)}-${hour}`}
                             entry={entry}
-                            hour={hour}
+                            theme={theme}
                             onEntryClick={onEntryClick}
                           />
                         ))
@@ -151,12 +299,10 @@ export default function WeeklyTimetableGrid({ entries, onEntryClick }: Props) {
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
-        <View style={styles.footerDot} />
-        <Text style={styles.footerText}>Monday – Saturday · same weekly pattern</Text>
-        {onEntryClick ? (
-          <Text style={styles.footerHint}>Tap a class to mark as completed</Text>
-        ) : null}
+      <View style={[styles.footer, { borderTopColor: theme.footerBorder, backgroundColor: theme.footerBg }]}>
+        <View style={[styles.footerDot, { backgroundColor: theme.footerDotBg, borderColor: theme.footerDotBorder }]} />
+        <Text style={[styles.footerText, { color: theme.footerText }]}>Monday – Saturday · same weekly pattern</Text>
+        {hint ? <Text style={[styles.footerHint, { color: theme.footerText }]}>{hint}</Text> : null}
       </View>
     </View>
   );
@@ -166,26 +312,21 @@ const styles = StyleSheet.create({
   shell: {
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
-    backgroundColor: TEACHER.cardBg,
     overflow: 'hidden',
   },
   headerRow: {
     flexDirection: 'row',
   },
   cornerCell: {
-    backgroundColor: TEACHER.surfaceHover,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
     borderRightWidth: 1,
-    borderRightColor: TEACHER.surfaceBorder,
     gap: 4,
   },
   cornerText: {
     fontSize: 9,
     fontWeight: '800',
-    color: TEACHER.primaryDark,
     letterSpacing: 0.6,
   },
   timeHeader: {
@@ -193,41 +334,31 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 8,
     borderRightWidth: 1,
-    borderRightColor: TEACHER.surfaceBorder,
   },
   timeDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: TEACHER.primary,
     marginBottom: 4,
   },
   timeHeaderLabel: {
     fontSize: 12,
     fontWeight: '800',
-    color: TEACHER.text,
   },
   timeHeaderRange: {
     fontSize: 8,
-    color: TEACHER.textMuted,
     marginTop: 2,
   },
   dayRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: TEACHER.surfaceBorder,
   },
   dayCell: {
-    backgroundColor: TEACHER.surface,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
     borderRightWidth: 1,
-    borderRightColor: TEACHER.surfaceBorder,
     position: 'relative',
-  },
-  dayCellToday: {
-    backgroundColor: TEACHER.surfaceHover,
   },
   todayAccent: {
     position: 'absolute',
@@ -237,20 +368,14 @@ const styles = StyleSheet.create({
     width: 3,
     borderTopRightRadius: 4,
     borderBottomRightRadius: 4,
-    backgroundColor: TEACHER.primary,
   },
   dayLabel: {
     fontSize: 10,
     fontWeight: '800',
-    color: TEACHER.textSecondary,
     letterSpacing: 0.4,
-  },
-  dayLabelToday: {
-    color: TEACHER.primaryDark,
   },
   todayBadge: {
     marginTop: 4,
-    backgroundColor: TEACHER.primary,
     borderRadius: 999,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -264,11 +389,6 @@ const styles = StyleSheet.create({
     minHeight: 52,
     padding: 4,
     borderRightWidth: 1,
-    borderRightColor: TEACHER.surfaceBorder,
-    backgroundColor: TEACHER.cardBg,
-  },
-  slotCellAlt: {
-    backgroundColor: TEACHER.surface,
   },
   emptyCell: {
     flex: 1,
@@ -276,13 +396,9 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: TEACHER.surfaceBorder,
-    backgroundColor: TEACHER.surface,
   },
   entryCard: {
-    backgroundColor: TEACHER.surfaceHover,
     borderWidth: 1,
-    borderColor: 'rgba(99,102,241,0.20)',
     borderRadius: 8,
     padding: 6,
     marginBottom: 4,
@@ -293,7 +409,6 @@ const styles = StyleSheet.create({
   entryText: {
     fontSize: 9,
     fontWeight: '700',
-    color: TEACHER.text,
     lineHeight: 12,
   },
   doneIcon: {
@@ -307,23 +422,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderTopWidth: 1,
-    borderTopColor: TEACHER.surfaceBorder,
-    backgroundColor: TEACHER.surface,
   },
   footerDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: TEACHER.cardBg,
     borderWidth: 2,
-    borderColor: TEACHER.primary,
   },
   footerText: {
     fontSize: 10,
-    color: TEACHER.textMuted,
   },
   footerHint: {
     fontSize: 10,
-    color: TEACHER.textMuted,
   },
 });

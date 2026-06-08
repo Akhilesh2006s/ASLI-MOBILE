@@ -234,13 +234,13 @@ export default function ExamsView() {
   return (
     <>
       <AdminScreenShell refreshing={refreshing} onRefresh={onRefresh}>
-        <AdminGlassCard noAnimation style={{ marginBottom: spacing.sm, padding: spacing.md }}>
+        <AdminGlassCard noAnimation style={{ marginBottom: spacing.sm }}>
           <AdminSectionHeader
             icon="eye-outline"
             title="Exams (View Only)"
             subtitle="Exams created by Super Admin that your school can access."
           />
-          <View style={[styles.viewerChip, { backgroundColor: colors.primaryMuted, borderColor: colors.primary + '33' }]}>
+          <View style={[styles.viewerChip, { backgroundColor: colors.inputBg, borderColor: colors.surfaceBorder }]}>
             <Ionicons name="person-circle-outline" size={16} color={colors.primary} />
             <Text style={[styles.viewerChipText, { color: colors.primary }]}>
               Viewing as {viewerLabel}
@@ -293,7 +293,7 @@ export default function ExamsView() {
                     {exam.description}
                   </Text>
                 )}
-                <View style={[styles.audienceBanner, { backgroundColor: colors.primaryMuted }]}>
+                <View style={[styles.audienceBanner, { backgroundColor: colors.inputBg, borderColor: colors.surfaceBorder }]}>
                   <Ionicons name="people-outline" size={15} color={colors.primary} />
                   <View style={styles.audienceTextWrap}>
                     <Text style={[styles.audienceLabel, { color: colors.textMuted }]}>Who can see this exam</Text>
@@ -462,6 +462,7 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 10,
     marginBottom: 8,
+    borderWidth: 1,
   },
   audienceTextWrap: { flex: 1, gap: 2 },
   audienceLabel: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },

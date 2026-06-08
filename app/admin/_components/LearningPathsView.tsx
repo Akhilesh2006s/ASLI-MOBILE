@@ -77,15 +77,17 @@ export default function LearningPathsView() {
 
   return (
     <AdminScreenShell refreshing={refreshing} onRefresh={onRefresh}>
-      <AdminSectionHeader
-        icon="map"
-        title="Learning Paths"
-        subtitle={
-          isAsliPrepExclusive
-            ? 'Asli Prep catalog — all content types'
-            : 'Curriculum library — Audio, TextBook & Homework'
-        }
-      />
+      <AdminGlassCard noAnimation style={{ marginBottom: spacing.sm }}>
+        <AdminSectionHeader
+          icon="map"
+          title="Learning Paths"
+          subtitle={
+            isAsliPrepExclusive
+              ? 'Asli Prep catalog — all content types'
+              : 'Curriculum library — Audio, TextBook & Homework'
+          }
+        />
+      </AdminGlassCard>
 
       {subjectsWithContent.length === 0 ? (
         <AdminEmptyState
@@ -107,7 +109,7 @@ export default function LearningPathsView() {
                 style={styles.pathHeaderRow}
               >
                 <View style={styles.pathHeader}>
-                  <View style={[styles.pathIcon, { backgroundColor: colors.primaryMuted }]}>
+                  <View style={[styles.pathIcon, { backgroundColor: colors.inputBg, borderColor: colors.surfaceBorder }]}>
                     <Ionicons name="book" size={20} color={colors.primary} />
                   </View>
                   <View style={styles.pathInfo}>
@@ -192,6 +194,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
+    borderWidth: 1,
   },
   pathInfo: { flex: 1, minWidth: 0 },
   pathDescription: { fontSize: 13, marginBottom: 2, marginTop: 2 },

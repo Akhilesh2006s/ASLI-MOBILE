@@ -201,7 +201,7 @@ export const ADMIN_TYPO = {
 
 export function adminGlassCard(colors: AdminThemeColors) {
   return {
-    backgroundColor: colors.surfaceGlass,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
     borderRadius: ADMIN_RADIUS.lg,
