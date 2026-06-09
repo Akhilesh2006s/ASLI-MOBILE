@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
+import Svg, { G, Path } from 'react-native-svg';
+import { describeArc } from './chart-math';
 import { COLORS, FONT } from '../../../theme';
 
 type Segment = {
@@ -16,44 +17,43 @@ type Props = {
 };
 
 export default function DonutChart({ segments, size = 120, centerLabel }: Props) {
-  const total = segments.reduce((s, seg) => s + seg.value, 0) || 1;
   const strokeWidth = 14;
+  const cx = size / 2;
+  const cy = size / 2;
   const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  let offset = 0;
+  const total = segments.reduce((sum, seg) => sum + seg.value, 0) || 1;
+
+  let cursor = 0;
+  const arcs = segments.map((seg, index) => {
+    const sweep = (seg.value / total) * 360;
+    const start = cursor;
+    const end = cursor + sweep;
+    cursor = end;
+    if (seg.value <= 0 || sweep <= 0) return null;
+    return (
+      <Path
+        key={`${seg.label || 'seg'}-${index}`}
+        d={describeArc(cx, cy, radius, start, end)}
+        stroke={seg.color}
+        strokeWidth={strokeWidth}
+        fill="none"
+        strokeLinecap="butt"
+      />
+    );
+  });
 
   return (
     <View style={styles.wrap}>
       <Svg width={size} height={size}>
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={COLORS.divider}
-          strokeWidth={strokeWidth}
-          fill="none"
-        />
-        {segments.map((seg, i) => {
-          const dash = (seg.value / total) * circumference;
-          const circle = (
-            <Circle
-              key={i}
-              cx={size / 2}
-              cy={size / 2}
-              r={radius}
-              stroke={seg.color}
-              strokeWidth={strokeWidth}
-              fill="none"
-              strokeDasharray={`${dash} ${circumference - dash}`}
-              strokeDashoffset={-offset}
-              strokeLinecap="round"
-              rotation={-90}
-              origin={`${size / 2}, ${size / 2}`}
-            />
-          );
-          offset += dash;
-          return circle;
-        })}
+        <G>
+          <Path
+            d={describeArc(cx, cy, radius, 0, 359.99)}
+            stroke="#cbd5e1"
+            strokeWidth={strokeWidth}
+            fill="none"
+          />
+          {arcs}
+        </G>
       </Svg>
       {centerLabel ? (
         <View style={[styles.center, { width: size, height: size }]}>

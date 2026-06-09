@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -24,7 +24,7 @@ import CalendarView from './_components/CalendarView';
 import SchoolManagementView from './_components/SchoolManagementView';
 import VidyaAIView from './_components/VidyaAIView';
 import AdminNavDrawer, { adminNavLabel, type AdminNavView } from './_components/AdminNavDrawer';
-import { AdminHeader, useAdminTheme } from './_ui';
+import { AdminHeader, AdminTabBar, useAdminTheme } from './_ui';
 
 export default function AdminDashboard() {
   const { signOut } = useAuth();
@@ -43,7 +43,12 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
-    if (tab === 'eduott') setCurrentView('eduott');
+    if (tab === 'overview') setCurrentView('overview');
+    else if (tab === 'students') setCurrentView('students');
+    else if (tab === 'classes') setCurrentView('classes');
+    else if (tab === 'teachers') setCurrentView('teachers');
+    else if (tab === 'vidya-ai') setCurrentView('vidya-ai');
+    else if (tab === 'eduott') setCurrentView('eduott');
     else if (tab === 'learning-paths') setCurrentView('learning-paths');
   }, [tab]);
 
@@ -167,17 +172,24 @@ export default function AdminDashboard() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]} edges={['bottom']}>
-      <AdminHeader
-        userName={userName}
-        subtitle={isDashboard ? 'Dashboard' : adminNavLabel(currentView)}
-        onMenu={() => setMenuOpen(true)}
-      />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <AdminHeader
+          userName={userName}
+          subtitle={isDashboard ? 'Dashboard' : adminNavLabel(currentView)}
+          onMenu={() => setMenuOpen(true)}
+        />
 
-      <View style={[styles.contentWrap, { backgroundColor: colors.bg }]}>
-        <Animated.View key={currentView} entering={FadeIn.duration(200)} style={styles.content}>
-          {renderContent()}
-        </Animated.View>
-      </View>
+        <View style={[styles.contentWrap, { backgroundColor: colors.bg }]}>
+          <Animated.View key={currentView} entering={FadeIn.duration(200)} style={styles.content}>
+            {renderContent()}
+          </Animated.View>
+        </View>
+      </KeyboardAvoidingView>
+
+      <AdminTabBar activeView={currentView} onTabChange={setCurrentView} />
 
       <AdminNavDrawer
         visible={menuOpen}
@@ -198,6 +210,7 @@ const styles = StyleSheet.create({
     minHeight: 0,
     position: 'relative',
     overflow: 'hidden',
+    paddingBottom: 100,
   },
   content: {
     flex: 1,

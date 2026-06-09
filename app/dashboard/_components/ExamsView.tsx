@@ -488,6 +488,8 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
         },
         answers: reviewResult.answers || {},
         questions: examWithQuestions.questions || [],
+        questionTimings: reviewResult.questionTimings || displayResult.questionTimings,
+        questionAnalytics: reviewResult.questionAnalytics || displayResult.questionAnalytics,
       };
 
       setSelectedExamForResults({ exam: examWithQuestions, result: formattedResult });

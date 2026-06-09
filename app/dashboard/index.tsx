@@ -38,6 +38,16 @@ export default function StudentDashboard() {
   const [refreshing, setRefreshing] = useState(false);
 
   const homeScrollRef = useRef<ScrollView>(null);
+  const learningScrollRef = useRef<ScrollView>(null);
+  const vidyaScrollRef = useRef<ScrollView>(null);
+  const settingsScrollRef = useRef<ScrollView>(null);
+
+  const tabScrollRefs: Partial<Record<TabId, React.RefObject<ScrollView | null>>> = {
+    home: homeScrollRef,
+    learning: learningScrollRef,
+    vidya: vidyaScrollRef,
+    settings: settingsScrollRef,
+  };
 
   useBackNavigation('/dashboard', true);
 
@@ -46,8 +56,12 @@ export default function StudentDashboard() {
   }, []);
 
   useEffect(() => {
-    if (tab === 'eduott') setActiveTab('eduott');
+    if (tab === 'home') setActiveTab('home');
     else if (tab === 'learning') setActiveTab('learning');
+    else if (tab === 'eduott') setActiveTab('eduott');
+    else if (tab === 'exams') setActiveTab('exams');
+    else if (tab === 'vidya') setActiveTab('vidya');
+    else if (tab === 'settings') setActiveTab('settings');
   }, [tab]);
 
   const firstName = useMemo(
@@ -109,6 +123,15 @@ export default function StudentDashboard() {
 
   const pad = { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 120 };
 
+  const handleTabChange = (id: string) => {
+    const next = id as TabId;
+    if (next === activeTab) {
+      tabScrollRefs[next]?.current?.scrollTo({ y: 0, animated: true });
+      return;
+    }
+    setActiveTab(next);
+  };
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'home':
@@ -132,7 +155,12 @@ export default function StudentDashboard() {
         );
       case 'learning':
         return (
-          <ScrollView style={styles.scroll} contentContainerStyle={pad} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            ref={learningScrollRef}
+            style={styles.scroll}
+            contentContainerStyle={pad}
+            showsVerticalScrollIndicator={false}
+          >
             <LearningPathsView />
           </ScrollView>
         );
@@ -152,13 +180,23 @@ export default function StudentDashboard() {
         );
       case 'vidya':
         return (
-          <ScrollView style={styles.scroll} contentContainerStyle={pad} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            ref={vidyaScrollRef}
+            style={styles.scroll}
+            contentContainerStyle={pad}
+            showsVerticalScrollIndicator={false}
+          >
             <AITabView />
           </ScrollView>
         );
       case 'settings':
         return (
-          <ScrollView style={styles.scroll} contentContainerStyle={pad} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            ref={settingsScrollRef}
+            style={styles.scroll}
+            contentContainerStyle={pad}
+            showsVerticalScrollIndicator={false}
+          >
             <ProfileTabView user={user} onLogout={() => router.replace('/auth/login')} />
           </ScrollView>
         );
@@ -170,7 +208,7 @@ export default function StudentDashboard() {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <StatusBar barStyle="dark-content" />
+        <StatusBar barStyle="dark-content" translucent={false} backgroundColor={STUDENT.bg} />
         <LoadingState variant="stats" style={{ padding: 16 }} />
       </SafeAreaView>
     );
@@ -180,7 +218,7 @@ export default function StudentDashboard() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="dark-content" translucent={false} backgroundColor={STUDENT.bg} />
       <Animated.View
         key={activeTab}
         entering={SlideInRight.duration(220).easing(Easing.inOut(Easing.ease))}
@@ -190,7 +228,7 @@ export default function StudentDashboard() {
         {renderTabContent()}
       </Animated.View>
 
-      <StudentTabBar tabs={TABS} activeTab={activeTab} onTabChange={(id) => setActiveTab(id as TabId)} />
+      <StudentTabBar tabs={TABS} activeTab={activeTab} onTabChange={handleTabChange} />
     </SafeAreaView>
   );
 }
@@ -209,11 +247,11 @@ const styles = StyleSheet.create({
   },
   eduottPane: {
     flex: 1,
-    paddingBottom: 92,
+    paddingBottom: 120,
   },
   examsPane: {
     flex: 1,
     minHeight: 0,
-    paddingBottom: 0,
+    paddingBottom: 120,
   },
 });

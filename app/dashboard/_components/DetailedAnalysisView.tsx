@@ -1,14 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import {
   AiExamAnalysis,
   ExamAnalysisResult,
+  getDisplayPercentage,
+  getGradeLetter,
   normalizeMongoId,
 } from '../../../src/lib/exam-analysis-helpers';
+import { ANALYSIS, analysisStyles, TAB_META } from './exam-analysis/exam-analysis-ui';
 import {
   AdvancedTabMobile,
   AiReportTabMobile,
@@ -17,27 +21,23 @@ import {
   QuestionsTabMobile,
 } from './exam-analysis/MobileExamAnalysisTabs';
 
-type AnalysisTab = 'ai' | 'questions' | 'advanced' | 'insights' | 'plan';
+type AnalysisTab = keyof typeof TAB_META;
 
 interface DetailedAnalysisViewProps {
   result?: ExamAnalysisResult;
   examTitle?: string;
   onBack?: () => void;
+  onRetake?: () => void;
+  attemptsRemaining?: number;
   embedded?: boolean;
 }
-
-const TABS: { id: AnalysisTab; label: string }[] = [
-  { id: 'ai', label: 'AI Report' },
-  { id: 'questions', label: 'Questions' },
-  { id: 'advanced', label: 'Advanced' },
-  { id: 'insights', label: 'Insights' },
-  { id: 'plan', label: 'Plan' },
-];
 
 export default function DetailedAnalysisView({
   result,
   examTitle = 'Exam',
   onBack = () => {},
+  onRetake,
+  attemptsRemaining = 0,
   embedded = false,
 }: DetailedAnalysisViewProps) {
   const [activeTab, setActiveTab] = useState<AnalysisTab>('ai');
@@ -143,6 +143,11 @@ export default function DetailedAnalysisView({
               srv.answers && Object.keys(srv.answers).length > 0
                 ? { ...(base.answers || {}), ...srv.answers }
                 : base.answers,
+            questionTimings: base.questionTimings || result.questionTimings,
+            questionAnalytics:
+              srv.questionAnalytics && Array.isArray(srv.questionAnalytics)
+                ? srv.questionAnalytics
+                : base.questionAnalytics,
           };
         });
       } catch {
@@ -232,35 +237,72 @@ export default function DetailedAnalysisView({
   const advancedExamId = normalizeMongoId(displayResult.examId);
   const Shell = embedded ? View : SafeAreaView;
   const shellProps = embedded ? { style: styles.container } : { style: styles.container, edges: ['top'] as const };
+  const attempted = (displayResult.correctAnswers || 0) + (displayResult.wrongAnswers || 0);
+  const accuracy = attempted > 0 ? Math.round((displayResult.correctAnswers / attempted) * 100) : 0;
+  const scorePct = Math.round(getDisplayPercentage(displayResult));
+  const grade = getGradeLetter(scorePct);
 
   return (
     <Shell {...shellProps}>
-      <View style={[styles.header, embedded && styles.headerEmbedded]}>
-        {!embedded ? (
-          <TouchableOpacity onPress={onBack} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={22} color="#111827" />
-          </TouchableOpacity>
-        ) : null}
-        <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Detailed Analysis</Text>
-          <Text style={styles.headerSub} numberOfLines={1}>{examTitle}</Text>
-        </View>
-      </View>
+      <View style={analysisStyles.header}>
+        <LinearGradient colors={[...ANALYSIS.gradient]} style={styles.headerGradient}>
+          <View style={[analysisStyles.headerTop, embedded && styles.headerEmbedded]}>
+            {!embedded ? (
+              <TouchableOpacity onPress={onBack} style={analysisStyles.backBtn}>
+                <Ionicons name="arrow-back" size={20} color="#334155" />
+              </TouchableOpacity>
+            ) : null}
+            <View style={{ flex: 1 }}>
+              <Text style={analysisStyles.headerTitle}>Exam Analysis</Text>
+              <Text style={analysisStyles.headerSub} numberOfLines={1}>{examTitle}</Text>
+            </View>
+            {!embedded && onRetake && attemptsRemaining > 0 ? (
+              <TouchableOpacity onPress={onRetake} style={analysisStyles.retakeBtn}>
+                <Ionicons name="refresh" size={14} color={ANALYSIS.accent} />
+                <Text style={analysisStyles.retakeBtnText}>{attemptsRemaining}</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+          <View style={analysisStyles.statsStrip}>
+            <View style={analysisStyles.statChip}>
+              <Text style={analysisStyles.statChipVal}>{displayResult.obtainedMarks || 0}</Text>
+              <Text style={analysisStyles.statChipLab}>Marks</Text>
+            </View>
+            <View style={analysisStyles.statChip}>
+              <Text style={analysisStyles.statChipVal}>{scorePct}%</Text>
+              <Text style={analysisStyles.statChipLab}>Score</Text>
+            </View>
+            <View style={analysisStyles.statChip}>
+              <Text style={analysisStyles.statChipVal}>{grade}</Text>
+              <Text style={analysisStyles.statChipLab}>Grade</Text>
+            </View>
+            <View style={analysisStyles.statChip}>
+              <Text style={analysisStyles.statChipVal}>{accuracy}%</Text>
+              <Text style={analysisStyles.statChipLab}>Accuracy</Text>
+            </View>
+          </View>
+        </LinearGradient>
 
-      <View style={styles.tabsBar}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
-          {TABS.map((tab) => (
-        <TouchableOpacity
-              key={tab.id}
-              style={[styles.tabBtn, activeTab === tab.id && styles.tabBtnActive]}
-              onPress={() => setActiveTab(tab.id)}
-        >
-              <Text style={[styles.tabBtnText, activeTab === tab.id && styles.tabBtnTextActive]}>
-                {tab.label}
-          </Text>
-        </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <View style={analysisStyles.tabsWrap}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={analysisStyles.tabsScroll}>
+            {(Object.entries(TAB_META) as [AnalysisTab, (typeof TAB_META)[AnalysisTab]][]).map(([id, tab]) => (
+              <TouchableOpacity
+                key={id}
+                style={[analysisStyles.tabPill, activeTab === id && analysisStyles.tabPillActive]}
+                onPress={() => setActiveTab(id)}
+              >
+                <Ionicons
+                  name={tab.icon}
+                  size={15}
+                  color={activeTab === id ? ANALYSIS.accent : '#94A3B8'}
+                />
+                <Text style={[analysisStyles.tabPillText, activeTab === id && analysisStyles.tabPillTextActive]}>
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
       </View>
 
       <View style={styles.body}>
@@ -275,10 +317,18 @@ export default function DetailedAnalysisView({
           />
         )}
         {activeTab === 'questions' && (
-          <QuestionsTabMobile result={displayResult} aiAnalysis={aiAnalysis} />
+          <QuestionsTabMobile
+            result={displayResult}
+            aiAnalysis={aiAnalysis}
+            aiLoading={aiLoading}
+          />
         )}
         {activeTab === 'advanced' && advancedExamId ? (
-          <AdvancedTabMobile examId={advancedExamId} />
+          <AdvancedTabMobile
+            examId={advancedExamId}
+            result={displayResult}
+            aiAnalysis={aiAnalysis}
+          />
         ) : null}
         {activeTab === 'insights' && (
           <InsightsTabMobile result={displayResult} aiAnalysis={aiAnalysis} />
@@ -292,35 +342,8 @@ export default function DetailedAnalysisView({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  backBtn: { padding: 4 },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: '#111827' },
-  headerSub: { fontSize: 13, color: '#6b7280', marginTop: 2 },
-  tabsBar: {
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  tabsScroll: { paddingHorizontal: 12, gap: 4 },
-  tabBtn: {
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  tabBtnActive: { borderBottomColor: '#7c3aed' },
-  tabBtnText: { fontSize: 13, fontWeight: '600', color: '#6b7280' },
-  tabBtnTextActive: { color: '#111827', fontWeight: '800' },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  headerGradient: { paddingBottom: 4 },
   body: { flex: 1 },
   headerEmbedded: { paddingTop: 0 },
   missingState: {

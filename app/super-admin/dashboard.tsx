@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Alert, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import * as SecureStore from 'expo-secure-store';
@@ -29,7 +29,7 @@ import SuperAdminNavDrawer, {
   superAdminNavLabel,
   type SuperAdminView,
 } from './_components/SuperAdminNavDrawer';
-import { SuperAdminHeader, SuperAdminGridBackground, useSuperAdminTheme } from './_ui';
+import { SuperAdminHeader, SuperAdminGridBackground, SuperAdminTabBar, useSuperAdminTheme } from './_ui';
 import {
   fetchDashboardStats,
   fetchRealtimeAnalytics,
@@ -40,6 +40,7 @@ import { fetchCurrentUser } from '../../src/lib/vidya-admin';
 
 export default function SuperAdminDashboard() {
   const router = useRouter();
+  const { tab } = useLocalSearchParams<{ tab?: string }>();
   const { signOut } = useAuth();
   const { colors } = useSuperAdminTheme();
   const [currentView, setCurrentView] = useState<SuperAdminView>('dashboard');
@@ -80,6 +81,14 @@ export default function SuperAdminDashboard() {
   }, []);
 
   useBackNavigation('/super-admin-dashboard', true);
+
+  useEffect(() => {
+    if (tab === 'dashboard') setCurrentView('dashboard');
+    else if (tab === 'admins') setCurrentView('admins');
+    else if (tab === 'analytics') setCurrentView('analytics');
+    else if (tab === 'vidya-ai') setCurrentView('vidya-ai');
+    else if (tab === 'settings') setCurrentView('settings');
+  }, [tab]);
 
   const fetchUserInfo = async () => {
     try {
@@ -236,18 +245,25 @@ export default function SuperAdminDashboard() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]} edges={['bottom']}>
-      <SuperAdminHeader
-        userName={user.fullName}
-        subtitle={isDashboard ? 'Aslilearn AI Platform' : superAdminNavLabel(currentView)}
-        onMenu={() => setMenuOpen(true)}
-      />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <SuperAdminHeader
+          userName={user.fullName}
+          subtitle={isDashboard ? 'Aslilearn AI Platform' : superAdminNavLabel(currentView)}
+          onMenu={() => setMenuOpen(true)}
+        />
 
-      <View style={styles.contentWrap}>
-        <SuperAdminGridBackground />
-        <Animated.View entering={FadeIn.duration(200)} style={styles.mainContent}>
-          {renderContent()}
-        </Animated.View>
-      </View>
+        <View style={styles.contentWrap}>
+          <SuperAdminGridBackground />
+          <Animated.View entering={FadeIn.duration(200)} style={styles.mainContent}>
+            {renderContent()}
+          </Animated.View>
+        </View>
+      </KeyboardAvoidingView>
+
+      <SuperAdminTabBar activeView={currentView} onTabChange={handleViewChange} />
 
       <SuperAdminNavDrawer
         visible={menuOpen}
@@ -273,5 +289,6 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 0,
     backgroundColor: 'transparent',
+    paddingBottom: 100,
   },
 });

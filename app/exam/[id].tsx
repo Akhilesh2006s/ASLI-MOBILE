@@ -49,7 +49,8 @@ function mergeExamResult(
   exam: Exam,
   answers: Record<string, unknown>,
   timeTaken: number,
-  server: Record<string, unknown>
+  server: Record<string, unknown>,
+  localQuestionTimings?: Record<string, number>
 ): ExamAnalysisResult {
   const serverAnswersRaw = server.answers;
   const normalizedServerAnswers =
@@ -83,6 +84,12 @@ function mergeExamResult(
       Array.isArray(server.questions) && server.questions.length > 0
         ? server.questions
         : exam.questions,
+    questionTimings:
+      server.questionTimings && typeof server.questionTimings === 'object'
+        ? (server.questionTimings as Record<string, number>)
+        : localQuestionTimings && Object.keys(localQuestionTimings).length > 0
+          ? localQuestionTimings
+          : undefined,
   };
 }
 
@@ -105,8 +112,11 @@ export default function ExamPage() {
   const [exitAttempts, setExitAttempts] = useState(0);
   const [showExitWarning, setShowExitWarning] = useState(false);
   const [examResult, setExamResult] = useState<ExamAnalysisResult | null>(null);
+  const [questionTimings, setQuestionTimings] = useState<Record<string, number>>({});
   const submittedRef = useRef(false);
   const autoSubmitTriggeredRef = useRef(false);
+  const questionEnterTimestampRef = useRef<number>(Date.now());
+  const lastTrackedQuestionIdRef = useRef<string | null>(null);
 
   const examInProgress = !!exam && !submittedRef.current && !isLoading && !examResult;
 
@@ -136,6 +146,49 @@ export default function ExamPage() {
     return () => handler.remove();
   }, [examInProgress, recordExitAttempt]);
 
+  const recordCurrentQuestionDuration = useCallback(
+    (baseTimings: Record<string, number> = questionTimings) => {
+      if (!exam?.questions?.length) return baseTimings;
+      const now = Date.now();
+      const current = exam.questions[currentIndex];
+      const currentId = current?._id ? String(current._id) : null;
+      if (!currentId) return baseTimings;
+
+      if (!lastTrackedQuestionIdRef.current) {
+        lastTrackedQuestionIdRef.current = currentId;
+        questionEnterTimestampRef.current = now;
+        return baseTimings;
+      }
+
+      const elapsedSec = Math.max(0, Math.round((now - questionEnterTimestampRef.current) / 1000));
+      const trackedId = lastTrackedQuestionIdRef.current;
+      let updatedTimings = baseTimings;
+      if (elapsedSec > 0) {
+        updatedTimings = {
+          ...baseTimings,
+          [trackedId]: (baseTimings[trackedId] || 0) + elapsedSec,
+        };
+        setQuestionTimings(updatedTimings);
+      }
+      lastTrackedQuestionIdRef.current = currentId;
+      questionEnterTimestampRef.current = now;
+      return updatedTimings;
+    },
+    [exam, currentIndex, questionTimings]
+  );
+
+  useEffect(() => {
+    if (!exam?.questions?.length || examResult) return;
+    const current = exam.questions[currentIndex];
+    if (!current?._id) return;
+    if (!lastTrackedQuestionIdRef.current) {
+      lastTrackedQuestionIdRef.current = String(current._id);
+      questionEnterTimestampRef.current = Date.now();
+      return;
+    }
+    recordCurrentQuestionDuration();
+  }, [exam, currentIndex, examResult, recordCurrentQuestionDuration]);
+
   const submitExam = useCallback(async () => {
     if (!exam || submittedRef.current || isSubmitting) return;
     submittedRef.current = true;
@@ -143,12 +196,14 @@ export default function ExamPage() {
     setIsGrading(true);
     setShowExitWarning(false);
 
+    const finalTimings = recordCurrentQuestionDuration();
     const timeTaken = Math.max(0, exam.duration * 60 - timeLeft);
     const payload = {
       examId: exam._id,
       examTitle: exam.title,
       timeTaken,
       answers,
+      questionTimings: finalTimings,
     };
 
     try {
@@ -177,7 +232,7 @@ export default function ExamPage() {
       }
 
       const server = (json?.data || {}) as Record<string, unknown>;
-      const merged = mergeExamResult(exam, answers, timeTaken, server);
+      const merged = mergeExamResult(exam, answers, timeTaken, server, finalTimings);
       setExamResult(merged);
     } catch (error: unknown) {
       const aborted = error instanceof Error && error.name === 'AbortError';
@@ -196,7 +251,7 @@ export default function ExamPage() {
       setIsGrading(false);
       setIsSubmitting(false);
     }
-  }, [exam, timeLeft, answers, dashboardPath, router, isSubmitting]);
+  }, [exam, timeLeft, answers, dashboardPath, router, isSubmitting, recordCurrentQuestionDuration]);
 
   useEffect(() => {
     if (
@@ -322,6 +377,9 @@ export default function ExamPage() {
     setTimeLeft((Number(exam.duration) || 60) * 60);
     setExitAttempts(0);
     setShowExitWarning(false);
+    setQuestionTimings({});
+    lastTrackedQuestionIdRef.current = null;
+    questionEnterTimestampRef.current = Date.now();
   };
 
   const attemptsRemaining = exam

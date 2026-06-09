@@ -85,6 +85,7 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     bottom: 12,
+    zIndex: 50,
   },
   bar: {
     flexDirection: 'row',

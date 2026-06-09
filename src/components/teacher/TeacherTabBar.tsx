@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
     left: TEACHER_SPACING.md,
     right: TEACHER_SPACING.md,
     bottom: 0,
-    zIndex: 40,
+    zIndex: 50,
   },
   topGlow: {
     height: 1,

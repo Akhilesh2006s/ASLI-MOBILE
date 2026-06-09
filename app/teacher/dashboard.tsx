@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
@@ -112,6 +112,7 @@ export default function TeacherDashboard() {
   const [nextClass, setNextClass] = useState<{ label: string; countdown: string } | null>(null);
   const [stale, setStale] = useState(false);
   const { status: backendStatus, refresh: refreshBackendStatus } = useTeacherBackendStatus(false);
+  const scrollRef = useRef<ScrollView>(null);
 
   useBackNavigation('/teacher/dashboard', true);
 
@@ -387,6 +388,7 @@ export default function TeacherDashboard() {
           renderTab()
         ) : (
           <ScrollView
+            ref={scrollRef}
             style={styles.scroll}
             contentContainerStyle={styles.scrollContent}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={TEACHER.primary} />}
@@ -402,6 +404,10 @@ export default function TeacherDashboard() {
           tabs={TABS}
           activeTab={activeTab}
           onTabChange={(id) => {
+            if (id === activeTab && !['students', 'vidya-ai'].includes(id)) {
+              scrollRef.current?.scrollTo({ y: 0, animated: true });
+              return;
+            }
             setNavTarget({});
             setActiveTab(id as TabId);
           }}
@@ -449,7 +455,7 @@ export default function TeacherDashboard() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: TEACHER.bg },
   content: { flex: 1, minHeight: 0 },
-  contentFull: { paddingBottom: 0 },
+  contentFull: { paddingBottom: 80 },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 120, paddingTop: TEACHER_SPACING.sm },
   syncingText: {

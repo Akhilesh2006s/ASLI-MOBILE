@@ -1,3 +1,4 @@
+export { default as AdminTabBar } from './AdminTabBar';
 export { default as AdminHeader } from './AdminHeader';
 export { default as AdminGlassCard } from './AdminGlassCard';
 export { default as AdminStatCard } from './AdminStatCard';
