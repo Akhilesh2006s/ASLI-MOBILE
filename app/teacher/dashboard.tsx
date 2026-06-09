@@ -18,7 +18,7 @@ import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import { TeacherTabBar, TeacherHeader, TeacherShimmer } from '../../src/components/teacher';
 import { BottomSheet } from '../../src/components/ui';
 import type { TeacherTab } from '../../src/components/teacher';
-import { formatSubjectLabel } from '../../src/lib/teacher-text';
+import { formatSubjectLabel, resolveTeacherDisplayName } from '../../src/lib/teacher-text';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../src/theme/teacher';
 import { Ionicons } from '@expo/vector-icons';
 import AIClassesView from './_components/AIClassesView';
@@ -40,11 +40,21 @@ const TABS: TeacherTab[] = [
   { id: 'vidya-ai', label: 'Vidya AI', icon: 'sparkles-outline', activeIcon: 'sparkles' },
 ];
 
+const TAB_PAGE_TITLES: Record<TabId, string> = {
+  dashboard: 'Home',
+  students: 'Students',
+  eduott: 'EduOTT',
+  'learning-paths': 'Learning Paths',
+  'vidya-ai': 'Vidya AI',
+};
+
 type NavTarget = {
   tab?: TabId;
   studentsSub?: 'list' | 'track-progress' | 'submissions' | 'daily' | 'remarks';
   dashboardSub?: 'classes' | 'timetable' | 'schedule';
   contentSub?: 'assessments' | 'videos' | 'homework' | 'quizzes';
+  progressClassFilter?: string;
+  progressStudentId?: string;
 };
 
 function usePressScale(to = 0.96) {
@@ -112,6 +122,9 @@ export default function TeacherDashboard() {
   useEffect(() => {
     if (tab === 'eduott') setActiveTab('eduott');
     else if (tab === 'learning-paths') setActiveTab('learning-paths');
+    else if (tab === 'vidya-ai') setActiveTab('vidya-ai');
+    else if (tab === 'students') setActiveTab('students');
+    else if (tab === 'dashboard') setActiveTab('dashboard');
   }, [tab]);
 
   const loadData = async () => {
@@ -274,6 +287,8 @@ export default function TeacherDashboard() {
               navigate({
                 tab: 'students',
                 studentsSub: 'track-progress',
+                progressClassFilter: classNum,
+                progressStudentId: studentId,
               })
             }
           />
@@ -282,8 +297,8 @@ export default function TeacherDashboard() {
         return (
           <StudentsView
             initialSubTab={navTarget.studentsSub}
-            progressClassFilter={undefined}
-            progressStudentId={undefined}
+            progressClassFilter={navTarget.progressClassFilter}
+            progressStudentId={navTarget.progressStudentId}
           />
         );
       case 'eduott':
@@ -310,14 +325,27 @@ export default function TeacherDashboard() {
   const isFullHeight =
     activeTab === 'vidya-ai' || activeTab === 'students' || !!overlay;
 
+  const showHomeHeader = activeTab === 'dashboard' && !overlay;
+  const headerTitle =
+    overlay === 'content'
+      ? 'Content Manager'
+      : overlay === 'profile'
+        ? 'Profile'
+        : TAB_PAGE_TITLES[activeTab];
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#7DD3FC" />
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor={showHomeHeader ? '#7DD3FC' : TEACHER.bg}
+      />
       <TeacherHeader
-        displayName={user?.fullName || user?.name}
-        subjects={subjects}
-        nextClassLabel={nextClass?.label}
-        countdown={nextClass?.countdown}
+        variant={showHomeHeader ? 'home' : 'compact'}
+        title={headerTitle}
+        displayName={resolveTeacherDisplayName(user)}
+        subjects={showHomeHeader ? subjects : []}
+        nextClassLabel={showHomeHeader ? nextClass?.label : undefined}
+        countdown={showHomeHeader ? nextClass?.countdown : undefined}
         onLogout={handleLogout}
       />
 

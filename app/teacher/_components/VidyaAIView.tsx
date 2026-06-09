@@ -22,7 +22,12 @@ function ToolCard({ tool }: { tool: (typeof TEACHER_AI_TOOLS)[number] }) {
   const press = usePressScale();
   return (
     <Pressable
-      onPress={() => router.push(tool.route as any)}
+      onPress={() =>
+        router.push({
+          pathname: tool.route as any,
+          params: { returnTab: 'vidya-ai' },
+        })
+      }
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
     >

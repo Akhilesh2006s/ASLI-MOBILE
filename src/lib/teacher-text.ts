@@ -22,7 +22,26 @@ export function formatTitleCase(raw: string): string {
 }
 
 export function formatPersonName(raw: string): string {
-  return formatTitleCase(raw);
+  return String(raw || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ');
+}
+
+export function resolveTeacherDisplayName(user?: {
+  fullName?: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+}): string {
+  const combined = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
+  const candidates = [user?.fullName, combined, user?.name, user?.email?.split('@')[0]]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean);
+  return formatTeacherFullName(candidates[0] || 'Teacher');
 }
 
 export function formatSubjectLabel(name: string): string {

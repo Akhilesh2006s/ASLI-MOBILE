@@ -44,6 +44,50 @@ export function useBackNavigation(dashboardPath: string, preventBack: boolean = 
 
 export type ContentReturnTarget = 'eduott' | 'learning';
 
+export type TeacherDashboardTab =
+  | 'dashboard'
+  | 'students'
+  | 'eduott'
+  | 'learning-paths'
+  | 'vidya-ai';
+
+const TEACHER_DASHBOARD_TABS: TeacherDashboardTab[] = [
+  'dashboard',
+  'students',
+  'eduott',
+  'learning-paths',
+  'vidya-ai',
+];
+
+export function parseTeacherDashboardTab(value?: string): TeacherDashboardTab {
+  if (value && TEACHER_DASHBOARD_TABS.includes(value as TeacherDashboardTab)) {
+    return value as TeacherDashboardTab;
+  }
+  return 'vidya-ai';
+}
+
+/** Back from teacher tool screens → dashboard tab (default Vidya AI tools list). */
+export function useTeacherDashboardBack(returnTab: TeacherDashboardTab = 'vidya-ai') {
+  const router = useRouter();
+
+  const goBack = useCallback(() => {
+    router.navigate({
+      pathname: '/teacher/dashboard',
+      params: { tab: returnTab },
+    });
+  }, [returnTab, router]);
+
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      goBack();
+      return true;
+    });
+    return () => backHandler.remove();
+  }, [goBack]);
+
+  return goBack;
+}
+
 function dashboardPathForRole(role: string | null): string {
   if (role === 'admin') return '/admin/dashboard';
   if (role === 'teacher') return '/teacher/dashboard';

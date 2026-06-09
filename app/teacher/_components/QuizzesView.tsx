@@ -32,7 +32,15 @@ export default function QuizzesView() {
 
   return (
     <View style={styles.wrap}>
-      <Pressable style={styles.createBtn} onPress={() => router.push('/teacher/tools/worksheet-mcq-generator' as any)}>
+      <Pressable
+        style={styles.createBtn}
+        onPress={() =>
+          router.push({
+            pathname: '/teacher/tools/worksheet-mcq-generator' as any,
+            params: { returnTab: 'dashboard' },
+          })
+        }
+      >
         <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.createBtnGrad}>
           <Ionicons name="add-circle" size={20} color={TEACHER.textOnPrimary} />
           <Text style={styles.createBtnText}>Create New Quiz</Text>

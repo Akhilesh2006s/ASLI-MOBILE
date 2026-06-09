@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
   Modal,
   Pressable,
   ScrollView,
@@ -13,12 +12,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import teacherService from '../../../src/services/api/teacherService';
 import { TeacherShimmer } from '../../../src/components/teacher';
+import { formatPersonName } from '../../../src/lib/teacher-text';
 import {
+  buildProgressAiSummaryPayload,
   formatClassBadge,
+  formatLastLogin,
   performerCounts,
   progressStatusLabel,
   progressTier,
-  STUDENTS_UI,
   type StudentRow,
 } from '../../../src/lib/students-ui';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, PERFORMANCE_COLORS, glassCard } from '../../../src/theme/teacher';
@@ -28,17 +29,56 @@ type Props = {
   initialStudentId?: string;
 };
 
-type ProgressPanel = 'overview' | 'exams' | 'usage' | 'insights' | 'report';
+type AssignedClassRow = {
+  id: string;
+  classNumber: string;
+  section?: string;
+  label: string;
+  students: StudentRow[];
+};
 
-const PANEL_TABS: { id: ProgressPanel; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { id: 'overview', label: 'Overview', icon: 'grid-outline' },
-  { id: 'exams', label: 'Exams', icon: 'locate-outline' },
-  { id: 'usage', label: 'Usage', icon: 'trending-up-outline' },
-  { id: 'insights', label: 'Insights', icon: 'bulb-outline' },
-  { id: 'report', label: 'Report', icon: 'document-text-outline' },
-];
+type ClassGroup = {
+  classNumber: string;
+  sections: AssignedClassRow[];
+  totalStudents: number;
+};
 
-const AI_SUMMARY_GRADIENT = ['#EEF2FF', '#F5F3FF', '#FAF5FF'] as const;
+function classDisplayLabel(row: Pick<AssignedClassRow, 'classNumber' | 'section' | 'label'>) {
+  if (row.classNumber && row.section) return `${row.classNumber}${row.section}`;
+  return row.classNumber || row.label;
+}
+
+function sectionDisplayLabel(section?: string) {
+  const trimmed = String(section || '').trim();
+  if (!trimmed) return 'General';
+  return `Section ${trimmed}`;
+}
+
+function matchesClassFilter(row: AssignedClassRow, filter: string) {
+  const f = filter.trim();
+  if (!f) return false;
+  return (
+    row.id === f ||
+    row.classNumber === f ||
+    row.label === f ||
+    classDisplayLabel(row) === f
+  );
+}
+
+function mapPerfToStudentRow(s: any): StudentRow {
+  return {
+    id: String(s._id || s.id),
+    name: formatPersonName(s.fullName || s.name || 'Student'),
+    email: s.email || '',
+    classNumber: s.classNumber || 'N/A',
+    assignedClass: s.assignedClass,
+    lastLogin: s.lastLogin || null,
+    isActive: s.isActive !== false,
+    performance: s.performance || {},
+  };
+}
+
+const IMPROVEMENT_GRADIENT = ['#FFFBEB', '#FFF7ED', '#FFFFFF'] as const;
 
 function SectionCard({
   title,
@@ -51,19 +91,15 @@ function SectionCard({
   icon: keyof typeof Ionicons.glyphMap;
   iconColor: string;
   children: ReactNode;
-  variant?: 'default' | 'ai';
+  variant?: 'default' | 'improvement';
 }) {
-  const header = (
-    <View style={styles.sectionHeader}>
-      <Ionicons name={icon} size={20} color={iconColor} />
-      <Text style={styles.sectionTitle}>{title}</Text>
-    </View>
-  );
-
-  if (variant === 'ai') {
+  if (variant === 'improvement') {
     return (
-      <LinearGradient colors={[...AI_SUMMARY_GRADIENT]} style={styles.aiSummaryCard}>
-        {header}
+      <LinearGradient colors={[...IMPROVEMENT_GRADIENT]} style={styles.improvementCard}>
+        <View style={styles.sectionHeader}>
+          <Ionicons name={icon} size={20} color={iconColor} />
+          <Text style={styles.sectionTitle}>{title}</Text>
+        </View>
         {children}
       </LinearGradient>
     );
@@ -71,7 +107,10 @@ function SectionCard({
 
   return (
     <View style={styles.sectionCard}>
-      {header}
+      <View style={styles.sectionHeader}>
+        <Ionicons name={icon} size={20} color={iconColor} />
+        <Text style={styles.sectionTitle}>{title}</Text>
+      </View>
       {children}
     </View>
   );
@@ -96,81 +135,209 @@ function tierPillStyle(tier: 'good' | 'avg' | 'low') {
   return { bg: `${color}22`, text: color };
 }
 
+function computeClassStats(classStudents: StudentRow[]) {
+  const withExams = classStudents.filter((s) => (s.performance?.totalExams ?? 0) > 0);
+  const examScores = withExams
+    .map((s) => s.performance?.averagePercentage ?? 0)
+    .filter((p) => p > 0);
+  const avgExam = examScores.length ? examScores.reduce((a, b) => a + b, 0) / examScores.length : 0;
+  const avgOverall =
+    classStudents.length > 0
+      ? classStudents.reduce((sum, s) => sum + (s.performance?.overallProgress ?? 0), 0) /
+        classStudents.length
+      : 0;
+  return { withExams: withExams.length, avgExam, avgOverall, performers: performerCounts(classStudents) };
+}
+
+function StudentProgressRow({
+  student,
+  onView,
+}: {
+  student: StudentRow;
+  onView: () => void;
+}) {
+  const overall = student.performance?.overallProgress ?? 0;
+  const tier = progressTier(overall);
+  const colors = tierPillStyle(tier);
+  const initial = student.name.charAt(0).toUpperCase();
+
+  return (
+    <View style={styles.studentRow}>
+      <View style={styles.studentAvatar}>
+        <Text style={styles.studentAvatarText}>{initial}</Text>
+      </View>
+      <View style={styles.studentInfo}>
+        <Text style={styles.listName} numberOfLines={1}>{student.name}</Text>
+        <Text style={styles.listSub} numberOfLines={1}>{student.email}</Text>
+        <View style={styles.studentMeta}>
+          <View style={[styles.pill, { backgroundColor: colors.bg }]}>
+            <Text style={[styles.pillText, { color: colors.text }]}>
+              {overall > 0 ? `${overall.toFixed(0)}%` : 'No data'}
+            </Text>
+          </View>
+          <Text style={styles.studentMetaText}>
+            {(student.performance?.totalExams ?? 0)} exams ·{' '}
+            {(student.performance?.dailyAverageWatchTime ?? 0).toFixed(0)} min/day
+          </Text>
+        </View>
+      </View>
+      <Pressable style={styles.viewBtn} onPress={onView}>
+        <Ionicons name="eye-outline" size={14} color={TEACHER.primaryLight} />
+        <Text style={styles.viewBtnText}>View</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 export default function TrackProgressView({ initialClassFilter, initialStudentId }: Props) {
+  const [assignedClassRows, setAssignedClassRows] = useState<AssignedClassRow[]>([]);
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [remarks, setRemarks] = useState<any[]>([]);
+  const [homeworkGroups, setHomeworkGroups] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [aiSummary, setAiSummary] = useState('');
-  const [aiLoading, setAiLoading] = useState(false);
+  const [expandedClassNumbers, setExpandedClassNumbers] = useState<Set<string>>(new Set());
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [detailStudent, setDetailStudent] = useState<StudentRow | null>(null);
-  const [remarksStudent, setRemarksStudent] = useState<StudentRow | null>(null);
-  const [studentAiInsight, setStudentAiInsight] = useState('');
-  const [studentAiLoading, setStudentAiLoading] = useState(false);
-  const [activePanel, setActivePanel] = useState<ProgressPanel>('overview');
+  const [detailAiText, setDetailAiText] = useState('');
+  const [detailAiLoading, setDetailAiLoading] = useState(false);
 
   useEffect(() => {
     load();
   }, []);
 
-  useEffect(() => {
-    if (initialStudentId && students.length) {
-      const s = students.find((st) => st.id === initialStudentId);
-      if (s) {
-        setDetailStudent(s);
-        setActivePanel('report');
-      }
-    }
-  }, [initialStudentId, students]);
-
   const load = async () => {
     setLoading(true);
     try {
-      const [perfRes, remarksRes] = await Promise.all([
+      const [classesRes, perfRes, remarksRes, hwRes] = await Promise.all([
+        teacherService.classes(),
         teacherService.studentsPerformance(),
         teacherService.trackProgressRemarks(),
+        teacherService.homeworkSubmissionsGrouped().catch(() => ({ data: { homeworks: [] } })),
       ]);
-      const data = perfRes.data ?? [];
-      setStudents(
-        (Array.isArray(data) ? data : []).map((s: any) => ({
-          id: String(s._id || s.id),
-          name: s.fullName || s.name || 'Student',
-          email: s.email || '',
-          classNumber: s.classNumber || 'N/A',
-          assignedClass: s.assignedClass,
-          performance: s.performance || {},
-        }))
+
+      const classesData = Array.isArray(classesRes.data) ? classesRes.data : [];
+      const perfData = Array.isArray(perfRes.data) ? perfRes.data : [];
+      const perfMap = new Map<string, any>();
+      perfData.forEach((s: any) => {
+        const id = String(s._id || s.id);
+        if (id) perfMap.set(id, s);
+      });
+
+      const rows: AssignedClassRow[] = classesData.map((cls: any) => {
+        const classId = String(cls._id || cls.id);
+        const classNumber = String(cls.classNumber || '');
+        const section = cls.section ? String(cls.section) : undefined;
+        const label = String(cls.name || cls.className || classDisplayLabel({ classNumber, section, label: '' }));
+        const classStudents: StudentRow[] = [];
+        const seen = new Set<string>();
+
+        perfData.forEach((s: any) => {
+          const sid = String(s._id || s.id);
+          const assignedId = String(s.assignedClass?._id || s.assignedClass || '');
+          if (!sid || seen.has(sid) || assignedId !== classId) return;
+          seen.add(sid);
+          classStudents.push(mapPerfToStudentRow(s));
+        });
+
+        (Array.isArray(cls.students) ? cls.students : []).forEach((s: any) => {
+          const sid = String(s.id || s._id);
+          if (!sid || seen.has(sid)) return;
+          seen.add(sid);
+          const perf = perfMap.get(sid);
+          classStudents.push(
+            perf
+              ? mapPerfToStudentRow(perf)
+              : {
+                  id: sid,
+                  name: formatPersonName(s.name || s.fullName || 'Student'),
+                  email: s.email || '',
+                  classNumber: classNumber || 'N/A',
+                  assignedClass: { _id: classId, classNumber, section },
+                  performance: {},
+                },
+          );
+        });
+
+        classStudents.sort((a, b) => a.name.localeCompare(b.name));
+
+        return { id: classId, classNumber, section, label, students: classStudents };
+      });
+
+      rows.sort((a, b) => {
+        const na = Number(a.classNumber);
+        const nb = Number(b.classNumber);
+        if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
+        return a.classNumber.localeCompare(b.classNumber);
+      });
+
+      const assignedStudents = rows.flatMap((row) => row.students);
+      const assignedStudentIds = new Set(assignedStudents.map((s) => s.id));
+
+      setAssignedClassRows(rows);
+      setStudents(assignedStudents);
+      setRemarks(
+        (Array.isArray(remarksRes.data) ? remarksRes.data : []).filter((r) => {
+          const sid = String(r.studentId?._id || r.studentId || r.student?._id || '');
+          return sid && assignedStudentIds.has(sid);
+        }),
       );
-      setRemarks(Array.isArray(remarksRes.data) ? remarksRes.data : []);
+      setHomeworkGroups(Array.isArray(hwRes.data?.homeworks) ? hwRes.data.homeworks : []);
+
+      if (initialClassFilter) {
+        const match = rows.find((row) => matchesClassFilter(row, initialClassFilter));
+        if (match) {
+          setExpandedClassNumbers(new Set([match.classNumber]));
+          setExpandedSections(new Set([match.id]));
+        } else if (rows.some((row) => row.classNumber === initialClassFilter)) {
+          setExpandedClassNumbers(new Set([initialClassFilter]));
+        }
+      }
     } catch {
+      setAssignedClassRows([]);
       setStudents([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const filtered = useMemo(() => {
-    if (!initialClassFilter || initialClassFilter === 'all') return students;
-    return students.filter((s) => {
-      const cls = s.assignedClass?.classNumber || s.classNumber;
-      return String(cls) === initialClassFilter;
+  const { homeworkByStudent, totalHomeworkAssigned } = useMemo(() => {
+    const map = new Map<string, { assigned: number; submitted: number }>();
+    const total = homeworkGroups.length;
+    homeworkGroups.forEach((item: any) => {
+      const subs = item.submissions || [];
+      subs.forEach((sub: any) => {
+        const sid = String(sub.studentId?._id || sub.studentId || sub.student?._id || '');
+        if (!sid) return;
+        const cur = map.get(sid) || { assigned: total, submitted: 0 };
+        cur.submitted += 1;
+        map.set(sid, cur);
+      });
     });
-  }, [students, initialClassFilter]);
+    return { homeworkByStudent: map, totalHomeworkAssigned: total };
+  }, [homeworkGroups]);
 
-  const withExams = filtered.filter((s) => (s.performance?.totalExams ?? 0) > 0);
-  const examScores = withExams
-    .map((s) => s.performance?.averagePercentage ?? 0)
-    .filter((p) => p > 0);
-  const avgExam = examScores.length ? examScores.reduce((a, b) => a + b, 0) / examScores.length : 0;
-  const avgOverall =
-    filtered.length > 0
-      ? filtered.reduce((sum, s) => sum + (s.performance?.overallProgress ?? 0), 0) / filtered.length
-      : 0;
-  const withUsage = filtered.filter((s) => (s.performance?.dailyAverageWatchTime ?? 0) > 0);
-  const avgWatch = withUsage.length
-    ? withUsage.reduce((sum, s) => sum + (s.performance?.dailyAverageWatchTime ?? 0), 0) / withUsage.length
-    : 0;
-
-  const performers = performerCounts(filtered);
+  const classGroups = useMemo<ClassGroup[]>(() => {
+    const map = new Map<string, AssignedClassRow[]>();
+    assignedClassRows.forEach((row) => {
+      const key = row.classNumber || 'Other';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(row);
+    });
+    return Array.from(map.entries())
+      .sort(([a], [b]) => {
+        const na = Number(a);
+        const nb = Number(b);
+        if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
+        return a.localeCompare(b);
+      })
+      .map(([classNumber, sections]) => ({
+        classNumber,
+        sections: sections.sort((a, b) =>
+          (a.section || '').localeCompare(b.section || ''),
+        ),
+        totalStudents: sections.reduce((sum, s) => sum + s.students.length, 0),
+      }));
+  }, [assignedClassRows]);
 
   const remarksForStudent = useCallback(
     (studentId: string) =>
@@ -181,241 +348,212 @@ export default function TrackProgressView({ initialClassFilter, initialStudentId
     [remarks]
   );
 
-  const refreshClassAi = async () => {
-    setAiLoading(true);
+  const getHomeworkStats = (studentId: string) =>
+    homeworkByStudent.get(studentId) || { assigned: totalHomeworkAssigned, submitted: 0 };
+
+  const fetchAiInsights = async (targetStudents: StudentRow[], scope: string) => {
+    const summary = buildProgressAiSummaryPayload(
+      targetStudents,
+      remarks,
+      homeworkByStudent,
+      totalHomeworkAssigned,
+      scope,
+    );
+    const res = await teacherService.progressAiInsights({ summary });
+    return res?.summary || res?.data?.summary || res?.insights || 'No insights available.';
+  };
+
+  const openStudentDetail = async (student: StudentRow) => {
+    setDetailStudent(student);
+    setDetailAiText('');
+    setDetailAiLoading(true);
     try {
-      const res = await teacherService.progressAiInsights({
-        classNumber: initialClassFilter && initialClassFilter !== 'all' ? initialClassFilter : undefined,
-        studentIds: filtered.map((s) => s.id),
-      });
-      setAiSummary(res?.summary || res?.data?.summary || res?.insights || 'No insights available.');
+      setDetailAiText(
+        await fetchAiInsights([student], `Student: ${student.name || student.email || 'selected'}`)
+      );
     } catch {
-      setAiSummary('Could not load AI insights. Try again later.');
+      setDetailAiText('Could not load improvement analysis.');
     } finally {
-      setAiLoading(false);
+      setDetailAiLoading(false);
     }
   };
 
-  const loadStudentAi = async (student: StudentRow) => {
-    setStudentAiLoading(true);
-    try {
-      const res = await teacherService.progressAiInsights({ studentId: student.id });
-      setStudentAiInsight(res?.summary || res?.data?.summary || res?.insights || 'No analysis available.');
-    } catch {
-      setStudentAiInsight('Could not generate analysis.');
-    } finally {
-      setStudentAiLoading(false);
+  useEffect(() => {
+    if (!initialStudentId || !students.length) return;
+    const student = students.find((s) => s.id === initialStudentId);
+    if (!student) return;
+    const classRow = assignedClassRows.find((row) =>
+      row.students.some((s) => s.id === student.id),
+    );
+    if (classRow) {
+      setExpandedClassNumbers(new Set([classRow.classNumber]));
+      setExpandedSections(new Set([classRow.id]));
     }
+    openStudentDetail(student);
+  }, [initialStudentId, students, assignedClassRows]);
+
+  const toggleClassNumber = (classNumber: string) => {
+    setExpandedClassNumbers((prev) => {
+      const next = new Set(prev);
+      if (next.has(classNumber)) next.delete(classNumber);
+      else next.add(classNumber);
+      return next;
+    });
+  };
+
+  const toggleSection = (sectionId: string) => {
+    setExpandedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(sectionId)) next.delete(sectionId);
+      else next.add(sectionId);
+      return next;
+    });
+  };
+
+  const renderStudentDetail = (student: StudentRow) => {
+    const perf = student.performance || {};
+    const hw = getHomeworkStats(student.id);
+    const overall = perf.overallProgress ?? 0;
+    const learning = perf.learningProgress ?? 0;
+    const tier = progressTier(overall);
+    const examAvg = perf.averagePercentage;
+    const lastLogin = formatLastLogin(student.lastLogin);
+
+    return (
+      <>
+        <View style={styles.detailHeader}>
+          <View style={styles.classBadge}>
+            <Text style={styles.classBadgeText}>{formatClassBadge(student)}</Text>
+          </View>
+          <View style={[styles.pill, { backgroundColor: tierPillStyle(tier).bg }]}>
+            <Text style={[styles.pillText, { color: tierPillStyle(tier).text }]}>
+              {progressStatusLabel(overall)}
+            </Text>
+          </View>
+          <View style={[styles.statusBadge, student.isActive !== false ? styles.statusActive : styles.statusInactive]}>
+            <Text style={[styles.statusText, student.isActive !== false ? styles.statusActiveText : styles.statusInactiveText]}>
+              {student.isActive !== false ? 'Active' : 'Inactive'}
+            </Text>
+          </View>
+        </View>
+
+        <SectionCard title="Exams performance" icon="locate" iconColor="#2563EB">
+          <View style={styles.metricGrid}>
+            <View style={styles.metric}>
+              <Text style={styles.metricVal}>{perf.totalExams ?? 0}</Text>
+              <Text style={styles.metricLbl}>Exams taken</Text>
+            </View>
+            <View style={styles.metric}>
+              <Text style={styles.metricVal}>
+                {examAvg != null && examAvg > 0 ? `${examAvg.toFixed(1)}%` : 'No data'}
+              </Text>
+              <Text style={styles.metricLbl}>Average score</Text>
+            </View>
+          </View>
+          {perf.recentExamTitle ? (
+            <Text style={styles.listSub}>
+              Recent: {perf.recentExamTitle} ({(perf.recentPercentage ?? 0).toFixed(0)}%)
+            </Text>
+          ) : (
+            <Text style={styles.emptyLine}>No recent exam data.</Text>
+          )}
+        </SectionCard>
+
+        <SectionCard title="Usage & overall progress" icon="trending-up" iconColor="#059669">
+          <View style={styles.progressRow}>
+            <Text style={styles.progressLbl}>Overall progress</Text>
+            <Text style={styles.progressPct}>{overall.toFixed(1)}%</Text>
+          </View>
+          <ProgressBar value={overall} color={tierBarColor(tier)} />
+          <View style={[styles.progressRow, { marginTop: 10 }]}>
+            <Text style={styles.progressLbl}>Learning progress</Text>
+            <Text style={styles.progressPct}>
+              {learning > 0 ? `${learning.toFixed(1)}%` : 'No data'}
+            </Text>
+          </View>
+          {learning > 0 ? <ProgressBar value={learning} color="#3B82F6" /> : null}
+          <Text style={[styles.listSub, { marginTop: 8 }]}>
+            {(perf.dailyAverageWatchTime ?? 0) > 0
+              ? `${(perf.dailyAverageWatchTime ?? 0).toFixed(1)} min/day avg on platform`
+              : 'No usage data yet'}
+          </Text>
+          <View style={styles.metricGrid}>
+            <View style={styles.metric}>
+              <Text style={styles.metricVal}>{hw.submitted}/{hw.assigned}</Text>
+              <Text style={styles.metricLbl}>Homework submitted</Text>
+            </View>
+            <View style={styles.metric}>
+              <Text style={styles.metricVal}>
+                {lastLogin ? lastLogin.date : 'Never'}
+              </Text>
+              <Text style={styles.metricLbl}>Last activity</Text>
+            </View>
+          </View>
+        </SectionCard>
+
+        <SectionCard title="Remarks" icon="chatbubbles" iconColor="#0284C7">
+          {remarksForStudent(student.id).length === 0 ? (
+            <Text style={styles.emptyLine}>No remarks yet for this student.</Text>
+          ) : (
+            remarksForStudent(student.id).map((r) => (
+              <View
+                key={r._id}
+                style={[
+                  styles.remarkItem,
+                  r.isPositive ? styles.remarkPositive : styles.remarkNeedsWork,
+                ]}
+              >
+                <Text style={styles.remarkText}>{r.remark}</Text>
+                <Text style={styles.remarkMeta}>
+                  {r.isPositive ? 'Positive' : 'Needs improvement'}
+                  {r.subject?.name ? ` · ${r.subject.name}` : ''}
+                  {r.teacherId?.fullName ? ` · ${r.teacherId.fullName}` : ''}
+                  {r.createdAt ? ` · ${new Date(r.createdAt).toLocaleDateString()}` : ''}
+                </Text>
+              </View>
+            ))
+          )}
+        </SectionCard>
+
+        <SectionCard title="Areas for improvement" icon="bulb" iconColor="#D97706" variant="improvement">
+          <View style={styles.aiHeader}>
+            <Text style={styles.sectionHint}>Recommendation based on exams, usage, homework & remarks</Text>
+            <Pressable
+              style={styles.refreshBtn}
+              onPress={async () => {
+                setDetailAiLoading(true);
+                try {
+                  setDetailAiText(
+                    await fetchAiInsights(
+                      [student],
+                      `Student: ${student.name || student.email || 'selected'}`
+                    )
+                  );
+                } finally {
+                  setDetailAiLoading(false);
+                }
+              }}
+              disabled={detailAiLoading}
+            >
+              <Ionicons name="refresh" size={14} color={TEACHER.warning} />
+              <Text style={styles.refreshText}>Refresh</Text>
+            </Pressable>
+          </View>
+          {detailAiLoading ? (
+            <ActivityIndicator color={TEACHER.primary} />
+          ) : (
+            <Text style={styles.aiText}>{detailAiText || 'No analysis available.'}</Text>
+          )}
+        </SectionCard>
+      </>
+    );
   };
 
   if (loading) return <TeacherShimmer variant="list" count={4} />;
 
-  const renderPanelTabs = () => (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      style={styles.panelTabsScroll}
-      contentContainerStyle={styles.panelTabsRow}
-    >
-      {PANEL_TABS.map((tab) => {
-        const selected = activePanel === tab.id;
-        return (
-          <Pressable
-            key={tab.id}
-            style={[styles.panelTab, selected && styles.panelTabActive]}
-            onPress={() => setActivePanel(tab.id)}
-          >
-            <Ionicons
-              name={tab.icon}
-              size={14}
-              color={selected ? TEACHER.textOnPrimary : TEACHER.primaryLight}
-            />
-            <Text style={[styles.panelTabText, selected && styles.panelTabTextActive]}>{tab.label}</Text>
-          </Pressable>
-        );
-      })}
-    </ScrollView>
-  );
-
-  const renderOverview = () => (
-    <ScrollView contentContainerStyle={styles.panelContent} showsVerticalScrollIndicator={false}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.kpiHorizontal}>
-        <View style={[styles.kpiCard, styles.kpiCardWide]}>
-          <View style={[styles.kpiIcon, { backgroundColor: TEACHER.primary }]}>
-            <Ionicons name="locate" size={18} color="#fff" />
-          </View>
-          <Text style={styles.kpiVal}>{avgExam.toFixed(1)}%</Text>
-          <Text style={styles.kpiLbl}>Avg exam score</Text>
-          <Text style={styles.kpiSub}>{withExams.length} of {filtered.length} with exam data</Text>
-        </View>
-        <View style={[styles.kpiCard, styles.kpiCardWide]}>
-          <View style={[styles.kpiIcon, { backgroundColor: TEACHER.primaryLight }]}>
-            <Ionicons name="trending-up" size={18} color="#fff" />
-          </View>
-          <Text style={styles.kpiVal}>{avgOverall.toFixed(1)}%</Text>
-          <Text style={styles.kpiLbl}>Avg overall progress</Text>
-          <Text style={styles.kpiSub}>Content + exam combined</Text>
-        </View>
-        <View style={[styles.kpiCard, styles.kpiCardWide]}>
-          <View style={[styles.kpiIcon, { backgroundColor: '#a855f7' }]}>
-            <Ionicons name="time" size={18} color="#fff" />
-          </View>
-          <Text style={styles.kpiVal}>{avgWatch.toFixed(1)} min</Text>
-          <Text style={styles.kpiLbl}>Avg daily usage</Text>
-          <Text style={styles.kpiSub}>{withUsage.length} with session data</Text>
-        </View>
-      </ScrollView>
-
-      <View style={styles.performerRow}>
-        <View style={[styles.performerCard, { borderColor: `${PERFORMANCE_COLORS.good}55` }]}>
-          <Ionicons name="trending-up" size={20} color={PERFORMANCE_COLORS.good} />
-          <Text style={styles.performerVal}>{performers.high}</Text>
-          <Text style={styles.performerLbl}>High</Text>
-        </View>
-        <View style={[styles.performerCard, { borderColor: `${PERFORMANCE_COLORS.average}55` }]}>
-          <Ionicons name="locate" size={20} color={PERFORMANCE_COLORS.average} />
-          <Text style={styles.performerVal}>{performers.average}</Text>
-          <Text style={styles.performerLbl}>Average</Text>
-        </View>
-        <View style={[styles.performerCard, { borderColor: `${PERFORMANCE_COLORS['at-risk']}55` }]}>
-          <Ionicons name="alert-circle" size={20} color={PERFORMANCE_COLORS['at-risk']} />
-          <Text style={styles.performerVal}>{performers.needAttention}</Text>
-          <Text style={styles.performerLbl}>At Risk</Text>
-        </View>
-      </View>
-
-      <SectionCard title="Class AI Summary" icon="sparkles" iconColor={TEACHER.primary} variant="ai">
-        <View style={styles.aiHeader}>
-          <Text style={styles.sectionHint}>Quick class-wide improvement overview</Text>
-          <Pressable style={styles.refreshBtn} onPress={refreshClassAi} disabled={aiLoading}>
-            <Ionicons name="refresh" size={14} color={TEACHER.warning} />
-            <Text style={styles.refreshText}>Refresh</Text>
-          </Pressable>
-        </View>
-        {aiLoading ? (
-          <ActivityIndicator color={TEACHER.primary} />
-        ) : (
-          <Text style={styles.aiText}>{aiSummary || 'Tap Refresh for AI class summary.'}</Text>
-        )}
-      </SectionCard>
-
-      <View style={styles.quickJumpRow}>
-        <Text style={styles.quickJumpTitle}>Jump to section</Text>
-        {PANEL_TABS.filter((t) => t.id !== 'overview').map((tab) => (
-          <Pressable key={tab.id} style={styles.quickJumpBtn} onPress={() => setActivePanel(tab.id)}>
-            <Ionicons name={tab.icon} size={16} color={TEACHER.primaryLight} />
-            <Text style={styles.quickJumpText}>{tab.label}</Text>
-            <Ionicons name="chevron-forward" size={14} color={STUDENTS_UI.textLight} />
-          </Pressable>
-        ))}
-      </View>
-    </ScrollView>
-  );
-
-  const renderExamItem = ({ item: s }: { item: StudentRow }) => {
-    const pct = s.performance?.averagePercentage ?? 0;
-    const tier = progressTier(pct);
-    const colors = tierPillStyle(tier);
-    return (
-      <View style={styles.listItem}>
-        <View style={styles.listItemTop}>
-          <Text style={styles.listName} numberOfLines={1}>{s.name}</Text>
-          <View style={[styles.pill, { backgroundColor: colors.bg }]}>
-            <Text style={[styles.pillText, { color: colors.text }]}>{pct.toFixed(1)}% avg</Text>
-          </View>
-        </View>
-        <Text style={styles.listSub}>
-          {s.performance?.totalExams} exam{(s.performance?.totalExams ?? 0) !== 1 ? 's' : ''}
-          {s.performance?.recentExamTitle
-            ? ` · Recent: ${s.performance.recentExamTitle} (${(s.performance.recentPercentage ?? 0).toFixed(0)}%)`
-            : ''}
-        </Text>
-      </View>
-    );
-  };
-
-  const renderUsageItem = ({ item: s }: { item: StudentRow }) => {
-    const overall = s.performance?.overallProgress ?? 0;
-    const watch = s.performance?.dailyAverageWatchTime ?? 0;
-    return (
-      <View style={styles.listItem}>
-        <Text style={styles.listName}>{s.name}</Text>
-        <View style={styles.progressRow}>
-          <Text style={styles.progressLbl}>Overall progress</Text>
-          <Text style={styles.progressPct}>{overall.toFixed(1)}%</Text>
-        </View>
-        <ProgressBar value={overall} color={TEACHER.primary} />
-        <Text style={styles.listSub}>
-          {watch > 0 ? `${watch.toFixed(1)} min/day avg on platform` : 'No usage data yet'}
-        </Text>
-      </View>
-    );
-  };
-
-  const renderInsightItem = ({ item: s }: { item: StudentRow }) => {
-    const count = remarksForStudent(s.id).length;
-    return (
-      <View style={styles.insightCard}>
-        <Text style={styles.listName}>{s.name}</Text>
-        <Text style={styles.listSub}>
-          {count > 0 ? `${count} remark${count !== 1 ? 's' : ''}` : 'No remarks yet'}
-        </Text>
-        <View style={styles.insightActions}>
-          <Pressable style={styles.viewBtn} onPress={() => setRemarksStudent(s)}>
-            <Ionicons name="chatbubbles-outline" size={14} color={TEACHER.primaryLight} />
-            <Text style={styles.viewBtnText}>Remarks</Text>
-          </Pressable>
-          <Pressable
-            style={styles.viewBtn}
-            onPress={() => {
-              setDetailStudent(s);
-              loadStudentAi(s);
-            }}
-          >
-            <Ionicons name="bulb-outline" size={14} color={TEACHER.primaryLight} />
-            <Text style={styles.viewBtnText}>AI Tips</Text>
-          </Pressable>
-        </View>
-      </View>
-    );
-  };
-
-  const renderReportItem = ({ item: s }: { item: StudentRow }) => {
-    const overall = s.performance?.overallProgress ?? 0;
-    const tier = progressTier(overall);
-    const colors = tierPillStyle(tier);
-    return (
-      <Pressable style={styles.reportRow} onPress={() => setDetailStudent(s)}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.listName}>{s.name}</Text>
-          <Text style={styles.listSub}>{s.email}</Text>
-          <View style={styles.reportMeta}>
-            <View style={styles.classBadge}>
-              <Text style={styles.classBadgeText}>{formatClassBadge(s)}</Text>
-            </View>
-            <View style={[styles.pill, { backgroundColor: colors.bg }]}>
-              <Text style={[styles.pillText, { color: colors.text }]}>{progressStatusLabel(overall)}</Text>
-            </View>
-          </View>
-          <ProgressBar value={overall} color={tierBarColor(tier)} />
-        </View>
-        <View style={styles.viewBtn}>
-          <Ionicons name="eye-outline" size={14} color={TEACHER.primaryLight} />
-          <Text style={styles.viewBtnText}>View</Text>
-        </View>
-      </Pressable>
-    );
-  };
-
-  const listEmpty = (message: string) => (
-    <View style={styles.listEmpty}>
-      <Text style={styles.emptyLine}>{message}</Text>
-    </View>
-  );
-
   return (
     <View style={styles.root}>
-      <View style={styles.topBlock}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.headerCard}>
           <View style={styles.headerIcon}>
             <Ionicons name="bar-chart" size={22} color="#fff" />
@@ -423,97 +561,100 @@ export default function TrackProgressView({ initialClassFilter, initialStudentId
           <View style={{ flex: 1 }}>
             <Text style={styles.headerTitle}>Track Student Progress</Text>
             <Text style={styles.headerSub}>
-              Use tabs below — no long scrolling needed
+              Expand class → section → View student progress
             </Text>
           </View>
         </View>
-        {renderPanelTabs()}
-      </View>
 
-      <View style={styles.panelBody}>
-        {activePanel === 'overview' && renderOverview()}
-        {activePanel === 'exams' && (
-          <FlatList
-            data={withExams}
-            keyExtractor={(s) => s.id}
-            renderItem={renderExamItem}
-            contentContainerStyle={styles.panelListContent}
-            ListEmptyComponent={listEmpty('No exam attempts yet for students in this view.')}
-            showsVerticalScrollIndicator={false}
-          />
-        )}
-        {activePanel === 'usage' && (
-          <FlatList
-            data={filtered}
-            keyExtractor={(s) => s.id}
-            renderItem={renderUsageItem}
-            contentContainerStyle={styles.panelListContent}
-            ListEmptyComponent={listEmpty('No students match the current filters.')}
-            showsVerticalScrollIndicator={false}
-          />
-        )}
-        {activePanel === 'insights' && (
-          <FlatList
-            data={filtered}
-            keyExtractor={(s) => s.id}
-            renderItem={renderInsightItem}
-            ListHeaderComponent={
-              <View style={styles.insightsHeader}>
-                <Text style={styles.sectionHint}>Remarks and AI improvement tips per student</Text>
-                <Pressable style={styles.refreshBtn} onPress={refreshClassAi} disabled={aiLoading}>
-                  <Ionicons name="refresh" size={14} color={TEACHER.warning} />
-                  <Text style={styles.refreshText}>Refresh class AI</Text>
-                </Pressable>
-                {aiSummary ? <Text style={styles.aiText}>{aiSummary}</Text> : null}
-              </View>
-            }
-            contentContainerStyle={styles.panelListContent}
-            ListEmptyComponent={listEmpty('No students match the current filters.')}
-            showsVerticalScrollIndicator={false}
-          />
-        )}
-        {activePanel === 'report' && (
-          <FlatList
-            data={filtered}
-            keyExtractor={(s) => s.id}
-            renderItem={renderReportItem}
-            ListHeaderComponent={
-              <Text style={[styles.sectionHint, { marginBottom: 10 }]}>
-                Detailed progress report — tap a student for full metrics
-              </Text>
-            }
-            contentContainerStyle={styles.panelListContent}
-            ListEmptyComponent={listEmpty('No students match the current filters.')}
-            showsVerticalScrollIndicator={false}
-          />
-        )}
-      </View>
-
-      <Modal visible={!!remarksStudent} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Remarks — {remarksStudent?.name}</Text>
-            <ScrollView style={{ maxHeight: 360 }}>
-              {remarksForStudent(remarksStudent?.id || '').length === 0 ? (
-                <Text style={styles.emptyLine}>No remarks yet.</Text>
-              ) : (
-                remarksForStudent(remarksStudent?.id || '').map((r) => (
-                  <View key={r._id} style={styles.remarkItem}>
-                    <Text style={styles.remarkText}>{r.remark}</Text>
-                    <Text style={styles.remarkMeta}>
-                      {r.isPositive ? 'Positive' : 'Needs improvement'}
-                      {r.subject?.name ? ` · ${r.subject.name}` : ''}
+        <View style={styles.classListCard}>
+          <Text style={styles.classListTitle}>My assigned classes</Text>
+          {classGroups.length === 0 ? (
+            <View style={styles.classEmptyBlock}>
+              <Ionicons name="school-outline" size={32} color={TEACHER.textMuted} />
+              <Text style={styles.classEmptyTitle}>No classes assigned</Text>
+              <Text style={styles.emptyLine}>Contact your administrator to get class assignments.</Text>
+            </View>
+          ) : (
+            classGroups.map((group) => {
+              const classExpanded = expandedClassNumbers.has(group.classNumber);
+              return (
+                <View key={group.classNumber}>
+                  <Pressable
+                    style={[styles.classRow, classExpanded && styles.classRowActive]}
+                    onPress={() => toggleClassNumber(group.classNumber)}
+                  >
+                    <Ionicons
+                      name={classExpanded ? 'chevron-down' : 'chevron-forward'}
+                      size={18}
+                      color={TEACHER.primary}
+                    />
+                    <Text style={styles.classRowLabel}>{group.classNumber}</Text>
+                    <Text style={styles.classRowCount}>
+                      {group.totalStudents} student{group.totalStudents !== 1 ? 's' : ''}
                     </Text>
-                  </View>
-                ))
-              )}
-            </ScrollView>
-            <Pressable style={styles.closeBtn} onPress={() => setRemarksStudent(null)}>
-              <Text style={styles.closeBtnText}>Close</Text>
-            </Pressable>
-          </View>
+                  </Pressable>
+
+                  {classExpanded ? (
+                    <View style={styles.classBody}>
+                      {group.sections.map((section) => {
+                        const sectionExpanded = expandedSections.has(section.id);
+                        const stats = computeClassStats(section.students);
+                        return (
+                          <View key={section.id} style={styles.sectionBlock}>
+                            <Pressable
+                              style={[styles.sectionRow, sectionExpanded && styles.sectionRowActive]}
+                              onPress={() => toggleSection(section.id)}
+                            >
+                              <Ionicons
+                                name={sectionExpanded ? 'chevron-down' : 'chevron-forward'}
+                                size={16}
+                                color={TEACHER.primaryLight}
+                              />
+                              <Text style={styles.sectionRowLabel}>
+                                {sectionDisplayLabel(section.section)}
+                              </Text>
+                              <Text style={styles.sectionRowCount}>
+                                {section.students.length} student
+                                {section.students.length !== 1 ? 's' : ''}
+                              </Text>
+                            </Pressable>
+
+                            {sectionExpanded ? (
+                              <View style={styles.sectionBody}>
+                                {section.students.length > 0 ? (
+                                  <View style={styles.classSummary}>
+                                    <Text style={styles.classSummaryText}>
+                                      Avg exam {stats.avgExam.toFixed(1)}% · Avg progress{' '}
+                                      {stats.avgOverall.toFixed(1)}%
+                                    </Text>
+                                  </View>
+                                ) : null}
+                                {section.students.length === 0 ? (
+                                  <Text style={[styles.emptyLine, styles.classBodyEmpty]}>
+                                    No students in this section yet.
+                                  </Text>
+                                ) : (
+                                  section.students.map((student) => (
+                                    <StudentProgressRow
+                                      key={student.id}
+                                      student={student}
+                                      onView={() => openStudentDetail(student)}
+                                    />
+                                  ))
+                                )}
+                              </View>
+                            ) : null}
+                          </View>
+                        );
+                      })}
+                    </View>
+                  ) : null}
+                </View>
+              );
+            })
+          )}
         </View>
-      </Modal>
+      </ScrollView>
 
       <Modal visible={!!detailStudent} transparent animationType="slide">
         <View style={styles.modalOverlay}>
@@ -521,34 +662,14 @@ export default function TrackProgressView({ initialClassFilter, initialStudentId
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={styles.modalTitle}>{detailStudent?.name}</Text>
               <Text style={styles.listSub}>{detailStudent?.email}</Text>
-              <View style={styles.metricGrid}>
-                <View style={styles.metric}>
-                  <Text style={styles.metricVal}>{(detailStudent?.performance?.overallProgress ?? 0).toFixed(0)}%</Text>
-                  <Text style={styles.metricLbl}>Overall</Text>
-                </View>
-                <View style={styles.metric}>
-                  <Text style={styles.metricVal}>{(detailStudent?.performance?.averagePercentage ?? 0).toFixed(0)}%</Text>
-                  <Text style={styles.metricLbl}>Exam avg</Text>
-                </View>
-                <View style={styles.metric}>
-                  <Text style={styles.metricVal}>{detailStudent?.performance?.totalExams ?? 0}</Text>
-                  <Text style={styles.metricLbl}>Exams</Text>
-                </View>
-                <View style={styles.metric}>
-                  <Text style={styles.metricVal}>{(detailStudent?.performance?.dailyAverageWatchTime ?? 0).toFixed(0)}m</Text>
-                  <Text style={styles.metricLbl}>Daily watch</Text>
-                </View>
-              </View>
-              {studentAiInsight ? <Text style={styles.aiText}>{studentAiInsight}</Text> : null}
-              {!studentAiInsight && !studentAiLoading ? (
-                <Pressable style={styles.primaryBtn} onPress={() => detailStudent && loadStudentAi(detailStudent)}>
-                  <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.primaryBtnGrad}>
-                    <Text style={styles.primaryBtnText}>AI Improvement Analysis</Text>
-                  </LinearGradient>
-                </Pressable>
-              ) : null}
-              {studentAiLoading ? <ActivityIndicator color={STUDENTS_UI.emerald} /> : null}
-              <Pressable style={styles.closeBtn} onPress={() => { setDetailStudent(null); setStudentAiInsight(''); }}>
+              {detailStudent ? renderStudentDetail(detailStudent) : null}
+              <Pressable
+                style={styles.closeBtn}
+                onPress={() => {
+                  setDetailStudent(null);
+                  setDetailAiText('');
+                }}
+              >
                 <Text style={styles.closeBtnText}>Close</Text>
               </Pressable>
             </ScrollView>
@@ -561,68 +682,14 @@ export default function TrackProgressView({ initialClassFilter, initialStudentId
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: TEACHER.bg },
-  topBlock: {
-    paddingHorizontal: TEACHER_SPACING.lg,
-    gap: 10,
-    paddingBottom: 8,
-  },
-  panelBody: { flex: 1, minHeight: 0 },
-  panelContent: { paddingHorizontal: TEACHER_SPACING.lg, paddingBottom: 120, gap: 12 },
-  panelListContent: { paddingHorizontal: TEACHER_SPACING.lg, paddingBottom: 120, gap: 8 },
-  panelTabsScroll: { flexGrow: 0, maxHeight: 44 },
-  panelTabsRow: { gap: 8, paddingVertical: 2 },
-  panelTab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
-    backgroundColor: TEACHER.surface,
-  },
-  panelTabActive: {
-    backgroundColor: TEACHER.primary,
-    borderColor: TEACHER.primary,
-  },
-  panelTabText: { fontSize: 12, fontWeight: '700', color: TEACHER.primaryLight },
-  panelTabTextActive: { color: TEACHER.textOnPrimary },
-  kpiHorizontal: { gap: 10, paddingVertical: 4 },
-  kpiCardWide: { width: 220 },
-  quickJumpRow: {
-    ...glassCard,
-    borderRadius: TEACHER_RADIUS.lg,
-    padding: 12,
-    gap: 8,
-  },
-  quickJumpTitle: { ...TEACHER_TYPO.label, color: TEACHER.textMuted, marginBottom: 4 },
-  quickJumpBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: TEACHER.surfaceBorder,
-  },
-  quickJumpText: { flex: 1, fontSize: 14, fontWeight: '600', color: TEACHER.text },
-  insightsHeader: { gap: 8, marginBottom: 8 },
-  insightCard: {
-    borderWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
-    borderRadius: TEACHER_RADIUS.md,
-    padding: 12,
-    marginBottom: 8,
-    backgroundColor: 'rgba(123,80,255,0.07)',
-  },
-  insightActions: { flexDirection: 'row', gap: 8, marginTop: 10 },
-  listEmpty: { padding: 32, alignItems: 'center' },
+  scrollContent: { paddingHorizontal: TEACHER_SPACING.lg, paddingBottom: 120, gap: 12 },
   headerCard: {
     flexDirection: 'row',
     gap: 12,
     ...glassCard,
     borderRadius: TEACHER_RADIUS.xl,
     padding: 16,
+    marginTop: 4,
   },
   headerIcon: {
     width: 44,
@@ -634,81 +701,136 @@ const styles = StyleSheet.create({
   },
   headerTitle: { ...TEACHER_TYPO.section, fontSize: 18, color: TEACHER.text },
   headerSub: { fontSize: 12, color: TEACHER.textMuted, marginTop: 4, lineHeight: 18 },
-  kpiRow: { gap: 10 },
-  kpiCard: {
+  classListCard: {
     ...glassCard,
     borderRadius: TEACHER_RADIUS.lg,
-    padding: 14,
+    overflow: 'hidden',
   },
-  kpiIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+  classListTitle: {
+    ...TEACHER_TYPO.label,
+    color: TEACHER.textMuted,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  classEmptyBlock: { padding: 24, alignItems: 'center', gap: 8 },
+  classEmptyTitle: { fontSize: 16, fontWeight: '700', color: TEACHER.text },
+  classBodyEmpty: { paddingHorizontal: 6, paddingBottom: 10 },
+  classRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderTopColor: TEACHER.surfaceBorder,
+  },
+  classRowActive: { backgroundColor: TEACHER.navActiveBg },
+  classRowLabel: { flex: 1, fontSize: 18, fontWeight: '800', color: TEACHER.text },
+  classRowCount: { fontSize: 13, color: TEACHER.textMuted },
+  classBody: {
+    paddingHorizontal: 8,
+    paddingBottom: 8,
+    backgroundColor: 'rgba(99,102,241,0.04)',
+    borderTopWidth: 1,
+    borderTopColor: TEACHER.surfaceBorder,
+  },
+  sectionBlock: {
+    marginTop: 6,
+    borderRadius: TEACHER_RADIUS.md,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
+    backgroundColor: '#FFFFFF',
+  },
+  sectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+  },
+  sectionRowActive: { backgroundColor: TEACHER.navActiveBg },
+  sectionRowLabel: { flex: 1, fontSize: 15, fontWeight: '700', color: TEACHER.text },
+  sectionRowCount: { fontSize: 12, color: TEACHER.textMuted },
+  sectionBody: {
+    paddingHorizontal: 8,
+    paddingBottom: 8,
+    borderTopWidth: 1,
+    borderTopColor: TEACHER.surfaceBorder,
+    backgroundColor: 'rgba(99,102,241,0.03)',
+  },
+  classSummary: {
+    paddingHorizontal: 6,
+    paddingVertical: 10,
+    gap: 2,
+  },
+  classSummaryText: { fontSize: 11, color: TEACHER.textMuted },
+  studentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 10,
+    marginBottom: 8,
+    borderRadius: TEACHER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
+    backgroundColor: '#FFFFFF',
+  },
+  studentAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: TEACHER.navActiveBg,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
   },
-  kpiVal: { ...TEACHER_TYPO.number, fontSize: 24, color: TEACHER.text },
-  kpiLbl: { fontSize: 12, color: TEACHER.textMuted },
-  kpiSub: { fontSize: 11, color: TEACHER.textMuted, marginTop: 4 },
+  studentAvatarText: { fontSize: 16, fontWeight: '800', color: TEACHER.primaryDark },
+  studentInfo: { flex: 1, minWidth: 0 },
+  studentMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' },
+  studentMetaText: { fontSize: 10, color: TEACHER.textMuted },
   sectionCard: {
     ...glassCard,
     borderRadius: TEACHER_RADIUS.xl,
     padding: 14,
     gap: 10,
+    marginTop: 12,
   },
-  aiSummaryCard: {
+  improvementCard: {
     borderRadius: TEACHER_RADIUS.xl,
     padding: 14,
     gap: 10,
+    marginTop: 12,
     borderWidth: 1,
-    borderColor: 'rgba(99,102,241,0.2)',
+    borderColor: 'rgba(245,158,11,0.35)',
     ...TEACHER.shadow.sm,
   },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sectionTitle: { ...TEACHER_TYPO.body, fontWeight: '800', color: TEACHER.text },
-  sectionHint: { fontSize: 11, color: TEACHER.textMuted, marginBottom: 4 },
-  listItem: {
-    borderWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
-    borderRadius: TEACHER_RADIUS.md,
-    padding: 12,
-    marginBottom: 8,
-    backgroundColor: 'rgba(123,80,255,0.07)',
-  },
-  listItemTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  sectionHint: { fontSize: 11, color: TEACHER.textMuted, flex: 1 },
   listName: { fontSize: 14, fontWeight: '700', color: TEACHER.text },
   listSub: { fontSize: 12, color: TEACHER.textMuted, marginTop: 4 },
   pill: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
   pillText: { fontSize: 11, fontWeight: '700' },
-  progressRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, marginBottom: 4 },
+  progressRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4, marginBottom: 4 },
   progressLbl: { fontSize: 12, color: TEACHER.textMuted },
   progressPct: { fontSize: 12, fontWeight: '700', color: TEACHER.primaryLight },
   progressTrack: { height: 8, backgroundColor: TEACHER.surfaceBorder, borderRadius: 999, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 999 },
-  viewRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
-    borderRadius: TEACHER_RADIUS.md,
-    padding: 10,
-    marginBottom: 8,
-  },
   viewBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     borderWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
+    borderColor: TEACHER.primary + '44',
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 6,
     backgroundColor: TEACHER.surfaceElevated,
   },
   viewBtnText: { fontSize: 12, fontWeight: '700', color: TEACHER.primaryLight },
-  aiHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  aiHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   refreshBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -722,47 +844,38 @@ const styles = StyleSheet.create({
   refreshText: { fontSize: 11, fontWeight: '700', color: TEACHER.warning },
   aiText: { fontSize: 13, color: TEACHER.textMuted, lineHeight: 20 },
   emptyLine: { fontSize: 13, color: TEACHER.textMuted, fontStyle: 'italic' },
-  performerRow: { flexDirection: 'row', gap: 8 },
-  performerCard: {
-    flex: 1,
-    ...glassCard,
-    borderRadius: TEACHER_RADIUS.lg,
-    padding: 10,
-    alignItems: 'center',
-    gap: 4,
-  },
-  performerVal: { fontSize: 20, fontWeight: '800', color: TEACHER.text },
-  performerLbl: { fontSize: 10, fontWeight: '700', color: TEACHER.textSecondary, textAlign: 'center' },
-  performerSub: { fontSize: 9, color: TEACHER.textMuted, textAlign: 'center' },
-  reportRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
-    borderRadius: TEACHER_RADIUS.md,
-    padding: 12,
-    marginBottom: 8,
-    backgroundColor: 'rgba(123,80,255,0.07)',
-  },
-  reportMeta: { flexDirection: 'row', gap: 8, marginVertical: 8, flexWrap: 'wrap' },
+  detailHeader: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10, marginBottom: 4 },
   classBadge: { backgroundColor: TEACHER.navActiveBg, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
   classBadgeText: { fontSize: 11, fontWeight: '700', color: TEACHER.primaryLight },
+  statusBadge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
+  statusActive: { backgroundColor: '#DCFCE7' },
+  statusInactive: { backgroundColor: '#FEE2E2' },
+  statusText: { fontSize: 11, fontWeight: '700' },
+  statusActiveText: { color: '#166534' },
+  statusInactiveText: { color: '#991B1B' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'flex-end' },
   modalCard: {
     backgroundColor: TEACHER.bg,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
-    maxHeight: '85%',
+    maxHeight: '92%',
     borderTopWidth: 1,
     borderColor: TEACHER.surfaceBorder,
   },
-  modalTitle: { ...TEACHER_TYPO.section, fontSize: 18, color: TEACHER.text, marginBottom: 12 },
-  remarkItem: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: TEACHER.surfaceBorder },
+  modalTitle: { ...TEACHER_TYPO.section, fontSize: 18, color: TEACHER.text, marginBottom: 4 },
+  remarkItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: TEACHER_RADIUS.md,
+    marginBottom: 8,
+    borderLeftWidth: 4,
+  },
+  remarkPositive: { backgroundColor: '#F0FDF4', borderLeftColor: '#22C55E' },
+  remarkNeedsWork: { backgroundColor: '#FFF7ED', borderLeftColor: '#F97316' },
   remarkText: { fontSize: 14, color: TEACHER.text },
   remarkMeta: { fontSize: 11, color: TEACHER.textMuted, marginTop: 4 },
-  metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 12 },
+  metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 8 },
   metric: {
     width: '47%',
     backgroundColor: TEACHER.surfaceElevated,
@@ -773,10 +886,7 @@ const styles = StyleSheet.create({
     borderColor: TEACHER.surfaceBorder,
   },
   metricVal: { fontSize: 18, fontWeight: '800', color: TEACHER.primaryLight },
-  metricLbl: { fontSize: 11, color: TEACHER.textMuted, marginTop: 4 },
-  primaryBtn: { borderRadius: TEACHER_RADIUS.md, overflow: 'hidden', marginVertical: 12 },
-  primaryBtnGrad: { padding: 14, alignItems: 'center' },
-  primaryBtnText: { color: TEACHER.textOnPrimary, fontWeight: '700' },
+  metricLbl: { fontSize: 11, color: TEACHER.textMuted, marginTop: 4, textAlign: 'center' },
   closeBtn: { alignItems: 'center', padding: 14 },
   closeBtnText: { color: TEACHER.textMuted, fontWeight: '600' },
 });

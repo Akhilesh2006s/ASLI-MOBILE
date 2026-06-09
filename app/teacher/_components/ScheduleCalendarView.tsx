@@ -13,6 +13,9 @@ import teacherService from '../../../src/services/api/teacherService';
 import { TeacherShimmer } from '../../../src/components/teacher';
 import {
   dateKeyForDate,
+  formatEventScheduleDetail,
+  formatEventScheduleSummary,
+  getExamBoundaryMarkers,
   hasTimetableOnDate,
   timetableEntriesForDate,
   type TimetableEntryLike,
@@ -100,6 +103,8 @@ export default function ScheduleCalendarView() {
           id: String(row.id || `remote-${Math.random().toString(36).slice(2, 10)}`),
           date: startDateKey,
           endDateKey,
+          startAt: row.startDate,
+          endAt: row.endDate || row.startDate,
           startTime: normalizeTime(row.startDate, eventType === 'exam' ? '09:00' : '00:00'),
           endTime: normalizeTime(row.endDate, eventType === 'exam' ? '12:00' : '23:59'),
           title: row.title || 'Untitled event',
@@ -145,17 +150,15 @@ export default function ScheduleCalendarView() {
     [timetable, externalEvents]
   );
 
-  const hasExamOnDate = useCallback(
-    (date: Date) =>
-      externalEvents.some((e) => e.eventType === 'exam' && isDateWithinEvent(date, e)),
-    [externalEvents]
-  );
-
   const dayEntries = useMemo(() => {
     const dateKey = dateKeyForDate(selectedDate);
     const classEntries = timetableEntriesForDate(timetable, selectedDate);
     const remote = externalEvents.filter((e) => isDateWithinEvent(selectedDate, e));
-    return [...classEntries, ...remote].sort((a, b) => a.startTime.localeCompare(b.startTime));
+    return [...classEntries, ...remote].sort((a, b) => {
+      const aKey = a.startAt || `${a.date}T${a.startTime}`;
+      const bKey = b.startAt || `${b.date}T${b.startTime}`;
+      return aKey.localeCompare(bKey);
+    });
   }, [selectedDate, timetable, externalEvents]);
 
   const dateLabel = format(selectedDate, 'EEEE, MMM d, yyyy');
@@ -229,7 +232,7 @@ export default function ScheduleCalendarView() {
               const today = isSameDay(day, new Date());
               const inMonth = isCurrentMonth(day);
               const hasSchedule = hasScheduleOnDate(day);
-              const hasExam = hasExamOnDate(day);
+              const examMarkers = getExamBoundaryMarkers(day, externalEvents);
 
               return (
                 <Pressable
@@ -251,7 +254,13 @@ export default function ScheduleCalendarView() {
                       selected && styles.dayCellSelected,
                     ]}
                   >
-                    {hasExam ? <View style={styles.examDot} /> : null}
+                    {examMarkers.isStart && examMarkers.isEnd ? (
+                      <View style={[styles.examDot, styles.examDotSingle]} />
+                    ) : examMarkers.isStart ? (
+                      <View style={[styles.examDot, styles.examDotStart]} />
+                    ) : examMarkers.isEnd ? (
+                      <View style={[styles.examDot, styles.examDotEnd]} />
+                    ) : null}
                     <Text
                       style={[
                         styles.dayText,
@@ -301,8 +310,8 @@ export default function ScheduleCalendarView() {
                 >
                   <View style={styles.entryTimeRow}>
                     <Ionicons name="time-outline" size={14} color={TEACHER.primaryLight} />
-                    <Text style={styles.entryTime}>
-                      {entry.startTime} – {entry.endTime}
+                    <Text style={styles.entryTime} numberOfLines={2}>
+                      {formatEventScheduleSummary(entry)}
                     </Text>
                   </View>
                   <View style={styles.entryTitleRow}>
@@ -347,10 +356,39 @@ export default function ScheduleCalendarView() {
             <Text style={styles.detailType}>
               {detailEntry ? getEventLabel(detailEntry.eventType) : ''} details
             </Text>
-            <Text style={styles.detailLine}>
-              <Text style={styles.detailLabel}>Time: </Text>
-              {detailEntry?.startTime} – {detailEntry?.endTime}
-            </Text>
+            {detailEntry ? (
+              (() => {
+                const schedule = formatEventScheduleDetail(detailEntry);
+                if (schedule.mode === 'class') {
+                  return (
+                    <Text style={styles.detailLine}>
+                      <Text style={styles.detailLabel}>Time: </Text>
+                      {schedule.startLabel}
+                    </Text>
+                  );
+                }
+                if (schedule.mode === 'range') {
+                  return (
+                    <>
+                      <Text style={styles.detailLine}>
+                        <Text style={styles.detailLabel}>Starts: </Text>
+                        {schedule.startLabel}
+                      </Text>
+                      <Text style={styles.detailLine}>
+                        <Text style={styles.detailLabel}>Ends: </Text>
+                        {schedule.endLabel}
+                      </Text>
+                    </>
+                  );
+                }
+                return (
+                  <Text style={styles.detailLine}>
+                    <Text style={styles.detailLabel}>When: </Text>
+                    {schedule.startLabel}
+                  </Text>
+                );
+              })()
+            ) : null}
             {detailEntry?.subject ? (
               <Text style={styles.detailLine}>
                 <Text style={styles.detailLabel}>Subject: </Text>
@@ -487,12 +525,22 @@ const styles = StyleSheet.create({
   },
   examDot: {
     position: 'absolute',
-    top: 4,
-    right: 4,
     width: 6,
     height: 6,
     borderRadius: 3,
     backgroundColor: TEACHER.danger,
+  },
+  examDotStart: {
+    top: 4,
+    left: 4,
+  },
+  examDotEnd: {
+    top: 4,
+    right: 4,
+  },
+  examDotSingle: {
+    top: 4,
+    right: 4,
   },
   dayText: {
     fontSize: 13,

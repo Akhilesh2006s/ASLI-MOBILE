@@ -20,7 +20,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
-import { useBackNavigation } from '../../../src/hooks/useBackNavigation';
+import {
+  parseTeacherDashboardTab,
+  useTeacherDashboardBack,
+} from '../../../src/hooks/useBackNavigation';
 import AiToolContentRenderer from '../../../src/components/ai-tools/AiToolContentRenderer';
 import {
   validateAiToolForm,
@@ -179,7 +182,10 @@ function TeacherToolHeader({
 }
 
 export default function TeacherToolPage() {
-  const { toolType: rawToolType } = useLocalSearchParams<{ toolType: string }>();
+  const { toolType: rawToolType, returnTab: returnTabRaw } = useLocalSearchParams<{
+    toolType: string;
+    returnTab?: string;
+  }>();
   const toolType = rawToolType || '';
   const [formParams, setFormParams] = useState<Record<string, any>>({});
   const [isGenerating, setIsGenerating] = useState(false);
@@ -265,7 +271,10 @@ export default function TeacherToolPage() {
     return { curriculumFields: curriculum, topicFields: topic, extraFields: extra };
   }, [config]);
 
-  useBackNavigation('/teacher/dashboard', false);
+  const returnTab = parseTeacherDashboardTab(
+    typeof returnTabRaw === 'string' ? returnTabRaw : Array.isArray(returnTabRaw) ? returnTabRaw[0] : undefined,
+  );
+  const goBack = useTeacherDashboardBack(returnTab);
 
   useEffect(() => {
     (async () => {
@@ -696,14 +705,14 @@ export default function TeacherToolPage() {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <StatusBar barStyle="dark-content" />
-        <TeacherToolHeader title="Tool not found" onBack={() => router.back()} />
+        <TeacherToolHeader title="Tool not found" onBack={goBack} />
         <View style={styles.errorContainer}>
           <View style={styles.errorIconWrap}>
             <Ionicons name="alert-circle-outline" size={48} color={TEACHER.danger} />
           </View>
           <Text style={styles.errorTitle}>Tool not found</Text>
           <Text style={styles.errorSubtitle}>This AI tool is not available on mobile yet.</Text>
-          <TouchableOpacity style={styles.errorButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.errorButton} onPress={goBack}>
             <Text style={styles.errorButtonText}>Go back</Text>
           </TouchableOpacity>
         </View>
@@ -718,7 +727,7 @@ export default function TeacherToolPage() {
       <TeacherToolHeader
         title={config.name}
         subtitle={config.description}
-        onBack={() => router.back()}
+        onBack={goBack}
       />
 
       <KeyboardAvoidingView

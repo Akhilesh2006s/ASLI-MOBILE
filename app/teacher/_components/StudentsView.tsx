@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Modal, Alert } from 'react-native';
+import { useState, useEffect, useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Pressable, ActivityIndicator, Modal, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -8,8 +8,15 @@ import HomeworkSubmissionsView from './HomeworkSubmissionsView';
 import TrackProgressView from './TrackProgressView';
 import WorkDiaryView from './WorkDiaryView';
 import { SubNavChips, StudentListCard } from '../../../src/components/teacher';
-import { mergeStudentsWithPerformance, type StudentRow } from '../../../src/lib/students-ui';
-import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO } from '../../../src/theme/teacher';
+import {
+  buildAssignedClassRows,
+  filterAssignedClassRows,
+  groupAssignedClassesByNumber,
+  sectionDisplayLabel,
+  type AssignedClassRow,
+  type StudentRow,
+} from '../../../src/lib/students-ui';
+import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
 
 type StudentsSubTab = 'list' | 'track-progress' | 'submissions' | 'daily' | 'remarks';
 
@@ -32,9 +39,11 @@ interface Student extends StudentRow {
 
 export default function StudentsView({ initialSubTab, progressClassFilter, progressStudentId }: Props) {
   const [activeSubTab, setActiveSubTab] = useState<StudentsSubTab>(initialSubTab || 'list');
-  const [students, setStudents] = useState<Student[]>([]);
+  const [assignedClassRows, setAssignedClassRows] = useState<AssignedClassRow[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [expandedClassNumbers, setExpandedClassNumbers] = useState<Set<string>>(new Set());
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [isRemarkModalVisible, setIsRemarkModalVisible] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [remarkText, setRemarkText] = useState('');
@@ -55,18 +64,15 @@ export default function StudentsView({ initialSubTab, progressClassFilter, progr
   const fetchStudents = async () => {
     try {
       setIsLoading(true);
-      const [studentsRes, perfRes] = await Promise.all([
-        teacherService.students(),
+      const [classesRes, perfRes] = await Promise.all([
+        teacherService.classes(),
         teacherService.studentsPerformance().catch(() => ({ data: [] as any[] })),
       ]);
-      const studentsData = studentsRes.data ?? [];
-      const perfData = perfRes.data ?? [];
-      setStudents(mergeStudentsWithPerformance(
-        Array.isArray(studentsData) ? studentsData : [],
-        Array.isArray(perfData) ? perfData : []
-      ));
+      const classesData = Array.isArray(classesRes.data) ? classesRes.data : [];
+      const perfData = Array.isArray(perfRes.data) ? perfRes.data : [];
+      setAssignedClassRows(buildAssignedClassRows(classesData, perfData));
     } catch {
-      setStudents([]);
+      setAssignedClassRows([]);
     } finally {
       setIsLoading(false);
     }
@@ -104,101 +110,168 @@ export default function StudentsView({ initialSubTab, progressClassFilter, progr
     }
   };
 
-  const filteredStudents = useMemo(() => {
-    if (!searchTerm.trim()) return students;
-    const searchLower = searchTerm.toLowerCase();
-    return students.filter((student) =>
-      student.name.toLowerCase().includes(searchLower) ||
-      student.email.toLowerCase().includes(searchLower) ||
-      (student.phone && student.phone.toLowerCase().includes(searchLower)) ||
-      (student.classNumber && student.classNumber.toLowerCase().includes(searchLower))
-    );
-  }, [students, searchTerm]);
-
-  const renderStudentItem = useCallback(({ item: student, index }: { item: Student; index: number }) => (
-    <Animated.View entering={FadeInDown.duration(350).delay(Math.min(index * 50, 400))}>
-      <StudentListCard
-        student={student}
-        onAddRemark={() => {
-          setSelectedStudent(student);
-          setIsRemarkModalVisible(true);
-        }}
-      />
-    </Animated.View>
-  ), []);
-
-  const formatDate = useCallback((dateString: string) => {
-    if (!dateString) return 'Never';
-    try {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    } catch {
-      return 'Invalid date';
-    }
-  }, []);
-
-  const listHeader = (
-    <>
-      <SubNavChips
-        items={STUDENT_SUB_TABS}
-        active={activeSubTab}
-        onChange={(id) => setActiveSubTab(id as StudentsSubTab)}
-        variant="students"
-      />
-      <View style={styles.countHeader}>
-        <Text style={styles.countTitle}>{filteredStudents.length} Students</Text>
-        <View style={styles.countBadge}>
-          <Text style={styles.countBadgeText}>{students.length}</Text>
-        </View>
-      </View>
-      <View style={styles.searchContainer}>
-        <Ionicons name="search-outline" size={20} color={TEACHER.textMuted} style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search students by name, email, or phone..."
-          value={searchTerm}
-          onChangeText={setSearchTerm}
-          placeholderTextColor={TEACHER.textMuted}
-        />
-      </View>
-    </>
+  const classGroups = useMemo(
+    () => groupAssignedClassesByNumber(filterAssignedClassRows(assignedClassRows, searchTerm)),
+    [assignedClassRows, searchTerm],
   );
+
+  const totalStudentCount = useMemo(
+    () => assignedClassRows.reduce((sum, row) => sum + row.students.length, 0),
+    [assignedClassRows],
+  );
+
+  const filteredStudentCount = useMemo(
+    () => classGroups.reduce((sum, g) => sum + g.totalStudents, 0),
+    [classGroups],
+  );
+
+  const toggleClassNumber = (classNumber: string) => {
+    setExpandedClassNumbers((prev) => {
+      const next = new Set(prev);
+      if (next.has(classNumber)) next.delete(classNumber);
+      else next.add(classNumber);
+      return next;
+    });
+  };
+
+  const toggleSection = (sectionId: string) => {
+    setExpandedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(sectionId)) next.delete(sectionId);
+      else next.add(sectionId);
+      return next;
+    });
+  };
+
+  const renderClassWiseList = () => {
+    if (classGroups.length === 0) {
+      return (
+        <View style={styles.emptyContainer}>
+          <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.emptyIconCircle}>
+            <Ionicons name="people-outline" size={36} color="#fff" />
+          </LinearGradient>
+          <Text style={styles.emptyText}>
+            {searchTerm.trim() ? 'No students match your search' : 'No students in assigned classes'}
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.classListCard}>
+        <Text style={styles.classListTitle}>My assigned classes</Text>
+        {classGroups.map((group) => {
+          const classExpanded = expandedClassNumbers.has(group.classNumber);
+          return (
+            <View key={group.classNumber}>
+              <Pressable
+                style={[styles.classRow, classExpanded && styles.classRowActive]}
+                onPress={() => toggleClassNumber(group.classNumber)}
+              >
+                <Ionicons
+                  name={classExpanded ? 'chevron-down' : 'chevron-forward'}
+                  size={18}
+                  color={TEACHER.primary}
+                />
+                <Text style={styles.classRowLabel}>{group.classNumber}</Text>
+                <Text style={styles.classRowCount}>
+                  {group.totalStudents} student{group.totalStudents !== 1 ? 's' : ''}
+                </Text>
+              </Pressable>
+
+              {classExpanded ? (
+                <View style={styles.classBody}>
+                  {group.sections.map((section) => {
+                    const sectionExpanded = expandedSections.has(section.id);
+                    return (
+                      <View key={section.id} style={styles.sectionBlock}>
+                        <Pressable
+                          style={[styles.sectionRow, sectionExpanded && styles.sectionRowActive]}
+                          onPress={() => toggleSection(section.id)}
+                        >
+                          <Ionicons
+                            name={sectionExpanded ? 'chevron-down' : 'chevron-forward'}
+                            size={16}
+                            color={TEACHER.primaryLight}
+                          />
+                          <Text style={styles.sectionRowLabel}>
+                            {sectionDisplayLabel(section.section)}
+                          </Text>
+                          <Text style={styles.sectionRowCount}>
+                            {section.students.length} student
+                            {section.students.length !== 1 ? 's' : ''}
+                          </Text>
+                        </Pressable>
+
+                        {sectionExpanded ? (
+                          <View style={styles.sectionBody}>
+                            {section.students.map((student, index) => (
+                              <Animated.View
+                                key={student.id}
+                                entering={FadeInDown.duration(350).delay(Math.min(index * 40, 320))}
+                              >
+                                <StudentListCard
+                                  student={student}
+                                  onAddRemark={() => {
+                                    setSelectedStudent(student);
+                                    setIsRemarkModalVisible(true);
+                                  }}
+                                />
+                              </Animated.View>
+                            ))}
+                          </View>
+                        ) : null}
+                      </View>
+                    );
+                  })}
+                </View>
+              ) : null}
+            </View>
+          );
+        })}
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
       {activeSubTab === 'list' ? (
-        isLoading ? (
-          <>
-            {listHeader}
+        <ScrollView
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <SubNavChips
+            items={STUDENT_SUB_TABS}
+            active={activeSubTab}
+            onChange={(id) => setActiveSubTab(id as StudentsSubTab)}
+            variant="students"
+          />
+          <View style={styles.countHeader}>
+            <Text style={styles.countTitle}>{filteredStudentCount} Students</Text>
+            <View style={styles.countBadge}>
+              <Text style={styles.countBadgeText}>{totalStudentCount}</Text>
+            </View>
+          </View>
+          <View style={styles.searchContainer}>
+            <Ionicons name="search-outline" size={20} color={TEACHER.textMuted} style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search students by name, email, or phone..."
+              value={searchTerm}
+              onChangeText={setSearchTerm}
+              placeholderTextColor={TEACHER.textMuted}
+            />
+          </View>
+          {isLoading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={TEACHER.primary} />
             </View>
-          </>
-        ) : (
-          <FlatList
-            data={filteredStudents}
-            keyExtractor={(item) => item.id}
-            renderItem={renderStudentItem}
-            ListHeaderComponent={listHeader}
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.emptyIconCircle}>
-                  <Ionicons name="people-outline" size={36} color="#fff" />
-                </LinearGradient>
-                <Text style={styles.emptyText}>No students found</Text>
-              </View>
-            }
-            contentContainerStyle={styles.listContent}
-            style={styles.list}
-            removeClippedSubviews
-            maxToRenderPerBatch={10}
-            updateCellsBatchingPeriod={50}
-            initialNumToRender={10}
-            windowSize={10}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          />
-        )
+          ) : (
+            renderClassWiseList()
+          )}
+        </ScrollView>
       ) : (
         <>
           <SubNavChips
@@ -335,6 +408,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginHorizontal: TEACHER_SPACING.lg,
+    marginTop: TEACHER_SPACING.sm,
     marginBottom: TEACHER_SPACING.sm,
   },
   countTitle: {
@@ -414,10 +488,68 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listContent: {
-    paddingHorizontal: 20,
     paddingBottom: 120,
-    gap: 16,
     flexGrow: 1,
+  },
+  classListCard: {
+    marginHorizontal: TEACHER_SPACING.lg,
+    marginBottom: TEACHER_SPACING.lg,
+    ...glassCard,
+    borderRadius: TEACHER_RADIUS.lg,
+    overflow: 'hidden',
+  },
+  classListTitle: {
+    ...TEACHER_TYPO.label,
+    color: TEACHER.textMuted,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  classRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderTopColor: TEACHER.surfaceBorder,
+  },
+  classRowActive: { backgroundColor: TEACHER.navActiveBg },
+  classRowLabel: { flex: 1, fontSize: 18, fontWeight: '800', color: TEACHER.text },
+  classRowCount: { fontSize: 13, color: TEACHER.textMuted },
+  classBody: {
+    paddingHorizontal: 8,
+    paddingBottom: 8,
+    backgroundColor: 'rgba(99,102,241,0.04)',
+    borderTopWidth: 1,
+    borderTopColor: TEACHER.surfaceBorder,
+  },
+  sectionBlock: {
+    marginTop: 6,
+    borderRadius: TEACHER_RADIUS.md,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
+    backgroundColor: '#FFFFFF',
+  },
+  sectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+  },
+  sectionRowActive: { backgroundColor: TEACHER.navActiveBg },
+  sectionRowLabel: { flex: 1, fontSize: 15, fontWeight: '700', color: TEACHER.text },
+  sectionRowCount: { fontSize: 12, color: TEACHER.textMuted },
+  sectionBody: {
+    paddingHorizontal: 4,
+    paddingBottom: 8,
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: TEACHER.surfaceBorder,
+    backgroundColor: 'rgba(99,102,241,0.03)',
   },
   subTabBody: {
     flex: 1,
@@ -550,15 +682,15 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   loadingContainer: {
-    flex: 1,
+    minHeight: 200,
     justifyContent: 'center',
     alignItems: 'center',
   },
   emptyContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 40,
+    marginHorizontal: TEACHER_SPACING.lg,
   },
   emptyText: {
     fontSize: 18,

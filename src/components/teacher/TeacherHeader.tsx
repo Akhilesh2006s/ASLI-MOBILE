@@ -19,6 +19,10 @@ import { TEACHER, TEACHER_SPACING, teacherSubjectBadgePalette } from '../../them
 import type { BackendStatus } from '../../services/api/teacherService';
 
 type Props = {
+  /** `home` = greeting + full name (dashboard only). `compact` = page title bar on other tabs. */
+  variant?: 'home' | 'compact';
+  /** Shown in compact mode (e.g. Students, Learning Paths). */
+  title?: string;
   /** Teacher full name shown on the line below the greeting. */
   displayName?: string;
   /** @deprecated Prefer displayName */
@@ -36,6 +40,8 @@ type Props = {
 const screenWidth = Dimensions.get('window').width;
 
 export default function TeacherHeader({
+  variant = 'home',
+  title,
   displayName,
   userName,
   subjects = [],
@@ -77,6 +83,33 @@ export default function TeacherHeader({
       })
       .sort((a, b) => a.localeCompare(b));
   }, [subjects]);
+
+  if (variant === 'compact') {
+    return (
+      <View
+        style={[
+          styles.compactWrap,
+          { paddingTop: Math.max(insets.top, TEACHER_SPACING.sm) + TEACHER_SPACING.xs },
+        ]}
+      >
+        <Text style={styles.compactTitle} numberOfLines={1}>
+          {title || ' '}
+        </Text>
+        {onLogout ? (
+          <Pressable
+            onPress={onLogout}
+            style={styles.compactLogoutBtn}
+            accessibilityLabel="Logout"
+            accessibilityRole="button"
+          >
+            <Ionicons name="log-out-outline" size={20} color={TEACHER.danger} />
+          </Pressable>
+        ) : (
+          <View style={styles.compactLogoutSpacer} />
+        )}
+      </View>
+    );
+  }
 
   return (
     <View
@@ -153,6 +186,31 @@ export default function TeacherHeader({
 }
 
 const styles = StyleSheet.create({
+  compactWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: TEACHER_SPACING.lg,
+    paddingBottom: TEACHER_SPACING.md,
+    backgroundColor: TEACHER.bg,
+    borderBottomWidth: 1,
+    borderBottomColor: TEACHER.surfaceBorder,
+  },
+  compactTitle: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: '800',
+    color: TEACHER.text,
+    letterSpacing: -0.3,
+  },
+  compactLogoutBtn: {
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(239,68,68,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.2)',
+  },
+  compactLogoutSpacer: { width: 36 },
   wrap: {
     paddingHorizontal: TEACHER_SPACING.lg,
     paddingBottom: TEACHER_SPACING.lg,

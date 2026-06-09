@@ -1,4 +1,4 @@
-import { addDays, format, parseISO, startOfWeek } from 'date-fns';
+import { addDays, format, isValid, parseISO, startOfWeek } from 'date-fns';
 
 export const TIMETABLE_HOUR_START = 9;
 export const TIMETABLE_HOUR_END = 17;
@@ -38,6 +38,9 @@ export type UnifiedScheduleEntry = {
   id: string;
   date: string;
   endDateKey?: string;
+  /** Full ISO datetime from API (exams / admin events). */
+  startAt?: string;
+  endAt?: string;
   startTime: string;
   endTime: string;
   title: string;
@@ -48,6 +51,91 @@ export type UnifiedScheduleEntry = {
   description?: string;
   removable?: boolean;
 };
+
+export function isExamBoundaryDate(date: Date, entry: UnifiedScheduleEntry): boolean {
+  if (entry.eventType !== 'exam') return false;
+  const key = dateKeyForDate(date);
+  const endKey = entry.endDateKey || entry.date;
+  return key === entry.date || key === endKey;
+}
+
+export function getExamBoundaryMarkers(
+  date: Date,
+  entries: UnifiedScheduleEntry[],
+): { isStart: boolean; isEnd: boolean } {
+  const key = dateKeyForDate(date);
+  let isStart = false;
+  let isEnd = false;
+
+  entries.forEach((entry) => {
+    if (entry.eventType !== 'exam') return;
+    const endKey = entry.endDateKey || entry.date;
+    if (key === entry.date) isStart = true;
+    if (key === endKey) isEnd = true;
+  });
+
+  return { isStart, isEnd };
+}
+
+export function parseScheduleInstant(raw?: string): Date | null {
+  if (!raw) return null;
+  const parsed = parseISO(String(raw));
+  return isValid(parsed) ? parsed : null;
+}
+
+/** One-line schedule label for list cards. */
+export function formatEventScheduleSummary(entry: UnifiedScheduleEntry): string {
+  if (entry.eventType === 'class') {
+    return `${entry.startTime} – ${entry.endTime}`;
+  }
+
+  const start = parseScheduleInstant(entry.startAt);
+  const end = parseScheduleInstant(entry.endAt) || start;
+  if (!start || !end) return `${entry.startTime} – ${entry.endTime}`;
+
+  const endKey = entry.endDateKey || entry.date;
+  const sameDay = entry.date === endKey;
+
+  if (sameDay) {
+    const timePart =
+      entry.startTime === entry.endTime
+        ? entry.startTime
+        : `${entry.startTime} – ${entry.endTime}`;
+    return `${format(start, 'MMM d, yyyy')} · ${timePart}`;
+  }
+
+  return `${format(start, 'MMM d, yyyy')}, ${entry.startTime} → ${format(end, 'MMM d, yyyy')}, ${entry.endTime}`;
+}
+
+export function formatEventScheduleDetail(entry: UnifiedScheduleEntry): {
+  mode: 'class' | 'single' | 'range';
+  startLabel: string;
+  endLabel?: string;
+} {
+  if (entry.eventType === 'class') {
+    return {
+      mode: 'class',
+      startLabel: `${entry.startTime} – ${entry.endTime}`,
+    };
+  }
+
+  const start = parseScheduleInstant(entry.startAt);
+  const end = parseScheduleInstant(entry.endAt) || start;
+  if (!start) {
+    return { mode: 'single', startLabel: `${entry.startTime} – ${entry.endTime}` };
+  }
+
+  const startLabel = format(start, 'EEE, MMM d, yyyy · HH:mm');
+  if (!end || start.getTime() === end.getTime()) {
+    return { mode: 'single', startLabel };
+  }
+
+  return {
+    mode: 'range',
+    startLabel,
+    endLabel: format(end, 'EEE, MMM d, yyyy · HH:mm'),
+  };
+}
 
 export interface GridPlacement {
   entry: TimetableEntryLike;
