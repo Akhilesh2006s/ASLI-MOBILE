@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,7 +11,6 @@ import { useBackNavigation, useContentViewerBack } from '../src/hooks/useBackNav
 import {
   extractYouTubeId,
   getAuthHeaders,
-  getYoutubeWatchUrl,
   resolveContentUrl,
 } from '../src/utils/contentPreview';
 
@@ -241,11 +240,6 @@ export default function VideoPlayer() {
   const youtubeVideoId = extractYouTubeId(youtubeSourceUrl);
   const isYouTube = !!youtubeVideoId || !!video.isYouTubeVideo;
 
-  const openInYouTube = () => {
-    if (!youtubeVideoId) return;
-    Linking.openURL(getYoutubeWatchUrl(youtubeVideoId)).catch(() => {});
-  };
-
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
@@ -284,9 +278,6 @@ export default function VideoPlayer() {
         {isYouTube && youtubeSourceUrl ? (
           <View style={styles.videoWrapper}>
             <YouTubeEmbedWebView videoUrl={youtubeSourceUrl} style={styles.video} />
-            <TouchableOpacity style={styles.openYoutubeButton} onPress={openInYouTube}>
-              <Text style={styles.openYoutubeText}>Open in YouTube</Text>
-            </TouchableOpacity>
           </View>
         ) : isDirectVideo ? (
           <View style={styles.videoWrapper}>
@@ -475,20 +466,6 @@ const styles = StyleSheet.create({
   videoWrapper: {
     flex: 1,
     backgroundColor: '#000',
-  },
-  openYoutubeButton: {
-    position: 'absolute',
-    bottom: 8,
-    right: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  openYoutubeText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
   },
   video: {
     width: '100%',

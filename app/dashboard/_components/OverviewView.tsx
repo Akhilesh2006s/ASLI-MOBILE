@@ -31,6 +31,7 @@ import {
 import { StudentHomeHeader } from '../../../src/components/student';
 import TeacherDiaryFeed from '../../../src/components/student/TeacherDiaryFeed';
 import { STUDENT } from '../../../src/theme/student';
+import { openContentPreview } from '../../../src/utils/openContentPreview';
 import {
   filterContentsBySchoolProgram,
   resolveIsAsliPrepExclusive,
@@ -533,20 +534,28 @@ const OverviewView = memo(function OverviewView({ user, onGoExams, onGoProfile, 
       router.push(`/quiz/${item._id || item.id}`);
       return;
     }
-    if (isVideoContentType(item.type)) {
-      router.push({
-        pathname: '/video-player',
-        params: { videoId: String(item._id || item.id), isContentItem: 'true' },
-      });
+
+    const hasPreviewUrl = Boolean(
+      item.fileUrl ||
+        item.fileUrls?.[0] ||
+        item.videoUrl ||
+        item.driveLink ||
+        item.youtubeUrl
+    );
+
+    if (hasPreviewUrl || isVideoContentType(item.type)) {
+      openContentPreview(router, item);
       return;
     }
+
     if (String(item.type || '').toLowerCase() === 'homework') {
       router.push('/assignments');
       return;
     }
+
     router.push({
       pathname: '/asli-prep-content',
-      params: item.type ? { type: item.type } : {},
+      params: item.type ? { type: String(item.type) } : {},
     });
   }, []);
 

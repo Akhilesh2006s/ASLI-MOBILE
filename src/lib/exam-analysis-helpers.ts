@@ -65,6 +65,41 @@ export function getDisplayPercentage(result: ExamAnalysisResult): number {
   return total > 0 ? (correct / total) * 100 : 0;
 }
 
+export function getExamResultRowId(result: {
+  _id?: unknown;
+  id?: unknown;
+  attemptNumber?: number;
+  examId?: unknown;
+}): string {
+  const id = result?._id ?? result?.id;
+  if (id != null && String(id).trim() !== '') return String(id);
+  const att = Number(result?.attemptNumber) >= 1 ? Number(result.attemptNumber) : 1;
+  const eid = result?.examId != null ? String(result.examId) : '';
+  return `${eid || 'exam'}-attempt-${att}`;
+}
+
+export function formatAttemptHistoryLabel(
+  result: {
+    attemptNumber?: number;
+    obtainedMarks?: number;
+    totalMarks?: number;
+    completedAt?: string;
+  },
+  totalMarks: number
+): string {
+  const att = Number(result?.attemptNumber) >= 1 ? Number(result.attemptNumber) : 1;
+  const obtained = result?.obtainedMarks ?? 0;
+  const total = result?.totalMarks || totalMarks || 0;
+  const when = result?.completedAt
+    ? new Date(result.completedAt).toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      })
+    : '';
+  return `Attempt ${att} — ${obtained}/${total} marks${when ? ` (${when})` : ''}`;
+}
+
 export function getGradeLetter(percentage: number): string {
   if (percentage >= 90) return 'A+';
   if (percentage >= 80) return 'A';

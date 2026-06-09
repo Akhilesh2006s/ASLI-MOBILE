@@ -10,12 +10,9 @@ import {
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import {
   buildPdfInjectScript,
-  describePdfPreviewSource,
   fetchPdfPreviewLoadInfo,
   PDF_JS_VIEWER_SHELL_HTML,
-  resolveContentUrl,
   YOUTUBE_EMBED_ORIGIN,
-  type PdfPreviewLoadInfo,
 } from '../../utils/contentPreview';
 
 type Props = {
@@ -29,7 +26,6 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
   const webRef = useRef<WebView>(null);
   const [webReady, setWebReady] = useState(false);
   const [base64, setBase64] = useState<string | null>(null);
-  const [loadInfo, setLoadInfo] = useState<PdfPreviewLoadInfo | null>(null);
   const [fetching, setFetching] = useState(true);
   const [rendering, setRendering] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +44,6 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
     setRendering(true);
     setError(null);
     setBase64(null);
-    setLoadInfo(null);
     injectedRef.current = false;
 
     const loaded = await fetchPdfPreviewLoadInfo(fileUrl, title);
@@ -60,7 +55,6 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
       setError('Could not load this PDF. Check your connection and try again.');
       return;
     }
-    setLoadInfo(loaded);
     setBase64(loaded.base64);
   }, [fileUrl, title]);
 
@@ -109,9 +103,7 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
     );
   }
 
-  const sourceHint = loadInfo ? describePdfPreviewSource(loadInfo) : null;
-  const loadingTarget = resolveContentUrl(fileUrl);
-  const loadingLabel = fetching ? 'Loading PDF in app…' : 'Rendering pages…';
+  const loadingLabel = fetching ? 'Loading document…' : 'Preparing pages…';
 
   return (
     <View style={[styles.wrap, style]} collapsable={false}>
@@ -126,6 +118,7 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
         domStorageEnabled
         allowsInlineMediaPlayback
         mixedContentMode="always"
+        setSupportMultipleWindows={false}
         onLoadEnd={() => setWebReady(true)}
         onMessage={onWebMessage}
       />
@@ -133,23 +126,7 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
         <View style={styles.overlay} pointerEvents="auto">
           <ActivityIndicator size="large" color="#6366F1" />
           <Text style={styles.loadingText}>{loadingLabel}</Text>
-          {fetching && (
-            <>
-              <Text style={styles.loadingSubtext}>Not saved to your device</Text>
-              {!!loadingTarget && (
-                <Text style={styles.loadingSource} numberOfLines={2}>
-                  {loadingTarget.replace(/^https?:\/\//, '')}
-                </Text>
-              )}
-            </>
-          )}
-        </View>
-      )}
-      {sourceHint && !busy && (
-        <View style={styles.sourceBar} pointerEvents="none">
-          <Text style={styles.sourceText} numberOfLines={1}>
-            {sourceHint}
-          </Text>
+          <Text style={styles.loadingSubtext}>Please wait…</Text>
         </View>
       )}
     </View>
@@ -192,27 +169,6 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     textAlign: 'center',
     paddingHorizontal: 24,
-  },
-  loadingSource: {
-    marginTop: 10,
-    fontSize: 11,
-    color: '#64748b',
-    textAlign: 'center',
-    paddingHorizontal: 28,
-  },
-  sourceBar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: 'rgba(15, 23, 42, 0.75)',
-  },
-  sourceText: {
-    fontSize: 11,
-    color: '#cbd5e1',
-    textAlign: 'center',
   },
   errorText: {
     fontSize: 14,

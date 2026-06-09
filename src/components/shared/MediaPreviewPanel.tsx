@@ -157,7 +157,17 @@ export default function MediaPreviewPanel({
         mediaPlaybackRequiresUserAction={false}
         javaScriptEnabled
         domStorageEnabled
+        setSupportMultipleWindows={false}
         startInLoadingState
+        onShouldStartLoadWithRequest={(request) => {
+          if (request.navigationType !== 'click') return true;
+          const url = request.url || '';
+          return (
+            url.includes('drive.google.com') ||
+            url.includes('docs.google.com') ||
+            url.startsWith('about:')
+          );
+        }}
         renderLoading={() => (
           <View style={styles.centered}>
             <ActivityIndicator size="large" color="#6366F1" />

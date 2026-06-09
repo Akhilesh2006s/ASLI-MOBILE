@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Share,
   Modal,
   Pressable,
   KeyboardAvoidingView,
@@ -21,7 +20,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import * as SecureStore from 'expo-secure-store';
-import * as Clipboard from 'expo-clipboard';
 import { useBackNavigation, getDashboardPath } from '../../../src/hooks/useBackNavigation';
 import {
   resolveStudentAiApiToolType,
@@ -49,6 +47,15 @@ import {
 } from '../../../src/hooks/useCurriculumCascade';
 import StudentScreenHeader from '../../../src/components/student/StudentScreenHeader';
 import GlassCard from '../../../src/components/student/GlassCard';
+import AiToolContentRenderer from '../../../src/components/ai-tools/AiToolContentRenderer';
+import { stripStructuredAiToolMetadata } from '../../../src/lib/strip-ai-tool-metadata';
+import {
+  validateAiToolForm,
+  executeAiToolGenerate,
+  buildStudentAiRequestBody,
+  storeAiToolSuccessPayload,
+  type AiToolGenerationMeta,
+} from '../../../src/lib/ai-tool-generate';
 import {
   STUDENT,
   STUDENT_RADIUS,
@@ -117,7 +124,10 @@ export default function StudentToolPage() {
   const [formParams, setFormParams] = useState<Record<string, any>>({});
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedContent, setGeneratedContent] = useState('');
-  const [copied, setCopied] = useState(false);
+  const [rawGeneratedContent, setRawGeneratedContent] = useState<unknown>(null);
+  const [responseMeta, setResponseMeta] = useState<AiToolGenerationMeta | null>(null);
+  const [fallbackEmptyMessage, setFallbackEmptyMessage] = useState('');
+  const [fromAiFailure, setFromAiFailure] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [dashboardPath, setDashboardPath] = useState<string>('/dashboard');
   const [isLoadingUser, setIsLoadingUser] = useState(true);
@@ -131,7 +141,12 @@ export default function StudentToolPage() {
   const apiToolType = toolType ? resolveStudentAiApiToolType(toolType) : '';
   const isReadingPractice =
     toolType === READING_PRACTICE_TOOL_ID || toolType === 'story-passage-creator';
-  const accent = config?.color || '#3b82f6';
+  const isSmartStudyGuide = toolType === 'smart-study-guide-generator';
+  const accent = isSmartStudyGuide ? '#4f46e5' : config?.color || '#3b82f6';
+  const displayGeneratedContent = useMemo(
+    () => stripStructuredAiToolMetadata(generatedContent),
+    [generatedContent]
+  );
 
   const boardOptions = getAiToolBoardOptions(isAsliPrepExclusive, schoolBoardName);
   const selectedBoard = formParams.board || getDefaultAiToolBoard(isAsliPrepExclusive, schoolBoardName);
@@ -183,20 +198,6 @@ export default function StudentToolPage() {
     }
     return { curriculumFields: curriculum, topicFields: topic, extraFields: extra };
   }, [config]);
-
-  const completion = useMemo(() => {
-    if (!config) return { filled: 0, total: 1, percent: 0 };
-    const required = [
-      { name: 'board', label: 'Board' },
-      ...config.fields.filter((f) => f.required).map((f) => ({ name: f.name, label: f.label })),
-    ];
-    const filled = required.filter((f) => Boolean(formParams[f.name])).length;
-    return {
-      filled,
-      total: required.length,
-      percent: Math.round((filled / required.length) * 100),
-    };
-  }, [config, formParams]);
 
   useEffect(() => {
     getDashboardPath().then((path) => {
@@ -448,99 +449,69 @@ export default function StudentToolPage() {
   const handleGenerate = async () => {
     if (!config) return;
 
-    const requiredFields = config.fields.filter((f) => f.required);
-    const missingFields = requiredFields.filter((f) => !formParams[f.name]);
-    
-    if (missingFields.length > 0) {
-      Alert.alert('Validation Error', `Please fill in: ${missingFields.map((f) => f.label).join(', ')}`);
-      return;
-    }
-
-    if (!formParams.board) {
-      Alert.alert('Validation Error', 'Please select a board.');
-      return;
-    }
-
-    if (isReadingPractice && !isStoryPassageLanguageSubject(String(formParams.subject || ''))) {
-      Alert.alert(
-        'English or Hindi only',
-        'Reading Practice Room works only with English or Hindi subjects.'
-      );
+    const validationError = validateAiToolForm({
+      config,
+      formParams,
+      isReadingPractice,
+      requireBoard: true,
+    });
+    if (validationError) {
+      Alert.alert('Validation Error', validationError);
       return;
     }
 
     setIsGenerating(true);
     setGeneratedContent('');
+    setRawGeneratedContent(null);
+    setResponseMeta(null);
+    setFallbackEmptyMessage('');
+    setFromAiFailure(false);
 
     try {
       const token = await SecureStore.getItemAsync('authToken');
-      const mappedTopic =
-        formParams.topic ||
-        formParams.concept ||
-        formParams.chapter ||
-        formParams.projectTopic ||
-        '';
+      if (!token) {
+        Alert.alert('Error', 'Please sign in again.');
+        return;
+      }
 
-      const requestBody: Record<string, unknown> = {
-        toolType: apiToolType,
-        ...formParams,
-        board: selectedBoard,
-        gradeLevel: mapGradeLevelForIitBoard(selectedBoard, formParams.gradeLevel),
-        subject: formParams.subject || formParams.subjects,
-        topic: mappedTopic,
-      };
-      
-      const response = await fetch(`${API_BASE_URL}/api/student/ai/tool`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
+      const requestBody = buildStudentAiRequestBody(
+        apiToolType,
+        formParams,
+        selectedBoard,
+        mapGradeLevelForIitBoard
+      );
+
+      const result = await executeAiToolGenerate({
+        endpoint: `${API_BASE_URL}/api/student/ai/tool`,
+        token,
+        requestBody,
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setGeneratedContent(data.data?.content || data.content || 'No content generated.');
-        } else {
-          throw new Error(data.message || 'Failed to generate content');
-        }
-      } else {
-        const errorText = await response.text();
-        let errorMessage = `Server error: ${response.status}`;
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage = errorData.message || errorMessage;
-        } catch {
-          errorMessage = errorText || errorMessage;
-        }
-        throw new Error(errorMessage);
+      if (!result.ok) {
+        setGeneratedContent('');
+        setRawGeneratedContent(null);
+        setResponseMeta(null);
+        setFallbackEmptyMessage(result.fallbackMessage);
+        Alert.alert(result.title, result.message);
+        return;
+      }
+
+      setResponseMeta(result.metadata);
+      setFromAiFailure(result.fromAiFailure);
+
+      const stored = storeAiToolSuccessPayload(toolType || '', result.content, result.rawContent, 'student');
+      setGeneratedContent(stored.generatedContent);
+      setRawGeneratedContent(stored.rawGeneratedContent);
+
+      if (result.fromAiFailure) {
+        Alert.alert('Stored content (AI unavailable)', 'Showing stored content.');
       }
     } catch (error: any) {
       console.error('Generation error:', error);
+      setFallbackEmptyMessage(error.message || 'Network error. Please try again.');
       Alert.alert('Error', error.message || 'Network error. Please try again.');
     } finally {
       setIsGenerating(false);
-    }
-  };
-
-  const handleCopy = async () => {
-    try {
-      await Clipboard.setStringAsync(generatedContent);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      console.error('Copy error:', error);
-      Alert.alert('Error', 'Failed to copy to clipboard');
-    }
-  };
-
-  const handleShare = async () => {
-    try {
-      await Share.share({ message: generatedContent, title: config?.name });
-    } catch (error) {
-      console.error('Share error:', error);
     }
   };
 
@@ -707,10 +678,11 @@ export default function StudentToolPage() {
     );
   }
 
-  const wordCount = generatedContent.trim() ? generatedContent.trim().split(/\s+/).length : 0;
+  const parameterTitle = isSmartStudyGuide ? 'Customize your premium guide' : 'Tool Parameters';
+  const pageBgStyle = isSmartStudyGuide ? styles.containerPremium : styles.container;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={pageBgStyle} edges={['top', 'bottom']}>
       <StatusBar style="light" />
 
       <StudentScreenHeader
@@ -718,28 +690,6 @@ export default function StudentToolPage() {
         subtitle={config.description}
         onBack={() => router.back()}
       />
-
-      <View style={styles.toolMeta}>
-        <View style={[styles.heroIconWrap, { backgroundColor: `${accent}18` }]}>
-          <Ionicons name={config.icon} size={24} color={accent} />
-        </View>
-        <View style={styles.aiBadge}>
-          <Ionicons name="sparkles" size={12} color={STUDENT.primary} />
-          <Text style={styles.aiBadgeText}>Vidya AI</Text>
-        </View>
-      </View>
-
-      <View style={styles.progressWrap}>
-        <View style={styles.progressMeta}>
-          <Text style={styles.progressLabel}>Form progress</Text>
-          <Text style={styles.progressValue}>
-            {completion.filled}/{completion.total} fields
-          </Text>
-        </View>
-        <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: `${completion.percent}%`, backgroundColor: accent }]} />
-        </View>
-      </View>
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -752,7 +702,11 @@ export default function StudentToolPage() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <FormSection title="Curriculum" subtitle="Board and class details" accent={accent}>
+          <FormSection
+            title={parameterTitle}
+            subtitle={isSmartStudyGuide ? 'Board, class, subject, topic and sub-topic' : 'Board and class details'}
+            accent={accent}
+          >
             {renderDropdownTrigger(
               'board',
               'Board',
@@ -786,36 +740,30 @@ export default function StudentToolPage() {
             </FormSection>
           ) : null}
 
-          {generatedContent ? (
-            <GlassCard variant="gradient">
-              <View style={styles.resultHeader}>
-                <View>
-                  <Text style={styles.resultTitle}>Generated content</Text>
-                  <Text style={styles.resultMeta}>{wordCount.toLocaleString()} words</Text>
-                </View>
-                <View style={styles.resultActions}>
-        <TouchableOpacity
-                    style={[styles.resultActionBtn, copied && styles.resultActionBtnActive]}
-                    onPress={handleCopy}
-        >
-                    <Ionicons name={copied ? 'checkmark' : 'copy-outline'} size={18} color={copied ? STUDENT.primaryDark : accent} />
-        </TouchableOpacity>
-                  <TouchableOpacity style={styles.resultActionBtn} onPress={handleShare}>
-                    <Ionicons name="share-outline" size={18} color={accent} />
-                  </TouchableOpacity>
-          </View>
-          </View>
-              <View style={styles.resultDivider} />
-              <Text style={styles.resultText} selectable>
-                {generatedContent}
-              </Text>
-            </GlassCard>
+          {isGenerating ? (
+            <View style={styles.generatingBox}>
+              <ActivityIndicator size="large" color={accent} />
+              <Text style={styles.generatingTitle}>Generating Content...</Text>
+              <Text style={styles.generatingText}>Please wait while we prepare your content</Text>
+            </View>
+          ) : generatedContent ? (
+            <AiToolContentRenderer
+              toolType={toolType || ''}
+              content={displayGeneratedContent}
+              rawContent={rawGeneratedContent}
+              accent={accent}
+              variant="student"
+            />
           ) : (
             <View style={styles.emptyResult}>
-              <Ionicons name="document-text-outline" size={32} color={STUDENT.navInactive} />
-              <Text style={styles.emptyResultTitle}>Your AI output will appear here</Text>
-              <Text style={styles.emptyResultText}>Fill the form above and tap Generate</Text>
-        </View>
+              <View style={styles.emptyResultIcon}>
+                <Ionicons name="sparkles" size={28} color={STUDENT.navInactive} />
+              </View>
+              <Text style={styles.emptyResultTitle}>
+                {fallbackEmptyMessage || 'Generated content will appear here'}
+              </Text>
+              <Text style={styles.emptyResultText}>Choose tool parameters and tap Generate.</Text>
+            </View>
           )}
         </ScrollView>
 
@@ -827,7 +775,11 @@ export default function StudentToolPage() {
             activeOpacity={0.9}
         >
           <LinearGradient
-              colors={[accent, `${accent}DD`]}
+              colors={
+                isSmartStudyGuide
+                  ? ['#4f46e5', '#2563eb', '#0891b2']
+                  : [accent, `${accent}DD`]
+              }
               style={styles.generateBtnGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
@@ -890,46 +842,17 @@ export default function StudentToolPage() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: STUDENT.bg },
+  containerPremium: { flex: 1, backgroundColor: '#f5f7ff' },
   flex: { flex: 1 },
-  toolMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: STUDENT_SPACING.xl,
-    paddingTop: STUDENT_SPACING.md,
-    paddingBottom: STUDENT_SPACING.sm,
-  },
-  heroIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: STUDENT_RADIUS.lg,
+  generatingBox: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  aiBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: STUDENT.navActiveBg,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: STUDENT_RADIUS.full,
-  },
-  aiBadgeText: { ...STUDENT_TYPO.label, color: STUDENT.primaryDark },
-  progressWrap: {
+    paddingVertical: 42,
     paddingHorizontal: STUDENT_SPACING.xl,
-    paddingBottom: STUDENT_SPACING.lg,
+    gap: 8,
   },
-  progressMeta: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: STUDENT_SPACING.sm },
-  progressLabel: { ...STUDENT_TYPO.caption, color: STUDENT.textMuted },
-  progressValue: { ...STUDENT_TYPO.caption, color: STUDENT.text, fontWeight: '700' },
-  progressTrack: {
-    height: 6,
-    borderRadius: STUDENT_RADIUS.full,
-    backgroundColor: STUDENT.surfaceBorder,
-    overflow: 'hidden',
-  },
-  progressFill: { height: '100%', borderRadius: STUDENT_RADIUS.full },
+  generatingTitle: { fontSize: 16, fontWeight: '800', color: STUDENT.text },
+  generatingText: { fontSize: 13, color: STUDENT.textMuted, textAlign: 'center' },
   scroll: { flex: 1 },
   scrollContent: { padding: STUDENT_SPACING.lg, gap: 14 },
   sectionHeader: {
@@ -1019,31 +942,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 36,
     paddingHorizontal: STUDENT_SPACING.xxl,
+  },
+  emptyResultIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: STUDENT.surface,
-    borderRadius: STUDENT_RADIUS.lg,
-    borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
-    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
   emptyResultTitle: { marginTop: STUDENT_SPACING.md, ...STUDENT_TYPO.body, fontWeight: '700', color: STUDENT.textMuted },
   emptyResultText: { marginTop: 4, ...STUDENT_TYPO.caption, color: STUDENT.navInactive, textAlign: 'center' },
-  resultHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  resultTitle: { ...STUDENT_TYPO.body, fontWeight: '800', color: STUDENT.text },
-  resultMeta: { ...STUDENT_TYPO.caption, color: STUDENT.textMuted, marginTop: 2 },
-  resultActions: { flexDirection: 'row', gap: STUDENT_SPACING.sm },
-  resultActionBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: STUDENT_RADIUS.md,
-    borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: STUDENT.surface,
-  },
-  resultActionBtnActive: { borderColor: STUDENT.primaryLight, backgroundColor: STUDENT.bgAccent },
-  resultDivider: { height: 1, backgroundColor: STUDENT.surfaceBorder, marginVertical: 14 },
-  resultText: { ...STUDENT_TYPO.body, color: STUDENT.textSecondary, lineHeight: 24 },
   footer: {
     paddingHorizontal: STUDENT_SPACING.lg,
     paddingTop: 10,

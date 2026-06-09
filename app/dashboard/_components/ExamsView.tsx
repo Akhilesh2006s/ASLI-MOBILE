@@ -1,5 +1,15 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, useWindowDimensions } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+  Modal,
+  ActivityIndicator,
+  useWindowDimensions,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAnimatedProps } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,7 +32,13 @@ import {
   normalizeClassNumber,
 } from '../../../src/lib/exam-classes';
 import { dedupeStudentExamResults } from '../../../src/lib/dedupe-exam-results';
-import DetailedAnalysisView from './DetailedAnalysisView';
+import ExamResultsView from '../../../src/components/student/ExamResultsView';
+import {
+  ExamAnalysisResult,
+  formatAttemptHistoryLabel,
+  getDisplayPercentage,
+  getExamResultRowId,
+} from '../../../src/lib/exam-analysis-helpers';
 
 interface Exam {
   _id: string;
@@ -102,8 +118,14 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
   const [user, setUser] = useState<any>(null);
   const [examSubjectFilter, setExamSubjectFilter] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
-  const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false);
-  const [selectedExamForAnalysis, setSelectedExamForAnalysis] = useState<{ exam: Exam; result: any } | null>(null);
+  const [selectedAttemptByExam, setSelectedAttemptByExam] = useState<Record<string, string>>({});
+  const [attemptPickerExamId, setAttemptPickerExamId] = useState<string | null>(null);
+  const [showExamResults, setShowExamResults] = useState(false);
+  const [selectedExamForResults, setSelectedExamForResults] = useState<{
+    exam: Exam;
+    result: ExamAnalysisResult;
+  } | null>(null);
+  const [loadingExamResults, setLoadingExamResults] = useState(false);
 
   const studentClassNumber = normalizeClassNumber(user?.classNumber);
 
@@ -321,6 +343,37 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
     );
   }, [dedupedExamResults, exams, examSubjectFilter, getExamIdFromResult, user?.classNumber]);
 
+  const attemptHistoryByExamId = useMemo(() => {
+    const map = new Map<string, any[]>();
+    for (const result of dedupedExamResults) {
+      const examIdStr = getExamIdFromResult(result);
+      if (!examIdStr) continue;
+      if (examSubjectFilter !== 'all') {
+        const catalogExam = exams.find((e) => String(e._id) === String(examIdStr));
+        if (
+          catalogExam &&
+          !getExamSubjects(catalogExam).includes(String(examSubjectFilter).toLowerCase())
+        ) {
+          continue;
+        }
+      }
+      const key = String(examIdStr);
+      const list = map.get(key) || [];
+      list.push(result);
+      map.set(key, list);
+    }
+    Array.from(map.entries()).forEach(([key, list]) => {
+      list.sort((a, b) => {
+        const attA = Number(a.attemptNumber) >= 1 ? Number(a.attemptNumber) : 1;
+        const attB = Number(b.attemptNumber) >= 1 ? Number(b.attemptNumber) : 1;
+        if (attB !== attA) return attB - attA;
+        return new Date(b.completedAt || 0).getTime() - new Date(a.completedAt || 0).getTime();
+      });
+      map.set(key, list);
+    });
+    return map;
+  }, [dedupedExamResults, exams, examSubjectFilter, getExamIdFromResult]);
+
   const upcomingExams = useMemo(
     () => subjectFilteredExams.filter((exam) => getExamStatus(exam).status === 'upcoming'),
     [subjectFilteredExams]
@@ -343,15 +396,6 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
     };
   };
 
-  const getDisplayPercentage = (row: any): number => {
-    if (!row) return 0;
-    const correct = Number(row.correctAnswers || 0);
-    const wrong = Number(row.wrongAnswers || 0);
-    const unattempted = Number(row.unattempted || 0);
-    const total = Number(row.totalQuestions || 0) || correct + wrong + unattempted;
-    return total > 0 ? (correct / total) * 100 : 0;
-  };
-
   const getExamTypeColor = (type: string) => {
     switch (type) {
       case 'mains':
@@ -363,6 +407,104 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
         return { bg: 'rgba(245,158,11,0.15)', text: STUDENT.warning };
       default:
         return { bg: STUDENT.surfaceHover, text: STUDENT.textMuted };
+    }
+  };
+
+  const openAttemptedExamResults = async (exam: Exam, displayResult: any) => {
+    const attemptNum =
+      Number(displayResult.attemptNumber) >= 1 ? Number(displayResult.attemptNumber) : 1;
+    setLoadingExamResults(true);
+    try {
+      const token = await SecureStore.getItemAsync('authToken');
+      const reviewQs =
+        displayResult._id != null && String(displayResult._id).trim() !== ''
+          ? `?resultId=${encodeURIComponent(String(displayResult._id))}`
+          : '';
+      const reviewResponse = await fetch(
+        `${API_BASE_URL}/api/student/exam-results/${exam._id}/review${reviewQs}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      let examWithQuestions = exam;
+      let reviewResult = displayResult;
+      let reviewedQuestions: any[] = [];
+
+      if (reviewResponse.ok) {
+        const reviewJson = await reviewResponse.json();
+        reviewResult = reviewJson?.data?.result || displayResult;
+        reviewedQuestions = reviewJson?.data?.questions || [];
+        examWithQuestions = {
+          ...exam,
+          questions: reviewedQuestions,
+          totalQuestions: reviewJson?.data?.exam?.totalQuestions || exam.totalQuestions,
+          totalMarks: reviewJson?.data?.exam?.totalMarks || exam.totalMarks,
+          title: reviewJson?.data?.exam?.title || exam.title,
+        };
+      } else {
+        const response = await fetch(`${API_BASE_URL}/api/student/exams/${exam._id}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          examWithQuestions = data.data || exam;
+        }
+      }
+
+      const formattedResult: ExamAnalysisResult = {
+        _id: reviewResult._id
+          ? String(reviewResult._id)
+          : displayResult._id
+            ? String(displayResult._id)
+            : undefined,
+        attemptNumber:
+          Number(reviewResult.attemptNumber) >= 1
+            ? Number(reviewResult.attemptNumber)
+            : attemptNum,
+        examId: getExamIdFromResult(reviewResult) || exam._id,
+        examTitle: reviewResult.examTitle || examWithQuestions.title || exam.title,
+        totalQuestions:
+          reviewResult.totalQuestions || examWithQuestions.totalQuestions || exam.totalQuestions || 0,
+        correctAnswers: reviewResult.correctAnswers || 0,
+        wrongAnswers: reviewResult.wrongAnswers || 0,
+        unattempted: reviewResult.unattempted || 0,
+        totalMarks: reviewResult.totalMarks || examWithQuestions.totalMarks || exam.totalMarks || 0,
+        obtainedMarks: reviewResult.obtainedMarks || 0,
+        percentage: Number.isFinite(Number(reviewResult.percentage))
+          ? Number(reviewResult.percentage)
+          : getDisplayPercentage(reviewResult),
+        timeTaken: reviewResult.timeTaken || 0,
+        subjectWiseScore: reviewResult.subjectWiseScore || {
+          maths: { correct: 0, total: 0, marks: 0 },
+          physics: { correct: 0, total: 0, marks: 0 },
+          chemistry: { correct: 0, total: 0, marks: 0 },
+        },
+        answers: reviewResult.answers || {},
+        questions: examWithQuestions.questions || [],
+      };
+
+      setSelectedExamForResults({ exam: examWithQuestions, result: formattedResult });
+      setShowExamResults(true);
+    } catch (error) {
+      console.error('Failed to load exam review:', error);
+      setSelectedExamForResults({
+        exam,
+        result: {
+          ...displayResult,
+          examId: getExamIdFromResult(displayResult) || exam._id,
+          examTitle: displayResult.examTitle || exam.title,
+        },
+      });
+      setShowExamResults(true);
+    } finally {
+      setLoadingExamResults(false);
     }
   };
 
@@ -472,6 +614,11 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
                 const status = getExamStatus(exam);
                 const typeColor = getExamTypeColor(exam.examType);
                 const classLabels = getExamClassLabelsForStudent(exam, user?.classNumber);
+                const usedAttempts = attemptCountByExamId.get(String(exam._id)) || 0;
+                const maxAttempts = getMaxAttemptsForExam(exam);
+                const hydratedQuestionCount = Array.isArray(exam.questions)
+                  ? exam.questions.length
+                  : Number(exam.totalQuestions || 0);
                 return (
                   <GlassCard key={exam._id} variant="elevated" padding={16} style={styles.examCardWrap} onPress={() => handleStartExam(exam)}>
                     <View style={styles.examHeader}>
@@ -499,16 +646,29 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
                     )}
                     <View style={styles.examStats}>
                       <View style={styles.examStat}>
-                        <Ionicons name="time" size={16} color="#6b7280" />
-                        <Text style={styles.examStatText}>{exam.duration} min</Text>
+                        <Ionicons name="time-outline" size={16} color="#6b7280" />
+                        <Text style={styles.examStatText}>{exam.duration} minutes</Text>
                       </View>
                       <View style={styles.examStat}>
-                        <Ionicons name="help-circle" size={16} color="#6b7280" />
-                        <Text style={styles.examStatText}>{exam.totalQuestions} questions</Text>
+                        <Ionicons name="book-outline" size={16} color="#6b7280" />
+                        <Text style={styles.examStatText}>
+                          {hydratedQuestionCount} questions • {exam.totalMarks} marks
+                        </Text>
                       </View>
+                      {exam.startDate && exam.endDate ? (
+                        <View style={styles.examStat}>
+                          <Ionicons name="calendar-outline" size={16} color="#6b7280" />
+                          <Text style={styles.examStatText}>
+                            {new Date(exam.startDate).toLocaleDateString()} -{' '}
+                            {new Date(exam.endDate).toLocaleDateString()}
+                          </Text>
+                        </View>
+                      ) : null}
                       <View style={styles.examStat}>
-                        <Ionicons name="trophy" size={16} color="#6b7280" />
-                        <Text style={styles.examStatText}>{exam.totalMarks} marks</Text>
+                        <Ionicons name="locate-outline" size={16} color="#6b7280" />
+                        <Text style={styles.examStatText}>
+                          Attempts: {usedAttempts} / {maxAttempts}
+                        </Text>
                       </View>
                     </View>
                     <TouchableOpacity
@@ -542,12 +702,20 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
                 const exam = findExamForResult(examIdStr, result);
                 const scheme = ATTEMPTED_CARD_SCHEMES[index % ATTEMPTED_CARD_SCHEMES.length];
                 const classLabels = getExamClassLabelsForStudent(exam, user?.classNumber);
-                const displayPercentage = getDisplayPercentage(result);
+                const attemptHistory = attemptHistoryByExamId.get(examIdStr) || [result];
+                const totalAttempts = attemptHistory.length;
+                const selectedRowId = selectedAttemptByExam[examIdStr];
+                const displayResult =
+                  (selectedRowId &&
+                    attemptHistory.find((r) => getExamResultRowId(r) === selectedRowId)) ||
+                  attemptHistory[0] ||
+                  result;
+                const displayPercentage = getDisplayPercentage(displayResult);
                 const grade =
                   displayPercentage >= 70 ? 'Excellent' : displayPercentage >= 50 ? 'Good' : 'Needs Improvement';
                 const gradeBg =
                   displayPercentage >= 70 ? '#16a34a' : displayPercentage >= 50 ? '#ca8a04' : '#dc2626';
-                const totalMarksDisplay = result.totalMarks || exam.totalMarks;
+                const totalMarksDisplay = displayResult.totalMarks || exam.totalMarks;
 
                 return (
                   <LinearGradient
@@ -576,9 +744,24 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
                       ))}
                     </View>
 
+                    {totalAttempts > 1 ? (
+                      <View style={styles.attemptPickerSection}>
+                        <Text style={styles.attemptPickerLabel}>View attempt</Text>
+                        <TouchableOpacity
+                          style={styles.attemptPickerTrigger}
+                          onPress={() => setAttemptPickerExamId(examIdStr)}
+                        >
+                          <Text style={styles.attemptPickerValue} numberOfLines={1}>
+                            {formatAttemptHistoryLabel(displayResult, totalMarksDisplay)}
+                          </Text>
+                          <Ionicons name="chevron-down" size={18} color="#111827" />
+                        </TouchableOpacity>
+                      </View>
+                    ) : null}
+
                     <View style={styles.attemptedScoreBox}>
                       <CountUpText
-                        target={result.obtainedMarks || 0}
+                        target={displayResult.obtainedMarks || 0}
                         style={styles.attemptedScoreMain}
                       />
                       <Text style={styles.attemptedScoreDenom}>/{totalMarksDisplay} marks</Text>
@@ -587,21 +770,21 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
                     <View style={styles.attemptedStatsList}>
                       <View style={styles.attemptedStatsRow}>
                         <Text style={styles.attemptedStatsLabel}>Correct Answers</Text>
-                        <Text style={styles.attemptedStatsValue}>{result.correctAnswers || 0}</Text>
+                        <Text style={styles.attemptedStatsValue}>{displayResult.correctAnswers || 0}</Text>
                       </View>
                       <View style={styles.attemptedStatsRow}>
                         <Text style={styles.attemptedStatsLabel}>Wrong Answers</Text>
-                        <Text style={styles.attemptedStatsValue}>{result.wrongAnswers || 0}</Text>
+                        <Text style={styles.attemptedStatsValue}>{displayResult.wrongAnswers || 0}</Text>
                       </View>
                       <View style={styles.attemptedStatsRow}>
                         <Text style={styles.attemptedStatsLabel}>Unattempted</Text>
-                        <Text style={styles.attemptedStatsValue}>{result.unattempted || 0}</Text>
+                        <Text style={styles.attemptedStatsValue}>{displayResult.unattempted || 0}</Text>
                       </View>
                       <View style={styles.attemptedStatsRow}>
                         <Text style={styles.attemptedStatsLabel}>Time Taken</Text>
                         <Text style={styles.attemptedStatsValue}>
-                          {result.timeTaken
-                            ? `${Math.floor(result.timeTaken / 60)}m ${result.timeTaken % 60}s`
+                          {displayResult.timeTaken
+                            ? `${Math.floor(displayResult.timeTaken / 60)}m ${displayResult.timeTaken % 60}s`
                             : 'N/A'}
                         </Text>
                       </View>
@@ -613,61 +796,8 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
 
                     <TouchableOpacity
                       style={styles.attemptedDetailsButton}
-                      onPress={async () => {
-                        try {
-                          const token = await SecureStore.getItemAsync('authToken');
-                          const reviewQs =
-                            result._id != null && String(result._id).trim() !== ''
-                              ? `?resultId=${encodeURIComponent(String(result._id))}`
-                              : '';
-                          const reviewResponse = await fetch(
-                            `${API_BASE_URL}/api/student/exam-results/${exam._id}/review${reviewQs}`,
-                            {
-                              headers: {
-                                Authorization: `Bearer ${token}`,
-                                'Content-Type': 'application/json',
-                              },
-                            }
-                          );
-
-                          if (reviewResponse.ok) {
-                            const reviewJson = await reviewResponse.json();
-                            const reviewResult = reviewJson?.data?.result || result;
-                            const reviewedQuestions = reviewJson?.data?.questions || [];
-                            setSelectedExamForAnalysis({
-                              exam: {
-                                ...exam,
-                                questions: reviewedQuestions,
-                                totalQuestions:
-                                  reviewJson?.data?.exam?.totalQuestions || exam.totalQuestions,
-                                totalMarks: reviewJson?.data?.exam?.totalMarks || exam.totalMarks,
-                              },
-                              result: reviewResult,
-                            });
-                            setShowDetailedAnalysis(true);
-                            return;
-                          }
-
-                          const response = await fetch(`${API_BASE_URL}/api/student/exams/${exam._id}`, {
-                            headers: {
-                              Authorization: `Bearer ${token}`,
-                              'Content-Type': 'application/json',
-                            },
-                          });
-
-                          if (response.ok) {
-                            const data = await response.json();
-                            setSelectedExamForAnalysis({ exam: data.data || exam, result });
-                          } else {
-                            setSelectedExamForAnalysis({ exam, result });
-                          }
-                          setShowDetailedAnalysis(true);
-                        } catch (error) {
-                          console.error('Failed to fetch exam details:', error);
-                          setSelectedExamForAnalysis({ exam, result });
-                          setShowDetailedAnalysis(true);
-                        }
-                      }}
+                      disabled={loadingExamResults}
+                      onPress={() => void openAttemptedExamResults(exam, displayResult)}
                     >
                       <Ionicons name="eye-outline" size={18} color="#111827" />
                       <Text style={styles.attemptedDetailsButtonText}>View Details</Text>
@@ -850,23 +980,90 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
       )}
     </ScrollView>
 
-      {/* Detailed Analysis Modal */}
-      {showDetailedAnalysis && selectedExamForAnalysis && (
+      <Modal
+        visible={attemptPickerExamId != null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAttemptPickerExamId(null)}
+      >
+        <View style={styles.attemptPickerOverlay}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setAttemptPickerExamId(null)}
+          />
+          <View style={styles.attemptPickerSheet}>
+            <Text style={styles.attemptPickerSheetTitle}>View attempt</Text>
+            {(attemptPickerExamId ? attemptHistoryByExamId.get(attemptPickerExamId) : [])?.map(
+              (attemptRow) => {
+                const examIdStr = attemptPickerExamId!;
+                const exam = findExamForResult(
+                  examIdStr,
+                  attemptHistoryByExamId.get(examIdStr)?.[0] || attemptRow
+                );
+                const rowId = getExamResultRowId(attemptRow);
+                const selectedRowId = selectedAttemptByExam[examIdStr];
+                const displayRowId =
+                  selectedRowId ||
+                  getExamResultRowId(attemptHistoryByExamId.get(examIdStr)?.[0] || attemptRow);
+                const isSelected = rowId === displayRowId;
+                return (
+                  <TouchableOpacity
+                    key={rowId}
+                    style={[styles.attemptPickerOption, isSelected && styles.attemptPickerOptionActive]}
+                    onPress={() => {
+                      setSelectedAttemptByExam((prev) => ({ ...prev, [examIdStr]: rowId }));
+                      setAttemptPickerExamId(null);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.attemptPickerOptionText,
+                        isSelected && styles.attemptPickerOptionTextActive,
+                      ]}
+                    >
+                      {formatAttemptHistoryLabel(attemptRow, exam.totalMarks)}
+                    </Text>
+                    {isSelected ? <Ionicons name="checkmark" size={18} color="#ea580c" /> : null}
+                  </TouchableOpacity>
+                );
+              }
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {loadingExamResults ? (
+        <Modal visible transparent animationType="fade">
+          <View style={styles.resultsLoadingOverlay}>
+            <ActivityIndicator size="large" color="#ea580c" />
+            <Text style={styles.resultsLoadingText}>Loading exam details...</Text>
+          </View>
+        </Modal>
+      ) : null}
+
+      {showExamResults && selectedExamForResults ? (
         <Modal
-          visible={showDetailedAnalysis}
+          visible={showExamResults}
           animationType="slide"
-          onRequestClose={() => setShowDetailedAnalysis(false)}
+          onRequestClose={() => setShowExamResults(false)}
         >
-          <DetailedAnalysisView
-            result={{
-              ...selectedExamForAnalysis.result,
-              questions: selectedExamForAnalysis.exam.questions || []
+          <ExamResultsView
+            result={selectedExamForResults.result}
+            examTitle={selectedExamForResults.exam.title}
+            onBack={() => setShowExamResults(false)}
+            onRetake={() => {
+              setShowExamResults(false);
+              handleStartExam(selectedExamForResults.exam);
             }}
-            examTitle={selectedExamForAnalysis.exam.title}
-            onBack={() => setShowDetailedAnalysis(false)}
+            attemptsRemaining={Math.max(
+              0,
+              getMaxAttemptsForExam(selectedExamForResults.exam) -
+                (attemptHistoryByExamId.get(String(selectedExamForResults.exam._id))?.length || 0)
+            )}
           />
         </Modal>
-      )}
+      ) : null}
     </>
   );
 }
@@ -1218,6 +1415,87 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: STUDENT.text,
+  },
+  attemptPickerSection: {
+    gap: 6,
+    marginBottom: 4,
+  },
+  attemptPickerLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  attemptPickerTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.5)',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  attemptPickerValue: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '600',
+    color: STUDENT.text,
+  },
+  attemptPickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  attemptPickerSheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 28,
+    gap: 4,
+  },
+  attemptPickerSheetTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: STUDENT.text,
+    marginBottom: 8,
+  },
+  attemptPickerOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+  },
+  attemptPickerOptionActive: {
+    backgroundColor: '#fff7ed',
+  },
+  attemptPickerOptionText: {
+    flex: 1,
+    fontSize: 14,
+    color: STUDENT.textSecondary,
+    fontWeight: '500',
+  },
+  attemptPickerOptionTextActive: {
+    color: STUDENT.text,
+    fontWeight: '700',
+  },
+  resultsLoadingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  resultsLoadingText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
   },
   summaryTitle: {
     fontSize: 18,

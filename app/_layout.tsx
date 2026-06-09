@@ -15,11 +15,7 @@ function getDashboardByRole(role: string | null) {
 }
 
 function isPublicPath(pathname: string) {
-  return (
-    pathname === '/' ||
-    pathname.startsWith('/auth/') ||
-    pathname === '/onboarding'
-  );
+  return pathname.startsWith('/auth/') || pathname === '/onboarding';
 }
 
 const STAFF_ROLES = ['student', 'admin', 'teacher', 'super-admin'] as const;
@@ -76,7 +72,7 @@ function AuthGate() {
 
     const publicPath = isPublicPath(pathname);
 
-    if (!isAuthenticated && !publicPath) {
+    if (!isAuthenticated && !publicPath && pathname !== '/') {
       router.replace('/auth/login');
       return;
     }
@@ -91,7 +87,7 @@ function AuthGate() {
     }
   }, [isLoading, isAuthenticated, pathname, role, router]);
 
-  if (isLoading) {
+  if (isLoading && pathname !== '/') {
     return (
       <View style={styles.loadingContainer}>
         <LoadingState variant="stats" style={{ width: '100%', paddingHorizontal: 24 }} />

@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { API_BASE_URL } from '../../src/lib/api-config';
 import { Picker } from '@react-native-picker/picker';
 
 export default function Register() {
@@ -19,81 +18,11 @@ export default function Register() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
 
-  const handleSubmit = async () => {
-    setIsLoading(true);
-    setError('');
-
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      setIsLoading(false);
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long');
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          fullName: formData.fullName,
-          email: formData.email,
-          password: formData.password,
-          role: formData.role
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setSuccess(true);
-        setTimeout(() => {
-          router.replace('/auth/login');
-        }, 2000);
-      } else {
-        setError(data.message || 'Registration failed');
-      }
-    } catch (err: any) {
-      setError('Network error. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+  const handleSubmit = () => {
+    Alert.alert('Create Account', 'Please contact your school admin to create an account.');
   };
-
-  if (success) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        <StatusBar style="dark" />
-        <LinearGradient
-          colors={['#dbeafe', '#ffffff', '#f3e8ff']}
-          style={StyleSheet.absoluteFill}
-        />
-        <View style={styles.successContainer}>
-          <View style={styles.successIcon}>
-            <Ionicons name="checkmark-circle" size={40} color="#10b981" />
-          </View>
-          <Text style={styles.successTitle}>Account Created Successfully!</Text>
-          <Text style={styles.successText}>You can now sign in with your credentials.</Text>
-          <TouchableOpacity
-            style={styles.successButton}
-            onPress={() => router.replace('/auth/login')}
-          >
-            <Text style={styles.successButtonText}>Go to Sign In</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -217,16 +146,8 @@ export default function Register() {
               </View>
             </View>
 
-            <TouchableOpacity
-              style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
-              onPress={handleSubmit}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.submitButtonText}>Create Account</Text>
-              )}
+            <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+              <Text style={styles.submitButtonText}>Create Account</Text>
             </TouchableOpacity>
           </View>
 

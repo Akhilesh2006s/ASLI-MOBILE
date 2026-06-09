@@ -21,13 +21,21 @@ interface Content {
   _id: string;
   title: string;
   description?: string;
-  type: 'TextBook' | 'Workbook' | 'Material' | 'Video' | 'Audio';
-  subject: {
+  type: 'TextBook' | 'Workbook' | 'Material' | 'Video' | 'Audio' | 'Homework';
+  subject?: {
     _id: string;
     name: string;
   };
+  subjectId?: {
+    _id: string;
+    name: string;
+  } | string;
   topic?: string;
-  fileUrl: string;
+  fileUrl?: string;
+  fileUrls?: string[];
+  youtubeUrl?: string;
+  videoUrl?: string;
+  driveLink?: string;
   thumbnailUrl?: string;
   duration?: number;
   size?: number;
@@ -36,7 +44,7 @@ interface Content {
   createdAt: string;
 }
 
-const VALID_TYPES = ['TextBook', 'Workbook', 'Material', 'Video', 'Audio'] as const;
+const VALID_TYPES = ['TextBook', 'Workbook', 'Material', 'Video', 'Audio', 'Homework'] as const;
 
 export default function AsliPrepContent() {
   const { type: typeParam, returnTo: returnToRaw } = useLocalSearchParams<{
@@ -47,17 +55,29 @@ export default function AsliPrepContent() {
   const goBack = useContentViewerBack(returnTo || undefined);
   const { isAsliPrepExclusive, isTypeAllowed } = useSchoolProgram();
   const allowedTypes = getAllowedContentTypes(isAsliPrepExclusive);
-  const initialType =
-    typeof typeParam === 'string' && allowedTypes.includes(typeParam as ContentTypeName)
-      ? typeParam
-      : 'all';
+  const resolveTypeParam = useCallback(() => {
+    const raw = Array.isArray(typeParam) ? typeParam[0] : typeParam;
+    if (typeof raw === 'string' && allowedTypes.includes(raw as ContentTypeName)) {
+      return raw as ContentTypeName;
+    }
+    return 'all' as const;
+  }, [typeParam, allowedTypes]);
+
+  const selectedTypeFilter = resolveTypeParam();
+  const lockedType = selectedTypeFilter !== 'all' ? selectedTypeFilter : null;
+
   const [contents, setContents] = useState<Content[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState({
     subject: 'all',
-    type: initialType,
+    type: resolveTypeParam(),
     topic: ''
   });
+
+  useEffect(() => {
+    const nextType = resolveTypeParam();
+    setFilters((prev) => (prev.type === nextType ? prev : { ...prev, type: nextType }));
+  }, [resolveTypeParam]);
   const [subjects, setSubjects] = useState<any[]>([]);
 
   useEffect(() => {
@@ -141,6 +161,7 @@ export default function AsliPrepContent() {
       case 'Workbook': return 'document-text';
       case 'Material': return 'document';
       case 'Audio': return 'musical-notes';
+      case 'Homework': return 'clipboard';
       default: return 'document';
     }
   };
@@ -152,8 +173,16 @@ export default function AsliPrepContent() {
       case 'Workbook': return '#9333ea';
       case 'Material': return '#10b981';
       case 'Audio': return '#f59e0b';
+      case 'Homework': return '#ea580c';
       default: return '#6b7280';
     }
+  };
+
+  const getSubjectId = (content: Content) => {
+    if (typeof content.subject === 'string') return content.subject;
+    if (content.subject?._id) return content.subject._id;
+    if (typeof content.subjectId === 'string') return content.subjectId;
+    return content.subjectId?._id;
   };
 
   const formatFileSize = (bytes?: number) => {
@@ -172,39 +201,48 @@ export default function AsliPrepContent() {
   };
 
   const filteredContents = useMemo(() => {
-    return contents.filter(content => {
-      const subjectId =
-        typeof content.subject === 'string'
-          ? content.subject
-          : content.subject?._id;
+    return contents.filter((content) => {
+      const subjectId = getSubjectId(content);
       const matchesSubject = filters.subject === 'all' || subjectId === filters.subject;
       const matchesType = filters.type === 'all' || content.type === filters.type;
-      const matchesTopic = !filters.topic || content.topic?.toLowerCase().includes(filters.topic.toLowerCase());
+      const matchesTopic =
+        !filters.topic || content.topic?.toLowerCase().includes(filters.topic.toLowerCase());
       return matchesSubject && matchesType && matchesTopic;
     });
   }, [contents, filters]);
 
-  const handleDownload = useCallback((content: Content) => {
-    if (!content.fileUrl) {
-      Alert.alert('Error', 'File URL not available');
-      return;
-    }
-    openContentPreview(router, content, previewOpts);
-  }, []);
+  const handleOpenContent = useCallback(
+    (content: Content) => {
+      const hasUrl = Boolean(
+        content.fileUrl ||
+          content.fileUrls?.[0] ||
+          content.videoUrl ||
+          content.driveLink ||
+          content.youtubeUrl
+      );
+      if (!hasUrl) {
+        Alert.alert('Content', 'No preview available for this item.');
+        return;
+      }
+      openContentPreview(router, content, previewOpts);
+    },
+    [previewOpts]
+  );
 
-  const getSubjectName = useCallback((subject: Content['subject'] | string | undefined) => {
-    if (!subject) return '';
-    if (typeof subject === 'string') return subject;
-    return subject.name || '';
+  const getSubjectName = useCallback((content: Content) => {
+    const sub = content.subjectId || content.subject;
+    if (!sub) return '';
+    if (typeof sub === 'string') return sub;
+    return sub.name || '';
   }, []);
 
   const renderContentItem = useCallback(({ item: content }: { item: Content }) => {
     const typeColor = getTypeColor(content.type);
-    const subjectName = getSubjectName(content.subject as Content['subject'] | string | undefined);
+    const subjectName = getSubjectName(content);
     return (
       <TouchableOpacity
         style={styles.contentCard}
-        onPress={() => handleDownload(content)}
+        onPress={() => handleOpenContent(content)}
         activeOpacity={0.7}
       >
         <View style={[styles.contentIcon, { backgroundColor: typeColor + '20' }]}>
@@ -261,14 +299,14 @@ export default function AsliPrepContent() {
           style={[styles.downloadButton, { backgroundColor: typeColor }]}
           onPress={(e) => {
             e.stopPropagation();
-            handleDownload(content);
+            handleOpenContent(content);
           }}
         >
           <Ionicons name="eye" size={20} color="#fff" />
         </TouchableOpacity>
       </TouchableOpacity>
     );
-  }, [handleDownload, getSubjectName]);
+  }, [handleOpenContent, getSubjectName]);
 
   const keyExtractor = useCallback((item: Content) => item._id, []);
 
@@ -286,11 +324,19 @@ export default function AsliPrepContent() {
           <View style={styles.headerText}>
             <View style={styles.headerTitleRow}>
               <View style={styles.headerIcon}>
-                <Ionicons name="book" size={24} color="#fff" />
+                <Ionicons
+                  name={(lockedType ? getTypeIcon(lockedType) : 'library') as keyof typeof Ionicons.glyphMap}
+                  size={24}
+                  color="#fff"
+                />
               </View>
               <View style={styles.headerTitleBlock}>
-                <Text style={styles.headerTitle}>AsliLearn Exclusive</Text>
-                <Text style={styles.headerSubtitle}>Premium study materials</Text>
+                <Text style={styles.headerTitle}>{lockedType || 'Digital Library'}</Text>
+                <Text style={styles.headerSubtitle}>
+                  {lockedType
+                    ? `${filteredContents.length} ${filteredContents.length === 1 ? 'file' : 'files'}`
+                    : 'Browse all study materials'}
+                </Text>
               </View>
             </View>
           </View>
@@ -332,19 +378,21 @@ export default function AsliPrepContent() {
           ))}
         </ScrollView>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-          {(['all', ...allowedTypes] as const).map(type => (
-            <TouchableOpacity
-              key={type}
-              style={[styles.filterChip, filters.type === type && styles.filterChipActive]}
-              onPress={() => setFilters({ ...filters, type })}
-            >
-              <Text style={[styles.filterChipText, filters.type === type && styles.filterChipTextActive]}>
-                {type === 'all' ? 'All Types' : type}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        {!lockedType ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+            {(['all', ...allowedTypes] as const).map((type) => (
+              <TouchableOpacity
+                key={type}
+                style={[styles.filterChip, filters.type === type && styles.filterChipActive]}
+                onPress={() => setFilters({ ...filters, type })}
+              >
+                <Text style={[styles.filterChipText, filters.type === type && styles.filterChipTextActive]}>
+                  {type === 'all' ? 'All Types' : type}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        ) : null}
       </View>
 
       {/* Content List */}

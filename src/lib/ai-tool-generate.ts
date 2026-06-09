@@ -1,0 +1,295 @@
+import { isStoryPassageLanguageSubject } from './student-ai-tools';
+
+export type AiToolFieldConfig = {
+  name: string;
+  label: string;
+  required?: boolean;
+};
+
+export type AiToolGenerationMeta = {
+  source?: string;
+  sourceLabel?: string;
+  aiUnavailable?: boolean;
+  chunksUsed?: number;
+  citations?: Array<{
+    index: number;
+    subject: string;
+    classLabel: string;
+    chapter: string;
+    score: string;
+    preview: string;
+  }>;
+};
+
+export type AiToolGenerateSuccess = {
+  ok: true;
+  content: string;
+  rawContent: unknown;
+  metadata: AiToolGenerationMeta | null;
+  fromAiFailure: boolean;
+};
+
+export type AiToolGenerateFailure = {
+  ok: false;
+  title: string;
+  message: string;
+  code?: string;
+  fallbackMessage: string;
+};
+
+export type AiToolGenerateResult = AiToolGenerateSuccess | AiToolGenerateFailure;
+
+type ValidateOptions = {
+  config: { fields: AiToolFieldConfig[] };
+  formParams: Record<string, unknown>;
+  isReadingPractice?: boolean;
+  requireBoard?: boolean;
+};
+
+export function validateAiToolForm({
+  config,
+  formParams,
+  isReadingPractice = false,
+  requireBoard = true,
+}: ValidateOptions): string | null {
+  const requiredFields = config.fields.filter((f) => f.required);
+  const missingFields = requiredFields.filter((f) => !formParams[f.name]);
+
+  if (missingFields.length > 0) {
+    return `Please fill in: ${missingFields.map((f) => f.label).join(', ')}`;
+  }
+
+  if (requireBoard && !formParams.board) {
+    return 'Please select a board.';
+  }
+
+  if (isReadingPractice && !isStoryPassageLanguageSubject(String(formParams.subject || ''))) {
+    return 'Story & Passage Creator works only with English or Hindi subjects.';
+  }
+
+  return null;
+}
+
+function parseResponseBody(responseText: string): {
+  success?: boolean;
+  data?: {
+    content?: string;
+    rawData?: unknown;
+    metadata?: AiToolGenerationMeta;
+  };
+  content?: string;
+  message?: string;
+  code?: string;
+} {
+  try {
+    return responseText ? JSON.parse(responseText) : {};
+  } catch {
+    return {};
+  }
+}
+
+function resolveApiError(data: ReturnType<typeof parseResponseBody>, response: Response, responseText: string) {
+  const code = data?.code;
+  const message = data.message || responseText || `Server error: ${response.status}`;
+
+  if (
+    code === 'AI_TOOL_CONTENT_INCOMPLETE' ||
+    code === 'AI_TOOL_WRONG_TYPE' ||
+    (response.status === 404 &&
+      (code === 'AI_TOOL_DATA_NOT_FOUND' ||
+        code === 'AI_TOOL_CONTENT_INCOMPLETE' ||
+        code === 'AI_TOOL_WRONG_TYPE'))
+  ) {
+    return {
+      ok: false as const,
+      title:
+        code === 'AI_TOOL_WRONG_TYPE'
+          ? 'Wrong tool content'
+          : code === 'AI_TOOL_CONTENT_INCOMPLETE'
+            ? 'Content incomplete'
+            : 'No content found',
+      message:
+        message ||
+        'No complete content is available for this class, subject, topic, and sub-topic.',
+      code,
+      fallbackMessage:
+        message ||
+        (code === 'AI_TOOL_WRONG_TYPE'
+          ? 'Saved content belongs to a different AI tool. Super Admin must generate using this tool name only.'
+          : code === 'AI_TOOL_CONTENT_INCOMPLETE'
+            ? 'Saved content is incomplete or not in the correct tool format. Ask Super Admin to complete all sections.'
+            : 'No content found for this selection. Ask Super Admin to add it in AI Tool Generations.'),
+    };
+  }
+
+  if (response.status === 503 && code === 'AI_UNAVAILABLE_NO_FALLBACK') {
+    return {
+      ok: false as const,
+      title: 'AI unavailable',
+      message:
+        message ||
+        'No stored content matched. Ask your Super Admin to add content or fix the API quota.',
+      code,
+      fallbackMessage:
+        message ||
+        'AI service is unavailable and no previously generated content was found for this selection.',
+    };
+  }
+
+  return {
+    ok: false as const,
+    title: 'Error',
+    message: message || 'AI generation failed',
+    code,
+    fallbackMessage: message || 'Failed to generate content. Please try again.',
+  };
+}
+
+export async function executeAiToolGenerate({
+  endpoint,
+  token,
+  requestBody,
+}: {
+  endpoint: string;
+  token: string;
+  requestBody: Record<string, unknown>;
+}): Promise<AiToolGenerateResult> {
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  const responseText = await response.text();
+  const data = parseResponseBody(responseText);
+
+  if (!response.ok) {
+    return resolveApiError(data, response, responseText);
+  }
+
+  const content = data.data?.content || data.content || '';
+  if (!data.success || !String(content).trim()) {
+    return {
+      ok: false,
+      title: 'Error',
+      message: data.message || 'AI returned empty response',
+      code: data.code,
+      fallbackMessage: data.message || 'AI returned empty response. Please try again.',
+    };
+  }
+
+  const fromAiFailure = !!data.data?.metadata?.aiUnavailable;
+
+  return {
+    ok: true,
+    content: String(content),
+    rawContent: data.data?.rawData ?? null,
+    metadata: data.data?.metadata ?? null,
+    fromAiFailure,
+  };
+}
+
+const STUDENT_JSON_PAYLOAD_TOOLS = new Set([
+  'short-notes-summaries-maker',
+  'concept-mastery-helper',
+  'study-schedule-maker',
+  'lesson-planner',
+  'my-study-decks',
+  'flashcard-generator',
+]);
+
+const TEACHER_JSON_PAYLOAD_TOOLS = new Set([
+  'short-notes-summaries-maker',
+  'concept-mastery-helper',
+  'lesson-planner',
+  'flashcard-generator',
+  'worksheet-mcq-generator',
+  'homework-creator',
+  'daily-class-plan-maker',
+]);
+
+export function storeAiToolSuccessPayload(
+  toolType: string,
+  content: string,
+  rawContent: unknown,
+  role: 'student' | 'teacher'
+): { generatedContent: string; rawGeneratedContent: unknown } {
+  const jsonTools = role === 'teacher' ? TEACHER_JSON_PAYLOAD_TOOLS : STUDENT_JSON_PAYLOAD_TOOLS;
+
+  if (rawContent && jsonTools.has(toolType)) {
+    return {
+      generatedContent: JSON.stringify({ formatted: content, raw: rawContent }),
+      rawGeneratedContent: rawContent,
+    };
+  }
+
+  return {
+    generatedContent: content,
+    rawGeneratedContent: rawContent ?? null,
+  };
+}
+
+export function buildTeacherAiRequestBody(
+  toolType: string,
+  formParams: Record<string, unknown>,
+  selectedBoard: string,
+  mapGradeLevel: (board: string | undefined, gradeLevel: string | undefined) => string | undefined
+) {
+  const selectedClass = mapGradeLevel(
+    selectedBoard,
+    typeof formParams.gradeLevel === 'string' ? formParams.gradeLevel : undefined
+  );
+  const selectedSubject = formParams.subject || formParams.subjects;
+  const selectedTopic = formParams.topic || '';
+  const selectedSubTopic = formParams.subTopic || '';
+  const selectedSection = formParams.section || formParams.className || '';
+
+  return {
+    toolType,
+    classNumber: selectedClass
+      ? selectedClass === 'IIT-6' || selectedClass === 'Class-6-IIT'
+        ? 'IIT-6'
+        : parseInt(String(selectedClass).replace('Class ', ''), 10)
+      : undefined,
+    subject: selectedSubject,
+    topic: selectedTopic,
+    subTopic: selectedSubTopic,
+    section: selectedSection,
+    questionCount: formParams.questionCount ? parseInt(String(formParams.questionCount), 10) : undefined,
+    duration: formParams.duration ? parseInt(String(formParams.duration), 10) : undefined,
+    ...formParams,
+    board: selectedBoard,
+    gradeLevel: selectedClass,
+  };
+}
+
+export function buildStudentAiRequestBody(
+  apiToolType: string,
+  formParams: Record<string, unknown>,
+  selectedBoard: string,
+  mapGradeLevel: (board: string | undefined, gradeLevel: string | undefined) => string | undefined
+) {
+  const mappedTopic =
+    formParams.topic ||
+    formParams.concept ||
+    formParams.chapter ||
+    formParams.projectTopic ||
+    '';
+
+  const gradeLevel = mapGradeLevel(
+    selectedBoard,
+    typeof formParams.gradeLevel === 'string' ? formParams.gradeLevel : undefined
+  );
+
+  return {
+    toolType: apiToolType,
+    ...formParams,
+    board: selectedBoard,
+    gradeLevel,
+    subject: formParams.subject || formParams.subjects,
+    topic: mappedTopic,
+  };
+}

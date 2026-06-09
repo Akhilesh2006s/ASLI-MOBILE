@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -19,19 +19,15 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import * as Haptics from 'expo-haptics';
 import Animated, {
   Easing,
   FadeIn,
   FadeInDown,
-  FadeInUp,
-  FadeOut,
   interpolate,
   useAnimatedStyle,
   useSharedValue,
-  withDelay,
   withRepeat,
   withSequence,
   withSpring,
@@ -40,8 +36,6 @@ import Animated, {
 import { API_BASE_URL } from '../../src/services/api/api';
 import { useAuth } from '../../src/context/AuthContext';
 import { COLORS, FONT, RADIUS, SPACING } from '../../src/theme';
-
-const LOGIN_INTRO_KEY = 'aslilearn_skip_login_intro';
 
 const PALETTE = {
   bgTop: '#0B1220',
@@ -101,74 +95,6 @@ function MeshOrb({ size, left, top, colors, delay }: (typeof ORBS)[number]) {
   return (
     <Animated.View style={[styles.orbShell, { width: size, height: size, left, top }, style]} pointerEvents="none">
       <LinearGradient colors={colors} style={styles.orb} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
-    </Animated.View>
-  );
-}
-
-function IntroSplash({ onFinish }: { onFinish: () => void }) {
-  const ring = useSharedValue(0.85);
-  const ring2 = useSharedValue(0.7);
-  const logoScale = useSharedValue(0.6);
-  const logoOpacity = useSharedValue(0);
-
-  useEffect(() => {
-    logoScale.value = withSpring(1, { damping: 12, stiffness: 120 });
-    logoOpacity.value = withTiming(1, { duration: 500 });
-    ring.value = withRepeat(
-      withSequence(
-        withTiming(1.15, { duration: 1200, easing: Easing.out(Easing.ease) }),
-        withTiming(0.85, { duration: 1200, easing: Easing.in(Easing.ease) }),
-      ),
-      -1,
-      false,
-    );
-    ring2.value = withDelay(
-      400,
-      withRepeat(
-        withSequence(
-          withTiming(1.25, { duration: 1400, easing: Easing.out(Easing.ease) }),
-          withTiming(0.7, { duration: 1400, easing: Easing.in(Easing.ease) }),
-        ),
-        -1,
-        false,
-      ),
-    );
-    const timer = setTimeout(onFinish, 1100);
-    return () => clearTimeout(timer);
-  }, [logoOpacity, logoScale, onFinish, ring, ring2]);
-
-  const ringStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: ring.value }],
-    opacity: interpolate(ring.value, [0.85, 1.15], [0.5, 0]),
-  }));
-  const ring2Style = useAnimatedStyle(() => ({
-    transform: [{ scale: ring2.value }],
-    opacity: interpolate(ring2.value, [0.7, 1.25], [0.35, 0]),
-  }));
-  const logoStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: logoScale.value }],
-    opacity: logoOpacity.value,
-  }));
-
-  return (
-    <Animated.View exiting={FadeOut.duration(400)} style={styles.introOverlay}>
-      <LinearGradient colors={[PALETTE.bgTop, PALETTE.bgMid, PALETTE.bgBottom]} style={StyleSheet.absoluteFill} />
-      {ORBS.map((orb, i) => (
-        <MeshOrb key={i} {...orb} />
-      ))}
-      <Animated.View style={[styles.introRing, ringStyle]} />
-      <Animated.View style={[styles.introRing, styles.introRingOuter, ring2Style]} />
-      <Animated.View style={logoStyle}>
-        <LinearGradient colors={['#6366F1', '#22D3EE']} style={styles.introLogoFrame} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-          <Image source={require('../../image.png')} style={styles.introLogo} resizeMode="cover" />
-        </LinearGradient>
-      </Animated.View>
-      <Animated.Text entering={FadeInUp.duration(500).delay(300)} style={styles.introBrand}>
-        ASLILEARN AI
-      </Animated.Text>
-      <Animated.Text entering={FadeInUp.duration(500).delay(450)} style={styles.introTagline}>
-        Intelligent Learning Platform
-      </Animated.Text>
     </Animated.View>
   );
 }
@@ -318,32 +244,14 @@ export default function Login() {
   const { width } = useWindowDimensions();
   const { signIn } = useAuth();
   const cardWidth = useMemo(() => Math.min(width - 28, 440), [width]);
+  const logoSize = useMemo(() => Math.min(width * 0.28, 108), [width]);
 
-  const [showIntro, setShowIntro] = useState<boolean | null>(null);
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(true);
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    const init = async () => {
-      try {
-        const skipped = await AsyncStorage.getItem(LOGIN_INTRO_KEY);
-        if (skipped === '1') {
-          setShowIntro(false);
-          setShowForm(true);
-        } else {
-          setShowIntro(true);
-        }
-      } catch {
-        setShowIntro(false);
-        setShowForm(true);
-      }
-    };
-    init();
-  }, []);
 
   useEffect(() => {
     if (!showForm) return;
@@ -362,16 +270,6 @@ export default function Login() {
     load();
   }, [showForm]);
 
-  const finishIntro = useCallback(async () => {
-    setShowIntro(false);
-    setTimeout(() => setShowForm(true), 180);
-    try {
-      await AsyncStorage.setItem(LOGIN_INTRO_KEY, '1');
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
   const redirectByRole = (role: string) => {
     if (role === 'super-admin') router.replace('/super-admin-dashboard');
     else if (role === 'admin') router.replace('/admin/dashboard');
@@ -382,6 +280,11 @@ export default function Login() {
   const handleForgotPassword = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     Alert.alert('Forgot Password', 'Please contact admin to reset your password.');
+  };
+
+  const handleCreateAccount = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    Alert.alert('Create Account', 'Please contact your school admin to create an account.');
   };
 
   const handleSubmit = async () => {
@@ -414,14 +317,6 @@ export default function Login() {
     }
   };
 
-  if (showIntro === null) {
-    return (
-      <View style={styles.boot}>
-        <LinearGradient colors={[PALETTE.bgTop, PALETTE.bgBottom]} style={StyleSheet.absoluteFill} />
-      </View>
-    );
-  }
-
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
@@ -435,8 +330,6 @@ export default function Login() {
 
       <View style={styles.gridOverlay} pointerEvents="none" />
 
-      {showIntro ? <IntroSplash onFinish={finishIntro} /> : null}
-
       {showForm ? (
         <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
           <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -445,18 +338,29 @@ export default function Login() {
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
-              {/* Brand header */}
               <Animated.View entering={FadeInDown.duration(500)} style={styles.brandHeader}>
-                <LinearGradient colors={['#6366F1', '#22D3EE']} style={styles.brandLogoRing} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                  <Image source={require('../../image.png')} style={styles.brandLogo} resizeMode="cover" />
-                </LinearGradient>
-                <View>
-                  <Text style={styles.brandName}>ASLILEARN AI</Text>
-                  <View style={styles.brandBadge}>
-                    <Ionicons name="sparkles" size={11} color={PALETTE.cyan} />
-                    <Text style={styles.brandBadgeText}>AI-Powered Learning</Text>
+                <LinearGradient
+                  colors={['#6366F1', '#22D3EE']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[
+                    styles.brandLogoRing,
+                    { width: logoSize, height: logoSize, borderRadius: logoSize / 2 },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.brandLogoInner,
+                      {
+                        width: logoSize - 6,
+                        height: logoSize - 6,
+                        borderRadius: (logoSize - 6) / 2,
+                      },
+                    ]}
+                  >
+                    <Image source={require('../../image.png')} style={styles.brandLogo} resizeMode="cover" />
                   </View>
-                </View>
+                </LinearGradient>
               </Animated.View>
 
               {/* Glass card */}
@@ -541,25 +445,12 @@ export default function Login() {
 
                     <Pressable
                       style={styles.registerBtn}
-                      onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        router.push('/auth/register');
-                      }}
+                      onPress={handleCreateAccount}
                     >
                       <Ionicons name="person-add-outline" size={18} color={PALETTE.accent} />
                       <Text style={styles.registerBtnText}>Create a free account</Text>
                     </Pressable>
 
-                    <Pressable
-                      style={styles.homeBtn}
-                      onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        router.replace('/');
-                      }}
-                    >
-                      <Ionicons name="arrow-back" size={16} color="#64748B" />
-                      <Text style={styles.homeBtnText}>Back to Home</Text>
-                    </Pressable>
                   </View>
                 </LinearGradient>
               </Animated.View>
@@ -574,7 +465,6 @@ export default function Login() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   flex: { flex: 1 },
-  boot: { flex: 1 },
   orbLayer: { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },
   orbShell: { position: 'absolute' },
   orb: { flex: 1, borderRadius: 9999, opacity: 0.55 },
@@ -584,50 +474,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderWidth: 0,
   },
-  introOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  introRing: {
-    position: 'absolute',
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    borderWidth: 2,
-    borderColor: 'rgba(99,102,241,0.5)',
-  },
-  introRingOuter: {
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    borderColor: 'rgba(34,211,238,0.35)',
-  },
-  introLogoFrame: {
-    width: 108,
-    height: 108,
-    borderRadius: 54,
-    padding: 3,
-    marginBottom: SPACING.xl,
-  },
-  introLogo: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 51,
-  },
-  introBrand: {
-    fontSize: 34,
-    fontWeight: '800',
-    color: PALETTE.textOnDark,
-    letterSpacing: 1,
-    marginBottom: SPACING.sm,
-  },
-  introTagline: {
-    fontSize: FONT.lg,
-    fontWeight: FONT.medium,
-    color: PALETTE.mutedOnDark,
-  },
   scroll: {
     flexGrow: 1,
     justifyContent: 'center',
@@ -636,41 +482,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   brandHeader: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.md,
-    alignSelf: 'flex-start',
-    marginBottom: SPACING.lg,
+    justifyContent: 'center',
+    alignSelf: 'center',
+    marginBottom: SPACING.xl,
     width: '100%',
   },
   brandLogoRing: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    padding: 2,
+    padding: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  brandLogoInner: {
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   brandLogo: {
     width: '100%',
     height: '100%',
-    borderRadius: 24,
-  },
-  brandName: {
-    fontSize: FONT.xl,
-    fontWeight: '800',
-    color: PALETTE.textOnDark,
-    letterSpacing: 0.5,
-  },
-  brandBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 2,
-  },
-  brandBadgeText: {
-    fontSize: FONT.xs,
-    fontWeight: FONT.semibold,
-    color: PALETTE.mutedOnDark,
-    letterSpacing: 0.3,
   },
   cardBorder: {
     borderRadius: 28,
@@ -862,18 +698,5 @@ const styles = StyleSheet.create({
     fontSize: FONT.md,
     fontWeight: FONT.bold,
     color: PALETTE.accent,
-  },
-  homeBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: SPACING.sm,
-    marginTop: SPACING.lg,
-    paddingVertical: SPACING.sm,
-  },
-  homeBtnText: {
-    fontSize: FONT.base,
-    color: '#64748B',
-    fontWeight: FONT.medium,
   },
 });

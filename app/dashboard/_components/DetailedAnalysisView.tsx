@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -47,6 +47,14 @@ export default function DetailedAnalysisView({
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState('');
   const [studentName, setStudentName] = useState('Student');
+  const aiFetchAttemptedRef = useRef(false);
+
+  useEffect(() => {
+    aiFetchAttemptedRef.current = false;
+    setAiAnalysis(null);
+    setAiError('');
+    setAiLoading(false);
+  }, [result?.examId, result?._id, result?.attemptNumber]);
 
   useEffect(() => {
     if (!result?.examId) return;
@@ -84,6 +92,12 @@ export default function DetailedAnalysisView({
 
   useEffect(() => {
     if (!result?.examId) {
+      setReviewHydrated(true);
+      return;
+    }
+    const hasQuestions = Array.isArray(result.questions) && result.questions.length > 0;
+    const hasAnswers = result.answers && Object.keys(result.answers).length > 0;
+    if (hasQuestions && hasAnswers) {
       setReviewHydrated(true);
       return;
     }
@@ -140,10 +154,14 @@ export default function DetailedAnalysisView({
     setReviewHydrated(false);
     void hydrateFromReview();
     return () => { cancelled = true; };
-  }, [result?.examId, result?._id, result?.attemptNumber]);
+  }, [result?.examId, result?._id, result?.attemptNumber, result?.questions, result?.answers]);
+
+  const needsAiReport = activeTab === 'ai' || activeTab === 'insights' || activeTab === 'plan';
 
   useEffect(() => {
-    if (!reviewHydrated || !displayResult?.examId) return;
+    if (!reviewHydrated || !displayResult?.examId || !needsAiReport) return;
+    if (aiFetchAttemptedRef.current || aiAnalysis) return;
+    aiFetchAttemptedRef.current = true;
     let cancelled = false;
     const fetchAiReport = async () => {
       setAiLoading(true);
@@ -183,6 +201,7 @@ export default function DetailedAnalysisView({
     return () => { cancelled = true; };
   }, [
     reviewHydrated,
+    needsAiReport,
     displayResult?.examId,
     displayResult?.correctAnswers,
     displayResult?.wrongAnswers,
@@ -192,6 +211,7 @@ export default function DetailedAnalysisView({
     displayResult?.attemptNumber,
     displayResult?._id,
     examTitle,
+    aiAnalysis,
   ]);
 
   if (!displayResult?.examId) {

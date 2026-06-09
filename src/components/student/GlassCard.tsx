@@ -33,7 +33,19 @@ export default function GlassCard({
   }));
 
   const variantStyle = getVariantStyle(variant);
-  const cardStyle = [styles.card, variantStyle, styles.cardFill, { padding }];
+  const fillsParent =
+    !!style &&
+    ((style as ViewStyle).height === '100%' ||
+      (style as ViewStyle).flex === 1 ||
+      (style as ViewStyle).minHeight != null);
+
+  const cardStyle = [
+    styles.card,
+    variantStyle,
+    styles.cardFill,
+    fillsParent && styles.cardFillParent,
+    { padding },
+  ];
 
   const inner =
     variant === 'gradient' ? (
@@ -58,7 +70,7 @@ export default function GlassCard({
   if (onPress) {
     return (
       <Pressable
-        style={[styles.pressable, style]}
+        style={[styles.pressable, fillsParent && styles.pressableFill, style]}
         onPress={onPress}
         onPressIn={() => {
           scale.value = withSpring(0.96, PRESS_SPRING);
@@ -67,7 +79,9 @@ export default function GlassCard({
           scale.value = withSpring(1, PRESS_SPRING);
         }}
       >
-        <Animated.View style={animStyle}>{animatedInner}</Animated.View>
+        <Animated.View style={[animStyle, fillsParent && styles.pressableInnerFill]}>
+          {animatedInner}
+        </Animated.View>
       </Pressable>
     );
   }
@@ -125,12 +139,25 @@ const styles = StyleSheet.create({
   pressable: {
     alignSelf: 'flex-start',
   },
+  pressableFill: {
+    alignSelf: 'stretch',
+    height: '100%',
+    flex: 1,
+  },
+  pressableInnerFill: {
+    flex: 1,
+    width: '100%',
+  },
   card: {
     borderRadius: STUDENT_RADIUS.card,
     overflow: 'hidden',
   },
   cardFill: {
     width: '100%',
+  },
+  cardFillParent: {
+    flex: 1,
+    minHeight: '100%',
   },
   topBar: {
     position: 'absolute',

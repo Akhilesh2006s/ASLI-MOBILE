@@ -16,11 +16,16 @@ import {
   STUDENT_TYPO,
 } from '../../../src/theme/student';
 
+const GRID_H_PAD = 36;
+const GRID_GAP = STUDENT_SPACING.md;
+
 export default function VidyaAIView() {
   const { width } = useWindowDimensions();
   const compact = width < 380;
   const isTablet = width >= 768;
-  const cardWidth = isTablet ? '31.5%' : '48%';
+  const columns = isTablet ? 3 : 2;
+  const cardWidth = (width - GRID_H_PAD - GRID_GAP * (columns - 1)) / columns;
+  const cardHeight = compact ? 178 : 192;
   const [subjectNames, setSubjectNames] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -68,10 +73,10 @@ export default function VidyaAIView() {
 
       {isLoading ? (
         <View style={styles.shimmerGrid}>
-          <ShimmerCard style={{ width: cardWidth }} />
-          <ShimmerCard style={{ width: cardWidth }} />
-          <ShimmerCard style={{ width: cardWidth }} />
-          <ShimmerCard style={{ width: cardWidth }} />
+          <ShimmerCard style={{ width: cardWidth, height: cardHeight }} />
+          <ShimmerCard style={{ width: cardWidth, height: cardHeight }} />
+          <ShimmerCard style={{ width: cardWidth, height: cardHeight }} />
+          <ShimmerCard style={{ width: cardWidth, height: cardHeight }} />
         </View>
       ) : (
         <View style={styles.toolsGrid}>
@@ -79,37 +84,41 @@ export default function VidyaAIView() {
             <Animated.View
               key={tool.id}
               entering={FadeInDown.duration(STUDENT_ANIMATION.normal).delay(80 + index * 45)}
-              style={{ width: cardWidth }}
+              style={[styles.toolCell, { width: cardWidth, height: cardHeight }]}
             >
               <GlassCard
                 variant="elevated"
                 padding={compact ? 14 : 16}
-                style={compact ? { minHeight: 148 } : { minHeight: 168 }}
+                style={styles.toolCard}
                 onPress={() => openTool(tool)}
               >
-                <View style={[styles.toolTint, { backgroundColor: `${tool.color}08` }]} />
-                <View style={styles.toolBadgeRow}>
-                  <View style={[styles.toolIconContainer, { backgroundColor: `${tool.color}22` }]}>
-                    <Ionicons
-                      name={tool.icon as keyof typeof Ionicons.glyphMap}
-                      size={22}
-                      color={tool.color}
-                    />
+                <View style={styles.toolCardBody}>
+                  <View style={[styles.toolTint, { backgroundColor: `${tool.color}08` }]} />
+                  <View style={styles.toolBadgeRow}>
+                    <View style={[styles.toolIconContainer, { backgroundColor: `${tool.color}22` }]}>
+                      <Ionicons
+                        name={tool.icon as keyof typeof Ionicons.glyphMap}
+                        size={22}
+                        color={tool.color}
+                      />
+                    </View>
+                    <View style={styles.aiPoweredBadge}>
+                      <Ionicons name="sparkles" size={10} color={STUDENT.accent} />
+                      <Text style={styles.aiPoweredText}>AI</Text>
+                    </View>
                   </View>
-                  <View style={styles.aiPoweredBadge}>
-                    <Ionicons name="sparkles" size={10} color={STUDENT.accent} />
-                    <Text style={styles.aiPoweredText}>AI</Text>
+                  <View style={styles.toolTextBlock}>
+                    <Text style={styles.toolTitle} numberOfLines={2}>
+                      {tool.name}
+                    </Text>
+                    <Text style={styles.toolDescription} numberOfLines={2}>
+                      {tool.description}
+                    </Text>
                   </View>
-                </View>
-                <Text style={styles.toolTitle} numberOfLines={2}>
-                  {tool.name}
-                </Text>
-                <Text style={styles.toolDescription} numberOfLines={3}>
-                  {tool.description}
-                </Text>
-                <View style={styles.toolFooter}>
-                  <Text style={[styles.toolLink, { color: tool.color }]}>Open</Text>
-                  <Ionicons name="arrow-forward" size={14} color={tool.color} />
+                  <View style={styles.toolFooter}>
+                    <Text style={[styles.toolLink, { color: tool.color }]}>Open</Text>
+                    <Ionicons name="arrow-forward" size={14} color={tool.color} />
+                  </View>
                 </View>
               </GlassCard>
             </Animated.View>
@@ -136,13 +145,29 @@ const styles = StyleSheet.create({
   shimmerGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: STUDENT_SPACING.md,
+    gap: GRID_GAP,
   },
   toolsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: STUDENT_SPACING.md,
+    gap: GRID_GAP,
+    alignItems: 'stretch',
     paddingBottom: STUDENT_SPACING.md,
+  },
+  toolCell: {
+    overflow: 'hidden',
+    alignSelf: 'stretch',
+  },
+  toolCard: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    alignSelf: 'stretch',
+  },
+  toolCardBody: {
+    flex: 1,
+    minHeight: '100%',
+    justifyContent: 'space-between',
   },
   toolTint: {
     ...StyleSheet.absoluteFillObject,
@@ -152,7 +177,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 14,
+  },
+  toolTextBlock: {
+    flex: 1,
+    justifyContent: 'flex-start',
+    paddingVertical: 8,
   },
   toolIconContainer: {
     width: 44,
@@ -177,20 +206,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     color: STUDENT.text,
-    marginBottom: 6,
-    lineHeight: 19,
+    marginBottom: 4,
+    lineHeight: 20,
+    height: 40,
   },
   toolDescription: {
     fontSize: 12,
     color: STUDENT.textMuted,
-    lineHeight: 17,
-    flex: 1,
+    lineHeight: 18,
+    height: 36,
   },
   toolFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: 12,
+    marginTop: 'auto',
+    paddingTop: 4,
   },
   toolLink: { fontSize: 12, fontWeight: '700' },
 });

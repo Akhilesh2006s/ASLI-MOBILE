@@ -12,11 +12,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import api from '../../../src/services/api/api';
-import { filterContentsBySchoolProgram } from '../../../src/lib/school-program';
-import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
 import GlassCard from '../../../src/components/student/GlassCard';
 import ChipNav from '../../../src/components/student/ChipNav';
-import PremiumSectionHeader from '../../../src/components/student/PremiumSectionHeader';
+import DigitalLibraryBrowseSection from '../../../src/components/student/DigitalLibraryBrowseSection';
 import { ShimmerCard } from '../../../src/components/student/StudentShimmer';
 import {
   STUDENT,
@@ -50,7 +48,6 @@ function AnimatedProgressBar({ progress, delay = 0 }: { progress: number; delay?
 
 export default function LearningPathsView({ dark }: { dark?: boolean }) {
   const { width } = useWindowDimensions();
-  const { isAsliPrepExclusive, libraryTiles } = useSchoolProgram();
   const compact = width < 380;
   const isTablet = width >= 768;
   const scrollPad = 36;
@@ -67,31 +64,6 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
     fetchSubjects();
     fetchQuizzes();
   }, []);
-
-  useEffect(() => {
-    fetchLibraryCounts();
-  }, [isAsliPrepExclusive, libraryTiles.length]);
-
-  const fetchLibraryCounts = async () => {
-    try {
-      const { data } = await api.get('/api/student/asli-prep-content');
-      const allContent = filterContentsBySchoolProgram(
-        data.data || data || [],
-        isAsliPrepExclusive
-      );
-      const counts: Record<string, number> = {};
-      libraryTiles.forEach((tile) => {
-        counts[tile.type] = 0;
-      });
-      (Array.isArray(allContent) ? allContent : []).forEach((item: any) => {
-        const t = item.type || 'Material';
-        if (counts[t] != null) counts[t] = (counts[t] || 0) + 1;
-      });
-      setLibraryCounts(counts);
-    } catch (error) {
-      console.error('Failed to fetch library counts:', error);
-    }
-  };
 
   const fetchSubjects = async () => {
     try {
@@ -128,21 +100,6 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
     return 'book';
   };
 
-  const [libraryCounts, setLibraryCounts] = useState<Record<string, number>>({});
-
-  const openLibraryType = (type: string) => {
-    if (type === 'Homework') {
-      router.push('/assignments');
-      return;
-    }
-    router.push({ pathname: '/asli-prep-content', params: { type, returnTo: 'learning' } });
-  };
-
-  const libraryTilesResolved = libraryTiles.map((tile) => ({
-    ...tile,
-    icon: tile.icon as keyof typeof Ionicons.glyphMap,
-  }));
-
   const tabChips = [
     { id: 'subjects', label: 'Browse by Subject' },
     { id: 'quizzes', label: 'My Quizzes' },
@@ -173,7 +130,7 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
       </View>
 
       {activeTab === 'subjects' && (
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.content}>
           {isLoadingSubjects ? (
             <View style={styles.shimmerWrap}>
               <ShimmerCard />
@@ -225,48 +182,12 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
             </View>
           )}
 
-          {!isLoadingSubjects && subjects.length > 0 && (
-            <>
-              <GlassCard variant="default" padding={14} style={styles.sectionCard}>
-                <PremiumSectionHeader
-                  title="Digital Library"
-                  subtitle="Browse by Type"
-                  icon="library-outline"
-                />
-                <View style={styles.libraryGrid}>
-                  {libraryTilesResolved.map((tile, index) => (
-                    <View key={tile.key} style={styles.libraryTile}>
-                      <GlassCard
-                        variant="elevated"
-                        style={styles.libraryTileCard}
-                        padding={12}
-                        onPress={() => openLibraryType(tile.type)}
-                      >
-                        <View style={styles.libraryCardInner}>
-                          <LinearGradient
-                            colors={[STUDENT.accent, SUBJECT_COLORS[index % SUBJECT_COLORS.length]]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={styles.libraryIconWrap}
-                          >
-                            <Ionicons name={tile.icon} size={22} color={STUDENT.textOnPrimary} />
-                          </LinearGradient>
-                          <Text style={styles.libraryTitle} numberOfLines={1}>
-                            {tile.label}
-                          </Text>
-                          <Text style={styles.libraryCount}>
-                            {libraryCounts[tile.type] ?? 0} files
-                          </Text>
-                        </View>
-                      </GlassCard>
-                    </View>
-                  ))}
-                </View>
-              </GlassCard>
-
-            </>
-          )}
-        </ScrollView>
+          {!isLoadingSubjects && subjects.length > 0 ? (
+            <GlassCard variant="default" padding={14} style={styles.sectionCard}>
+              <DigitalLibraryBrowseSection returnTo="learning" dark={dark} />
+            </GlassCard>
+          ) : null}
+        </View>
       )}
 
       {activeTab === 'quizzes' && (

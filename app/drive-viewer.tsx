@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Linking, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -94,15 +94,6 @@ export default function DriveViewer() {
     }
   }, [fileId, driveLink]);
 
-  const handleOpenInBrowser = () => {
-    const url = previewUrl;
-    if (url) {
-      Linking.openURL(url).catch(() => {
-        Alert.alert('Error', 'Could not open link in browser');
-      });
-    }
-  };
-
   const renderBody = () => {
     if (isLoading) {
       return (
@@ -148,13 +139,6 @@ export default function DriveViewer() {
               </Text>
             ) : null}
           </View>
-          {previewUrl ? (
-            <TouchableOpacity onPress={handleOpenInBrowser} style={styles.openButton}>
-              <Ionicons name="open-outline" size={22} color="#fff" />
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.openButton} />
-          )}
         </View>
       </LinearGradient>
 
@@ -219,10 +203,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.9)',
     marginTop: 2,
-  },
-  openButton: {
-    padding: 4,
-    width: 30,
   },
   previewContainer: {
     flex: 1,

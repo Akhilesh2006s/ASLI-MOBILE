@@ -28,6 +28,12 @@ export default function YouTubeEmbedWebView({ videoUrl, style }: Props) {
       javaScriptEnabled
       domStorageEnabled
       originWhitelist={['*']}
+      setSupportMultipleWindows={false}
+      onShouldStartLoadWithRequest={(request) => {
+        if (request.navigationType !== 'click') return true;
+        const url = request.url || '';
+        return /embed|about:blank/i.test(url);
+      }}
       startInLoadingState
       renderLoading={() => (
         <View style={styles.loading}>
