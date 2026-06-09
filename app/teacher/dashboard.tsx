@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
@@ -18,7 +18,8 @@ import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import { TeacherTabBar, TeacherHeader, TeacherShimmer } from '../../src/components/teacher';
 import { BottomSheet } from '../../src/components/ui';
 import type { TeacherTab } from '../../src/components/teacher';
-import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, teacherGreeting } from '../../src/theme/teacher';
+import { formatSubjectLabel } from '../../src/lib/teacher-text';
+import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../src/theme/teacher';
 import { Ionicons } from '@expo/vector-icons';
 import AIClassesView from './_components/AIClassesView';
 import StudentsView from './_components/StudentsView';
@@ -147,7 +148,10 @@ export default function TeacherDashboard() {
 
       if (subjectsRes.status === 'fulfilled') {
         const subs = subjectsRes.value.data ?? [];
-        setSubjects(subs.map((s: any) => s.name || s.title).filter(Boolean));
+        const names = subs
+          .map((s: any) => String(s.name || s.title || '').trim())
+          .filter(Boolean);
+        setSubjects([...new Set(names)]);
       }
 
       if (timetableRes.status === 'fulfilled') {
@@ -177,7 +181,7 @@ export default function TeacherDashboard() {
     });
     if (upcoming) {
       setNextClass({
-        label: `${upcoming.subject || 'Class'} · ${upcoming.classNumber || ''} · ${upcoming.startTime}`,
+        label: `${formatSubjectLabel(upcoming.subject || 'Class')} · Class ${upcoming.classNumber || '—'} · ${upcoming.startTime}`,
         countdown: formatCountdown(upcoming.startTime),
       });
     }
@@ -204,11 +208,6 @@ export default function TeacherDashboard() {
 
   const resolvedBackendStatus: BackendStatus =
     backendStatus === 'online' && stale ? 'cached' : backendStatus;
-
-  const userName = useMemo(() => {
-    const name = user?.fullName || user?.name || 'Teacher';
-    return `${teacherGreeting()}, ${name.split(' ')[0]}`;
-  }, [user]);
 
   const navigate = (target: NavTarget) => {
     if (target.tab) setActiveTab(target.tab);
@@ -312,10 +311,10 @@ export default function TeacherDashboard() {
     activeTab === 'vidya-ai' || activeTab === 'students' || !!overlay;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" />
+    <SafeAreaView style={styles.container} edges={['bottom']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#7DD3FC" />
       <TeacherHeader
-        userName={userName}
+        displayName={user?.fullName || user?.name}
         subjects={subjects}
         nextClassLabel={nextClass?.label}
         countdown={nextClass?.countdown}

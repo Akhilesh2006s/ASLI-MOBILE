@@ -14,6 +14,7 @@ import {
   formatSlotRange,
   getCellEntries,
   getTimeSlots,
+  refName,
   teacherSlotLabel,
   todayWeekdayIndex,
   type TimetableEntryLike,
@@ -125,7 +126,9 @@ const ADMIN_THEME: GridTheme = {
 type Props = {
   entries: TimetableEntryLike[];
   variant?: GridVariant;
+  interactive?: boolean;
   onEntryClick?: (entry: TimetableEntryLike) => void;
+  onEmptyClick?: (dayIndex: WeekdayIndex, hour: number) => void;
   footerHint?: string;
 };
 
@@ -143,40 +146,59 @@ function usePressScale(to = 0.96) {
 function EntryCard({
   entry,
   theme,
+  variant,
   onEntryClick,
 }: {
   entry: TimetableEntryLike;
   theme: GridTheme;
+  variant: GridVariant;
   onEntryClick?: (entry: TimetableEntryLike) => void;
 }) {
+  const animatedPress = variant !== 'teacher';
   const press = usePressScale();
   const done = entry.status === 'Completed';
-  const label = teacherSlotLabel(entry);
+  const label =
+    variant === 'admin'
+      ? refName(entry.subjectId as string | { name?: string }) ||
+        entry.subject ||
+        teacherSlotLabel(entry)
+      : teacherSlotLabel(entry);
+
+  const cardStyle = [
+    styles.entryCard,
+    {
+      backgroundColor: theme.entryBg,
+      borderColor: theme.entryBorder,
+    },
+    done && styles.entryDone,
+    animatedPress ? press.style : null,
+  ];
 
   return (
     <Pressable
       onPress={() => onEntryClick?.(entry)}
-      onPressIn={press.onPressIn}
-      onPressOut={press.onPressOut}
+      onPressIn={animatedPress ? press.onPressIn : undefined}
+      onPressOut={animatedPress ? press.onPressOut : undefined}
     >
-      <Animated.View
-        style={[
-          styles.entryCard,
-          {
-            backgroundColor: theme.entryBg,
-            borderColor: theme.entryBorder,
-          },
-          done && styles.entryDone,
-          press.style,
-        ]}
-      >
-        <Text style={[styles.entryText, { color: theme.entryText }]} numberOfLines={3}>
-          {label}
-        </Text>
-        {done ? (
-          <Ionicons name="checkmark-circle" size={12} color={theme.success} style={styles.doneIcon} />
-        ) : null}
-      </Animated.View>
+      {animatedPress ? (
+        <Animated.View style={cardStyle}>
+          <Text style={[styles.entryText, { color: theme.entryText }]} numberOfLines={3}>
+            {label}
+          </Text>
+          {done ? (
+            <Ionicons name="checkmark-circle" size={12} color={theme.success} style={styles.doneIcon} />
+          ) : null}
+        </Animated.View>
+      ) : (
+        <View style={cardStyle}>
+          <Text style={[styles.entryText, { color: theme.entryText }]} numberOfLines={3}>
+            {label}
+          </Text>
+          {done ? (
+            <Ionicons name="checkmark-circle" size={12} color={theme.success} style={styles.doneIcon} />
+          ) : null}
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -184,7 +206,9 @@ function EntryCard({
 export default function WeeklyTimetableGrid({
   entries,
   variant = 'teacher',
+  interactive = false,
   onEntryClick,
+  onEmptyClick,
   footerHint,
 }: Props) {
   const theme = variant === 'admin' ? ADMIN_THEME : TEACHER_THEME;
@@ -193,11 +217,13 @@ export default function WeeklyTimetableGrid({
   const todayIdx = todayWeekdayIndex(new Date());
   const minWidth = DAY_COL + timeSlots.length * TIME_COL;
   const defaultFooterHint =
-    variant === 'admin'
-      ? 'Tap a session for details · manage entries on web'
-      : onEntryClick
-        ? 'Tap a class to mark as completed'
-        : undefined;
+    variant === 'admin' && interactive
+      ? 'Tap empty slot to add · tap session to edit'
+      : variant === 'admin'
+        ? 'Tap a session for details'
+        : onEntryClick
+          ? 'Tap a class to mark as completed'
+          : undefined;
   const hint = footerHint ?? defaultFooterHint;
 
   const shellStyle = useMemo(
@@ -274,18 +300,32 @@ export default function WeeklyTimetableGrid({
                       ]}
                     >
                       {cellEntries.length === 0 ? (
-                        <View
-                          style={[
-                            styles.emptyCell,
-                            { borderColor: theme.emptyBorder, backgroundColor: theme.emptyBg },
-                          ]}
-                        />
+                        interactive && onEmptyClick ? (
+                          <Pressable
+                            onPress={() => onEmptyClick(dayIndex as WeekdayIndex, hour)}
+                            style={({ pressed }) => [
+                              styles.emptyCell,
+                              {
+                                borderColor: theme.emptyBorder,
+                                backgroundColor: pressed ? theme.slotAltBg : theme.emptyBg,
+                              },
+                            ]}
+                          />
+                        ) : (
+                          <View
+                            style={[
+                              styles.emptyCell,
+                              { borderColor: theme.emptyBorder, backgroundColor: theme.emptyBg },
+                            ]}
+                          />
+                        )
                       ) : (
                         cellEntries.map((entry) => (
                           <EntryCard
                             key={entry._id || entry.id || `${teacherSlotLabel(entry)}-${hour}`}
                             entry={entry}
                             theme={theme}
+                            variant={variant}
                             onEntryClick={onEntryClick}
                           />
                         ))

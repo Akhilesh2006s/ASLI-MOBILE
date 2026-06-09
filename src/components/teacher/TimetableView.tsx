@@ -170,7 +170,7 @@ export default function TimetableView() {
         )}
       </View>
 
-      <Modal visible={pickerOpen} transparent animationType="fade">
+      <Modal visible={pickerOpen} transparent animationType="none">
         <Pressable style={styles.pickerOverlay} onPress={() => setPickerOpen(false)}>
           <View style={styles.pickerSheet}>
             <Text style={styles.pickerTitle}>Filter by class</Text>
@@ -202,7 +202,7 @@ export default function TimetableView() {
         </Pressable>
       </Modal>
 
-      <Modal visible={!!selectedSlot} transparent animationType="slide">
+      <Modal visible={!!selectedSlot} transparent animationType="none">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>

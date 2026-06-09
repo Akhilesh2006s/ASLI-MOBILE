@@ -8,6 +8,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import { formatPersonName, formatSubjectList, formatTitleCase } from '../../lib/teacher-text';
 import { TEACHER, TEACHER_RADIUS, TEACHER_TYPO } from '../../theme/teacher';
 
 export type ClassCardStudent = {
@@ -40,7 +41,7 @@ function usePressScale(to = 0.96) {
 function ScheduleDisplay({ schedule }: { schedule: string }) {
   const normalized = schedule?.trim() || '';
   if (!normalized || normalized === 'N/A' || normalized.toLowerCase() === 'not scheduled') {
-    return <Text style={styles.scheduleMuted}>Not scheduled</Text>;
+    return <Text style={styles.scheduleMuted}>Not Scheduled</Text>;
   }
 
   const parts = schedule.split(',').map((s) => s.trim()).filter(Boolean);
@@ -52,7 +53,9 @@ function ScheduleDisplay({ schedule }: { schedule: string }) {
     <View style={styles.scheduleChips}>
       {parts.map((day, i) => (
         <View key={`${day}-${i}`} style={styles.scheduleChip}>
-          <Text style={styles.scheduleChipText}>{day.length <= 4 ? day : day.slice(0, 3)}</Text>
+          <Text style={styles.scheduleChipText}>
+            {formatTitleCase(day.length <= 4 ? day : day.slice(0, 3))}
+          </Text>
         </View>
       ))}
     </View>
@@ -63,6 +66,12 @@ function formatRoom(room: string) {
   if (!room || room === '—' || room === 'N/A') return '—';
   if (room.toLowerCase().startsWith('room')) return room;
   return `Room ${room}`;
+}
+
+function titleCaseStatus(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return 'Active';
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
 }
 
 export default function TeacherClassCard({
@@ -87,7 +96,9 @@ export default function TeacherClassCard({
           <Text style={styles.className}>{name}</Text>
           <View style={styles.subjectRow}>
             <Ionicons name="book-outline" size={14} color={TEACHER.primary} />
-            <Text style={styles.subjectText} numberOfLines={1}>{subject}</Text>
+            <Text style={styles.subjectText} numberOfLines={1}>
+              {formatSubjectList(subject)}
+            </Text>
           </View>
         </View>
         <View style={styles.activeBadge}>
@@ -125,14 +136,16 @@ export default function TeacherClassCard({
 
       {expanded && students.length > 0 ? (
         <View style={styles.rosterSection}>
-          <Text style={styles.rosterTitle}>STUDENTS</Text>
+          <Text style={styles.rosterTitle}>Students</Text>
           <ScrollView style={styles.rosterScroll} nestedScrollEnabled>
             {students.map((student) => {
               const isActive = (student.status || 'active').toLowerCase() === 'active';
               return (
                 <View key={student.id} style={styles.studentRow}>
                   <View style={styles.studentInfo}>
-                    <Text style={styles.studentName} numberOfLines={1}>{student.name}</Text>
+                    <Text style={styles.studentName} numberOfLines={1}>
+                      {formatPersonName(student.name)}
+                    </Text>
                     <Text style={styles.studentEmail} numberOfLines={1}>{student.email}</Text>
                   </View>
                   <View style={styles.studentActions}>
@@ -147,7 +160,7 @@ export default function TeacherClassCard({
                     ) : null}
                     <View style={[styles.statusBadge, isActive ? styles.statusActive : styles.statusInactive]}>
                       <Text style={[styles.statusBadgeText, isActive ? styles.statusActiveText : styles.statusInactiveText]}>
-                        {student.status || 'active'}
+                        {titleCaseStatus(student.status || 'Active')}
                       </Text>
                     </View>
                   </View>
@@ -283,10 +296,9 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   scheduleChipText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
     color: TEACHER.primaryDark,
-    textTransform: 'uppercase',
   },
   rosterSection: {
     marginTop: 16,

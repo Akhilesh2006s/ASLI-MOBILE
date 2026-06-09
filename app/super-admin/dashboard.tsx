@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
@@ -244,7 +244,7 @@ export default function SuperAdminDashboard() {
 
       <View style={styles.contentWrap}>
         <SuperAdminGridBackground />
-        <Animated.View entering={FadeInDown.duration(280).springify()} style={styles.mainContent}>
+        <Animated.View entering={FadeIn.duration(200)} style={styles.mainContent}>
           {renderContent()}
         </Animated.View>
       </View>

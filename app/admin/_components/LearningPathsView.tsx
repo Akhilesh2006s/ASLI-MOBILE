@@ -1,9 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-} from 'react-native';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { openContentPreview } from '../../../src/utils/openContentPreview';
@@ -16,6 +12,8 @@ import {
   loadLearningPathCatalog,
   type SubjectWithPathContent,
 } from '../../../src/lib/learningPathCatalog';
+import { groupLearningPathsByClass } from '../../../src/lib/learning-path-admin';
+import { displaySubjectName } from '../../../src/lib/subject-names';
 import {
   AdminScreenShell,
   AdminSectionHeader,
@@ -39,6 +37,7 @@ export default function LearningPathsView() {
   const [subjectsWithContent, setSubjectsWithContent] = useState<SubjectWithPathContent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [expandedClassKey, setExpandedClassKey] = useState<string | null>(null);
   const [expandedSubjectId, setExpandedSubjectId] = useState<string | null>(null);
 
   const loadCatalog = useCallback(async () => {
@@ -65,6 +64,16 @@ export default function LearningPathsView() {
     loadCatalog();
   }, [loadCatalog]);
 
+  const groupedByClass = useMemo(
+    () => groupLearningPathsByClass(subjectsWithContent),
+    [subjectsWithContent]
+  );
+
+  const toggleClass = (classKey: string) => {
+    setExpandedClassKey((prev) => (prev === classKey ? null : classKey));
+    setExpandedSubjectId(null);
+  };
+
   const openContentItem = (content: ContentItem) => {
     openContentPreview(router, content, { returnTo: 'learning' });
   };
@@ -83,7 +92,7 @@ export default function LearningPathsView() {
           title="Learning Paths"
           subtitle={
             isAsliPrepExclusive
-              ? 'Asli Prep catalog — all content types'
+              ? 'Browse by class, then subject'
               : 'Curriculum library — Audio, TextBook & Homework'
           }
         />
@@ -100,82 +109,153 @@ export default function LearningPathsView() {
           }
         />
       ) : (
-        subjectsWithContent.map((subject, index) => {
-          const isExpanded = expandedSubjectId === subject.id;
-          return (
-            <AdminGlassCard key={subject.id} delay={index * 60} style={{ marginBottom: spacing.sm }}>
-              <AdminScalePressable
-                onPress={() => setExpandedSubjectId(isExpanded ? null : subject.id)}
-                style={styles.pathHeaderRow}
-              >
-                <View style={styles.pathHeader}>
-                  <View style={[styles.pathIcon, { backgroundColor: colors.inputBg, borderColor: colors.surfaceBorder }]}>
-                    <Ionicons name="book" size={20} color={colors.primary} />
-                  </View>
-                  <View style={styles.pathInfo}>
-                    <Text style={[typo.section, { color: colors.text }]}>{subject.name}</Text>
-                    {subject.description ? (
-                      <Text style={[styles.pathDescription, { color: colors.textMuted }]} numberOfLines={2}>
-                        {subject.description}
-                      </Text>
-                    ) : null}
-                    {subject.board ? (
-                      <Text style={[styles.pathBoard, { color: colors.textMuted }]}>
-                        Board: {subject.board}
-                      </Text>
-                    ) : null}
-                  </View>
-                  <Ionicons
-                    name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                    size={20}
-                    color={colors.textMuted}
-                  />
-                </View>
-              </AdminScalePressable>
+        groupedByClass.map((group, groupIndex) => {
+          const classContentCount = group.subjects.reduce(
+            (sum, s) => sum + (s.totalContent || 0),
+            0
+          );
+          const classTitle =
+            group.classKey === 'Unassigned' ? 'Unassigned' : `Class ${group.classKey}`;
+          const isClassExpanded = expandedClassKey === group.classKey;
 
-              <View style={[styles.pathFooter, { borderTopColor: colors.surfaceBorder }]}>
-                <View style={styles.pathStat}>
-                  <Ionicons name="document-text" size={15} color={colors.textMuted} />
-                  <Text style={[styles.pathStatText, { color: colors.textSecondary }]}>
-                    {subject.totalContent || 0} content items
+          return (
+            <AdminGlassCard
+              key={group.classKey}
+              delay={groupIndex * 40}
+              style={{ marginBottom: spacing.sm }}
+            >
+              <AdminScalePressable
+                onPress={() => toggleClass(group.classKey)}
+                style={[
+                  styles.classHeader,
+                  {
+                    backgroundColor: colors.primaryMuted,
+                    borderColor: colors.surfaceBorder,
+                    borderRadius: radius.md,
+                  },
+                ]}
+              >
+                <View style={[styles.classBadge, { backgroundColor: colors.primary }]}>
+                  <Ionicons name="school" size={14} color={colors.textInverse} />
+                  <Text style={[styles.classBadgeText, { color: colors.textInverse }]}>
+                    {classTitle}
                   </Text>
                 </View>
-              </View>
+                <Text style={[styles.classMeta, { color: colors.textSecondary }]}>
+                  {group.subjects.length} subject{group.subjects.length === 1 ? '' : 's'} ·{' '}
+                  {classContentCount} item{classContentCount === 1 ? '' : 's'}
+                </Text>
+                <Ionicons
+                  name={isClassExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={20}
+                  color={colors.textMuted}
+                />
+              </AdminScalePressable>
 
-              {isExpanded && subject.asliPrepContent && subject.asliPrepContent.length > 0 ? (
-                <View style={[styles.contentList, { borderTopColor: colors.surfaceBorder }]}>
-                  <Text style={[styles.contentListTitle, { color: colors.text }]}>Content Items:</Text>
-                  {subject.asliPrepContent.map((content, contentIndex) => (
+              {isClassExpanded
+                ? group.subjects.map((subject, index) => {
+                const subjectId = String(subject._id || subject.id);
+                const isExpanded = expandedSubjectId === subjectId;
+                const displayName = displaySubjectName(subject.name || 'Subject');
+
+                return (
+                  <View
+                    key={subjectId}
+                    style={[
+                      styles.subjectBlock,
+                      index > 0
+                        ? { borderTopWidth: 1, borderTopColor: colors.surfaceBorder }
+                        : null,
+                    ]}
+                  >
                     <AdminScalePressable
-                      key={content._id || content.id || `content-${contentIndex}`}
-                      onPress={() => openContentItem(content as ContentItem)}
-                      style={[
-                        styles.contentItem,
-                        {
-                          backgroundColor: colors.bgElevated,
-                          borderColor: colors.surfaceBorder,
-                          borderRadius: radius.sm,
-                        },
-                      ]}
+                      onPress={() => setExpandedSubjectId(isExpanded ? null : subjectId)}
+                      style={styles.pathHeaderRow}
                     >
-                      <Ionicons
-                        name={lpIsVideo(content) ? 'videocam' : 'document-text'}
-                        size={18}
-                        color={colors.primary}
-                      />
-                      <View style={styles.contentItemInfo}>
-                        <Text style={[styles.contentItemTitle, { color: colors.text }]} numberOfLines={1}>
-                          {content.title || 'Untitled'}
-                        </Text>
-                        <Text style={[styles.contentItemType, { color: colors.textMuted }]}>
-                          Type: {content.type || 'Unknown'}
+                      <View style={styles.pathHeader}>
+                        <View
+                          style={[
+                            styles.pathIcon,
+                            {
+                              backgroundColor: colors.inputBg,
+                              borderColor: colors.surfaceBorder,
+                            },
+                          ]}
+                        >
+                          <Ionicons name="book" size={20} color={colors.primary} />
+                        </View>
+                        <View style={styles.pathInfo}>
+                          <Text style={[typo.section, { color: colors.text }]}>{displayName}</Text>
+                          <Text style={[styles.pathDescription, { color: colors.textMuted }]}>
+                            {subject.description ||
+                              `Content for ${displayName} in ${classTitle}`}
+                          </Text>
+                          {subject.board ? (
+                            <Text style={[styles.pathBoard, { color: colors.textMuted }]}>
+                              Board: {subject.board}
+                            </Text>
+                          ) : null}
+                        </View>
+                        <Ionicons
+                          name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                          size={20}
+                          color={colors.textMuted}
+                        />
+                      </View>
+                    </AdminScalePressable>
+
+                    <View style={[styles.pathFooter, { borderTopColor: colors.surfaceBorder }]}>
+                      <View style={styles.pathStat}>
+                        <Ionicons name="document-text" size={15} color={colors.textMuted} />
+                        <Text style={[styles.pathStatText, { color: colors.textSecondary }]}>
+                          {subject.totalContent || 0} content items
                         </Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-                    </AdminScalePressable>
-                  ))}
-                </View>
-              ) : null}
+                    </View>
+
+                    {isExpanded && subject.asliPrepContent && subject.asliPrepContent.length > 0 ? (
+                      <View style={[styles.contentList, { borderTopColor: colors.surfaceBorder }]}>
+                        <Text style={[styles.contentListTitle, { color: colors.text }]}>
+                          Content items
+                        </Text>
+                        {subject.asliPrepContent.map((content, contentIndex) => (
+                          <AdminScalePressable
+                            key={content._id || content.id || `content-${contentIndex}`}
+                            onPress={() => openContentItem(content as ContentItem)}
+                            style={[
+                              styles.contentItem,
+                              {
+                                backgroundColor: colors.bgElevated,
+                                borderColor: colors.surfaceBorder,
+                                borderRadius: radius.sm,
+                              },
+                            ]}
+                          >
+                            <Ionicons
+                              name={lpIsVideo(content) ? 'videocam' : 'document-text'}
+                              size={18}
+                              color={colors.primary}
+                            />
+                            <View style={styles.contentItemInfo}>
+                              <Text
+                                style={[styles.contentItemTitle, { color: colors.text }]}
+                                numberOfLines={1}
+                              >
+                                {content.title || 'Untitled'}
+                              </Text>
+                              <Text style={[styles.contentItemType, { color: colors.textMuted }]}>
+                                {content.type || 'Content'}
+                              </Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+                          </AdminScalePressable>
+                        ))}
+                      </View>
+                    ) : null}
+                  </View>
+                );
+              })
+                : null}
             </AdminGlassCard>
           );
         })
@@ -185,6 +265,37 @@ export default function LearningPathsView() {
 }
 
 const styles = StyleSheet.create({
+  classHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    gap: 8,
+  },
+  subjectBlock: {
+    marginTop: 10,
+    paddingTop: 10,
+  },
+  classBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  classBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  classMeta: {
+    fontSize: 12,
+    fontWeight: '600',
+    flexShrink: 1,
+    textAlign: 'right',
+  },
   pathHeaderRow: { borderRadius: 8 },
   pathHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   pathIcon: {
@@ -197,8 +308,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   pathInfo: { flex: 1, minWidth: 0 },
-  pathDescription: { fontSize: 13, marginBottom: 2, marginTop: 2 },
-  pathBoard: { fontSize: 12 },
+  pathDescription: { fontSize: 13, marginTop: 2, lineHeight: 18 },
+  pathBoard: { fontSize: 12, marginTop: 4 },
   pathFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',

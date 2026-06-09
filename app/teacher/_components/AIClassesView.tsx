@@ -10,6 +10,7 @@ import {
   TeacherClassCard,
   TimetableView,
 } from '../../../src/components/teacher';
+import { formatPersonName, formatSubjectList } from '../../../src/lib/teacher-text';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO } from '../../../src/theme/teacher';
 import ScheduleCalendarView from './ScheduleCalendarView';
 
@@ -34,7 +35,7 @@ type Props = {
 };
 
 const SUB_TABS = [
-  { id: 'classes', label: 'My Classes', icon: 'school-outline' as const },
+  { id: 'classes', label: 'Classes', icon: 'school-outline' as const },
   { id: 'timetable', label: 'Timetable', icon: 'calendar-outline' as const },
   { id: 'schedule', label: 'Schedule', icon: 'time-outline' as const },
 ];
@@ -166,15 +167,15 @@ export default function AIClassesView({ stats, initialSubTab, onOpenProgress }: 
             id: String(cls._id || cls.id || ''),
             name: formatClassName(cls),
             section: asText(cls.section, ''),
-            subject: asText(cls.subject, 'General'),
+            subject: formatSubjectList(asText(cls.subject, 'General')),
             studentCount: cls.students?.length || cls.studentCount || 0,
-            schedule: schedule || 'Not scheduled',
+            schedule: schedule || 'Not Scheduled',
             room: formatRoom(cls),
             classNumber: cls.classNumber ? String(cls.classNumber) : undefined,
             students: Array.isArray(cls.students)
               ? cls.students.map((s: any) => ({
                   id: String(s._id || s.id),
-                  name: s.fullName || s.name || 'Student',
+                  name: formatPersonName(s.fullName || s.name || 'Student'),
                   email: s.email || '',
                   status: s.status || 'active',
                 }))
@@ -318,11 +319,10 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   statLabel: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '700',
-    color: TEACHER.textMuted,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
+    color: TEACHER.textSecondary,
+    letterSpacing: 0.1,
   },
   statDivider: {
     position: 'absolute',

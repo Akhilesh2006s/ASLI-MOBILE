@@ -17,7 +17,8 @@ export const TEACHER = {
   textSecondary: '#475569',
   textMuted: '#94A3B8',
   textOnPrimary: '#FFFFFF',
-  headerGradient: ['#EEF2FF', '#F5F3FF', '#FFFFFF'] as const,
+  headerGradient: ['#7DD3FC', '#BAE6FD', '#DBEAFE'] as const,
+  heroGradient: ['#4338CA', '#4F46E5', '#6366F1'] as const,
   cardGradient: ['#EEF2FF', '#FFFFFF'] as const,
   tabBarBg: 'rgba(255,255,255,0.98)',
   tabBarBorder: '#E2E8F0',
@@ -100,6 +101,32 @@ export const PERFORMANCE_COLORS = {
   average:  TEACHER.warning,
   'at-risk': TEACHER.danger,
 } as const;
+
+/** Teacher subject pills — vivid indigo / violet / amber (not student green). */
+export const TEACHER_SUBJECT_BADGES = [
+  { bg: '#C7D2FE', text: '#312E81', border: '#6366F1' },
+  { bg: '#FDBA74', text: '#7C2D12', border: '#EA580C' },
+  { bg: '#DDD6FE', text: '#5B21B6', border: '#8B5CF6' },
+  { bg: '#93C5FD', text: '#1E3A8A', border: '#3B82F6' },
+  { bg: '#F9A8D4', text: '#831843', border: '#EC4899' },
+  { bg: '#67E8F9', text: '#155E75', border: '#06B6D4' },
+] as const;
+
+export type TeacherSubjectBadgePalette = (typeof TEACHER_SUBJECT_BADGES)[number];
+
+/** Map common subjects to consistent teacher-theme colors. */
+export function teacherSubjectBadgePalette(
+  subjectLabel: string,
+  index = 0
+): TeacherSubjectBadgePalette {
+  const n = subjectLabel.toLowerCase();
+  if (n.includes('physics')) return TEACHER_SUBJECT_BADGES[0];
+  if (n.includes('chem')) return TEACHER_SUBJECT_BADGES[1];
+  if (n.includes('math')) return TEACHER_SUBJECT_BADGES[3];
+  if (n.includes('bio')) return TEACHER_SUBJECT_BADGES[5];
+  if (n.includes('english')) return TEACHER_SUBJECT_BADGES[4];
+  return TEACHER_SUBJECT_BADGES[index % TEACHER_SUBJECT_BADGES.length];
+}
 
 /** Card style for light surfaces */
 export const glassCard = {

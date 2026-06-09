@@ -1,5 +1,7 @@
 import api from '../services/api/api';
 import teacherService from '../services/api/teacherService';
+import { consolidateLearningPathSubjects } from './learning-path-admin';
+import { isActiveCatalogSubject, isSoftDeletedSubjectName } from './subject-names';
 import { filterContentsBySchoolProgram } from './school-program';
 
 export type LearningPathRole = 'admin' | 'teacher' | 'student';
@@ -13,6 +15,7 @@ export type SubjectWithPathContent = {
   classNumber?: string;
   asliPrepContent: any[];
   totalContent: number;
+  mergedSubjectIds?: string[];
 };
 
 function parseSubjectsPayload(data: any): any[] {
@@ -131,8 +134,16 @@ export async function loadLearningPathCatalog(
     });
   });
 
-  return merged
-    .filter((row) => row.totalContent > 0)
+  const withContent = merged.filter((row) => row.totalContent > 0);
+
+  if (role === 'admin' || role === 'teacher') {
+    return consolidateLearningPathSubjects(withContent).filter(
+      (row) => isActiveCatalogSubject(row) && row.totalContent > 0
+    );
+  }
+
+  return withContent
+    .filter((row) => !isSoftDeletedSubjectName(row.name || ''))
     .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
 }
 

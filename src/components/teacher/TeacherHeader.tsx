@@ -1,19 +1,28 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
-  FadeInDown,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import { TEACHER, TEACHER_SPACING } from '../../theme/teacher';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  formatPersonName,
+  formatSubjectLabel,
+  formatTeacherFullName,
+  formatTeacherTimeGreeting,
+} from '../../lib/teacher-text';
+import { TEACHER, TEACHER_SPACING, teacherSubjectBadgePalette } from '../../theme/teacher';
 import type { BackendStatus } from '../../services/api/teacherService';
 
 type Props = {
-  userName: string;
+  /** Teacher full name shown on the line below the greeting. */
+  displayName?: string;
+  /** @deprecated Prefer displayName */
+  userName?: string;
   subjects?: string[];
   nextClassLabel?: string;
   countdown?: string;
@@ -27,13 +36,16 @@ type Props = {
 const screenWidth = Dimensions.get('window').width;
 
 export default function TeacherHeader({
+  displayName,
   userName,
   subjects = [],
   nextClassLabel,
   countdown,
   onLogout,
 }: Props) {
+  const insets = useSafeAreaInsets();
   const shimmerX = useSharedValue(-150);
+
   useEffect(() => {
     shimmerX.value = withRepeat(
       withTiming(screenWidth + 150, { duration: 2400 }),
@@ -46,34 +58,68 @@ export default function TeacherHeader({
     transform: [{ translateX: shimmerX.value }],
   }));
 
+  const greetingLine = useMemo(() => formatTeacherTimeGreeting(), []);
+  const teacherNameLine = useMemo(() => {
+    if (displayName !== undefined) return formatTeacherFullName(displayName);
+    if (userName) return formatPersonName(userName);
+    return formatTeacherFullName('Teacher');
+  }, [displayName, userName]);
+
+  const subjectLabels = useMemo(() => {
+    const seen = new Set<string>();
+    return subjects
+      .map((s) => formatSubjectLabel(s))
+      .filter((label) => {
+        const key = label.toLowerCase();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((a, b) => a.localeCompare(b));
+  }, [subjects]);
+
   return (
-    <View style={styles.wrap}>
+    <View
+      style={[
+        styles.wrap,
+        { paddingTop: Math.max(insets.top, TEACHER_SPACING.md) + TEACHER_SPACING.lg },
+      ]}
+    >
       <LinearGradient
         colors={[...TEACHER.headerGradient]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
-      <LinearGradient
-        colors={['rgba(99,102,241,0.08)', 'transparent', 'rgba(99,102,241,0.04)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+      <View style={styles.orbTop} />
+      <View style={styles.orbBottom} />
       <Animated.View style={[styles.shimmerSweep, shimmerStyle]} />
 
       <View style={styles.row}>
         <View style={styles.textBlock}>
-          <Animated.Text entering={FadeInDown.duration(400)} style={styles.greeting}>
-            {userName}
-          </Animated.Text>
-          {subjects.length > 0 ? (
+          <Text style={styles.greeting}>{greetingLine}</Text>
+          <Text style={styles.teacherName}>{teacherNameLine}</Text>
+          {subjectLabels.length > 0 ? (
             <View style={styles.badges}>
-              {subjects.slice(0, 3).map((s) => (
-                <View key={s} style={styles.badge}>
-                  <Text style={styles.badgeText}>{s}</Text>
-                </View>
-              ))}
+              {subjectLabels.map((label, index) => {
+                const palette = teacherSubjectBadgePalette(label, index);
+                return (
+                  <View
+                    key={label}
+                    style={[
+                      styles.badge,
+                      {
+                        backgroundColor: palette.bg,
+                        borderColor: palette.border,
+                        shadowColor: palette.border,
+                      },
+                    ]}
+                  >
+                    <View style={[styles.badgeDot, { backgroundColor: palette.border }]} />
+                    <Text style={[styles.badgeText, { color: palette.text }]}>{label}</Text>
+                  </View>
+                );
+              })}
             </View>
           ) : null}
         </View>
@@ -88,23 +134,18 @@ export default function TeacherHeader({
           </Pressable>
         ) : null}
       </View>
+
       {nextClassLabel ? (
         <View style={styles.scheduleRow}>
-          <View style={styles.scheduleAccent} />
-          <LinearGradient
-            colors={['#EEF2FF', '#F8FAFC']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.scheduleGradient}
-          >
-            <Ionicons name="time-outline" size={16} color={TEACHER.textSecondary} />
+          <View style={styles.scheduleInner}>
+            <Ionicons name="time-outline" size={16} color={TEACHER.primary} />
             <Text style={styles.scheduleText}>{nextClassLabel}</Text>
             {countdown ? (
               <View style={styles.countdownBadge}>
                 <Text style={styles.countdown}>{countdown}</Text>
               </View>
             ) : null}
-          </LinearGradient>
+          </View>
         </View>
       ) : null}
     </View>
@@ -114,81 +155,113 @@ export default function TeacherHeader({
 const styles = StyleSheet.create({
   wrap: {
     paddingHorizontal: TEACHER_SPACING.lg,
-    paddingTop: TEACHER_SPACING.md,
     paddingBottom: TEACHER_SPACING.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: TEACHER.surfaceBorder,
     overflow: 'hidden',
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: '#38BDF8',
+  },
+  orbTop: {
+    position: 'absolute',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(14, 165, 233, 0.18)',
+    top: -50,
+    right: -30,
+  },
+  orbBottom: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(2, 132, 199, 0.14)',
+    bottom: -30,
+    left: 20,
   },
   shimmerSweep: {
     position: 'absolute',
     top: 0,
     bottom: 0,
     width: 120,
-    backgroundColor: 'rgba(99,102,241,0.06)',
+    backgroundColor: 'rgba(14, 165, 233, 0.12)',
   },
   row: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
   },
-  textBlock: { flex: 1, paddingRight: TEACHER_SPACING.sm },
+  textBlock: {
+    flex: 1,
+    paddingRight: TEACHER_SPACING.sm,
+    paddingTop: TEACHER_SPACING.sm,
+  },
   logoutBtn: {
-    padding: 6,
-    borderRadius: 10,
+    marginTop: TEACHER_SPACING.sm,
+    padding: 8,
+    borderRadius: 12,
     backgroundColor: 'rgba(239,68,68,0.08)',
     borderWidth: 1,
     borderColor: 'rgba(239,68,68,0.2)',
   },
   greeting: {
-    fontSize: 22,
+    fontSize: 20,
+    fontWeight: '700',
+    color: TEACHER.textSecondary,
+    letterSpacing: 0.1,
+    lineHeight: 26,
+  },
+  teacherName: {
+    fontSize: 24,
     fontWeight: '800',
     color: TEACHER.text,
     letterSpacing: -0.5,
+    lineHeight: 30,
+    marginTop: 6,
   },
   badges: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: TEACHER_SPACING.sm,
-    marginTop: TEACHER_SPACING.sm,
+    gap: 6,
+    marginTop: 10,
   },
   badge: {
-    backgroundColor: TEACHER.surfaceHover,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     borderRadius: 999,
-    paddingHorizontal: TEACHER_SPACING.md,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderWidth: 1,
-    borderColor: 'rgba(99,102,241,0.25)',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.14,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  badgeDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
   },
   badgeText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: TEACHER.primaryDark,
+    fontWeight: '700',
+    letterSpacing: 0.1,
   },
   scheduleRow: {
     marginTop: TEACHER_SPACING.md,
-    position: 'relative',
     borderRadius: 14,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
+    borderColor: '#38BDF8',
+    backgroundColor: 'rgba(255,255,255,0.65)',
   },
-  scheduleAccent: {
-    position: 'absolute',
-    left: 0,
-    top: 8,
-    bottom: 8,
-    width: 3,
-    borderRadius: 2,
-    backgroundColor: TEACHER.primary,
-    zIndex: 2,
-  },
-  scheduleGradient: {
+  scheduleInner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: TEACHER_SPACING.sm,
     padding: TEACHER_SPACING.md,
-    paddingLeft: TEACHER_SPACING.lg,
   },
   scheduleText: {
     flex: 1,

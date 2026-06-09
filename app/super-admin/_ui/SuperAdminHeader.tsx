@@ -1,11 +1,10 @@
 import React from 'react';
-import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { adminGreeting } from '../../../src/theme/admin';
 import { useSuperAdminTheme } from './useSuperAdminTheme';
-import { AdminScalePressable } from '../../admin/_ui';
 
 type Props = {
   userName: string;
@@ -57,9 +56,9 @@ export default function SuperAdminHeader({ userName, subtitle, onMenu }: Props) 
             </View>
           </View>
           {onMenu ? (
-            <AdminScalePressable style={styles.iconBtn} onPress={onMenu}>
+            <Pressable style={styles.iconBtn} onPress={onMenu}>
               <Ionicons name="menu" size={22} color="#fff" />
-            </AdminScalePressable>
+            </Pressable>
           ) : null}
         </View>
       </LinearGradient>

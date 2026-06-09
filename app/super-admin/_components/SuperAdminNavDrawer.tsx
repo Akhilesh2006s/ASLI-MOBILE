@@ -1,8 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Modal,
+  Platform,
   Pressable,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   View,
@@ -10,10 +12,18 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AdminScalePressable } from '../../admin/_ui';
+import Animated, {
+  Easing,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSuperAdminTheme } from '../_ui/useSuperAdminTheme';
+
+const SLIDE_MS = 220;
+const slideEasing = Easing.out(Easing.cubic);
 
 /** Matches web `SuperAdminSidebar` + `super-admin-views.ts`. */
 export type SuperAdminView =
@@ -119,13 +129,35 @@ export default function SuperAdminNavDrawer({
   const { width } = useWindowDimensions();
   const { colors, radius } = useSuperAdminTheme();
   const drawerWidth = Math.min(width * 0.92, 320);
+  const topInset = Math.max(
+    insets.top,
+    Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0
+  );
+  const [mounted, setMounted] = useState(visible);
   const translateX = useSharedValue(-drawerWidth);
   const backdropOpacity = useSharedValue(0);
 
   useEffect(() => {
-    translateX.value = withSpring(visible ? 0 : -drawerWidth, { damping: 20, stiffness: 240 });
-    backdropOpacity.value = withTiming(visible ? 1 : 0, { duration: 260 });
-  }, [visible, drawerWidth, translateX, backdropOpacity]);
+    if (visible) {
+      setMounted(true);
+      translateX.value = -drawerWidth;
+      backdropOpacity.value = 0;
+      translateX.value = withTiming(0, { duration: SLIDE_MS, easing: slideEasing });
+      backdropOpacity.value = withTiming(1, { duration: SLIDE_MS, easing: slideEasing });
+      return;
+    }
+
+    if (!mounted) return;
+
+    translateX.value = withTiming(-drawerWidth, { duration: SLIDE_MS, easing: slideEasing });
+    backdropOpacity.value = withTiming(
+      0,
+      { duration: SLIDE_MS, easing: slideEasing },
+      (finished) => {
+        if (finished) runOnJS(setMounted)(false);
+      }
+    );
+  }, [visible, drawerWidth, mounted, translateX, backdropOpacity]);
 
   const drawerStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
@@ -141,8 +173,10 @@ export default function SuperAdminNavDrawer({
     (itemId === 'subjects-and-content' &&
       (activeView === 'subjects' || activeView === 'content'));
 
+  if (!mounted) return null;
+
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+    <Modal visible transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
       <View style={styles.root}>
         <Animated.View style={[styles.backdrop, backdropStyle]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
@@ -153,7 +187,6 @@ export default function SuperAdminNavDrawer({
             styles.drawer,
             {
               width: drawerWidth,
-              paddingTop: insets.top,
               backgroundColor: colors.drawerBg,
               borderRightColor: colors.drawerBorder,
             },
@@ -162,6 +195,13 @@ export default function SuperAdminNavDrawer({
         >
           <LinearGradient colors={[...colors.drawerGradient]} style={StyleSheet.absoluteFill} />
 
+          <SafeAreaView
+            edges={['top', 'bottom']}
+            style={[
+              styles.drawerSafe,
+              insets.top === 0 && topInset > 0 ? { paddingTop: topInset } : null,
+            ]}
+          >
           <View style={styles.logoSection}>
             <View style={[styles.logoBadge, { borderRadius: radius.md }]}>
               <Ionicons name="school" size={24} color="#fff" />
@@ -170,9 +210,9 @@ export default function SuperAdminNavDrawer({
               <Text style={styles.logoTitle}>Aslilearn AI</Text>
               <Text style={styles.logoSubtitle}>Super Admin</Text>
             </View>
-            <AdminScalePressable style={styles.closeBtn} onPress={onClose}>
+            <Pressable style={styles.closeBtn} onPress={onClose}>
               <Ionicons name="close" size={20} color="#fff" />
-            </AdminScalePressable>
+            </Pressable>
           </View>
 
           <ScrollView
@@ -187,7 +227,7 @@ export default function SuperAdminNavDrawer({
                 {section.items.map((item) => {
                   const active = isActive(item.id);
                   return (
-                    <AdminScalePressable
+                    <Pressable
                       key={item.id}
                       style={[
                         styles.navItem,
@@ -214,14 +254,14 @@ export default function SuperAdminNavDrawer({
                       {active ? (
                         <View style={[styles.activeDot, { backgroundColor: colors.navActiveColor }]} />
                       ) : null}
-                    </AdminScalePressable>
+                    </Pressable>
                   );
                 })}
               </View>
             ))}
           </ScrollView>
 
-          <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+          <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
             <View style={styles.userRow}>
               <View style={[styles.userAvatar, { borderRadius: radius.full }]}>
                 <Ionicons name="person" size={16} color="#fff" />
@@ -233,11 +273,12 @@ export default function SuperAdminNavDrawer({
                 <Text style={styles.userRole}>Super Administrator</Text>
               </View>
             </View>
-            <AdminScalePressable style={styles.logoutBtn} onPress={onLogout}>
+            <Pressable style={styles.logoutBtn} onPress={onLogout}>
               <Ionicons name="log-out-outline" size={18} color="#fff" />
               <Text style={styles.logoutText}>Logout</Text>
-            </AdminScalePressable>
+            </Pressable>
           </View>
+          </SafeAreaView>
         </Animated.View>
       </View>
     </Modal>
@@ -255,7 +296,6 @@ const styles = StyleSheet.create({
   },
   drawer: {
     height: '100%',
-    flexDirection: 'column',
     borderRightWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 4, height: 0 },
@@ -263,6 +303,10 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 12,
     overflow: 'hidden',
+  },
+  drawerSafe: {
+    flex: 1,
+    minHeight: 0,
   },
   logoSection: {
     flexDirection: 'row',

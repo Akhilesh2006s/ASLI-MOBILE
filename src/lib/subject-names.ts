@@ -48,3 +48,28 @@ export function displaySubjectName(name: string): string {
   const base = String(name || '').split('__deleted__')[0].trim();
   return extractPlainSubjectName(base) || base;
 }
+
+export function inferClassNumberFromPrepContent(
+  items?: Array<{ classNumber?: string }> | null
+): string | null {
+  if (!Array.isArray(items)) return null;
+  for (const item of items) {
+    const cn =
+      item?.classNumber != null && String(item.classNumber).trim() !== ''
+        ? String(item.classNumber).trim()
+        : null;
+    if (cn) return cn;
+  }
+  return null;
+}
+
+/** Learning path row may only have class on linked content documents. */
+export function getLearningPathClassLabel(subject: {
+  name?: string;
+  classNumber?: string;
+  asliPrepContent?: Array<{ classNumber?: string }>;
+}): string | null {
+  const fromSubject = getSubjectClassLabel(subject);
+  if (fromSubject) return fromSubject;
+  return inferClassNumberFromPrepContent(subject.asliPrepContent);
+}
