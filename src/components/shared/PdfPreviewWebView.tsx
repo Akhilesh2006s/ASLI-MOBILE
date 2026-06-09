@@ -10,9 +10,12 @@ import {
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import {
   buildPdfInjectScript,
+  buildPdfUrlInjectScript,
   fetchPdfPreviewLoadInfo,
   PDF_JS_VIEWER_SHELL_HTML,
+  resolvePdfUrlTarget,
   YOUTUBE_EMBED_ORIGIN,
+  type PdfUrlLoadTarget,
 } from '../../utils/contentPreview';
 
 type Props = {
@@ -24,73 +27,126 @@ type Props = {
 
 export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange }: Props) {
   const webRef = useRef<WebView>(null);
+  const webReadyRef = useRef(false);
   const [webReady, setWebReady] = useState(false);
-  const [base64, setBase64] = useState<string | null>(null);
-  const [fetching, setFetching] = useState(true);
+  const [urlTarget, setUrlTarget] = useState<PdfUrlLoadTarget | null>(null);
+  const [resolving, setResolving] = useState(true);
   const [rendering, setRendering] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const injectedRef = useRef(false);
   const mountedRef = useRef(true);
+  const fallbackTriedRef = useRef(false);
+  const fileUrlRef = useRef(fileUrl);
+  const titleRef = useRef(title);
 
-  const busy = fetching || rendering;
+  fileUrlRef.current = fileUrl;
+  titleRef.current = title;
+
+  const busy = resolving || rendering;
 
   useEffect(() => {
     onBusyChange?.(busy);
   }, [busy, onBusyChange]);
 
-  const loadPdf = useCallback(async () => {
-    setFetching(true);
+  useEffect(() => {
+    webReadyRef.current = webReady;
+  }, [webReady]);
+
+  const injectWhenReady = useCallback((script: string) => {
+    const run = () => {
+      if (!mountedRef.current) return;
+      if (webRef.current && webReadyRef.current) {
+        injectedRef.current = true;
+        setRendering(true);
+        webRef.current.injectJavaScript(script);
+        return;
+      }
+      setTimeout(run, 40);
+    };
+    run();
+  }, []);
+
+  const loadBase64Fallback = useCallback(async () => {
+    if (fallbackTriedRef.current) {
+      setRendering(false);
+      setError('Could not load this PDF. Check your connection and try again.');
+      return;
+    }
+    fallbackTriedRef.current = true;
+    injectedRef.current = false;
+    setResolving(true);
     setRendering(true);
     setError(null);
-    setBase64(null);
-    injectedRef.current = false;
 
-    const loaded = await fetchPdfPreviewLoadInfo(fileUrl, title);
+    const loaded = await fetchPdfPreviewLoadInfo(fileUrlRef.current, titleRef.current);
     if (!mountedRef.current) return;
 
-    setFetching(false);
+    setResolving(false);
     if (!loaded) {
       setRendering(false);
       setError('Could not load this PDF. Check your connection and try again.');
       return;
     }
-    setBase64(loaded.base64);
-  }, [fileUrl, title]);
+    injectWhenReady(buildPdfInjectScript(loaded.base64));
+  }, [injectWhenReady]);
 
   useEffect(() => {
     mountedRef.current = true;
+    fallbackTriedRef.current = false;
+    injectedRef.current = false;
+    webReadyRef.current = false;
     setWebReady(false);
-    void loadPdf();
+    setResolving(true);
+    setRendering(true);
+    setError(null);
+    setUrlTarget(null);
+
+    void (async () => {
+      const target = await resolvePdfUrlTarget(fileUrlRef.current, titleRef.current);
+      if (!mountedRef.current) return;
+      if (!target?.url) {
+        setResolving(false);
+        await loadBase64Fallback();
+        return;
+      }
+      setUrlTarget(target);
+      setResolving(false);
+    })();
 
     return () => {
       mountedRef.current = false;
       onBusyChange?.(false);
       webRef.current?.stopLoading();
     };
-  }, [loadPdf, reloadKey, onBusyChange]);
+  }, [fileUrl, title, reloadKey, onBusyChange, loadBase64Fallback]);
 
   useEffect(() => {
-    if (!webReady || !base64 || injectedRef.current) return;
-    injectedRef.current = true;
-    setRendering(true);
-    webRef.current?.injectJavaScript(buildPdfInjectScript(base64));
-  }, [webReady, base64]);
+    if (!webReady || !urlTarget || injectedRef.current) return;
+    injectWhenReady(buildPdfUrlInjectScript(urlTarget.url, urlTarget.headers));
+  }, [webReady, urlTarget, injectWhenReady]);
 
-  const onWebMessage = useCallback((event: WebViewMessageEvent) => {
-    const data = event.nativeEvent.data;
-    if (data === 'pdf-ready' || data === 'pdf-error') {
-      setRendering(false);
-    }
-  }, []);
+  const onWebMessage = useCallback(
+    (event: WebViewMessageEvent) => {
+      const data = event.nativeEvent.data;
+      if (data === 'pdf-ready') {
+        setRendering(false);
+        return;
+      }
+      if (data === 'pdf-error') {
+        void loadBase64Fallback();
+      }
+    },
+    [loadBase64Fallback]
+  );
 
   useEffect(() => {
-    if (!rendering || fetching) return;
+    if (!rendering || resolving) return;
     const timer = setTimeout(() => {
       if (mountedRef.current) setRendering(false);
     }, 45000);
     return () => clearTimeout(timer);
-  }, [rendering, fetching]);
+  }, [rendering, resolving]);
 
   if (error) {
     return (
@@ -103,7 +159,11 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
     );
   }
 
-  const loadingLabel = fetching ? 'Loading document…' : 'Preparing pages…';
+  const loadingLabel = resolving
+    ? 'Starting preview…'
+    : !webReady
+      ? 'Loading viewer…'
+      : 'Opening document…';
 
   return (
     <View style={[styles.wrap, style]} collapsable={false}>
@@ -119,6 +179,8 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
         allowsInlineMediaPlayback
         mixedContentMode="always"
         setSupportMultipleWindows={false}
+        cacheEnabled
+        cacheMode="LOAD_CACHE_ELSE_NETWORK"
         onLoadEnd={() => setWebReady(true)}
         onMessage={onWebMessage}
       />
@@ -126,7 +188,6 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
         <View style={styles.overlay} pointerEvents="auto">
           <ActivityIndicator size="large" color="#6366F1" />
           <Text style={styles.loadingText}>{loadingLabel}</Text>
-          <Text style={styles.loadingSubtext}>Please wait…</Text>
         </View>
       )}
     </View>
@@ -146,7 +207,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(82, 86, 89, 0.92)',
+    backgroundColor: 'rgba(82, 86, 89, 0.88)',
     zIndex: 10,
     elevation: 10,
   },
@@ -162,13 +223,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#e2e8f0',
     fontWeight: '600',
-  },
-  loadingSubtext: {
-    marginTop: 6,
-    fontSize: 12,
-    color: '#94a3b8',
-    textAlign: 'center',
-    paddingHorizontal: 24,
   },
   errorText: {
     fontSize: 14,

@@ -10,8 +10,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
-import * as WebBrowser from 'expo-web-browser';
 import { API_BASE_URL } from '../../../../src/lib/api-config';
+import { openContentPreview } from '../../../../src/utils/openContentPreview';
 import GlassCard from '../../../../src/components/student/GlassCard';
 import PremiumSectionHeader from '../../../../src/components/student/PremiumSectionHeader';
 import { ShimmerCard } from '../../../../src/components/student/StudentShimmer';
@@ -82,13 +82,6 @@ function getSubjectIcon(name: string): keyof typeof Ionicons.glyphMap {
   return 'book-outline';
 }
 
-function resolveFileUrl(url: string) {
-  if (!url) return '';
-  if (url.startsWith('http') || url.startsWith('//')) return url;
-  if (url.startsWith('/')) return `${API_BASE_URL}${url}`;
-  return `${API_BASE_URL}/${url}`;
-}
-
 function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
   const [cards, setCards] = useState<AdaptiveCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -126,24 +119,33 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
     fetchAdaptive();
   }, [fetchAdaptive]);
 
-  const openResource = async (item: RecommendedItem) => {
+  const openResource = (item: RecommendedItem) => {
     const mode = item.openMode || 'url';
     if (mode === 'navigate' && item.navigatePath) {
       router.push(item.navigatePath as any);
       return;
     }
-    const url = item.fileUrl;
-    if (!url) return;
-    const fullUrl = resolveFileUrl(url);
-    const isVideo =
-      item.displayType?.toLowerCase() === 'video' ||
-      fullUrl.includes('youtube') ||
-      fullUrl.includes('youtu.be');
-    if (isVideo && item._id) {
-      router.push({ pathname: '/video-player', params: { videoId: item._id } });
+
+    if (item.kind === 'quiz' && item._id) {
+      router.push(`/quiz/${item._id}`);
       return;
     }
-    await WebBrowser.openBrowserAsync(fullUrl);
+
+    if (item.kind === 'exam' && item.examId) {
+      router.push(`/exam/${item.examId}` as any);
+      return;
+    }
+
+    if (!item.fileUrl) return;
+
+    const displayType = item.displayType?.toLowerCase() ?? '';
+    openContentPreview(router, {
+      _id: item._id,
+      title: item.title,
+      type: displayType === 'pdf' ? 'PDF' : displayType === 'video' ? 'Video' : item.displayType,
+      fileUrl: item.fileUrl,
+      driveLink: item.fileUrl.includes('drive.google') ? item.fileUrl : undefined,
+    });
   };
 
   return (

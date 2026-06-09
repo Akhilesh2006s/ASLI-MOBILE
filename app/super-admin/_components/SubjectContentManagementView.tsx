@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Linking,
   Modal,
   Pressable,
   RefreshControl,
@@ -13,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../../src/services/api/api';
@@ -56,6 +56,7 @@ import {
   extractClassNumberFromSubjectName,
   extractPlainSubjectName,
 } from '../../../src/lib/subject-names';
+import { openContentPreview } from '../../../src/utils/openContentPreview';
 
 function OptionPicker({
   visible,
@@ -588,17 +589,20 @@ export default function SubjectContentManagementView() {
     ]);
   };
 
-  const openContentUrl = async (item: ContentItem) => {
+  const previewContent = (item: ContentItem) => {
     const url = normalizeMediaUrl(item.fileUrl) || item.fileUrl;
     if (!url) {
       Alert.alert('Missing URL', 'No file URL for this item.');
       return;
     }
-    try {
-      await Linking.openURL(url);
-    } catch {
-      Alert.alert('Open failed', 'Unable to open this content.');
-    }
+    openContentPreview(router, {
+      _id: item._id,
+      title: getVideoContentDisplayTitle(item),
+      type: item.type,
+      fileUrl: url,
+      fileUrls: item.fileUrls,
+      driveLink: url.includes('drive.google') ? url : undefined,
+    });
   };
 
   const isUploadType = (type: ContentType) =>
@@ -791,9 +795,9 @@ export default function SubjectContentManagementView() {
                         </Text>
                       ) : null}
                       <View style={styles.contentActions}>
-                        <Pressable style={styles.openBtn} onPress={() => openContentUrl(content)}>
-                          <Ionicons name="open-outline" size={14} color="#0284c7" />
-                          <Text style={styles.openBtnText}>Open</Text>
+                        <Pressable style={styles.openBtn} onPress={() => previewContent(content)}>
+                          <Ionicons name="eye-outline" size={14} color="#0284c7" />
+                          <Text style={styles.openBtnText}>Preview</Text>
                         </Pressable>
                         <Pressable onPress={() => openEditContent(content)} hitSlop={8}>
                           <Ionicons name="create-outline" size={18} color="#0284c7" />

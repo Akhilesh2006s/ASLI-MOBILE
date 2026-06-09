@@ -312,12 +312,35 @@ export async function fetchPdfPreviewBase64(
   return loaded?.base64 ?? null;
 }
 
-/** Lightweight shell — PDF data injected after load for faster first paint. */
+export type PdfUrlLoadTarget = {
+  url: string;
+  headers?: Record<string, string>;
+};
+
+/** Resolve a streamable PDF URL for in-WebView loading (no native download). */
+export async function resolvePdfUrlTarget(
+  fileUrl: string,
+  title?: string
+): Promise<PdfUrlLoadTarget | null> {
+  const absolute = resolveContentUrl(fileUrl);
+  if (!absolute) return null;
+
+  if (shouldFetchDirectly(absolute)) {
+    return { url: absolute };
+  }
+
+  const proxyUrl = await getPdfJsFetchUrl(fileUrl, title);
+  return { url: proxyUrl || absolute };
+}
+
+/** Lightweight shell — PDF opened via URL or injected base64 fallback. */
 export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
   <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.min.js"><\/script>
   <style>
     * { box-sizing: border-box; }
@@ -347,13 +370,16 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
   <div id="progress"></div>
   <div id="pages"></div>
   <script>
-    window.__renderPdfBase64 = async function (b64) {
-      const statusEl = document.getElementById('status');
-      const progressEl = document.getElementById('progress');
-      const container = document.getElementById('pages');
+    (function () {
+      const statusEl = () => document.getElementById('status');
+      const progressEl = () => document.getElementById('progress');
+      const pagesEl = () => document.getElementById('pages');
+
       function showError(msg) {
-        if (statusEl) statusEl.remove();
-        if (progressEl) progressEl.remove();
+        const s = statusEl();
+        const p = progressEl();
+        if (s) s.remove();
+        if (p) p.remove();
         const errEl = document.createElement('div');
         errEl.id = 'error';
         errEl.textContent = msg || 'Could not display this PDF.';
@@ -362,21 +388,16 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
           window.ReactNativeWebView.postMessage('pdf-error');
         }
       }
-      if (typeof pdfjsLib === 'undefined') {
-        showError('PDF viewer failed to load. Check your internet connection.');
-        return false;
-      }
-      try {
-        if (statusEl) statusEl.textContent = 'Opening document…';
-        pdfjsLib.GlobalWorkerOptions.workerSrc = '';
-        const raw = atob(b64);
-        const bytes = new Uint8Array(raw.length);
-        for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
-        const pdf = await pdfjsLib.getDocument({ data: bytes, disableWorker: true }).promise;
+
+      async function renderPdf(pdf) {
+        const container = pagesEl();
+        const s = statusEl();
+        const p = progressEl();
+        if (!container) return false;
 
         async function renderPage(num) {
           const page = await pdf.getPage(num);
-          const pixelRatio = Math.min(window.devicePixelRatio || 1, 3);
+          const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
           const containerWidth = Math.max(document.documentElement.clientWidth - 16, 280);
           const baseViewport = page.getViewport({ scale: 1 });
           const layoutScale = containerWidth / baseViewport.width;
@@ -402,22 +423,52 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
         if (window.ReactNativeWebView) {
           window.ReactNativeWebView.postMessage('pdf-ready');
         }
-        if (statusEl) statusEl.remove();
+        if (s) s.remove();
         if (pdf.numPages > 1) {
-          if (progressEl) progressEl.textContent = 'Loading pages… 1 / ' + pdf.numPages;
+          const prog = p;
+          if (prog) prog.textContent = 'Loading pages… 1 / ' + pdf.numPages;
           for (let num = 2; num <= pdf.numPages; num++) {
             await renderPage(num);
-            if (progressEl) progressEl.textContent = 'Loading pages… ' + num + ' / ' + pdf.numPages;
+            if (prog) prog.textContent = 'Loading pages… ' + num + ' / ' + pdf.numPages;
             if (num % 2 === 0) await new Promise(function (r) { setTimeout(r, 0); });
           }
         }
-        if (progressEl) progressEl.remove();
+        if (p) p.remove();
         return true;
-      } catch (err) {
-        showError('Could not display this PDF. Please try again.');
-        return false;
       }
-    };
+
+      async function openPdf(getDocumentParams) {
+        if (typeof pdfjsLib === 'undefined') {
+          showError('PDF viewer failed to load. Check your internet connection.');
+          return false;
+        }
+        const s = statusEl();
+        try {
+          if (s) s.textContent = 'Opening document…';
+          pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+          const pdf = await pdfjsLib.getDocument(getDocumentParams).promise;
+          return await renderPdf(pdf);
+        } catch (err) {
+          showError('Could not display this PDF. Please try again.');
+          return false;
+        }
+      }
+
+      window.__renderPdfFromUrl = async function (url, headers) {
+        const params = { url: url, disableWorker: true, disableStream: false, disableAutoFetch: false };
+        if (headers && Object.keys(headers).length) {
+          params.httpHeaders = headers;
+        }
+        return openPdf(params);
+      };
+
+      window.__renderPdfBase64 = async function (b64) {
+        const raw = atob(b64);
+        const bytes = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+        return openPdf({ data: bytes, disableWorker: true });
+      };
+    })();
   <\/script>
 </body>
 </html>`;
@@ -428,6 +479,24 @@ export function buildPdfInjectScript(base64: string): string {
     function run() {
       if (typeof window.__renderPdfBase64 === 'function') {
         window.__renderPdfBase64(b64);
+      } else {
+        setTimeout(run, 40);
+      }
+    }
+    run();
+  })();true;`;
+}
+
+export function buildPdfUrlInjectScript(
+  url: string,
+  headers?: Record<string, string>
+): string {
+  return `(function(){
+    var url = ${JSON.stringify(url)};
+    var headers = ${JSON.stringify(headers || {})};
+    function run() {
+      if (typeof window.__renderPdfFromUrl === 'function') {
+        window.__renderPdfFromUrl(url, headers);
       } else {
         setTimeout(run, 40);
       }

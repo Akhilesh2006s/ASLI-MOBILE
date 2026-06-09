@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, useWindowDimensions } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -45,6 +44,33 @@ interface OverviewViewProps {
   onGoProfile?: () => void;
   onLogout?: () => void;
 }
+
+const STAT_SUMMARY_CARDS = {
+  today: {
+    bg: '#FEFCE8',
+    accent: '#f97316',
+    iconBg: '#fef08a',
+    icon: 'locate-outline' as const,
+  },
+  study: {
+    bg: '#F0F9FF',
+    accent: '#2563eb',
+    iconBg: '#dbeafe',
+    icon: 'time' as const,
+  },
+  week: {
+    bg: '#F0FDFB',
+    accent: '#0d9488',
+    iconBg: '#ccfbf1',
+    icon: 'calendar' as const,
+  },
+  efficiency: {
+    bg: '#F5F3FF',
+    accent: '#7c3aed',
+    iconBg: '#ede9fe',
+    icon: 'trending-up' as const,
+  },
+};
 
 const OverviewView = memo(function OverviewView({ user, onGoExams, onGoProfile, onLogout }: OverviewViewProps) {
   const { width } = useWindowDimensions();
@@ -575,6 +601,15 @@ const OverviewView = memo(function OverviewView({ user, onGoExams, onGoProfile, 
     return { totalTodos: total, completedTodos: completed, todayProgress: progress, efficiency: eff };
   }, [dailyTasks, completedScheduleIds]);
 
+  const { studyTodayProgress, studyWeekProgress } = useMemo(() => {
+    const dailyGoalMins = 8 * 60;
+    const weeklyGoalMins = 40 * 60;
+    return {
+      studyTodayProgress: Math.min(Math.round((studyTimeToday / dailyGoalMins) * 100), 100),
+      studyWeekProgress: Math.min(Math.round((studyTimeThisWeek / weeklyGoalMins) * 100), 100),
+    };
+  }, [studyTimeToday, studyTimeThisWeek]);
+
   const dayStreak = Number(user?.dayStreak ?? 0);
   const schoolName = String(user?.assignedAdmin?.schoolName || user?.schoolName || '').trim();
 
@@ -587,82 +622,121 @@ const OverviewView = memo(function OverviewView({ user, onGoExams, onGoProfile, 
         onLogout={onLogout}
       />
 
-      {/* Summary Statistics Cards — same 4 cards as web */}
+      {/* Summary Statistics Cards */}
       <View style={styles.statsGrid}>
-        {/* Today's Progress */}
-        <LinearGradient
-          colors={[...STUDENT.statGradients.today]}
-          style={[styles.statCard, { width: statCardWidth }]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
+        <View
+          style={[
+            styles.statCard,
+            { width: statCardWidth, backgroundColor: STAT_SUMMARY_CARDS.today.bg },
+          ]}
         >
           <View style={styles.statCardContent}>
-            <Ionicons name="locate-outline" size={24} color={STUDENT.textOnPrimary} style={styles.statIcon} />
+            <View style={[styles.statIconWrap, { backgroundColor: STAT_SUMMARY_CARDS.today.iconBg }]}>
+              <Ionicons name={STAT_SUMMARY_CARDS.today.icon} size={20} color={STAT_SUMMARY_CARDS.today.accent} />
+            </View>
             <Text style={styles.statLabel}>Today's Progress</Text>
-            <Text style={styles.statValue}>{completedTodos}/{totalTodos}</Text>
-            <View style={styles.statProgressBar}>
-              <View style={[styles.statProgressFill, { width: `${todayProgress}%` }]} />
+            <Text style={[styles.statValue, { color: STAT_SUMMARY_CARDS.today.accent }]}>
+              {completedTodos}/{totalTodos}
+            </Text>
+            <View style={[styles.statProgressBar, { backgroundColor: `${STAT_SUMMARY_CARDS.today.accent}22` }]}>
+              <View
+                style={[
+                  styles.statProgressFill,
+                  { width: `${todayProgress}%`, backgroundColor: STAT_SUMMARY_CARDS.today.accent },
+                ]}
+              />
             </View>
             <Text style={styles.statSubtext}>Tasks completed {todayProgress}%</Text>
           </View>
-        </LinearGradient>
+        </View>
 
-        {/* Study Time */}
-        <LinearGradient
-          colors={[...STUDENT.statGradients.study]}
-          style={[styles.statCard, { width: statCardWidth }]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
+        <View
+          style={[
+            styles.statCard,
+            { width: statCardWidth, backgroundColor: STAT_SUMMARY_CARDS.study.bg },
+          ]}
         >
           <View style={styles.statCardContent}>
-            <Ionicons name="time" size={24} color={STUDENT.textOnPrimary} style={styles.statIcon} />
+            <View style={[styles.statIconWrap, { backgroundColor: STAT_SUMMARY_CARDS.study.iconBg }]}>
+              <Ionicons name={STAT_SUMMARY_CARDS.study.icon} size={20} color={STAT_SUMMARY_CARDS.study.accent} />
+            </View>
             <Text style={styles.statLabel}>Study Time</Text>
-            <Text style={styles.statValue}>
+            <Text style={[styles.statValue, { color: STAT_SUMMARY_CARDS.study.accent }]}>
               {studyTimeToday >= 60
                 ? `${(studyTimeToday / 60).toFixed(1)} hrs`
                 : studyTimeToday < 1 && studyTimeToday > 0
                   ? '<1m'
                   : `${Math.round(studyTimeToday)}m`}
             </Text>
+            <View style={[styles.statProgressBar, { backgroundColor: `${STAT_SUMMARY_CARDS.study.accent}22` }]}>
+              <View
+                style={[
+                  styles.statProgressFill,
+                  { width: `${studyTodayProgress}%`, backgroundColor: STAT_SUMMARY_CARDS.study.accent },
+                ]}
+              />
+            </View>
             <Text style={styles.statSubtext}>Logged in today</Text>
           </View>
-        </LinearGradient>
+        </View>
 
-        {/* This Week */}
-        <LinearGradient
-          colors={[...STUDENT.statGradients.week]}
-          style={[styles.statCard, { width: statCardWidth }]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
+        <View
+          style={[
+            styles.statCard,
+            { width: statCardWidth, backgroundColor: STAT_SUMMARY_CARDS.week.bg },
+          ]}
         >
           <View style={styles.statCardContent}>
-            <Ionicons name="calendar" size={24} color={STUDENT.textOnPrimary} style={styles.statIcon} />
+            <View style={[styles.statIconWrap, { backgroundColor: STAT_SUMMARY_CARDS.week.iconBg }]}>
+              <Ionicons name={STAT_SUMMARY_CARDS.week.icon} size={20} color={STAT_SUMMARY_CARDS.week.accent} />
+            </View>
             <Text style={styles.statLabel}>This Week</Text>
-            <Text style={styles.statValue}>
+            <Text style={[styles.statValue, { color: STAT_SUMMARY_CARDS.week.accent }]}>
               {studyTimeThisWeek >= 60
                 ? `${(studyTimeThisWeek / 60).toFixed(1)} hrs`
                 : studyTimeThisWeek < 1 && studyTimeThisWeek > 0
                   ? '<1m'
                   : `${Math.round(studyTimeThisWeek)}m`}
             </Text>
-            <Text style={styles.statSubtext}>Logged in this week</Text>
+            <View style={[styles.statProgressBar, { backgroundColor: `${STAT_SUMMARY_CARDS.week.accent}22` }]}>
+              <View
+                style={[
+                  styles.statProgressFill,
+                  { width: `${studyWeekProgress}%`, backgroundColor: STAT_SUMMARY_CARDS.week.accent },
+                ]}
+              />
+            </View>
+            <Text style={styles.statSubtext}>Logged this week</Text>
           </View>
-        </LinearGradient>
+        </View>
 
-        {/* Efficiency */}
-        <LinearGradient
-          colors={[...STUDENT.statGradients.efficiency]}
-          style={[styles.statCard, { width: statCardWidth }]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
+        <View
+          style={[
+            styles.statCard,
+            { width: statCardWidth, backgroundColor: STAT_SUMMARY_CARDS.efficiency.bg },
+          ]}
         >
           <View style={styles.statCardContent}>
-            <Ionicons name="trending-up" size={24} color={STUDENT.textOnPrimary} style={styles.statIcon} />
+            <View style={[styles.statIconWrap, { backgroundColor: STAT_SUMMARY_CARDS.efficiency.iconBg }]}>
+              <Ionicons
+                name={STAT_SUMMARY_CARDS.efficiency.icon}
+                size={20}
+                color={STAT_SUMMARY_CARDS.efficiency.accent}
+              />
+            </View>
             <Text style={styles.statLabel}>Efficiency</Text>
-            <Text style={styles.statValue}>{efficiency}%</Text>
+            <Text style={[styles.statValue, { color: STAT_SUMMARY_CARDS.efficiency.accent }]}>{efficiency}%</Text>
+            <View style={[styles.statProgressBar, { backgroundColor: `${STAT_SUMMARY_CARDS.efficiency.accent}22` }]}>
+              <View
+                style={[
+                  styles.statProgressFill,
+                  { width: `${efficiency}%`, backgroundColor: STAT_SUMMARY_CARDS.efficiency.accent },
+                ]}
+              />
+            </View>
             <Text style={styles.statSubtext}>Completion rate</Text>
           </View>
-        </LinearGradient>
+        </View>
       </View>
 
       <StudyCalendarSection
@@ -849,40 +923,44 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 16,
     minHeight: 140,
+    borderWidth: 0,
     ...STUDENT.shadow.sm,
   },
   statCardContent: {
     flex: 1,
   },
-  statIcon: {
-    marginBottom: 8,
+  statIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
   },
   statLabel: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.9)',
-    marginBottom: 8,
+    fontWeight: '600',
+    color: STUDENT.textSecondary,
+    marginBottom: 6,
   },
   statValue: {
     fontSize: 28,
     fontWeight: '800',
-    color: STUDENT.textOnPrimary,
     marginBottom: 8,
   },
   statProgressBar: {
     height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 2,
     overflow: 'hidden',
     marginBottom: 4,
   },
   statProgressFill: {
     height: '100%',
-    backgroundColor: STUDENT.textOnPrimary,
     borderRadius: 2,
   },
   statSubtext: {
     fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: STUDENT.textMuted,
   },
   quickStatsGrid: {
     flexDirection: 'row',
