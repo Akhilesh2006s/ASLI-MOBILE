@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import { useAuth } from '../../src/context/AuthContext';
@@ -174,7 +174,7 @@ export default function AdminDashboard() {
       />
 
       <View style={[styles.contentWrap, { backgroundColor: colors.bg }]}>
-        <Animated.View entering={FadeInDown.duration(280).springify()} style={styles.content}>
+        <Animated.View key={currentView} entering={FadeIn.duration(200)} style={styles.content}>
           {renderContent()}
         </Animated.View>
       </View>

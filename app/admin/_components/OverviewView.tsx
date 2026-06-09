@@ -9,7 +9,6 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import api from '../../../src/services/api/api';
 import type { AdminNavView } from './AdminNavDrawer';
@@ -46,38 +45,41 @@ function StatCard({
   label,
   value,
   icon,
-  gradient,
+  theme,
   delay = 0,
   loading,
 }: {
   label: string;
   value: string | number;
   icon: keyof typeof Ionicons.glyphMap;
-  gradient: readonly [string, string];
+  theme: { bg: string; accent: string; iconBg: string };
   delay?: number;
   loading?: boolean;
 }) {
-  const { radius } = useAdminTheme();
+  const { colors, radius } = useAdminTheme();
 
   return (
     <Animated.View
       entering={FadeInUp.delay(delay).duration(450).springify()}
-      style={[styles.statCard, { borderRadius: radius.lg }, ADMIN_SHADOW.md]}
+      style={[
+        styles.statCard,
+        {
+          borderRadius: radius.lg,
+          backgroundColor: theme.bg,
+          borderColor: `${theme.accent}22`,
+        },
+        ADMIN_SHADOW.sm,
+      ]}
     >
-      <LinearGradient
-        colors={[...gradient]}
-        style={[styles.statGradient, { borderRadius: radius.lg }]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <View style={styles.statIconWrap}>
-          <Ionicons name={icon} size={24} color="#fff" />
+      <View style={styles.statInner}>
+        <View style={[styles.statIconWrap, { backgroundColor: theme.iconBg }]}>
+          <Ionicons name={icon} size={22} color={theme.accent} />
         </View>
         <View style={styles.statTextWrap}>
-          <Text style={styles.statLabel}>{label}</Text>
-          <Text style={styles.statValue}>{loading ? '—' : value}</Text>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{label}</Text>
+          <Text style={[styles.statValue, { color: theme.accent }]}>{loading ? '—' : value}</Text>
         </View>
-      </LinearGradient>
+      </View>
     </Animated.View>
   );
 }
@@ -192,7 +194,7 @@ export default function OverviewView({ onNavigate }: Props) {
 
   const topClassDistribution = studentAnalytics.classDistribution?.slice(0, 5) || [];
   const topSubjectPerformance = studentAnalytics.subjectPerformance?.slice(0, 4) || [];
-  const statGradients = colors.statGradients;
+  const statCards = colors.dashboardStatCards;
 
   if (isLoadingStats && !refreshing) {
     return <AdminSkeletonStats />;
@@ -213,28 +215,28 @@ export default function OverviewView({ onNavigate }: Props) {
           label="Total Students"
           value={stats.totalStudents}
           icon="people"
-          gradient={statGradients[0]}
+          theme={statCards[0]}
           delay={0}
         />
         <StatCard
           label="Active Classes"
           value={stats.totalClasses}
           icon="school"
-          gradient={statGradients[1]}
+          theme={statCards[1]}
           delay={60}
         />
         <StatCard
           label="Active Users"
           value={stats.activeUsers}
           icon="pulse"
-          gradient={statGradients[2]}
+          theme={statCards[2]}
           delay={120}
         />
         <StatCard
           label="Teachers"
           value={stats.totalTeachers}
           icon="person"
-          gradient={statGradients[3]}
+          theme={statCards[3]}
           delay={180}
         />
       </View>
@@ -253,12 +255,14 @@ export default function OverviewView({ onNavigate }: Props) {
           ]}
         >
           <View style={styles.analysisHeader}>
-            <LinearGradient
-              colors={[...colors.fabGradient]}
-              style={[styles.analysisIconBox, { borderRadius: radius.md }]}
+            <View
+              style={[
+                styles.analysisIconBox,
+                { borderRadius: radius.md, backgroundColor: colors.primaryMuted },
+              ]}
             >
-              <Ionicons name="bar-chart" size={22} color="#fff" />
-            </LinearGradient>
+              <Ionicons name="bar-chart" size={22} color={colors.primary} />
+            </View>
             <View style={styles.analysisHeaderText}>
               <Text style={[styles.analysisTitle, { color: colors.primary }]}>Detailed School Analysis</Text>
               <Text style={[styles.analysisSubtitle, { color: colors.textMuted }]}>
@@ -347,54 +351,56 @@ export default function OverviewView({ onNavigate }: Props) {
       <View style={[styles.assignRow, isWide && styles.assignRowWide]}>
         <AdminScalePressable
           onPress={() => onNavigate?.('students')}
-          style={[styles.assignCard, ADMIN_SHADOW.lg]}
+          style={[
+            styles.assignCard,
+            {
+              borderRadius: radius.xl,
+              backgroundColor: statCards[1].bg,
+              borderColor: `${statCards[1].accent}22`,
+            },
+            ADMIN_SHADOW.sm,
+          ]}
         >
-          <LinearGradient
-            colors={[...statGradients[1]]}
-            style={[styles.assignGradient, { borderRadius: radius.xl }]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={styles.assignIcon}>
-              <Ionicons name="people" size={26} color="#fff" />
-            </View>
-            <Text style={styles.assignHeading}>Your Students</Text>
-            <Text style={styles.assignSub}>Total Students Assigned</Text>
-            <Text style={styles.assignValue}>{stats.totalStudents}</Text>
-            <Text style={styles.assignDesc}>
-              Students specifically assigned to your admin account
-            </Text>
-            <View style={styles.assignCta}>
-              <Text style={styles.assignCtaText}>View details</Text>
-              <Ionicons name="arrow-forward" size={14} color="#fff" />
-            </View>
-          </LinearGradient>
+          <View style={[styles.assignIcon, { backgroundColor: statCards[1].iconBg }]}>
+            <Ionicons name="people" size={24} color={statCards[1].accent} />
+          </View>
+          <Text style={[styles.assignHeading, { color: colors.text }]}>Your Students</Text>
+          <Text style={[styles.assignSub, { color: colors.textMuted }]}>Total Students Assigned</Text>
+          <Text style={[styles.assignValue, { color: statCards[1].accent }]}>{stats.totalStudents}</Text>
+          <Text style={[styles.assignDesc, { color: colors.textSecondary }]}>
+            Students specifically assigned to your admin account
+          </Text>
+          <View style={styles.assignCta}>
+            <Text style={[styles.assignCtaText, { color: statCards[1].accent }]}>View details</Text>
+            <Ionicons name="arrow-forward" size={14} color={statCards[1].accent} />
+          </View>
         </AdminScalePressable>
 
         <AdminScalePressable
           onPress={() => onNavigate?.('teachers')}
-          style={[styles.assignCard, ADMIN_SHADOW.lg]}
+          style={[
+            styles.assignCard,
+            {
+              borderRadius: radius.xl,
+              backgroundColor: statCards[3].bg,
+              borderColor: `${statCards[3].accent}22`,
+            },
+            ADMIN_SHADOW.sm,
+          ]}
         >
-          <LinearGradient
-            colors={[...statGradients[4]]}
-            style={[styles.assignGradient, { borderRadius: radius.xl }]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={styles.assignIcon}>
-              <Ionicons name="school" size={26} color="#fff" />
-            </View>
-            <Text style={styles.assignHeading}>Your Teachers</Text>
-            <Text style={styles.assignSub}>Total Teachers Assigned</Text>
-            <Text style={styles.assignValue}>{stats.totalTeachers}</Text>
-            <Text style={styles.assignDesc}>
-              Teachers specifically assigned to your admin account
-            </Text>
-            <View style={styles.assignCta}>
-              <Text style={styles.assignCtaText}>View details</Text>
-              <Ionicons name="arrow-forward" size={14} color="#fff" />
-            </View>
-          </LinearGradient>
+          <View style={[styles.assignIcon, { backgroundColor: statCards[3].iconBg }]}>
+            <Ionicons name="school" size={24} color={statCards[3].accent} />
+          </View>
+          <Text style={[styles.assignHeading, { color: colors.text }]}>Your Teachers</Text>
+          <Text style={[styles.assignSub, { color: colors.textMuted }]}>Total Teachers Assigned</Text>
+          <Text style={[styles.assignValue, { color: statCards[3].accent }]}>{stats.totalTeachers}</Text>
+          <Text style={[styles.assignDesc, { color: colors.textSecondary }]}>
+            Teachers specifically assigned to your admin account
+          </Text>
+          <View style={styles.assignCta}>
+            <Text style={[styles.assignCtaText, { color: statCards[3].accent }]}>View details</Text>
+            <Ionicons name="arrow-forward" size={14} color={statCards[3].accent} />
+          </View>
         </AdminScalePressable>
       </View>
     </ScrollView>
@@ -411,20 +417,20 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     minWidth: '46%',
+    borderWidth: 1,
     overflow: 'hidden',
   },
-  statGradient: {
-    padding: 16,
+  statInner: {
+    padding: 14,
     minHeight: 88,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
   statIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -432,13 +438,11 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.9)',
     letterSpacing: 0.2,
   },
   statValue: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '800',
-    color: '#fff',
     letterSpacing: -0.5,
     marginTop: 2,
   },
@@ -555,17 +559,13 @@ const styles = StyleSheet.create({
   assignCard: {
     flex: 1,
     minWidth: 280,
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  assignGradient: {
-    padding: 20,
+    padding: 18,
+    borderWidth: 1,
   },
   assignIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
@@ -573,23 +573,19 @@ const styles = StyleSheet.create({
   assignHeading: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#fff',
   },
   assignSub: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.88)',
     marginTop: 2,
   },
   assignValue: {
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: '800',
-    color: '#fff',
     letterSpacing: -1,
     marginVertical: 6,
   },
   assignDesc: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.85)',
     lineHeight: 17,
     marginBottom: 14,
   },
@@ -598,13 +594,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
+    paddingVertical: 4,
   },
   assignCtaText: {
-    color: '#fff',
     fontSize: 12,
     fontWeight: '700',
   },

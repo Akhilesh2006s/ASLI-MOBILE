@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -10,7 +10,13 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAdminTheme } from '../_ui/useAdminTheme';
 
@@ -65,6 +71,9 @@ type Props = {
   onLogout: () => void;
 };
 
+const SLIDE_MS = 240;
+const slideEasing = Easing.out(Easing.cubic);
+
 export default function AdminNavDrawer({
   visible,
   activeView,
@@ -77,13 +86,31 @@ export default function AdminNavDrawer({
   const { width } = useWindowDimensions();
   const { colors } = useAdminTheme();
   const drawerWidth = Math.min(width * 0.82, 320);
+  const [mounted, setMounted] = useState(visible);
   const translateX = useSharedValue(-drawerWidth);
   const backdropOpacity = useSharedValue(0);
 
   useEffect(() => {
-    translateX.value = withSpring(visible ? 0 : -drawerWidth, { damping: 20, stiffness: 240 });
-    backdropOpacity.value = withTiming(visible ? 1 : 0, { duration: 260 });
-  }, [visible, drawerWidth, translateX, backdropOpacity]);
+    if (visible) {
+      setMounted(true);
+      translateX.value = -drawerWidth;
+      backdropOpacity.value = 0;
+      translateX.value = withTiming(0, { duration: SLIDE_MS, easing: slideEasing });
+      backdropOpacity.value = withTiming(1, { duration: SLIDE_MS, easing: slideEasing });
+      return;
+    }
+
+    if (!mounted) return;
+
+    translateX.value = withTiming(-drawerWidth, { duration: SLIDE_MS, easing: slideEasing });
+    backdropOpacity.value = withTiming(
+      0,
+      { duration: SLIDE_MS, easing: slideEasing },
+      (finished) => {
+        if (finished) runOnJS(setMounted)(false);
+      }
+    );
+  }, [visible, drawerWidth, mounted, translateX, backdropOpacity]);
 
   const drawerStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
@@ -93,23 +120,35 @@ export default function AdminNavDrawer({
     opacity: backdropOpacity.value,
   }));
 
+  if (!mounted) return null;
+
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+    <Modal visible transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
       <View style={styles.root}>
-        <Animated.View style={[styles.backdrop, backdropStyle]}>
+        <Animated.View style={[styles.backdrop, { backgroundColor: colors.overlay }, backdropStyle]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         </Animated.View>
 
-        <Animated.View style={[styles.drawer, { width: drawerWidth, paddingTop: insets.top }, drawerStyle]}>
+        <Animated.View
+          style={[
+            styles.drawer,
+            {
+              width: drawerWidth,
+              paddingTop: insets.top,
+              borderRightColor: colors.drawerBorder,
+            },
+            drawerStyle,
+          ]}
+        >
           <LinearGradient colors={[...colors.drawerGradient]} style={StyleSheet.absoluteFill} />
 
-          <View style={styles.logoSection}>
-            <View style={styles.logoBadge}>
-              <Text style={styles.logoBadgeText}>AS</Text>
+          <View style={[styles.logoSection, { borderBottomColor: colors.drawerBorder }]}>
+            <View style={[styles.logoBadge, { backgroundColor: colors.drawerSurface }]}>
+              <Text style={[styles.logoBadgeText, { color: colors.primary }]}>AS</Text>
             </View>
             <View style={styles.logoTextWrap}>
-              <Text style={styles.logoTitle}>ASLILEARN AI</Text>
-              <Text style={styles.logoSubtitle}>Admin Panel</Text>
+              <Text style={[styles.logoTitle, { color: colors.drawerText }]}>ASLILEARN AI</Text>
+              <Text style={[styles.logoSubtitle, { color: colors.drawerTextMuted }]}>Admin Panel</Text>
             </View>
           </View>
 
@@ -123,18 +162,22 @@ export default function AdminNavDrawer({
               return (
                 <Pressable
                   key={item.id}
-                  style={[styles.navItem, isActive && styles.navItemActive]}
+                  style={[
+                    styles.navItem,
+                    isActive && [styles.navItemActive, { backgroundColor: colors.navActiveBg }],
+                  ]}
                   onPress={() => onSelect(item.id)}
                 >
                   <Ionicons
                     name={item.icon}
                     size={20}
-                    color={isActive ? colors.navActiveColor : '#fff'}
+                    color={isActive ? colors.navActiveText : colors.drawerText}
                   />
                   <Text
                     style={[
                       styles.navLabel,
-                      isActive && [styles.navLabelActive, { color: colors.navActiveColor }],
+                      { color: isActive ? colors.navActiveText : colors.drawerText },
+                      isActive && styles.navLabelActive,
                     ]}
                     numberOfLines={1}
                   >
@@ -145,21 +188,26 @@ export default function AdminNavDrawer({
             })}
           </ScrollView>
 
-          <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+          <View
+            style={[
+              styles.footer,
+              { paddingBottom: Math.max(insets.bottom, 16), borderTopColor: colors.drawerBorder },
+            ]}
+          >
             <View style={styles.userRow}>
-              <View style={styles.userAvatar}>
-                <Ionicons name="person" size={16} color="#fff" />
+              <View style={[styles.userAvatar, { backgroundColor: colors.drawerSurface }]}>
+                <Ionicons name="person" size={16} color={colors.drawerText} />
               </View>
               <View style={styles.userTextWrap}>
-                <Text style={styles.userName} numberOfLines={1}>
+                <Text style={[styles.userName, { color: colors.drawerText }]} numberOfLines={1}>
                   {userName}
                 </Text>
-                <Text style={styles.userRole}>Administrator</Text>
+                <Text style={[styles.userRole, { color: colors.drawerTextMuted }]}>Administrator</Text>
               </View>
             </View>
             <Pressable style={styles.logoutBtn} onPress={onLogout}>
-              <Ionicons name="log-out-outline" size={18} color="#fff" />
-              <Text style={styles.logoutText}>Logout</Text>
+              <Ionicons name="log-out-outline" size={18} color={colors.drawerTextMuted} />
+              <Text style={[styles.logoutText, { color: colors.drawerTextMuted }]}>Logout</Text>
             </Pressable>
           </View>
         </Animated.View>
@@ -171,21 +219,21 @@ export default function AdminNavDrawer({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    flexDirection: 'row',
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.45)',
   },
   drawer: {
-    height: '100%',
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
     borderRightWidth: 1,
-    borderRightColor: 'rgba(255,255,255,0.25)',
-    shadowColor: '#000',
-    shadowOffset: { width: 4, height: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 12,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 8,
   },
   logoSection: {
     flexDirection: 'row',
@@ -194,18 +242,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 20,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.25)',
   },
   logoBadge: {
     width: 48,
     height: 48,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   logoBadgeText: {
-    color: '#fff',
     fontWeight: '800',
     fontSize: 18,
   },
@@ -214,12 +259,10 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   logoTitle: {
-    color: '#fff',
     fontWeight: '800',
     fontSize: 16,
   },
   logoSubtitle: {
-    color: 'rgba(255,255,255,0.9)',
     fontSize: 12,
     fontWeight: '600',
     marginTop: 2,
@@ -239,17 +282,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
   },
-  navItemActive: {
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 3,
-  },
+  navItemActive: {},
   navLabel: {
     flex: 1,
-    color: '#fff',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -258,7 +293,6 @@ const styles = StyleSheet.create({
   },
   footer: {
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.25)',
     paddingHorizontal: 20,
     paddingTop: 16,
     gap: 12,
@@ -272,7 +306,6 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -281,12 +314,10 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   userName: {
-    color: '#fff',
     fontWeight: '700',
     fontSize: 14,
   },
   userRole: {
-    color: 'rgba(255,255,255,0.85)',
     fontSize: 12,
     marginTop: 1,
   },
@@ -297,7 +328,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   logoutText: {
-    color: '#fff',
     fontWeight: '600',
     fontSize: 14,
   },

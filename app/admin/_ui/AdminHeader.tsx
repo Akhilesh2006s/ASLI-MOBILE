@@ -69,11 +69,11 @@ export default function AdminHeader({ userName, subtitle, onMenu }: Props) {
 
 const styles = StyleSheet.create({
   wrap: {
-    shadowColor: '#4338CA',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.22,
-    shadowRadius: 14,
-    elevation: 8,
+    shadowColor: '#334155',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
   },
   gradient: {
     paddingHorizontal: 20,
