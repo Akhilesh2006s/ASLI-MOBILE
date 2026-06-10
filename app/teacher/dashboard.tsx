@@ -101,6 +101,7 @@ export default function TeacherDashboard() {
   const [overlay, setOverlay] = useState<'content' | 'profile' | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [learningPathsRefreshKey, setLearningPathsRefreshKey] = useState(0);
   const [user, setUser] = useState<any>(null);
   const [stats, setStats] = useState({
     totalStudents: 0,
@@ -217,6 +218,7 @@ export default function TeacherDashboard() {
     await teacherService.invalidateCache();
     await loadData();
     await refreshBackendStatus();
+    setLearningPathsRefreshKey((key) => key + 1);
     setRefreshing(false);
   };
 
@@ -305,7 +307,7 @@ export default function TeacherDashboard() {
       case 'eduott':
         return <EduOTTView />;
       case 'learning-paths':
-        return <LearningPathsView />;
+        return <LearningPathsView refreshKey={learningPathsRefreshKey} />;
       case 'vidya-ai':
         return <VidyaAIView />;
       default:

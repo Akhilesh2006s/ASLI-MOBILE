@@ -10,8 +10,17 @@ import {
   loadLearningPathCatalog,
   type SubjectWithPathContent,
 } from '../../../src/lib/learningPathCatalog';
+import {
+  countLearningPathDisplayStats,
+  learningPathStatsTotal,
+} from '../../../src/lib/learning-path-stats';
 
-export default function LearningPathsView() {
+type Props = {
+  /** Bumped by parent pull-to-refresh so counts reload from the server. */
+  refreshKey?: number;
+};
+
+export default function LearningPathsView({ refreshKey = 0 }: Props) {
   const { isAsliPrepExclusive, loading: programLoading } = useSchoolProgram();
   const [subjects, setSubjects] = useState<SubjectWithPathContent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,7 +40,7 @@ export default function LearningPathsView() {
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, refreshKey]);
 
   if (programLoading || loading) return <TeacherShimmer variant="card" count={3} />;
 
@@ -41,9 +50,7 @@ export default function LearningPathsView() {
         <Ionicons name="book-outline" size={48} color={TEACHER.textMuted} />
         <Text style={styles.emptyTitle}>No Learning Paths</Text>
         <Text style={styles.emptySub}>
-          {isAsliPrepExclusive
-            ? 'No catalog content is available for your subjects yet.'
-            : 'Curriculum schools see Audio, TextBook and Homework only.'}
+          No catalog content is available for your subjects yet.
         </Text>
       </View>
     );
@@ -56,13 +63,13 @@ export default function LearningPathsView() {
         <View style={styles.headerText}>
           <Text style={styles.headerTitle}>Learning Paths</Text>
           <Text style={styles.headerSub}>
-            {isAsliPrepExclusive ? 'Asli Prep — full catalog' : 'Curriculum — Audio, TextBook & Homework'}
+            {isAsliPrepExclusive ? 'Asli Prep — full catalog' : 'Textbooks, Materials & Videos'}
           </Text>
         </View>
       </View>
       {subjects.map((subject, index) => {
-        const videos = subject.asliPrepContent.filter((c) => c.type === 'Video');
-        const homework = subject.asliPrepContent.filter((c) => c.type === 'Homework');
+        const stats = countLearningPathDisplayStats(subject.asliPrepContent);
+        const itemCount = learningPathStatsTotal(stats);
         return (
           <Animated.View key={subject.id} entering={FadeInDown.duration(350).delay(Math.min(index * 70, 490))}>
             <Pressable
@@ -74,7 +81,7 @@ export default function LearningPathsView() {
                   <Ionicons name="library" size={22} color={TEACHER.textOnPrimary} />
                 </View>
                 <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{subject.totalContent} items</Text>
+                  <Text style={styles.badgeText}>{itemCount} items</Text>
                 </View>
               </View>
               <Text style={styles.name}>{subject.name}</Text>
@@ -84,24 +91,20 @@ export default function LearningPathsView() {
                 </Text>
               ) : null}
               <View style={styles.statsRow}>
-                {isAsliPrepExclusive ? (
-                  <View style={styles.stat}>
-                    <Ionicons name="play" size={14} color={TEACHER.primaryLight} />
-                    <Text style={styles.statVal}>{videos.length}</Text>
-                    <Text style={styles.statLbl}>Videos</Text>
-                  </View>
-                ) : null}
                 <View style={styles.stat}>
-                  <Ionicons name="headset" size={14} color={TEACHER.success} />
-                  <Text style={styles.statVal}>
-                    {subject.asliPrepContent.filter((c) => c.type === 'Audio').length}
-                  </Text>
-                  <Text style={styles.statLbl}>Audio</Text>
+                  <Ionicons name="book" size={14} color={TEACHER.success} />
+                  <Text style={styles.statVal}>{stats.textbooks}</Text>
+                  <Text style={styles.statLbl}>Textbooks</Text>
                 </View>
                 <View style={styles.stat}>
-                  <Ionicons name="clipboard" size={14} color={TEACHER.secondary} />
-                  <Text style={styles.statVal}>{homework.length}</Text>
-                  <Text style={styles.statLbl}>Homework</Text>
+                  <Ionicons name="document-text" size={14} color={TEACHER.secondary} />
+                  <Text style={styles.statVal}>{stats.materials}</Text>
+                  <Text style={styles.statLbl}>Materials</Text>
+                </View>
+                <View style={styles.stat}>
+                  <Ionicons name="play" size={14} color={TEACHER.primaryLight} />
+                  <Text style={styles.statVal}>{stats.videos}</Text>
+                  <Text style={styles.statLbl}>Videos</Text>
                 </View>
               </View>
               {subject.asliPrepContent.slice(0, 2).map((item, i) => (

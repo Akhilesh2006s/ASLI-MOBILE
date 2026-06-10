@@ -18,6 +18,7 @@ import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import GlassCard from '../../../src/components/student/GlassCard';
 import ChipNav from '../../../src/components/student/ChipNav';
+import StudentFilterDropdown from '../../../src/components/student/StudentFilterDropdown';
 import { ShimmerCard } from '../../../src/components/student/StudentShimmer';
 import { AnimatedStatInput, useCountUp } from '../../../src/hooks/useCountUp';
 import {
@@ -27,8 +28,8 @@ import {
   STUDENT_TYPO,
 } from '../../../src/theme/student';
 import {
-  examMatchesStudentAssignedClass,
-  getExamClassLabelsForStudent,
+  examIncludesClass,
+  getExamClassStrings,
   normalizeClassNumber,
 } from '../../../src/lib/exam-classes';
 import { dedupeStudentExamResults } from '../../../src/lib/dedupe-exam-results';
@@ -116,6 +117,7 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
   const [results, setResults] = useState<any[]>([]);
   const [rankings, setRankings] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
+  const [examClassFilter, setExamClassFilter] = useState('all');
   const [examSubjectFilter, setExamSubjectFilter] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
   const [selectedAttemptByExam, setSelectedAttemptByExam] = useState<Record<string, string>>({});
@@ -135,6 +137,16 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
     fetchResults();
     fetchRankings();
   }, []);
+
+  useEffect(() => {
+    if (studentClassNumber) {
+      setExamClassFilter(studentClassNumber);
+    }
+  }, [studentClassNumber]);
+
+  useEffect(() => {
+    setExamSubjectFilter('all');
+  }, [examClassFilter]);
 
   const fetchUser = async () => {
     try {
@@ -252,9 +264,32 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
     return { status: 'active', color: '#10b981', bg: '#d1fae5' };
   };
 
-  const classFilteredExams = useMemo(
-    () => exams.filter((e) => examMatchesStudentAssignedClass(e, user?.classNumber)),
-    [exams, user?.classNumber]
+  const availableClassOptions = useMemo(() => {
+    const set = new Set<string>();
+    exams.forEach((exam) => {
+      getExamClassStrings(exam).forEach((classNum) => {
+        if (classNum) set.add(classNum);
+      });
+    });
+    return Array.from(set).sort((a, b) => {
+      const na = parseInt(a, 10);
+      const nb = parseInt(b, 10);
+      if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
+      return a.localeCompare(b, undefined, { numeric: true });
+    });
+  }, [exams]);
+
+  const classFilteredExams = useMemo(() => {
+    if (!examClassFilter || examClassFilter === 'all') return exams;
+    return exams.filter((exam) => examIncludesClass(exam, examClassFilter));
+  }, [exams, examClassFilter]);
+
+  const examMatchesClassFilter = useCallback(
+    (exam: Exam) => {
+      if (!examClassFilter || examClassFilter === 'all') return true;
+      return examIncludesClass(exam, examClassFilter);
+    },
+    [examClassFilter]
   );
 
   const availableSubjectOptions = useMemo(() => {
@@ -315,7 +350,7 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
       if (examSubjectFilter === 'all') return true;
       const catalogExam = exams.find((e) => String(e._id) === String(examIdStr));
       if (!catalogExam) return true;
-      if (!examMatchesStudentAssignedClass(catalogExam, user?.classNumber)) return false;
+      if (!examMatchesClassFilter(catalogExam)) return false;
       return getExamSubjects(catalogExam).includes(String(examSubjectFilter).toLowerCase());
     });
 
@@ -341,7 +376,7 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
     return Array.from(latestByExam.values()).sort(
       (a, b) => new Date(b.completedAt || 0).getTime() - new Date(a.completedAt || 0).getTime()
     );
-  }, [dedupedExamResults, exams, examSubjectFilter, getExamIdFromResult, user?.classNumber]);
+  }, [dedupedExamResults, exams, examSubjectFilter, examMatchesClassFilter, getExamIdFromResult]);
 
   const attemptHistoryByExamId = useMemo(() => {
     const map = new Map<string, any[]>();
@@ -534,15 +569,38 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
     []
   );
 
-  const subjectChips = useMemo(
+  const classFilterOptions = useMemo(
     () => [
-      { id: 'all', label: 'All subjects' },
-      ...availableSubjectOptions.map((subject) => ({
-        id: subject,
-        label: subject.charAt(0).toUpperCase() + subject.slice(1),
+      {
+        value: 'all',
+        label: 'All classes',
+        count: exams.length,
+      },
+      ...availableClassOptions.map((classNum) => ({
+        value: classNum,
+        label: `Class ${classNum}`,
+        count: exams.filter((exam) => examIncludesClass(exam, classNum)).length,
       })),
     ],
-    [availableSubjectOptions]
+    [availableClassOptions, exams]
+  );
+
+  const subjectFilterOptions = useMemo(
+    () => [
+      {
+        value: 'all',
+        label: 'All subjects',
+        count: classFilteredExams.length,
+      },
+      ...availableSubjectOptions.map((subject) => ({
+        value: subject,
+        label: subject.charAt(0).toUpperCase() + subject.slice(1),
+        count: classFilteredExams.filter((exam) =>
+          getExamSubjects(exam).includes(subject)
+        ).length,
+      })),
+    ],
+    [availableSubjectOptions, classFilteredExams]
   );
 
   const avgPercentile = rankings.length
@@ -567,22 +625,20 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
         <Text style={[styles.headerTitle, compact && { fontSize: 26 }]}>Exams</Text>
         <Text style={styles.headerSubtitle}>Take practice exams and track your progress</Text>
         <View style={styles.filtersRow}>
-          {studentClassNumber ? (
-            <View style={styles.filterGroup}>
-              <Text style={styles.filterLabel}>Class</Text>
-              <View style={styles.classBadge}>
-                <Text style={styles.classBadgeText}>Class {studentClassNumber}</Text>
-              </View>
-            </View>
-          ) : null}
-          <View style={styles.filterGroup}>
-            <Text style={styles.filterLabel}>Subject</Text>
-            <ChipNav
-              chips={subjectChips}
-              active={examSubjectFilter}
-              onChange={setExamSubjectFilter}
-            />
-          </View>
+          <StudentFilterDropdown
+            label="Class"
+            placeholder="All classes"
+            value={examClassFilter}
+            options={classFilterOptions}
+            onChange={setExamClassFilter}
+          />
+          <StudentFilterDropdown
+            label="Subject"
+            placeholder="All subjects"
+            value={examSubjectFilter}
+            options={subjectFilterOptions}
+            onChange={setExamSubjectFilter}
+          />
         </View>
       </View>
 
@@ -615,7 +671,12 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
               {availableActiveExams.map((exam) => {
                 const status = getExamStatus(exam);
                 const typeColor = getExamTypeColor(exam.examType);
-                const classLabels = getExamClassLabelsForStudent(exam, user?.classNumber);
+                const classLabels =
+                  examClassFilter && examClassFilter !== 'all'
+                    ? examIncludesClass(exam, examClassFilter)
+                      ? [examClassFilter]
+                      : []
+                    : getExamClassStrings(exam);
                 const usedAttempts = attemptCountByExamId.get(String(exam._id)) || 0;
                 const maxAttempts = getMaxAttemptsForExam(exam);
                 const hydratedQuestionCount = Array.isArray(exam.questions)
@@ -703,7 +764,12 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
                 if (!examIdStr) return null;
                 const exam = findExamForResult(examIdStr, result);
                 const scheme = ATTEMPTED_CARD_SCHEMES[index % ATTEMPTED_CARD_SCHEMES.length];
-                const classLabels = getExamClassLabelsForStudent(exam, user?.classNumber);
+                const classLabels =
+                  examClassFilter && examClassFilter !== 'all'
+                    ? examIncludesClass(exam, examClassFilter)
+                      ? [examClassFilter]
+                      : []
+                    : getExamClassStrings(exam);
                 const attemptHistory = attemptHistoryByExamId.get(examIdStr) || [result];
                 const totalAttempts = attemptHistory.length;
                 const selectedRowId = selectedAttemptByExam[examIdStr];
@@ -931,7 +997,12 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
             <View style={styles.examsList}>
               {upcomingExams.map((exam) => {
                 const typeColor = getExamTypeColor(exam.examType);
-                const classLabels = getExamClassLabelsForStudent(exam, user?.classNumber);
+                const classLabels =
+                  examClassFilter && examClassFilter !== 'all'
+                    ? examIncludesClass(exam, examClassFilter)
+                      ? [examClassFilter]
+                      : []
+                    : getExamClassStrings(exam);
                 return (
                   <GlassCard key={exam._id} variant="elevated" padding={16} style={styles.examCardWrap}>
                     <View style={styles.examHeader}>
@@ -1094,29 +1165,8 @@ const styles = StyleSheet.create({
   },
   filtersRow: {
     marginTop: 14,
+    flexDirection: 'row',
     gap: STUDENT_SPACING.md,
-  },
-  filterGroup: {
-    gap: 6,
-  },
-  filterLabel: {
-    fontSize: 13,
-    color: STUDENT.textSecondary,
-    fontWeight: '500',
-  },
-  classBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: STUDENT.accentSoft,
-    borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
-    borderRadius: STUDENT_RADIUS.full,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  classBadgeText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: STUDENT.accent,
   },
   tabsContainer: {
     marginBottom: STUDENT_SPACING.lg,
