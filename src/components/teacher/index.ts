@@ -6,6 +6,8 @@ export { default as TeacherHeader } from './TeacherHeader';
 export { default as TeacherShimmer } from './TeacherShimmer';
 export { default as SubNavChips } from './SubNavChips';
 export type { ChipItem } from './SubNavChips';
+export { default as FilterDropdown } from './FilterDropdown';
+export type { FilterOption } from './FilterDropdown';
 export { default as TeacherClassCard } from './TeacherClassCard';
 export type { ClassCardStudent } from './TeacherClassCard';
 export { default as WeeklyTimetableGrid } from './WeeklyTimetableGrid';
