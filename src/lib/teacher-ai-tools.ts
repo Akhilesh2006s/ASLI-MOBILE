@@ -40,7 +40,7 @@ export const TEACHER_AI_TOOLS: TeacherAiTool[] = [
     title: 'Lesson Planner',
     description: 'Plan structured lessons with objectives and activities.',
     icon: 'calendar',
-    color: '#ea580c',
+    color: '#d97706',
     route: '/teacher/tools/lesson-planner',
   },
   {
@@ -48,7 +48,7 @@ export const TEACHER_AI_TOOLS: TeacherAiTool[] = [
     title: 'Exam Question Paper Generator',
     description: 'Create comprehensive exam papers with varying difficulty.',
     icon: 'help-circle',
-    color: '#2563eb',
+    color: '#7c3aed',
     route: '/teacher/tools/exam-question-paper-generator',
   },
   {
@@ -64,7 +64,7 @@ export const TEACHER_AI_TOOLS: TeacherAiTool[] = [
     title: 'Homework Creator',
     description: 'Generate meaningful homework assignments.',
     icon: 'rocket',
-    color: '#ea580c',
+    color: '#db2777',
     route: '/teacher/tools/homework-creator',
   },
   {
@@ -72,7 +72,7 @@ export const TEACHER_AI_TOOLS: TeacherAiTool[] = [
     title: 'Story & Passage Creator',
     description: 'Generate stories and reading passages (English & Hindi only).',
     icon: 'book-outline',
-    color: '#ea580c',
+    color: '#d97706',
     route: '/teacher/tools/story-passage-creator',
   },
   {

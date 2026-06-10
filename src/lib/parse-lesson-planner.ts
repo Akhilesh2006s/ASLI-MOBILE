@@ -802,6 +802,10 @@ export function resolveLessonsFromPayload(
   }
 
   const fromRaw = rawRecords.map((r, i) => normalizeLesson(r, i));
+  const displayMd = formatted || lessonPlannerDisplayMarkdown(content, rawContent);
+  if (!fromMd.length && displayMd) {
+    fromMd = parseLessonsFromMarkdown(displayMd);
+  }
 
   let lessons: NormalizedLesson[] = [];
   if (fromRaw.length && fromMd.length) {
@@ -820,7 +824,6 @@ export function resolveLessonsFromPayload(
   }
 
   let mdFallback: string | null = null;
-  const displayMd = formatted || lessonPlannerDisplayMarkdown(content, rawContent);
 
   if (!lessons.length) {
     mdFallback = displayMd;

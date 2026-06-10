@@ -28,9 +28,15 @@ export type ParsedActivity = {
   instructions?: string | string[];
   /** Legacy — remapped into template fields on sanitize */
   teacher_instructions?: string[];
+  /** CamelCase alias from some API payloads */
+  teacherInstructions?: string[];
   student_instructions?: string[];
+  /** CamelCase alias from some API payloads */
+  studentInstructions?: string[];
   differentiation?: string;
   assessment_criteria_rubric?: string[];
+  /** CamelCase alias from some API payloads */
+  assessmentRubric?: string[];
   /** Legacy rubric field names */
   assessment?: string | string[];
   evaluation?: string | string[];
@@ -196,6 +202,34 @@ export function normalizeParsedActivityFields(activity: ParsedActivity): ParsedA
     out.learningObjectives = lo;
   }
 
+  const teacherInstr = dedupeStringLines(
+    firstMeaningfulList(out.teacher_instructions, src.teacherInstructions),
+  );
+  if (teacherInstr.length) {
+    out.teacher_instructions = teacherInstr;
+    out.teacherInstructions = teacherInstr;
+  }
+
+  const studentInstr = dedupeStringLines(
+    firstMeaningfulList(out.student_instructions, src.studentInstructions),
+  );
+  if (studentInstr.length) {
+    out.student_instructions = studentInstr;
+    out.studentInstructions = studentInstr;
+  }
+
+  const assessmentRubric = dedupeStringLines(
+    firstMeaningfulList(
+      out.assessment_criteria_rubric,
+      src.assessmentRubric,
+      out.assessment,
+      out.evaluation,
+    ),
+  );
+  if (assessmentRubric.length) {
+    out.assessment_criteria_rubric = assessmentRubric;
+  }
+
   return out;
 }
 
@@ -232,25 +266,25 @@ const SECTION_TITLE_HINT: Record<number, RegExp> = {
   4: /ncf|competency|learning\s+outcome\s+alignment/i,
   5: /materials?\s+required/i,
   6: /step-by-step|student\s+procedure|procedure/i,
-  7: /safety|care\s+instruction/i,
-  8: /observation|data\s+recording/i,
-  9: /creative\s+output|final\s+product/i,
-  10: /differentiation|support\s+and\s+extension/i,
-  11: /self[-\s]?assessment|rubric/i,
-  12: /expected\s+learning\s+outcome/i,
-  13: /real[-\s]?life/i,
+  7: /teacher\s+instruction|safety|care\s+instruction/i,
+  8: /student\s+instruction|observation|data\s+recording/i,
+  9: /differentiation|creative\s+output|final\s+product/i,
+  10: /differentiation|support\s+and\s+extension|assessment.*rubric/i,
+  11: /self[-\s]?assessment|rubric|expected\s+learning\s+outcome/i,
+  12: /expected\s+learning\s+outcome|real[-\s]?life/i,
+  13: /real[-\s]?life|reflection|exit\s+ticket|closure/i,
   14: /reflection|exit\s+ticket|closure/i,
   15: /period\s*\/\s*time|time\s+cues?/i,
 };
 
-/** Legacy section labels → Project Idea Lab 14-point index. */
+/** Legacy section labels without a leading number. */
 function legacyActivitySectionNumFromTitle(title: string): number | null {
   const t = String(title || '').trim();
   if (!t) return null;
-  if (/^teacher\s+instruction/i.test(t)) return null;
-  if (/^student\s+instruction/i.test(t)) return 6;
-  if (/^assessment\s+(?:criteria\s+)?rubric/i.test(t)) return 11;
-  if (/^differentiation/i.test(t)) return 10;
+  if (/^teacher\s+instruction/i.test(t)) return 7;
+  if (/^student\s+instruction/i.test(t)) return 8;
+  if (/^assessment\s+(?:criteria\s+)?rubric/i.test(t)) return 10;
+  if (/^differentiation/i.test(t)) return 9;
   if (/^step-by-step\s+procedure$/i.test(t)) return 6;
   return null;
 }
@@ -409,15 +443,13 @@ export function sanitizeParsedActivity(activity: ParsedActivity): ParsedActivity
   const studentSteps = Array.isArray(out.student_instructions)
     ? out.student_instructions.map((x) => String(x).trim()).filter(Boolean)
     : [];
-  if (studentSteps.length) {
-    out.step_by_step_procedure = studentSteps;
-    out.steps = studentSteps;
-  }
-
   const procedure = extractProcedureSteps(out);
-  if (procedure.length && !studentSteps.length) {
+  if (procedure.length) {
     out.step_by_step_procedure = procedure;
     out.steps = procedure;
+  } else if (studentSteps.length) {
+    out.step_by_step_procedure = studentSteps;
+    out.steps = studentSteps;
   }
 
   const rubric = dedupeStringLines([
@@ -433,8 +465,6 @@ export function sanitizeParsedActivity(activity: ParsedActivity): ParsedActivity
   if (!String(out.differentiation_support_extension || '').trim() && out.differentiation) {
     out.differentiation_support_extension = out.differentiation;
   }
-
-  out.teacher_instructions = undefined;
 
   return out;
 }
@@ -527,8 +557,55 @@ function extractProcedureSteps(activity: ParsedActivity): string[] {
   return best;
 }
 
-function assignSectionBody(activity: ParsedActivity, sectionNum: number, body: string) {
-  const def = SECTION_BY_NUMBER[sectionNum];
+function sectionTitleFromLine(line: string): string {
+  const trimmed = line.trim().replace(/^#+\s*/, '');
+  let m = trimmed.match(SECTION_HEADING_MD_RE);
+  if (m) return m[2].trim();
+  m = trimmed.match(SECTION_HEADING_BOLD_RE);
+  if (m) return m[2].trim();
+  m = trimmed.match(SECTION_PLAIN_RE);
+  if (m) return m[2].trim();
+  return trimmed;
+}
+
+function sectionDefFor(num: number, title: string) {
+  const t = String(title || '');
+  if (num === 7 && /teacher\s+instruction/i.test(t)) {
+    return { key: 'teacher_instructions' as const, list: true };
+  }
+  if (num === 8 && /student\s+instruction/i.test(t)) {
+    return { key: 'student_instructions' as const, list: true, orderedList: true };
+  }
+  if (num === 9 && /differentiation/i.test(t)) {
+    return { key: 'differentiation_support_extension' as const };
+  }
+  if (num === 10) {
+    if (/assessment.*rubric/i.test(t) && !/self[-\s]?assessment/i.test(t)) {
+      return { key: 'assessment_criteria_rubric' as const, list: true };
+    }
+    if (/differentiation/i.test(t)) {
+      return { key: 'differentiation_support_extension' as const };
+    }
+  }
+  if ((num === 11 || num === 12) && /expected\s+learning/i.test(t)) {
+    return { key: 'expected_learning_outcomes' as const };
+  }
+  if ((num === 12 || num === 13) && /real[-\s]?life/i.test(t)) {
+    return { key: 'real_life_application' as const };
+  }
+  if ((num === 13 || num === 14) && /reflection|exit\s+ticket/i.test(t)) {
+    return { key: 'reflection_exit_ticket' as const };
+  }
+  return SECTION_BY_NUMBER[num];
+}
+
+function assignSectionBody(
+  activity: ParsedActivity,
+  sectionNum: number,
+  body: string,
+  sectionTitle = '',
+) {
+  const def = sectionDefFor(sectionNum, sectionTitle);
   if (!def || !body.trim()) return;
 
   const trimmedBody = body.replace(/\n{2,}/g, '\n').trim();
@@ -561,39 +638,32 @@ function assignSectionBody(activity: ParsedActivity, sectionNum: number, body: s
   (activity as Record<string, unknown>)[def.key] = trimmedBody;
 }
 
+type ParsedSectionChunk = { body: string; title: string };
+
 /** Split block into section number → body text */
-function splitNumberedSections(block: string): Map<number, string> {
-  const map = new Map<number, string>();
+function splitNumberedSections(block: string): Map<number, ParsedSectionChunk> {
+  const map = new Map<number, ParsedSectionChunk>();
   const lines = block.split('\n');
   let currentNum: number | null = null;
+  let currentTitle = '';
   const buf: string[] = [];
-
-  let skipTeacherBlock = false;
 
   const flush = () => {
     if (currentNum != null && buf.length) {
       const body = buf.join('\n').trim();
-      if (body) map.set(currentNum, body);
+      if (body) map.set(currentNum, { body, title: currentTitle });
     }
     buf.length = 0;
   };
 
   for (const line of lines) {
-    const bare = line.trim().replace(/^#+\s*/, '');
-    if (/^teacher\s+instructions/i.test(bare)) {
-      flush();
-      currentNum = null;
-      skipTeacherBlock = true;
-      continue;
-    }
     const sectionNum = templateSectionNumberFromLine(line);
     if (sectionNum != null) {
       flush();
       currentNum = sectionNum;
-      skipTeacherBlock = false;
+      currentTitle = sectionTitleFromLine(line);
       continue;
     }
-    if (skipTeacherBlock) continue;
     if (currentNum != null) buf.push(line);
   }
   flush();
@@ -622,8 +692,8 @@ function parseActivityBlock(block: string, index: number): ParsedActivity | null
   const activity: ParsedActivity = { sl_no, title };
 
   const sectionMap = splitNumberedSections(bodyStart);
-  for (const [num, body] of Array.from(sectionMap.entries())) {
-    assignSectionBody(activity, num, body);
+  for (const [num, chunk] of Array.from(sectionMap.entries())) {
+    assignSectionBody(activity, num, chunk.body, chunk.title);
   }
 
   if (activity.expected_learning_outcomes && !activity.learning_outcome) {
@@ -806,6 +876,18 @@ function mergeActivity(backend: ParsedActivity = {}, markdown: ParsedActivity = 
   };
 }
 
+function activityMarkdownSource(content?: string): string {
+  const raw = String(content || '').trim();
+  if (!raw) return '';
+  if (!raw.startsWith('{')) return raw;
+  try {
+    const parsed = JSON.parse(raw) as { formatted?: string; markdown?: string };
+    return String(parsed.formatted || parsed.markdown || '').trim();
+  } catch {
+    return raw;
+  }
+}
+
 export function resolveActivitiesFromPayload(
   activities: ParsedActivity[] | undefined | null,
   content?: string,
@@ -813,16 +895,19 @@ export function resolveActivitiesFromPayload(
   const fromArr = Array.isArray(activities)
     ? activities.filter(Boolean).map((row) => normalizeParsedActivityFields(row as ParsedActivity))
     : [];
-  const fromMd = content?.trim() ? parseActivitiesFromMarkdown(content) : [];
+  const mdSource = activityMarkdownSource(content);
+  const fromMd = mdSource ? parseActivitiesFromMarkdown(mdSource) : [];
 
-  if (fromMd.length && fromArr.length) {
-    const n = Math.max(fromMd.length, fromArr.length);
+  const mergeRows = (arr: ParsedActivity[], md: ParsedActivity[]) => {
+    const n = Math.max(arr.length, md.length);
     return Array.from({ length: n }, (_, i) =>
       sanitizeParsedActivity(
-        mergeActivity(fromArr[i] ?? fromArr[fromArr.length - 1], fromMd[i] ?? fromMd[fromMd.length - 1]),
+        mergeActivity(arr[i] ?? arr[arr.length - 1], md[i] ?? md[md.length - 1]),
       ),
     );
-  }
+  };
+
+  if (fromMd.length && fromArr.length) return mergeRows(fromArr, fromMd);
   if (fromArr.length) return fromArr.map(sanitizeParsedActivity);
   if (fromMd.length) return fromMd.map(sanitizeParsedActivity);
 

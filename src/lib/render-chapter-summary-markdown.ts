@@ -1,4 +1,13 @@
 import { formatInlineMarkdown, renderMarkdown } from './render-teacher-markdown';
+import {
+  bodyTextFromLines,
+  parseMarkdownDocTitle,
+  parseMarkdownSectionHeading,
+  sortSectionHtmlEntries,
+  type SectionHtmlEntry,
+  themedNumberedSectionCardHtml,
+  themedSection1TitleCardHtml,
+} from './themed-markdown-sections';
 
 const SECTION_STYLES: Record<number, { border: string; bg: string; title: string }> = {
   1: { border: 'border-blue-300', bg: 'bg-blue-50/80', title: 'text-blue-900' },
@@ -37,46 +46,96 @@ export function renderChapterSummaryMarkdown(text: string): string {
   if (!text?.trim()) return '';
 
   const lines = text.split('\n');
-  const parts: string[] = [];
-  let docHeader = '';
+  const sectionEntries: SectionHtmlEntry[] = [];
+  let docTitle = '';
   let currentSection = 0;
   let currentTitle = '';
   let bodyLines: string[] = [];
 
   const flushSection = () => {
-    if (currentSection <= 0 && !bodyLines.length) return;
-    const style = sectionStyle(currentSection || 1);
-    parts.push(
-      `<section class="rounded-xl border ${style.border} ${style.bg} p-4 mb-3 shadow-sm">` +
-        `<h4 class="text-sm font-bold ${style.title} mb-2">${formatInlineMarkdown(currentTitle || `Section ${currentSection}`)}</h4>` +
-        `<div>${bodyLinesToHtml(bodyLines)}</div></section>`,
-    );
+    if (currentSection <= 0) {
+      bodyLines = [];
+      return;
+    }
+    if (currentSection === 1) {
+      const titleText = bodyTextFromLines(bodyLines) || docTitle;
+      if (titleText) {
+        sectionEntries.push({
+          num: 1,
+          html: themedSection1TitleCardHtml({
+            title: titleText,
+            badge: 'Chapter Summary Title',
+            border: 'border-blue-300',
+            bg: 'bg-gradient-to-br from-blue-50/90 via-white to-sky-50/40',
+            labelClass: 'text-blue-700',
+            badgeClass: 'bg-blue-100 text-blue-900',
+          }),
+        });
+      }
+      bodyLines = [];
+      currentSection = 0;
+      currentTitle = '';
+      return;
+    }
+    const style = sectionStyle(currentSection);
+    sectionEntries.push({
+      num: currentSection,
+      html: themedNumberedSectionCardHtml({
+        sectionNum: currentSection,
+        sectionTitle: currentTitle,
+        bodyHtml: bodyLinesToHtml(bodyLines),
+        border: style.border,
+        bg: style.bg,
+        titleClass: style.title,
+        labelClass: 'text-blue-600',
+      }),
+    });
     bodyLines = [];
+    currentSection = 0;
+    currentTitle = '';
   };
 
   for (const raw of lines) {
     const t = raw.trim();
-    const h1 = t.match(/^#\s+(.+)$/);
-    if (h1 && !/^##/.test(t)) {
-      docHeader = h1[1].trim();
+    if (!t || /^---+$/.test(t)) continue;
+
+    const docLineTitle = parseMarkdownDocTitle(t);
+    if (docLineTitle) {
+      docTitle = docLineTitle;
       continue;
     }
-    const num = t.match(/^(?:#{1,3}\s*)?(\d{1,2})\.\s+(.+)$/);
-    if (num) {
+
+    const heading = parseMarkdownSectionHeading(t);
+    if (heading) {
       flushSection();
-      currentSection = Number(num[1]);
-      currentTitle = num[2].trim();
+      currentSection = heading.num;
+      currentTitle = heading.title;
       continue;
     }
     if (currentSection > 0) bodyLines.push(raw);
-    else if (t) bodyLines.push(raw);
   }
   flushSection();
 
-  const headerHtml = docHeader
+  if (!sectionEntries.some((e) => e.num === 1) && docTitle) {
+    sectionEntries.push({
+      num: 1,
+      html: themedSection1TitleCardHtml({
+        title: docTitle,
+        badge: 'Chapter Summary Title',
+        border: 'border-blue-300',
+        bg: 'bg-gradient-to-br from-blue-50/90 via-white to-sky-50/40',
+        labelClass: 'text-blue-700',
+        badgeClass: 'bg-blue-100 text-blue-900',
+      }),
+    });
+  }
+
+  const parts = sortSectionHtmlEntries(sectionEntries);
+
+  const headerHtml = docTitle
     ? `<header class="rounded-2xl bg-gradient-to-r from-blue-700 via-sky-600 to-indigo-600 px-5 py-4 mb-4 text-white shadow-lg">` +
       `<p class="text-xs font-semibold uppercase tracking-widest text-blue-100 mb-1">Chapter Summary Creator</p>` +
-      `<h3 class="text-lg font-bold">${formatInlineMarkdown(docHeader)}</h3></header>`
+      `<h3 class="text-lg font-bold">${formatInlineMarkdown(docTitle)}</h3></header>`
     : '';
 
   return (

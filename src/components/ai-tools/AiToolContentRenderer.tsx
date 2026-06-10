@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import SmartStudyGuideViewer from './SmartStudyGuideViewer';
 import ActivityProjectViewer from './ActivityProjectViewer';
+import FlashcardViewer from './FlashcardViewer';
 import AiToolWebView from './AiToolWebView';
 import { stripStructuredAiToolMetadata } from '../../lib/strip-ai-tool-metadata';
 import {
@@ -9,6 +10,14 @@ import {
   studyGuideHasVisibleBody,
 } from '../../lib/parse-smart-study-guide';
 import { resolveActivitiesFromPayload } from '../../lib/parse-activity-markdown';
+import {
+  contentHasNumberedTemplateSections,
+  resolveRichDisplayContent,
+} from '../../lib/ai-tool-display-content';
+import {
+  flashcardsHaveVisibleBody,
+  resolveFlashcardsFromPayload,
+} from '../../lib/parse-flashcards';
 
 type Props = {
   toolType: string;
@@ -59,6 +68,14 @@ export default function AiToolContentRenderer({
   variant = 'student',
 }: Props) {
   const cleaned = useMemo(() => stripStructuredAiToolMetadata(content), [content]);
+  const displayMarkdown = useMemo(
+    () => resolveRichDisplayContent(cleaned, rawContent),
+    [cleaned, rawContent]
+  );
+  const hasFullTemplateMarkdown = useMemo(
+    () => contentHasNumberedTemplateSections(displayMarkdown),
+    [displayMarkdown]
+  );
 
   const useNativeStudyGuide = useMemo(() => {
     if (toolType !== 'smart-study-guide-generator') return false;
@@ -70,13 +87,21 @@ export default function AiToolContentRenderer({
       payload.content,
       payload.rawContent
     );
+    // Native viewer shows Section 1 title card + all parsed sections (merged from markdown + rawData).
     return !markdownFallback && studyGuideHasVisibleBody(guide);
   }, [toolType, cleaned, rawContent]);
 
   const useNativeActivity = useMemo(() => {
     if (toolType !== 'activity-project-generator' && toolType !== 'project-idea-lab') return false;
+    if (hasFullTemplateMarkdown) return false;
     const activities = resolveActivitiesFromPayload(activitiesFromRaw(rawContent), cleaned);
     return activities.length > 0;
+  }, [toolType, cleaned, rawContent, hasFullTemplateMarkdown]);
+
+  const useNativeFlashcard = useMemo(() => {
+    if (toolType !== 'my-study-decks' && toolType !== 'flashcard-generator') return false;
+    const { cards } = resolveFlashcardsFromPayload(cleaned, rawContent);
+    return flashcardsHaveVisibleBody(cards);
   }, [toolType, cleaned, rawContent]);
 
   if (useNativeStudyGuide) {
@@ -89,6 +114,16 @@ export default function AiToolContentRenderer({
         content={cleaned}
         rawContent={rawContent}
         variant={toolType === 'project-idea-lab' ? 'student' : variant}
+      />
+    );
+  }
+
+  if (useNativeFlashcard) {
+    return (
+      <FlashcardViewer
+        content={cleaned}
+        rawContent={rawContent}
+        variant={toolType === 'flashcard-generator' ? 'teacher' : 'student'}
       />
     );
   }

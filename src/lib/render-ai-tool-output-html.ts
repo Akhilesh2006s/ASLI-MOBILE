@@ -1,5 +1,17 @@
 import { renderMarkdown } from './render-teacher-markdown';
+import {
+  contentHasNumberedTemplateSections,
+  resolveRichDisplayContent,
+} from './ai-tool-display-content';
+import { AI_TOOL_OUTPUT_STYLES } from './ai-tool-output-styles';
+import { renderNumberedTemplateAsCards } from './render-numbered-template-cards';
 import { tryRenderStructuredAiToolHtml } from './render-structured-ai-tool-html';
+
+export {
+  contentHasNumberedTemplateSections,
+  extractDisplayContent,
+  resolveRichDisplayContent,
+} from './ai-tool-display-content';
 import { renderSmartStudyGuideMarkdown } from './render-smart-study-guide-markdown';
 import { renderConceptBreakdownMarkdown } from './render-concept-breakdown-markdown';
 import { renderPracticeQaMarkdown } from './render-practice-qa-markdown';
@@ -100,17 +112,6 @@ const TOOL_RENDERERS: Record<string, (text: string) => string> = {
   'exam-question-paper-generator': renderMockTestMarkdown,
 };
 
-function extractDisplayContent(content: string): string {
-  const raw = String(content || '').trim();
-  if (!raw.startsWith('{')) return raw;
-  try {
-    const parsed = JSON.parse(raw) as { formatted?: string; markdown?: string };
-    return parsed.formatted || parsed.markdown || raw;
-  } catch {
-    return raw;
-  }
-}
-
 function wrapWithShell(toolType: string, innerHtml: string): string {
   const shell = TOOL_SHELLS[toolType];
   if (!shell) {
@@ -160,24 +161,44 @@ export function renderAiToolOutputHtml(
   rawContent?: unknown,
   variant: 'student' | 'teacher' = 'student'
 ): string {
-  const display = extractDisplayContent(content);
+  const display = resolveRichDisplayContent(content, rawContent);
   const structured = tryRenderStructuredAiToolHtml(toolType, display, rawContent, variant);
-  const inner = structured || (TOOL_RENDERERS[toolType] || renderMarkdown)(display);
-  const body = structured ? inner : wrapWithShell(toolType, inner);
+  const themedMarkdown = TOOL_RENDERERS[toolType];
+  const numberedTemplate = contentHasNumberedTemplateSections(display);
+
+  const structuredFullTools = new Set([
+    'worksheet-mcq-generator',
+    'concept-mastery-helper',
+    'homework-creator',
+    'story-passage-creator',
+    'reading-practice-room',
+  ]);
+
+  let inner: string;
+  if (structured && structuredFullTools.has(toolType)) {
+    inner = structured;
+  } else if (numberedTemplate && themedMarkdown) {
+    // Student tools: themed markdown shows every numbered section with tool colors.
+    inner = themedMarkdown(display);
+  } else if (numberedTemplate) {
+    // Teacher tools: card layout from numbered template (all sections + design).
+    inner = renderNumberedTemplateAsCards(toolType, display);
+  } else if (structured) {
+    inner = structured;
+  } else if (themedMarkdown) {
+    inner = themedMarkdown(display);
+  } else {
+    inner = renderMarkdown(display);
+  }
+
+  const body = TOOL_SHELLS[toolType] ? wrapWithShell(toolType, inner) : inner;
 
   return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    html, body { margin: 0; padding: 0; background: transparent; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-    img { max-width: 100%; height: auto; }
-    table { border-collapse: collapse; }
-    pre { white-space: pre-wrap; word-break: break-word; }
-  </style>
+  <style>${AI_TOOL_OUTPUT_STYLES}</style>
 </head>
 <body>${body}</body>
 </html>`;

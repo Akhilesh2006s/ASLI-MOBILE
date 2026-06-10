@@ -8,7 +8,20 @@ import Animated, {
 } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { TEACHER_AI_TOOLS, TEACHER_AI_TOOLS_SUBTITLE } from '../../../src/lib/teacher-ai-tools';
-import { TEACHER, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
+import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
+
+const TOOL_THEMES: Record<string, { bg: string; border: string; iconBg: string }> = {
+  '#ea580c': { bg: '#FFF7ED', border: '#FDBA74', iconBg: '#FFEDD5' },
+  '#2563eb': { bg: '#EFF6FF', border: '#93C5FD', iconBg: '#DBEAFE' },
+  '#0d9488': { bg: '#F0FDFA', border: '#5EEAD4', iconBg: '#CCFBF1' },
+  '#d97706': { bg: '#FFFBEB', border: '#FCD34D', iconBg: '#FEF3C7' },
+  '#7c3aed': { bg: '#F5F3FF', border: '#C4B5FD', iconBg: '#EDE9FE' },
+  '#db2777': { bg: '#FDF2F8', border: '#F9A8D4', iconBg: '#FCE7F3' },
+};
+
+function getToolTheme(color: string) {
+  return TOOL_THEMES[color] ?? { bg: '#F8FAFC', border: '#E2E8F0', iconBg: `${color}18` };
+}
 
 function usePressScale(to = 0.96) {
   const scale = useSharedValue(1);
@@ -20,6 +33,7 @@ function usePressScale(to = 0.96) {
 
 function ToolCard({ tool }: { tool: (typeof TEACHER_AI_TOOLS)[number] }) {
   const press = usePressScale();
+  const theme = getToolTheme(tool.color);
   return (
     <Pressable
       onPress={() =>
@@ -31,18 +45,29 @@ function ToolCard({ tool }: { tool: (typeof TEACHER_AI_TOOLS)[number] }) {
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
     >
-      <Animated.View style={[styles.toolCard, press.style]}>
-        <LinearGradient colors={[tool.color + '30', tool.color + '10']} style={styles.toolIcon}>
+      <Animated.View
+        style={[
+          styles.toolCard,
+          {
+            backgroundColor: theme.bg,
+            borderColor: theme.border,
+            borderLeftColor: tool.color,
+          },
+          press.style,
+        ]}
+      >
+        <View style={[styles.toolIcon, { backgroundColor: theme.iconBg }]}>
           <Ionicons
             name={tool.icon as keyof typeof Ionicons.glyphMap}
             size={22}
             color={tool.color}
           />
-        </LinearGradient>
+        </View>
         <View style={styles.toolBody}>
           <Text style={styles.toolTitle}>{tool.title}</Text>
           <Text style={styles.toolDescription}>{tool.description}</Text>
         </View>
+        <Ionicons name="chevron-forward" size={18} color={tool.color} style={{ opacity: 0.55 }} />
       </Animated.View>
     </Pressable>
   );
@@ -188,15 +213,22 @@ const styles = StyleSheet.create({
   },
   toolCard: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: TEACHER_SPACING.md,
-    ...glassCard,
     padding: TEACHER_SPACING.lg,
+    borderRadius: TEACHER_RADIUS.lg,
+    borderWidth: 1,
+    borderLeftWidth: 4,
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
   toolIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     flexShrink: 0,

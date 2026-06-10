@@ -1,5 +1,11 @@
 import { renderMarkdown } from './render-teacher-markdown';
 
+export function emptySectionPlaceholderHtml(
+  message = 'Not included in this generation.'
+): string {
+  return `<p class="text-sm italic text-slate-500 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2">${escapeHtml(message)}</p>`;
+}
+
 export function escapeHtml(text: string): string {
   return String(text || '')
     .replace(/&/g, '&amp;')
@@ -22,6 +28,12 @@ export function richTextHtml(text: string): string {
     return `<div class="prose prose-sm max-w-none text-slate-800">${renderMarkdown(raw)}</div>`;
   }
   return `<p class="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">${escapeHtml(raw)}</p>`;
+}
+
+/** Section badge icon — shows the section number instead of a generic § symbol. */
+export function sectionNumberIconSvg(num: number): string {
+  const label = num > 0 ? String(num) : '•';
+  return `<span class="text-sm font-bold tabular-nums leading-none">${escapeHtml(label)}</span>`;
 }
 
 export function sectionCardHtml(opts: {

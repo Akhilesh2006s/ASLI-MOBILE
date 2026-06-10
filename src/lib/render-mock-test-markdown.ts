@@ -97,7 +97,10 @@ export function renderMockTestMarkdown(text: string): string {
   let bodyLines: string[] = [];
 
   const flushSection = () => {
-    if (currentSection <= 0 && !bodyLines.length) return;
+    if (currentSection <= 0) {
+      bodyLines = [];
+      return;
+    }
     const style = sectionStyle(currentSection || 1);
     const label = currentTitle || `Section ${currentSection}`;
     const bodyHtml = bodyLinesToHtml(bodyLines);
@@ -152,7 +155,7 @@ export function renderMockTestMarkdown(text: string): string {
       continue;
     }
 
-    bodyLines.push(raw);
+    if (currentSection > 0) bodyLines.push(raw);
   }
 
   flushSection();

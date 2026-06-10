@@ -53,11 +53,10 @@ const TEACHER_TOOL_CONFIGS: Record<string, Omit<TeacherToolConfig, 'icon' | 'col
     fields: cascadeFields([
       {
         name: 'questionType',
-        label: 'Question Type *',
+        label: 'Question Type',
         type: 'select',
-        required: true,
         options: ['Single Option', 'Multiple Option', 'Integer Type', 'All Types'],
-        placeholder: 'Select question type',
+        placeholder: 'All Types (optional)',
       },
     ]),
   },

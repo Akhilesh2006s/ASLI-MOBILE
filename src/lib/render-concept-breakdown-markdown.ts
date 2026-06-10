@@ -1,4 +1,10 @@
 import { formatInlineMarkdown, renderMarkdown } from './render-teacher-markdown';
+import {
+  bodyTextFromLines,
+  parseMarkdownDocTitle,
+  themedNumberedSectionCardHtml,
+  themedSection1TitleCardHtml,
+} from './themed-markdown-sections';
 
 const SECTION_STYLES: Record<number, { border: string; bg: string; title: string }> = {
   1: { border: 'border-violet-300', bg: 'bg-violet-50/80', title: 'text-violet-900' },
@@ -50,23 +56,48 @@ export function renderConceptBreakdownMarkdown(text: string): string {
 
   const lines = processed.split('\n');
   const parts: string[] = [];
-  let docHeader = '';
+  let docTitle = '';
   let currentSection = 0;
   let currentTitle = '';
   let bodyLines: string[] = [];
+  let renderedSection1 = false;
 
   const flushSection = () => {
-    if (currentSection <= 0 && !bodyLines.length) return;
-    const style = sectionStyle(currentSection || 1);
-    const label = currentTitle || `Section ${currentSection}`;
+    if (currentSection <= 0) {
+      bodyLines = [];
+      return;
+    }
+    if (currentSection === 1) {
+      const titleText = bodyTextFromLines(bodyLines) || docTitle;
+      if (titleText) {
+        parts.push(
+          themedSection1TitleCardHtml({
+            title: titleText,
+            badge: 'Concept Title',
+            border: 'border-violet-300',
+            bg: 'bg-gradient-to-br from-violet-50/90 via-white to-indigo-50/40',
+            labelClass: 'text-violet-700',
+            badgeClass: 'bg-violet-100 text-violet-900',
+          }),
+        );
+        renderedSection1 = true;
+      }
+      bodyLines = [];
+      currentSection = 0;
+      currentTitle = '';
+      return;
+    }
+    const style = sectionStyle(currentSection);
     parts.push(
-      `<section class="mb-3 overflow-hidden rounded-xl border ${style.border} ${style.bg} shadow-sm">` +
-        `<header class="border-b border-violet-100/80 bg-white/60 px-3 py-2">` +
-        `<p class="text-[9px] font-bold uppercase tracking-wider text-violet-500">Section ${currentSection || '—'}</p>` +
-        `<h3 class="text-sm font-bold ${style.title}">${formatInlineMarkdown(label)}</h3>` +
-        `</header>` +
-        `<div class="px-3 py-2">${bodyLinesToHtml(bodyLines)}</div>` +
-        `</section>`,
+      themedNumberedSectionCardHtml({
+        sectionNum: currentSection,
+        sectionTitle: currentTitle,
+        bodyHtml: bodyLinesToHtml(bodyLines),
+        border: style.border,
+        bg: style.bg,
+        titleClass: style.title,
+        labelClass: 'text-violet-600',
+      }),
     );
     bodyLines = [];
     currentSection = 0;
@@ -76,14 +107,11 @@ export function renderConceptBreakdownMarkdown(text: string): string {
   for (const raw of lines) {
     const trimmed = raw.trim();
     if (!trimmed || /^---+$/.test(trimmed)) continue;
+    if (/^>\s/.test(trimmed)) continue;
 
-    const h1 = trimmed.match(/^#\s+(.+)$/);
-    if (h1 && !trimmed.startsWith('##')) {
-      docHeader =
-        `<header class="mb-4 overflow-hidden rounded-2xl border border-violet-200 bg-gradient-to-r from-violet-700 via-purple-600 to-indigo-600 px-4 py-4 text-white shadow-lg">` +
-        `<p class="text-[10px] font-semibold uppercase tracking-widest text-violet-100">Concept Breakdown Explainer</p>` +
-        `<h1 class="text-xl font-bold mt-1">${formatInlineMarkdown(h1[1].trim())}</h1>` +
-        `</header>`;
+    const docLineTitle = parseMarkdownDocTitle(trimmed);
+    if (docLineTitle) {
+      docTitle = docLineTitle;
       continue;
     }
 
@@ -95,10 +123,30 @@ export function renderConceptBreakdownMarkdown(text: string): string {
       continue;
     }
 
-    bodyLines.push(raw);
+    if (currentSection > 0) bodyLines.push(raw);
   }
 
   flushSection();
+
+  if (!renderedSection1 && docTitle) {
+    parts.unshift(
+      themedSection1TitleCardHtml({
+        title: docTitle,
+        badge: 'Concept Title',
+        border: 'border-violet-300',
+        bg: 'bg-gradient-to-br from-violet-50/90 via-white to-indigo-50/40',
+        labelClass: 'text-violet-700',
+        badgeClass: 'bg-violet-100 text-violet-900',
+      }),
+    );
+  }
+
+  const docHeader = docTitle
+    ? `<header class="mb-4 overflow-hidden rounded-2xl border border-violet-200 bg-gradient-to-r from-violet-700 via-purple-600 to-indigo-600 px-4 py-4 text-white shadow-lg">` +
+      `<p class="text-[10px] font-semibold uppercase tracking-widest text-violet-100">Concept Breakdown Explainer</p>` +
+      `<h1 class="text-xl font-bold mt-1">${formatInlineMarkdown(docTitle)}</h1>` +
+      `</header>`
+    : '';
 
   if (!parts.length) {
     return `<div class="prose prose-sm max-w-none text-slate-800">${renderMarkdown(processed)}</div>`;
@@ -111,4 +159,3 @@ export function renderConceptBreakdownMarkdown(text: string): string {
     `</div>`
   );
 }
-

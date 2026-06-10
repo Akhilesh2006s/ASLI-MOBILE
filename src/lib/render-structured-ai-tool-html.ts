@@ -9,16 +9,23 @@ import { resolveLessonsFromPayload } from './parse-lesson-planner';
 import { resolveDailyPlansFromPayload } from './parse-daily-class-plan';
 import { resolveHomeworkFromPayload } from './parse-homework-creator';
 import { resolveWorksheetFromPayload } from './parse-worksheet-mcq';
-import { resolveStoryFromPayload } from './parse-story-content';
-import { resolveConceptsFromPayload } from './parse-concept-mastery';
+import { resolveStoryFromPayload, type ParsedStory, type StoryQuestion } from './parse-story-content';
+import { resolveConceptsFromPayload, type NormalizedConcept } from './parse-concept-mastery';
+import {
+  contentHasNumberedTemplateSections,
+  resolveRichDisplayContent,
+} from './ai-tool-display-content';
 import {
   bulletListHtml,
+  checkListHtml,
   conceptGridHtml,
+  emptySectionPlaceholderHtml,
   escapeHtml,
   heroTitleCardHtml,
   numberedStepsHtml,
   richTextHtml,
   sectionCardHtml,
+  sectionNumberIconSvg,
   termGridHtml,
 } from './ai-tool-html-primitives';
 
@@ -423,73 +430,475 @@ function renderDailyClassPlanHtml(content: string, rawContent: unknown): string 
     .join('<div class="h-4"></div>');
 }
 
+function homeworkPracticeQuestionsHtml(
+  questions: import('./parse-homework-creator').HomeworkPracticeQuestion[],
+): string {
+  if (!questions.length) return emptySectionPlaceholderHtml();
+  return questions
+    .map((q, i) => {
+      const num = q.questionNumber ?? i + 1;
+      const opts = (q.options || [])
+        .map(
+          (o) =>
+            `<div class="rounded border border-slate-200 bg-white px-2 py-1 text-xs mt-1">${escapeHtml(o)}</div>`,
+        )
+        .join('');
+      const meta = [q.type, q.marks != null ? `${q.marks} marks` : '']
+        .filter(Boolean)
+        .map((t) => `<span class="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-900 mr-1">${escapeHtml(String(t))}</span>`)
+        .join('');
+      const answer = q.answer
+        ? `<p class="mt-2 text-xs text-emerald-700 font-semibold">Answer: ${escapeHtml(q.answer)}</p>`
+        : '';
+      const explanation = q.explanation
+        ? `<p class="mt-1 text-xs text-slate-600">Explanation: ${escapeHtml(q.explanation)}</p>`
+        : '';
+      return `<div class="mb-3 rounded-lg border border-orange-100 bg-orange-50/40 px-3 py-2">
+        <p class="text-xs font-bold text-orange-800">Q${num}</p>
+        <p class="text-sm text-slate-800 mt-1">${escapeHtml(q.question || '')}</p>
+        ${meta ? `<div class="mt-1">${meta}</div>` : ''}${opts}${answer}${explanation}
+      </div>`;
+    })
+    .join('');
+}
+
 function renderHomeworkHtml(content: string, rawContent: unknown): string | null {
   const { homework, markdownFallback } = resolveHomeworkFromPayload(content, rawContent);
   if (markdownFallback || !homework) return null;
+
   let html = heroTitleCardHtml({
-    eyebrow: 'Homework',
+    eyebrow: 'Homework Creator',
     title: homework.title || 'Homework Assignment',
     theme: 'orange',
+    badge: '1. Homework Title',
   });
-  if (homework.instructions) {
-    html += sectionCardHtml({
-      sectionNum: 'Section 2',
-      title: 'Instructions',
+
+  const sections: Array<{
+    num: number;
+    title: string;
+    stripe: string;
+    iconWrap: string;
+    icon: string;
+    body: string;
+  }> = [
+    {
+      num: 2,
+      title: 'Clear Student Instructions',
       stripe: 'border-orange-500',
       iconWrap: 'bg-orange-100 text-orange-800',
-      iconSvg: '<span>📋</span>',
-      body: richTextHtml(homework.instructions),
-    });
-  }
-  if (homework.practiceQuestions?.length) {
-    html += sectionCardHtml({
-      sectionNum: 'Section 3',
+      icon: '📋',
+      body: homework.instructions.trim()
+        ? richTextHtml(homework.instructions)
+        : emptySectionPlaceholderHtml(),
+    },
+    {
+      num: 3,
       title: 'Practice Questions',
       stripe: 'border-amber-500',
       iconWrap: 'bg-amber-100 text-amber-800',
-      iconSvg: '<span>❓</span>',
-      body: homework.practiceQuestions
-        .map(
-          (q, i) =>
-            `<div class="mb-2 rounded-lg border border-orange-100 bg-orange-50/50 px-3 py-2 text-sm"><span class="font-bold text-orange-800">Q${i + 1}. </span>${escapeHtml(q.question)}</div>`
-        )
-        .join(''),
+      icon: '❓',
+      body: homeworkPracticeQuestionsHtml(homework.practiceQuestions),
+    },
+    {
+      num: 4,
+      title: 'Application-based Tasks',
+      stripe: 'border-yellow-500',
+      iconWrap: 'bg-yellow-100 text-yellow-900',
+      icon: '💡',
+      body: homework.applicationTasks.length
+        ? bulletListHtml(homework.applicationTasks, 'text-orange-600')
+        : emptySectionPlaceholderHtml(),
+    },
+    {
+      num: 5,
+      title: 'One Creative / Thinking Question',
+      stripe: 'border-violet-500',
+      iconWrap: 'bg-violet-100 text-violet-800',
+      icon: '🧠',
+      body: homework.creativeThinkingQuestion.trim()
+        ? richTextHtml(homework.creativeThinkingQuestion)
+        : emptySectionPlaceholderHtml(),
+    },
+    {
+      num: 6,
+      title: 'One Real-life Observation Task',
+      stripe: 'border-cyan-500',
+      iconWrap: 'bg-cyan-100 text-cyan-800',
+      icon: '👁',
+      body: homework.realLifeObservationTask.trim()
+        ? richTextHtml(homework.realLifeObservationTask)
+        : emptySectionPlaceholderHtml(),
+    },
+    {
+      num: 7,
+      title: 'Challenge Question',
+      stripe: 'border-rose-500',
+      iconWrap: 'bg-rose-100 text-rose-800',
+      icon: '✨',
+      body: homework.challengeQuestion.trim()
+        ? richTextHtml(homework.challengeQuestion)
+        : emptySectionPlaceholderHtml(),
+    },
+    {
+      num: 8,
+      title: 'Support Hint for Struggling Learners',
+      stripe: 'border-teal-500',
+      iconWrap: 'bg-teal-100 text-teal-800',
+      icon: '💬',
+      body: homework.supportHint.trim()
+        ? richTextHtml(homework.supportHint)
+        : emptySectionPlaceholderHtml(),
+    },
+    {
+      num: 9,
+      title: 'Answer Hints / Key Points',
+      stripe: 'border-emerald-500',
+      iconWrap: 'bg-emerald-100 text-emerald-800',
+      icon: '🔑',
+      body: homework.answerHints.trim()
+        ? richTextHtml(homework.answerHints)
+        : emptySectionPlaceholderHtml(),
+    },
+    {
+      num: 10,
+      title: 'Parent Note',
+      stripe: 'border-indigo-500',
+      iconWrap: 'bg-indigo-100 text-indigo-800',
+      icon: '👪',
+      body: homework.parentNote.trim()
+        ? richTextHtml(homework.parentNote)
+        : emptySectionPlaceholderHtml(),
+    },
+  ];
+
+  for (const sec of sections) {
+    html += sectionCardHtml({
+      sectionNum: `Section ${sec.num}`,
+      title: sec.title,
+      stripe: sec.stripe,
+      iconWrap: sec.iconWrap,
+      iconSvg: `<span>${sec.icon}</span>`,
+      body: sec.body,
     });
   }
+
   return html;
 }
 
 function renderWorksheetHtml(content: string, rawContent: unknown): string | null {
   const { worksheet, markdownFallback } = resolveWorksheetFromPayload(content, rawContent);
   if (markdownFallback || !worksheet) return null;
+
   let html = heroTitleCardHtml({
     eyebrow: 'Worksheet & MCQ',
     title: worksheet.title || 'Worksheet',
     theme: 'indigo',
+    badge: 'Teacher worksheet pack',
   });
-  for (const sec of worksheet.sections || []) {
+
+  html += sectionCardHtml({
+    sectionNum: 'Section 2',
+    title: 'Learning Objectives',
+    stripe: 'border-emerald-500',
+    iconWrap: 'bg-emerald-100 text-emerald-800',
+    iconSvg: '<span>🎯</span>',
+    borderColor: 'border-emerald-200/80',
+    body: worksheet.learningObjectives.length
+      ? bulletListHtml(worksheet.learningObjectives, 'text-emerald-600')
+      : emptySectionPlaceholderHtml(),
+  });
+
+  html += sectionCardHtml({
+    sectionNum: 'Section 3',
+    title: 'Instructions to Students',
+    stripe: 'border-teal-500',
+    iconWrap: 'bg-teal-100 text-teal-800',
+    iconSvg: '<span>📋</span>',
+    borderColor: 'border-emerald-200/80',
+    body: worksheet.instructions.trim()
+      ? richTextHtml(worksheet.instructions)
+      : emptySectionPlaceholderHtml(),
+  });
+
+  const sortedSections = [...(worksheet.sections || [])].sort((a, b) => a.order - b.order);
+  for (const sec of sortedSections) {
     const qs = sec.questions || [];
-    if (!qs.length) continue;
     html += sectionCardHtml({
       sectionNum: sec.displayLabel || sec.label || 'Section',
       title: sec.label || 'Questions',
       stripe: 'border-emerald-500',
       iconWrap: 'bg-emerald-100 text-emerald-800',
       iconSvg: '<span>✓</span>',
-      body: qs
-        .map((q, i) => {
-          const opts = (q.options || [])
-            .map((o) => `<div class="rounded border border-slate-200 bg-white px-2 py-1 text-xs mt-1">${escapeHtml(o)}</div>`)
-            .join('');
-          return `<div class="mb-3 rounded-lg border border-emerald-100 bg-emerald-50/40 px-3 py-2">
-            <p class="text-xs font-bold text-emerald-800">Q${i + 1}</p>
-            <p class="text-sm text-slate-800 mt-1">${escapeHtml(q.question || '')}</p>${opts}
+      borderColor: 'border-emerald-200/80',
+      body: qs.length
+        ? qs
+            .map((q, i) => {
+              const num = q.questionNumber ?? i + 1;
+              const opts = (q.options || [])
+                .map(
+                  (o) =>
+                    `<div class="rounded border border-slate-200 bg-white px-2 py-1 text-xs mt-1">${escapeHtml(o)}</div>`
+                )
+                .join('');
+              const answer = q.answer
+                ? `<p class="mt-2 text-xs text-emerald-700 font-semibold">Answer: ${escapeHtml(q.answer)}</p>`
+                : '';
+              const explanation = q.explanation
+                ? `<p class="mt-1 text-xs text-slate-600">Explanation: ${escapeHtml(q.explanation)}</p>`
+                : '';
+              return `<div class="mb-3 rounded-lg border border-emerald-100 bg-emerald-50/40 px-3 py-2">
+            <p class="text-xs font-bold text-emerald-800">Q${num}${q.marks ? ` (${q.marks} marks)` : ''}</p>
+            <p class="text-sm text-slate-800 mt-1">${escapeHtml(q.question || '')}</p>${opts}${answer}${explanation}
           </div>`;
-        })
-        .join(''),
+            })
+            .join('')
+        : emptySectionPlaceholderHtml(),
     });
   }
+
+  html += sectionCardHtml({
+    sectionNum: 'Section 9',
+    title: 'Answer Key',
+    stripe: 'border-sky-500',
+    iconWrap: 'bg-sky-100 text-sky-800',
+    iconSvg: '<span>🔑</span>',
+    borderColor: 'border-emerald-200/80',
+    body: worksheet.answerKey.trim()
+      ? richTextHtml(worksheet.answerKey)
+      : emptySectionPlaceholderHtml(),
+  });
+
+  const tags = [worksheet.bloomLevel, worksheet.difficultyTag].filter(Boolean).join(' — ');
+  html += sectionCardHtml({
+    sectionNum: 'Section 10',
+    title: "Bloom's Level & Difficulty",
+    stripe: 'border-violet-500',
+    iconWrap: 'bg-violet-100 text-violet-800',
+    iconSvg: '<span>🎓</span>',
+    borderColor: 'border-emerald-200/80',
+    body: tags.trim() ? richTextHtml(tags) : emptySectionPlaceholderHtml(),
+  });
+
   return html;
+}
+
+function storyQuestionsHtml(questions: StoryQuestion[], badgeClass: string): string {
+  const valid = questions.filter((q) => q.question && q.question !== '[object Object]');
+  if (!valid.length) return emptySectionPlaceholderHtml();
+  return valid
+    .map(
+      (q, i) =>
+        `<div class="mb-2 flex gap-2 rounded-lg border border-slate-200/80 bg-white/80 px-3 py-2">
+          <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${badgeClass} text-xs font-bold text-white">${i + 1}</span>
+          <p class="text-sm text-slate-800 leading-relaxed">${escapeHtml(q.question)}</p>
+        </div>`,
+    )
+    .join('');
+}
+
+function renderTeacherStoryPassageSections(story: ParsedStory): string {
+  const sections: Array<{
+    num: number;
+    title: string;
+    stripe: string;
+    iconWrap: string;
+    icon: string;
+    body: string;
+  }> = [
+    {
+      num: 2,
+      title: 'Topic and Subtopic Connection',
+      stripe: 'border-cyan-500',
+      iconWrap: 'bg-cyan-100 text-cyan-800',
+      icon: '🎯',
+      body: story.topicSubtopicConnection?.trim()
+        ? richTextHtml(story.topicSubtopicConnection)
+        : emptySectionPlaceholderHtml(),
+    },
+    {
+      num: 3,
+      title: 'Prior Knowledge Required',
+      stripe: 'border-sky-500',
+      iconWrap: 'bg-sky-100 text-sky-800',
+      icon: '📚',
+      body: story.priorKnowledgeRequired?.trim()
+        ? richTextHtml(story.priorKnowledgeRequired)
+        : emptySectionPlaceholderHtml(),
+    },
+    {
+      num: 4,
+      title: "Learning Objectives – Bloom's Taxonomy Aligned",
+      stripe: 'border-violet-500',
+      iconWrap: 'bg-violet-100 text-violet-800',
+      icon: '🎯',
+      body: story.learningObjectives.length
+        ? bulletListHtml(story.learningObjectives, 'text-violet-600')
+        : emptySectionPlaceholderHtml(),
+    },
+    {
+      num: 5,
+      title: 'NCF Competency / Learning Outcome Alignment',
+      stripe: 'border-blue-500',
+      iconWrap: 'bg-blue-100 text-blue-800',
+      icon: '🎓',
+      body: story.ncfAlignment?.trim()
+        ? richTextHtml(story.ncfAlignment)
+        : emptySectionPlaceholderHtml(),
+    },
+    {
+      num: 6,
+      title: 'Vocabulary Warm-up',
+      stripe: 'border-teal-500',
+      iconWrap: 'bg-teal-100 text-teal-800',
+      icon: '📝',
+      body: story.vocabulary.length
+        ? bulletListHtml(story.vocabulary, 'text-teal-700')
+        : emptySectionPlaceholderHtml(),
+    },
+    {
+      num: 7,
+      title: 'Pre-reading Thinking Prompt',
+      stripe: 'border-amber-500',
+      iconWrap: 'bg-amber-100 text-amber-800',
+      icon: '💡',
+      body: story.preReadingPrompt?.trim()
+        ? richTextHtml(story.preReadingPrompt)
+        : emptySectionPlaceholderHtml(),
+    },
+    {
+      num: 8,
+      title: 'Story / Passage Content',
+      stripe: 'border-amber-500',
+      iconWrap: 'bg-amber-100 text-amber-800',
+      icon: '📖',
+      body: story.passage?.trim()
+        ? richTextHtml(story.passage)
+        : emptySectionPlaceholderHtml(),
+    },
+    {
+      num: 9,
+      title: 'Read and Recall Questions',
+      stripe: 'border-indigo-500',
+      iconWrap: 'bg-indigo-100 text-indigo-800',
+      icon: '❓',
+      body: storyQuestionsHtml(story.readRecallQuestions, 'bg-indigo-600'),
+    },
+    {
+      num: 10,
+      title: 'Think and Infer Questions',
+      stripe: 'border-sky-500',
+      iconWrap: 'bg-sky-100 text-sky-800',
+      icon: '❓',
+      body: storyQuestionsHtml(story.thinkInferQuestions, 'bg-sky-600'),
+    },
+    {
+      num: 11,
+      title: 'Apply and Connect Questions',
+      stripe: 'border-emerald-500',
+      iconWrap: 'bg-emerald-100 text-emerald-800',
+      icon: '❓',
+      body: storyQuestionsHtml(story.applyConnectQuestions, 'bg-emerald-600'),
+    },
+    {
+      num: 12,
+      title: 'Vocabulary and Grammar Practice',
+      stripe: 'border-teal-500',
+      iconWrap: 'bg-teal-100 text-teal-800',
+      icon: '📝',
+      body:
+        story.vocabularyGrammarPractice?.trim()
+          ? richTextHtml(story.vocabularyGrammarPractice)
+          : story.vocabularyPractice.length
+            ? bulletListHtml(story.vocabularyPractice, 'text-teal-700')
+            : emptySectionPlaceholderHtml(),
+    },
+    {
+      num: 13,
+      title: 'Creative Response Activity',
+      stripe: 'border-purple-500',
+      iconWrap: 'bg-purple-100 text-purple-800',
+      icon: '✨',
+      body: story.creativeResponseActivity?.trim()
+        ? richTextHtml(story.creativeResponseActivity)
+        : emptySectionPlaceholderHtml(),
+    },
+    {
+      num: 14,
+      title: 'Answer Key / Suggested Responses',
+      stripe: 'border-yellow-500',
+      iconWrap: 'bg-yellow-100 text-yellow-900',
+      icon: '🔑',
+      body:
+        story.answerKeySuggestedResponses?.trim()
+          ? richTextHtml(story.answerKeySuggestedResponses)
+          : story.answerHints.length
+            ? bulletListHtml(story.answerHints, 'text-yellow-800')
+            : emptySectionPlaceholderHtml(),
+    },
+    {
+      num: 15,
+      title: 'Common Mistakes to Avoid',
+      stripe: 'border-rose-500',
+      iconWrap: 'bg-rose-100 text-rose-800',
+      icon: '⚠️',
+      body: story.commonMistakesToAvoid?.trim()
+        ? richTextHtml(story.commonMistakesToAvoid)
+        : emptySectionPlaceholderHtml(),
+    },
+    {
+      num: 16,
+      title: 'Differentiation Support',
+      stripe: 'border-emerald-500',
+      iconWrap: 'bg-emerald-100 text-emerald-800',
+      icon: '👥',
+      body: story.differentiationSupport?.trim()
+        ? richTextHtml(story.differentiationSupport)
+        : emptySectionPlaceholderHtml(),
+    },
+    {
+      num: 17,
+      title: 'Expected Learning Outcomes',
+      stripe: 'border-violet-500',
+      iconWrap: 'bg-violet-100 text-violet-800',
+      icon: '🎓',
+      body: story.expectedLearningOutcomes?.trim()
+        ? richTextHtml(story.expectedLearningOutcomes)
+        : emptySectionPlaceholderHtml(),
+    },
+    {
+      num: 18,
+      title: 'Real-life Application',
+      stripe: 'border-orange-500',
+      iconWrap: 'bg-orange-100 text-orange-800',
+      icon: '🌍',
+      body: story.realLifeApplication?.trim()
+        ? richTextHtml(story.realLifeApplication)
+        : emptySectionPlaceholderHtml(),
+    },
+    {
+      num: 19,
+      title: 'Reflection / Exit Ticket',
+      stripe: 'border-fuchsia-500',
+      iconWrap: 'bg-fuchsia-100 text-fuchsia-800',
+      icon: '💬',
+      body: story.reflection?.trim()
+        ? richTextHtml(story.reflection)
+        : emptySectionPlaceholderHtml(),
+    },
+  ];
+
+  return sections
+    .map((sec) =>
+      sectionCardHtml({
+        sectionNum: `Section ${sec.num}`,
+        title: sec.title,
+        stripe: sec.stripe,
+        iconWrap: sec.iconWrap,
+        iconSvg: `<span>${sec.icon}</span>`,
+        body: sec.body,
+      }),
+    )
+    .join('');
 }
 
 function renderStoryHtml(content: string, rawContent: unknown): string | null {
@@ -499,35 +908,12 @@ function renderStoryHtml(content: string, rawContent: unknown): string | null {
     return resolved.stories
       .map((story) => {
         let html = heroTitleCardHtml({
-          eyebrow: 'Story & Passage',
+          eyebrow: 'Story & Passage Creator',
           title: story.title || 'Reading Passage',
           theme: 'blue',
+          badge: '1. Story / Passage Title',
         });
-        if (story.passage) {
-          html += sectionCardHtml({
-            sectionNum: 'Section 2',
-            title: 'Passage',
-            stripe: 'border-sky-500',
-            iconWrap: 'bg-sky-100 text-sky-800',
-            iconSvg: '<span>📖</span>',
-            body: richTextHtml(story.passage),
-          });
-        }
-        const questions = [
-          ...story.readRecallQuestions.map((q) => q.question),
-          ...story.thinkInferQuestions.map((q) => q.question),
-          ...story.applyConnectQuestions.map((q) => q.question),
-        ].filter(Boolean);
-        if (questions.length) {
-          html += sectionCardHtml({
-            sectionNum: 'Section 3',
-            title: 'Comprehension Questions',
-            stripe: 'border-indigo-500',
-            iconWrap: 'bg-indigo-100 text-indigo-800',
-            iconSvg: '<span>❓</span>',
-            body: numberedStepsHtml(questions),
-          });
-        }
+        html += renderTeacherStoryPassageSections(story);
         return html;
       })
       .join('<div class="h-4"></div>');
@@ -561,6 +947,127 @@ function renderStoryHtml(content: string, rawContent: unknown): string | null {
   return html;
 }
 
+function conceptSectionBody(text: string, list?: string[]): string {
+  if (list?.length) return bulletListHtml(list, 'text-violet-600');
+  if (text?.trim()) return richTextHtml(text);
+  return emptySectionPlaceholderHtml();
+}
+
+function renderConceptMasterySections(concept: NormalizedConcept): string {
+  const sections: {
+    num: number;
+    title: string;
+    stripe: string;
+    iconWrap: string;
+    body: string;
+  }[] = [
+    {
+      num: 1,
+      title: 'Simple definition',
+      stripe: 'border-fuchsia-500',
+      iconWrap: 'bg-fuchsia-100 text-fuchsia-800',
+      body: conceptSectionBody(concept.simpleDefinition),
+    },
+    {
+      num: 2,
+      title: 'Why this concept is important',
+      stripe: 'border-violet-500',
+      iconWrap: 'bg-violet-100 text-violet-800',
+      body: conceptSectionBody(concept.whyImportant),
+    },
+    {
+      num: 3,
+      title: 'Prior knowledge needed',
+      stripe: 'border-purple-500',
+      iconWrap: 'bg-purple-100 text-purple-800',
+      body: conceptSectionBody(concept.priorKnowledge),
+    },
+    {
+      num: 4,
+      title: 'Step-by-step explanation',
+      stripe: 'border-indigo-500',
+      iconWrap: 'bg-indigo-100 text-indigo-800',
+      body: conceptSectionBody(concept.explanation),
+    },
+    {
+      num: 5,
+      title: 'Diagram / visualisation suggestion',
+      stripe: 'border-blue-500',
+      iconWrap: 'bg-blue-100 text-blue-800',
+      body: conceptSectionBody(concept.diagramSuggestion),
+    },
+    {
+      num: 6,
+      title: 'Real-life examples',
+      stripe: 'border-cyan-500',
+      iconWrap: 'bg-cyan-100 text-cyan-800',
+      body: conceptSectionBody(concept.realLifeExamples),
+    },
+    {
+      num: 7,
+      title: 'Common misconceptions and corrections',
+      stripe: 'border-amber-500',
+      iconWrap: 'bg-amber-100 text-amber-900',
+      body: concept.misconceptions.length
+        ? bulletListHtml(concept.misconceptions, 'text-amber-700')
+        : emptySectionPlaceholderHtml(),
+    },
+    {
+      num: 8,
+      title: 'Concept check questions',
+      stripe: 'border-rose-500',
+      iconWrap: 'bg-rose-100 text-rose-800',
+      body: concept.conceptCheckQuestions.length
+        ? numberedStepsHtml(concept.conceptCheckQuestions, 'bg-rose-600')
+        : emptySectionPlaceholderHtml(),
+    },
+    {
+      num: 9,
+      title: 'Key points to remember',
+      stripe: 'border-emerald-500',
+      iconWrap: 'bg-emerald-100 text-emerald-800',
+      body: concept.keyPoints.length
+        ? checkListHtml(concept.keyPoints)
+        : emptySectionPlaceholderHtml(),
+    },
+    {
+      num: 10,
+      title: 'Exam tips',
+      stripe: 'border-sky-500',
+      iconWrap: 'bg-sky-100 text-sky-800',
+      body: conceptSectionBody(concept.examTips),
+    },
+    {
+      num: 11,
+      title: 'Higher-order thinking question',
+      stripe: 'border-pink-500',
+      iconWrap: 'bg-pink-100 text-pink-800',
+      body: conceptSectionBody(concept.hotsQuestion),
+    },
+    {
+      num: 12,
+      title: 'Quick self-reflection prompt',
+      stripe: 'border-fuchsia-600',
+      iconWrap: 'bg-fuchsia-50 text-fuchsia-900',
+      body: conceptSectionBody(concept.reflectionPrompt),
+    },
+  ];
+
+  return sections
+    .map((sec) =>
+      sectionCardHtml({
+        sectionNum: `Section ${sec.num}`,
+        title: sec.title,
+        stripe: sec.stripe,
+        iconWrap: sec.iconWrap,
+        iconSvg: sectionNumberIconSvg(sec.num),
+        borderColor: 'border-fuchsia-200/80',
+        body: sec.body,
+      })
+    )
+    .join('');
+}
+
 function renderConceptMasteryHtml(content: string, rawContent: unknown): string | null {
   const { concepts, markdownFallback } = resolveConceptsFromPayload(content, rawContent);
   if (markdownFallback || !concepts.length) return null;
@@ -570,27 +1077,9 @@ function renderConceptMasteryHtml(content: string, rawContent: unknown): string 
         eyebrow: 'Concept Mastery',
         title: concept.conceptName || 'Concept',
         theme: 'violet',
+        badge: concept.difficulty || undefined,
       });
-      if (concept.explanation) {
-        html += sectionCardHtml({
-          sectionNum: 'Section 2',
-          title: 'Explanation',
-          stripe: 'border-violet-500',
-          iconWrap: 'bg-violet-100 text-violet-800',
-          iconSvg: '<span>🧠</span>',
-          body: richTextHtml(concept.explanation),
-        });
-      }
-      if (concept.conceptCheckQuestions?.length) {
-        html += sectionCardHtml({
-          sectionNum: 'Section 5',
-          title: 'Concept Check Questions',
-          stripe: 'border-emerald-500',
-          iconWrap: 'bg-emerald-100 text-emerald-800',
-          iconSvg: '<span>❓</span>',
-          body: numberedStepsHtml(concept.conceptCheckQuestions),
-        });
-      }
+      html += renderConceptMasterySections(concept);
       return html;
     })
     .join('<div class="h-4"></div>');
@@ -617,12 +1106,28 @@ const STRUCTURED_RENDERERS: Record<
   'concept-mastery-helper': (c, r) => renderConceptMasteryHtml(c, r),
 };
 
+const FULL_STRUCTURED_MARKDOWN_TOOLS = new Set([
+  'worksheet-mcq-generator',
+  'concept-mastery-helper',
+  'homework-creator',
+  'story-passage-creator',
+  'reading-practice-room',
+]);
+
 export function tryRenderStructuredAiToolHtml(
   toolType: string,
   content: string,
   rawContent?: unknown,
   variant: Variant = 'student'
 ): string | null {
+  const display = resolveRichDisplayContent(content, rawContent);
+  if (
+    contentHasNumberedTemplateSections(display) &&
+    !FULL_STRUCTURED_MARKDOWN_TOOLS.has(toolType)
+  ) {
+    return null;
+  }
+
   const renderer = STRUCTURED_RENDERERS[toolType];
   if (!renderer) return null;
   try {

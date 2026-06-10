@@ -19,6 +19,7 @@ type NormalizedActivity = {
   materials: string[];
   steps: string[];
   teacherInstructions: string[];
+  studentInstructions: string[];
   differentiation: string;
   assessmentRubric: string[];
   expectedOutcomes: string;
@@ -92,7 +93,10 @@ function normalizeActivity(raw: ParsedActivity, idx: number, mode: 'student' | '
     ncfAlignment: ncf,
     materials: dedupeStringLines(coalesceLines(a.materials_required || a.materials)),
     steps,
-    teacherInstructions: coalesceLines(a.teacher_instructions),
+    teacherInstructions: coalesceLines(a.teacher_instructions || a.teacherInstructions),
+    studentInstructions: studentSteps.length
+      ? studentSteps
+      : coalesceLines(a.student_instructions || a.studentInstructions),
     differentiation: String(a.differentiation_support_extension || a.differentiation || '').trim(),
     assessmentRubric: dedupeStringLines(
       coalesceLines(a.assessment_criteria_rubric || a.assessment || a.evaluation)
@@ -159,6 +163,14 @@ const TEACHER_SECTIONS: SectionDef[] = [
   },
   {
     num: 8,
+    title: 'Student instructions',
+    icon: 'school-outline',
+    stripe: '#14b8a6',
+    hasContent: (a) => a.studentInstructions.length > 0,
+    render: (a) => <BulletList items={a.studentInstructions} />,
+  },
+  {
+    num: 9,
     title: 'Differentiation',
     icon: 'git-branch-outline',
     stripe: '#ec4899',
@@ -166,7 +178,7 @@ const TEACHER_SECTIONS: SectionDef[] = [
     render: (a) => <Text style={styles.preWrap}>{a.differentiation}</Text>,
   },
   {
-    num: 9,
+    num: 10,
     title: 'Assessment rubric',
     icon: 'clipboard-outline',
     stripe: '#f43f5e',
@@ -174,7 +186,7 @@ const TEACHER_SECTIONS: SectionDef[] = [
     render: (a) => <BulletList items={a.assessmentRubric} />,
   },
   {
-    num: 10,
+    num: 11,
     title: 'Expected learning outcomes',
     icon: 'trophy-outline',
     stripe: '#0891b2',
@@ -182,7 +194,7 @@ const TEACHER_SECTIONS: SectionDef[] = [
     render: (a) => <Text style={styles.preWrap}>{a.expectedOutcomes}</Text>,
   },
   {
-    num: 11,
+    num: 12,
     title: 'Real-life application',
     icon: 'sparkles-outline',
     stripe: '#d946ef',
@@ -190,7 +202,7 @@ const TEACHER_SECTIONS: SectionDef[] = [
     render: (a) => <Text style={styles.preWrap}>{a.realLife}</Text>,
   },
   {
-    num: 12,
+    num: 13,
     title: 'Reflection / exit ticket',
     icon: 'bulb-outline',
     stripe: '#f97316',
@@ -198,6 +210,14 @@ const TEACHER_SECTIONS: SectionDef[] = [
     render: (a) => <Text style={styles.preWrap}>{a.reflection}</Text>,
   },
 ];
+
+function EmptySectionHint() {
+  return (
+    <Text style={styles.emptySectionHint}>
+      Not included in this generation — try regenerating with more detail if you need this section.
+    </Text>
+  );
+}
 
 function SectionCard({
   sectionNum,
@@ -373,7 +393,7 @@ function TeacherActivityCard({ activity }: { activity: NormalizedActivity }) {
         </View>
       </View>
 
-      {TEACHER_SECTIONS.filter((s) => s.hasContent(activity)).map((sec) => (
+      {TEACHER_SECTIONS.map((sec) => (
         <SectionCard
           key={sec.num}
           sectionNum={`Section ${sec.num}`}
@@ -381,7 +401,7 @@ function TeacherActivityCard({ activity }: { activity: NormalizedActivity }) {
           icon={sec.icon}
           stripe={sec.stripe}
         >
-          {sec.render(activity)}
+          {sec.hasContent(activity) ? sec.render(activity) : <EmptySectionHint />}
         </SectionCard>
       ))}
     </View>
@@ -651,4 +671,16 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { marginTop: 10, fontSize: 14, fontWeight: '700', color: '#334155' },
   emptyHint: { marginTop: 4, fontSize: 12, color: '#64748b', textAlign: 'center' },
+  emptySectionHint: {
+    fontSize: 13,
+    fontStyle: 'italic',
+    color: '#a8a29e',
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: '#e7e5e4',
+    backgroundColor: '#fafaf9',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
 });

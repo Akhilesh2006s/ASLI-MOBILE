@@ -1,4 +1,10 @@
 import { formatInlineMarkdown, renderMarkdown } from './render-teacher-markdown';
+import {
+  bodyTextFromLines,
+  parseMarkdownDocTitle,
+  themedNumberedSectionCardHtml,
+  themedSection1TitleCardHtml,
+} from './themed-markdown-sections';
 
 const SECTION_STYLES: Record<number, { border: string; bg: string; title: string }> = {
   1: { border: 'border-indigo-300', bg: 'bg-indigo-50/80', title: 'text-indigo-900' },
@@ -56,22 +62,48 @@ export function renderSmartStudyGuideMarkdown(text: string): string {
   const lines = processed.split('\n');
   const parts: string[] = [];
   let docHeader = '';
+  let docTitle = '';
   let currentSection = 0;
   let currentTitle = '';
   let bodyLines: string[] = [];
+  let renderedSection1 = false;
 
   const flushSection = () => {
-    if (currentSection <= 0 && !bodyLines.length) return;
+    if (currentSection <= 0) {
+      bodyLines = [];
+      return;
+    }
+    if (currentSection === 1) {
+      const titleText = bodyTextFromLines(bodyLines) || docTitle;
+      if (titleText) {
+        parts.push(
+          themedSection1TitleCardHtml({
+            title: titleText,
+            badge: 'Study Guide Title',
+            border: 'border-indigo-300',
+            bg: 'bg-gradient-to-br from-indigo-50/90 via-white to-cyan-50/40',
+            labelClass: 'text-indigo-700',
+            badgeClass: 'bg-indigo-100 text-indigo-900',
+          }),
+        );
+        renderedSection1 = true;
+      }
+      bodyLines = [];
+      currentSection = 0;
+      currentTitle = '';
+      return;
+    }
     const style = sectionStyle(currentSection || 1);
-    const label = currentTitle || `Section ${currentSection}`;
     parts.push(
-      `<section class="mb-3 overflow-hidden rounded-xl border ${style.border} ${style.bg} shadow-sm">` +
-        `<header class="border-b border-indigo-100/80 bg-white/60 px-3 py-2">` +
-        `<p class="text-[9px] font-bold uppercase tracking-wider text-indigo-500">Section ${currentSection || '—'}</p>` +
-        `<h3 class="text-sm font-bold ${style.title}">${formatInlineMarkdown(label)}</h3>` +
-        `</header>` +
-        `<div class="px-3 py-2">${bodyLinesToHtml(bodyLines)}</div>` +
-        `</section>`,
+      themedNumberedSectionCardHtml({
+        sectionNum: currentSection,
+        sectionTitle: currentTitle,
+        bodyHtml: bodyLinesToHtml(bodyLines),
+        border: style.border,
+        bg: style.bg,
+        titleClass: style.title,
+        labelClass: 'text-indigo-500',
+      }),
     );
     bodyLines = [];
     currentSection = 0;
@@ -82,12 +114,13 @@ export function renderSmartStudyGuideMarkdown(text: string): string {
     const trimmed = raw.trim();
     if (!trimmed || /^---+$/.test(trimmed)) continue;
 
-    const h1 = trimmed.match(/^#\s+(.+)$/);
-    if (h1 && !trimmed.startsWith('##')) {
+    const docLineTitle = parseMarkdownDocTitle(trimmed);
+    if (docLineTitle) {
+      docTitle = docLineTitle;
       docHeader =
         `<header class="mb-4 overflow-hidden rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-700 via-violet-600 to-cyan-600 px-4 py-4 text-white shadow-lg">` +
         `<p class="text-[10px] font-semibold uppercase tracking-widest text-indigo-100">Smart Study Guide</p>` +
-        `<h1 class="text-xl font-bold mt-1">${formatInlineMarkdown(h1[1].trim())}</h1>` +
+        `<h1 class="text-xl font-bold mt-1">${formatInlineMarkdown(docTitle)}</h1>` +
         `</header>`;
       continue;
     }
@@ -100,10 +133,23 @@ export function renderSmartStudyGuideMarkdown(text: string): string {
       continue;
     }
 
-    bodyLines.push(raw);
+    if (currentSection > 0) bodyLines.push(raw);
   }
 
   flushSection();
+
+  if (!renderedSection1 && docTitle) {
+    parts.unshift(
+      themedSection1TitleCardHtml({
+        title: docTitle,
+        badge: 'Study Guide Title',
+        border: 'border-indigo-300',
+        bg: 'bg-gradient-to-br from-indigo-50/90 via-white to-cyan-50/40',
+        labelClass: 'text-indigo-700',
+        badgeClass: 'bg-indigo-100 text-indigo-900',
+      }),
+    );
+  }
 
   if (!parts.length) {
     return `<div class="prose prose-sm max-w-none text-slate-800">${renderMarkdown(processed)}</div>`;

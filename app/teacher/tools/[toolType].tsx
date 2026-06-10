@@ -14,6 +14,13 @@ import {
   Platform,
   StatusBar,
 } from 'react-native';
+import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -69,6 +76,9 @@ function mergeSelectedIntoOptions(options: string[], selected: unknown): string[
   if (options.includes(v)) return options;
   return [v, ...options];
 }
+
+const HEADER_COLLAPSE_DISTANCE = 72;
+const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 
 const FIELD_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   board: 'school-outline',
@@ -146,6 +156,37 @@ function FormSection({
   );
 }
 
+function ParametersSummaryBar({
+  summary,
+  accent,
+  expanded,
+  onToggle,
+}: {
+  summary: string;
+  accent: string;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <Pressable style={styles.paramsSummary} onPress={onToggle}>
+      <View style={[styles.paramsSummaryIcon, { backgroundColor: `${accent}22` }]}>
+        <Ionicons name="options-outline" size={18} color={accent} />
+      </View>
+      <View style={styles.paramsSummaryText}>
+        <Text style={styles.paramsSummaryTitle}>
+          {expanded ? 'Hide parameters' : 'Show parameters'}
+        </Text>
+        {!expanded && summary ? (
+          <Text style={styles.paramsSummaryMeta} numberOfLines={1}>
+            {summary}
+          </Text>
+        ) : null}
+      </View>
+      <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={18} color={TEACHER.textMuted} />
+    </Pressable>
+  );
+}
+
 function TeacherToolHeader({
   title,
   subtitle,
@@ -195,6 +236,8 @@ export default function TeacherToolPage() {
   const [fallbackEmptyMessage, setFallbackEmptyMessage] = useState('');
   const [fromAiFailure, setFromAiFailure] = useState(false);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
+  const [paramsExpanded, setParamsExpanded] = useState(true);
+  const scrollY = useSharedValue(0);
   const [assignedSubjectNames, setAssignedSubjectNames] = useState<string[]>([]);
   const [availableNCERTTopics, setAvailableNCERTTopics] = useState<string[]>([]);
   const [schoolBoardName, setSchoolBoardName] = useState('CBSE');
@@ -253,6 +296,60 @@ export default function TeacherToolPage() {
     () => stripStructuredAiToolMetadata(generatedContent),
     [generatedContent]
   );
+
+  const paramsSummary = useMemo(() => {
+    return [
+      selectedBoard,
+      formParams.gradeLevel,
+      formParams.subject,
+      formParams.topic || formParams.chapter,
+      formParams.subTopic,
+    ]
+      .filter((v) => typeof v === 'string' && v.trim())
+      .join(' · ');
+  }, [selectedBoard, formParams]);
+
+  const showCollapsedParams = !!generatedContent && !isGenerating;
+  const showParameterForms = !showCollapsedParams || paramsExpanded;
+
+  useEffect(() => {
+    if (generatedContent) {
+      setParamsExpanded(false);
+    }
+  }, [generatedContent]);
+
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+
+  const headerAnimatedStyle = useAnimatedStyle(() => ({
+    maxHeight: interpolate(
+      scrollY.value,
+      [0, HEADER_COLLAPSE_DISTANCE],
+      [120, 0],
+      Extrapolation.CLAMP
+    ),
+    opacity: interpolate(scrollY.value, [0, HEADER_COLLAPSE_DISTANCE * 0.65], [1, 0], Extrapolation.CLAMP),
+    overflow: 'hidden' as const,
+  }));
+
+  const compactHeaderAnimatedStyle = useAnimatedStyle(() => ({
+    maxHeight: interpolate(
+      scrollY.value,
+      [HEADER_COLLAPSE_DISTANCE * 0.4, HEADER_COLLAPSE_DISTANCE],
+      [0, 52],
+      Extrapolation.CLAMP
+    ),
+    opacity: interpolate(
+      scrollY.value,
+      [HEADER_COLLAPSE_DISTANCE * 0.4, HEADER_COLLAPSE_DISTANCE],
+      [0, 1],
+      Extrapolation.CLAMP
+    ),
+    overflow: 'hidden' as const,
+  }));
 
   const { curriculumFields, topicFields, extraFields } = useMemo(() => {
     if (!config) return { curriculumFields: [], topicFields: [], extraFields: [] };
@@ -724,55 +821,90 @@ export default function TeacherToolPage() {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" />
 
-      <TeacherToolHeader
-        title={config.name}
-        subtitle={config.description}
-        onBack={goBack}
-      />
+      <Animated.View style={headerAnimatedStyle}>
+        <TeacherToolHeader
+          title={config.name}
+          subtitle={config.description}
+          onBack={goBack}
+        />
+      </Animated.View>
+
+      <Animated.View style={[styles.compactHeader, compactHeaderAnimatedStyle]}>
+        <LinearGradient
+          colors={[...TEACHER.headerGradient]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.compactHeaderRow}>
+          <Pressable onPress={goBack} style={styles.backBtn} hitSlop={8}>
+            <Ionicons name="arrow-back" size={22} color={TEACHER.text} />
+          </Pressable>
+          <Text style={styles.compactHeaderTitle} numberOfLines={1}>
+            {config.name}
+          </Text>
+          <View style={styles.headerSpacer} />
+        </View>
+      </Animated.View>
 
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
       >
-        <ScrollView
+        <AnimatedScrollView
           style={styles.scroll}
           contentContainerStyle={[styles.scrollContent, { paddingBottom: generatedContent ? 24 : 100 }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          onScroll={scrollHandler}
+          scrollEventThrottle={16}
         >
-          <FormSection title="Tool Parameters" subtitle="Board and class details" accent={accent}>
-            {renderDropdownTrigger(
-              'board',
-              'Board',
-              selectedBoard,
-              'Select board',
-              boardOptions,
-              isLoadingUser,
-              false,
-              true
-            )}
-            {curriculumFields.map(renderField)}
-            {isStoryLanguageTool(toolType) ? (
-              <View style={styles.infoBanner}>
-                <Ionicons name="information-circle" size={18} color={TEACHER.primaryLight} />
-                <Text style={styles.infoBannerText}>
-                  English and Hindi subjects only for this tool.
-                </Text>
-              </View>
-            ) : null}
-          </FormSection>
-
-          {topicFields.length > 0 ? (
-            <FormSection title="Topic details" subtitle="Pick chapter and sub-topic from syllabus" accent={accent}>
-              {topicFields.map(renderField)}
-            </FormSection>
+          {showCollapsedParams ? (
+            <ParametersSummaryBar
+              summary={paramsSummary}
+              accent={accent}
+              expanded={paramsExpanded}
+              onToggle={() => setParamsExpanded((prev) => !prev)}
+            />
           ) : null}
 
-          {extraFields.length > 0 ? (
-            <FormSection title="Options" subtitle="Customize your output" accent={accent}>
-              {extraFields.map(renderField)}
-            </FormSection>
+          {showParameterForms ? (
+            <>
+              <FormSection title="Tool Parameters" subtitle="Board and class details" accent={accent}>
+                {renderDropdownTrigger(
+                  'board',
+                  'Board',
+                  selectedBoard,
+                  'Select board',
+                  boardOptions,
+                  isLoadingUser,
+                  false,
+                  true
+                )}
+                {curriculumFields.map(renderField)}
+                {isStoryLanguageTool(toolType) ? (
+                  <View style={styles.infoBanner}>
+                    <Ionicons name="information-circle" size={18} color={TEACHER.primaryLight} />
+                    <Text style={styles.infoBannerText}>
+                      English and Hindi subjects only for this tool.
+                    </Text>
+                  </View>
+                ) : null}
+              </FormSection>
+
+              {topicFields.length > 0 ? (
+                <FormSection title="Topic details" subtitle="Pick chapter and sub-topic from syllabus" accent={accent}>
+                  {topicFields.map(renderField)}
+                </FormSection>
+              ) : null}
+
+              {extraFields.length > 0 ? (
+                <FormSection title="Options" subtitle="Customize your output" accent={accent}>
+                  {extraFields.map(renderField)}
+                </FormSection>
+              ) : null}
+            </>
           ) : null}
 
           {isGenerating ? (
@@ -798,7 +930,7 @@ export default function TeacherToolPage() {
               <Text style={styles.emptyResultText}>Choose tool parameters and tap Generate.</Text>
             </View>
           )}
-        </ScrollView>
+        </AnimatedScrollView>
 
         <View style={styles.footer}>
           <TouchableOpacity
@@ -894,6 +1026,53 @@ const styles = StyleSheet.create({
   headerTitle: { ...TEACHER_TYPO.section, fontSize: 18, color: TEACHER.text },
   headerSubtitle: { ...TEACHER_TYPO.caption, color: TEACHER.textMuted, marginTop: 2 },
   headerSpacer: { width: 40 },
+  compactHeader: {
+    borderBottomWidth: 1,
+    borderBottomColor: TEACHER.surfaceBorder,
+    overflow: 'hidden',
+  },
+  compactHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: TEACHER_SPACING.lg,
+    paddingVertical: TEACHER_SPACING.sm,
+    gap: TEACHER_SPACING.md,
+  },
+  compactHeaderTitle: {
+    flex: 1,
+    ...TEACHER_TYPO.body,
+    fontWeight: '800',
+    color: TEACHER.text,
+  },
+  paramsSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: TEACHER_SPACING.md,
+    backgroundColor: TEACHER.surface,
+    borderRadius: TEACHER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
+    paddingHorizontal: TEACHER_SPACING.lg,
+    paddingVertical: 14,
+  },
+  paramsSummaryIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  paramsSummaryText: { flex: 1, minWidth: 0 },
+  paramsSummaryTitle: {
+    ...TEACHER_TYPO.body,
+    fontWeight: '700',
+    color: TEACHER.text,
+  },
+  paramsSummaryMeta: {
+    ...TEACHER_TYPO.caption,
+    color: TEACHER.textMuted,
+    marginTop: 2,
+  },
   scroll: { flex: 1 },
   scrollContent: { padding: TEACHER_SPACING.lg, gap: 14 },
   sectionCard: {

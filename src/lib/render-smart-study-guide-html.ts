@@ -44,7 +44,10 @@ export function renderSmartStudyGuideHtml(text: string): string {
   let bodyLines: string[] = [];
 
   const flush = () => {
-    if (currentSection <= 0 && bodyLines.length === 0) return;
+    if (currentSection <= 0) {
+      bodyLines = [];
+      return;
+    }
     const color = SECTION_COLORS[currentSection] || '#4f46e5';
     const body = bodyLines
       .map((line) => {
@@ -96,7 +99,7 @@ export function renderSmartStudyGuideHtml(text: string): string {
       continue;
     }
 
-    bodyLines.push(raw);
+    if (currentSection > 0) bodyLines.push(raw);
   }
   flush();
 

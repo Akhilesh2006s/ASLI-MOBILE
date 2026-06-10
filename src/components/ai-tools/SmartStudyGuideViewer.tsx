@@ -1,7 +1,7 @@
 import { useMemo, type ReactNode } from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
-import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
+import AiToolWebView from './AiToolWebView';
 import { stripStructuredAiToolMetadata } from '../../lib/strip-ai-tool-metadata';
 import {
   resolveStudyGuideFromPayload,
@@ -12,7 +12,6 @@ import {
   type StudyGuideContent,
   type StudyGuidePracticeQuestion,
 } from '../../lib/parse-smart-study-guide';
-import { renderAiToolOutputHtml } from '../../lib/render-ai-tool-output-html';
 
 type Props = {
   content: string;
@@ -222,15 +221,12 @@ export default function SmartStudyGuideViewer({ content, rawContent }: Props) {
   }, [payload.content, payload.rawContent]);
 
   if (markdownFallback) {
-    const html = renderAiToolOutputHtml('smart-study-guide-generator', markdownFallback);
     return (
       <View style={styles.markdownWrap}>
-        <WebView
-          originWhitelist={['*']}
-          source={{ html }}
-          style={styles.webView}
-          scrollEnabled={false}
-          showsVerticalScrollIndicator={false}
+        <AiToolWebView
+          toolType="smart-study-guide-generator"
+          content={markdownFallback}
+          variant="student"
         />
       </View>
     );
@@ -320,8 +316,7 @@ function LinearGuideHeader({
 
 const styles = StyleSheet.create({
   root: { gap: 10 },
-  markdownWrap: { minHeight: 280, borderRadius: 18, overflow: 'hidden' },
-  webView: { flex: 1, minHeight: 280, backgroundColor: 'transparent' },
+  markdownWrap: { borderRadius: 18, overflow: 'hidden' },
   warningBox: {
     borderRadius: 14,
     borderWidth: 1,

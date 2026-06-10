@@ -70,13 +70,24 @@ function stripOrderedPrefix(line: string): string {
     .trim();
 }
 
+function coerceArrayItemToText(x: unknown): string {
+  if (x == null) return '';
+  if (typeof x === 'string') return x.trim();
+  if (typeof x === 'number' || typeof x === 'boolean') return String(x).trim();
+  if (typeof x === 'object') {
+    const o = x as Record<string, unknown>;
+    return str(o.question || o.text || o.prompt || o.statement || o.content || o.label || o.value);
+  }
+  return '';
+}
+
 function strArr(v: unknown): string[] {
-  if (Array.isArray(v)) return v.map((x) => str(x)).filter(Boolean);
+  if (Array.isArray(v)) return v.map(coerceArrayItemToText).filter(Boolean);
   if (typeof v === 'string' && v.trim()) {
     return v
       .split(/\n+/)
       .map((line) => line.replace(/^\s*[-*•]\s*|\s*\d+[\).\s]+/i, '').trim())
-      .filter(Boolean);
+      .filter((line) => line && line !== '[object Object]');
   }
   return [];
 }
@@ -135,7 +146,7 @@ function normalizeStoryFromObject(raw: Record<string, unknown>, fallbackTitle?: 
     preReadingPrompt: str(raw.pre_reading_thinking_prompt || raw.pre_reading_prompt || raw.preReadingPrompt) || undefined,
     alignment: alignment || undefined,
     learningObjectives: strArr(raw.learning_objectives || raw.objectives),
-    passage: str(raw.passage || raw.content || raw.story_text),
+    passage: str(raw.passage || raw.content || raw.story_passage_content || raw.story_text),
     vocabulary: strArr(raw.vocabulary_warmup || raw.vocabulary_support || raw.vocabulary),
     vocabularyPractice: strArr(raw.vocabulary_practice || raw.vocabularyPractice),
     readRecallQuestions: toQuestions(
@@ -503,7 +514,8 @@ function linesToOrderedList(body: string): string[] {
 
   const flush = () => {
     const text = buf.join(' ').trim();
-    if (text) items.push(text.replace(/^\s*\d+[\).\s]+/i, '').trim());
+    const cleaned = text.replace(/^\s*\d+[\).\s]+/i, '').trim();
+    if (cleaned && cleaned !== '[object Object]') items.push(cleaned);
     buf = [];
   };
 
@@ -561,7 +573,15 @@ function pickList(a: string[], b: string[]): string[] {
   return b.length >= a.length ? b : a;
 }
 
+function questionListIsBroken(items: StoryQuestion[]): boolean {
+  return items.some((q) => !q.question || q.question === '[object Object]');
+}
+
 function pickQuestions(a: StoryQuestion[], b: StoryQuestion[]): StoryQuestion[] {
+  const aBroken = questionListIsBroken(a);
+  const bBroken = questionListIsBroken(b);
+  if (aBroken && !bBroken) return b;
+  if (bBroken && !aBroken) return a;
   return b.length >= a.length ? b : a;
 }
 
@@ -635,7 +655,19 @@ function absorbStoryRawRecords(raw: unknown): Record<string, unknown>[] {
   if (o.structuredContent && typeof o.structuredContent === 'object') {
     return absorbStoryRawRecords(o.structuredContent);
   }
-  if (o.title || o.passage || o.content || o.alignment_block || o.learning_objectives) return [o];
+  if (
+    o.title ||
+    o.passage ||
+    o.content ||
+    o.story_passage_content ||
+    o.alignment_block ||
+    o.learning_objectives ||
+    o.read_and_recall_questions ||
+    o.think_and_infer_questions ||
+    o.apply_and_connect_questions
+  ) {
+    return [o];
+  }
   if (o.raw && typeof o.raw === 'object') return absorbStoryRawRecords(o.raw);
   return [];
 }

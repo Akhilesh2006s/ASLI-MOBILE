@@ -1,4 +1,13 @@
 import { formatInlineMarkdown, renderMarkdown } from './render-teacher-markdown';
+import {
+  bodyTextFromLines,
+  parseMarkdownDocTitle,
+  parseMarkdownSectionHeading,
+  sortSectionHtmlEntries,
+  type SectionHtmlEntry,
+  themedNumberedSectionCardHtml,
+  themedSection1TitleCardHtml,
+} from './themed-markdown-sections';
 
 const SECTION_STYLES: Record<number, { border: string; bg: string; title: string }> = {
   1: { border: 'border-rose-300', bg: 'bg-rose-50/80', title: 'text-rose-950' },
@@ -35,54 +44,104 @@ export function renderQuickAssignmentMarkdown(text: string): string {
   if (!text?.trim()) return '';
 
   const lines = text.split('\n');
-  const parts: string[] = [];
-  let docHeader = '';
+  const sectionEntries: SectionHtmlEntry[] = [];
+  let docTitle = '';
   let currentSection = 0;
   let currentTitle = '';
   let bodyLines: string[] = [];
 
   const flushSection = () => {
-    if (currentSection <= 0 && !bodyLines.length) return;
+    if (currentSection <= 0) {
+      bodyLines = [];
+      return;
+    }
     let displayNum = currentSection;
     if (displayNum === 11) displayNum = 10;
     if (displayNum === 13) displayNum = 11;
-    const style = sectionStyle(displayNum || 1);
-    parts.push(
-      `<section class="rounded-xl border ${style.border} ${style.bg} p-3 mb-2 shadow-sm">` +
-        `<p class="text-[10px] font-bold uppercase tracking-wider text-rose-600 mb-0.5">Section ${displayNum}</p>` +
-        `<h4 class="text-sm font-bold ${style.title} mb-2">${formatInlineMarkdown(currentTitle)}</h4>` +
-        `<div>${bodyLinesToHtml(bodyLines)}</div>` +
-        `</section>`,
-    );
+
+    if (displayNum === 1) {
+      const titleText = bodyTextFromLines(bodyLines) || docTitle;
+      if (titleText) {
+        sectionEntries.push({
+          num: 1,
+          html: themedSection1TitleCardHtml({
+            title: titleText,
+            badge: 'Assignment Title',
+            border: 'border-rose-300',
+            bg: 'bg-gradient-to-br from-rose-50/90 via-white to-orange-50/40',
+            labelClass: 'text-rose-700',
+            badgeClass: 'bg-rose-100 text-rose-900',
+          }),
+        });
+      }
+      bodyLines = [];
+      currentSection = 0;
+      currentTitle = '';
+      return;
+    }
+
+    const style = sectionStyle(displayNum);
+    sectionEntries.push({
+      num: displayNum,
+      html: themedNumberedSectionCardHtml({
+        sectionNum: displayNum,
+        sectionTitle: currentTitle,
+        bodyHtml: bodyLinesToHtml(bodyLines),
+        border: style.border,
+        bg: style.bg,
+        titleClass: style.title,
+        labelClass: 'text-rose-600',
+      }),
+    });
     bodyLines = [];
+    currentSection = 0;
+    currentTitle = '';
   };
 
   for (const raw of lines) {
     const line = raw.trim();
-    if (!line) continue;
-    const h1 = line.match(/^#\s+(.+)$/);
-    if (h1 && !line.startsWith('##')) {
-      docHeader = h1[1];
+    if (!line || /^---+$/.test(line)) continue;
+
+    const docLineTitle = parseMarkdownDocTitle(line);
+    if (docLineTitle) {
+      docTitle = docLineTitle;
       continue;
     }
-    const section = line.match(/^(?:#{1,3}\s*)?(\d{1,2})\.\s*(.+)$/);
-    if (section) {
+
+    const heading = parseMarkdownSectionHeading(line);
+    if (heading) {
       flushSection();
-      let num = Number(section[1]);
+      let num = heading.num;
       if (num === 11) num = 10;
       if (num === 13) num = 11;
       currentSection = num;
-      currentTitle = section[2];
+      currentTitle = heading.title;
       continue;
     }
     if (currentSection > 0) bodyLines.push(raw);
   }
   flushSection();
 
-  const headerHtml = docHeader
+  if (!sectionEntries.some((e) => e.num === 1) && docTitle) {
+    sectionEntries.push({
+      num: 1,
+      html: themedSection1TitleCardHtml({
+        title: docTitle,
+        badge: 'Assignment Title',
+        border: 'border-rose-300',
+        bg: 'bg-gradient-to-br from-rose-50/90 via-white to-orange-50/40',
+        labelClass: 'text-rose-700',
+        badgeClass: 'bg-rose-100 text-rose-900',
+      }),
+    });
+  }
+
+  const parts = sortSectionHtmlEntries(sectionEntries);
+
+  const headerHtml = docTitle
     ? `<div class="rounded-2xl border border-rose-200 bg-gradient-to-r from-rose-700 via-red-600 to-orange-600 p-4 mb-3 text-white shadow-lg">` +
       `<p class="text-[10px] font-semibold uppercase tracking-widest text-rose-100">Quick Assignment Builder</p>` +
-      `<h3 class="text-lg font-bold">${formatInlineMarkdown(docHeader)}</h3></div>`
+      `<h3 class="text-lg font-bold">${formatInlineMarkdown(docTitle)}</h3></div>`
     : '';
 
   return (

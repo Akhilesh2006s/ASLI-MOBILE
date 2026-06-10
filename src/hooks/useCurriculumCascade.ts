@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../lib/api-config';
+import { sortChapterWiseLabels } from '../lib/curriculum-chapter-sort';
 
 type CurriculumRow = { id: string; name: string; label: string };
 
@@ -187,7 +188,7 @@ export function useCurriculumCascade(
         const managedTopics = (managed as { data?: { topics?: string[] } })?.data?.topics || [];
         const allTopics = [...curriculumTopics, ...managedTopics].filter(Boolean);
         const unique = allTopics.filter((t, i) => allTopics.indexOf(t) === i);
-        setTopics(unique.sort((a, b) => a.localeCompare(b)));
+        setTopics(sortChapterWiseLabels(unique));
       } catch {
         if (!cancelled) setTopics([]);
       } finally {
@@ -226,7 +227,7 @@ export function useCurriculumCascade(
         const managedSubtopics = (managed as { data?: { subTopics?: string[] } })?.data?.subTopics || [];
         const allSubtopics = [...curriculumSubtopics, ...managedSubtopics].filter(Boolean);
         const unique = allSubtopics.filter((s, i) => allSubtopics.indexOf(s) === i);
-        setSubtopics(unique.sort((a, b) => a.localeCompare(b)));
+        setSubtopics(sortChapterWiseLabels(unique));
       } catch {
         if (!cancelled) setSubtopics([]);
       } finally {

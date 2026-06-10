@@ -1,4 +1,13 @@
 import { formatInlineMarkdown, renderMarkdown } from './render-teacher-markdown';
+import {
+  bodyTextFromLines,
+  parseMarkdownDocTitle,
+  parseMarkdownSectionHeading,
+  sortSectionHtmlEntries,
+  type SectionHtmlEntry,
+  themedNumberedSectionCardHtml,
+  themedSection1TitleCardHtml,
+} from './themed-markdown-sections';
 
 const SECTION_STYLES: Record<number, { border: string; bg: string; title: string }> = {
   1: { border: 'border-amber-300', bg: 'bg-amber-50/80', title: 'text-amber-950' },
@@ -34,48 +43,96 @@ export function renderKeyPointsMarkdown(text: string): string {
   if (!text?.trim()) return '';
 
   const lines = text.split('\n');
-  const parts: string[] = [];
-  let docHeader = '';
+  const sectionEntries: SectionHtmlEntry[] = [];
+  let docTitle = '';
   let currentSection = 0;
   let currentTitle = '';
   let bodyLines: string[] = [];
 
   const flushSection = () => {
-    if (currentSection <= 0 && !bodyLines.length) return;
-    const style = sectionStyle(currentSection || 1);
-    parts.push(
-      `<section class="rounded-xl border ${style.border} ${style.bg} p-3 mb-2 shadow-sm">` +
-        `<p class="text-[10px] font-bold uppercase tracking-wider text-amber-600 mb-0.5">Section ${currentSection}</p>` +
-        `<h4 class="text-sm font-bold ${style.title} mb-2">${formatInlineMarkdown(currentTitle)}</h4>` +
-        `<div>${bodyLinesToHtml(bodyLines)}</div>` +
-        `</section>`,
-    );
+    if (currentSection <= 0) {
+      bodyLines = [];
+      return;
+    }
+    if (currentSection === 1) {
+      const titleText = bodyTextFromLines(bodyLines) || docTitle;
+      if (titleText) {
+        sectionEntries.push({
+          num: 1,
+          html: themedSection1TitleCardHtml({
+            title: titleText,
+            badge: 'Key Points Sheet Title',
+            border: 'border-amber-300',
+            bg: 'bg-gradient-to-br from-amber-50/90 via-white to-orange-50/40',
+            labelClass: 'text-amber-700',
+            badgeClass: 'bg-amber-100 text-amber-900',
+          }),
+        });
+      }
+      bodyLines = [];
+      currentSection = 0;
+      currentTitle = '';
+      return;
+    }
+    const style = sectionStyle(currentSection);
+    sectionEntries.push({
+      num: currentSection,
+      html: themedNumberedSectionCardHtml({
+        sectionNum: currentSection,
+        sectionTitle: currentTitle,
+        bodyHtml: bodyLinesToHtml(bodyLines),
+        border: style.border,
+        bg: style.bg,
+        titleClass: style.title,
+        labelClass: 'text-amber-600',
+      }),
+    });
     bodyLines = [];
+    currentSection = 0;
+    currentTitle = '';
   };
 
   for (const raw of lines) {
     const line = raw.trim();
-    if (!line) continue;
-    const h1 = line.match(/^#\s+(.+)$/);
-    if (h1 && !line.startsWith('##')) {
-      docHeader = h1[1];
+    if (!line || /^---+$/.test(line)) continue;
+
+    const docLineTitle = parseMarkdownDocTitle(line);
+    if (docLineTitle) {
+      docTitle = docLineTitle;
       continue;
     }
-    const section = line.match(/^(?:#{1,3}\s*)?(\d{1,2})\.\s*(.+)$/);
-    if (section) {
+
+    const heading = parseMarkdownSectionHeading(line);
+    if (heading) {
       flushSection();
-      currentSection = Number(section[1]);
-      currentTitle = section[2];
+      currentSection = heading.num;
+      currentTitle = heading.title;
       continue;
     }
     if (currentSection > 0) bodyLines.push(raw);
   }
   flushSection();
 
-  const headerHtml = docHeader
+  if (!sectionEntries.some((e) => e.num === 1) && docTitle) {
+    sectionEntries.push({
+      num: 1,
+      html: themedSection1TitleCardHtml({
+        title: docTitle,
+        badge: 'Key Points Sheet Title',
+        border: 'border-amber-300',
+        bg: 'bg-gradient-to-br from-amber-50/90 via-white to-orange-50/40',
+        labelClass: 'text-amber-700',
+        badgeClass: 'bg-amber-100 text-amber-900',
+      }),
+    });
+  }
+
+  const parts = sortSectionHtmlEntries(sectionEntries);
+
+  const headerHtml = docTitle
     ? `<div class="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-700 via-orange-600 to-amber-600 p-4 mb-3 text-white shadow-lg">` +
       `<p class="text-[10px] font-semibold uppercase tracking-widest text-amber-100">Key Points Extractor</p>` +
-      `<h3 class="text-lg font-bold">${formatInlineMarkdown(docHeader)}</h3></div>`
+      `<h3 class="text-lg font-bold">${formatInlineMarkdown(docTitle)}</h3></div>`
     : '';
 
   return (
