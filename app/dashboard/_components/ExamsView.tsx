@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -28,17 +28,22 @@ import {
   STUDENT_TYPO,
 } from '../../../src/theme/student';
 import {
-  examIncludesClass,
-  getExamClassStrings,
+  examMatchesStudentAssignedClass,
+  getExamClassLabelsForStudent,
   normalizeClassNumber,
 } from '../../../src/lib/exam-classes';
 import { dedupeStudentExamResults } from '../../../src/lib/dedupe-exam-results';
 import ExamResultsView from '../../../src/components/student/ExamResultsView';
+import DonutChart from '../../../src/components/ui/charts/DonutChart';
 import {
   ExamAnalysisResult,
+  buildQuestionDistributionSegments,
   formatAttemptHistoryLabel,
+  formatReviewResultForAnalysis,
   getDisplayPercentage,
   getExamResultRowId,
+  getMarksPercentage,
+  normalizeExamResultFromApi,
 } from '../../../src/lib/exam-analysis-helpers';
 
 interface Exam {
@@ -72,9 +77,21 @@ interface ExamResult {
   timeTaken: number;
 }
 
+type CalendarFocusExam = {
+  examId: string;
+  mode: 'upcoming' | 'ended' | 'live' | 'completed';
+  title: string;
+  startDate: string;
+  endDate: string;
+  scoreLabel?: string;
+  completedAt?: string;
+};
+
 type ExamsViewProps = {
   dark?: boolean;
   initialTab?: 'available' | 'attempted' | 'ranking' | 'upcoming';
+  focusExamId?: string | null;
+  onFocusExamHandled?: () => void;
 };
 
 const ATTEMPTED_CARD_SCHEMES = [
@@ -109,7 +126,11 @@ function CountUpText({
   );
 }
 
-export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) {
+export default function ExamsView({
+  initialTab = 'available',
+  focusExamId,
+  onFocusExamHandled,
+}: ExamsViewProps) {
   const { width } = useWindowDimensions();
   const compact = width < 380;
   const [activeTab, setActiveTab] = useState<'available' | 'attempted' | 'ranking' | 'upcoming'>(initialTab);
@@ -117,9 +138,9 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
   const [results, setResults] = useState<any[]>([]);
   const [rankings, setRankings] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
-  const [examClassFilter, setExamClassFilter] = useState('all');
   const [examSubjectFilter, setExamSubjectFilter] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
+  const [resultsLoaded, setResultsLoaded] = useState(false);
   const [selectedAttemptByExam, setSelectedAttemptByExam] = useState<Record<string, string>>({});
   const [attemptPickerExamId, setAttemptPickerExamId] = useState<string | null>(null);
   const [showExamResults, setShowExamResults] = useState(false);
@@ -128,6 +149,8 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
     result: ExamAnalysisResult;
   } | null>(null);
   const [loadingExamResults, setLoadingExamResults] = useState(false);
+  const [calendarFocusExam, setCalendarFocusExam] = useState<CalendarFocusExam | null>(null);
+  const handledFocusExamIdRef = useRef<string | null>(null);
 
   const studentClassNumber = normalizeClassNumber(user?.classNumber);
 
@@ -137,16 +160,6 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
     fetchResults();
     fetchRankings();
   }, []);
-
-  useEffect(() => {
-    if (studentClassNumber) {
-      setExamClassFilter(studentClassNumber);
-    }
-  }, [studentClassNumber]);
-
-  useEffect(() => {
-    setExamSubjectFilter('all');
-  }, [examClassFilter]);
 
   const fetchUser = async () => {
     try {
@@ -201,10 +214,13 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
 
       if (response.ok) {
         const data = await response.json();
-        setResults(data.data || data || []);
+        const rows = data.data || data || [];
+        setResults(Array.isArray(rows) ? rows.map(normalizeExamResultFromApi) : []);
       }
     } catch (error) {
       console.error('Failed to fetch results:', error);
+    } finally {
+      setResultsLoaded(true);
     }
   };
 
@@ -264,32 +280,9 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
     return { status: 'active', color: '#10b981', bg: '#d1fae5' };
   };
 
-  const availableClassOptions = useMemo(() => {
-    const set = new Set<string>();
-    exams.forEach((exam) => {
-      getExamClassStrings(exam).forEach((classNum) => {
-        if (classNum) set.add(classNum);
-      });
-    });
-    return Array.from(set).sort((a, b) => {
-      const na = parseInt(a, 10);
-      const nb = parseInt(b, 10);
-      if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
-      return a.localeCompare(b, undefined, { numeric: true });
-    });
-  }, [exams]);
-
-  const classFilteredExams = useMemo(() => {
-    if (!examClassFilter || examClassFilter === 'all') return exams;
-    return exams.filter((exam) => examIncludesClass(exam, examClassFilter));
-  }, [exams, examClassFilter]);
-
-  const examMatchesClassFilter = useCallback(
-    (exam: Exam) => {
-      if (!examClassFilter || examClassFilter === 'all') return true;
-      return examIncludesClass(exam, examClassFilter);
-    },
-    [examClassFilter]
+  const classFilteredExams = useMemo(
+    () => exams.filter((e) => examMatchesStudentAssignedClass(e, user?.classNumber)),
+    [exams, user?.classNumber]
   );
 
   const availableSubjectOptions = useMemo(() => {
@@ -350,7 +343,7 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
       if (examSubjectFilter === 'all') return true;
       const catalogExam = exams.find((e) => String(e._id) === String(examIdStr));
       if (!catalogExam) return true;
-      if (!examMatchesClassFilter(catalogExam)) return false;
+      if (!examMatchesStudentAssignedClass(catalogExam, user?.classNumber)) return false;
       return getExamSubjects(catalogExam).includes(String(examSubjectFilter).toLowerCase());
     });
 
@@ -376,7 +369,7 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
     return Array.from(latestByExam.values()).sort(
       (a, b) => new Date(b.completedAt || 0).getTime() - new Date(a.completedAt || 0).getTime()
     );
-  }, [dedupedExamResults, exams, examSubjectFilter, examMatchesClassFilter, getExamIdFromResult]);
+  }, [dedupedExamResults, exams, examSubjectFilter, getExamIdFromResult, user?.classNumber]);
 
   const attemptHistoryByExamId = useMemo(() => {
     const map = new Map<string, any[]>();
@@ -493,39 +486,12 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
         }
       }
 
-      const formattedResult: ExamAnalysisResult = {
-        _id: reviewResult._id
-          ? String(reviewResult._id)
-          : displayResult._id
-            ? String(displayResult._id)
-            : undefined,
-        attemptNumber:
-          Number(reviewResult.attemptNumber) >= 1
-            ? Number(reviewResult.attemptNumber)
-            : attemptNum,
-        examId: getExamIdFromResult(reviewResult) || exam._id,
-        examTitle: reviewResult.examTitle || examWithQuestions.title || exam.title,
-        totalQuestions:
-          reviewResult.totalQuestions || examWithQuestions.totalQuestions || exam.totalQuestions || 0,
-        correctAnswers: reviewResult.correctAnswers || 0,
-        wrongAnswers: reviewResult.wrongAnswers || 0,
-        unattempted: reviewResult.unattempted || 0,
-        totalMarks: reviewResult.totalMarks || examWithQuestions.totalMarks || exam.totalMarks || 0,
-        obtainedMarks: reviewResult.obtainedMarks || 0,
-        percentage: Number.isFinite(Number(reviewResult.percentage))
-          ? Number(reviewResult.percentage)
-          : getDisplayPercentage(reviewResult),
-        timeTaken: reviewResult.timeTaken || 0,
-        subjectWiseScore: reviewResult.subjectWiseScore || {
-          maths: { correct: 0, total: 0, marks: 0 },
-          physics: { correct: 0, total: 0, marks: 0 },
-          chemistry: { correct: 0, total: 0, marks: 0 },
-        },
-        answers: reviewResult.answers || {},
-        questions: examWithQuestions.questions || [],
-        questionTimings: reviewResult.questionTimings || displayResult.questionTimings,
-        questionAnalytics: reviewResult.questionAnalytics || displayResult.questionAnalytics,
-      };
+      const formattedResult = formatReviewResultForAnalysis(
+        { ...reviewResult, attemptNumber: Number(reviewResult.attemptNumber) >= 1 ? Number(reviewResult.attemptNumber) : attemptNum },
+        exam,
+        examWithQuestions,
+        displayResult
+      );
 
       setSelectedExamForResults({ exam: examWithQuestions, result: formattedResult });
       setShowExamResults(true);
@@ -559,6 +525,82 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
     router.push(`/exam/${exam._id}`);
   };
 
+  useEffect(() => {
+    if (!focusExamId?.trim()) {
+      handledFocusExamIdRef.current = null;
+      return;
+    }
+    if (isLoading || !exams.length || !resultsLoaded) return;
+    if (handledFocusExamIdRef.current === focusExamId) return;
+
+    const targetId = focusExamId.trim();
+    const exam = exams.find((e) => String(e._id) === targetId);
+    handledFocusExamIdRef.current = targetId;
+    onFocusExamHandled?.();
+
+    if (!exam) {
+      setActiveTab('available');
+      return;
+    }
+
+    const now = new Date();
+    const start = new Date(exam.startDate);
+    const end = new Date(exam.endDate);
+    const scheduleLabel = {
+      title: exam.title || 'Exam',
+      startDate: start.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+      endDate: end.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+    };
+
+    const attempts = attemptCountByExamId.get(targetId) || 0;
+    if (attempts > 0) {
+      const latest = attemptedResultRows.find((r) => getExamIdFromResult(r) === targetId);
+      const scoreLabel = latest
+        ? `${latest.obtainedMarks || 0}/${latest.totalMarks || exam.totalMarks} (${getDisplayPercentage(latest)}%)`
+        : undefined;
+      const completedAt = latest?.completedAt
+        ? new Date(latest.completedAt).toLocaleDateString('en-IN', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+          })
+        : undefined;
+      setCalendarFocusExam({
+        examId: targetId,
+        mode: 'completed',
+        ...scheduleLabel,
+        scoreLabel,
+        completedAt,
+      });
+      setActiveTab('attempted');
+      return;
+    }
+
+    if (now < start) {
+      setCalendarFocusExam({ examId: targetId, mode: 'upcoming', ...scheduleLabel });
+      setActiveTab('upcoming');
+      return;
+    }
+
+    if (now > end) {
+      setCalendarFocusExam({ examId: targetId, mode: 'ended', ...scheduleLabel });
+      setActiveTab('attempted');
+      return;
+    }
+
+    setCalendarFocusExam({ examId: targetId, mode: 'live', ...scheduleLabel });
+    setActiveTab('available');
+  }, [
+    focusExamId,
+    exams,
+    isLoading,
+    resultsLoaded,
+    attemptCountByExamId,
+    attemptedResultRows,
+    getExamIdFromResult,
+    onFocusExamHandled,
+  ]);
+
   const examTabChips = useMemo(
     () => [
       { id: 'available', label: 'Available Exams' },
@@ -567,22 +609,6 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
       { id: 'upcoming', label: 'Upcoming' },
     ],
     []
-  );
-
-  const classFilterOptions = useMemo(
-    () => [
-      {
-        value: 'all',
-        label: 'All classes',
-        count: exams.length,
-      },
-      ...availableClassOptions.map((classNum) => ({
-        value: classNum,
-        label: `Class ${classNum}`,
-        count: exams.filter((exam) => examIncludesClass(exam, classNum)).length,
-      })),
-    ],
-    [availableClassOptions, exams]
   );
 
   const subjectFilterOptions = useMemo(
@@ -625,13 +651,14 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
         <Text style={[styles.headerTitle, compact && { fontSize: 26 }]}>Exams</Text>
         <Text style={styles.headerSubtitle}>Take practice exams and track your progress</Text>
         <View style={styles.filtersRow}>
-          <StudentFilterDropdown
-            label="Class"
-            placeholder="All classes"
-            value={examClassFilter}
-            options={classFilterOptions}
-            onChange={setExamClassFilter}
-          />
+          {studentClassNumber ? (
+            <View style={styles.filterGroup}>
+              <Text style={styles.filterLabel}>Class</Text>
+              <View style={styles.classBadge}>
+                <Text style={styles.classBadgeText}>Class {studentClassNumber}</Text>
+              </View>
+            </View>
+          ) : null}
           <StudentFilterDropdown
             label="Subject"
             placeholder="All subjects"
@@ -649,6 +676,53 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
           onChange={(id) => setActiveTab(id as typeof activeTab)}
         />
       </View>
+
+      {calendarFocusExam ? (
+        <View
+          style={[
+            styles.calendarFocusBanner,
+            calendarFocusExam.mode === 'upcoming'
+              ? styles.calendarFocusUpcoming
+              : calendarFocusExam.mode === 'live'
+                ? styles.calendarFocusLive
+                : calendarFocusExam.mode === 'completed'
+                  ? styles.calendarFocusCompleted
+                  : styles.calendarFocusEnded,
+          ]}
+        >
+          <View style={styles.calendarFocusTextWrap}>
+            <Text style={styles.calendarFocusTitle}>
+              {calendarFocusExam.mode === 'upcoming'
+                ? 'Upcoming exam'
+                : calendarFocusExam.mode === 'live'
+                  ? 'Live exam'
+                  : calendarFocusExam.mode === 'completed'
+                    ? 'Exam completed'
+                    : 'Past exam'}{' '}
+              — {calendarFocusExam.title}
+            </Text>
+            <Text style={styles.calendarFocusSub}>
+              {calendarFocusExam.mode === 'upcoming'
+                ? `Opens ${calendarFocusExam.startDate} · Closes ${calendarFocusExam.endDate}. You can start it once the exam window begins.`
+                : calendarFocusExam.mode === 'live'
+                  ? `Open now until ${calendarFocusExam.endDate}. Tap Start Exam on the card below when you are ready.`
+                  : calendarFocusExam.mode === 'completed'
+                    ? calendarFocusExam.scoreLabel
+                      ? `You scored ${calendarFocusExam.scoreLabel}${
+                          calendarFocusExam.completedAt ? ` on ${calendarFocusExam.completedAt}` : ''
+                        }. Review your attempt below.`
+                      : 'You have already completed this exam. Review your attempt below.'
+                    : `Ran ${calendarFocusExam.startDate} – ${calendarFocusExam.endDate}. Check your attempts below if you already took it.`}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.calendarFocusDismiss}
+            onPress={() => setCalendarFocusExam(null)}
+          >
+            <Text style={styles.calendarFocusDismissText}>Dismiss</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
 
       {/* Available Exams Tab */}
       {activeTab === 'available' && (
@@ -671,19 +745,23 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
               {availableActiveExams.map((exam) => {
                 const status = getExamStatus(exam);
                 const typeColor = getExamTypeColor(exam.examType);
-                const classLabels =
-                  examClassFilter && examClassFilter !== 'all'
-                    ? examIncludesClass(exam, examClassFilter)
-                      ? [examClassFilter]
-                      : []
-                    : getExamClassStrings(exam);
+                const classLabels = getExamClassLabelsForStudent(exam, user?.classNumber);
                 const usedAttempts = attemptCountByExamId.get(String(exam._id)) || 0;
                 const maxAttempts = getMaxAttemptsForExam(exam);
                 const hydratedQuestionCount = Array.isArray(exam.questions)
                   ? exam.questions.length
                   : Number(exam.totalQuestions || 0);
+                const isCalendarFocus =
+                  calendarFocusExam?.examId === String(exam._id) &&
+                  calendarFocusExam.mode === 'live';
                 return (
-                  <GlassCard key={exam._id} variant="elevated" padding={16} style={styles.examCardWrap} onPress={() => handleStartExam(exam)}>
+                  <GlassCard
+                    key={exam._id}
+                    variant="elevated"
+                    padding={16}
+                    style={[styles.examCardWrap, isCalendarFocus && styles.examCardFocused]}
+                    onPress={() => handleStartExam(exam)}
+                  >
                     <View style={styles.examHeader}>
                       <View style={[styles.examTypeBadge, { backgroundColor: typeColor.bg }]}>
                         <Text style={[styles.examTypeText, { color: typeColor.text }]}>
@@ -764,12 +842,7 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
                 if (!examIdStr) return null;
                 const exam = findExamForResult(examIdStr, result);
                 const scheme = ATTEMPTED_CARD_SCHEMES[index % ATTEMPTED_CARD_SCHEMES.length];
-                const classLabels =
-                  examClassFilter && examClassFilter !== 'all'
-                    ? examIncludesClass(exam, examClassFilter)
-                      ? [examClassFilter]
-                      : []
-                    : getExamClassStrings(exam);
+                const classLabels = getExamClassLabelsForStudent(exam, user?.classNumber);
                 const attemptHistory = attemptHistoryByExamId.get(examIdStr) || [result];
                 const totalAttempts = attemptHistory.length;
                 const selectedRowId = selectedAttemptByExam[examIdStr];
@@ -779,19 +852,29 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
                   attemptHistory[0] ||
                   result;
                 const displayPercentage = getDisplayPercentage(displayResult);
+                const marksPercentage = getMarksPercentage(displayResult);
+                const gradePct =
+                  (displayResult.totalMarks || exam.totalMarks || 0) > 0
+                    ? marksPercentage
+                    : displayPercentage;
                 const grade =
-                  displayPercentage >= 70 ? 'Excellent' : displayPercentage >= 50 ? 'Good' : 'Needs Improvement';
+                  gradePct >= 70 ? 'Excellent' : gradePct >= 50 ? 'Good' : 'Needs Improvement';
                 const gradeBg =
-                  displayPercentage >= 70 ? '#16a34a' : displayPercentage >= 50 ? '#ca8a04' : '#dc2626';
+                  gradePct >= 70 ? '#16a34a' : gradePct >= 50 ? '#ca8a04' : '#dc2626';
                 const totalMarksDisplay = displayResult.totalMarks || exam.totalMarks;
+                const obtainedMarksDisplay = Number(displayResult.obtainedMarks ?? 0);
+                const distributionSegments = buildQuestionDistributionSegments(displayResult);
 
+                const isCalendarFocus =
+                  calendarFocusExam?.examId === examIdStr &&
+                  (calendarFocusExam.mode === 'ended' || calendarFocusExam.mode === 'completed');
                 return (
                   <LinearGradient
                     key={examIdStr}
                     colors={scheme.gradient}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
-                    style={styles.attemptedCard}
+                    style={[styles.attemptedCard, isCalendarFocus && styles.examCardFocused]}
                   >
                     <Text style={styles.attemptedCardTitle}>{exam.title}</Text>
                     {exam.description ? (
@@ -828,11 +911,26 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
                     ) : null}
 
                     <View style={styles.attemptedScoreBox}>
-                      <CountUpText
-                        target={displayResult.obtainedMarks || 0}
-                        style={styles.attemptedScoreMain}
-                      />
-                      <Text style={styles.attemptedScoreDenom}>/{totalMarksDisplay} marks</Text>
+                      <View style={styles.attemptedScoreRow}>
+                        <DonutChart
+                          size={78}
+                          centerLabel={`${Math.round(
+                            totalMarksDisplay > 0 ? marksPercentage : displayPercentage
+                          )}%`}
+                          segments={distributionSegments}
+                        />
+                        <View style={styles.attemptedScoreTextWrap}>
+                          <Text style={styles.attemptedScoreMain}>
+                            {obtainedMarksDisplay}
+                            <Text style={styles.attemptedScoreDenom}>/{totalMarksDisplay}</Text>
+                          </Text>
+                          <Text style={styles.attemptedScoreLabel}>marks</Text>
+                          <Text style={styles.attemptedScoreMeta}>
+                            {displayResult.correctAnswers || 0} correct · {displayResult.wrongAnswers || 0} wrong ·{' '}
+                            {displayResult.unattempted || 0} skipped
+                          </Text>
+                        </View>
+                      </View>
                     </View>
 
                     <View style={styles.attemptedStatsList}>
@@ -997,14 +1095,17 @@ export default function ExamsView({ initialTab = 'available' }: ExamsViewProps) 
             <View style={styles.examsList}>
               {upcomingExams.map((exam) => {
                 const typeColor = getExamTypeColor(exam.examType);
-                const classLabels =
-                  examClassFilter && examClassFilter !== 'all'
-                    ? examIncludesClass(exam, examClassFilter)
-                      ? [examClassFilter]
-                      : []
-                    : getExamClassStrings(exam);
+                const classLabels = getExamClassLabelsForStudent(exam, user?.classNumber);
+                const isCalendarFocus =
+                  calendarFocusExam?.examId === String(exam._id) &&
+                  calendarFocusExam.mode === 'upcoming';
                 return (
-                  <GlassCard key={exam._id} variant="elevated" padding={16} style={styles.examCardWrap}>
+                  <GlassCard
+                    key={exam._id}
+                    variant="elevated"
+                    padding={16}
+                    style={[styles.examCardWrap, isCalendarFocus && styles.examCardFocused]}
+                  >
                     <View style={styles.examHeader}>
                       <View style={[styles.examTypeBadge, { backgroundColor: typeColor.bg }]}>
                         <Text style={[styles.examTypeText, { color: typeColor.text }]}>
@@ -1166,7 +1267,31 @@ const styles = StyleSheet.create({
   filtersRow: {
     marginTop: 14,
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'flex-end',
     gap: STUDENT_SPACING.md,
+  },
+  filterGroup: {
+    gap: 6,
+  },
+  filterLabel: {
+    fontSize: 13,
+    color: STUDENT.textSecondary,
+    fontWeight: '600',
+  },
+  classBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: STUDENT.accentSoft,
+    borderWidth: 1,
+    borderColor: '#c7d2fe',
+    borderRadius: STUDENT_RADIUS.full,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  classBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#3730a3',
   },
   tabsContainer: {
     marginBottom: STUDENT_SPACING.lg,
@@ -1195,6 +1320,60 @@ const styles = StyleSheet.create({
   },
   examCardWrap: {
     marginBottom: STUDENT_SPACING.md,
+  },
+  examCardFocused: {
+    borderWidth: 2,
+    borderColor: STUDENT.primary,
+  },
+  calendarFocusBanner: {
+    borderWidth: 1,
+    borderRadius: STUDENT_RADIUS.lg,
+    padding: 14,
+    marginBottom: STUDENT_SPACING.md,
+    gap: 10,
+  },
+  calendarFocusUpcoming: {
+    borderColor: '#fcd34d',
+    backgroundColor: '#fffbeb',
+  },
+  calendarFocusLive: {
+    borderColor: '#86efac',
+    backgroundColor: '#f0fdf4',
+  },
+  calendarFocusCompleted: {
+    borderColor: '#6ee7b7',
+    backgroundColor: '#ecfdf5',
+  },
+  calendarFocusEnded: {
+    borderColor: '#cbd5e1',
+    backgroundColor: '#f8fafc',
+  },
+  calendarFocusTextWrap: {
+    gap: 4,
+  },
+  calendarFocusTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: STUDENT.text,
+  },
+  calendarFocusSub: {
+    fontSize: 12,
+    color: STUDENT.textSecondary,
+    lineHeight: 18,
+  },
+  calendarFocusDismiss: {
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: STUDENT.surfaceBorder,
+    borderRadius: STUDENT_RADIUS.md,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#fff',
+  },
+  calendarFocusDismissText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: STUDENT.textSecondary,
   },
   rankingCardWrap: {
     marginBottom: STUDENT_SPACING.md,
@@ -1406,20 +1585,38 @@ const styles = StyleSheet.create({
   attemptedScoreBox: {
     backgroundColor: 'rgba(255,255,255,0.92)',
     borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+  },
+  attemptedScoreRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 14,
+  },
+  attemptedScoreTextWrap: {
+    flex: 1,
+    gap: 2,
   },
   attemptedScoreMain: {
-    fontSize: 30,
+    fontSize: 28,
     fontWeight: '800',
     color: STUDENT.text,
   },
   attemptedScoreDenom: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     color: STUDENT.textSecondary,
-    marginTop: 2,
+  },
+  attemptedScoreLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: STUDENT.textSecondary,
+  },
+  attemptedScoreMeta: {
+    fontSize: 11,
+    color: STUDENT.textMuted,
+    marginTop: 4,
+    lineHeight: 16,
   },
   attemptedStatsList: {
     gap: 8,

@@ -1,7 +1,6 @@
 import React, { memo, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import GlassCard from '../../../../src/components/student/GlassCard';
 import {
   buildExamCalendarEntries,
@@ -26,10 +25,18 @@ type CalendarEntry = {
 type Props = {
   incompleteQuizzes: any[];
   exams: any[];
+  completedExamIds?: Set<string>;
   onOpenQuiz: (quiz: any) => void;
+  onOpenExam: (examId: string) => void;
 };
 
-function StudyCalendarSectionComponent({ incompleteQuizzes, exams, onOpenQuiz }: Props) {
+function StudyCalendarSectionComponent({
+  incompleteQuizzes,
+  exams,
+  completedExamIds,
+  onOpenQuiz,
+  onOpenExam,
+}: Props) {
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -95,7 +102,8 @@ function StudyCalendarSectionComponent({ incompleteQuizzes, exams, onOpenQuiz }:
 
   const openEntry = (entry: CalendarEntry) => {
     if (entry.type === 'exam') {
-      router.push('/student-exams');
+      const examId = String(entry.id || entry.source?._id || entry.source?.id || '');
+      if (examId) onOpenExam(examId);
       return;
     }
     if (entry.type === 'quiz' && entry.source) {
@@ -194,12 +202,22 @@ function StudyCalendarSectionComponent({ incompleteQuizzes, exams, onOpenQuiz }:
           </View>
         ) : (
           selectedDateEntries.map((entry) => {
+            const examCompleted =
+              entry.type === 'exam' && completedExamIds?.has(String(entry.id));
             const badgeStyle =
               entry.type === 'exam'
-                ? styles.badgeExam
+                ? examCompleted
+                  ? styles.badgeExamCompleted
+                  : styles.badgeExam
                 : entry.type === 'quiz'
                   ? styles.badgeQuiz
                   : styles.badgeClass;
+            const badgeLabel =
+              entry.type === 'exam'
+                ? examCompleted
+                  ? 'COMPLETED'
+                  : 'EXAM'
+                : entry.type.toUpperCase();
             return (
               <TouchableOpacity
                 key={`${entry.type}-${entry.id}-${entry.date.getTime()}`}
@@ -212,7 +230,14 @@ function StudyCalendarSectionComponent({ incompleteQuizzes, exams, onOpenQuiz }:
                     {entry.title}
                   </Text>
                   <View style={[styles.typeBadge, badgeStyle]}>
-                    <Text style={styles.typeBadgeText}>{entry.type.toUpperCase()}</Text>
+                    <Text
+                      style={[
+                        styles.typeBadgeText,
+                        examCompleted && styles.typeBadgeTextCompleted,
+                      ]}
+                    >
+                      {badgeLabel}
+                    </Text>
                   </View>
                 </View>
                 <Text style={styles.eventSubject}>{entry.subject}</Text>
@@ -300,9 +325,11 @@ const styles = StyleSheet.create({
   eventTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: STUDENT.text },
   typeBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   badgeExam: { backgroundColor: `${STUDENT.danger}18` },
+  badgeExamCompleted: { backgroundColor: '#d1fae5' },
   badgeQuiz: { backgroundColor: `${STUDENT.warning}18` },
   badgeClass: { backgroundColor: STUDENT.accentSoft },
   typeBadgeText: { fontSize: 10, fontWeight: '800', color: STUDENT.textSecondary },
+  typeBadgeTextCompleted: { color: '#047857' },
   eventSubject: { fontSize: 12, color: STUDENT.textMuted, marginTop: 4 },
   eventTime: { fontSize: 11, color: STUDENT.textMuted, marginTop: 2 },
 });

@@ -71,6 +71,11 @@ const resolveAssignedClass = (classId: string, classList: ClassOption[]) => {
   );
 };
 
+const getResolvedAssignedClasses = (assignedClassIds: string[] = [], classList: ClassOption[]) =>
+  assignedClassIds
+    .map((classId) => ({ classId: String(classId), classItem: resolveAssignedClass(classId, classList) }))
+    .filter((entry): entry is { classId: string; classItem: ClassOption } => !!entry.classItem);
+
 const getClassSubjectLine = (classItem: ClassOption | undefined, teacherSubjects: any[] = []) => {
   if (!classItem) return '';
   const teacherIdSet = new Set(
@@ -329,9 +334,11 @@ export default function TeachersView() {
 
   const openAssignClassesModal = useCallback((teacher: Teacher) => {
     setAssigningForTeacher(teacher);
-    setSelectedClassIds((teacher.assignedClassIds || []).map(String));
+    setSelectedClassIds(
+      getResolvedAssignedClasses(teacher.assignedClassIds, classesList).map((entry) => entry.classItem.id),
+    );
     setAssignClassesModal(true);
-  }, []);
+  }, [classesList]);
 
   const toggleSubjectId = useCallback((id: string) => {
     setSelectedSubjectIds((prev) =>
@@ -365,15 +372,10 @@ export default function TeachersView() {
 
   const getAssignedClassOptions = useCallback(
     (teacher: Teacher) =>
-      (teacher.assignedClassIds || []).map((classId) => {
-        const classItem = resolveAssignedClass(classId, classesList);
-        const label = classItem?.name
-          ? classItem.name
-          : classItem?.classNumber
-            ? `Class ${classItem.classNumber}${classItem.section ? ` - ${classItem.section}` : ''}`
-            : `Class ${classId}`;
-        return { id: String(classItem?.id ?? classId), label };
-      }),
+      getResolvedAssignedClasses(teacher.assignedClassIds, classesList).map(({ classItem }) => ({
+        id: classItem.id,
+        label: classItem.name,
+      })),
     [classesList]
   );
 
@@ -403,6 +405,7 @@ export default function TeachersView() {
       subjectNames.length > 0
         ? subjectNames.slice(0, 3).join(', ') + (subjectNames.length > 3 ? ` (+${subjectNames.length - 3})` : '')
         : 'No subjects assigned';
+    const resolvedAssignedClasses = getResolvedAssignedClasses(teacher.assignedClassIds, classesList);
 
     const DetailRow = ({
       icon,
@@ -499,19 +502,8 @@ export default function TeachersView() {
             nestedScrollEnabled
             showsVerticalScrollIndicator
           >
-            {(teacher.assignedClassIds || []).length > 0 ? (
-              (teacher.assignedClassIds || []).map((classId) => {
-                const classItem = resolveAssignedClass(classId, classesList);
-                if (!classItem) {
-                  return (
-                    <View key={classId} style={styles.assignedClassCardMissing}>
-                      <Text style={styles.assignedClassMissingText}>
-                        Assigned (class not found — re-assign from Class Management)
-                      </Text>
-                      <Text style={styles.assignedClassMeta}>ID: {classId}</Text>
-                    </View>
-                  );
-                }
+            {resolvedAssignedClasses.length > 0 ? (
+              resolvedAssignedClasses.map(({ classId, classItem }) => {
                 const subjectLine = getClassSubjectLine(classItem, teacher.subjects || []);
                 return (
                   <View key={classId} style={styles.assignedClassCard}>
@@ -567,28 +559,40 @@ export default function TeachersView() {
             onPress={() => openAssignClassesModal(teacher)}
             accessibilityLabel="Assign classes"
           >
-            <SvgIconPeople color={colors.warning} size={22} />
+            <SvgIconPeople color={colors.warning} size={18} />
+            <Text style={[styles.squircleBtnLabel, { color: colors.warning }]} numberOfLines={1}>
+              Classes
+            </Text>
           </AdminScalePressable>
           <AdminScalePressable
             style={[styles.squircleBtn, { borderColor: colors.success }]}
             onPress={() => openAssignSubjectsModal(teacher)}
             accessibilityLabel="Assign subjects"
           >
-            <SvgIconBook color={colors.success} size={22} />
+            <SvgIconBook color={colors.success} size={18} />
+            <Text style={[styles.squircleBtnLabel, { color: colors.success }]} numberOfLines={1}>
+              Subjects
+            </Text>
           </AdminScalePressable>
           <AdminScalePressable
             style={[styles.squircleBtn, { borderColor: colors.primaryLight }]}
             onPress={() => setDailyDialogTeacher(teacher)}
             accessibilityLabel="View daily diary"
           >
-            <SvgIconBookMarked color={colors.primary} size={22} />
+            <SvgIconBookMarked color={colors.primary} size={18} />
+            <Text style={[styles.squircleBtnLabel, { color: colors.primary }]} numberOfLines={1}>
+              Diary
+            </Text>
           </AdminScalePressable>
           <AdminScalePressable
             style={[styles.squircleBtn, { borderColor: colors.danger }]}
             onPress={() => handleDeleteTeacher(teacher.id, teacher.fullName)}
             accessibilityLabel="Delete teacher"
           >
-            <SvgIconTrash color={colors.danger} size={22} />
+            <SvgIconTrash color={colors.danger} size={18} />
+            <Text style={[styles.squircleBtnLabel, { color: colors.danger }]} numberOfLines={1}>
+              Delete
+            </Text>
           </AdminScalePressable>
         </View>
       </AdminGlassCard>
@@ -1201,20 +1205,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     minHeight: 72,
   },
-  assignedClassCardMissing: {
-    backgroundColor: '#fffbeb',
-    borderRadius: 10,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#fcd34d',
-    marginBottom: 8,
-    minHeight: 72,
-  },
-  assignedClassMissingText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#b45309',
-  },
   assignedClassName: {
     fontSize: 14,
     fontWeight: '700',
@@ -1261,15 +1251,23 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
   },
-  /** Icon-only actions — SVG icons (no font) so glyphs always show on device */
+  /** Icon + label actions — SVG icons (no font) so glyphs always show on device */
   squircleBtn: {
     flex: 1,
-    height: 52,
+    minHeight: 56,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
     borderRadius: 16,
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 4,
     borderWidth: 1.5,
+  },
+  squircleBtnLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   modalOverlay: {
     flex: 1,

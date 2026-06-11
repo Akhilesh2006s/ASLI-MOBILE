@@ -9,7 +9,10 @@ import {
   AiExamAnalysis,
   ExamAnalysisResult,
   getDisplayPercentage,
-  getGradeLetter,
+  getGradeFromResult,
+  getMarksPercentage,
+  mergeExamResultPreserveScores,
+  normalizeExamResultFromApi,
   normalizeMongoId,
 } from '../../../src/lib/exam-analysis-helpers';
 import { ANALYSIS, analysisStyles, TAB_META } from './exam-analysis/exam-analysis-ui';
@@ -58,18 +61,11 @@ export default function DetailedAnalysisView({
 
   useEffect(() => {
     if (!result?.examId) return;
-    setDisplayResult((prev) => ({
-      ...(prev || result),
-      ...result,
-      answers:
-        result.answers && Object.keys(result.answers).length > 0
-          ? result.answers
-          : prev?.answers,
-      questions:
-        Array.isArray(result.questions) && result.questions.length > 0
-          ? result.questions
-          : prev?.questions,
-    }));
+    setDisplayResult((prev) =>
+      normalizeExamResultFromApi(
+        mergeExamResultPreserveScores(prev || undefined, result)
+      )
+    );
   }, [result]);
 
   useEffect(() => {
@@ -127,28 +123,24 @@ export default function DetailedAnalysisView({
           return;
         }
         setDisplayResult((prev) => {
-          const base = prev ?? srv;
-          return {
-            ...base,
-            ...srv,
-            _id: srv._id != null ? String(srv._id) : base._id,
-            examId: String(srv.examId || base.examId || examIdStr),
+          const base = prev ?? result ?? srv;
+          const merged = mergeExamResultPreserveScores(base, srv);
+          const normalized = normalizeExamResultFromApi({
+            ...merged,
+            examId: srv.examId || base.examId || examIdStr,
             questions:
               Array.isArray(qs) && qs.length > 0
                 ? qs
                 : base.questions?.length
                   ? base.questions
                   : srv.questions,
-            answers:
-              srv.answers && Object.keys(srv.answers).length > 0
-                ? { ...(base.answers || {}), ...srv.answers }
-                : base.answers,
-            questionTimings: base.questionTimings || result.questionTimings,
+            questionTimings: merged.questionTimings || base.questionTimings || result.questionTimings,
             questionAnalytics:
               srv.questionAnalytics && Array.isArray(srv.questionAnalytics)
                 ? srv.questionAnalytics
                 : base.questionAnalytics,
-          };
+          });
+          return normalized;
         });
       } catch {
         /* non-fatal */
@@ -239,8 +231,10 @@ export default function DetailedAnalysisView({
   const shellProps = embedded ? { style: styles.container } : { style: styles.container, edges: ['top'] as const };
   const attempted = (displayResult.correctAnswers || 0) + (displayResult.wrongAnswers || 0);
   const accuracy = attempted > 0 ? Math.round((displayResult.correctAnswers / attempted) * 100) : 0;
-  const scorePct = Math.round(getDisplayPercentage(displayResult));
-  const grade = getGradeLetter(scorePct);
+  const scorePct = Math.round(
+    getMarksPercentage(displayResult) || getDisplayPercentage(displayResult)
+  );
+  const grade = getGradeFromResult(displayResult);
 
   return (
     <Shell {...shellProps}>
@@ -326,6 +320,7 @@ export default function DetailedAnalysisView({
         {activeTab === 'advanced' && advancedExamId ? (
           <AdvancedTabMobile
             examId={advancedExamId}
+            resultId={displayResult._id}
             result={displayResult}
             aiAnalysis={aiAnalysis}
           />

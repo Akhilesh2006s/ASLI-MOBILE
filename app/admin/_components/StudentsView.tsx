@@ -8,13 +8,13 @@ import {
   TouchableOpacity,
   Modal,
   Alert,
-  Share,
   Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as DocumentPicker from 'expo-document-picker';
 import api from '../../../src/services/api/api';
+import { exportCsvFile } from '../../../src/utils/csvExport';
 import {
   AdminScreenShell,
   AdminSectionHeader,
@@ -418,13 +418,10 @@ export default function StudentsView() {
     ].join('\n');
 
     try {
-      await Share.share({
-        message: csv,
-        title: `students_export_${new Date().toISOString().slice(0, 10)}.csv`,
-      });
+      await exportCsvFile(csv, `students_export_${new Date().toISOString().slice(0, 10)}.csv`);
     } catch (error) {
       console.error('Export failed:', error);
-      Alert.alert('Export', 'Could not share export file.');
+      Alert.alert('Export', 'Could not download CSV file.');
     }
   };
 

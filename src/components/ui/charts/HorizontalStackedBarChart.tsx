@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import ChartLegend from './ChartLegend';
+import { CHART_THEME } from './chart-theme';
 
 export type HStackSeries = { key: string; color: string; label: string };
 export type HStackDatum = { label: string; sublabel?: string; [key: string]: string | number | undefined };
@@ -12,28 +13,52 @@ type Props = {
 
 export default function HorizontalStackedBarChart({ data, series }: Props) {
   return (
-    <View style={styles.wrap}>
-      {data.map((row) => {
-        const total = series.reduce((sum, s) => sum + (Number(row[s.key]) || 0), 0) || 1;
+    <View style={styles.shell}>
+      {data.map((row, index) => {
+        const total = series.reduce((sum, s) => sum + (Number(row[s.key]) || 0), 0);
+        const accuracy = typeof row.accuracy === 'number' ? row.accuracy : 0;
         return (
-          <View key={row.label} style={styles.row}>
+          <View key={`${row.label}-${row.sublabel || ''}-${index}`} style={styles.row}>
             <View style={styles.labelCol}>
-              <Text style={styles.label} numberOfLines={1}>{row.label}</Text>
-              {row.sublabel ? <Text style={styles.sublabel} numberOfLines={1}>{row.sublabel}</Text> : null}
+              <Text style={styles.label} numberOfLines={1}>
+                {row.label}
+              </Text>
+              {row.sublabel ? (
+                <Text style={styles.sublabel} numberOfLines={1}>
+                  {row.sublabel}
+                </Text>
+              ) : null}
             </View>
             <View style={styles.barTrack}>
-              {series.map((s) => {
-                const value = Number(row[s.key]) || 0;
-                if (value <= 0) return null;
-                return (
-                  <View
-                    key={s.key}
-                    style={[styles.segment, { flex: value, backgroundColor: s.color }]}
-                  />
-                );
-              })}
+              {total <= 0 ? (
+                <View style={styles.emptyTrack} />
+              ) : (
+                series.map((s, si) => {
+                  const value = Number(row[s.key]) || 0;
+                  if (value <= 0) return null;
+                  const isLast = series.slice(si + 1).every((n) => (Number(row[n.key]) || 0) <= 0);
+                  return (
+                    <View
+                      key={s.key}
+                      style={[
+                        styles.segment,
+                        {
+                          flex: value,
+                          backgroundColor: s.color,
+                          borderTopRightRadius: isLast ? 8 : 0,
+                          borderBottomRightRadius: isLast ? 8 : 0,
+                        },
+                      ]}
+                    />
+                  );
+                })
+              )}
             </View>
-            <Text style={styles.total}>{total}</Text>
+            <View style={styles.metricCol}>
+              <Text style={styles.total}>
+                {accuracy > 0 ? `${total} · ${Math.round(accuracy)}%` : total}
+              </Text>
+            </View>
           </View>
         );
       })}
@@ -43,21 +68,34 @@ export default function HorizontalStackedBarChart({ data, series }: Props) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: 10 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  labelCol: { width: 88 },
-  label: { fontSize: 11, fontWeight: '700', color: '#1e293b' },
-  sublabel: { fontSize: 10, color: '#94a3b8' },
+  shell: {
+    gap: 12,
+    width: '100%',
+    backgroundColor: CHART_THEME.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: CHART_THEME.surfaceBorder,
+    padding: 12,
+  },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  labelCol: { width: 84 },
+  label: { fontSize: 12, fontWeight: '800', color: '#1e293b' },
+  sublabel: { fontSize: 10, color: '#94a3b8', marginTop: 1 },
   barTrack: {
     flex: 1,
     flexDirection: 'row',
-    height: 14,
-    borderRadius: 6,
+    height: 18,
+    borderRadius: 9,
     overflow: 'hidden',
-    backgroundColor: '#f1f5f9',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
-    borderColor: '#cbd5e1',
+    borderColor: '#E2E8F0',
   },
-  segment: { minWidth: 3 },
-  total: { width: 24, textAlign: 'right', fontSize: 11, fontWeight: '700', color: '#64748b' },
+  emptyTrack: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  segment: { minWidth: 4 },
+  metricCol: { width: 52, alignItems: 'flex-end' },
+  total: { fontSize: 10, fontWeight: '800', color: '#334155', textAlign: 'right' },
 });

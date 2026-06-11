@@ -39,8 +39,11 @@ import {
   generatePlanTopics,
   getDNAScores,
   getDNAProfileLabel,
+  buildQuestionDistributionSegments,
   getDisplayPercentage,
-  getGradeLetter,
+  getGradeFromResult,
+  getMarksPercentage,
+  resolveTotalMarks,
   getOptionText,
   getQuestionAnalysisBlocks,
   getQuestionInsightByIndex,
@@ -70,16 +73,17 @@ export function AiReportTabMobile({ result, examTitle, studentName, aiAnalysis, 
     Number(result.totalQuestions || 0) || attemptedCount + (result.unattempted || 0);
   const accuracyRate = attemptedCount > 0 ? (result.correctAnswers / attemptedCount) * 100 : 0;
   const completionRate = totalQuestionCount > 0 ? (attemptedCount / totalQuestionCount) * 100 : 0;
-  const marksPercent =
-    (result.totalMarks || 0) > 0 ? ((result.obtainedMarks || 0) / (result.totalMarks || 1)) * 100 : 0;
-  const gradeLetter = getGradeLetter(getDisplayPercentage(result));
+  const marksPercent = getMarksPercentage(result);
+  const gradeLetter = getGradeFromResult(result);
 
-  const subjectRows = Object.entries(result.subjectWiseScore || {}).map(([subject, score]) => ({
-    subject: subject.charAt(0).toUpperCase() + subject.slice(1),
-    pct: score.total > 0 ? (score.correct / score.total) * 100 : 0,
-    correct: score.correct,
-    total: score.total,
-  }));
+  const subjectRows = Object.entries(result.subjectWiseScore || {})
+    .map(([subject, score]) => ({
+      subject: subject.charAt(0).toUpperCase() + subject.slice(1),
+      pct: score.total > 0 ? (score.correct / score.total) * 100 : 0,
+      correct: score.correct,
+      total: score.total,
+    }))
+    .filter((row) => row.total > 0);
 
   const mistakeTaxonomy = useMemo(() => buildMistakeTaxonomy(result, aiAnalysis), [result, aiAnalysis]);
   const scoreReconciliation = useMemo(() => buildScoreReconciliation(result), [result]);
@@ -89,9 +93,11 @@ export function AiReportTabMobile({ result, examTitle, studentName, aiAnalysis, 
     [questionStatuses]
   );
 
+  const examTotalMarks = useMemo(() => resolveTotalMarks(result), [result]);
+
   const reconciliation = useMemo(() => {
     const net = scoreReconciliation.net;
-    const total = Math.max(1, Math.round(Number(result.totalMarks) || 0));
+    const total = Math.max(1, Math.round(examTotalMarks));
     const earned = scoreReconciliation.marksEarned;
     const neg = scoreReconciliation.negativePenalty;
     const maxBar = Math.max(earned, total, 1);
@@ -104,11 +110,11 @@ export function AiReportTabMobile({ result, examTitle, studentName, aiAnalysis, 
       netPct: (net / maxBar) * 100,
       costPerWrong: scoreReconciliation.costPerWrong,
     };
-  }, [result.totalMarks, scoreReconciliation]);
+  }, [examTotalMarks, scoreReconciliation]);
 
   const potentialMetrics = useMemo(() => {
     const net = reconciliation.net;
-    const total = Math.max(0, Math.round(Number(result.totalMarks) || 0));
+    const total = Math.max(0, Math.round(examTotalMarks));
     const wrong = result.wrongAnswers || 0;
     let swing = 0;
     if (wrong > 0) {
@@ -116,7 +122,7 @@ export function AiReportTabMobile({ result, examTitle, studentName, aiAnalysis, 
       if (swing <= 0) swing = Math.round(Math.max(0, total - net));
     }
     return { net, total, wrong, swing, ceiling: Math.min(total, net + swing) };
-  }, [reconciliation, result.totalMarks, result.wrongAnswers, scoreReconciliation]);
+  }, [reconciliation, examTotalMarks, result.wrongAnswers, scoreReconciliation]);
 
   const planSteps = [
     ...(aiAnalysis?.actionPlan?.today || []),
@@ -127,7 +133,7 @@ export function AiReportTabMobile({ result, examTitle, studentName, aiAnalysis, 
   const summaryParagraphs = useMemo(() => {
     const name = studentName.split(' ')[0] || studentName;
     const lead = [
-      `${name}, you scored ${result.obtainedMarks || 0} / ${result.totalMarks} marks on this attempt (${marksPercent.toFixed(1)}% of total marks).`,
+      `${name}, you scored ${result.obtainedMarks || 0} / ${examTotalMarks} marks on this attempt (${marksPercent.toFixed(1)}% of total marks).`,
       `${attemptedCount} of ${totalQuestionCount} questions attempted (${completionRate.toFixed(0)}% completion).`,
       `Accuracy on attempted questions was ${accuracyRate.toFixed(1)}%.`,
     ];
@@ -140,10 +146,15 @@ export function AiReportTabMobile({ result, examTitle, studentName, aiAnalysis, 
       return [...lead, ...parts];
     }
     return lead;
-  }, [aiAnalysis, studentName, result, marksPercent, attemptedCount, totalQuestionCount, completionRate, accuracyRate]);
+  }, [aiAnalysis, studentName, result, examTotalMarks, marksPercent, attemptedCount, totalQuestionCount, completionRate, accuracyRate]);
 
   return (
-    <ScrollView contentContainerStyle={analysisStyles.scrollContent} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={panelStyles.tabScroll}
+      contentContainerStyle={analysisStyles.scrollContent}
+      showsVerticalScrollIndicator={false}
+      nestedScrollEnabled
+    >
       <View style={panelStyles.performanceReportWrap}>
         <LinearGradient colors={[...ANALYSIS.gradientHero]} style={analysisStyles.hero}>
           <Text style={analysisStyles.heroEyebrow}>{examTitle || result.examTitle || 'Exam'} · {totalQuestionCount} Qs</Text>
@@ -163,7 +174,7 @@ export function AiReportTabMobile({ result, examTitle, studentName, aiAnalysis, 
           />
           <View style={panelStyles.scoreRingMeta}>
             <Text style={panelStyles.scoreBig}>{result.obtainedMarks || 0}</Text>
-            <Text style={panelStyles.scoreDenom}>out of {result.totalMarks} marks</Text>
+            <Text style={panelStyles.scoreDenom}>out of {examTotalMarks} marks</Text>
             <Text style={panelStyles.scoreRingPct}>{marksPercent.toFixed(1)}% score</Text>
           </View>
         </View>
@@ -229,11 +240,7 @@ export function AiReportTabMobile({ result, examTitle, studentName, aiAnalysis, 
           <DonutChart
             size={140}
             centerLabel={String(totalQuestionCount)}
-            segments={[
-              { value: result.correctAnswers || 0, color: '#10b981', label: 'Correct' },
-              { value: result.wrongAnswers || 0, color: '#ef4444', label: 'Wrong' },
-              { value: result.unattempted || 0, color: '#9ca3af', label: 'Skipped' },
-            ].filter((s) => s.value > 0)}
+            segments={buildQuestionDistributionSegments(result)}
           />
           <ChartLegend
             items={[
@@ -273,7 +280,7 @@ export function AiReportTabMobile({ result, examTitle, studentName, aiAnalysis, 
           </View>
         ))}
         <Text style={panelStyles.reconNote}>
-          Net {reconciliation.net} of {result.totalMarks}: {reconciliation.earned} from correct answers minus{' '}
+          Net {reconciliation.net} of {examTotalMarks}: {reconciliation.earned} from correct answers minus{' '}
           {reconciliation.neg} negative marking
           {(result.wrongAnswers || 0) > 0
             ? ` (~${reconciliation.costPerWrong} marks impact per wrong answer).`
@@ -282,13 +289,20 @@ export function AiReportTabMobile({ result, examTitle, studentName, aiAnalysis, 
       </AnalysisCard>
 
       <View style={panelStyles.potentialBox}>
-        <Text style={panelStyles.potentialBig}>
-          {potentialMetrics.wrong > 0 ? `+${potentialMetrics.swing}` : String(potentialMetrics.net)}
-        </Text>
-        <Text style={panelStyles.bodyText}>
-          You scored {potentialMetrics.net}/{potentialMetrics.total} marks.
+        <View style={panelStyles.potentialHeadline}>
+          <Text style={panelStyles.potentialBig}>
+            {potentialMetrics.wrong > 0 ? `+${potentialMetrics.swing}` : String(potentialMetrics.net)}
+          </Text>
+          {potentialMetrics.wrong > 0 ? (
+            <Text style={panelStyles.potentialCaption}>marks recoverable</Text>
+          ) : null}
+        </View>
+        <Text style={panelStyles.potentialBody}>
+          <Text style={panelStyles.potentialBodyStrong}>
+            You scored {potentialMetrics.net}/{potentialMetrics.total} marks.
+          </Text>
           {potentialMetrics.wrong > 0
-            ? ` Fixing your ${potentialMetrics.wrong} wrong answer${potentialMetrics.wrong === 1 ? '' : 's'} can add up to +${potentialMetrics.swing} marks (potential ${potentialMetrics.ceiling}/${potentialMetrics.total}).`
+            ? ` Fixing your ${potentialMetrics.wrong} wrong answer${potentialMetrics.wrong === 1 ? '' : 's'} could recover up to +${potentialMetrics.swing} marks (potential ${potentialMetrics.ceiling}/${potentialMetrics.total}).`
             : ' No marks left on the table from wrong answers.'}
         </Text>
       </View>
@@ -621,7 +635,7 @@ export function QuestionsTabMobile({
 
                 {selectedQuestion.questionType === 'mcq' && options.length > 0 ? (
                   <View style={panelStyles.optionsBlock}>
-                    {options.map((opt) => {
+                    {options.map((opt: { text: string; index: number; letter: string }) => {
                       const isUser = userAnswerTexts.includes(opt.text);
                       const isRight = correctAnswerTexts.includes(opt.text);
                       return (
@@ -688,10 +702,12 @@ export function QuestionsTabMobile({
 
 export function AdvancedTabMobile({
   examId,
+  resultId,
   result,
   aiAnalysis,
 }: {
   examId: string;
+  resultId?: string;
   result?: ExamAnalysisResult;
   aiAnalysis?: AiExamAnalysis | null;
 }) {
@@ -704,7 +720,13 @@ export function AdvancedTabMobile({
     : 0;
 
   return (
-    <ScrollView contentContainerStyle={analysisStyles.scrollContent} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={panelStyles.tabScroll}
+      contentContainerStyle={analysisStyles.scrollContent}
+      showsVerticalScrollIndicator={false}
+      nestedScrollEnabled
+      keyboardShouldPersistTaps="handled"
+    >
       {mistakeTaxonomy && result ? (
         <AnalysisCard title="Mistake Taxonomy" icon="analytics" accent={ANALYSIS.wrong}>
           <Text style={panelStyles.metaText}>
@@ -728,7 +750,7 @@ export function AdvancedTabMobile({
         </AnalysisCard>
       ) : null}
 
-      <AdvancedPerformanceDashboardMobile examId={examId} />
+      <AdvancedPerformanceDashboardMobile examId={examId} resultId={resultId} />
     </ScrollView>
   );
 }
@@ -776,17 +798,18 @@ export function InsightsTabMobile({ result, aiAnalysis }: { result: ExamAnalysis
   const speedRatingLabel = getSpeedRatingLabel(result);
 
   return (
-    <ScrollView contentContainerStyle={analysisStyles.scrollContent} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={panelStyles.tabScroll}
+      contentContainerStyle={analysisStyles.scrollContent}
+      showsVerticalScrollIndicator={false}
+      nestedScrollEnabled
+    >
       <AnalysisCard title="Question Distribution" icon="pie-chart-outline" accent={ANALYSIS.accent}>
         <View style={panelStyles.chartCenter}>
           <DonutChart
             size={150}
             centerLabel={`${totalQuestionCount}`}
-            segments={[
-              { value: result.correctAnswers || 0, color: '#10b981' },
-              { value: result.wrongAnswers || 0, color: '#ef4444' },
-              { value: result.unattempted || 0, color: '#9ca3af' },
-            ].filter((s) => s.value > 0)}
+            segments={buildQuestionDistributionSegments(result)}
           />
           <ChartLegend
             items={[
@@ -1005,6 +1028,7 @@ export function PlanTabMobile({ studentName, aiAnalysis }: { studentName: string
 }
 
 const panelStyles = StyleSheet.create({
+  tabScroll: { flex: 1 },
   performanceReportWrap: { gap: 16 },
   scoreCardBody: {
     backgroundColor: '#FFFFFF',
@@ -1254,16 +1278,26 @@ const panelStyles = StyleSheet.create({
   reconVal: { width: 44, textAlign: 'right', fontSize: 12, fontWeight: '800' },
   reconNote: { fontSize: 12, color: '#6b7280', lineHeight: 18, marginTop: 4 },
   potentialBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 12,
     backgroundColor: '#F0F9FF',
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
     borderColor: '#BAE6FD',
+    width: '100%',
   },
-  potentialBig: { fontSize: 36, fontWeight: '800', color: '#38BDF8' },
+  potentialHeadline: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  potentialBig: { fontSize: 36, fontWeight: '800', color: '#38BDF8', lineHeight: 40 },
+  potentialCaption: { fontSize: 13, fontWeight: '700', color: '#0284C7', flexShrink: 1 },
+  potentialBody: { fontSize: 14, color: '#374151', lineHeight: 21, width: '100%', flexShrink: 1 },
+  potentialBodyStrong: { fontWeight: '700', color: '#111827' },
   taxonomyGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   taxonomyCell: {
     width: '47%',

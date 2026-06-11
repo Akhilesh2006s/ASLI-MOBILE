@@ -4,11 +4,11 @@
     "slug": "aslilearn-mobile",
     "version": "1.0.2",
     "orientation": "portrait",
-    "icon": "./image.png",
+    "icon": "./assets/app-icon.png",
     "userInterfaceStyle": "light",
     "jsEngine": "hermes",
     "splash": {
-      "image": "./image.png",
+      "image": "./assets/app-icon-splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#2563eb"
     },
@@ -22,8 +22,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./image.png",
-        "backgroundColor": "#2563eb"
+        "foregroundImage": "./assets/app-icon-foreground.png",
+        "backgroundColor": "#ffffff"
       },
       "package": "com.aslilearn.mobile",
       "versionCode": 3,

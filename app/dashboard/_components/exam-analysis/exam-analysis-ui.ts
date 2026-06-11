@@ -142,7 +142,7 @@ export const analysisStyles = StyleSheet.create({
   },
   card: {
     position: 'relative',
-    overflow: 'hidden',
+    overflow: 'visible',
     backgroundColor: ANALYSIS.surface,
     borderRadius: RADIUS.lg,
     padding: SPACING.lg,
@@ -171,7 +171,7 @@ export const analysisStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   cardTitle: { fontSize: FONT.lg, fontWeight: FONT.extrabold, color: COLORS.text, flex: 1 },
-  cardBody: { gap: SPACING.sm },
+  cardBody: { gap: SPACING.sm, width: '100%' },
   filterPill: {
     borderRadius: RADIUS.full,
     paddingHorizontal: SPACING.md,

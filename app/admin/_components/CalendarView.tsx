@@ -524,6 +524,7 @@ export default function CalendarView() {
       visible={isEventModalOpen}
       title={isEditMode ? 'Edit Event' : 'Add Event'}
       onClose={() => { setIsEventModalOpen(false); resetForm(); }}
+      noAnimation
     >
       <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 400 }}>
         <View style={styles.inputGroup}>

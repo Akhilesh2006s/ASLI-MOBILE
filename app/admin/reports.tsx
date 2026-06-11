@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import adminService from '../../src/services/api/adminService';
+import { exportCsvFile } from '../../src/utils/csvExport';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import { ErrorState, LoadingState } from '../../src/components/ui';
 import { AdminScalePressable, AdminSectionHeader, useAdminTheme } from './_ui';
@@ -31,12 +32,13 @@ export default function AdminReports() {
       if (format === 'pdf') {
         const message = response?.data?.message || 'Report generated on server.';
         Alert.alert('Report ready', message);
+      } else if (typeof response?.data === 'string') {
+        await exportCsvFile(
+          response.data,
+          `${type}_report_${new Date().toISOString().slice(0, 10)}.csv`
+        );
       } else {
-        const rowHint =
-          typeof response?.data === 'string'
-            ? `${response.data.split('\n').length - 1} rows exported`
-            : 'CSV export completed';
-        Alert.alert('Export complete', rowHint);
+        Alert.alert('Export failed', 'No CSV data returned from the server.');
       }
     } catch (e: any) {
       setError(e?.response?.data?.message || e?.message || 'Could not download report');

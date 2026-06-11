@@ -17,6 +17,7 @@ import {
   STUDENT_SPACING,
   STUDENT_TYPO,
 } from '../../src/theme/student';
+import { getMarksPercentage, normalizeExamResultFromApi } from '../../src/lib/exam-analysis-helpers';
 
 const SORT_CHIPS = [
   { id: 'recent', label: 'Recent' },
@@ -102,7 +103,27 @@ export default function StudentResults() {
       if (!res.ok) throw new Error('Failed to load results');
       const data = await res.json();
       const list = Array.isArray(data) ? data : data?.results || data?.data || [];
-      setItems(Array.isArray(list) ? list : []);
+      setItems(
+        Array.isArray(list)
+          ? list.map((row) => {
+              const normalized = normalizeExamResultFromApi(row);
+              const subjects = Object.keys(normalized.subjectWiseScore || {});
+              return {
+                _id: normalized._id,
+                examName: normalized.examTitle,
+                title: normalized.examTitle,
+                score: normalized.obtainedMarks,
+                totalMarks: normalized.totalMarks,
+                percentage:
+                  normalized.totalMarks > 0
+                    ? Math.round(getMarksPercentage(normalized))
+                    : Math.round(normalized.percentage),
+                createdAt: normalized.completedAt,
+                subject: subjects[0] || 'Exam',
+              } satisfies ResultItem;
+            })
+          : []
+      );
     } catch (e: any) {
       setError(e?.message || 'Could not load results');
     } finally {

@@ -41,6 +41,7 @@ import {
 interface OverviewViewProps {
   user: any;
   onGoExams?: () => void;
+  onOpenExam?: (examId: string) => void;
   onGoProfile?: () => void;
   onLogout?: () => void;
 }
@@ -72,7 +73,13 @@ const STAT_SUMMARY_CARDS = {
   },
 };
 
-const OverviewView = memo(function OverviewView({ user, onGoExams, onGoProfile, onLogout }: OverviewViewProps) {
+const OverviewView = memo(function OverviewView({
+  user,
+  onGoExams,
+  onOpenExam,
+  onGoProfile,
+  onLogout,
+}: OverviewViewProps) {
   const { width } = useWindowDimensions();
   const compact = width < 380;
   const isTablet = width >= 768;
@@ -96,6 +103,7 @@ const OverviewView = memo(function OverviewView({ user, onGoExams, onGoProfile, 
     Record<string, ChapterCompletedDates>
   >({});
   const [exams, setExams] = useState<any[]>([]);
+  const [completedExamIds, setCompletedExamIds] = useState<Set<string>>(new Set());
   const [remarks, setRemarks] = useState<any[]>([]);
   const [riskReports, setRiskReports] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -167,6 +175,20 @@ const OverviewView = memo(function OverviewView({ user, onGoExams, onGoProfile, 
         const resultsJson = await resultsRes.json();
         resultsData = resultsJson.data || resultsJson.results || resultsJson || [];
       }
+
+      const completedIds = new Set<string>();
+      resultsData.forEach((result: any) => {
+        const raw = result?.examId ?? result?.exam;
+        if (!raw) return;
+        const examId =
+          typeof raw === 'string'
+            ? raw
+            : typeof raw === 'object' && raw._id != null
+              ? String(raw._id)
+              : String(raw);
+        if (examId && examId !== '[object Object]') completedIds.add(examId);
+      });
+      setCompletedExamIds(completedIds);
 
       let rankingsData = [];
       if (rankingsRes.ok) {
@@ -742,7 +764,9 @@ const OverviewView = memo(function OverviewView({ user, onGoExams, onGoProfile, 
       <StudyCalendarSection
         incompleteQuizzes={incompleteQuizzes}
         exams={exams}
+        completedExamIds={completedExamIds}
         onOpenQuiz={(quiz) => router.push(`/quiz/${quiz._id || quiz.id}`)}
+        onOpenExam={(examId) => onOpenExam?.(examId)}
       />
 
       <ClassTimetableSection schoolName={schoolName} />

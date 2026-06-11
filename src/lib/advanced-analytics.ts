@@ -101,6 +101,53 @@ export const difficultyLabel = (difficulty: string) => {
   return map[difficulty] || difficulty;
 };
 
+/** Shorter labels for mobile chart X-axis (matches web readability). */
+export const difficultyChartLabel = (difficulty: string) => {
+  const map: Record<string, string> = {
+    easy: 'Easy',
+    moderate: 'Moderate',
+    difficult: 'Difficult',
+    highly_difficult: 'H. Difficult',
+  };
+  return map[difficulty] || difficultyLabel(difficulty);
+};
+
+export function normalizeAdvancedAnalyticsPayload(raw: unknown): AdvancedAnalyticsPayload {
+  const data = (raw && typeof raw === 'object' ? raw : {}) as Partial<AdvancedAnalyticsPayload>;
+  return {
+    difficultyTimeIntelligence: Array.isArray(data.difficultyTimeIntelligence)
+      ? data.difficultyTimeIntelligence
+      : [],
+    questionTypeMatrix: Array.isArray(data.questionTypeMatrix) ? data.questionTypeMatrix : [],
+    conceptVsApplication: Array.isArray(data.conceptVsApplication) ? data.conceptVsApplication : [],
+    chapterWeakness: Array.isArray(data.chapterWeakness) ? data.chapterWeakness : [],
+    aiObservations: Array.isArray(data.aiObservations) ? data.aiObservations : [],
+    timeEfficiency: {
+      avgTimePerSubject: Array.isArray(data.timeEfficiency?.avgTimePerSubject)
+        ? data.timeEfficiency!.avgTimePerSubject
+        : [],
+      slowestSubject: data.timeEfficiency?.slowestSubject || '—',
+      fastestSubject: data.timeEfficiency?.fastestSubject || '—',
+      timeWastedOnWrongQuestions: Number(data.timeEfficiency?.timeWastedOnWrongQuestions || 0),
+      efficiencyScore: Number(data.timeEfficiency?.efficiencyScore || 0),
+      totalTimeTaken: Number(data.timeEfficiency?.totalTimeTaken || 0),
+    },
+    visuals: {
+      chapterHeatmap: Array.isArray(data.visuals?.chapterHeatmap) ? data.visuals!.chapterHeatmap : [],
+      subjectPerformanceBars: Array.isArray(data.visuals?.subjectPerformanceBars)
+        ? data.visuals!.subjectPerformanceBars
+        : [],
+      outcomePie: Array.isArray(data.visuals?.outcomePie) ? data.visuals!.outcomePie : [],
+      timeVsAccuracy: Array.isArray(data.visuals?.timeVsAccuracy) ? data.visuals!.timeVsAccuracy : [],
+    },
+    recommendation: data.recommendation ?? null,
+    metadata: {
+      generatedAt: data.metadata?.generatedAt || new Date().toISOString(),
+      totalQuestionsAnalyzed: Number(data.metadata?.totalQuestionsAnalyzed || 0),
+    },
+  };
+}
+
 export const advancedAnalyticsMockData: AdvancedAnalyticsPayload = {
   difficultyTimeIntelligence: [
     {
@@ -132,9 +179,72 @@ export const advancedAnalyticsMockData: AdvancedAnalyticsPayload = {
       wrongAnswered: { count: 1, avgTime: 148, inTime: 0, lessTime: 0, overTime: 1 },
     },
   ],
-  questionTypeMatrix: [],
-  conceptVsApplication: [],
-  chapterWeakness: [],
+  questionTypeMatrix: [
+    {
+      type: 'Numerical',
+      correct: { physics: 2, chemistry: 1, maths: 3 },
+      wrong: { physics: 1, chemistry: 0, maths: 1 },
+      notAnswered: { physics: 0, chemistry: 1, maths: 0 },
+    },
+    {
+      type: 'Theory',
+      correct: { physics: 3, chemistry: 2, maths: 1 },
+      wrong: { physics: 1, chemistry: 1, maths: 2 },
+      notAnswered: { physics: 0, chemistry: 0, maths: 1 },
+    },
+    {
+      type: 'Formula',
+      correct: { physics: 1, chemistry: 2, maths: 2 },
+      wrong: { physics: 0, chemistry: 1, maths: 1 },
+      notAnswered: { physics: 1, chemistry: 0, maths: 0 },
+    },
+  ],
+  conceptVsApplication: [
+    {
+      type: 'Concept',
+      accuracy: 62,
+      correct: 10,
+      wrong: 4,
+      notAnswered: 2,
+      totalTime: 920,
+      avgTimePerQuestion: 61,
+    },
+    {
+      type: 'Application',
+      accuracy: 48,
+      correct: 6,
+      wrong: 5,
+      notAnswered: 3,
+      totalTime: 1100,
+      avgTimePerQuestion: 79,
+    },
+  ],
+  chapterWeakness: [
+    {
+      chapter: 'Electrostatics',
+      subject: 'physics',
+      accuracy: 42,
+      correct: 2,
+      errors: 2,
+      notAnswered: 1,
+    },
+    {
+      chapter: 'Organic Chemistry',
+      subject: 'chemistry',
+      accuracy: 55,
+      correct: 3,
+      errors: 2,
+      notAnswered: 1,
+    },
+    {
+      chapter: 'Calculus',
+      subject: 'maths',
+      accuracy: 58,
+      correct: 4,
+      errors: 2,
+      notAnswered: 1,
+    },
+  ],
   aiObservations: [
     'You are spending more time than required on Moderate Physics questions.',
     'Application-based Mathematics questions need targeted timed drills.',

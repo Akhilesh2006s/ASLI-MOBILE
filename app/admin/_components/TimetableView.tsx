@@ -4,7 +4,6 @@ import {
   Modal,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -34,6 +33,7 @@ import {
   updateTimetableEntry,
   type TimetableFilters,
 } from '../../../src/services/api/timetableAdminService';
+import { exportCsvFile } from '../../../src/utils/csvExport';
 import {
   AdminScreenShell,
   AdminGlassCard,
@@ -421,10 +421,7 @@ export default function TimetableView() {
   const handleExport = async () => {
     try {
       const csv = await exportTimetableCsv(queryFilters);
-      await Share.share({
-        message: csv,
-        title: `timetable_export_${format(new Date(), 'yyyy-MM-dd')}.csv`,
-      });
+      await exportCsvFile(csv, `timetable_export_${format(new Date(), 'yyyy-MM-dd')}.csv`);
     } catch {
       Alert.alert('Export', 'Could not export timetable.');
     }
@@ -498,7 +495,7 @@ export default function TimetableView() {
   const handleDownloadTemplate = async () => {
     try {
       const csv = await downloadTimetableTemplate();
-      await Share.share({ message: csv, title: 'timetable-template.csv' });
+      await exportCsvFile(csv, 'timetable-template.csv');
     } catch {
       Alert.alert('Download', 'Could not download template.');
     }

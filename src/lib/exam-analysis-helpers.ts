@@ -128,6 +128,267 @@ export function getDisplayPercentage(result: ExamAnalysisResult): number {
   return total > 0 ? (correct / total) * 100 : 0;
 }
 
+/** Prefer sum of question marks when stored totalMarks is missing or understated (e.g. question count). */
+export function resolveTotalMarks(
+  result: Pick<ExamAnalysisResult, 'totalMarks' | 'questions' | 'totalQuestions'>
+): number {
+  const stored = Number(result.totalMarks || 0);
+  const questions = result.questions || [];
+  let fromQuestions = 0;
+  if (questions.length > 0) {
+    fromQuestions = questions.reduce(
+      (sum, q) => sum + Math.max(0, Number(q?.marks ?? q?.marksPerQuestion ?? 0) || 0),
+      0
+    );
+  }
+  if (fromQuestions > stored) return fromQuestions;
+  return stored > 0 ? stored : fromQuestions;
+}
+
+export function getMarksPercentage(
+  result: Pick<ExamAnalysisResult, 'obtainedMarks' | 'totalMarks' | 'questions' | 'totalQuestions'>
+): number {
+  const total = resolveTotalMarks(result);
+  if (total <= 0) return 0;
+  return (Number(result.obtainedMarks || 0) / total) * 100;
+}
+
+export function getGradeFromResult(result: ExamAnalysisResult): string {
+  if (resolveTotalMarks(result) > 0) {
+    return getGradeLetter(getMarksPercentage(result));
+  }
+  return getGradeLetter(getDisplayPercentage(result));
+}
+
+export function mapLikeToRecord(raw: unknown): Record<string, unknown> | undefined {
+  if (raw == null) return undefined;
+  if (raw instanceof Map) return Object.fromEntries(raw);
+  if (typeof raw === 'object' && typeof (raw as { get?: unknown }).get === 'function') {
+    try {
+      return Object.fromEntries(raw as Map<string, unknown>);
+    } catch {
+      return { ...(raw as Record<string, unknown>) };
+    }
+  }
+  if (typeof raw === 'object') return raw as Record<string, unknown>;
+  return undefined;
+}
+
+function isEmptyRecord(raw: unknown): boolean {
+  const rec = mapLikeToRecord(raw);
+  return !rec || Object.keys(rec).length === 0;
+}
+
+export function mergeExamResultPreserveScores(
+  base: Partial<ExamAnalysisResult> | null | undefined,
+  incoming: Partial<ExamAnalysisResult> | null | undefined
+): Partial<ExamAnalysisResult> {
+  const b = base || {};
+  const inc = incoming || {};
+  const merged: Partial<ExamAnalysisResult> = { ...b, ...inc };
+
+  const scoreKeys = [
+    'correctAnswers',
+    'wrongAnswers',
+    'unattempted',
+    'obtainedMarks',
+    'totalMarks',
+    'timeTaken',
+  ] as const;
+  for (const key of scoreKeys) {
+    const incVal = Number(inc[key]);
+    const baseVal = Number(b[key]);
+    if ((!Number.isFinite(incVal) || incVal === 0) && Number.isFinite(baseVal) && baseVal > 0) {
+      merged[key] = b[key] as never;
+    }
+  }
+
+  const incSw = mapLikeToRecord(inc.subjectWiseScore);
+  const baseSw = mapLikeToRecord(b.subjectWiseScore);
+  if (isEmptyRecord(incSw) && !isEmptyRecord(baseSw)) {
+    merged.subjectWiseScore = normalizeSubjectWiseScore(baseSw);
+  } else if (incSw && baseSw) {
+    const out: Record<string, SubjectScore> = { ...normalizeSubjectWiseScore(baseSw) };
+    for (const [subject, incScore] of Object.entries(incSw)) {
+      const baseScore = normalizeSubjectWiseScore({ [subject]: baseSw[subject] })?.[subject];
+      const incNorm = normalizeSubjectWiseScore({ [subject]: incScore })?.[subject];
+      if (!incNorm) continue;
+      const mergedScore = { ...incNorm };
+      if (baseScore) {
+        if (mergedScore.correct === 0 && baseScore.correct > 0) mergedScore.correct = baseScore.correct;
+        if (mergedScore.marks === 0 && baseScore.marks > 0) mergedScore.marks = baseScore.marks;
+        if (mergedScore.total === 0 && baseScore.total > 0) mergedScore.total = baseScore.total;
+      }
+      out[subject] = mergedScore;
+    }
+    merged.subjectWiseScore = Object.keys(out).length > 0 ? out : merged.subjectWiseScore;
+  }
+
+  const incAnswers = mapLikeToRecord(inc.answers);
+  const baseAnswers = mapLikeToRecord(b.answers);
+  if (isEmptyRecord(incAnswers) && !isEmptyRecord(baseAnswers)) {
+    merged.answers = baseAnswers as ExamAnalysisResult['answers'];
+  } else if (incAnswers && baseAnswers) {
+    merged.answers = { ...baseAnswers, ...incAnswers } as ExamAnalysisResult['answers'];
+  }
+
+  return merged;
+}
+
+function enrichExamResultFromQuestions(
+  result: ExamAnalysisResult
+): ExamAnalysisResult {
+  const questions = result.questions || [];
+  const answers = result.answers || {};
+  if (!questions.length || Object.keys(answers).length === 0) return result;
+
+  const attemptedTotal = (result.correctAnswers || 0) + (result.wrongAnswers || 0);
+  const subjectHasScores =
+    result.subjectWiseScore &&
+    Object.values(result.subjectWiseScore).some((s) => s.correct > 0 || s.marks > 0);
+  if (attemptedTotal > 0 && (result.obtainedMarks || 0) > 0 && subjectHasScores) return result;
+
+  let correct = 0;
+  let wrong = 0;
+  let unattempted = 0;
+  const subjectWise: Record<string, SubjectScore> = {};
+
+  questions.forEach((q, i) => {
+    const subjectKey = String(q?.subject || q?.subjectName || 'General').trim() || 'General';
+    if (!subjectWise[subjectKey]) {
+      subjectWise[subjectKey] = { correct: 0, total: 0, marks: 0 };
+    }
+    subjectWise[subjectKey].total += 1;
+
+    const ua = getUserAnswerForQuestion(q, i, answers);
+    const attempted = ua !== undefined && ua !== null && ua !== '';
+    if (!attempted) {
+      unattempted += 1;
+      return;
+    }
+    const isCorrect = compareAnswers(q, ua, q.correctAnswer);
+    if (isCorrect) {
+      correct += 1;
+      subjectWise[subjectKey].correct += 1;
+      subjectWise[subjectKey].marks += Number(q?.marks ?? q?.marksPerQuestion ?? 0);
+    } else {
+      wrong += 1;
+    }
+  });
+
+  if (correct + wrong === 0) return result;
+
+  return {
+    ...result,
+    correctAnswers: attemptedTotal > 0 ? result.correctAnswers : correct,
+    wrongAnswers: attemptedTotal > 0 ? result.wrongAnswers : wrong,
+    unattempted: attemptedTotal > 0 ? result.unattempted : unattempted,
+    totalQuestions: result.totalQuestions || questions.length,
+    subjectWiseScore: subjectHasScores ? result.subjectWiseScore : subjectWise,
+  };
+}
+
+export function normalizeSubjectWiseScore(
+  raw: unknown
+): Record<string, SubjectScore> | undefined {
+  const record = mapLikeToRecord(raw);
+  if (!record) return undefined;
+  const out: Record<string, SubjectScore> = {};
+  for (const [key, val] of Object.entries(record)) {
+    if (!val || typeof val !== 'object') continue;
+    const score = val as Record<string, unknown>;
+    out[key] = {
+      correct: Number(score.correct || 0),
+      total: Number(score.total || 0),
+      marks: Number(score.marks || 0),
+    };
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+export function normalizeExamResultFromApi(row: any): ExamAnalysisResult & { completedAt?: string } {
+  const correct = Number(row?.correctAnswers || 0);
+  const wrong = Number(row?.wrongAnswers || 0);
+  const unattempted = Number(row?.unattempted || 0);
+  const totalQuestions = Number(row?.totalQuestions || 0) || correct + wrong + unattempted;
+  const examIdRaw = row?.examId;
+  const examId =
+    examIdRaw != null
+      ? typeof examIdRaw === 'object' && examIdRaw._id != null
+        ? String(examIdRaw._id)
+        : String(examIdRaw)
+      : '';
+
+  const questions = Array.isArray(row?.questions) ? row.questions : undefined;
+  const obtainedMarks = Number(row?.obtainedMarks ?? 0);
+  const draft: ExamAnalysisResult & { completedAt?: string } = {
+    _id: row?._id != null ? String(row._id) : undefined,
+    examId,
+    examTitle: row?.examTitle,
+    attemptNumber: Number(row?.attemptNumber) >= 1 ? Number(row.attemptNumber) : 1,
+    totalQuestions,
+    correctAnswers: correct,
+    wrongAnswers: wrong,
+    unattempted,
+    totalMarks: Number(row?.totalMarks || 0),
+    obtainedMarks,
+    percentage: 0,
+    timeTaken: Number(row?.timeTaken || 0),
+    subjectWiseScore: normalizeSubjectWiseScore(row?.subjectWiseScore),
+    answers: (mapLikeToRecord(row?.answers) || {}) as ExamAnalysisResult['answers'],
+    questions,
+    questionTimings: mapLikeToRecord(row?.questionTimings) as ExamAnalysisResult['questionTimings'],
+    questionAnalytics: Array.isArray(row?.questionAnalytics) ? row.questionAnalytics : undefined,
+    completedAt: row?.completedAt,
+  };
+  draft.totalMarks = resolveTotalMarks(draft);
+  draft.percentage =
+    draft.totalMarks > 0 ? getMarksPercentage(draft) : getDisplayPercentage(draft);
+
+  return enrichExamResultFromQuestions(draft);
+}
+
+export function buildQuestionDistributionSegments(result: Pick<
+  ExamAnalysisResult,
+  'correctAnswers' | 'wrongAnswers' | 'unattempted'
+>) {
+  const segments = [
+    { value: Number(result.correctAnswers || 0), color: '#10b981', label: 'Correct' },
+    { value: Number(result.wrongAnswers || 0), color: '#ef4444', label: 'Wrong' },
+    { value: Number(result.unattempted || 0), color: '#9ca3af', label: 'Skipped' },
+  ].filter((segment) => segment.value > 0);
+  return segments.length > 0 ? segments : [{ value: 1, color: '#e2e8f0', label: 'No data' }];
+}
+
+export function formatReviewResultForAnalysis(
+  reviewResult: any,
+  exam: { _id: string; title: string; totalMarks?: number; totalQuestions?: number },
+  examWithQuestions: { questions?: any[]; totalMarks?: number; totalQuestions?: number; title?: string },
+  displayResult?: any
+): ExamAnalysisResult {
+  const merged = mergeExamResultPreserveScores(displayResult, reviewResult);
+  const normalized = normalizeExamResultFromApi({
+    ...merged,
+    examId: reviewResult?.examId || displayResult?.examId || exam._id,
+    examTitle: reviewResult?.examTitle || examWithQuestions.title || exam.title,
+    totalQuestions:
+      reviewResult?.totalQuestions || examWithQuestions.totalQuestions || exam.totalQuestions || 0,
+    totalMarks: reviewResult?.totalMarks || examWithQuestions.totalMarks || exam.totalMarks || 0,
+    questions: examWithQuestions.questions || merged.questions || [],
+  });
+
+  const questionTimings =
+    (mapLikeToRecord(reviewResult?.questionTimings) as ExamAnalysisResult['questionTimings']) ||
+    (mapLikeToRecord(displayResult?.questionTimings) as ExamAnalysisResult['questionTimings']) ||
+    normalized.questionTimings;
+
+  return {
+    ...normalized,
+    questionTimings,
+    questionAnalytics: reviewResult?.questionAnalytics || displayResult?.questionAnalytics,
+  };
+}
+
 export function getExamResultRowId(result: {
   _id?: unknown;
   id?: unknown;

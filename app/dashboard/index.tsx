@@ -36,6 +36,7 @@ export default function StudentDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [calendarFocusExamId, setCalendarFocusExamId] = useState<string | null>(null);
 
   const homeScrollRef = useRef<ScrollView>(null);
   const learningScrollRef = useRef<ScrollView>(null);
@@ -148,6 +149,10 @@ export default function StudentDashboard() {
             <OverviewView
               user={user}
               onGoExams={() => setActiveTab('exams')}
+              onOpenExam={(examId) => {
+                setCalendarFocusExamId(examId);
+                setActiveTab('exams');
+              }}
               onGoProfile={() => setActiveTab('settings')}
               onLogout={handleLogout}
             />
@@ -175,7 +180,10 @@ export default function StudentDashboard() {
       case 'exams':
         return (
           <View style={[styles.scroll, styles.examsPane, { paddingHorizontal: pad.paddingHorizontal, paddingTop: pad.paddingTop }]}>
-            <ExamsTabView />
+            <ExamsTabView
+              focusExamId={calendarFocusExamId}
+              onFocusExamHandled={() => setCalendarFocusExamId(null)}
+            />
           </View>
         );
       case 'vidya':

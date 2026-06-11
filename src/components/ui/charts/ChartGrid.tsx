@@ -1,5 +1,5 @@
 import React from 'react';
-import Svg, { Line, Text as SvgText } from 'react-native-svg';
+import { G, Line, Text as SvgText } from 'react-native-svg';
 import { ChartPadding, getPlotArea } from './chart-math';
 
 type Props = {
@@ -20,12 +20,12 @@ export default function ChartGrid({
   const plot = getPlotArea(width, height, padding);
 
   return (
-    <>
+    <G>
       {Array.from({ length: gridLines + 1 }).map((_, i) => {
         const y = plot.topY + (plot.height / gridLines) * i;
         const value = Math.round(maxValue - (maxValue / gridLines) * i);
         return (
-          <React.Fragment key={i}>
+          <G key={i}>
             <Line
               x1={plot.baseX}
               y1={y}
@@ -35,16 +35,10 @@ export default function ChartGrid({
               strokeWidth={1}
               strokeDasharray="5 4"
             />
-            <SvgText
-              x={plot.baseX - 6}
-              y={y + 4}
-              fontSize={9}
-              fill="#64748b"
-              textAnchor="end"
-            >
+            <SvgText x={plot.baseX - 6} y={y + 4} fontSize={9} fill="#64748b" textAnchor="end">
               {String(value)}
             </SvgText>
-          </React.Fragment>
+          </G>
         );
       })}
       <Line
@@ -63,6 +57,6 @@ export default function ChartGrid({
         stroke="#64748b"
         strokeWidth={1.5}
       />
-    </>
+    </G>
   );
 }

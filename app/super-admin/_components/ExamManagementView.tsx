@@ -11,7 +11,6 @@ import {
   Alert,
   Pressable,
   RefreshControl,
-  Share,
   Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as DocumentPicker from 'expo-document-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../../../src/services/api/api';
+import { exportCsvFile } from '../../../src/utils/csvExport';
 import { EXAM_CALENDAR_PREFILL_KEY } from '../../../src/lib/super-admin-calendar';
 import { getExamClassStrings } from '../../../src/lib/exam-classes';
 import {
@@ -279,9 +279,10 @@ export default function ExamManagementView() {
 
   const shareTemplate = async (content: string, title: string) => {
     try {
-      await Share.share({ message: content, title });
+      const filename = title.toLowerCase().endsWith('.csv') ? title : `${title.replace(/\s+/g, '_')}.csv`;
+      await exportCsvFile(content, filename);
     } catch {
-      Alert.alert('Share failed', 'Could not open share sheet.');
+      Alert.alert('Download failed', 'Could not download CSV template.');
     }
   };
 

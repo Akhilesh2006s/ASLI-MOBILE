@@ -7,7 +7,6 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   RefreshControl,
-  Share,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -16,6 +15,7 @@ import {
   fetchBoardComparison,
   fetchBoardExportData,
 } from '../../../src/lib/board-comparison';
+import { exportCsvFile } from '../../../src/utils/csvExport';
 
 type ChartKey = keyof Pick<
   BoardAnalytics,
@@ -142,10 +142,7 @@ export default function BoardComparisonView() {
             ].join('\n')
           : buildComparisonCsv(title, analytics, dataKey);
 
-      await Share.share({
-        message: csv,
-        title: `${title.replace(/\s+/g, '_')}.csv`,
-      });
+      await exportCsvFile(csv, `${title.replace(/\s+/g, '_')}.csv`);
     } finally {
       setExportingKey(null);
     }

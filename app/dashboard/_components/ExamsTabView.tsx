@@ -3,10 +3,19 @@ import { StyleSheet, View } from 'react-native';
 import { STUDENT, STUDENT_SPACING } from '../../../src/theme/student';
 import ExamsView from './ExamsView';
 
-export default function ExamsTabView() {
+type ExamsTabViewProps = {
+  focusExamId?: string | null;
+  onFocusExamHandled?: () => void;
+};
+
+export default function ExamsTabView({ focusExamId, onFocusExamHandled }: ExamsTabViewProps) {
   return (
     <View style={styles.wrap}>
-      <ExamsView initialTab="available" />
+      <ExamsView
+        initialTab="available"
+        focusExamId={focusExamId}
+        onFocusExamHandled={onFocusExamHandled}
+      />
     </View>
   );
 }

@@ -1,18 +1,28 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../../src/lib/api-config';
 import {
   ADVANCED_CHART_COLORS,
   AdvancedAnalyticsPayload,
   advancedAnalyticsMockData,
+  difficultyChartLabel,
   difficultyLabel,
   formatSeconds,
+  normalizeAdvancedAnalyticsPayload,
 } from '../../../../src/lib/advanced-analytics';
 import DonutChart from '../../../../src/components/ui/charts/DonutChart';
 import ChartLegend from '../../../../src/components/ui/charts/ChartLegend';
 import GroupedBarChart from '../../../../src/components/ui/charts/GroupedBarChart';
-import StackedBarChart from '../../../../src/components/ui/charts/StackedBarChart';
+import ComposedStackedBarChart from '../../../../src/components/ui/charts/ComposedStackedBarChart';
 import HorizontalStackedBarChart from '../../../../src/components/ui/charts/HorizontalStackedBarChart';
 import BarChart from '../../../../src/components/ui/charts/BarChart';
 import AnalysisCard from './AnalysisCard';
@@ -47,39 +57,64 @@ function ChartEmpty({ message }: { message: string }) {
   );
 }
 
-export default function AdvancedPerformanceDashboardMobile({ examId }: { examId: string }) {
+export default function AdvancedPerformanceDashboardMobile({
+  examId,
+  resultId,
+}: {
+  examId: string;
+  resultId?: string;
+}) {
+  const { width: screenWidth } = useWindowDimensions();
   const [data, setData] = useState<AdvancedAnalyticsPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const loadAnalytics = useCallback(async (cancelled: () => boolean) => {
+    setLoading(true);
+    setError('');
+    try {
+      const token = await SecureStore.getItemAsync('authToken');
+      const resultQuery =
+        resultId && String(resultId).trim()
+          ? `?resultId=${encodeURIComponent(String(resultId).trim())}`
+          : '';
+      const response = await fetch(
+        `${API_BASE_URL}/api/student/exam/${examId}/advanced-analytics${resultQuery}`,
+        {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        }
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.message || 'Failed to load advanced analytics');
+      }
+      if (!cancelled()) {
+        setData(normalizeAdvancedAnalyticsPayload(payload.data));
+      }
+    } catch (e: unknown) {
+      if (!cancelled()) {
+        setError(e instanceof Error ? e.message : 'Advanced analytics unavailable');
+        setData(normalizeAdvancedAnalyticsPayload(advancedAnalyticsMockData));
+      }
+    } finally {
+      if (!cancelled()) setLoading(false);
+    }
+  }, [examId, resultId]);
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const token = await SecureStore.getItemAsync('authToken');
-        const response = await fetch(`${API_BASE_URL}/api/student/exam/${examId}/advanced-analytics`, {
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok || !payload?.success) {
-          throw new Error(payload?.message || 'Failed to load advanced analytics');
-        }
-        if (!cancelled) setData(payload.data || advancedAnalyticsMockData);
-      } catch (e: unknown) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : 'Advanced analytics unavailable');
-          setData(advancedAnalyticsMockData);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [examId]);
+    void loadAnalytics(() => cancelled);
+    return () => {
+      cancelled = true;
+    };
+  }, [loadAnalytics, reloadKey]);
 
-  const analytics = data || advancedAnalyticsMockData;
+  const analytics = useMemo(
+    () => (data ? data : normalizeAdvancedAnalyticsPayload(advancedAnalyticsMockData)),
+    [data]
+  );
+  const usedMockFallback = Boolean(error);
 
   const difficultyMap = useMemo(() => {
     const mapped = new Map(analytics.difficultyTimeIntelligence.map((row) => [row.difficulty, row]));
@@ -95,6 +130,15 @@ export default function AdvancedPerformanceDashboardMobile({ examId }: { examId:
         correct: row.correct.physics + row.correct.chemistry + row.correct.maths,
         wrong: row.wrong.physics + row.wrong.chemistry + row.wrong.maths,
         notAnswered: row.notAnswered.physics + row.notAnswered.chemistry + row.notAnswered.maths,
+        correctPhysics: row.correct.physics,
+        correctChemistry: row.correct.chemistry,
+        correctMaths: row.correct.maths,
+        wrongPhysics: row.wrong.physics,
+        wrongChemistry: row.wrong.chemistry,
+        wrongMaths: row.wrong.maths,
+        notAnsweredPhysics: row.notAnswered.physics,
+        notAnsweredChemistry: row.notAnswered.chemistry,
+        notAnsweredMaths: row.notAnswered.maths,
       })),
     [analytics.questionTypeMatrix]
   );
@@ -103,12 +147,20 @@ export default function AdvancedPerformanceDashboardMobile({ examId }: { examId:
     (r) => r.correct + r.wrong + r.notAnswered > 0
   );
 
+  const questionTypeChartRows = useMemo(
+    () => questionTypeChartData.filter((r) => r.correct + r.wrong + r.notAnswered > 0),
+    [questionTypeChartData]
+  );
+
   const difficultyOutcomeData = useMemo(
     () =>
       difficultyMap.map((row) => ({
-        label: difficultyLabel(row.difficulty),
+        label: difficultyChartLabel(row.difficulty),
         correct: row.correctAnswered.count,
         wrong: row.wrongAnswered.count,
+        correctAvg: row.correctAnswered.avgTime,
+        wrongAvg: row.wrongAnswered.avgTime,
+        idealTime: row.idealTimeSec,
       })),
     [difficultyMap]
   );
@@ -116,12 +168,13 @@ export default function AdvancedPerformanceDashboardMobile({ examId }: { examId:
   const correctTimeBucketData = useMemo(
     () =>
       difficultyMap.map((row) => ({
-        label: difficultyLabel(row.difficulty),
+        label: difficultyChartLabel(row.difficulty),
         inTime: row.correctAnswered.inTime,
         lessTime: row.correctAnswered.lessTime,
         overTime: row.correctAnswered.overTime,
         idealTime: row.idealTimeSec,
         avgTime: row.correctAnswered.avgTime,
+        count: row.correctAnswered.count,
       })),
     [difficultyMap]
   );
@@ -129,14 +182,22 @@ export default function AdvancedPerformanceDashboardMobile({ examId }: { examId:
   const wrongTimeBucketData = useMemo(
     () =>
       difficultyMap.map((row) => ({
-        label: difficultyLabel(row.difficulty),
+        label: difficultyChartLabel(row.difficulty),
         inTime: row.wrongAnswered.inTime,
         lessTime: row.wrongAnswered.lessTime,
         overTime: row.wrongAnswered.overTime,
         idealTime: row.idealTimeSec,
         avgTime: row.wrongAnswered.avgTime,
+        count: row.wrongAnswered.count,
       })),
     [difficultyMap]
+  );
+
+  const correctBucketsHaveData = correctTimeBucketData.some(
+    (r) => r.inTime + r.lessTime + r.overTime > 0
+  );
+  const wrongBucketsHaveData = wrongTimeBucketData.some(
+    (r) => r.inTime + r.lessTime + r.overTime > 0
   );
 
   const conceptChartData = useMemo(
@@ -156,9 +217,7 @@ export default function AdvancedPerformanceDashboardMobile({ examId }: { examId:
     [analytics.conceptVsApplication]
   );
 
-  const conceptHasData = conceptChartData.some(
-    (r) => r.correct + r.wrong + r.notAnswered > 0
-  );
+  const conceptHasData = conceptChartData.some((r) => r.correct + r.wrong + r.notAnswered > 0);
 
   const chapterChartData = useMemo(
     () =>
@@ -174,7 +233,12 @@ export default function AdvancedPerformanceDashboardMobile({ examId }: { examId:
     [analytics.chapterWeakness]
   );
 
-  const chapterHasData = chapterChartData.some((r) => r.total > 0);
+  const chapterRowsForChart = useMemo(
+    () => chapterChartData.filter((r) => r.total > 0).slice(0, 10),
+    [chapterChartData]
+  );
+
+  const chapterHasData = chapterRowsForChart.length > 0;
 
   const chapterPieSegments = useMemo(() => {
     const totals = { correct: 0, errors: 0, notAnswered: 0 };
@@ -208,6 +272,16 @@ export default function AdvancedPerformanceDashboardMobile({ examId }: { examId:
     { key: 'notAnswered', color: ADVANCED_CHART_COLORS.notAnswered, label: 'Not Answered' },
   ];
 
+  const chartMinWidth = Math.max(280, screenWidth - 48);
+
+  const subjectBarColor = (subject: string) => {
+    const key = subject.toLowerCase();
+    if (key.includes('phys')) return '#8B5CF6';
+    if (key.includes('chem')) return '#06B6D4';
+    if (key.includes('math')) return '#EC4899';
+    return ADVANCED_CHART_COLORS.notAnswered;
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingWrap}>
@@ -218,25 +292,33 @@ export default function AdvancedPerformanceDashboardMobile({ examId }: { examId:
   }
 
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, { minWidth: chartMinWidth }]}>
+      {error ? (
+        <View style={styles.warnBox}>
+          <Text style={styles.warnText}>
+            {error}
+            {usedMockFallback ? '. Showing sample layout until live analytics loads.' : ''}
+          </Text>
+          <TouchableOpacity style={styles.retryBtnInline} onPress={() => setReloadKey((k) => k + 1)}>
+            <Text style={styles.retryBtnText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Performance Intelligence</Text>
-        <Text style={styles.headerSub}>Time × difficulty × question type × chapter</Text>
+        <Text style={styles.headerTitle}>Advanced Performance Intelligence</Text>
+        <Text style={styles.headerSub}>Live data: time × difficulty × question type × chapter</Text>
         <View style={styles.badgeRow}>
           <View style={styles.badgeBlue}>
             <Text style={styles.badgeBlueText}>Risk: {analytics.recommendation?.riskLevel || 'N/A'}</Text>
           </View>
           <View style={styles.badgeGreen}>
-            <Text style={styles.badgeGreenText}>Trend: {analytics.recommendation?.confidenceTrend || 'Stable'}</Text>
+            <Text style={styles.badgeGreenText}>
+              Trend: {analytics.recommendation?.confidenceTrend || 'Stable'}
+            </Text>
           </View>
         </View>
       </View>
-
-      {error ? (
-        <View style={styles.warnBox}>
-          <Text style={styles.warnText}>{error}. Showing sample layout until live analytics loads.</Text>
-        </View>
-      ) : null}
 
       <DashboardCard
         title="Question-Type Intelligence Matrix"
@@ -245,57 +327,72 @@ export default function AdvancedPerformanceDashboardMobile({ examId }: { examId:
         {!questionTypeHasData ? (
           <ChartEmpty message="No question-type data for this exam yet." />
         ) : (
-          <GroupedBarChart data={questionTypeChartData} series={outcomeSeries} height={280} />
+          <>
+            <GroupedBarChart data={questionTypeChartRows} series={outcomeSeries} height={320} />
+            {questionTypeChartData
+              .filter((row) => row.correct + row.wrong + row.notAnswered > 0)
+              .map((row) => (
+              <View key={row.label} style={styles.breakdownRow}>
+                <Text style={styles.breakdownTitle}>{row.label}</Text>
+                <Text style={styles.breakdownMeta}>
+                  Correct: Phy {row.correctPhysics} · Chem {row.correctChemistry} · Math {row.correctMaths}
+                </Text>
+                <Text style={styles.breakdownMeta}>
+                  Wrong: Phy {row.wrongPhysics} · Chem {row.wrongChemistry} · Math {row.wrongMaths}
+                </Text>
+                <Text style={styles.breakdownMeta}>
+                  Skipped: Phy {row.notAnsweredPhysics} · Chem {row.notAnsweredChemistry} · Math{' '}
+                  {row.notAnsweredMaths}
+                </Text>
+              </View>
+            ))}
+          </>
         )}
       </DashboardCard>
 
       <DashboardCard
         title="Difficulty + Time Intelligence"
-        subtitle="Correct vs wrong counts and time buckets by difficulty"
+        subtitle="Correct vs wrong counts, time buckets, and ideal benchmarks"
       >
         <Text style={styles.sectionLabel}>Correct vs wrong by difficulty</Text>
-        {difficultyOutcomeData.length > 0 ? (
-          <GroupedBarChart
-            data={difficultyOutcomeData}
-            series={[
-              { key: 'correct', color: ADVANCED_CHART_COLORS.correct, label: 'Correct' },
-              { key: 'wrong', color: ADVANCED_CHART_COLORS.wrong, label: 'Wrong' },
-            ]}
-            height={240}
-          />
-        ) : (
-          <ChartEmpty message="No difficulty data for this exam yet." />
-        )}
+        <GroupedBarChart
+          data={difficultyOutcomeData}
+          series={[
+            { key: 'correct', color: ADVANCED_CHART_COLORS.correct, label: 'Correct' },
+            { key: 'wrong', color: ADVANCED_CHART_COLORS.wrong, label: 'Wrong' },
+          ]}
+          height={260}
+        />
 
         <View style={styles.bucketBoxGreen}>
           <Text style={styles.bucketTitleGreen}>Correct — time buckets</Text>
-          {correctTimeBucketData.length > 0 ? (
-            <>
-              <StackedBarChart data={correctTimeBucketData} series={timeBucketSeries} height={220} />
-              {correctTimeBucketData.map((row) => (
-                <Text key={row.label} style={styles.bucketMeta}>
-                  {row.label}: ideal {formatSeconds(row.idealTime)} · avg {formatSeconds(row.avgTime)}
-                </Text>
-              ))}
-            </>
-          ) : (
+          {!correctBucketsHaveData ? (
             <ChartEmpty message="No correct-answer timing data." />
+          ) : (
+            <>
+              <ComposedStackedBarChart
+                data={correctTimeBucketData}
+                series={timeBucketSeries}
+                height={240}
+                idealTimeKey="idealTime"
+              />
+            </>
           )}
         </View>
 
         <View style={styles.bucketBoxOrange}>
           <Text style={styles.bucketTitleOrange}>Wrong — time buckets</Text>
-          {wrongTimeBucketData.length > 0 ? (
-            <>
-              <StackedBarChart data={wrongTimeBucketData} series={timeBucketSeries} height={220} />
-              {wrongTimeBucketData.map((row) => (
-                <Text key={row.label} style={styles.bucketMeta}>
-                  {row.label}: ideal {formatSeconds(row.idealTime)} · avg {formatSeconds(row.avgTime)}
-                </Text>
-              ))}
-            </>
-          ) : (
+          {!wrongBucketsHaveData ? (
             <ChartEmpty message="No wrong-answer timing data." />
+          ) : (
+            <>
+              <ComposedStackedBarChart
+                data={wrongTimeBucketData}
+                series={timeBucketSeries}
+                height={240}
+                idealTimeKey="idealTime"
+              />
+            </>
           )}
         </View>
       </DashboardCard>
@@ -305,12 +402,13 @@ export default function AdvancedPerformanceDashboardMobile({ examId }: { examId:
           <ChartEmpty message="No concept vs application data for this exam yet." />
         ) : (
           <>
-            <GroupedBarChart data={conceptChartData} series={outcomeSeries} height={240} />
+            <GroupedBarChart data={conceptChartData} series={outcomeSeries} height={280} />
             {conceptChartData.map((row) => (
               <View key={row.label} style={styles.conceptRow}>
                 <Text style={styles.conceptTitle}>{row.label}</Text>
                 <Text style={styles.conceptMeta}>
-                  Hit rate: {row.hitRate}% · Total time: {formatSeconds(row.totalTime)} · Avg/Q: {formatSeconds(row.avgTime)}
+                  Hit rate: {row.hitRate}% · Total time: {formatSeconds(row.totalTime)} · Avg/Q:{' '}
+                  {formatSeconds(row.avgTime)}
                 </Text>
               </View>
             ))}
@@ -323,7 +421,7 @@ export default function AdvancedPerformanceDashboardMobile({ examId }: { examId:
           <ChartEmpty message="No chapter weakness data for this exam yet." />
         ) : (
           <>
-            <HorizontalStackedBarChart data={chapterChartData.slice(0, 10)} series={chapterSeries} />
+            <HorizontalStackedBarChart data={chapterRowsForChart} series={chapterSeries} />
             {chapterPieSegments.length > 0 ? (
               <View style={styles.pieWrap}>
                 <DonutChart
@@ -348,16 +446,28 @@ export default function AdvancedPerformanceDashboardMobile({ examId }: { examId:
         <View style={[styles.footerCard, styles.footerBlue]}>
           <Text style={styles.footerTitleBlue}>Time Efficiency</Text>
           {analytics.timeEfficiency.avgTimePerSubject.length > 0 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <>
               <BarChart
                 data={analytics.timeEfficiency.avgTimePerSubject.map((item) => ({
-                  label: item.subject.slice(0, 4),
+                  label: item.subject.charAt(0).toUpperCase() + item.subject.slice(1, 4),
                   value: item.avgTime,
-                  color: ADVANCED_CHART_COLORS.notAnswered,
+                  color: subjectBarColor(item.subject),
                 }))}
-                height={180}
+                height={210}
+                formatYTick={(v) => {
+                  if (v < 60) return `${Math.round(v)}s`;
+                  return formatSeconds(v);
+                }}
+                formatBarValue={(v) => formatSeconds(v)}
               />
-            </ScrollView>
+              {analytics.timeEfficiency.avgTimePerSubject.map((item) => (
+                <Text key={item.subject} style={styles.metaText}>
+                  {item.subject.charAt(0).toUpperCase() + item.subject.slice(1)}:{' '}
+                  {formatSeconds(item.avgTime)} avg · {item.totalQuestions} Q · {Math.round(item.accuracy)}%
+                  accuracy
+                </Text>
+              ))}
+            </>
           ) : (
             <Text style={styles.metaText}>No subject timing data.</Text>
           )}
@@ -372,10 +482,14 @@ export default function AdvancedPerformanceDashboardMobile({ examId }: { examId:
             Fastest: <Text style={styles.greenBold}>{analytics.timeEfficiency.fastestSubject || '—'}</Text>
           </Text>
           <Text style={styles.metaText}>
-            Time on wrong: <Text style={styles.orangeBold}>{formatSeconds(analytics.timeEfficiency.timeWastedOnWrongQuestions)}</Text>
+            Time on wrong:{' '}
+            <Text style={styles.orangeBold}>
+              {formatSeconds(analytics.timeEfficiency.timeWastedOnWrongQuestions)}
+            </Text>
           </Text>
           <Text style={styles.metaText}>
-            Questions analysed: <Text style={styles.blueBold}>{analytics.metadata.totalQuestionsAnalyzed}</Text>
+            Questions analysed:{' '}
+            <Text style={styles.blueBold}>{analytics.metadata.totalQuestionsAnalyzed}</Text>
           </Text>
         </View>
       </View>
@@ -389,7 +503,9 @@ export default function AdvancedPerformanceDashboardMobile({ examId }: { examId:
       {analytics.recommendation?.actionPlan?.thisWeek?.length ? (
         <DashboardCard title="Recommended Action Plan">
           {analytics.recommendation.actionPlan.thisWeek.map((step, i) => (
-            <Text key={i} style={styles.bullet}>• {step}</Text>
+            <Text key={i} style={styles.bullet}>
+              • {step}
+            </Text>
           ))}
         </DashboardCard>
       ) : null}
@@ -398,9 +514,27 @@ export default function AdvancedPerformanceDashboardMobile({ examId }: { examId:
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: 14 },
+  wrap: { gap: 14, width: '100%' },
   loadingWrap: { alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 },
   loadingText: { color: '#6b7280', fontSize: 14 },
+  errorTitle: { fontSize: 15, fontWeight: '800', color: '#334155' },
+  errorText: { color: '#64748b', fontSize: 13, textAlign: 'center', lineHeight: 18 },
+  retryBtn: {
+    marginTop: 8,
+    backgroundColor: '#2563eb',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  retryBtnInline: {
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    backgroundColor: '#2563eb',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  retryBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   header: {
     backgroundColor: '#F8FAFC',
     borderRadius: 14,
@@ -408,25 +542,41 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
     padding: 14,
     gap: 6,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   headerTitle: { fontSize: 16, fontWeight: '800', color: '#334155' },
   headerSub: { fontSize: 11, color: '#94A3B8' },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
-  badgeBlue: { backgroundColor: '#EFF6FF', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: '#BFDBFE' },
-  badgeBlueText: { color: '#3B82F6', fontSize: 11, fontWeight: '700' },
-  badgeGreen: { backgroundColor: '#ECFDF5', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: '#A7F3D0' },
-  badgeGreenText: { color: '#10B981', fontSize: 11, fontWeight: '700' },
-  warnBox: { backgroundColor: '#fff7ed', borderRadius: 10, borderWidth: 1, borderColor: '#fed7aa', padding: 10 },
-  warnText: { color: '#9a3412', fontSize: 12 },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
+  badgeBlue: {
+    backgroundColor: '#EFF6FF',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    padding: 14,
-    gap: 10,
+    borderColor: '#BFDBFE',
   },
-  cardTitle: { fontSize: 15, fontWeight: '800', color: '#0f172a' },
+  badgeBlueText: { color: '#3B82F6', fontSize: 11, fontWeight: '700' },
+  badgeGreen: {
+    backgroundColor: '#ECFDF5',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  badgeGreenText: { color: '#10B981', fontSize: 11, fontWeight: '700' },
+  warnBox: {
+    backgroundColor: '#fff7ed',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#fed7aa',
+    padding: 10,
+  },
+  warnText: { color: '#9a3412', fontSize: 12 },
   cardSub: { fontSize: 11, color: '#64748b', marginTop: -4 },
   sectionLabel: { fontSize: 13, fontWeight: '700', color: '#334155' },
   empty: {
@@ -441,6 +591,17 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   emptyText: { color: '#94a3b8', fontSize: 13, textAlign: 'center' },
+  breakdownRow: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 10,
+    gap: 2,
+    marginTop: 8,
+  },
+  breakdownTitle: { fontSize: 13, fontWeight: '700', color: '#1e293b' },
+  breakdownMeta: { fontSize: 11, color: '#64748b', lineHeight: 16 },
   bucketBoxGreen: {
     borderRadius: 10,
     borderWidth: 1,
@@ -470,7 +631,16 @@ const styles = StyleSheet.create({
   },
   conceptTitle: { fontSize: 13, fontWeight: '700', color: '#1e293b' },
   conceptMeta: { fontSize: 11, color: '#64748b' },
-  pieWrap: { alignItems: 'center', gap: 10, marginTop: 8 },
+  pieWrap: {
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 12,
+    backgroundColor: '#FAFBFC',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E8EDF3',
+    paddingVertical: 14,
+  },
   footerGrid: { gap: 10 },
   footerCard: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 8 },
   footerBlue: { borderColor: '#BFDBFE', backgroundColor: '#F8FAFC' },
@@ -481,7 +651,13 @@ const styles = StyleSheet.create({
   orangeBold: { fontWeight: '800', color: '#ea580c', textTransform: 'capitalize' },
   greenBold: { fontWeight: '800', color: '#16a34a', textTransform: 'capitalize' },
   blueBold: { fontWeight: '800', color: '#2563eb' },
-  obsBox: { backgroundColor: '#f8fafc', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#e2e8f0' },
+  obsBox: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
   obsText: { fontSize: 13, color: '#334155', lineHeight: 18 },
   bullet: { fontSize: 13, color: '#475569', lineHeight: 20 },
 });

@@ -1,7 +1,7 @@
 import React, { ReactNode } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
+import Animated, { SlideInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAdminTheme } from './useAdminTheme';
 import AdminScalePressable from './AdminScalePressable';
@@ -12,28 +12,33 @@ type Props = {
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
+  noAnimation?: boolean;
 };
 
-export default function AdminModalShell({ visible, title, onClose, children, footer }: Props) {
+export default function AdminModalShell({ visible, title, onClose, children, footer, noAnimation }: Props) {
   const { colors, radius } = useAdminTheme();
   const insets = useSafeAreaInsets();
+
+  const sheetStyle = [
+    styles.sheet,
+    {
+      backgroundColor: colors.surface,
+      borderTopLeftRadius: radius.xl,
+      borderTopRightRadius: radius.xl,
+      paddingBottom: Math.max(insets.bottom, 16),
+    },
+  ];
+
+  const SheetWrapper = noAnimation ? View : Animated.View;
+  const sheetProps = noAnimation
+    ? {}
+    : { entering: SlideInDown.springify().damping(18) };
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       <View style={styles.root}>
         <Pressable style={[styles.backdrop, { backgroundColor: colors.overlay }]} onPress={onClose} />
-        <Animated.View
-          entering={SlideInDown.springify().damping(18)}
-          style={[
-            styles.sheet,
-            {
-              backgroundColor: colors.surface,
-              borderTopLeftRadius: radius.xl,
-              borderTopRightRadius: radius.xl,
-              paddingBottom: Math.max(insets.bottom, 16),
-            },
-          ]}
-        >
+        <SheetWrapper {...sheetProps} style={sheetStyle}>
           <View style={[styles.handle, { backgroundColor: colors.bgElevated }]} />
           <View style={[styles.header, { borderBottomColor: colors.surfaceBorder }]}>
             <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
@@ -45,7 +50,7 @@ export default function AdminModalShell({ visible, title, onClose, children, foo
           {footer ? (
             <View style={[styles.footer, { borderTopColor: colors.surfaceBorder }]}>{footer}</View>
           ) : null}
-        </Animated.View>
+        </SheetWrapper>
       </View>
     </Modal>
   );
