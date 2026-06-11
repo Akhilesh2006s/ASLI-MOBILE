@@ -19,6 +19,7 @@ export type EduOTTVideoCardProps = {
   videoUrl?: string;
   onPress: () => void;
   variant?: 'teacher' | 'student';
+  layout?: 'vertical' | 'horizontal';
   style?: StyleProp<ViewStyle>;
 };
 
@@ -62,9 +63,11 @@ function EduOTTVideoCardComponent({
   videoUrl,
   onPress,
   variant = 'student',
+  layout = 'vertical',
   style,
 }: EduOTTVideoCardProps) {
   const theme = themeFor(variant);
+  const isHorizontal = layout === 'horizontal';
   const [thumbError, setThumbError] = useState(false);
   const [thumbIndex, setThumbIndex] = useState(0);
 
@@ -91,11 +94,72 @@ function EduOTTVideoCardComponent({
     setThumbError(true);
   };
 
+  const thumbnailBlock = (
+    <View style={[styles.thumbnailWrap, isHorizontal && styles.thumbnailWrapHorizontal]}>
+      {showThumbnail ? (
+        <Image
+          source={{ uri: thumbnailSrc }}
+          style={styles.thumbnail}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          recyclingKey={thumbnailSrc}
+          onError={handleThumbError}
+        />
+      ) : (
+        <View style={[styles.thumbnail, styles.thumbnailPlaceholder, { backgroundColor: theme.placeholder }]}>
+          <Ionicons name="videocam-outline" size={isHorizontal ? 28 : 40} color={theme.playAccent} />
+        </View>
+      )}
+
+      <View style={styles.brandBadge}>
+        <Text style={styles.brandTitle}>ASLI PREP</Text>
+        <Text style={styles.brandSub}>FOUNDATION</Text>
+      </View>
+
+      {durationLabel ? (
+        <View style={styles.durationBadge}>
+          <Ionicons name="time-outline" size={12} color="#FFFFFF" />
+          <Text style={styles.durationText}>{durationLabel}</Text>
+        </View>
+      ) : null}
+    </View>
+  );
+
+  const bodyBlock = (
+    <View style={[styles.body, isHorizontal && styles.bodyHorizontal]}>
+      <Text style={[styles.title, isHorizontal && styles.titleHorizontal, { color: theme.title }]} numberOfLines={3}>
+        {title}
+      </Text>
+
+      {(subjectLabel || classLabel) ? (
+        <View style={styles.tagsRow}>
+          {subjectLabel ? (
+            <View
+              style={[
+                styles.subjectTag,
+                { backgroundColor: theme.subjectBg, borderColor: theme.subjectBorder },
+              ]}
+            >
+              <Ionicons name="book-outline" size={12} color={theme.subjectText} />
+              <Text style={[styles.subjectTagText, { color: theme.subjectText }]}>{subjectLabel}</Text>
+            </View>
+          ) : null}
+          {classLabel ? (
+            <View style={[styles.classTag, { backgroundColor: theme.classBg }]}>
+              <Text style={[styles.classTagText, { color: theme.classText }]}>Class {classLabel}</Text>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+    </View>
+  );
+
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
+        isHorizontal && styles.cardHorizontal,
         style,
         {
           backgroundColor: theme.cardBg,
@@ -104,61 +168,17 @@ function EduOTTVideoCardComponent({
         },
       ]}
     >
-      <View style={styles.thumbnailWrap}>
-        {showThumbnail ? (
-          <Image
-            source={{ uri: thumbnailSrc }}
-            style={styles.thumbnail}
-            contentFit="cover"
-            cachePolicy="memory-disk"
-            recyclingKey={thumbnailSrc}
-            onError={handleThumbError}
-          />
-        ) : (
-          <View style={[styles.thumbnail, styles.thumbnailPlaceholder, { backgroundColor: theme.placeholder }]}>
-            <Ionicons name="videocam-outline" size={40} color={theme.playAccent} />
-          </View>
-        )}
-
-        <View style={styles.brandBadge}>
-          <Text style={styles.brandTitle}>ASLI PREP</Text>
-          <Text style={styles.brandSub}>FOUNDATION</Text>
-        </View>
-
-        {durationLabel ? (
-          <View style={styles.durationBadge}>
-            <Ionicons name="time-outline" size={12} color="#FFFFFF" />
-            <Text style={styles.durationText}>{durationLabel}</Text>
-          </View>
-        ) : null}
-      </View>
-
-      <View style={styles.body}>
-        <Text style={[styles.title, { color: theme.title }]} numberOfLines={2}>
-          {title}
-        </Text>
-
-        {(subjectLabel || classLabel) ? (
-          <View style={styles.tagsRow}>
-            {subjectLabel ? (
-              <View
-                style={[
-                  styles.subjectTag,
-                  { backgroundColor: theme.subjectBg, borderColor: theme.subjectBorder },
-                ]}
-              >
-                <Ionicons name="book-outline" size={12} color={theme.subjectText} />
-                <Text style={[styles.subjectTagText, { color: theme.subjectText }]}>{subjectLabel}</Text>
-              </View>
-            ) : null}
-            {classLabel ? (
-              <View style={[styles.classTag, { backgroundColor: theme.classBg }]}>
-                <Text style={[styles.classTagText, { color: theme.classText }]}>Class {classLabel}</Text>
-              </View>
-            ) : null}
-          </View>
-        ) : null}
-      </View>
+      {isHorizontal ? (
+        <>
+          {bodyBlock}
+          {thumbnailBlock}
+        </>
+      ) : (
+        <>
+          {thumbnailBlock}
+          {bodyBlock}
+        </>
+      )}
     </Pressable>
   );
 }
@@ -175,11 +195,25 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
+  cardHorizontal: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    minHeight: 132,
+    marginBottom: 0,
+  },
   thumbnailWrap: {
     position: 'relative',
     width: '100%',
     aspectRatio: 16 / 9,
     backgroundColor: '#F1F5F9',
+  },
+  thumbnailWrapHorizontal: {
+    width: '42%',
+    minWidth: 120,
+    maxWidth: 180,
+    aspectRatio: undefined,
+    alignSelf: 'stretch',
+    minHeight: 132,
   },
   thumbnail: {
     width: '100%',
@@ -235,12 +269,22 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 14,
   },
+  bodyHorizontal: {
+    flex: 1,
+    minWidth: 0,
+    justifyContent: 'center',
+    paddingVertical: 12,
+  },
   title: {
     fontSize: 15,
     fontWeight: '800',
     lineHeight: 21,
     letterSpacing: 0.2,
     textTransform: 'uppercase',
+  },
+  titleHorizontal: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   tagsRow: {
     flexDirection: 'row',

@@ -26,6 +26,10 @@ import {
   AdminFAB,
   AdminScalePressable,
   useAdminTheme,
+  useAdminListLayout,
+  ADMIN_LIST_GRID_GAP,
+  AdminGridList,
+  AdminCardScrollBox,
 } from '../_ui';
 
 type ClassTab = 'classes' | 'assign-subjects' | 'promote-class';
@@ -87,8 +91,11 @@ const subjectRowMatchesStoredId = (row: SubjectRow, storedId: string) => {
   return ids.has(String(storedId));
 };
 
+const GRID_GAP = ADMIN_LIST_GRID_GAP;
+
 export default function ClassesView() {
   const { colors, spacing } = useAdminTheme();
+  const { isTablet, gridColumns, modalMaxWidth, gridCellWidth } = useAdminListLayout();
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<ClassTab>('classes');
   const [classes, setClasses] = useState<ClassItem[]>([]);
@@ -507,7 +514,13 @@ export default function ClassesView() {
   ) => (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.pickerOverlay} onPress={onClose}>
-        <Pressable style={styles.pickerSheet} onPress={(e) => e.stopPropagation()}>
+        <Pressable
+          style={[
+            styles.pickerSheet,
+            modalMaxWidth != null && { maxWidth: modalMaxWidth, alignSelf: 'center', width: '100%' },
+          ]}
+          onPress={(e) => e.stopPropagation()}
+        >
           <Text style={styles.pickerTitle}>{title}</Text>
           <ScrollView style={styles.pickerList}>
             {options.map((opt) => (
@@ -540,7 +553,11 @@ export default function ClassesView() {
     const teacherCount = cls.teachers?.length ?? 0;
 
     return (
-      <AdminGlassCard key={cls.id} delay={index * 60} style={styles.classCard}>
+      <AdminGlassCard
+        delay={index * 60}
+        style={[styles.classCard, isTablet && styles.classCardTablet]}
+        noAnimation={isTablet}
+      >
         <View style={styles.classHeader}>
           <View style={[styles.classIconWrap, { backgroundColor: colors.primaryMuted }]}>
             <Ionicons name="school" size={22} color={colors.primary} />
@@ -558,40 +575,51 @@ export default function ClassesView() {
           </View>
         </View>
 
-        <View style={styles.statsBlock}>
-          <View style={styles.statRow}>
+        <View style={[styles.statsBlock, isTablet && styles.statsBlockTablet]}>
+          <View style={[styles.statRow, isTablet && styles.statRowTablet]}>
             <View style={styles.statLeft}>
               <Ionicons name="people-outline" size={16} color={colors.primary} />
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Students:</Text>
             </View>
-            <Text style={[styles.statValue, { color: colors.text }]}>{cls.studentCount ?? 0}</Text>
+            <Text style={[styles.statValue, isTablet && styles.statValueTablet, { color: colors.text }]}>
+              {cls.studentCount ?? 0}
+            </Text>
           </View>
-          <View style={styles.statRow}>
+          <View style={[styles.statRow, isTablet && styles.statRowTablet]}>
             <View style={styles.statLeft}>
               <Ionicons name="person-add-outline" size={16} color={colors.primary} />
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Teachers:</Text>
             </View>
-            <Text style={[styles.statValue, { color: teacherCount === 0 ? colors.primary : colors.text }]}>
+            <Text
+              style={[
+                styles.statValue,
+                isTablet && styles.statValueTablet,
+                { color: teacherCount === 0 ? colors.primary : colors.text },
+              ]}
+            >
               {teacherCount > 0
                 ? `${teacherCount} ${teacherCount === 1 ? 'teacher' : 'teachers'}`
                 : 'No teachers assigned'}
             </Text>
           </View>
           {cls.section ? (
-            <View style={styles.statRow}>
+            <View style={[styles.statRow, isTablet && styles.statRowTablet]}>
               <View style={styles.statLeft}>
                 <Ionicons name="school-outline" size={16} color={colors.primary} />
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Section:</Text>
               </View>
-              <Text style={[styles.statValue, { color: colors.text }]}>{cls.section}</Text>
+              <Text style={[styles.statValue, isTablet && styles.statValueTablet, { color: colors.text }]}>
+                {cls.section}
+              </Text>
             </View>
           ) : null}
         </View>
 
+        <View style={styles.cardFooter}>
         {teacherCount > 0 && (
           <View style={styles.teachersBlock}>
             <Text style={styles.blockTitle}>Assigned Teachers:</Text>
-            <ScrollView style={styles.teachersScroll} nestedScrollEnabled showsVerticalScrollIndicator>
+            <AdminCardScrollBox style={styles.teachersScroll}>
               {cls.teachers!.map((teacher) => (
                 <View key={teacher.id} style={[styles.teacherItem, { backgroundColor: colors.primaryMuted, borderColor: colors.surfaceBorder }]}>
                   <View style={[styles.teacherAvatar, { backgroundColor: colors.primary }]}>
@@ -612,7 +640,7 @@ export default function ClassesView() {
                   </View>
                 </View>
               ))}
-            </ScrollView>
+            </AdminCardScrollBox>
           </View>
         )}
 
@@ -628,7 +656,7 @@ export default function ClassesView() {
             </TouchableOpacity>
           </View>
           {isExpanded && (
-            <ScrollView style={styles.studentsScroll} nestedScrollEnabled showsVerticalScrollIndicator>
+            <AdminCardScrollBox style={styles.studentsScroll}>
               {cls.students && cls.students.length > 0 ? (
                 cls.students.map((student) => (
                   <View key={student.id} style={styles.studentItem}>
@@ -655,7 +683,7 @@ export default function ClassesView() {
               ) : (
                 <Text style={styles.noStudentsText}>No students assigned to this class</Text>
               )}
-            </ScrollView>
+            </AdminCardScrollBox>
           )}
         </View>
 
@@ -666,6 +694,7 @@ export default function ClassesView() {
           <Ionicons name="trash-outline" size={16} color={colors.danger} />
           <Text style={[styles.deleteClassBtnText, { color: colors.danger }]}>Delete</Text>
         </TouchableOpacity>
+        </View>
       </AdminGlassCard>
     );
   };
@@ -706,7 +735,9 @@ export default function ClassesView() {
       onRefresh={onRefresh}
       nestedScrollEnabled
       keyboardShouldPersistTaps="handled"
+      contentContainerStyle={{ paddingBottom: 88 }}
     >
+      <View style={styles.innerShell}>
       <AdminSectionHeader
         title="Class Management"
         subtitle="Organize and manage your classes and students"
@@ -765,31 +796,46 @@ export default function ClassesView() {
         </View>
       </View>
 
-      <View style={styles.statsRow}>
-        <AdminStatCard label="Classes" value={classes.length} icon="school" gradientIndex={0} delay={0} />
-        <AdminStatCard label="Students" value={totalStudents} icon="people" gradientIndex={1} delay={50} />
-        <AdminStatCard label="Avg size" value={avgClassSize} icon="stats-chart" gradientIndex={2} delay={100} />
-        <AdminStatCard label="Subjects" value={classSubjects.length} icon="book-outline" gradientIndex={3} delay={150} />
+      <View style={[styles.statsRow, isTablet && styles.statsRowTablet]}>
+        <View style={isTablet ? styles.statSlotTablet : styles.statSlot}>
+          <AdminStatCard label="Classes" value={classes.length} icon="school" gradientIndex={0} delay={0} grid={false} />
+        </View>
+        <View style={isTablet ? styles.statSlotTablet : styles.statSlot}>
+          <AdminStatCard label="Students" value={totalStudents} icon="people" gradientIndex={1} delay={50} grid={false} />
+        </View>
+        <View style={isTablet ? styles.statSlotTablet : styles.statSlot}>
+          <AdminStatCard label="Avg size" value={avgClassSize} icon="stats-chart" gradientIndex={2} delay={100} grid={false} />
+        </View>
+        <View style={isTablet ? styles.statSlotTablet : styles.statSlot}>
+          <AdminStatCard label="Subjects" value={classSubjects.length} icon="book-outline" gradientIndex={3} delay={150} grid={false} />
+        </View>
       </View>
 
       {activeTab === 'classes' && (
-        <>
-          <AdminGlassCard delay={80} style={{ marginBottom: spacing.md, padding: spacing.md, gap: spacing.sm }}>
-            <AdminSearchBar
-              placeholder="Search classes..."
-              value={searchTerm}
-              onChangeText={setSearchTerm}
-            />
+        <View style={styles.classesTabContent}>
+          <AdminGlassCard delay={80} style={[styles.toolbarCard, { marginBottom: spacing.md, padding: spacing.md, gap: spacing.sm }]}>
+            <View style={styles.toolbarFilters}>
+              <View>
+                <AdminSearchBar
+                  placeholder="Search classes..."
+                  value={searchTerm}
+                  onChangeText={setSearchTerm}
+                />
+              </View>
 
-            <TouchableOpacity
-              style={[styles.selectTrigger, { borderColor: colors.surfaceBorder, backgroundColor: colors.surface }]}
-              onPress={() => setSubjectPickerOpen(true)}
-            >
-              <Text style={[styles.selectTriggerText, { color: colors.text }]}>
-                {selectedSubject === 'all' ? 'All Subjects' : selectedSubject}
-              </Text>
-              <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.selectTrigger,
+                  { borderColor: colors.surfaceBorder, backgroundColor: colors.surface },
+                ]}
+                onPress={() => setSubjectPickerOpen(true)}
+              >
+                <Text style={[styles.selectTriggerText, { color: colors.text }]}>
+                  {selectedSubject === 'all' ? 'All Subjects' : selectedSubject}
+                </Text>
+                <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
 
             <View style={styles.actionRow}>
               {classes.length > 0 && (
@@ -819,12 +865,24 @@ export default function ClassesView() {
               message="Create your first class using Add Class above."
               icon="school-outline"
             />
+          ) : isTablet ? (
+            <AdminGridList
+              data={filteredClasses}
+              columns={gridColumns}
+              gridCellWidth={gridCellWidth}
+              keyExtractor={(item) => String(item.id)}
+              renderItem={(item, index) => renderClassCard(item, index)}
+            />
           ) : (
             <View style={styles.listContent}>
-              {filteredClasses.map((cls, index) => renderClassCard(cls, index))}
+              {filteredClasses.map((cls, index) => (
+                <View key={cls.id} style={styles.listCell}>
+                  {renderClassCard(cls, index)}
+                </View>
+              ))}
             </View>
           )}
-        </>
+        </View>
       )}
 
       {activeTab === 'assign-subjects' && (
@@ -875,13 +933,17 @@ export default function ClassesView() {
             <Text style={styles.emptyHint}>No subjects available. Create subjects first.</Text>
           ) : (
             <ScrollView style={styles.subjectPickScroll} nestedScrollEnabled>
+              <View style={styles.subjectPickGrid}>
               {subjects.map((subject) => {
                 const subjectKey = String(subject.id || subject._id);
                 const checked = selectedSubjectIds.some((id) => subjectIdsMatch(id, subjectKey));
                 return (
                   <TouchableOpacity
                     key={subjectKey}
-                    style={[styles.subjectPickRow, checked && styles.subjectPickRowActive]}
+                    style={[
+                      styles.subjectPickRow,
+                      checked && styles.subjectPickRowActive,
+                    ]}
                     onPress={() => handleSubjectToggle(subjectKey)}
                   >
                     <SvgCheckbox checked={checked} size={22} />
@@ -894,6 +956,7 @@ export default function ClassesView() {
                   </TouchableOpacity>
                 );
               })}
+              </View>
             </ScrollView>
           )}
 
@@ -960,7 +1023,8 @@ export default function ClassesView() {
                 No classes available for promotion (Class 1–12 only).
               </Text>
             ) : (
-              promotableGroups.map(({ classNum, items }) => (
+              <View style={styles.promoteGrid}>
+              {promotableGroups.map(({ classNum, items }) => (
                 <View key={classNum} style={styles.promoteGroup}>
                   <View style={styles.promoteGroupHeader}>
                     <Text style={styles.promoteGroupTitle}>Class {classNum}</Text>
@@ -995,7 +1059,8 @@ export default function ClassesView() {
                     );
                   })}
                 </View>
-              ))
+              ))}
+              </View>
             )}
           </ScrollView>
 
@@ -1037,6 +1102,8 @@ export default function ClassesView() {
           </View>
         </AdminGlassCard>
       )}
+
+      </View>
 
       {renderPickerModal(
         subjectPickerOpen,
@@ -1088,7 +1155,7 @@ export default function ClassesView() {
         onRequestClose={() => !isDeletingAll && setIsDeleteAllModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, modalMaxWidth != null && { maxWidth: modalMaxWidth }]}>
             <View style={styles.modalHeader}>
               <Ionicons name="warning-outline" size={24} color="#dc2626" />
               <Text style={styles.modalTitleDanger}>Delete All Classes?</Text>
@@ -1127,7 +1194,7 @@ export default function ClassesView() {
         onRequestClose={() => setIsAddClassModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, modalMaxWidth != null && { maxWidth: modalMaxWidth }]}>
             <View style={[styles.modalHeaderSky, { backgroundColor: colors.primary }]}>
               <Text style={styles.modalTitleWhite}>Add New Class</Text>
               <TouchableOpacity onPress={() => setIsAddClassModalVisible(false)}>
@@ -1200,11 +1267,61 @@ export default function ClassesView() {
 }
 
 const styles = StyleSheet.create({
+  innerShell: {
+    width: '100%',
+    flexDirection: 'column',
+  },
+  classesTabContent: {
+    width: '100%',
+    flexDirection: 'column',
+  },
+  toolbarCard: {
+    width: '100%',
+    alignSelf: 'stretch',
+  },
   statsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    alignItems: 'flex-start',
     gap: 8,
     marginBottom: 12,
+    width: '100%',
+  },
+  statsRowTablet: {
+    flexWrap: 'nowrap',
+    alignItems: 'stretch',
+    gap: 12,
+  },
+  statSlot: {
+    width: '47%',
+    flexGrow: 0,
+    flexShrink: 0,
+  },
+  statSlotTablet: {
+    flex: 1,
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+  },
+  listContent: {
+    gap: GRID_GAP,
+    paddingBottom: 8,
+    width: '100%',
+  },
+  gridRow: {
+    gap: GRID_GAP,
+    marginBottom: GRID_GAP,
+  },
+  gridCell: {
+    flex: 1,
+    minWidth: 0,
+  },
+  listCell: {
+    width: '100%',
+    alignSelf: 'stretch',
+  },
+  toolbarFilters: {
+    gap: 10,
   },
   tabBarWrap: {
     marginBottom: 12,
@@ -1294,7 +1411,7 @@ const styles = StyleSheet.create({
   },
   selectDisabled: { opacity: 0.55 },
   selectTriggerText: { fontSize: 14, fontWeight: '600', color: '#0f172a', flex: 1 },
-  actionRow: { flexDirection: 'row', gap: 10 },
+  actionRow: { flexDirection: 'row', gap: 10, width: '100%' },
   deleteAllBtn: {
     flex: 1,
     flexDirection: 'row',
@@ -1304,6 +1421,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ef4444',
     paddingVertical: 12,
     borderRadius: 12,
+    minHeight: 48,
   },
   deleteAllBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   addClassBtn: {
@@ -1314,10 +1432,18 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 12,
     borderRadius: 12,
+    minHeight: 48,
   },
   addClassBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  listContent: { gap: 12, paddingBottom: 8 },
   classCard: { padding: 14, marginBottom: 0 },
+  classCardTablet: { width: '100%' },
+  cardFooter: {
+    width: '100%',
+    maxWidth: '100%',
+    alignSelf: 'stretch',
+    flexDirection: 'column',
+    overflow: 'hidden',
+  },
   classHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 12 },
   classIconWrap: {
     width: 44,
@@ -1337,19 +1463,29 @@ const styles = StyleSheet.create({
   },
   statusText: { fontSize: 11, fontWeight: '700', color: '#047857' },
   statsBlock: { gap: 4, marginBottom: 12 },
+  statsBlockTablet: { gap: 6 },
   statRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 4,
   },
+  statRowTablet: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 2,
+  },
   statLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   statLabel: { fontSize: 13, color: '#0369a1', fontWeight: '600' },
   statValue: { fontSize: 13, fontWeight: '700', color: '#0c4a6e' },
+  statValueTablet: {
+    paddingLeft: 24,
+    textAlign: 'left',
+  },
   statValueMuted: { color: '#0ea5e9', fontWeight: '600' },
   blockTitle: { fontSize: 13, fontWeight: '800', color: '#0c4a6e', marginBottom: 8 },
   teachersBlock: { marginBottom: 12 },
-  teachersScroll: { maxHeight: 160 },
+  teachersScroll: { width: '100%', maxWidth: '100%', alignSelf: 'stretch', maxHeight: 160 },
   teacherItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1401,7 +1537,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f9ff',
   },
   viewToggleText: { fontSize: 12, fontWeight: '700', color: '#0284c7' },
-  studentsScroll: { maxHeight: 200 },
+  studentsScroll: { width: '100%', maxWidth: '100%', alignSelf: 'stretch', maxHeight: 200 },
   studentItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1431,6 +1567,7 @@ const styles = StyleSheet.create({
     borderColor: '#fecaca',
     backgroundColor: '#fef2f2',
     marginTop: 4,
+    width: '100%',
   },
   deleteClassBtnText: { fontSize: 13, fontWeight: '700', color: '#dc2626' },
   panelCard: { marginBottom: 16, padding: 16 },
@@ -1439,6 +1576,9 @@ const styles = StyleSheet.create({
   fieldLabel: { fontSize: 14, fontWeight: '700', color: '#0f172a', marginBottom: 8, marginTop: 8 },
   assignHint: { fontSize: 13, color: '#64748b', marginVertical: 8 },
   subjectPickScroll: { maxHeight: 280, marginTop: 8 },
+  subjectPickGrid: {
+    gap: 8,
+  },
   subjectPickRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -1488,6 +1628,9 @@ const styles = StyleSheet.create({
   },
   infoBoxText: { flex: 1, fontSize: 13, color: '#1e40af', lineHeight: 18 },
   promoteScroll: { maxHeight: 360 },
+  promoteGrid: {
+    gap: 0,
+  },
   promoteGroup: { marginBottom: 16 },
   promoteGroupHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   promoteGroupTitle: { fontSize: 15, fontWeight: '700', color: '#374151' },

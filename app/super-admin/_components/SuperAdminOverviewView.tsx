@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSuperAdminTheme } from '../_ui';
+import VidyaAvatar from '../../../src/components/vidya/VidyaAvatar';
 import VidyaAnalyticsCard from './VidyaAnalyticsCard';
 import type { SuperAdminView } from './SuperAdminNavDrawer';
 import type { DashboardStats, RealtimeAnalytics } from '../../../src/lib/super-admin-dashboard';
@@ -171,7 +172,7 @@ export default function SuperAdminOverviewView({
                 <Text style={styles.vidyaCardClick}>Click to access Vidya AI →</Text>
               </View>
               <View style={styles.vidyaCardImage}>
-                <Ionicons name="sparkles" size={56} color="#F97316" />
+                <VidyaAvatar size={72} borderColor="#fff" />
               </View>
             </View>
           </TouchableOpacity>

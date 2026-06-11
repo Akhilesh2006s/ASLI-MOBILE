@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { STUDENT, STUDENT_ANIMATION, STUDENT_RADIUS, STUDENT_SPACING, STUDENT_TYPO } from '../../../src/theme/student';
+import VidyaAvatar from '../../../src/components/vidya/VidyaAvatar';
 import VidyaAIView from './VidyaAIView';
 
 export default function AITabView() {
@@ -18,9 +19,7 @@ export default function AITabView() {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
-            <View style={styles.chatIconWrap}>
-              <Ionicons name="chatbubbles" size={26} color={STUDENT.textOnPrimary} />
-            </View>
+            <VidyaAvatar size={52} borderColor="rgba(255,255,255,0.5)" borderWidth={2} />
             <View style={styles.chatTextWrap}>
               <Text style={styles.chatTitle}>Vidya AI Chat</Text>
               <Text style={styles.chatSub}>Ask doubts · LaTeX math · Instant answers</Text>

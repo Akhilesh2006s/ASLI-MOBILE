@@ -19,6 +19,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../../../src/services/api/api';
 import { exportCsvFile } from '../../../src/utils/csvExport';
+import { AdminGridList, useAdminListLayout } from '../../admin/_ui';
 import { EXAM_CALENDAR_PREFILL_KEY } from '../../../src/lib/super-admin-calendar';
 import { getExamClassStrings } from '../../../src/lib/exam-classes';
 import {
@@ -138,6 +139,7 @@ function UploadResultsBox({
 }
 
 export default function ExamManagementView() {
+  const { isTablet, gridColumns, gridCellWidth } = useAdminListLayout();
   const [exams, setExams] = useState<Exam[]>([]);
   const [schools, setSchools] = useState<SchoolOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -792,17 +794,149 @@ export default function ExamManagementView() {
 
   const pdfSubjectInvalid = pdfQuestionRows.some((r) => !normalizePdfRowSubjectSlug(r.subject));
 
+  const renderExamCard = (exam: Exam) => {
+    const examClassLabels = getExamClassStrings(exam);
+    const examSubjects = getExamSubjects(exam);
+    const typeStyle = getExamTypeBadgeStyle(exam.examType);
+    return (
+      <View key={exam._id} style={[styles.examCard, isTablet && styles.examCardTablet]}>
+        <View style={styles.examCardTop}>
+          <Text style={styles.examCardTitle} numberOfLines={isTablet ? 2 : undefined}>
+            {exam.title}
+          </Text>
+          <View style={styles.badgeRow}>
+            <View style={[styles.typeBadge, { backgroundColor: typeStyle.bg }]}>
+              <Text style={[styles.typeBadgeText, { color: typeStyle.text }]}>
+                {EXAM_TYPES.find((t) => t.value === exam.examType)?.label || exam.examType}
+              </Text>
+            </View>
+            <View style={[styles.statusBadge, exam.isActive ? styles.statusActive : styles.statusInactive]}>
+              <Text style={styles.statusBadgeText}>{exam.isActive ? 'Active' : 'Inactive'}</Text>
+            </View>
+            <View style={styles.boardBadge}>
+              <Text style={styles.boardBadgeText}>{getBoardLabel(exam.board)}</Text>
+            </View>
+          </View>
+        </View>
+        {exam.description ? (
+          <Text style={styles.examDescription} numberOfLines={isTablet ? 3 : 2}>
+            {exam.description}
+          </Text>
+        ) : null}
+        <View style={[styles.detailGrid, isTablet && styles.detailGridTablet]}>
+          <View style={[styles.detailRow, isTablet && styles.detailRowTablet]}>
+            {isTablet ? (
+              <View style={styles.detailRowLeft}>
+                <Ionicons name="time-outline" size={14} color="#6b7280" />
+                <Text style={styles.detailLabel}>Duration:</Text>
+              </View>
+            ) : (
+              <Ionicons name="time-outline" size={14} color="#6b7280" />
+            )}
+            <Text style={[styles.detailText, isTablet && styles.detailTextTablet]}>{exam.duration} min</Text>
+          </View>
+          <View style={[styles.detailRow, isTablet && styles.detailRowTablet]}>
+            {isTablet ? (
+              <View style={styles.detailRowLeft}>
+                <Ionicons name="book-outline" size={14} color="#6b7280" />
+                <Text style={styles.detailLabel}>Questions:</Text>
+              </View>
+            ) : (
+              <Ionicons name="book-outline" size={14} color="#6b7280" />
+            )}
+            <Text style={[styles.detailText, isTablet && styles.detailTextTablet]} numberOfLines={isTablet ? 2 : undefined}>
+              {exam.totalQuestions} questions · {exam.totalMarks} marks
+            </Text>
+          </View>
+          <View style={[styles.detailRow, isTablet && styles.detailRowTablet]}>
+            {isTablet ? (
+              <View style={styles.detailRowLeft}>
+                <Ionicons name="eye-outline" size={14} color="#6b7280" />
+                <Text style={styles.detailLabel}>Attempts:</Text>
+              </View>
+            ) : (
+              <Ionicons name="eye-outline" size={14} color="#6b7280" />
+            )}
+            <Text style={[styles.detailText, isTablet && styles.detailTextTablet]}>{exam.maxAttempts || 1} attempt(s)</Text>
+          </View>
+          {exam.startDate ? (
+            <View style={[styles.detailRow, isTablet && styles.detailRowTablet]}>
+              {isTablet ? (
+                <View style={styles.detailRowLeft}>
+                  <Ionicons name="calendar-outline" size={14} color="#6b7280" />
+                  <Text style={styles.detailLabel}>Dates:</Text>
+                </View>
+              ) : (
+                <Ionicons name="calendar-outline" size={14} color="#6b7280" />
+              )}
+              <Text style={[styles.detailText, isTablet && styles.detailTextTablet]} numberOfLines={isTablet ? 2 : undefined}>
+                {new Date(exam.startDate).toLocaleDateString()} - {new Date(exam.endDate).toLocaleDateString()}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+        <View style={styles.subjectRow}>
+          {examSubjects.map((subj) => (
+            <View key={`${exam._id}-${subj}`} style={styles.subjectChip}>
+              <Text style={styles.subjectChipText} numberOfLines={1}>
+                {EXAM_SUBJECTS.find((x) => x.value === subj)?.label || subj}
+              </Text>
+            </View>
+          ))}
+          {examClassLabels.map((cls, idx) => (
+            <View key={`${exam._id}-cls-${idx}`} style={styles.classChip}>
+              <Text style={styles.classChipText}>Class {cls}</Text>
+            </View>
+          ))}
+          {Array.isArray(exam.questions) && exam.questions.length > 0 && (
+            <View style={styles.qCountChip}>
+              <Text style={styles.qCountChipText}>{exam.questions.length} Q</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.cardFooter}>
+          <View style={styles.cardActions}>
+            <Pressable style={[styles.cardActionBtn, isTablet && styles.cardActionBtnTablet]} onPress={() => openEditExam(exam)}>
+              <Ionicons name="create-outline" size={16} color="#374151" />
+              <Text style={styles.cardActionText}>Edit</Text>
+            </Pressable>
+            <Pressable style={[styles.cardActionBtn, isTablet && styles.cardActionBtnTablet]} onPress={() => openQuestionsModal(exam)}>
+              <Ionicons name="help-circle-outline" size={16} color="#374151" />
+              <Text style={styles.cardActionText} numberOfLines={isTablet ? 1 : undefined}>
+                Add Questions
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.cardActionBtn, styles.deleteActionBtn, isTablet && styles.cardActionBtnTablet]}
+              onPress={() => handleDeleteExam(exam._id)}
+              disabled={isDeletingExam === exam._id}
+            >
+              {isDeletingExam === exam._id ? (
+                <ActivityIndicator size="small" color="#dc2626" />
+              ) : (
+                <>
+                  <Ionicons name="trash-outline" size={16} color="#dc2626" />
+                  <Text style={styles.deleteActionText}>Delete</Text>
+                </>
+              )}
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <ScrollView
       style={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
-      <View style={styles.header}>
-        <View>
+      <View style={[styles.header, isTablet && styles.headerTablet]}>
+        <View style={styles.headerTextBlock}>
           <Text style={styles.headerTitle}>Exam Management</Text>
           <Text style={styles.headerSubtitle}>Create and manage exams</Text>
         </View>
-        <View style={styles.headerActions}>
+        <View style={[styles.headerActions, isTablet && styles.headerActionsTablet]}>
           <TouchableOpacity style={styles.outlineButton} onPress={() => setIsCsvModalOpen(true)}>
             <Ionicons name="cloud-upload-outline" size={18} color="#16a34a" />
             <Text style={styles.outlineButtonTextGreen}>Upload CSV</Text>
@@ -817,6 +951,17 @@ export default function ExamManagementView() {
       </View>
 
       {classWiseStats.length > 0 && (
+        isTablet ? (
+          <View style={styles.statsWrapTablet}>
+            {classWiseStats.map((item) => (
+              <View key={item.cls} style={styles.statBadgeTablet}>
+                <Text style={styles.statBadgeText} numberOfLines={1}>
+                  {item.cls === 'unassigned' ? 'Unassigned' : `Class ${item.cls}`} → {item.count} Exams
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statsRow} contentContainerStyle={styles.statsContent}>
           {classWiseStats.map((item) => (
             <View key={item.cls} style={styles.statBadge}>
@@ -826,9 +971,10 @@ export default function ExamManagementView() {
             </View>
           ))}
         </ScrollView>
+        )
       )}
 
-      <View style={styles.filtersCard}>
+      <View style={[styles.filtersCard, isTablet && styles.filtersCardTablet]}>
         {dedupedFilteredExams.length > 0 && (
           <Pressable style={styles.filterSelect} onPress={() => setQuickAddPickerOpen(true)}>
             <Ionicons name="help-circle-outline" size={16} color="#6b7280" />
@@ -899,99 +1045,17 @@ export default function ExamManagementView() {
           return (
             <View key={classKey} style={styles.classSection}>
               <Text style={styles.classSectionTitle}>{classLabel}</Text>
-              {classExams.map((exam) => {
-                const examClassLabels = getExamClassStrings(exam);
-                const examSubjects = getExamSubjects(exam);
-                const typeStyle = getExamTypeBadgeStyle(exam.examType);
-                return (
-                  <View key={exam._id} style={styles.examCard}>
-                    <View style={styles.examCardTop}>
-                      <Text style={styles.examCardTitle}>{exam.title}</Text>
-                      <View style={styles.badgeRow}>
-                        <View style={[styles.typeBadge, { backgroundColor: typeStyle.bg }]}>
-                          <Text style={[styles.typeBadgeText, { color: typeStyle.text }]}>
-                            {EXAM_TYPES.find((t) => t.value === exam.examType)?.label || exam.examType}
-                          </Text>
-                        </View>
-                        <View style={[styles.statusBadge, exam.isActive ? styles.statusActive : styles.statusInactive]}>
-                          <Text style={styles.statusBadgeText}>{exam.isActive ? 'Active' : 'Inactive'}</Text>
-                        </View>
-                        <View style={styles.boardBadge}>
-                          <Text style={styles.boardBadgeText}>{getBoardLabel(exam.board)}</Text>
-                        </View>
-                      </View>
-                    </View>
-                    {exam.description ? (
-                      <Text style={styles.examDescription} numberOfLines={2}>{exam.description}</Text>
-                    ) : null}
-                    <View style={styles.detailGrid}>
-                      <View style={styles.detailRow}>
-                        <Ionicons name="time-outline" size={14} color="#6b7280" />
-                        <Text style={styles.detailText}>{exam.duration} min</Text>
-                      </View>
-                      <View style={styles.detailRow}>
-                        <Ionicons name="book-outline" size={14} color="#6b7280" />
-                        <Text style={styles.detailText}>{exam.totalQuestions} questions · {exam.totalMarks} marks</Text>
-                      </View>
-                      <View style={styles.detailRow}>
-                        <Ionicons name="eye-outline" size={14} color="#6b7280" />
-                        <Text style={styles.detailText}>{exam.maxAttempts || 1} attempt(s)</Text>
-                      </View>
-                      {exam.startDate ? (
-                        <View style={styles.detailRow}>
-                          <Ionicons name="calendar-outline" size={14} color="#6b7280" />
-                          <Text style={styles.detailText}>
-                            {new Date(exam.startDate).toLocaleDateString()} - {new Date(exam.endDate).toLocaleDateString()}
-                          </Text>
-                        </View>
-                      ) : null}
-                    </View>
-                    <View style={styles.subjectRow}>
-                      {examSubjects.map((subj) => (
-                        <View key={`${exam._id}-${subj}`} style={styles.subjectChip}>
-                          <Text style={styles.subjectChipText}>
-                            {EXAM_SUBJECTS.find((x) => x.value === subj)?.label || subj}
-                          </Text>
-                        </View>
-                      ))}
-                      {examClassLabels.map((cls, idx) => (
-                        <View key={`${exam._id}-cls-${idx}`} style={styles.classChip}>
-                          <Text style={styles.classChipText}>Class {cls}</Text>
-                        </View>
-                      ))}
-                      {Array.isArray(exam.questions) && exam.questions.length > 0 && (
-                        <View style={styles.qCountChip}>
-                          <Text style={styles.qCountChipText}>{exam.questions.length} Q</Text>
-                        </View>
-                      )}
-                    </View>
-                    <View style={styles.cardActions}>
-                      <Pressable style={styles.cardActionBtn} onPress={() => openEditExam(exam)}>
-                        <Ionicons name="create-outline" size={16} color="#374151" />
-                        <Text style={styles.cardActionText}>Edit</Text>
-                      </Pressable>
-                      <Pressable style={styles.cardActionBtn} onPress={() => openQuestionsModal(exam)}>
-                        <Ionicons name="help-circle-outline" size={16} color="#374151" />
-                        <Text style={styles.cardActionText}>Add Questions</Text>
-                      </Pressable>
-                      <Pressable
-                        style={[styles.cardActionBtn, styles.deleteActionBtn]}
-                        onPress={() => handleDeleteExam(exam._id)}
-                        disabled={isDeletingExam === exam._id}
-                      >
-                        {isDeletingExam === exam._id ? (
-                          <ActivityIndicator size="small" color="#dc2626" />
-                        ) : (
-                          <>
-                            <Ionicons name="trash-outline" size={16} color="#dc2626" />
-                            <Text style={styles.deleteActionText}>Delete</Text>
-                          </>
-                        )}
-                      </Pressable>
-                    </View>
-                  </View>
-                );
-              })}
+              {isTablet ? (
+                <AdminGridList
+                  data={classExams}
+                  columns={gridColumns}
+                  gridCellWidth={gridCellWidth}
+                  keyExtractor={(item) => item._id}
+                  renderItem={(exam) => renderExamCard(exam)}
+                />
+              ) : (
+                classExams.map((exam) => renderExamCard(exam))
+              )}
             </View>
           );
         })
@@ -1428,9 +1492,17 @@ export default function ExamManagementView() {
 const styles = StyleSheet.create({
   content: { flex: 1, backgroundColor: '#f9fafb' },
   header: { padding: 20, paddingBottom: 12 },
+  headerTablet: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  headerTextBlock: { flex: 1, minWidth: 0 },
   headerTitle: { fontSize: 28, fontWeight: '800', color: '#111827', marginBottom: 4 },
   headerSubtitle: { fontSize: 16, color: '#6b7280' },
   headerActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
+  headerActionsTablet: { marginTop: 0, flexShrink: 0, justifyContent: 'flex-end' },
   outlineButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1448,7 +1520,15 @@ const styles = StyleSheet.create({
   addButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   statsRow: { marginBottom: 12 },
   statsContent: { paddingHorizontal: 20, gap: 8 },
+  statsWrapTablet: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
   statBadge: { backgroundColor: '#e0f2fe', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
+  statBadgeTablet: { backgroundColor: '#e0f2fe', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
   statBadgeText: { color: '#0369a1', fontWeight: '600', fontSize: 12 },
   filtersCard: {
     marginHorizontal: 20,
@@ -1459,6 +1539,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e5e7eb',
     gap: 8,
+  },
+  filtersCardTablet: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 10,
   },
   filterSelect: {
     flexDirection: 'row',
@@ -1502,6 +1588,13 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  examCardTablet: {
+    marginHorizontal: 0,
+    marginBottom: 0,
+    width: '100%',
+    maxWidth: '100%',
+    alignSelf: 'stretch',
+  },
   examCardTop: { marginBottom: 8 },
   examCardTitle: { fontSize: 17, fontWeight: '800', color: '#111827', marginBottom: 8 },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
@@ -1515,8 +1608,13 @@ const styles = StyleSheet.create({
   boardBadgeText: { fontSize: 11, fontWeight: '700', color: '#c2410c' },
   examDescription: { fontSize: 13, color: '#6b7280', marginBottom: 10 },
   detailGrid: { gap: 6, marginBottom: 10 },
+  detailGridTablet: { gap: 8 },
   detailRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  detailRowTablet: { flexDirection: 'column', alignItems: 'flex-start', gap: 2 },
+  detailRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  detailLabel: { fontSize: 11, color: '#9ca3af', fontWeight: '600' },
   detailText: { fontSize: 13, color: '#4b5563' },
+  detailTextTablet: { fontSize: 12 },
   subjectRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
   subjectChip: { backgroundColor: '#dbeafe', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   subjectChipText: { fontSize: 10, color: '#1d4ed8', fontWeight: '600' },
@@ -1524,6 +1622,12 @@ const styles = StyleSheet.create({
   classChipText: { fontSize: 10, color: '#374151', fontWeight: '600' },
   qCountChip: { backgroundColor: '#fef3c7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   qCountChipText: { fontSize: 10, color: '#92400e', fontWeight: '700' },
+  cardFooter: {
+    width: '100%',
+    maxWidth: '100%',
+    alignSelf: 'stretch',
+    overflow: 'hidden',
+  },
   cardActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, borderTopWidth: 1, borderTopColor: '#f3f4f6', paddingTop: 12 },
   cardActionBtn: {
     flexDirection: 'row',
@@ -1535,6 +1639,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e5e7eb',
     backgroundColor: '#fff',
+  },
+  cardActionBtnTablet: {
+    flexBasis: '47%',
+    flexGrow: 1,
+    justifyContent: 'center',
   },
   cardActionText: { fontSize: 12, fontWeight: '600', color: '#374151' },
   deleteActionBtn: { borderColor: '#fecaca' },

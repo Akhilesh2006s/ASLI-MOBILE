@@ -39,7 +39,7 @@ export function buildYouTubeEmbedHtml(videoId: string): string {
   const origin = encodeURIComponent(YOUTUBE_EMBED_ORIGIN);
   const embedSrc =
     `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}` +
-    `?playsinline=1&rel=0&modestbranding=1&enablejsapi=1&origin=${origin}`;
+    `?playsinline=1&rel=0&modestbranding=1&iv_load_policy=3&fs=1&enablejsapi=1&origin=${origin}`;
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -76,7 +76,7 @@ export function getYoutubeEmbedUrl(url: string): string | null {
   const id = extractYouTubeId(url);
   if (!id) return null;
   const origin = encodeURIComponent(YOUTUBE_EMBED_ORIGIN);
-  return `https://www.youtube-nocookie.com/embed/${id}?playsinline=1&rel=0&modestbranding=1&enablejsapi=1&origin=${origin}`;
+  return `https://www.youtube-nocookie.com/embed/${id}?playsinline=1&rel=0&modestbranding=1&iv_load_policy=3&fs=1&enablejsapi=1&origin=${origin}`;
 }
 
 export function isYouTubeUrl(url: string): boolean {

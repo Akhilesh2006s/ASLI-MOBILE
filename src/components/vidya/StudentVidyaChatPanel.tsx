@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useVidyaChat } from '../../hooks/useVidyaChat';
 import type { AIChatContext } from '../../types/vidya';
 import SubjectPickerModal from './SubjectPickerModal';
+import VidyaAvatar from './VidyaAvatar';
 
 const STUDENT_QUICK_COLORS = [
   { border: '#fbcfe8', bg: '#fdf2f8', text: '#9d174d' },
@@ -76,9 +77,7 @@ export default function StudentVidyaChatPanel({
           keyboardDismissMode="interactive"
         >
           <View style={styles.header}>
-            <View style={styles.headerAvatar}>
-              <Ionicons name="sparkles" size={18} color="#6366f1" />
-            </View>
+            <VidyaAvatar size={36} borderColor="#c7d2fe" />
             <View style={styles.headerText}>
               <Text style={styles.headerTitle}>Your AI Study Buddy</Text>
               <Text style={styles.headerSub}>Ask anything, learn faster</Text>
@@ -153,9 +152,7 @@ export default function StudentVidyaChatPanel({
                   ]}
                 >
                   {msg.role === 'assistant' ? (
-                    <View style={styles.aiAvatar}>
-                      <Ionicons name="sparkles" size={14} color="#6366f1" />
-                    </View>
+                    <VidyaAvatar size={28} borderColor="#c7d2fe" borderWidth={1} />
                   ) : null}
                   <View
                     style={[styles.bubble, msg.role === 'user' ? styles.bubbleUser : styles.bubbleAssistant]}
@@ -175,9 +172,7 @@ export default function StudentVidyaChatPanel({
 
             {model.isPending ? (
               <View style={[styles.messageRow, styles.messageRowAssistant]}>
-                <View style={styles.aiAvatar}>
-                  <Ionicons name="sparkles" size={14} color="#6366f1" />
-                </View>
+                <VidyaAvatar size={28} borderColor="#c7d2fe" borderWidth={1} />
                 <View style={[styles.bubble, styles.bubbleAssistant, styles.thinkingBubble]}>
                   <ActivityIndicator size="small" color="#6366f1" />
                   <Text style={styles.thinkingText}>Thinking...</Text>

@@ -26,6 +26,7 @@ import StudentsView from './_components/StudentsView';
 import EduOTTView from './_components/EduOTTView';
 import LearningPathsView from './_components/LearningPathsView';
 import VidyaAIView from './_components/VidyaAIView';
+import VidyaAIFloatingAssistant from '../../src/components/vidya/VidyaAIFloatingAssistant';
 import ContentView from './_components/ContentView';
 import ProfileView from './_components/ProfileView';
 
@@ -305,9 +306,17 @@ export default function TeacherDashboard() {
           />
         );
       case 'eduott':
-        return <EduOTTView />;
+        return (
+          <View style={styles.fullTabPane}>
+            <EduOTTView />
+          </View>
+        );
       case 'learning-paths':
-        return <LearningPathsView refreshKey={learningPathsRefreshKey} />;
+        return (
+          <View style={styles.fullTabPane}>
+            <LearningPathsView refreshKey={learningPathsRefreshKey} />
+          </View>
+        );
       case 'vidya-ai':
         return <VidyaAIView />;
       default:
@@ -326,7 +335,11 @@ export default function TeacherDashboard() {
   }
 
   const isFullHeight =
-    activeTab === 'vidya-ai' || activeTab === 'students' || !!overlay;
+    activeTab === 'vidya-ai' ||
+    activeTab === 'students' ||
+    activeTab === 'eduott' ||
+    activeTab === 'learning-paths' ||
+    !!overlay;
 
   const showHomeHeader = activeTab === 'dashboard' && !overlay;
   const headerTitle =
@@ -384,7 +397,10 @@ export default function TeacherDashboard() {
         key={activeTab + (overlay ?? '')}
         entering={FadeIn.duration(250)}
         exiting={FadeOut.duration(200)}
-        style={[styles.content, isFullHeight && styles.contentFull]}
+        style={[
+          styles.content,
+          isFullHeight && activeTab !== 'eduott' && activeTab !== 'learning-paths' && styles.contentFull,
+        ]}
       >
         {isFullHeight ? (
           renderTab()
@@ -406,7 +422,7 @@ export default function TeacherDashboard() {
           tabs={TABS}
           activeTab={activeTab}
           onTabChange={(id) => {
-            if (id === activeTab && !['students', 'vidya-ai'].includes(id)) {
+            if (id === activeTab && !['students', 'vidya-ai', 'eduott', 'learning-paths'].includes(id)) {
               scrollRef.current?.scrollTo({ y: 0, animated: true });
               return;
             }
@@ -450,6 +466,15 @@ export default function TeacherDashboard() {
           }}
         />
       </BottomSheet>
+
+      <VidyaAIFloatingAssistant
+        role="teacher"
+        hidden={overlay != null || activeTab === 'vidya-ai'}
+        onPress={() => {
+          setNavTarget({});
+          setActiveTab('vidya-ai');
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -458,6 +483,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: TEACHER.bg },
   content: { flex: 1, minHeight: 0 },
   contentFull: { paddingBottom: 80 },
+  fullTabPane: { flex: 1, minHeight: 0 },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 120, paddingTop: TEACHER_SPACING.sm },
   syncingText: {

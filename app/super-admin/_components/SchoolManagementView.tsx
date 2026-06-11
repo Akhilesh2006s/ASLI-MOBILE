@@ -18,6 +18,7 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../../src/services/api/api';
 import { API_BASE_URL } from '../../../src/lib/api-config';
+import { AdminGridList, useAdminListLayout } from '../../admin/_ui';
 import {
   type SchoolAdmin,
   type SchoolFormState,
@@ -240,6 +241,7 @@ function SchoolFormModal({ visible, mode, form, setForm, submitting, onClose, on
 
 export default function SchoolManagementView() {
   const router = useRouter();
+  const { isTablet, gridColumns, gridCellWidth } = useAdminListLayout();
   const [admins, setAdmins] = useState<SchoolAdmin[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -380,6 +382,84 @@ export default function SchoolManagementView() {
     setShowEdit(true);
   };
 
+  const renderSchoolCard = (admin: SchoolAdmin) => {
+    const logo = resolveLogoUrl(admin.schoolLogo);
+    const boardLabel = curriculumDisplayLabel(
+      normalizeCurriculumBoard(admin.curriculumBoard || admin.board)
+    );
+    return (
+      <View style={[styles.card, isTablet && styles.cardTablet]}>
+        <View style={styles.cardTop}>
+          <View style={styles.logoWrap}>
+            {logo ? (
+              <Image source={{ uri: logo }} style={styles.logoImg} resizeMode="contain" />
+            ) : (
+              <Ionicons name="shield" size={22} color="#ea580c" />
+            )}
+          </View>
+          <View style={styles.cardInfo}>
+            <Text style={styles.cardTitle} numberOfLines={2}>
+              {admin.schoolName || admin.name}
+            </Text>
+            {admin.schoolName && admin.name ? (
+              <Text style={styles.cardMeta} numberOfLines={1}>
+                Contact: {admin.name}
+              </Text>
+            ) : null}
+            <Text style={styles.cardMeta} numberOfLines={1}>
+              {admin.email}
+            </Text>
+            <View style={styles.badgeRow}>
+              <Text style={[styles.badge, isUnlimitedPortalAccess(admin.permissions) ? styles.badgeGreen : styles.badgeAmber]}>
+                {isUnlimitedPortalAccess(admin.permissions) ? 'Full portal' : 'Limited'}
+              </Text>
+              <Text style={styles.badgeOutline} numberOfLines={1}>
+                {boardLabel}
+              </Text>
+              {admin.isAsliPrepExclusive ? <Text style={styles.badgeOrange}>Asli Prep</Text> : null}
+              {admin.state ? (
+                <Text style={styles.badgeOutline} numberOfLines={1}>
+                  {admin.state}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+          <Text style={[styles.statusPill, (admin.status || '').toLowerCase() === 'active' ? styles.statusActive : styles.statusInactive]}>
+            {admin.status || 'inactive'}
+          </Text>
+        </View>
+
+        <View style={styles.statRow}>
+          <LinearGradient colors={['#fdba74', '#fb923c']} style={styles.statBox}>
+            <Text style={styles.statNum}>{admin.stats?.students ?? 0}</Text>
+            <Text style={styles.statLbl}>Students</Text>
+          </LinearGradient>
+          <LinearGradient colors={['#2dd4bf', '#14b8a6']} style={styles.statBox}>
+            <Text style={styles.statNum}>{admin.stats?.teachers ?? 0}</Text>
+            <Text style={styles.statLbl}>Teachers</Text>
+          </LinearGradient>
+        </View>
+
+        <View style={styles.cardFooter}>
+          <Text style={styles.dateText} numberOfLines={1}>
+            Added: {admin.joinDate ? new Date(admin.joinDate).toLocaleDateString() : '—'}
+          </Text>
+          <View style={styles.actions}>
+            <Pressable style={styles.iconBtn} onPress={() => router.push(`/super-admin/schools/${admin.id}`)}>
+              <Ionicons name="eye-outline" size={18} color="#ea580c" />
+            </Pressable>
+            <Pressable style={styles.iconBtn} onPress={() => openEdit(admin)}>
+              <Ionicons name="create-outline" size={18} color="#2563eb" />
+            </Pressable>
+            <Pressable style={styles.iconBtn} onPress={() => handleDelete(admin)}>
+              <Ionicons name="trash-outline" size={18} color="#ef4444" />
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <>
       <ScrollView
@@ -398,22 +478,28 @@ export default function SchoolManagementView() {
           </Pressable>
         </View>
 
-        <View style={styles.summaryRow}>
-          <LinearGradient colors={['#fdba74', '#fb923c']} style={styles.summaryCard}>
-            <Ionicons name="shield-checkmark" size={22} color="#fff" />
-            <Text style={styles.summaryLabel}>Total Schools</Text>
-            <Text style={styles.summaryValue}>{admins.length}</Text>
-          </LinearGradient>
-          <LinearGradient colors={['#7dd3fc', '#38bdf8']} style={styles.summaryCard}>
-            <Ionicons name="people" size={22} color="#fff" />
-            <Text style={styles.summaryLabel}>Students</Text>
-            <Text style={styles.summaryValue}>{totalStudents}</Text>
-          </LinearGradient>
-          <LinearGradient colors={['#2dd4bf', '#14b8a6']} style={styles.summaryCard}>
-            <Ionicons name="school" size={22} color="#fff" />
-            <Text style={styles.summaryLabel}>Teachers</Text>
-            <Text style={styles.summaryValue}>{totalTeachers}</Text>
-          </LinearGradient>
+        <View style={[styles.summaryRow, isTablet && styles.summaryRowTablet]}>
+          <View style={isTablet ? styles.summarySlotTablet : styles.summarySlotMobile}>
+            <LinearGradient colors={['#fdba74', '#fb923c']} style={styles.summaryCard}>
+              <Ionicons name="shield-checkmark" size={22} color="#fff" />
+              <Text style={styles.summaryLabel}>Total Schools</Text>
+              <Text style={styles.summaryValue}>{admins.length}</Text>
+            </LinearGradient>
+          </View>
+          <View style={isTablet ? styles.summarySlotTablet : styles.summarySlotMobile}>
+            <LinearGradient colors={['#7dd3fc', '#38bdf8']} style={styles.summaryCard}>
+              <Ionicons name="people" size={22} color="#fff" />
+              <Text style={styles.summaryLabel}>Students</Text>
+              <Text style={styles.summaryValue}>{totalStudents}</Text>
+            </LinearGradient>
+          </View>
+          <View style={isTablet ? styles.summarySlotTablet : styles.summarySlotMobile}>
+            <LinearGradient colors={['#2dd4bf', '#14b8a6']} style={styles.summaryCard}>
+              <Ionicons name="school" size={22} color="#fff" />
+              <Text style={styles.summaryLabel}>Teachers</Text>
+              <Text style={styles.summaryValue}>{totalTeachers}</Text>
+            </LinearGradient>
+          </View>
         </View>
 
         <View style={styles.searchWrap}>
@@ -441,72 +527,18 @@ export default function SchoolManagementView() {
             <Ionicons name="school-outline" size={56} color="#d1d5db" />
             <Text style={styles.emptyText}>{searchQuery ? 'No schools match your search' : 'No schools yet'}</Text>
           </View>
+        ) : isTablet ? (
+          <View style={styles.listWrap}>
+            <AdminGridList
+              data={filteredAdmins}
+              columns={gridColumns}
+              gridCellWidth={gridCellWidth}
+              keyExtractor={(item) => item.id}
+              renderItem={(admin) => renderSchoolCard(admin)}
+            />
+          </View>
         ) : (
-          filteredAdmins.map((admin) => {
-            const logo = resolveLogoUrl(admin.schoolLogo);
-            const boardLabel = curriculumDisplayLabel(
-              normalizeCurriculumBoard(admin.curriculumBoard || admin.board)
-            );
-            return (
-              <View key={admin.id} style={styles.card}>
-                <View style={styles.cardTop}>
-                  <View style={styles.logoWrap}>
-                    {logo ? (
-                      <Image source={{ uri: logo }} style={styles.logoImg} resizeMode="contain" />
-                    ) : (
-                      <Ionicons name="shield" size={22} color="#ea580c" />
-                    )}
-                  </View>
-                  <View style={styles.cardInfo}>
-                    <Text style={styles.cardTitle}>{admin.schoolName || admin.name}</Text>
-                    {admin.schoolName && admin.name ? (
-                      <Text style={styles.cardMeta}>Contact: {admin.name}</Text>
-                    ) : null}
-                    <Text style={styles.cardMeta}>{admin.email}</Text>
-                    <View style={styles.badgeRow}>
-                      <Text style={[styles.badge, isUnlimitedPortalAccess(admin.permissions) ? styles.badgeGreen : styles.badgeAmber]}>
-                        {isUnlimitedPortalAccess(admin.permissions) ? 'Full portal' : 'Limited'}
-                      </Text>
-                      <Text style={styles.badgeOutline}>{boardLabel}</Text>
-                      {admin.isAsliPrepExclusive ? <Text style={styles.badgeOrange}>Asli Prep</Text> : null}
-                      {admin.state ? <Text style={styles.badgeOutline}>{admin.state}</Text> : null}
-                    </View>
-                  </View>
-                  <Text style={[styles.statusPill, (admin.status || '').toLowerCase() === 'active' ? styles.statusActive : styles.statusInactive]}>
-                    {admin.status || 'inactive'}
-                  </Text>
-                </View>
-
-                <View style={styles.statRow}>
-                  <LinearGradient colors={['#fdba74', '#fb923c']} style={styles.statBox}>
-                    <Text style={styles.statNum}>{admin.stats?.students ?? 0}</Text>
-                    <Text style={styles.statLbl}>Students</Text>
-                  </LinearGradient>
-                  <LinearGradient colors={['#2dd4bf', '#14b8a6']} style={styles.statBox}>
-                    <Text style={styles.statNum}>{admin.stats?.teachers ?? 0}</Text>
-                    <Text style={styles.statLbl}>Teachers</Text>
-                  </LinearGradient>
-                </View>
-
-                <View style={styles.cardFooter}>
-                  <Text style={styles.dateText}>
-                    Added: {admin.joinDate ? new Date(admin.joinDate).toLocaleDateString() : '—'}
-                  </Text>
-                  <View style={styles.actions}>
-                    <Pressable style={styles.iconBtn} onPress={() => router.push(`/super-admin/schools/${admin.id}`)}>
-                      <Ionicons name="eye-outline" size={18} color="#ea580c" />
-                    </Pressable>
-                    <Pressable style={styles.iconBtn} onPress={() => openEdit(admin)}>
-                      <Ionicons name="create-outline" size={18} color="#2563eb" />
-                    </Pressable>
-                    <Pressable style={styles.iconBtn} onPress={() => handleDelete(admin)}>
-                      <Ionicons name="trash-outline" size={18} color="#ef4444" />
-                    </Pressable>
-                  </View>
-                </View>
-              </View>
-            );
-          })
+          filteredAdmins.map((admin) => renderSchoolCard(admin))
         )}
       </ScrollView>
 
@@ -550,7 +582,10 @@ const styles = StyleSheet.create({
   },
   addRowText: { flex: 1, fontSize: 15, fontWeight: '700', color: '#0f172a' },
   summaryRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, marginBottom: 16 },
-  summaryCard: { flex: 1, borderRadius: 14, padding: 12, alignItems: 'center', minHeight: 96, justifyContent: 'center' },
+  summaryRowTablet: { gap: 12 },
+  summarySlotMobile: { flex: 1, minWidth: 0 },
+  summarySlotTablet: { flex: 1, minWidth: 0, flexGrow: 1, flexShrink: 1 },
+  summaryCard: { borderRadius: 14, padding: 12, alignItems: 'center', minHeight: 96, justifyContent: 'center', width: '100%' },
   summaryLabel: { fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.9)', marginTop: 6 },
   summaryValue: { fontSize: 22, fontWeight: '800', color: '#fff' },
   searchWrap: {
@@ -570,6 +605,7 @@ const styles = StyleSheet.create({
   errorText: { color: '#dc2626', paddingHorizontal: 20, marginBottom: 8 },
   empty: { alignItems: 'center', padding: 40 },
   emptyText: { marginTop: 12, color: '#9ca3af', textAlign: 'center' },
+  listWrap: { paddingHorizontal: 20 },
   card: {
     marginHorizontal: 20,
     marginBottom: 14,
@@ -583,6 +619,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
+  },
+  cardTablet: {
+    marginHorizontal: 0,
+    marginBottom: 0,
+    width: '100%',
+    maxWidth: '100%',
+    alignSelf: 'stretch',
   },
   cardTop: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
   logoWrap: {
@@ -613,7 +656,17 @@ const styles = StyleSheet.create({
   statBox: { flex: 1, borderRadius: 12, padding: 12, alignItems: 'center' },
   statNum: { fontSize: 22, fontWeight: '800', color: '#fff' },
   statLbl: { fontSize: 11, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
-  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    width: '100%',
+    maxWidth: '100%',
+  },
   dateText: { fontSize: 11, color: '#94a3b8' },
   actions: { flexDirection: 'row', gap: 4 },
   iconBtn: { padding: 8 },

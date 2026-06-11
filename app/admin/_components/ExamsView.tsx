@@ -47,7 +47,10 @@ import {
   AdminFilterChips,
   AdminModalShell,
   useAdminTheme,
+  useAdminTabletLayout,
 } from '../_ui';
+
+const GRID_GAP = 12;
 
 interface Exam extends ExamClassLike {
   _id: string;
@@ -256,6 +259,7 @@ const marksToneColors = {
 
 export default function ExamsView() {
   const { colors, spacing, radius, typo } = useAdminTheme();
+  const { isTablet, cardWidth, statWidth, onShellLayout } = useAdminTabletLayout(spacing.md);
   const [exams, setExams] = useState<Exam[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [listClassFilter, setListClassFilter] = useState('all');
@@ -453,6 +457,7 @@ export default function ExamsView() {
   if (selectedExam) {
     return (
       <AdminScreenShell refreshing={refreshing} onRefresh={onRefresh}>
+        <View style={styles.innerShell} onLayout={onShellLayout}>
         <AdminScalePressable onPress={closeExamDetail} style={styles.backRow}>
           <Ionicons name="arrow-back" size={20} color={colors.primary} />
           <Text style={[styles.backText, { color: colors.primary }]}>Back to Exams</Text>
@@ -552,31 +557,67 @@ export default function ExamsView() {
           </View>
         ) : (
           <>
-            <View style={styles.statsGrid}>
-              <AdminStatCard
-                label="Total students"
-                value={analytics?.totalStudents ?? 0}
-                icon="people"
-                gradientIndex={0}
-              />
-              <AdminStatCard
-                label="Attempted"
-                value={analytics?.attemptedCount ?? 0}
-                icon="checkmark-circle"
-                gradientIndex={1}
-              />
-              <AdminStatCard
-                label="Not attempted"
-                value={analytics?.notAttemptedCount ?? 0}
-                icon="close-circle"
-                gradientIndex={2}
-              />
-              <AdminStatCard
-                label="Avg score"
-                value={`${analytics?.averageScore ?? '—'}%`}
-                icon="stats-chart"
-                gradientIndex={3}
-              />
+            <View style={[styles.statsRow, isTablet && styles.statsRowTablet]}>
+              <View
+                style={[
+                  styles.statSlot,
+                  isTablet && styles.statSlotTablet,
+                  isTablet && statWidth != null && { width: statWidth },
+                ]}
+              >
+                <AdminStatCard
+                  label="Total students"
+                  value={analytics?.totalStudents ?? 0}
+                  icon="people"
+                  gradientIndex={0}
+                  compact={isTablet}
+                />
+              </View>
+              <View
+                style={[
+                  styles.statSlot,
+                  isTablet && styles.statSlotTablet,
+                  isTablet && statWidth != null && { width: statWidth },
+                ]}
+              >
+                <AdminStatCard
+                  label="Attempted"
+                  value={analytics?.attemptedCount ?? 0}
+                  icon="checkmark-circle"
+                  gradientIndex={1}
+                  compact={isTablet}
+                />
+              </View>
+              <View
+                style={[
+                  styles.statSlot,
+                  isTablet && styles.statSlotTablet,
+                  isTablet && statWidth != null && { width: statWidth },
+                ]}
+              >
+                <AdminStatCard
+                  label="Not attempted"
+                  value={analytics?.notAttemptedCount ?? 0}
+                  icon="close-circle"
+                  gradientIndex={2}
+                  compact={isTablet}
+                />
+              </View>
+              <View
+                style={[
+                  styles.statSlot,
+                  isTablet && styles.statSlotTablet,
+                  isTablet && statWidth != null && { width: statWidth },
+                ]}
+              >
+                <AdminStatCard
+                  label="Avg score"
+                  value={`${analytics?.averageScore ?? '—'}%`}
+                  icon="stats-chart"
+                  gradientIndex={3}
+                  compact={isTablet}
+                />
+              </View>
             </View>
 
             {analytics?.topPerformers && analytics.topPerformers.length > 0 ? (
@@ -643,7 +684,8 @@ export default function ExamsView() {
                   No results found for this exam.
                 </Text>
               ) : (
-                rankedResults.map(({ result, marksPct, questionAcc }, idx) => {
+                <View style={[styles.listContent, isTablet && styles.listContentGrid]}>
+                  {rankedResults.map(({ result, marksPct, questionAcc }, idx) => {
                   const completed = formatCompletedAt(result.completedAt);
                   const subjects = subjectWiseEntries(result);
                   const totalQ =
@@ -659,8 +701,8 @@ export default function ExamsView() {
                   const toneStyle = marksToneColors[tone];
 
                   return (
+                    <View key={result._id} style={isTablet ? { width: cardWidth } : undefined}>
                     <View
-                      key={result._id}
                       style={[styles.resultCard, { borderColor: colors.surfaceBorder, backgroundColor: colors.inputBg }]}
                     >
                       <View style={styles.resultCardTop}>
@@ -771,8 +813,10 @@ export default function ExamsView() {
                         </AdminScalePressable>
                       </View>
                     </View>
+                    </View>
                   );
-                })
+                })}
+                </View>
               )}
             </AdminGlassCard>
           </>
@@ -906,12 +950,14 @@ export default function ExamsView() {
             </ScrollView>
           </AdminModalShell>
         ) : null}
+        </View>
       </AdminScreenShell>
     );
   }
 
   return (
     <AdminScreenShell refreshing={refreshing} onRefresh={onRefresh}>
+      <View style={styles.innerShell} onLayout={onShellLayout}>
       <AdminGlassCard noAnimation style={{ marginBottom: spacing.sm }}>
         <AdminSectionHeader
           icon="eye-outline"
@@ -955,11 +1001,13 @@ export default function ExamsView() {
           message='Choose another class or "All classes".'
         />
       ) : (
-        filteredExams.map((exam, index) => {
+        <View style={[styles.listContent, isTablet && styles.listContentGrid]}>
+          {filteredExams.map((exam, index) => {
           const status = getExamStatus(exam);
           const classLabels = getExamClassStrings(exam);
           return (
-            <AdminGlassCard key={exam._id} delay={index * 60} style={{ marginBottom: spacing.sm }}>
+            <View key={exam._id} style={isTablet ? { width: cardWidth } : undefined}>
+            <AdminGlassCard delay={index * 60} style={{ marginBottom: isTablet ? 0 : spacing.sm }}>
               <View style={styles.cardTop}>
                 <Text style={[typo.section, { color: colors.text }]} numberOfLines={2}>
                   {exam.title}
@@ -1059,14 +1107,54 @@ export default function ExamsView() {
                 </AdminScalePressable>
               </View>
             </AdminGlassCard>
+            </View>
           );
-        })
+        })}
+        </View>
       )}
+      </View>
     </AdminScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
+  innerShell: {
+    width: '100%',
+    flexDirection: 'column',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+    width: '100%',
+  },
+  statsRowTablet: {
+    flexWrap: 'nowrap',
+    alignItems: 'stretch',
+    gap: 12,
+  },
+  statSlot: {
+    flex: 1,
+    minWidth: '46%',
+  },
+  statSlotTablet: {
+    flex: 0,
+    flexGrow: 0,
+    flexShrink: 0,
+    minWidth: 0,
+  },
+  listContent: {
+    gap: 12,
+    paddingBottom: 8,
+  },
+  listContentGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    columnGap: GRID_GAP,
+    rowGap: GRID_GAP,
+  },
   backRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
   backText: { fontSize: 15, fontWeight: '700' },
   detailTitleRow: {
@@ -1104,7 +1192,6 @@ const styles = StyleSheet.create({
   },
   applyBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   loadingBox: { padding: 40, alignItems: 'center' },
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
   exportBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1133,7 +1220,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 14,
     padding: 12,
-    marginBottom: 10,
     gap: 8,
   },
   resultCardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },

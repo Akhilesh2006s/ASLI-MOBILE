@@ -15,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useVidyaChat } from '../../../src/hooks/useVidyaChat';
 import type { AIChatContext } from '../../../src/types/vidya';
+import VidyaAvatar from '../../../src/components/vidya/VidyaAvatar';
 
 type Props = {
   userId?: string;
@@ -69,7 +70,7 @@ export default function SuperAdminVidyaChatPanel({ userId = 'super-admin' }: Pro
       <LinearGradient colors={['#f97316', '#ea580c']} style={styles.header}>
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
-            <Ionicons name="sparkles" size={20} color="#fff" />
+            <VidyaAvatar size={36} borderColor="#fff" />
             <Text style={styles.headerTitle}>Vidya AI</Text>
           </View>
           <Pressable

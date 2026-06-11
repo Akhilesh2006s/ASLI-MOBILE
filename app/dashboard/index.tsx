@@ -16,6 +16,7 @@ import { EduOTTFilterProvider } from '../../src/contexts/edu-ott-filter-context'
 import ExamsTabView from './_components/ExamsTabView';
 import AITabView from './_components/AITabView';
 import ProfileTabView from './_components/ProfileTabView';
+import VidyaAIFloatingAssistant from '../../src/components/vidya/VidyaAIFloatingAssistant';
 
 type TabId = 'home' | 'learning' | 'eduott' | 'exams' | 'vidya' | 'settings';
 
@@ -237,6 +238,15 @@ export default function StudentDashboard() {
       </Animated.View>
 
       <StudentTabBar tabs={TABS} activeTab={activeTab} onTabChange={handleTabChange} />
+
+      <VidyaAIFloatingAssistant
+        role="student"
+        hidden={activeTab === 'vidya'}
+        onPress={() => {
+          if (activeTab === 'vidya') return;
+          router.push('/ai-tutor');
+        }}
+      />
     </SafeAreaView>
   );
 }

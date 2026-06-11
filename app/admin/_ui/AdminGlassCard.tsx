@@ -31,5 +31,7 @@ export default function AdminGlassCard({ children, style, delay = 0, noAnimation
 const styles = StyleSheet.create({
   inner: {
     overflow: 'hidden',
+    flexDirection: 'column',
+    width: '100%',
   },
 });

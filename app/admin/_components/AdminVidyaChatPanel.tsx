@@ -17,6 +17,7 @@ import { useVidyaChat } from '../../../src/hooks/useVidyaChat';
 import type { AIChatContext } from '../../../src/types/vidya';
 import { useAdminTheme } from '../_ui/useAdminTheme';
 import AdminScalePressable from '../_ui/AdminScalePressable';
+import VidyaAvatar from '../../../src/components/vidya/VidyaAvatar';
 
 type Props = {
   adminId: string;
@@ -71,9 +72,7 @@ export default function AdminVidyaChatPanel({ adminId, adminName }: Props) {
     >
       <View style={[styles.header, { borderBottomColor: colors.surfaceBorder, paddingHorizontal: spacing.md }]}>
         <View style={styles.headerLeft}>
-          <LinearGradient colors={[...colors.fabGradient]} style={[styles.headerIcon, { borderRadius: radius.sm }]}>
-            <Ionicons name="sparkles" size={18} color="#fff" />
-          </LinearGradient>
+          <VidyaAvatar size={40} borderColor="#fdba74" />
           <View>
             <Text style={[styles.headerTitle, { color: colors.text }]}>Vidya AI</Text>
             <Text style={[styles.headerSub, { color: colors.textMuted }]}>Admin assistant</Text>

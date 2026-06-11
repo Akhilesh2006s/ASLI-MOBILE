@@ -27,6 +27,10 @@ import {
   AdminFAB,
   AdminScalePressable,
   useAdminTheme,
+  useAdminListLayout,
+  ADMIN_LIST_GRID_GAP,
+  AdminGridList,
+  AdminCardScrollBox,
 } from '../_ui';
 
 interface Teacher {
@@ -99,8 +103,11 @@ const getClassSubjectLine = (classItem: ClassOption | undefined, teacherSubjects
   return '';
 };
 
+const GRID_GAP = ADMIN_LIST_GRID_GAP;
+
 export default function TeachersView() {
   const { colors, spacing } = useAdminTheme();
+  const { isTablet, gridColumns, modalMaxWidth, gridCellWidth } = useAdminListLayout();
   const [refreshing, setRefreshing] = useState(false);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -418,7 +425,7 @@ export default function TeachersView() {
       value: string;
       valueMuted?: boolean;
     }) => (
-      <View style={styles.kvRow}>
+      <View style={[styles.kvRow, isTablet && styles.kvRowTablet]}>
         <View style={styles.kvRowLeft}>
           <View style={styles.detailIconWrap}>{icon}</View>
           <Text style={styles.kvLabel} numberOfLines={1}>
@@ -426,8 +433,8 @@ export default function TeachersView() {
           </Text>
         </View>
         <Text
-          style={[styles.kvValue, valueMuted && styles.kvValueMuted]}
-          numberOfLines={1}
+          style={[styles.kvValue, isTablet && styles.kvValueTablet, valueMuted && styles.kvValueMuted]}
+          numberOfLines={isTablet ? 2 : 1}
           ellipsizeMode="tail"
         >
           {value}
@@ -436,7 +443,11 @@ export default function TeachersView() {
     );
 
     return (
-      <AdminGlassCard key={String(teacher.id || teacher.email || `teacher-${index}`)} delay={index * 60} style={styles.teacherCard}>
+      <AdminGlassCard
+        delay={index * 60}
+        style={[styles.teacherCard, isTablet && styles.teacherCardTablet]}
+        noAnimation={isTablet}
+      >
         <View style={styles.teacherTopRow}>
           <View style={styles.teacherAvatarContainer}>
             <View style={[styles.teacherAvatar, { backgroundColor: colors.primary }]}>
@@ -475,7 +486,7 @@ export default function TeachersView() {
           </View>
         </View>
 
-        <View style={styles.kvBlock}>
+        <View style={[styles.kvBlock, isTablet && styles.kvBlockTablet]}>
           <DetailRow icon={<SvgIconPhone />} label="Phone:" value={teacher.phone?.trim() ? teacher.phone : '—'} />
           <DetailRow
             icon={<SvgIconSchool />}
@@ -495,19 +506,16 @@ export default function TeachersView() {
           />
         </View>
 
+        <View style={styles.cardFooter}>
         <View style={styles.assignedClassesBlock}>
           <Text style={styles.assignedClassesTitle}>Assigned Classes:</Text>
-          <ScrollView
-            style={styles.assignedClassesScroll}
-            nestedScrollEnabled
-            showsVerticalScrollIndicator
-          >
+          <AdminCardScrollBox style={styles.assignedClassesScroll}>
             {resolvedAssignedClasses.length > 0 ? (
               resolvedAssignedClasses.map(({ classId, classItem }) => {
                 const subjectLine = getClassSubjectLine(classItem, teacher.subjects || []);
                 return (
                   <View key={classId} style={styles.assignedClassCard}>
-                    <Text style={styles.assignedClassName}>
+                    <Text style={styles.assignedClassName} numberOfLines={2}>
                       {classItem.name}
                       {subjectLine ? (
                         <Text style={styles.assignedClassSubject}> - {subjectLine}</Text>
@@ -550,7 +558,7 @@ export default function TeachersView() {
                 <Text style={styles.noClassesAssigned}>No classes assigned</Text>
               </View>
             )}
-          </ScrollView>
+          </AdminCardScrollBox>
         </View>
 
         <View style={styles.teacherActions}>
@@ -595,6 +603,7 @@ export default function TeachersView() {
             </Text>
           </AdminScalePressable>
         </View>
+        </View>
       </AdminGlassCard>
     );
   };
@@ -606,18 +615,28 @@ export default function TeachersView() {
       onRefresh={onRefresh}
       nestedScrollEnabled
       keyboardShouldPersistTaps="handled"
+      contentContainerStyle={{ paddingBottom: 88 }}
     >
+      <View style={styles.innerShell}>
       <AdminSectionHeader
         title="Teacher Management"
         subtitle="Manage teachers and their assignments"
         icon="people-outline"
       />
 
-      <View style={styles.statsRow}>
-        <AdminStatCard label="Total" value={totalTeachers} icon="people" gradientIndex={0} delay={0} />
-        <AdminStatCard label="Active" value={activeTeachers} icon="checkmark-circle" gradientIndex={2} delay={50} />
-        <AdminStatCard label="Depts" value={departments.length} icon="business" gradientIndex={3} delay={100} />
-        <AdminStatCard label="Subjects" value={totalSubjects} icon="book" gradientIndex={1} delay={150} />
+      <View style={[styles.statsRow, isTablet && styles.statsRowTablet]}>
+        <View style={isTablet ? styles.statSlotTablet : styles.statSlot}>
+          <AdminStatCard label="Total" value={totalTeachers} icon="people" gradientIndex={0} delay={0} grid={false} />
+        </View>
+        <View style={isTablet ? styles.statSlotTablet : styles.statSlot}>
+          <AdminStatCard label="Active" value={activeTeachers} icon="checkmark-circle" gradientIndex={2} delay={50} grid={false} />
+        </View>
+        <View style={isTablet ? styles.statSlotTablet : styles.statSlot}>
+          <AdminStatCard label="Depts" value={departments.length} icon="business" gradientIndex={3} delay={100} grid={false} />
+        </View>
+        <View style={isTablet ? styles.statSlotTablet : styles.statSlot}>
+          <AdminStatCard label="Subjects" value={totalSubjects} icon="book" gradientIndex={1} delay={150} grid={false} />
+        </View>
       </View>
 
       <AdminGlassCard delay={80} style={{ marginBottom: spacing.md, padding: spacing.md }}>
@@ -636,11 +655,28 @@ export default function TeachersView() {
           message="Try a different search or add a new teacher."
           icon="people-outline"
         />
+      ) : isTablet ? (
+        <AdminGridList
+          data={filteredTeachers}
+          columns={gridColumns}
+          gridCellWidth={gridCellWidth}
+          keyExtractor={(item, index) => String(item.id || item.email || `teacher-${index}`)}
+          renderItem={(item, index) => renderTeacherCard(item, index)}
+        />
       ) : (
         <View style={styles.listContent}>
-          {filteredTeachers.map((teacher, index) => renderTeacherCard(teacher, index))}
+          {filteredTeachers.map((teacher, index) => (
+            <View
+              key={String(teacher.id || teacher.email || `teacher-${index}`)}
+              style={styles.listCell}
+            >
+              {renderTeacherCard(teacher, index)}
+            </View>
+          ))}
         </View>
       )}
+
+      </View>
 
       {/* Add Teacher Modal */}
       <Modal
@@ -650,7 +686,7 @@ export default function TeachersView() {
         onRequestClose={() => setIsAddModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, modalMaxWidth != null && { maxWidth: modalMaxWidth }]}>
             <LinearGradient
               colors={[...colors.fabGradient]}
               style={styles.modalHeader}
@@ -759,7 +795,7 @@ export default function TeachersView() {
         onRequestClose={() => setIsEditModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, modalMaxWidth != null && { maxWidth: modalMaxWidth }]}>
             <LinearGradient
               colors={[...colors.fabGradient]}
               style={styles.modalHeader}
@@ -868,7 +904,7 @@ export default function TeachersView() {
         onRequestClose={() => !assignSubmitting && setAssignSubjectsModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.assignModalCard}>
+          <View style={[styles.assignModalCard, modalMaxWidth != null && { maxWidth: modalMaxWidth }]}>
             <View style={styles.assignModalHeader}>
               <View style={styles.assignModalTitleBlock}>
                 <Text style={styles.assignModalTitle}>
@@ -951,7 +987,7 @@ export default function TeachersView() {
         onRequestClose={() => !assignSubmitting && setAssignClassesModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.assignModalCard}>
+          <View style={[styles.assignModalCard, modalMaxWidth != null && { maxWidth: modalMaxWidth }]}>
             <View style={styles.assignModalHeader}>
               <View style={styles.assignModalTitleBlock}>
                 <Text style={styles.assignModalTitle}>
@@ -1043,18 +1079,66 @@ export default function TeachersView() {
 }
 
 const styles = StyleSheet.create({
+  innerShell: {
+    width: '100%',
+    flexDirection: 'column',
+  },
   statsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    alignItems: 'flex-start',
     gap: 8,
     marginBottom: 12,
+    width: '100%',
+  },
+  statsRowTablet: {
+    flexWrap: 'nowrap',
+    alignItems: 'stretch',
+    gap: 12,
+  },
+  statSlot: {
+    width: '47%',
+    flexGrow: 0,
+    flexShrink: 0,
+  },
+  statSlotTablet: {
+    flex: 1,
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
   },
   listContent: {
-    gap: 12,
+    gap: GRID_GAP,
     paddingBottom: 8,
+    width: '100%',
+  },
+  gridRow: {
+    gap: GRID_GAP,
+    marginBottom: GRID_GAP,
+  },
+  gridCell: {
+    flex: 1,
+    minWidth: 0,
+  },
+  listCell: {
+    width: '100%',
+    alignSelf: 'stretch',
   },
   teacherCard: {
     padding: 14,
+  },
+  teacherCardTablet: {
+    width: '100%',
+  },
+  kvBlockTablet: {
+    gap: 6,
+  },
+  cardFooter: {
+    width: '100%',
+    maxWidth: '100%',
+    alignSelf: 'stretch',
+    flexDirection: 'column',
+    overflow: 'hidden',
   },
   teacherTopRow: {
     flexDirection: 'row',
@@ -1142,12 +1226,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 10,
   },
+  kvRowTablet: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 4,
+  },
   kvRowLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     flexShrink: 0,
     maxWidth: '42%',
+  },
+  kvRowLeftTablet: {
+    maxWidth: '100%',
   },
   /** Prevents icon font from collapsing to 0×0 in some Android flex layouts */
   detailIconWrap: {
@@ -1174,6 +1266,12 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     textAlign: 'right',
   },
+  kvValueTablet: {
+    flex: 0,
+    width: '100%',
+    textAlign: 'left',
+    paddingLeft: 30,
+  },
   kvValueMuted: {
     color: '#4F46E5',
     fontWeight: '600',
@@ -1181,6 +1279,7 @@ const styles = StyleSheet.create({
   assignedClassesBlock: {
     marginBottom: 12,
     minHeight: 120,
+    width: '100%',
   },
   assignedClassesTitle: {
     fontSize: 13,
@@ -1189,6 +1288,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   assignedClassesScroll: {
+    width: '100%',
+    maxWidth: '100%',
+    alignSelf: 'stretch',
     maxHeight: 192,
     borderWidth: 1,
     borderColor: '#e2e8f0',
@@ -1244,16 +1346,22 @@ const styles = StyleSheet.create({
   },
   teacherActions: {
     flexDirection: 'row',
-    alignItems: 'center',
+    flexWrap: 'wrap',
+    alignItems: 'stretch',
     justifyContent: 'space-between',
-    gap: 10,
+    gap: 8,
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
+    width: '100%',
+    maxWidth: '100%',
+    alignSelf: 'stretch',
   },
   /** Icon + label actions — SVG icons (no font) so glyphs always show on device */
   squircleBtn: {
-    flex: 1,
+    flexGrow: 0,
+    flexShrink: 0,
+    flexBasis: '47%',
     minHeight: 56,
     paddingVertical: 8,
     paddingHorizontal: 4,

@@ -23,6 +23,7 @@ import TimetableView from './_components/TimetableView';
 import CalendarView from './_components/CalendarView';
 import SchoolManagementView from './_components/SchoolManagementView';
 import VidyaAIView from './_components/VidyaAIView';
+import VidyaAIFloatingAssistant from '../../src/components/vidya/VidyaAIFloatingAssistant';
 import AdminNavDrawer, { adminNavLabel, type AdminNavView } from './_components/AdminNavDrawer';
 import { AdminHeader, AdminTabBar, useAdminTheme } from './_ui';
 
@@ -198,6 +199,12 @@ export default function AdminDashboard() {
         onClose={() => setMenuOpen(false)}
         onSelect={onSelectView}
         onLogout={handleLogout}
+      />
+
+      <VidyaAIFloatingAssistant
+        role="admin"
+        hidden={currentView === 'vidya-ai'}
+        onPress={() => onSelectView('vidya-ai')}
       />
     </SafeAreaView>
   );

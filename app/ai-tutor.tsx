@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import StudentVidyaChatPanel from '../src/components/vidya/StudentVidyaChatPanel';
+import VidyaAvatar from '../src/components/vidya/VidyaAvatar';
 import { useAuth } from '../src/context/AuthContext';
 import { collectVidyaSubjectLabels } from '../src/lib/vidya-subjects';
 import { API_BASE_URL } from '../src/lib/api-config';
@@ -83,9 +84,7 @@ export default function AITutor() {
           <Ionicons name="arrow-back" size={24} color="#111827" />
         </Pressable>
         <View style={styles.headerContent}>
-          <View style={styles.headerIcon}>
-            <Ionicons name="sparkles" size={22} color="#6366f1" />
-          </View>
+          <VidyaAvatar size={44} borderColor="#c7d2fe" />
           <View>
             <Text style={styles.headerTitle}>Vidya AI</Text>
             <Text style={styles.headerSub}>Your AI Study Buddy</Text>

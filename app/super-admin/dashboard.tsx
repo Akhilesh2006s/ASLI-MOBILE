@@ -10,6 +10,7 @@ import { API_BASE_URL } from '../../src/services/api/api';
 import { useAuth } from '../../src/context/AuthContext';
 import AdminsView from './_components/AdminsView';
 import VidyaAIView from './_components/VidyaAIView';
+import VidyaAIFloatingAssistant from '../../src/components/vidya/VidyaAIFloatingAssistant';
 import BoardComparisonView from './_components/BoardComparisonView';
 import BoardDashboardView from './_components/BoardDashboardView';
 import SubjectContentManagementView from './_components/SubjectContentManagementView';
@@ -272,6 +273,12 @@ export default function SuperAdminDashboard() {
         onClose={() => setMenuOpen(false)}
         onSelect={handleViewChange}
         onLogout={handleLogout}
+      />
+
+      <VidyaAIFloatingAssistant
+        role="super_admin"
+        hidden={currentView === 'vidya-ai'}
+        onPress={() => handleViewChange('vidya-ai')}
       />
     </SafeAreaView>
   );

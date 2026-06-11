@@ -8,6 +8,7 @@ import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import { collectVidyaSubjectLabels } from '../../src/lib/vidya-subjects';
 import teacherService, { asArray } from '../../src/services/api/teacherService';
 import { TEACHER, TEACHER_SPACING } from '../../src/theme/teacher';
+import VidyaAvatar from '../../src/components/vidya/VidyaAvatar';
 import VidyaAIViewChat from './_components/VidyaAIViewChat';
 
 function extractSubjectNames(subs: any[]): string[] {
@@ -68,7 +69,7 @@ export default function TeacherVidyaChatScreen() {
           <Text style={styles.subtitle}>AI-powered teaching assistant</Text>
         </View>
         <View style={styles.headerIcon}>
-          <Ionicons name="sparkles" size={20} color={TEACHER.primaryLight} />
+          <VidyaAvatar size={40} borderColor="#93c5fd" />
         </View>
       </View>
 

@@ -52,6 +52,18 @@ interface VideoItem {
   _id: string;
   title: string;
   description?: string;
+  topic?: string;
+  chapter?: string;
+  module?: string;
+  notes?: string;
+  autoNotes?: string;
+  aiFeatures?: {
+    hasAutoNotes?: boolean;
+    hasVisualMaps?: boolean;
+    hasVoiceQA?: boolean;
+    hasNotes?: boolean;
+    hasMindMap?: boolean;
+  };
   duration: number;
   videoUrl?: string;
   fileUrl?: string;
@@ -109,6 +121,12 @@ function mapContentToVideoItem(content: any): VideoItem {
     _id: content._id,
     title: content.title || 'Untitled Video',
     description: content.description || '',
+    topic: content.topic || '',
+    chapter: content.chapter || '',
+    module: content.module || '',
+    notes: content.notes || content.autoNotes || '',
+    autoNotes: content.autoNotes || content.notes || '',
+    aiFeatures: content.aiFeatures,
     videoUrl: videoFileUrl,
     fileUrl: videoFileUrl,
     youtubeUrl: content.youtubeUrl || undefined,
@@ -439,6 +457,12 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
           duration: video.duration,
           type: 'Video',
           subject: video.subjectName,
+          topic: video.topic,
+          chapter: video.chapter,
+          module: video.module,
+          aiFeatures: video.aiFeatures,
+          notes: video.notes,
+          autoNotes: video.autoNotes,
         }),
         returnTo: 'eduott',
       },

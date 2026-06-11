@@ -24,6 +24,10 @@ import {
   AdminFAB,
   AdminScalePressable,
   useAdminTheme,
+  useAdminListLayout,
+  ADMIN_LIST_GRID_GAP,
+  AdminGridList,
+  AdminCardScrollBox,
 } from '../_ui';
 import {
   SvgCheckbox,
@@ -37,6 +41,8 @@ import {
   SvgIconSchool,
   SvgIconTrash,
 } from './TeachersCardIcons';
+
+const GRID_GAP = ADMIN_LIST_GRID_GAP;
 
 interface ClassOption {
   id: string;
@@ -88,6 +94,7 @@ const formatClassLabels = (subject: Subject) => {
 
 export default function SubjectsView() {
   const { colors, spacing, radius } = useAdminTheme();
+  const { isTablet, gridColumns, gridCellWidth } = useAdminListLayout();
   const [refreshing, setRefreshing] = useState(false);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [classes, setClasses] = useState<ClassOption[]>([]);
@@ -349,7 +356,7 @@ export default function SubjectsView() {
     value: string;
     valueMuted?: boolean;
   }) => (
-    <View style={styles.kvRow}>
+    <View style={[styles.kvRow, isTablet && styles.kvRowTablet]}>
       <View style={styles.kvRowLeft}>
         <View style={styles.detailIconWrap}>{icon}</View>
         <Text style={styles.kvLabel} numberOfLines={1}>
@@ -357,8 +364,8 @@ export default function SubjectsView() {
         </Text>
       </View>
       <Text
-        style={[styles.kvValue, valueMuted && styles.kvValueMuted]}
-        numberOfLines={1}
+        style={[styles.kvValue, isTablet && styles.kvValueTablet, valueMuted && styles.kvValueMuted]}
+        numberOfLines={isTablet ? 2 : 1}
         ellipsizeMode="tail"
       >
         {value}
@@ -367,7 +374,11 @@ export default function SubjectsView() {
   );
 
   const renderSubjectCard = (subject: Subject, index: number) => (
-    <AdminGlassCard key={String(subject.id || subject.code || subject.name || `subject-${index}`)} delay={index * 60} style={styles.subjectCard}>
+    <AdminGlassCard
+      delay={index * 60}
+      style={[styles.subjectCard, isTablet && styles.subjectCardTablet]}
+      noAnimation={isTablet}
+    >
       <View style={styles.cardTopRow}>
         <View style={[styles.subjectAvatar, { backgroundColor: colors.primary }]}>
           <Text style={styles.subjectAvatarText}>{(subject.name || 'S').charAt(0).toUpperCase()}</Text>
@@ -389,7 +400,7 @@ export default function SubjectsView() {
         </View>
       </View>
 
-      <View style={styles.kvBlock}>
+      <View style={[styles.kvBlock, isTablet && styles.kvBlockTablet]}>
         <DetailRow
           icon={<SvgIconBook size={18} color={colors.textMuted} />}
           label="Code:"
@@ -424,14 +435,11 @@ export default function SubjectsView() {
         />
       </View>
 
+      <View style={styles.cardFooter}>
       <View style={styles.assignedClassesBlock}>
         <Text style={styles.assignedClassesTitle}>Assigned Classes:</Text>
         {(subject.classes?.length ?? 0) > 0 ? (
-          <ScrollView
-            style={styles.assignedClassesScroll}
-            nestedScrollEnabled
-            showsVerticalScrollIndicator
-          >
+          <AdminCardScrollBox style={styles.assignedClassesScroll}>
             {subject.classes!.map((cls) => (
               <View key={cls.id} style={[styles.assignedClassItem, { backgroundColor: colors.primaryMuted, borderColor: colors.surfaceBorder }]}>
                 <View style={[styles.assignedClassIconWrap, { backgroundColor: colors.surface }]}>
@@ -440,7 +448,7 @@ export default function SubjectsView() {
                 <Text style={[styles.assignedClassItemText, { color: colors.text }]}>{getClassItemLabel(cls)}</Text>
               </View>
             ))}
-          </ScrollView>
+          </AdminCardScrollBox>
         ) : (
           <View style={styles.noClassesAssignedWrap}>
             <Text style={styles.noClassesAssigned}>No classes assigned</Text>
@@ -471,6 +479,7 @@ export default function SubjectsView() {
           <SvgIconTrash color={colors.danger} size={22} />
         </AdminScalePressable>
       </View>
+      </View>
     </AdminGlassCard>
   );
 
@@ -481,17 +490,25 @@ export default function SubjectsView() {
       onRefresh={onRefresh}
       nestedScrollEnabled
       keyboardShouldPersistTaps="handled"
+      contentContainerStyle={{ paddingBottom: 88 }}
     >
+      <View style={styles.innerShell}>
       <AdminSectionHeader
         title="Subject Management"
         subtitle="Manage subjects and their assignments"
         icon="book-outline"
       />
 
-      <View style={styles.statsRow}>
-        <AdminStatCard label="Total" value={totalSubjects} icon="book" gradientIndex={0} delay={0} />
-        <AdminStatCard label="Active" value={activeSubjects} icon="checkmark-circle" gradientIndex={2} delay={50} />
-        <AdminStatCard label="Assigned" value={assignedSubjects} icon="people" gradientIndex={1} delay={100} />
+      <View style={[styles.statsRow, isTablet && styles.statsRowTablet]}>
+        <View style={isTablet ? styles.statSlotTablet : styles.statSlot}>
+          <AdminStatCard label="Total" value={totalSubjects} icon="book" gradientIndex={0} delay={0} grid={false} />
+        </View>
+        <View style={isTablet ? styles.statSlotTablet : styles.statSlot}>
+          <AdminStatCard label="Active" value={activeSubjects} icon="checkmark-circle" gradientIndex={2} delay={50} grid={false} />
+        </View>
+        <View style={isTablet ? styles.statSlotTablet : styles.statSlot}>
+          <AdminStatCard label="Assigned" value={assignedSubjects} icon="people" gradientIndex={1} delay={100} grid={false} />
+        </View>
       </View>
 
       <AdminGlassCard delay={80} style={{ marginBottom: spacing.md, padding: spacing.md, gap: spacing.sm }}>
@@ -510,9 +527,21 @@ export default function SubjectsView() {
           message="Try a different search or add a new subject."
           icon="book-outline"
         />
+      ) : isTablet ? (
+        <AdminGridList
+          data={filteredSubjects}
+          columns={gridColumns}
+          gridCellWidth={gridCellWidth}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={(item, index) => renderSubjectCard(item, index)}
+        />
       ) : (
         <View style={styles.listContent}>
-          {filteredSubjects.map((subject, index) => renderSubjectCard(subject, index))}
+          {filteredSubjects.map((subject, index) => (
+            <View key={String(subject.id || subject.code || `subject-${index}`)} style={styles.listCell}>
+              {renderSubjectCard(subject, index)}
+            </View>
+          ))}
         </View>
       )}
 
@@ -686,6 +715,7 @@ export default function SubjectsView() {
           </View>
         </View>
       </Modal>
+      </View>
     </AdminScreenShell>
     <AdminFAB onPress={() => setIsAddModalVisible(true)} />
     </>
@@ -693,18 +723,66 @@ export default function SubjectsView() {
 }
 
 const styles = StyleSheet.create({
+  innerShell: {
+    width: '100%',
+    flexDirection: 'column',
+  },
   statsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    alignItems: 'flex-start',
     gap: 8,
     marginBottom: 12,
+    width: '100%',
+  },
+  statsRowTablet: {
+    flexWrap: 'nowrap',
+    alignItems: 'stretch',
+    gap: 12,
+  },
+  statSlot: {
+    width: '47%',
+    flexGrow: 0,
+    flexShrink: 0,
+  },
+  statSlotTablet: {
+    flex: 1,
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
   },
   listContent: {
-    gap: 12,
+    gap: GRID_GAP,
     paddingBottom: 8,
+    width: '100%',
+  },
+  gridRow: {
+    gap: GRID_GAP,
+    marginBottom: GRID_GAP,
+  },
+  gridCell: {
+    flex: 1,
+    minWidth: 0,
+  },
+  listCell: {
+    width: '100%',
+    alignSelf: 'stretch',
   },
   subjectCard: {
     padding: 14,
+  },
+  subjectCardTablet: {
+    width: '100%',
+  },
+  kvBlockTablet: {
+    gap: 6,
+  },
+  cardFooter: {
+    width: '100%',
+    maxWidth: '100%',
+    alignSelf: 'stretch',
+    flexDirection: 'column',
+    overflow: 'hidden',
   },
   cardTopRow: {
     flexDirection: 'row',
@@ -771,6 +849,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 10,
   },
+  kvRowTablet: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 4,
+  },
   kvRowLeft: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -796,6 +879,12 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     textAlign: 'right',
   },
+  kvValueTablet: {
+    flex: 0,
+    width: '100%',
+    textAlign: 'left',
+    paddingLeft: 30,
+  },
   kvValueMuted: {
     color: '#4F46E5',
     fontWeight: '600',
@@ -808,9 +897,13 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
+    width: '100%',
+    maxWidth: '100%',
+    alignSelf: 'stretch',
   },
   squircleBtn: {
     flex: 1,
+    minWidth: 0,
     height: 52,
     borderRadius: 16,
     backgroundColor: '#fff',
@@ -936,6 +1029,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
+    width: '100%',
   },
   assignedClassesTitle: {
     fontSize: 13,
@@ -944,6 +1038,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   assignedClassesScroll: {
+    width: '100%',
+    maxWidth: '100%',
+    alignSelf: 'stretch',
     maxHeight: 140,
     borderWidth: 1,
     borderColor: '#e2e8f0',

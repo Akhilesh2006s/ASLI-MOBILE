@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -14,7 +14,7 @@ import {
   resolveContentUrl,
 } from '../src/utils/contentPreview';
 
-const { width, height } = Dimensions.get('window');
+const VIDEO_CONTENT_MAX = 960;
 
 function pickParam(v: string | string[] | undefined): string {
   if (v == null) return '';
@@ -39,6 +39,22 @@ function findByIdInList(list: unknown, videoId: string) {
   );
 }
 
+function normalizeAiFeatures(raw: unknown) {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const features = raw as Record<string, unknown>;
+  const hasAutoNotes = !!(features.hasAutoNotes ?? features.hasNotes);
+  const hasVisualMaps = !!(features.hasVisualMaps ?? features.hasMindMap);
+  const hasVoiceQA = !!features.hasVoiceQA;
+  if (!hasAutoNotes && !hasVisualMaps && !hasVoiceQA) return undefined;
+  return { hasAutoNotes, hasVisualMaps, hasVoiceQA };
+}
+
+function resolveDurationSeconds(raw: unknown): number {
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return n > 100 ? Math.round(n) : Math.round(n * 60);
+}
+
 function transformLibraryVideo(videoData: any) {
   const videoFileUrl = videoData.videoUrl || videoData.fileUrl || '';
   const isYouTube =
@@ -46,15 +62,22 @@ function transformLibraryVideo(videoData: any) {
     !!videoData.youtubeUrl ||
     (videoFileUrl &&
       (videoFileUrl.includes('youtube.com') || videoFileUrl.includes('youtu.be')));
+  const notesText = [
+    videoData.autoNotes,
+    videoData.generatedNotes,
+    videoData.notes,
+    videoData.aiNotes,
+  ].find((v) => typeof v === 'string' && v.trim().length > 0) as string | undefined;
+
   return {
     _id: videoData._id || videoData.id,
     title: videoData.title || 'Untitled Video',
     description: videoData.description || '',
-    duration: videoData.duration
-      ? videoData.duration > 100
-        ? videoData.duration
-        : videoData.duration * 60
-      : 0,
+    topic: videoData.topic || '',
+    chapter: videoData.chapter || '',
+    module: videoData.module || '',
+    notesText: notesText?.trim() || '',
+    duration: resolveDurationSeconds(videoData.duration),
     views: videoData.views || 0,
     createdAt: videoData.createdAt || new Date().toISOString(),
     videoUrl: videoFileUrl,
@@ -64,11 +87,7 @@ function transformLibraryVideo(videoData: any) {
     subject: videoData.subject?.name || videoData.subject || 'Unknown',
     difficulty: videoData.difficulty,
     language: videoData.language,
-    aiFeatures: videoData.aiFeatures || {
-      hasAutoNotes: !!videoData.aiFeatures?.hasNotes,
-      hasVisualMaps: !!videoData.aiFeatures?.hasMindMap,
-      hasVoiceQA: !!videoData.aiFeatures?.hasVoiceQA,
-    },
+    aiFeatures: normalizeAiFeatures(videoData.aiFeatures),
   };
 }
 
@@ -76,6 +95,10 @@ interface Video {
   _id: string;
   title: string;
   description?: string;
+  topic?: string;
+  chapter?: string;
+  module?: string;
+  notesText?: string;
   duration: number;
   videoUrl?: string;
   youtubeUrl?: string;
@@ -83,6 +106,7 @@ interface Video {
   thumbnailUrl?: string;
   difficulty?: string;
   language?: string;
+  subject?: string;
   subjectId?: string;
   aiFeatures?: {
     hasAutoNotes?: boolean;
@@ -108,6 +132,12 @@ export default function VideoPlayer() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [videoHeaders, setVideoHeaders] = useState<Record<string, string> | undefined>();
   const videoRef = useRef<Video>(null);
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isTablet = windowWidth >= 768;
+  const contentWidth = isTablet ? Math.min(windowWidth, VIDEO_CONTENT_MAX) : windowWidth;
+  const videoHeight = Math.round(
+    Math.min(contentWidth * (9 / 16), windowHeight * (isTablet ? 0.52 : 0.45))
+  );
 
   useEffect(() => {
     if (videoId) {
@@ -121,27 +151,9 @@ export default function VideoPlayer() {
             videoFileUrl.includes('youtu.be')
           ));
 
-          const transformedVideo: Video = {
-            _id: parsedContent._id,
-            title: parsedContent.title || 'Untitled Video',
-            description: parsedContent.description || '',
-            duration: parsedContent.duration ? (parsedContent.duration > 100 ? parsedContent.duration : parsedContent.duration * 60) : 0,
-            views: 0,
-            createdAt: new Date().toISOString(),
-            videoUrl: videoFileUrl,
-            youtubeUrl: parsedContent.youtubeUrl || (isYouTube ? videoFileUrl : ''),
-            isYouTubeVideo: isYouTube,
-            thumbnailUrl: null,
-            subject: parsedContent.subject || 'Unknown',
-            aiFeatures: {
-              hasNotes: false,
-              hasMindMap: false,
-              hasVoiceQA: false
-            }
-          };
-          
-          setVideo(transformedVideo);
+          setVideo(transformLibraryVideo(parsedContent));
           setIsLoading(false);
+          void fetchVideo({ silent: true });
           return;
         } catch (error) {
           console.error('Error parsing content data:', error);
@@ -153,10 +165,10 @@ export default function VideoPlayer() {
     }
   }, [videoId, isContentItem, contentData]);
 
-  const fetchVideo = async () => {
+  const fetchVideo = async (opts?: { silent?: boolean }) => {
     if (!videoId) return;
     try {
-      setIsLoading(true);
+      if (!opts?.silent) setIsLoading(true);
 
       const libraryAttempts: Array<() => Promise<{ data: any }>> = [
         () => api.get('/api/teacher/asli-prep-content', { params: { type: 'Video' } }),
@@ -186,7 +198,7 @@ export default function VideoPlayer() {
     } catch (error) {
       console.error('Error fetching video:', error);
     } finally {
-      setIsLoading(false);
+      if (!opts?.silent) setIsLoading(false);
     }
   };
 
@@ -207,6 +219,30 @@ export default function VideoPlayer() {
     }
     getAuthHeaders(resolvedVideoUrl).then(setVideoHeaders);
   }, [isDirectVideo, resolvedVideoUrl]);
+
+  const contextLines = useMemo(
+    () =>
+      [
+        video?.subject ? `Subject: ${video.subject}` : '',
+        video?.chapter ? `Chapter: ${video.chapter}` : '',
+        video?.module ? `Module: ${video.module}` : '',
+        video?.topic ? `Topic: ${video.topic}` : '',
+      ].filter(Boolean),
+    [video?.subject, video?.chapter, video?.module, video?.topic]
+  );
+
+  const notesBody = (video?.notesText || video?.description || '').trim();
+  const showNotesTab = !!video?.aiFeatures?.hasAutoNotes && notesBody.length > 0;
+  const showMindMapTab = !!video?.aiFeatures?.hasVisualMaps;
+  const showQATab = !!video?.aiFeatures?.hasVoiceQA;
+  const showAiTabs = showNotesTab || showMindMapTab || showQATab;
+
+  useEffect(() => {
+    if (!video) return;
+    if (showNotesTab) setActiveTab('notes');
+    else if (video.aiFeatures?.hasVisualMaps) setActiveTab('mindmap');
+    else if (video.aiFeatures?.hasVoiceQA) setActiveTab('qa');
+  }, [video?._id, showNotesTab, video?.aiFeatures?.hasVisualMaps, video?.aiFeatures?.hasVoiceQA]);
 
   if (isLoading) {
     return (
@@ -242,139 +278,167 @@ export default function VideoPlayer() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <LinearGradient
-        colors={['#3b82f6', '#2563eb']}
-        style={styles.header}
-      >
-        <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => void goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
-          <View style={styles.headerText}>
-            <Text style={styles.headerTitle} numberOfLines={1}>{video.title}</Text>
-            <View style={styles.headerBadges}>
-              {video.difficulty && (
+      <View style={[styles.playerShell, { maxWidth: contentWidth }]}>
+        {/* Header */}
+        <LinearGradient
+          colors={['#3b82f6', '#2563eb']}
+          style={[styles.header, isTablet && styles.headerTablet]}
+        >
+          <View style={styles.headerContent}>
+            <TouchableOpacity onPress={() => void goBack()} style={styles.headerBackBtn}>
+              <Ionicons name="arrow-back" size={24} color="#fff" />
+            </TouchableOpacity>
+            <View style={styles.headerText}>
+              <Text style={styles.headerTitle} numberOfLines={isTablet ? 2 : 1}>{video.title}</Text>
+              <View style={styles.headerBadges}>
+                {video.difficulty && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{video.difficulty}</Text>
+                  </View>
+                )}
+                {video.language && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{video.language}</Text>
+                  </View>
+                )}
                 <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{video.difficulty}</Text>
+                  <Ionicons name="time" size={12} color="#fff" />
+                  <Text style={styles.badgeText}>{formatDuration(video.duration || 0)}</Text>
                 </View>
-              )}
-              {video.language && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{video.language}</Text>
-                </View>
-              )}
-              <View style={styles.badge}>
-                <Ionicons name="time" size={12} color="#fff" />
-                <Text style={styles.badgeText}>{formatDuration(video.duration || 0)}</Text>
               </View>
             </View>
           </View>
-        </View>
-      </LinearGradient>
+        </LinearGradient>
 
-      {/* Video Player */}
-      <View style={styles.videoContainer}>
-        {isYouTube && youtubeSourceUrl ? (
-          <View style={styles.videoWrapper}>
-            <YouTubeEmbedWebView videoUrl={youtubeSourceUrl} style={styles.video} />
+        {/* Video Player */}
+        <View style={[styles.videoContainer, { height: videoHeight }]}>
+          {isYouTube && youtubeSourceUrl ? (
+            <View style={styles.videoWrapper}>
+              <YouTubeEmbedWebView videoUrl={youtubeSourceUrl} style={styles.video} />
+            </View>
+          ) : isDirectVideo ? (
+            <View style={styles.videoWrapper}>
+              <Video
+                ref={videoRef}
+                source={{ uri: resolvedVideoUrl, headers: videoHeaders }}
+                style={styles.video}
+                useNativeControls
+                resizeMode={ResizeMode.CONTAIN}
+                onPlaybackStatusUpdate={(status) => {
+                  setIsPlaying(status.isPlaying);
+                }}
+              />
+            </View>
+          ) : (
+            <View style={styles.placeholderContainer}>
+              <Ionicons name="videocam-off" size={64} color="#9ca3af" />
+              <Text style={styles.placeholderText}>Video not available</Text>
+            </View>
+          )}
+        </View>
+
+        <ScrollView
+          style={styles.detailsScroll}
+          contentContainerStyle={[styles.detailsContent, isTablet && styles.detailsContentTablet]}
+        >
+        {contextLines.length > 0 ? (
+          <View style={styles.descriptionContainer}>
+            <Text style={styles.descriptionTitle}>About this video</Text>
+            {contextLines.map((line) => (
+              <Text key={line} style={styles.contextLine}>
+                {line}
+              </Text>
+            ))}
           </View>
-        ) : isDirectVideo ? (
-          <View style={styles.videoWrapper}>
-            <Video
-              ref={videoRef}
-              source={{ uri: resolvedVideoUrl, headers: videoHeaders }}
-              style={styles.video}
-              useNativeControls
-              resizeMode={ResizeMode.CONTAIN}
-              onPlaybackStatusUpdate={(status) => {
-                setIsPlaying(status.isPlaying);
-              }}
-            />
+        ) : null}
+
+        {video.description && video.description.trim() !== notesBody ? (
+          <View style={styles.descriptionContainer}>
+            <Text style={styles.descriptionTitle}>Description</Text>
+            <Text style={styles.descriptionText}>{video.description}</Text>
           </View>
-        ) : (
-          <View style={styles.placeholderContainer}>
-            <Ionicons name="videocam-off" size={64} color="#9ca3af" />
-            <Text style={styles.placeholderText}>Video not available</Text>
+        ) : null}
+
+        {showNotesTab ? (
+          <View style={styles.descriptionContainer}>
+            <Text style={styles.descriptionTitle}>Auto-Generated Notes</Text>
+            <Text style={styles.descriptionText}>{notesBody}</Text>
           </View>
-        )}
+        ) : null}
+
+        {showAiTabs ? (
+          <View style={styles.tabsContainer}>
+            <View style={styles.tabsHeader}>
+              {showNotesTab ? (
+                <TouchableOpacity
+                  style={[styles.tab, activeTab === 'notes' && styles.tabActive]}
+                  onPress={() => setActiveTab('notes')}
+                >
+                  <Ionicons name="document-text" size={20} color={activeTab === 'notes' ? '#fff' : '#6b7280'} />
+                  <Text style={[styles.tabText, activeTab === 'notes' && styles.tabTextActive]}>
+                    Notes
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+              {showMindMapTab ? (
+                <TouchableOpacity
+                  style={[styles.tab, activeTab === 'mindmap' && styles.tabActive]}
+                  onPress={() => setActiveTab('mindmap')}
+                >
+                  <Ionicons name="map" size={20} color={activeTab === 'mindmap' ? '#fff' : '#6b7280'} />
+                  <Text style={[styles.tabText, activeTab === 'mindmap' && styles.tabTextActive]}>
+                    Mind Map
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+              {showQATab ? (
+                <TouchableOpacity
+                  style={[styles.tab, activeTab === 'qa' && styles.tabActive]}
+                  onPress={() => setActiveTab('qa')}
+                >
+                  <Ionicons name="chatbubbles" size={20} color={activeTab === 'qa' ? '#fff' : '#6b7280'} />
+                  <Text style={[styles.tabText, activeTab === 'qa' && styles.tabTextActive]}>
+                    Q&A
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
+            <View style={styles.tabContent}>
+              {activeTab === 'notes' && showNotesTab ? (
+                <View style={styles.featureContent}>
+                  <Text style={styles.featureTitle}>Auto-Generated Notes</Text>
+                  <Text style={styles.featureText}>{notesBody}</Text>
+                </View>
+              ) : null}
+              {activeTab === 'mindmap' && showMindMapTab ? (
+                <View style={styles.featureContent}>
+                  <Text style={styles.featureTitle}>Visual Mind Map</Text>
+                  <Text style={styles.featureText}>
+                    Mind map is not available for this video yet.
+                  </Text>
+                </View>
+              ) : null}
+              {activeTab === 'qa' && showQATab ? (
+                <View style={styles.featureContent}>
+                  <Text style={styles.featureTitle}>Voice-Enabled Q&A</Text>
+                  <Text style={styles.featureText}>
+                    Q&A is not available for this video yet.
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          </View>
+        ) : !notesBody && contextLines.length === 0 ? (
+          <View style={styles.descriptionContainer}>
+            <Text style={styles.descriptionTitle}>Video details</Text>
+            <Text style={styles.descriptionText}>
+              No additional notes or description are available for this video yet.
+            </Text>
+          </View>
+        ) : null}
+        </ScrollView>
       </View>
-
-      {/* Description */}
-      {video.description && (
-        <View style={styles.descriptionContainer}>
-          <Text style={styles.descriptionTitle}>Description</Text>
-          <Text style={styles.descriptionText}>{video.description}</Text>
-        </View>
-      )}
-
-      {/* AI Features Tabs */}
-      {video.aiFeatures && (
-        <View style={styles.tabsContainer}>
-          <View style={styles.tabsHeader}>
-            {video.aiFeatures.hasAutoNotes && (
-              <TouchableOpacity
-                style={[styles.tab, activeTab === 'notes' && styles.tabActive]}
-                onPress={() => setActiveTab('notes')}
-              >
-                <Ionicons name="document-text" size={20} color={activeTab === 'notes' ? '#fff' : '#6b7280'} />
-                <Text style={[styles.tabText, activeTab === 'notes' && styles.tabTextActive]}>
-                  Notes
-                </Text>
-              </TouchableOpacity>
-            )}
-            {video.aiFeatures.hasVisualMaps && (
-              <TouchableOpacity
-                style={[styles.tab, activeTab === 'mindmap' && styles.tabActive]}
-                onPress={() => setActiveTab('mindmap')}
-              >
-                <Ionicons name="map" size={20} color={activeTab === 'mindmap' ? '#fff' : '#6b7280'} />
-                <Text style={[styles.tabText, activeTab === 'mindmap' && styles.tabTextActive]}>
-                  Mind Map
-                </Text>
-              </TouchableOpacity>
-            )}
-            {video.aiFeatures.hasVoiceQA && (
-              <TouchableOpacity
-                style={[styles.tab, activeTab === 'qa' && styles.tabActive]}
-                onPress={() => setActiveTab('qa')}
-              >
-                <Ionicons name="chatbubbles" size={20} color={activeTab === 'qa' ? '#fff' : '#6b7280'} />
-                <Text style={[styles.tabText, activeTab === 'qa' && styles.tabTextActive]}>
-                  Q&A
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <View style={styles.tabContent}>
-            {activeTab === 'notes' && (
-              <View style={styles.featureContent}>
-                <Text style={styles.featureTitle}>Auto-Generated Notes</Text>
-                <Text style={styles.featureText}>
-                  AI-generated notes will appear here. Key concepts and formulas are automatically extracted from the video.
-                </Text>
-              </View>
-            )}
-            {activeTab === 'mindmap' && (
-              <View style={styles.featureContent}>
-                <Text style={styles.featureTitle}>Visual Mind Map</Text>
-                <Text style={styles.featureText}>
-                  Interactive mind maps showing relationships between concepts will appear here.
-                </Text>
-              </View>
-            )}
-            {activeTab === 'qa' && (
-              <View style={styles.featureContent}>
-                <Text style={styles.featureTitle}>Voice-Enabled Q&A</Text>
-                <Text style={styles.featureText}>
-                  Ask questions about the lecture using voice or text input. AI will provide detailed explanations.
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
-      )}
     </SafeAreaView>
   );
 }
@@ -383,6 +447,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
+    alignItems: 'center',
+  },
+  playerShell: {
+    flex: 1,
+    width: '100%',
+    alignSelf: 'center',
   },
   loadingContainer: {
     flex: 1,
@@ -421,9 +491,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   header: {
-    paddingTop: 50,
+    paddingTop: 12,
     paddingBottom: 16,
+    paddingHorizontal: 16,
+  },
+  headerTablet: {
     paddingHorizontal: 20,
+    paddingBottom: 18,
+  },
+  headerBackBtn: {
+    padding: 4,
+    marginRight: 4,
   },
   headerContent: {
     flexDirection: 'row',
@@ -460,7 +538,6 @@ const styles = StyleSheet.create({
   },
   videoContainer: {
     width: '100%',
-    height: height * 0.35,
     backgroundColor: '#000',
   },
   videoWrapper: {
@@ -522,9 +599,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#9ca3af',
   },
+  detailsScroll: {
+    flex: 1,
+    backgroundColor: '#111827',
+  },
+  detailsContent: {
+    paddingBottom: 24,
+    gap: 0,
+  },
+  detailsContentTablet: {
+    paddingHorizontal: 20,
+  },
   descriptionContainer: {
     padding: 16,
     backgroundColor: '#111827',
+  },
+  contextLine: {
+    fontSize: 14,
+    color: '#d1d5db',
+    lineHeight: 20,
+    marginBottom: 4,
   },
   descriptionTitle: {
     fontSize: 16,

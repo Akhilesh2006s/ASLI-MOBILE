@@ -244,7 +244,7 @@ export default function Login() {
   const { width } = useWindowDimensions();
   const { signIn } = useAuth();
   const cardWidth = useMemo(() => Math.min(width - 28, 440), [width]);
-  const logoSize = useMemo(() => Math.min(width * 0.28, 108), [width]);
+  const logoSize = useMemo(() => Math.min(width * 0.3, 116), [width]);
 
   const [showForm, setShowForm] = useState(true);
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -358,7 +358,11 @@ export default function Login() {
                       },
                     ]}
                   >
-                    <Image source={require('../../image.png')} style={styles.brandLogo} resizeMode="cover" />
+                    <Image
+                      source={require('../../assets/logo.png')}
+                      style={styles.brandLogo}
+                      resizeMode="contain"
+                    />
                   </View>
                 </LinearGradient>
               </Animated.View>
@@ -503,6 +507,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 6,
   },
   brandLogo: {
     width: '100%',

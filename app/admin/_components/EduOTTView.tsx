@@ -1,9 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   ActivityIndicator,
   Linking,
   Alert,
@@ -26,6 +25,7 @@ import {
   AdminEmptyState,
   AdminScalePressable,
   useAdminTheme,
+  useAdminGridLayout,
 } from '../_ui';
 
 type EduOTTSubTab = 'videos' | 'live-sessions';
@@ -45,6 +45,8 @@ interface EduVideo {
   classNumber?: string;
   thumbnailUrl?: string;
 }
+
+const GRID_GAP = 12;
 
 function asArray(payload: any): any[] {
   if (Array.isArray(payload)) return payload;
@@ -165,21 +167,41 @@ export default function EduOTTView() {
     }
   }, [activeSubTab, isAsliPrepExclusive, fetchVideos, fetchLiveSessions]);
 
-  const filteredVideos = videos.filter((video) => {
-    const matchesSearch =
-      video.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      video.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesSubject = selectedSubject === 'all' || video.subjectName === selectedSubject;
-    return matchesSearch && matchesSubject;
-  });
+  const filteredVideos = useMemo(
+    () =>
+      videos.filter((video) => {
+        const matchesSearch =
+          video.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          video.description?.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesSubject = selectedSubject === 'all' || video.subjectName === selectedSubject;
+        return matchesSearch && matchesSubject;
+      }),
+    [videos, searchTerm, selectedSubject],
+  );
 
-  const filteredSessions = liveSessions.filter((session) => {
-    const matchesSearch =
-      session.title?.toLowerCase().includes(sessionSearchTerm.toLowerCase()) ||
-      session.description?.toLowerCase().includes(sessionSearchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || session.status === filterStatus;
-    return matchesSearch && matchesStatus;
-  });
+  const filteredSessions = useMemo(
+    () =>
+      liveSessions.filter((session) => {
+        const matchesSearch =
+          session.title?.toLowerCase().includes(sessionSearchTerm.toLowerCase()) ||
+          session.description?.toLowerCase().includes(sessionSearchTerm.toLowerCase());
+        const matchesStatus = filterStatus === 'all' || session.status === filterStatus;
+        return matchesSearch && matchesStatus;
+      }),
+    [liveSessions, sessionSearchTerm, filterStatus],
+  );
+
+  const gridOptions =
+    activeSubTab === 'videos'
+      ? { columnsAt768: 2 as const, columnsAt1024: 3 as const }
+      : { columnsAt768: 2 as const, columnsAt1024: 2 as const };
+  const gridItemCount =
+    activeSubTab === 'videos' ? filteredVideos.length : filteredSessions.length;
+  const { isTablet, onShellLayout, cardWidth, isGrid } = useAdminGridLayout(
+    spacing.md,
+    gridItemCount,
+    gridOptions,
+  );
 
   const handlePlayVideo = (video: EduVideo) => {
     openContentPreview(
@@ -191,7 +213,7 @@ export default function EduOTTView() {
         fileUrl: video.videoUrl || video.fileUrl,
         youtubeUrl: video.youtubeUrl,
       },
-      { returnTo: 'eduott' }
+      { returnTo: 'eduott' },
     );
   };
 
@@ -225,231 +247,285 @@ export default function EduOTTView() {
     { id: 'ended', label: 'Ended' },
   ];
 
-  return (
-    <AdminScreenShell refreshing={refreshing} onRefresh={onRefresh}>
-      <AdminSectionHeader
-        icon="play-circle"
-        title="EduOTT"
-        subtitle="Educational videos and live sessions"
-      />
-
-      <View style={[styles.subTabsContainer, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder, borderRadius: radius.md }]}>
-        <AdminScalePressable
-          onPress={() => setActiveSubTab('videos')}
+  const renderSessionCard = (session: any, index: number) => (
+    <AdminGlassCard key={session._id} delay={index * 50} style={styles.sessionCard}>
+      <View style={styles.sessionCardHeader}>
+        <Text style={[styles.sessionTitle, { color: colors.text }]}>
+          {session.title || 'Untitled Session'}
+        </Text>
+        <View
           style={[
-            styles.subTab,
-            {
-              borderRadius: radius.sm,
-              backgroundColor: activeSubTab === 'videos' ? colors.primaryMuted : colors.bgElevated,
-              borderColor: activeSubTab === 'videos' ? colors.primary : 'transparent',
-              borderWidth: activeSubTab === 'videos' ? 1 : 0,
-            },
+            styles.sessionStatusBadge,
+            { backgroundColor: getStatusColor(session.status) + '20' },
           ]}
         >
-          <Ionicons
-            name="play"
-            size={16}
-            color={activeSubTab === 'videos' ? colors.primary : colors.textMuted}
-          />
-          <Text
-            style={[
-              styles.subTabText,
-              { color: activeSubTab === 'videos' ? colors.primary : colors.textMuted },
-            ]}
-          >
-            Videos
+          <Text style={[styles.sessionStatusText, { color: getStatusColor(session.status) }]}>
+            {session.status}
           </Text>
-        </AdminScalePressable>
-        <AdminScalePressable
-          onPress={() => setActiveSubTab('live-sessions')}
-          style={[
-            styles.subTab,
-            {
-              borderRadius: radius.sm,
-              backgroundColor: activeSubTab === 'live-sessions' ? colors.primaryMuted : colors.bgElevated,
-              borderColor: activeSubTab === 'live-sessions' ? colors.primary : 'transparent',
-              borderWidth: activeSubTab === 'live-sessions' ? 1 : 0,
-            },
-          ]}
-        >
-          <Ionicons
-            name="radio"
-            size={16}
-            color={activeSubTab === 'live-sessions' ? colors.primary : colors.textMuted}
-          />
-          <Text
-            style={[
-              styles.subTabText,
-              { color: activeSubTab === 'live-sessions' ? colors.primary : colors.textMuted },
-            ]}
-          >
-            Live Sessions
-          </Text>
-        </AdminScalePressable>
+        </View>
       </View>
+      {session.description ? (
+        <Text style={[styles.sessionDescription, { color: colors.textMuted }]}>
+          {session.description}
+        </Text>
+      ) : null}
+      <View style={styles.sessionDetails}>
+        {session.streamer ? (
+          <View style={styles.detailRow}>
+            <Ionicons name="person" size={16} color={colors.textMuted} />
+            <Text style={[styles.detailText, { color: colors.textSecondary }]}>
+              {session.streamer.fullName || session.streamer.email}
+            </Text>
+          </View>
+        ) : null}
+        {session.viewerCount !== undefined ? (
+          <View style={styles.detailRow}>
+            <Ionicons name="eye" size={16} color={colors.textMuted} />
+            <Text style={[styles.detailText, { color: colors.textSecondary }]}>
+              {session.viewerCount} viewers
+            </Text>
+          </View>
+        ) : null}
+      </View>
+      {(session.status === 'live' || session.status === 'Live') &&
+      (session.hlsUrl || session.playbackUrl || session.streamUrl) ? (
+        <AdminScalePressable
+          onPress={() => {
+            const url = session.hlsUrl || session.playbackUrl || session.streamUrl;
+            Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open stream.'));
+          }}
+          style={[styles.watchLiveBtn, { backgroundColor: colors.danger, borderRadius: radius.sm }]}
+        >
+          <Ionicons name="radio" size={16} color={colors.textInverse} />
+          <Text style={[styles.watchLiveText, { color: colors.textInverse }]}>Watch Live</Text>
+        </AdminScalePressable>
+      ) : null}
+    </AdminGlassCard>
+  );
 
-      {activeSubTab === 'videos' && (
-        <>
-          <AdminSearchBar
-            placeholder="Search videos by title..."
-            value={searchTerm}
-            onChangeText={setSearchTerm}
-            style={{ marginTop: spacing.md, marginBottom: spacing.sm }}
-          />
+  return (
+    <AdminScreenShell
+      refreshing={refreshing}
+      onRefresh={onRefresh}
+      contentContainerStyle={isTablet ? styles.shellContentTablet : undefined}
+    >
+      <View
+        style={[styles.innerShell, isTablet && styles.innerShellTablet]}
+        onLayout={onShellLayout}
+      >
+        <AdminSectionHeader
+          icon="play-circle"
+          title="EduOTT"
+          subtitle="Educational videos and live sessions"
+        />
 
-          {subjectOptions.length > 1 ? (
-            <AdminFilterChips
-              chips={subjectOptions}
-              selected={selectedSubject}
-              onSelect={setSelectedSubject}
+        <View
+          style={[
+            styles.subTabsContainer,
+            { backgroundColor: colors.surface, borderColor: colors.surfaceBorder, borderRadius: radius.md },
+          ]}
+        >
+          <AdminScalePressable
+            onPress={() => setActiveSubTab('videos')}
+            style={[
+              styles.subTab,
+              {
+                borderRadius: radius.sm,
+                backgroundColor: activeSubTab === 'videos' ? colors.primaryMuted : colors.bgElevated,
+                borderColor: activeSubTab === 'videos' ? colors.primary : 'transparent',
+                borderWidth: activeSubTab === 'videos' ? 1 : 0,
+              },
+            ]}
+          >
+            <Ionicons
+              name="play"
+              size={16}
+              color={activeSubTab === 'videos' ? colors.primary : colors.textMuted}
             />
-          ) : null}
-
-          {isLoading && !refreshing ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
-            </View>
-          ) : filteredVideos.length === 0 ? (
-            <AdminEmptyState
-              icon="play-outline"
-              title={
-                !isAsliPrepExclusive
-                  ? 'Asli Prep only'
-                  : searchTerm
-                    ? 'No matches'
-                    : 'No videos found'
-              }
-              message={
-                !isAsliPrepExclusive
-                  ? 'Videos are available for Asli Prep schools only.'
-                  : searchTerm
-                    ? 'No videos match your search'
-                    : 'No videos found'
-              }
+            <Text
+              style={[
+                styles.subTabText,
+                { color: activeSubTab === 'videos' ? colors.primary : colors.textMuted },
+              ]}
+            >
+              Videos
+            </Text>
+          </AdminScalePressable>
+          <AdminScalePressable
+            onPress={() => setActiveSubTab('live-sessions')}
+            style={[
+              styles.subTab,
+              {
+                borderRadius: radius.sm,
+                backgroundColor:
+                  activeSubTab === 'live-sessions' ? colors.primaryMuted : colors.bgElevated,
+                borderColor: activeSubTab === 'live-sessions' ? colors.primary : 'transparent',
+                borderWidth: activeSubTab === 'live-sessions' ? 1 : 0,
+              },
+            ]}
+          >
+            <Ionicons
+              name="radio"
+              size={16}
+              color={activeSubTab === 'live-sessions' ? colors.primary : colors.textMuted}
             />
-          ) : (
-            <View style={[styles.listSection, { marginTop: spacing.md }]}>
-              {filteredVideos.map((video, index) => (
-                <Animated.View
-                  key={video._id}
-                  entering={FadeInDown.duration(350).delay(Math.min(index * 60, 480))}
-                >
-                  <EduOTTVideoCard
-                    variant="teacher"
-                    title={video.title}
-                    durationSeconds={video.duration}
-                    subjectLabel={
-                      extractPlainSubjectName(video.subjectName || '').trim() || undefined
-                    }
-                    classLabel={
-                      getSubjectClassLabel({
-                        name: video.subjectName,
-                        classNumber: video.classNumber,
-                      }) || undefined
-                    }
-                    thumbnailUrl={video.thumbnailUrl}
-                    youtubeUrl={video.youtubeUrl}
-                    fileUrl={video.fileUrl}
-                    videoUrl={video.videoUrl}
-                    onPress={() => handlePlayVideo(video)}
-                  />
-                </Animated.View>
-              ))}
-            </View>
-          )}
-        </>
-      )}
+            <Text
+              style={[
+                styles.subTabText,
+                { color: activeSubTab === 'live-sessions' ? colors.primary : colors.textMuted },
+              ]}
+            >
+              Live Sessions
+            </Text>
+          </AdminScalePressable>
+        </View>
 
-      {activeSubTab === 'live-sessions' && (
-        <>
-          <AdminSearchBar
-            placeholder="Search live sessions..."
-            value={sessionSearchTerm}
-            onChangeText={setSessionSearchTerm}
-            style={{ marginTop: spacing.md, marginBottom: spacing.sm }}
-          />
+        {activeSubTab === 'videos' && (
+          <View style={styles.tabContent}>
+            <AdminSearchBar
+              placeholder="Search videos by title..."
+              value={searchTerm}
+              onChangeText={setSearchTerm}
+              style={{ marginTop: spacing.md, marginBottom: spacing.sm }}
+            />
 
-          <AdminFilterChips chips={statusChips} selected={filterStatus} onSelect={setFilterStatus} />
+            {subjectOptions.length > 1 ? (
+              <AdminFilterChips
+                chips={subjectOptions}
+                selected={selectedSubject}
+                onSelect={setSelectedSubject}
+              />
+            ) : null}
 
-          {isLoadingSessions && !refreshing ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
-            </View>
-          ) : filteredSessions.length === 0 ? (
-            <AdminEmptyState icon="radio-outline" title="No live sessions found" />
-          ) : (
-            <View style={[styles.listSection, { marginTop: spacing.md, gap: spacing.sm }]}>
-              {filteredSessions.map((session, index) => (
-                <AdminGlassCard key={session._id} delay={index * 50}>
-                  <View style={styles.sessionCardHeader}>
-                    <Text style={[styles.sessionTitle, { color: colors.text }]}>
-                      {session.title || 'Untitled Session'}
-                    </Text>
-                    <View
-                      style={[
-                        styles.sessionStatusBadge,
-                        { backgroundColor: getStatusColor(session.status) + '20' },
-                      ]}
-                    >
-                      <Text
-                        style={[styles.sessionStatusText, { color: getStatusColor(session.status) }]}
-                      >
-                        {session.status}
-                      </Text>
-                    </View>
+            {isLoading && !refreshing ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={colors.primary} />
+              </View>
+            ) : filteredVideos.length === 0 ? (
+              <AdminEmptyState
+                icon="play-outline"
+                title={
+                  !isAsliPrepExclusive
+                    ? 'Asli Prep only'
+                    : searchTerm
+                      ? 'No matches'
+                      : 'No videos found'
+                }
+                message={
+                  !isAsliPrepExclusive
+                    ? 'Videos are available for Asli Prep schools only.'
+                    : searchTerm
+                      ? 'No videos match your search'
+                      : 'No videos found'
+                }
+              />
+            ) : (
+              <View
+                style={[
+                  styles.mediaGrid,
+                  isGrid && styles.mediaGridMulti,
+                  { marginTop: spacing.md },
+                ]}
+              >
+                {filteredVideos.map((video, index) => (
+                  <View
+                    key={video._id}
+                    style={isGrid ? { width: cardWidth } : styles.mediaGridItem}
+                  >
+                    <Animated.View entering={FadeInDown.duration(350).delay(Math.min(index * 60, 480))}>
+                      <EduOTTVideoCard
+                        variant="teacher"
+                        style={styles.videoCard}
+                        title={video.title}
+                        durationSeconds={video.duration}
+                        subjectLabel={
+                          extractPlainSubjectName(video.subjectName || '').trim() || undefined
+                        }
+                        classLabel={
+                          getSubjectClassLabel({
+                            name: video.subjectName,
+                            classNumber: video.classNumber,
+                          }) || undefined
+                        }
+                        thumbnailUrl={video.thumbnailUrl}
+                        youtubeUrl={video.youtubeUrl}
+                        fileUrl={video.fileUrl}
+                        videoUrl={video.videoUrl}
+                        onPress={() => handlePlayVideo(video)}
+                      />
+                    </Animated.View>
                   </View>
-                  {session.description ? (
-                    <Text style={[styles.sessionDescription, { color: colors.textMuted }]}>
-                      {session.description}
-                    </Text>
-                  ) : null}
-                  <View style={styles.sessionDetails}>
-                    {session.streamer ? (
-                      <View style={styles.detailRow}>
-                        <Ionicons name="person" size={16} color={colors.textMuted} />
-                        <Text style={[styles.detailText, { color: colors.textSecondary }]}>
-                          {session.streamer.fullName || session.streamer.email}
-                        </Text>
-                      </View>
-                    ) : null}
-                    {session.viewerCount !== undefined ? (
-                      <View style={styles.detailRow}>
-                        <Ionicons name="eye" size={16} color={colors.textMuted} />
-                        <Text style={[styles.detailText, { color: colors.textSecondary }]}>
-                          {session.viewerCount} viewers
-                        </Text>
-                      </View>
-                    ) : null}
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
+        {activeSubTab === 'live-sessions' && (
+          <View style={styles.tabContent}>
+            <AdminSearchBar
+              placeholder="Search live sessions..."
+              value={sessionSearchTerm}
+              onChangeText={setSessionSearchTerm}
+              style={{ marginTop: spacing.md, marginBottom: spacing.sm }}
+            />
+
+            <AdminFilterChips chips={statusChips} selected={filterStatus} onSelect={setFilterStatus} />
+
+            {isLoadingSessions && !refreshing ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={colors.primary} />
+              </View>
+            ) : filteredSessions.length === 0 ? (
+              <AdminEmptyState icon="radio-outline" title="No live sessions found" />
+            ) : (
+              <View
+                style={[
+                  styles.mediaGrid,
+                  isGrid && styles.mediaGridMulti,
+                  { marginTop: spacing.md },
+                ]}
+              >
+                {filteredSessions.map((session, index) => (
+                  <View
+                    key={session._id}
+                    style={isGrid ? { width: cardWidth } : styles.mediaGridItem}
+                  >
+                    {renderSessionCard(session, index)}
                   </View>
-                  {(session.status === 'live' || session.status === 'Live') &&
-                  (session.hlsUrl || session.playbackUrl || session.streamUrl) ? (
-                    <AdminScalePressable
-                      onPress={() => {
-                        const url = session.hlsUrl || session.playbackUrl || session.streamUrl;
-                        Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open stream.'));
-                      }}
-                      style={[styles.watchLiveBtn, { backgroundColor: colors.danger, borderRadius: radius.sm }]}
-                    >
-                      <Ionicons name="radio" size={16} color={colors.textInverse} />
-                      <Text style={[styles.watchLiveText, { color: colors.textInverse }]}>Watch Live</Text>
-                    </AdminScalePressable>
-                  ) : null}
-                </AdminGlassCard>
-              ))}
-            </View>
-          )}
-        </>
-      )}
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+      </View>
     </AdminScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
+  shellContentTablet: {
+    alignItems: 'center',
+  },
+  innerShell: {
+    width: '100%',
+    flexDirection: 'column',
+  },
+  innerShellTablet: {
+    width: '100%',
+    maxWidth: 1080,
+    alignSelf: 'center',
+  },
+  tabContent: {
+    width: '100%',
+    flexDirection: 'column',
+  },
   subTabsContainer: {
     flexDirection: 'row',
     padding: 8,
     gap: 8,
     borderWidth: 1,
+    width: '100%',
   },
   subTab: {
     flex: 1,
@@ -460,7 +536,27 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   subTabText: { fontSize: 14, fontWeight: '600' },
-  listSection: { gap: 16 },
+  mediaGrid: {
+    width: '100%',
+    gap: GRID_GAP,
+  },
+  mediaGridMulti: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    columnGap: GRID_GAP,
+    rowGap: GRID_GAP,
+    gap: 0,
+  },
+  mediaGridItem: {
+    width: '100%',
+  },
+  videoCard: {
+    width: '100%',
+  },
+  sessionCard: {
+    width: '100%',
+  },
   sessionCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',

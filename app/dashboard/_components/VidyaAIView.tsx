@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { filterVisibleStudentTools, type StudentAiTool } from '../../../src/lib/student-ai-tools';
+import VidyaAvatar from '../../../src/components/vidya/VidyaAvatar';
 import GlassCard from '../../../src/components/student/GlassCard';
 import { ShimmerCard } from '../../../src/components/student/StudentShimmer';
 import {
@@ -66,7 +67,15 @@ export default function VidyaAIView() {
 
   return (
     <View style={styles.container}>
-      <Animated.View entering={FadeInDown.duration(STUDENT_ANIMATION.normal)}>
+      <Animated.View entering={FadeInDown.duration(STUDENT_ANIMATION.normal)} style={styles.vidyaHeader}>
+        <VidyaAvatar size={44} borderColor="#c7d2fe" />
+        <View style={styles.vidyaHeaderText}>
+          <Text style={[styles.vidyaTitle, compact && { fontSize: 20 }]}>Vidya AI</Text>
+          <Text style={styles.vidyaSubtitle}>Your AI study buddy — tools & chat</Text>
+        </View>
+      </Animated.View>
+
+      <Animated.View entering={FadeInDown.duration(STUDENT_ANIMATION.normal).delay(40)}>
         <Text style={[styles.headerTitle, compact && { fontSize: 22 }]}>AI Tools</Text>
         <Text style={styles.headerSubtitle}>Tap a tool to generate study content instantly</Text>
       </Animated.View>
@@ -131,6 +140,23 @@ export default function VidyaAIView() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  vidyaHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: STUDENT_SPACING.lg,
+  },
+  vidyaHeaderText: { flex: 1, minWidth: 0 },
+  vidyaTitle: {
+    ...STUDENT_TYPO.section,
+    color: STUDENT.text,
+  },
+  vidyaSubtitle: {
+    marginTop: 2,
+    fontSize: 13,
+    color: STUDENT.textMuted,
+    lineHeight: 18,
+  },
   headerTitle: {
     ...STUDENT_TYPO.section,
     color: STUDENT.text,

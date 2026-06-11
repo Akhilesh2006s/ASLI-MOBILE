@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useVidyaChat } from '../../../src/hooks/useVidyaChat';
 import SubjectPickerModal from '../../../src/components/vidya/SubjectPickerModal';
+import VidyaAvatar from '../../../src/components/vidya/VidyaAvatar';
 import type { AIChatContext, TeachingTab } from '../../../src/types/vidya';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
 
@@ -287,9 +288,7 @@ export default function VidyaAIViewChat({
                 ]}
               >
                 {msg.role === 'assistant' ? (
-                  <View style={styles.avatarAssistant}>
-                    <Ionicons name="sparkles" size={14} color={TEACHER.primaryLight} />
-                  </View>
+                  <VidyaAvatar size={28} borderColor="#93c5fd" borderWidth={1} />
                 ) : null}
                 {msg.role === 'user' ? (
                   <LinearGradient
@@ -320,9 +319,7 @@ export default function VidyaAIViewChat({
 
           {model.isPending ? (
             <View style={[styles.messageRow, styles.messageRowAssistant]}>
-              <View style={styles.avatarAssistant}>
-                <Ionicons name="sparkles" size={14} color={TEACHER.primaryLight} />
-              </View>
+              <VidyaAvatar size={28} borderColor="#93c5fd" borderWidth={1} />
               <View style={[styles.bubble, styles.bubbleAssistant, styles.thinkingBubble]}>
                 <ThinkingDots />
               </View>

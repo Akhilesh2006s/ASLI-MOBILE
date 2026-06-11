@@ -33,6 +33,10 @@ import {
 } from '../../../src/hooks/useBackNavigation';
 import AiToolContentRenderer from '../../../src/components/ai-tools/AiToolContentRenderer';
 import {
+  aiToolTabletStyles,
+  useAiToolTabletLayout,
+} from '../../../src/components/ai-tools/ai-tool-tablet-layout';
+import {
   validateAiToolForm,
   executeAiToolGenerate,
   buildTeacherAiRequestBody,
@@ -238,6 +242,7 @@ export default function TeacherToolPage() {
   const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [paramsExpanded, setParamsExpanded] = useState(true);
   const scrollY = useSharedValue(0);
+  const { isTablet } = useAiToolTabletLayout();
   const [assignedSubjectNames, setAssignedSubjectNames] = useState<string[]>([]);
   const [availableNCERTTopics, setAvailableNCERTTopics] = useState<string[]>([]);
   const [schoolBoardName, setSchoolBoardName] = useState('CBSE');
@@ -325,29 +330,32 @@ export default function TeacherToolPage() {
   });
 
   const headerAnimatedStyle = useAnimatedStyle(() => ({
-    maxHeight: interpolate(
-      scrollY.value,
-      [0, HEADER_COLLAPSE_DISTANCE],
-      [120, 0],
-      Extrapolation.CLAMP
-    ),
-    opacity: interpolate(scrollY.value, [0, HEADER_COLLAPSE_DISTANCE * 0.65], [1, 0], Extrapolation.CLAMP),
+    maxHeight: isTablet
+      ? 120
+      : interpolate(scrollY.value, [0, HEADER_COLLAPSE_DISTANCE], [120, 0], Extrapolation.CLAMP),
+    opacity: isTablet
+      ? 1
+      : interpolate(scrollY.value, [0, HEADER_COLLAPSE_DISTANCE * 0.65], [1, 0], Extrapolation.CLAMP),
     overflow: 'hidden' as const,
   }));
 
   const compactHeaderAnimatedStyle = useAnimatedStyle(() => ({
-    maxHeight: interpolate(
-      scrollY.value,
-      [HEADER_COLLAPSE_DISTANCE * 0.4, HEADER_COLLAPSE_DISTANCE],
-      [0, 52],
-      Extrapolation.CLAMP
-    ),
-    opacity: interpolate(
-      scrollY.value,
-      [HEADER_COLLAPSE_DISTANCE * 0.4, HEADER_COLLAPSE_DISTANCE],
-      [0, 1],
-      Extrapolation.CLAMP
-    ),
+    maxHeight: isTablet
+      ? 0
+      : interpolate(
+          scrollY.value,
+          [HEADER_COLLAPSE_DISTANCE * 0.4, HEADER_COLLAPSE_DISTANCE],
+          [0, 52],
+          Extrapolation.CLAMP
+        ),
+    opacity: isTablet
+      ? 0
+      : interpolate(
+          scrollY.value,
+          [HEADER_COLLAPSE_DISTANCE * 0.4, HEADER_COLLAPSE_DISTANCE],
+          [0, 1],
+          Extrapolation.CLAMP
+        ),
     overflow: 'hidden' as const,
   }));
 
@@ -817,6 +825,85 @@ export default function TeacherToolPage() {
     );
   }
 
+  const formPanel = (
+    <>
+      {showCollapsedParams ? (
+        <ParametersSummaryBar
+          summary={paramsSummary}
+          accent={accent}
+          expanded={paramsExpanded}
+          onToggle={() => setParamsExpanded((prev) => !prev)}
+        />
+      ) : null}
+
+      {showParameterForms ? (
+        <>
+          <FormSection title="Tool Parameters" subtitle="Board and class details" accent={accent}>
+            {renderDropdownTrigger(
+              'board',
+              'Board',
+              selectedBoard,
+              'Select board',
+              boardOptions,
+              isLoadingUser,
+              false,
+              true
+            )}
+            {curriculumFields.map(renderField)}
+            {isStoryLanguageTool(toolType) ? (
+              <View style={styles.infoBanner}>
+                <Ionicons name="information-circle" size={18} color={TEACHER.primaryLight} />
+                <Text style={styles.infoBannerText}>
+                  English and Hindi subjects only for this tool.
+                </Text>
+              </View>
+            ) : null}
+          </FormSection>
+
+          {topicFields.length > 0 ? (
+            <FormSection title="Topic details" subtitle="Pick chapter and sub-topic from syllabus" accent={accent}>
+              {topicFields.map(renderField)}
+            </FormSection>
+          ) : null}
+
+          {extraFields.length > 0 ? (
+            <FormSection title="Options" subtitle="Customize your output" accent={accent}>
+              {extraFields.map(renderField)}
+            </FormSection>
+          ) : null}
+        </>
+      ) : null}
+    </>
+  );
+
+  const outputPanel = (
+    <>
+      {isGenerating ? (
+        <View style={styles.generatingBox}>
+          <ActivityIndicator size="large" color={accent} />
+          <Text style={styles.generatingTitle}>Generating Content...</Text>
+          <Text style={styles.generatingText}>Please wait while we prepare your content</Text>
+        </View>
+      ) : generatedContent ? (
+        <AiToolContentRenderer
+          toolType={toolType}
+          content={displayGeneratedContent}
+          rawContent={rawGeneratedContent}
+          accent={accent}
+          variant="teacher"
+        />
+      ) : (
+        <View style={styles.emptyResult}>
+          <Ionicons name="sparkles" size={28} color={TEACHER.navInactive} />
+          <Text style={styles.emptyResultTitle}>
+            {fallbackEmptyMessage || 'Generated content will appear here'}
+          </Text>
+          <Text style={styles.emptyResultText}>Choose tool parameters and tap Generate.</Text>
+        </View>
+      )}
+    </>
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" />
@@ -852,6 +939,26 @@ export default function TeacherToolPage() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
       >
+        {isTablet ? (
+          <View style={aiToolTabletStyles.tabletSplit}>
+            <ScrollView
+              style={aiToolTabletStyles.tabletFormPane}
+              contentContainerStyle={aiToolTabletStyles.tabletPaneContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {formPanel}
+            </ScrollView>
+            <ScrollView
+              style={aiToolTabletStyles.tabletOutputPane}
+              contentContainerStyle={aiToolTabletStyles.tabletPaneContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {outputPanel}
+            </ScrollView>
+          </View>
+        ) : (
         <AnimatedScrollView
           style={styles.scroll}
           contentContainerStyle={[styles.scrollContent, { paddingBottom: generatedContent ? 24 : 100 }]}
@@ -860,77 +967,10 @@ export default function TeacherToolPage() {
           onScroll={scrollHandler}
           scrollEventThrottle={16}
         >
-          {showCollapsedParams ? (
-            <ParametersSummaryBar
-              summary={paramsSummary}
-              accent={accent}
-              expanded={paramsExpanded}
-              onToggle={() => setParamsExpanded((prev) => !prev)}
-            />
-          ) : null}
-
-          {showParameterForms ? (
-            <>
-              <FormSection title="Tool Parameters" subtitle="Board and class details" accent={accent}>
-                {renderDropdownTrigger(
-                  'board',
-                  'Board',
-                  selectedBoard,
-                  'Select board',
-                  boardOptions,
-                  isLoadingUser,
-                  false,
-                  true
-                )}
-                {curriculumFields.map(renderField)}
-                {isStoryLanguageTool(toolType) ? (
-                  <View style={styles.infoBanner}>
-                    <Ionicons name="information-circle" size={18} color={TEACHER.primaryLight} />
-                    <Text style={styles.infoBannerText}>
-                      English and Hindi subjects only for this tool.
-                    </Text>
-                  </View>
-                ) : null}
-              </FormSection>
-
-              {topicFields.length > 0 ? (
-                <FormSection title="Topic details" subtitle="Pick chapter and sub-topic from syllabus" accent={accent}>
-                  {topicFields.map(renderField)}
-                </FormSection>
-              ) : null}
-
-              {extraFields.length > 0 ? (
-                <FormSection title="Options" subtitle="Customize your output" accent={accent}>
-                  {extraFields.map(renderField)}
-                </FormSection>
-              ) : null}
-            </>
-          ) : null}
-
-          {isGenerating ? (
-            <View style={styles.generatingBox}>
-              <ActivityIndicator size="large" color={accent} />
-              <Text style={styles.generatingTitle}>Generating Content...</Text>
-              <Text style={styles.generatingText}>Please wait while we prepare your content</Text>
-            </View>
-          ) : generatedContent ? (
-            <AiToolContentRenderer
-              toolType={toolType}
-              content={displayGeneratedContent}
-              rawContent={rawGeneratedContent}
-              accent={accent}
-              variant="teacher"
-            />
-          ) : (
-            <View style={styles.emptyResult}>
-              <Ionicons name="sparkles" size={28} color={TEACHER.navInactive} />
-              <Text style={styles.emptyResultTitle}>
-                {fallbackEmptyMessage || 'Generated content will appear here'}
-              </Text>
-              <Text style={styles.emptyResultText}>Choose tool parameters and tap Generate.</Text>
-            </View>
-          )}
+          {formPanel}
+          {outputPanel}
         </AnimatedScrollView>
+        )}
 
         <View style={styles.footer}>
           <TouchableOpacity

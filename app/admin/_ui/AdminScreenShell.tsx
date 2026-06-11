@@ -40,6 +40,7 @@ export default function AdminScreenShell({
           contentContainerStyle,
         ]}
         showsVerticalScrollIndicator={false}
+        nestedScrollEnabled
         refreshControl={
           onRefresh ? (
             <RefreshControl

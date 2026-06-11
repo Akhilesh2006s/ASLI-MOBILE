@@ -1,4 +1,4 @@
-import { Text, StyleSheet, ScrollView, Pressable, View } from 'react-native';
+import { Text, StyleSheet, ScrollView, Pressable, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
@@ -8,7 +8,12 @@ import Animated, {
 } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { TEACHER_AI_TOOLS, TEACHER_AI_TOOLS_SUBTITLE } from '../../../src/lib/teacher-ai-tools';
+import VidyaAvatar from '../../../src/components/vidya/VidyaAvatar';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
+
+const CONTENT_MAX = 1080;
+const GRID_GAP = TEACHER_SPACING.md;
+const TABLET_CARD_HEIGHT = 196;
 
 const TOOL_THEMES: Record<string, { bg: string; border: string; iconBg: string }> = {
   '#ea580c': { bg: '#FFF7ED', border: '#FDBA74', iconBg: '#FFEDD5' },
@@ -31,9 +36,32 @@ function usePressScale(to = 0.96) {
   return { style, onPressIn, onPressOut };
 }
 
-function ToolCard({ tool }: { tool: (typeof TEACHER_AI_TOOLS)[number] }) {
+function useVidyaAILayout() {
+  const { width } = useWindowDimensions();
+  const columns = width >= 1024 ? 3 : width >= 768 ? 2 : 1;
+  const isGrid = columns > 1;
+  const shellWidth = Math.min(width, CONTENT_MAX);
+  const gridInnerWidth = shellWidth - TEACHER_SPACING.lg * 2;
+  const cardWidth = isGrid
+    ? (gridInnerWidth - GRID_GAP * (columns - 1)) / columns
+    : gridInnerWidth;
+
+  return { isGrid, columns, shellWidth, cardWidth };
+}
+
+function ToolCard({
+  tool,
+  width,
+  variant,
+}: {
+  tool: (typeof TEACHER_AI_TOOLS)[number];
+  width: number;
+  variant: 'list' | 'grid';
+}) {
   const press = usePressScale();
   const theme = getToolTheme(tool.color);
+  const isGrid = variant === 'grid';
+
   return (
     <Pressable
       onPress={() =>
@@ -44,11 +72,13 @@ function ToolCard({ tool }: { tool: (typeof TEACHER_AI_TOOLS)[number] }) {
       }
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
+      style={{ width }}
     >
       <Animated.View
         style={[
-          styles.toolCard,
+          isGrid ? styles.toolCardGrid : styles.toolCardList,
           {
+            width,
             backgroundColor: theme.bg,
             borderColor: theme.border,
             borderLeftColor: tool.color,
@@ -63,11 +93,22 @@ function ToolCard({ tool }: { tool: (typeof TEACHER_AI_TOOLS)[number] }) {
             color={tool.color}
           />
         </View>
-        <View style={styles.toolBody}>
-          <Text style={styles.toolTitle}>{tool.title}</Text>
-          <Text style={styles.toolDescription}>{tool.description}</Text>
+
+        <View style={isGrid ? styles.toolBodyGrid : styles.toolBodyList}>
+          <Text style={styles.toolTitle} numberOfLines={2}>
+            {tool.title}
+          </Text>
+          <Text style={styles.toolDescription} numberOfLines={isGrid ? 3 : 2}>
+            {tool.description}
+          </Text>
         </View>
-        <Ionicons name="chevron-forward" size={18} color={tool.color} style={{ opacity: 0.55 }} />
+
+        <Ionicons
+          name="chevron-forward"
+          size={18}
+          color={tool.color}
+          style={isGrid ? styles.toolChevronGrid : styles.toolChevronList}
+        />
       </Animated.View>
     </Pressable>
   );
@@ -75,6 +116,7 @@ function ToolCard({ tool }: { tool: (typeof TEACHER_AI_TOOLS)[number] }) {
 
 export default function VidyaAIView() {
   const chatPress = usePressScale();
+  const { isGrid, shellWidth, cardWidth } = useVidyaAILayout();
 
   return (
     <ScrollView
@@ -83,43 +125,46 @@ export default function VidyaAIView() {
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
     >
-      <View style={styles.header}>
-        <LinearGradient colors={[TEACHER.primary + '40', TEACHER.primaryDark + '20']} style={styles.headerIcon}>
-          <Ionicons name="sparkles" size={28} color={TEACHER.primaryDark} />
-        </LinearGradient>
-        <View style={styles.headerText}>
-          <Text style={styles.headerTitle}>Vidya AI</Text>
-          <Text style={styles.headerSubtitle}>AI-powered teaching assistant</Text>
-        </View>
-      </View>
-
-      <Pressable
-        onPress={() => router.push('/teacher/vidya-chat' as any)}
-        onPressIn={chatPress.onPressIn}
-        onPressOut={chatPress.onPressOut}
-      >
-        <Animated.View style={[styles.chatCard, chatPress.style]}>
-          <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.chatCardIcon}>
-            <Ionicons name="chatbubbles" size={22} color="#fff" />
-          </LinearGradient>
-          <View style={styles.chatCardBody}>
-            <Text style={styles.chatCardTitle}>Vidya AI Chat</Text>
-            <Text style={styles.chatCardDesc}>
-              Ask about lessons, quizzes, classroom help, and teaching ideas
-            </Text>
+      <View style={[styles.innerShell, { width: shellWidth }]}>
+        <View style={styles.header}>
+          <VidyaAvatar size={48} borderColor="#93c5fd" />
+          <View style={styles.headerText}>
+            <Text style={styles.headerTitle}>Vidya AI</Text>
+            <Text style={styles.headerSubtitle}>AI-powered teaching assistant</Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color={TEACHER.primaryDark} />
-        </Animated.View>
-      </Pressable>
+        </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Available Tools</Text>
-        <Text style={styles.sectionSubtitle}>{TEACHER_AI_TOOLS_SUBTITLE}</Text>
+        <Pressable
+          onPress={() => router.push('/teacher/vidya-chat' as any)}
+          onPressIn={chatPress.onPressIn}
+          onPressOut={chatPress.onPressOut}
+        >
+          <Animated.View style={[styles.chatCard, chatPress.style]}>
+            <VidyaAvatar size={48} borderColor="#93c5fd" />
+            <View style={styles.chatCardBody}>
+              <Text style={styles.chatCardTitle}>Vidya AI Chat</Text>
+              <Text style={styles.chatCardDesc}>
+                Ask about lessons, quizzes, classroom help, and teaching ideas
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={TEACHER.primaryDark} />
+          </Animated.View>
+        </Pressable>
 
-        <View style={styles.toolsGrid}>
-          {TEACHER_AI_TOOLS.map((tool) => (
-            <ToolCard key={tool.id} tool={tool} />
-          ))}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Available Tools</Text>
+          <Text style={styles.sectionSubtitle}>{TEACHER_AI_TOOLS_SUBTITLE}</Text>
+
+          <View style={[styles.toolsGrid, isGrid && styles.toolsGridMulti]}>
+            {TEACHER_AI_TOOLS.map((tool) => (
+              <ToolCard
+                key={tool.id}
+                tool={tool}
+                width={cardWidth}
+                variant={isGrid ? 'grid' : 'list'}
+              />
+            ))}
+          </View>
         </View>
       </View>
     </ScrollView>
@@ -133,7 +178,10 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 120,
-    flexGrow: 1,
+    alignItems: 'center',
+  },
+  innerShell: {
+    alignSelf: 'center',
   },
   header: {
     flexDirection: 'row',
@@ -209,12 +257,35 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   toolsGrid: {
-    gap: TEACHER_SPACING.md,
+    width: '100%',
+    gap: GRID_GAP,
   },
-  toolCard: {
+  toolsGridMulti: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    columnGap: GRID_GAP,
+    rowGap: GRID_GAP,
+    gap: 0,
+  },
+  toolCardList: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: TEACHER_SPACING.md,
+    padding: TEACHER_SPACING.lg,
+    borderRadius: TEACHER_RADIUS.lg,
+    borderWidth: 1,
+    borderLeftWidth: 4,
+    minHeight: 96,
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  toolCardGrid: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    height: TABLET_CARD_HEIGHT,
     padding: TEACHER_SPACING.lg,
     borderRadius: TEACHER_RADIUS.lg,
     borderWidth: 1,
@@ -233,19 +304,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexShrink: 0,
   },
-  toolBody: {
+  toolBodyList: {
     flex: 1,
     minWidth: 0,
   },
+  toolBodyGrid: {
+    flex: 1,
+    width: '100%',
+    minWidth: 0,
+    marginTop: TEACHER_SPACING.md,
+  },
   toolTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: TEACHER.text,
-    marginBottom: 4,
+    marginBottom: 6,
+    lineHeight: 20,
   },
   toolDescription: {
     fontSize: 13,
     color: TEACHER.textMuted,
     lineHeight: 18,
+  },
+  toolChevronList: {
+    opacity: 0.55,
+    flexShrink: 0,
+  },
+  toolChevronGrid: {
+    opacity: 0.55,
+    alignSelf: 'flex-end',
   },
 });
