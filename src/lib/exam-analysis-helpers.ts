@@ -434,6 +434,20 @@ export function getGradeLetter(percentage: number): string {
   return 'D';
 }
 
+export function getGradeDisplayColor(grade: string): string {
+  if (grade.startsWith('A')) return '#059669';
+  if (grade.startsWith('B')) return '#3B82F6';
+  if (grade.startsWith('C')) return '#D97706';
+  return '#DC2626';
+}
+
+export function strongAttemptLabel(marksPercent: number): string {
+  if (marksPercent >= 85) return '★ Strong Attempt';
+  if (marksPercent >= 70) return '★ Solid Attempt';
+  if (marksPercent >= 50) return '◆ Room to Grow';
+  return '◇ Keep Building';
+}
+
 export function getOptionText(option: unknown, subject?: string): string {
   if (option == null) return '';
   if (typeof option === 'string' || typeof option === 'number' || typeof option === 'boolean') {
@@ -636,60 +650,289 @@ export function generatePlanQueueItems(topicTitle: string, topicIndex: number): 
   return { warmup, core, stretch };
 }
 
-export function buildPerformanceInsights(result: ExamAnalysisResult, aiAnalysis: AiExamAnalysis | null) {
-  const insights: Array<{ title: string; description: string; color: string; bg: string; icon: string }> = [];
+export type PerformanceInsight = {
+  title: string;
+  description: string;
+  color: string;
+  bg: string;
+  icon: string;
+};
+
+export type PatternAlert = {
+  icon: string;
+  title: string;
+  desc: string;
+  fix: string;
+};
+
+function getAttemptedAccuracy(result: ExamAnalysisResult): number {
+  const attempted = (result.correctAnswers || 0) + (result.wrongAnswers || 0);
+  return attempted > 0 ? (result.correctAnswers / attempted) * 100 : 0;
+}
+
+function detectStaminaDrop(result: ExamAnalysisResult): boolean {
+  const questions = result.questions || [];
+  if (questions.length < 8) return false;
+  const splitAt = Math.max(1, Math.floor(questions.length * 0.75));
+  const measure = (start: number, end: number) => {
+    let correct = 0;
+    let attempted = 0;
+    for (let i = start; i < end; i += 1) {
+      const q = questions[i];
+      const ua = getUserAnswerForQuestion(q, i, result.answers);
+      if (ua === undefined || ua === null || ua === '') continue;
+      attempted += 1;
+      if (compareAnswers(q, ua, q.correctAnswer)) correct += 1;
+    }
+    return attempted > 0 ? correct / attempted : null;
+  };
+  const early = measure(0, splitAt);
+  const late = measure(splitAt, questions.length);
+  return early != null && late != null && late < early - 0.12;
+}
+
+export function buildPerformanceInsights(
+  result: ExamAnalysisResult,
+  aiAnalysis: AiExamAnalysis | null
+): PerformanceInsight[] {
+  const insights: PerformanceInsight[] = [];
   const displayPercentage = getDisplayPercentage(result);
+  const marksPercentage = getMarksPercentage(result);
   const attemptedCount = (result.correctAnswers || 0) + (result.wrongAnswers || 0);
   const totalQuestionCount =
     Number(result.totalQuestions || 0) || attemptedCount + (result.unattempted || 0);
+  const attemptRate = totalQuestionCount > 0 ? attemptedCount / totalQuestionCount : 0;
+  const attemptedAccuracy = getAttemptedAccuracy(result);
+  const avgTimePerQuestion =
+    totalQuestionCount > 0 ? Math.floor(result.timeTaken / totalQuestionCount) : 0;
 
-  if (displayPercentage >= 90) {
+  if (displayPercentage >= 90 || marksPercentage >= 90) {
     insights.push({
       title: 'Outstanding Performance!',
-      description: "You've achieved exceptional results. You're among the top performers!",
+      description: `You scored ${result.obtainedMarks ?? 0}/${result.totalMarks ?? 0} marks (${marksPercentage.toFixed(1)}%) — top-tier result on this paper.`,
       color: '#9333ea',
       bg: '#faf5ff',
       icon: 'trophy',
     });
-  }
-  if (totalQuestionCount > 0 && result.correctAnswers / totalQuestionCount >= 0.8) {
+  } else if (attemptedAccuracy >= 80 && attemptedCount >= 5) {
     insights.push({
       title: 'High Accuracy',
-      description: 'Your accuracy rate is excellent! Keep up the precision.',
+      description: `${attemptedAccuracy.toFixed(0)}% accuracy on ${attemptedCount} attempted questions — precision is a strength here.`,
       color: '#059669',
       bg: '#ecfdf5',
       icon: 'flash',
     });
   }
-  if (result.timeTaken < totalQuestionCount * 60) {
+
+  if (avgTimePerQuestion > 0 && avgTimePerQuestion <= 45 && attemptRate >= 0.85) {
     insights.push({
       title: 'Speed Master',
-      description: 'You completed the exam efficiently. Great time management!',
+      description: `Avg ${formatExamTime(avgTimePerQuestion)} per question with ${(attemptRate * 100).toFixed(0)}% completion — efficient pacing.`,
       color: '#2563eb',
       bg: '#eff6ff',
       icon: 'time',
     });
   }
-  if (result.unattempted === 0) {
+
+  if (result.unattempted === 0 && totalQuestionCount > 0) {
     insights.push({
       title: 'Complete Attempt',
-      description: 'You attempted all questions. Excellent completion rate!',
+      description: `All ${totalQuestionCount} questions attempted — full paper coverage.`,
       color: '#4f46e5',
       bg: '#eef2ff',
       icon: 'checkmark-circle',
     });
+  } else if ((result.unattempted || 0) > 0) {
+    insights.push({
+      title: 'Coverage Gap',
+      description: `${result.unattempted} question(s) left blank — completing the paper could add easy marks.`,
+      color: '#dc2626',
+      bg: '#fef2f2',
+      icon: 'alert-circle',
+    });
   }
-  const trend = String(aiAnalysis?.predictions?.trend || '').toLowerCase();
+
+  const subjects = Object.entries(result.subjectWiseScore || {});
+  if (subjects.length > 0) {
+    const best = subjects.reduce((a, b) => {
+      const pa = a[1].total > 0 ? a[1].correct / a[1].total : 0;
+      const pb = b[1].total > 0 ? b[1].correct / b[1].total : 0;
+      return pb > pa ? b : a;
+    });
+    const bestPct = best[1].total > 0 ? (best[1].correct / best[1].total) * 100 : 0;
+    if (bestPct >= 50) {
+      const name = best[0].charAt(0).toUpperCase() + best[0].slice(1);
+      insights.push({
+        title: 'Anchor Subject',
+        description: `${name} led this attempt at ${bestPct.toFixed(0)}% (${best[1].correct}/${best[1].total} correct).`,
+        color: '#0d9488',
+        bg: '#ecfdf5',
+        icon: 'star',
+      });
+    }
+
+    const weakest = subjects
+      .map(([subject, score]) => ({
+        subject,
+        pct: score.total > 0 ? (score.correct / score.total) * 100 : 0,
+        correct: score.correct,
+        total: score.total,
+      }))
+      .filter((row) => row.total > 0)
+      .sort((a, b) => a.pct - b.pct)[0];
+    if (weakest && weakest.pct < 60 && weakest.pct < bestPct - 15) {
+      const name = weakest.subject.charAt(0).toUpperCase() + weakest.subject.slice(1);
+      insights.push({
+        title: 'Priority Subject',
+        description: `${name} needs focus at ${weakest.pct.toFixed(0)}% (${weakest.correct}/${weakest.total} correct).`,
+        color: '#ea580c',
+        bg: '#fff7ed',
+        icon: 'flag',
+      });
+    }
+  }
+
+  const trend = String(aiAnalysis?.predictions?.trend || '').toLowerCase().trim();
   if (trend === 'improving') {
     insights.push({
       title: 'Trend Improvement',
-      description: 'Your marks trend is improving versus recent attempts.',
+      description: 'Your recent attempts show improving marks — keep the same study rhythm.',
       color: '#059669',
       bg: '#ecfdf5',
       icon: 'trending-up',
     });
+  } else if (trend === 'declining') {
+    insights.push({
+      title: 'Trend Alert',
+      description: 'Recent attempts are dipping — revisit weak topics before the next mock.',
+      color: '#dc2626',
+      bg: '#fef2f2',
+      icon: 'trending-down',
+    });
   }
+
+  if (insights.length === 0) {
+    insights.push({
+      title: 'Keep Building',
+      description: `You scored ${result.obtainedMarks ?? 0}/${result.totalMarks ?? 0} marks with ${attemptedAccuracy.toFixed(0)}% accuracy on attempted questions.`,
+      color: '#4f46e5',
+      bg: '#eef2ff',
+      icon: 'bulb',
+    });
+  }
+
   return insights;
+}
+
+export function buildPatternAlerts(
+  result: ExamAnalysisResult,
+  aiAnalysis: AiExamAnalysis | null,
+  mistakeTaxonomy: MistakeTaxonomy
+): PatternAlert[] {
+  const alerts: PatternAlert[] = [];
+  const weakAreas = buildWeakAreas(result);
+  const trend = String(aiAnalysis?.predictions?.trend || '').toLowerCase().trim();
+  const focus = aiAnalysis?.focusAreas?.[0];
+
+  if (mistakeTaxonomy.careless > 0) {
+    alerts.push({
+      icon: '⚡',
+      title: 'Careless errors',
+      desc: `${mistakeTaxonomy.careless} fast wrong answer${mistakeTaxonomy.careless === 1 ? '' : 's'} this attempt.`,
+      fix: '10 min slow-mode drill daily',
+    });
+  }
+
+  if (mistakeTaxonomy.conceptual > 0) {
+    alerts.push({
+      icon: '🧠',
+      title: 'Conceptual gaps',
+      desc: `${mistakeTaxonomy.conceptual} wrong answer${mistakeTaxonomy.conceptual === 1 ? '' : 's'} linked to concept gaps.`,
+      fix: focus?.whatToDo || '8-min concept video + 10 practice Qs',
+    });
+  }
+
+  if (mistakeTaxonomy.time > 0) {
+    alerts.push({
+      icon: '⏱',
+      title: 'Time-pressure mistakes',
+      desc: `${mistakeTaxonomy.time} wrong answer${mistakeTaxonomy.time === 1 ? '' : 's'} under time pressure.`,
+      fix: 'Timed mixed drill on your slowest chapters',
+    });
+  }
+
+  if (focus?.issue) {
+    alerts.push({
+      icon: '📌',
+      title: `Weak area · ${focus.subject || 'Focus topic'}`,
+      desc: focus.issue.slice(0, 100),
+      fix: focus.whatToDo || 'Review concept notes + 10 Qs',
+    });
+  } else if (weakAreas[0]) {
+    alerts.push({
+      icon: '📌',
+      title: `Weak subject · ${weakAreas[0].subject}`,
+      desc: `${weakAreas[0].correct}/${weakAreas[0].total} correct (${weakAreas[0].percentage.toFixed(1)}%).`,
+      fix: 'Targeted revision on this subject',
+    });
+  }
+
+  if (trend === 'declining') {
+    alerts.push({
+      icon: '📉',
+      title: 'Confidence trend declining',
+      desc: 'Recent attempt scores are trending down.',
+      fix: 'Start mocks with your strongest subject',
+    });
+  } else if (trend === 'improving') {
+    alerts.push({
+      icon: '📈',
+      title: 'Momentum building',
+      desc: 'Your marks trend is improving across recent attempts.',
+      fix: 'Maintain current revision plan',
+    });
+  }
+
+  if (detectStaminaDrop(result)) {
+    alerts.push({
+      icon: '⏱',
+      title: 'Stamina drops in last 25%',
+      desc: 'Accuracy fell in the final quarter of this paper.',
+      fix: 'Practice full-length timed sets',
+    });
+  }
+
+  if ((result.unattempted || 0) > 0) {
+    alerts.push({
+      icon: '📝',
+      title: 'Unattempted questions',
+      desc: `${result.unattempted} question(s) were left blank on this attempt.`,
+      fix: 'Use a pass strategy to attempt every question',
+    });
+  }
+
+  return alerts;
+}
+
+export function getDnaSummaryMessage(
+  dna: DnaScores,
+  profileLabel: string,
+  result: ExamAnalysisResult
+): string {
+  const marksPct = getMarksPercentage(result) || getDisplayPercentage(result);
+  if (profileLabel === 'Rushed Reader') {
+    return `Speed score ${Math.round(dna.speed)}% but marks were ${marksPct.toFixed(0)}% — slow down on calculation-heavy questions.`;
+  }
+  if (profileLabel === 'Precision Player') {
+    return `Accuracy DNA ${dna.accuracy.toFixed(0)}% — your precision carried this attempt; push speed on easy questions.`;
+  }
+  if (profileLabel === 'Deep Thinker') {
+    return `You spend longer per question (speed ${Math.round(dna.speed)}%) — trim time on questions you already know.`;
+  }
+  if (profileLabel === 'Concept Builder') {
+    return `Concept score ${Math.round(dna.concept)}% — strengthen fundamentals before harder mocks.`;
+  }
+  return `Balanced profile: ${marksPct.toFixed(0)}% marks with ${dna.consistency.toFixed(0)}% consistency on this paper.`;
 }
 
 export function getAnswerTimeSeconds(raw: unknown): number | null {

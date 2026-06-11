@@ -1,5 +1,5 @@
 import React, { memo, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import GlassCard from '../../../../src/components/student/GlassCard';
 import {
@@ -37,6 +37,12 @@ function StudyCalendarSectionComponent({
   onOpenQuiz,
   onOpenExam,
 }: Props) {
+  const { width: screenWidth } = useWindowDimensions();
+  const isTablet = screenWidth >= 768;
+  const dayCellSize = isTablet
+    ? Math.min(48, Math.floor((screenWidth - 80) / 7))
+    : undefined;
+
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -111,8 +117,7 @@ function StudyCalendarSectionComponent({
     }
   };
 
-  return (
-    <View style={styles.wrap}>
+  const renderCalendarCard = () => (
       <GlassCard variant="default" padding={14}>
         <View style={styles.calHeader}>
           <View>
@@ -151,16 +156,29 @@ function StudyCalendarSectionComponent({
             <Text style={styles.goBtnText}>Go</Text>
           </TouchableOpacity>
         </View>
-        <View style={styles.weekHead}>
+        <View style={[styles.weekHead, isTablet && styles.gridTablet]}>
           {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
-            <Text key={d} style={styles.weekHeadText}>
+            <Text
+              key={d}
+              style={[
+                styles.weekHeadText,
+                isTablet && dayCellSize ? { width: dayCellSize, flex: 0 } : null,
+              ]}
+            >
               {d}
             </Text>
           ))}
         </View>
-        <View style={styles.grid}>
+        <View style={[styles.grid, isTablet && styles.gridTablet]}>
           {calendarDays.map((day, idx) => {
-            if (!day) return <View key={`e-${idx}`} style={styles.dayCell} />;
+            if (!day) {
+              return (
+                <View
+                  key={`e-${idx}`}
+                  style={[styles.dayCell, isTablet && dayCellSize ? { width: dayCellSize, height: dayCellSize } : null]}
+                />
+              );
+            }
             const dayKey = formatCalendarDateKey(day);
             const count = (entriesByDate[dayKey] || []).length;
             const isSelected = formatCalendarDateKey(selectedDate) === dayKey;
@@ -170,6 +188,7 @@ function StudyCalendarSectionComponent({
                 key={dayKey}
                 style={[
                   styles.dayCell,
+                  isTablet && dayCellSize ? { width: dayCellSize, height: dayCellSize } : null,
                   isSelected && styles.daySelected,
                   isToday && !isSelected && styles.dayToday,
                 ]}
@@ -187,7 +206,9 @@ function StudyCalendarSectionComponent({
           })}
         </View>
       </GlassCard>
+  );
 
+  const renderEventsCard = () => (
       <GlassCard variant="default" padding={14}>
         <Text style={styles.eventsTitle}>Study & exams</Text>
         <Text style={styles.eventsSub}>
@@ -249,12 +270,21 @@ function StudyCalendarSectionComponent({
           })
         )}
       </GlassCard>
+  );
+
+  return (
+    <View style={[styles.wrap, isTablet && styles.wrapTablet]}>
+      <View style={isTablet ? styles.tabletCol : undefined}>{renderCalendarCard()}</View>
+      <View style={isTablet ? styles.tabletCol : undefined}>{renderEventsCard()}</View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { gap: 12 },
+  wrapTablet: { flexDirection: 'row', alignItems: 'flex-start' },
+  tabletCol: { flex: 1, minWidth: 0 },
+  gridTablet: { justifyContent: 'center' },
   calHeader: { gap: 10, marginBottom: 10 },
   calTitle: { fontSize: 18, fontWeight: '800', color: STUDENT.primary },
   calSub: { fontSize: 12, color: STUDENT.textMuted, marginTop: 2 },

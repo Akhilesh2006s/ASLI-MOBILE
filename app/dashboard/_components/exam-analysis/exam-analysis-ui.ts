@@ -1,5 +1,17 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, useWindowDimensions } from 'react-native';
 import { COLORS, FONT, RADIUS, SHADOW, SPACING } from '../../../../src/theme';
+
+export const ANALYSIS_TABLET_MIN = 768;
+export const ANALYSIS_WIDE_MIN = 1024;
+export const ANALYSIS_CONTENT_MAX = 960;
+
+export function useExamAnalysisLayout() {
+  const { width } = useWindowDimensions();
+  const isTablet = width >= ANALYSIS_TABLET_MIN;
+  const isWide = width >= ANALYSIS_WIDE_MIN;
+  const contentWidth = Math.min(width, ANALYSIS_CONTENT_MAX);
+  return { width, isTablet, isWide, contentWidth };
+}
 
 export const ANALYSIS = {
   gradient: ['#F8FAFC', '#EFF6FF', '#E0F2FE'] as const,
@@ -115,6 +127,24 @@ export const analysisStyles = StyleSheet.create({
   tabPillText: { fontSize: FONT.sm, fontWeight: FONT.semibold, color: COLORS.textSecondary },
   tabPillTextActive: { color: ANALYSIS.accent, fontWeight: FONT.bold },
   scrollContent: { padding: SPACING.lg, paddingBottom: SPACING.xxxl, gap: SPACING.lg },
+  scrollContentTablet: {
+    width: '100%',
+    maxWidth: ANALYSIS_CONTENT_MAX,
+    alignSelf: 'center',
+    paddingHorizontal: SPACING.xl,
+  },
+  headerConstrained: {
+    width: '100%',
+    maxWidth: ANALYSIS_CONTENT_MAX,
+    alignSelf: 'center',
+    paddingHorizontal: SPACING.lg,
+  },
+  tabsRowTablet: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.sm,
+    justifyContent: 'center',
+  },
   hero: {
     borderRadius: RADIUS.xl,
     padding: SPACING.xl,

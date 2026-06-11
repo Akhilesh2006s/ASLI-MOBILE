@@ -39,16 +39,27 @@ function normalizeThumbnailUrl(thumbnailUrl: string): string {
   return `${API_BASE_URL}/${trimmed}`;
 }
 
-export function getEduOTTThumbnailUrl(video: EduOTTVideoLike): string | null {
+/** Ordered candidates — higher resolution first for tablet / large cards. */
+export function getEduOTTThumbnailUrls(video: EduOTTVideoLike): string[] {
+  const urls: string[] = [];
   if (video.thumbnailUrl?.trim()) {
-    return normalizeThumbnailUrl(video.thumbnailUrl);
+    urls.push(normalizeThumbnailUrl(video.thumbnailUrl));
   }
   const youtubeUrl = resolveYouTubeUrl(video);
   if (youtubeUrl) {
     const id = extractYouTubeId(youtubeUrl);
-    if (id) return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+    if (id) {
+      urls.push(`https://img.youtube.com/vi/${id}/maxresdefault.jpg`);
+      urls.push(`https://img.youtube.com/vi/${id}/sddefault.jpg`);
+      urls.push(`https://img.youtube.com/vi/${id}/hqdefault.jpg`);
+    }
   }
-  return null;
+  return [...new Set(urls)];
+}
+
+export function getEduOTTThumbnailUrl(video: EduOTTVideoLike): string | null {
+  const urls = getEduOTTThumbnailUrls(video);
+  return urls[0] ?? null;
 }
 
 type DurationSource = {

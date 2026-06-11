@@ -9,13 +9,14 @@ import {
   AiExamAnalysis,
   ExamAnalysisResult,
   getDisplayPercentage,
+  getGradeDisplayColor,
   getGradeFromResult,
   getMarksPercentage,
   mergeExamResultPreserveScores,
   normalizeExamResultFromApi,
   normalizeMongoId,
 } from '../../../src/lib/exam-analysis-helpers';
-import { ANALYSIS, analysisStyles, TAB_META } from './exam-analysis/exam-analysis-ui';
+import { ANALYSIS, analysisStyles, TAB_META, useExamAnalysisLayout } from './exam-analysis/exam-analysis-ui';
 import {
   AdvancedTabMobile,
   AiReportTabMobile,
@@ -235,12 +236,13 @@ export default function DetailedAnalysisView({
     getMarksPercentage(displayResult) || getDisplayPercentage(displayResult)
   );
   const grade = getGradeFromResult(displayResult);
+  const { isTablet } = useExamAnalysisLayout();
 
   return (
     <Shell {...shellProps}>
       <View style={analysisStyles.header}>
         <LinearGradient colors={[...ANALYSIS.gradient]} style={styles.headerGradient}>
-          <View style={[analysisStyles.headerTop, embedded && styles.headerEmbedded]}>
+          <View style={[analysisStyles.headerTop, isTablet && analysisStyles.headerConstrained, embedded && styles.headerEmbedded]}>
             {!embedded ? (
               <TouchableOpacity onPress={onBack} style={analysisStyles.backBtn}>
                 <Ionicons name="arrow-back" size={20} color="#334155" />
@@ -257,7 +259,7 @@ export default function DetailedAnalysisView({
               </TouchableOpacity>
             ) : null}
           </View>
-          <View style={analysisStyles.statsStrip}>
+          <View style={[analysisStyles.statsStrip, isTablet && analysisStyles.headerConstrained]}>
             <View style={analysisStyles.statChip}>
               <Text style={analysisStyles.statChipVal}>{displayResult.obtainedMarks || 0}</Text>
               <Text style={analysisStyles.statChipLab}>Marks</Text>
@@ -267,7 +269,7 @@ export default function DetailedAnalysisView({
               <Text style={analysisStyles.statChipLab}>Score</Text>
             </View>
             <View style={analysisStyles.statChip}>
-              <Text style={analysisStyles.statChipVal}>{grade}</Text>
+              <Text style={[analysisStyles.statChipVal, { color: getGradeDisplayColor(grade) }]}>{grade}</Text>
               <Text style={analysisStyles.statChipLab}>Grade</Text>
             </View>
             <View style={analysisStyles.statChip}>
@@ -277,25 +279,46 @@ export default function DetailedAnalysisView({
           </View>
         </LinearGradient>
 
-        <View style={analysisStyles.tabsWrap}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={analysisStyles.tabsScroll}>
-            {(Object.entries(TAB_META) as [AnalysisTab, (typeof TAB_META)[AnalysisTab]][]).map(([id, tab]) => (
-              <TouchableOpacity
-                key={id}
-                style={[analysisStyles.tabPill, activeTab === id && analysisStyles.tabPillActive]}
-                onPress={() => setActiveTab(id)}
-              >
-                <Ionicons
-                  name={tab.icon}
-                  size={15}
-                  color={activeTab === id ? ANALYSIS.accent : '#94A3B8'}
-                />
-                <Text style={[analysisStyles.tabPillText, activeTab === id && analysisStyles.tabPillTextActive]}>
-                  {tab.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+        <View style={[analysisStyles.tabsWrap, isTablet && analysisStyles.headerConstrained]}>
+          {isTablet ? (
+            <View style={analysisStyles.tabsRowTablet}>
+              {(Object.entries(TAB_META) as [AnalysisTab, (typeof TAB_META)[AnalysisTab]][]).map(([id, tab]) => (
+                <TouchableOpacity
+                  key={id}
+                  style={[analysisStyles.tabPill, activeTab === id && analysisStyles.tabPillActive]}
+                  onPress={() => setActiveTab(id)}
+                >
+                  <Ionicons
+                    name={tab.icon}
+                    size={15}
+                    color={activeTab === id ? ANALYSIS.accent : '#94A3B8'}
+                  />
+                  <Text style={[analysisStyles.tabPillText, activeTab === id && analysisStyles.tabPillTextActive]}>
+                    {tab.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={analysisStyles.tabsScroll}>
+              {(Object.entries(TAB_META) as [AnalysisTab, (typeof TAB_META)[AnalysisTab]][]).map(([id, tab]) => (
+                <TouchableOpacity
+                  key={id}
+                  style={[analysisStyles.tabPill, activeTab === id && analysisStyles.tabPillActive]}
+                  onPress={() => setActiveTab(id)}
+                >
+                  <Ionicons
+                    name={tab.icon}
+                    size={15}
+                    color={activeTab === id ? ANALYSIS.accent : '#94A3B8'}
+                  />
+                  <Text style={[analysisStyles.tabPillText, activeTab === id && analysisStyles.tabPillTextActive]}>
+                    {tab.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
         </View>
       </View>
 

@@ -26,7 +26,7 @@ import ComposedStackedBarChart from '../../../../src/components/ui/charts/Compos
 import HorizontalStackedBarChart from '../../../../src/components/ui/charts/HorizontalStackedBarChart';
 import BarChart from '../../../../src/components/ui/charts/BarChart';
 import AnalysisCard from './AnalysisCard';
-import { ANALYSIS } from './exam-analysis-ui';
+import { ANALYSIS, ANALYSIS_CONTENT_MAX, useExamAnalysisLayout } from './exam-analysis-ui';
 
 const difficultyRows = ['easy', 'moderate', 'difficult', 'highly_difficult'] as const;
 
@@ -65,6 +65,7 @@ export default function AdvancedPerformanceDashboardMobile({
   resultId?: string;
 }) {
   const { width: screenWidth } = useWindowDimensions();
+  const { isTablet } = useExamAnalysisLayout();
   const [data, setData] = useState<AdvancedAnalyticsPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -272,7 +273,7 @@ export default function AdvancedPerformanceDashboardMobile({
     { key: 'notAnswered', color: ADVANCED_CHART_COLORS.notAnswered, label: 'Not Answered' },
   ];
 
-  const chartMinWidth = Math.max(280, screenWidth - 48);
+  const chartMinWidth = Math.max(280, Math.min(screenWidth, ANALYSIS_CONTENT_MAX) - 48);
 
   const subjectBarColor = (subject: string) => {
     const key = subject.toLowerCase();
@@ -292,7 +293,7 @@ export default function AdvancedPerformanceDashboardMobile({
   }
 
   return (
-    <View style={[styles.wrap, { minWidth: chartMinWidth }]}>
+    <View style={[styles.wrap, { minWidth: chartMinWidth }, isTablet && styles.wrapTablet]}>
       {error ? (
         <View style={styles.warnBox}>
           <Text style={styles.warnText}>
@@ -515,6 +516,7 @@ export default function AdvancedPerformanceDashboardMobile({
 
 const styles = StyleSheet.create({
   wrap: { gap: 14, width: '100%' },
+  wrapTablet: { alignSelf: 'center' },
   loadingWrap: { alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 },
   loadingText: { color: '#6b7280', fontSize: 14 },
   errorTitle: { fontSize: 15, fontWeight: '800', color: '#334155' },

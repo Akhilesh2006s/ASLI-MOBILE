@@ -6,6 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
   RefreshControl,
+  useWindowDimensions,
 } from 'react-native';
 import { ShimmerCard } from '../../../src/components/student/StudentShimmer';
 import { STUDENT, STUDENT_RADIUS, STUDENT_SPACING, STUDENT_TYPO } from '../../../src/theme/student';
@@ -125,7 +126,23 @@ function mapContentToVideoItem(content: any): VideoItem {
   };
 }
 
+const EDUOTT_GRID_MAX_WIDTH = 1080;
+
+function useEduOTTGridLayout() {
+  const { width: screenWidth } = useWindowDimensions();
+  const numColumns = screenWidth >= 1024 ? 3 : screenWidth >= 768 ? 2 : 1;
+  const isGrid = numColumns > 1;
+  const columnGap = STUDENT_SPACING.md;
+  const listContentWidth = Math.min(screenWidth, EDUOTT_GRID_MAX_WIDTH) - STUDENT_SPACING.lg * 2;
+  const gridCardWidth = isGrid
+    ? (listContentWidth - columnGap * (numColumns - 1)) / numColumns
+    : undefined;
+
+  return { numColumns, isGrid, gridCardWidth };
+}
+
 export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
+  const { numColumns, isGrid, gridCardWidth } = useEduOTTGridLayout();
   const { isAsliPrepExclusive, loading: programLoading } = useSchoolProgram();
   const {
     selectedClass,
@@ -493,6 +510,7 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
   const renderVideoItem = useCallback(({ item: video }: { item: VideoItem }) => (
     <EduOTTVideoCard
       variant="student"
+      style={gridCardWidth != null ? { width: gridCardWidth } : undefined}
       title={video.title}
       durationSeconds={video.duration}
       subjectLabel={extractPlainSubjectName(video.subjectName || '').trim() || undefined}
@@ -508,7 +526,7 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
       videoUrl={video.videoUrl}
       onPress={() => handlePlayVideo(video)}
     />
-  ), [handlePlayVideo]);
+  ), [handlePlayVideo, gridCardWidth]);
 
   const renderSessionItem = useCallback(({ item }: { item: LiveSession }) => {
     const statusColor = getStatusColor(item.status);
@@ -637,9 +655,12 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
 
     return (
       <FlatList
+        key={`eduott-videos-${numColumns}`}
         data={visibleVideos}
         keyExtractor={videoKeyExtractor}
         renderItem={renderVideoItem}
+        numColumns={numColumns}
+        columnWrapperStyle={isGrid ? styles.columnWrapper : undefined}
         ListHeaderComponent={
           <>
             {listHeader}
@@ -650,7 +671,7 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         onEndReached={onEndReached}
         onEndReachedThreshold={0.35}
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={[styles.listContainer, isGrid && styles.listContainerGrid]}
         maxToRenderPerBatch={8}
         initialNumToRender={8}
         windowSize={9}
@@ -722,6 +743,14 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     paddingBottom: STUDENT_SPACING.xl,
+  },
+  listContainerGrid: {
+    maxWidth: EDUOTT_GRID_MAX_WIDTH,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  columnWrapper: {
+    gap: STUDENT_SPACING.md,
   },
   summaryCard: {
     backgroundColor: STUDENT.accentSoft,

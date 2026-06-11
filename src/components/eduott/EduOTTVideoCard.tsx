@@ -1,10 +1,10 @@
-import React, { memo, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { memo, useEffect, useMemo, useState } from 'react';
+import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import {
   formatEduOTTDurationLabel,
-  getEduOTTThumbnailUrl,
+  getEduOTTThumbnailUrls,
   type EduOTTVideoLike,
 } from '../../utils/eduottVideoUtils';
 
@@ -19,6 +19,7 @@ export type EduOTTVideoCardProps = {
   videoUrl?: string;
   onPress: () => void;
   variant?: 'teacher' | 'student';
+  style?: StyleProp<ViewStyle>;
 };
 
 function themeFor(variant: 'teacher' | 'student') {
@@ -61,24 +62,41 @@ function EduOTTVideoCardComponent({
   videoUrl,
   onPress,
   variant = 'student',
+  style,
 }: EduOTTVideoCardProps) {
   const theme = themeFor(variant);
   const [thumbError, setThumbError] = useState(false);
+  const [thumbIndex, setThumbIndex] = useState(0);
 
   const videoLike: EduOTTVideoLike = useMemo(
     () => ({ thumbnailUrl, youtubeUrl, fileUrl, videoUrl }),
     [thumbnailUrl, youtubeUrl, fileUrl, videoUrl],
   );
 
-  const thumbnailSrc = getEduOTTThumbnailUrl(videoLike);
+  const thumbnailUrls = useMemo(() => getEduOTTThumbnailUrls(videoLike), [videoLike]);
+  const thumbnailSrc = thumbnailUrls[thumbIndex] ?? null;
   const durationLabel = formatEduOTTDurationLabel(durationSeconds);
   const showThumbnail = thumbnailSrc && !thumbError;
+
+  useEffect(() => {
+    setThumbIndex(0);
+    setThumbError(false);
+  }, [thumbnailUrls]);
+
+  const handleThumbError = () => {
+    if (thumbIndex < thumbnailUrls.length - 1) {
+      setThumbIndex((prev) => prev + 1);
+      return;
+    }
+    setThumbError(true);
+  };
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
+        style,
         {
           backgroundColor: theme.cardBg,
           borderColor: theme.border,
@@ -92,7 +110,9 @@ function EduOTTVideoCardComponent({
             source={{ uri: thumbnailSrc }}
             style={styles.thumbnail}
             contentFit="cover"
-            onError={() => setThumbError(true)}
+            cachePolicy="memory-disk"
+            recyclingKey={thumbnailSrc}
+            onError={handleThumbError}
           />
         ) : (
           <View style={[styles.thumbnail, styles.thumbnailPlaceholder, { backgroundColor: theme.placeholder }]}>

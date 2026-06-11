@@ -34,6 +34,7 @@ import {
 } from '../../../src/lib/exam-classes';
 import { dedupeStudentExamResults } from '../../../src/lib/dedupe-exam-results';
 import ExamResultsView from '../../../src/components/student/ExamResultsView';
+import RankingsTab from './RankingsTab';
 import DonutChart from '../../../src/components/ui/charts/DonutChart';
 import {
   ExamAnalysisResult,
@@ -126,6 +127,11 @@ function CountUpText({
   );
 }
 
+const EXAMS_TABLET_MIN_WIDTH = 768;
+const EXAMS_GRID_MIN_WIDTH = 1024;
+const EXAMS_CONTENT_MAX_WIDTH = 1040;
+const EXAMS_CARD_MAX_WIDTH = 680;
+
 export default function ExamsView({
   initialTab = 'available',
   focusExamId,
@@ -133,6 +139,13 @@ export default function ExamsView({
 }: ExamsViewProps) {
   const { width } = useWindowDimensions();
   const compact = width < 380;
+  const isTablet = width >= EXAMS_TABLET_MIN_WIDTH;
+  const isGridLayout = width >= EXAMS_GRID_MIN_WIDTH;
+  const attemptedCardWidth = isGridLayout
+    ? (Math.min(width, EXAMS_CONTENT_MAX_WIDTH) - STUDENT_SPACING.lg * 2 - STUDENT_SPACING.md) / 2
+    : isTablet
+      ? Math.min(width - STUDENT_SPACING.lg * 2, EXAMS_CARD_MAX_WIDTH)
+      : undefined;
   const [activeTab, setActiveTab] = useState<'available' | 'attempted' | 'ranking' | 'upcoming'>(initialTab);
   const [exams, setExams] = useState<Exam[]>([]);
   const [results, setResults] = useState<any[]>([]);
@@ -629,20 +642,11 @@ export default function ExamsView({
     [availableSubjectOptions, classFilteredExams]
   );
 
-  const avgPercentile = rankings.length
-    ? Math.round(rankings.reduce((sum: number, r: any) => sum + (r.percentile || 0), 0) / rankings.length)
-    : 0;
-  const avgScore = rankings.length
-    ? Math.round(
-        (rankings.reduce((sum: number, r: any) => sum + (r.percentage || 0), 0) / rankings.length) * 10
-      ) / 10
-    : 0;
-
   return (
     <>
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.scrollContent}
+      contentContainerStyle={[styles.scrollContent, isTablet && styles.scrollContentTablet]}
       showsVerticalScrollIndicator={false}
       nestedScrollEnabled
       keyboardShouldPersistTaps="handled"
@@ -741,7 +745,7 @@ export default function ExamsView({
               </Text>
             </View>
           ) : (
-            <View style={styles.examsList}>
+            <View style={[styles.examsList, isTablet && styles.examsListTablet]}>
               {availableActiveExams.map((exam) => {
                 const status = getExamStatus(exam);
                 const typeColor = getExamTypeColor(exam.examType);
@@ -836,7 +840,14 @@ export default function ExamsView({
               <Text style={styles.emptyStateText}>You haven't attempted any exams yet.</Text>
             </View>
           ) : (
-            <View style={[styles.examsList, styles.attemptedListContent]}>
+            <View
+              style={[
+                styles.examsList,
+                styles.attemptedListContent,
+                isTablet && styles.attemptedListTablet,
+                isGridLayout && styles.attemptedListGrid,
+              ]}
+            >
               {attemptedResultRows.map((result, index) => {
                 const examIdStr = getExamIdFromResult(result);
                 if (!examIdStr) return null;
@@ -874,9 +885,17 @@ export default function ExamsView({
                     colors={scheme.gradient}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
-                    style={[styles.attemptedCard, isCalendarFocus && styles.examCardFocused]}
+                    style={[
+                      styles.attemptedCard,
+                      isGridLayout ? styles.attemptedCardGridItem : isTablet && styles.attemptedCardTablet,
+                      attemptedCardWidth != null ? { width: attemptedCardWidth } : null,
+                      isCalendarFocus && styles.examCardFocused,
+                    ]}
                   >
-                    <Text style={styles.attemptedCardTitle}>{exam.title}</Text>
+                    <View style={[styles.attemptedCardBody, isGridLayout && styles.attemptedCardBodyGrid]}>
+                    <Text style={styles.attemptedCardTitle} numberOfLines={isTablet ? 3 : 2}>
+                      {exam.title}
+                    </Text>
                     {exam.description ? (
                       <Text style={styles.attemptedCardDesc} numberOfLines={2}>
                         {exam.description}
@@ -908,66 +927,102 @@ export default function ExamsView({
                           <Ionicons name="chevron-down" size={18} color="#111827" />
                         </TouchableOpacity>
                       </View>
+                    ) : isGridLayout ? (
+                      <View style={styles.attemptPickerPlaceholder} />
                     ) : null}
 
-                    <View style={styles.attemptedScoreBox}>
-                      <View style={styles.attemptedScoreRow}>
-                        <DonutChart
-                          size={78}
-                          centerLabel={`${Math.round(
-                            totalMarksDisplay > 0 ? marksPercentage : displayPercentage
-                          )}%`}
-                          segments={distributionSegments}
-                        />
-                        <View style={styles.attemptedScoreTextWrap}>
-                          <Text style={styles.attemptedScoreMain}>
-                            {obtainedMarksDisplay}
-                            <Text style={styles.attemptedScoreDenom}>/{totalMarksDisplay}</Text>
+                    <View style={[styles.attemptedCardMetrics, isTablet && styles.attemptedCardMetricsGrid]}>
+                      <View style={[styles.attemptedScoreBox, isTablet && styles.attemptedScoreBoxGrid]}>
+                        <View style={[styles.attemptedScoreRow, isTablet && styles.attemptedScoreRowGrid]}>
+                          <DonutChart
+                            size={isTablet ? 68 : 78}
+                            centerLabel={`${Math.round(
+                              totalMarksDisplay > 0 ? marksPercentage : displayPercentage
+                            )}%`}
+                            segments={distributionSegments}
+                          />
+                          <View style={styles.attemptedScoreTextWrap}>
+                            <Text style={[styles.attemptedScoreMain, isTablet && styles.attemptedScoreMainGrid]}>
+                              {obtainedMarksDisplay}
+                              <Text style={styles.attemptedScoreDenom}>/{totalMarksDisplay}</Text>
+                            </Text>
+                            <Text style={styles.attemptedScoreLabel}>marks</Text>
+                            {!isTablet ? (
+                              <Text style={styles.attemptedScoreMeta}>
+                                {displayResult.correctAnswers || 0} correct · {displayResult.wrongAnswers || 0} wrong ·{' '}
+                                {displayResult.unattempted || 0} skipped
+                              </Text>
+                            ) : null}
+                          </View>
+                        </View>
+                      </View>
+
+                      <View style={[styles.attemptedStatsList, isTablet && styles.attemptedStatsListGrid]}>
+                        <View style={[styles.attemptedStatsRow, isTablet && styles.attemptedStatsRowTablet]}>
+                          <Text style={styles.attemptedStatsLabel} numberOfLines={1}>
+                            Correct
                           </Text>
-                          <Text style={styles.attemptedScoreLabel}>marks</Text>
-                          <Text style={styles.attemptedScoreMeta}>
-                            {displayResult.correctAnswers || 0} correct · {displayResult.wrongAnswers || 0} wrong ·{' '}
-                            {displayResult.unattempted || 0} skipped
+                          <Text style={styles.attemptedStatsValue}>{displayResult.correctAnswers || 0}</Text>
+                        </View>
+                        <View style={[styles.attemptedStatsRow, isTablet && styles.attemptedStatsRowTablet]}>
+                          <Text style={styles.attemptedStatsLabel} numberOfLines={1}>
+                            Wrong
+                          </Text>
+                          <Text style={styles.attemptedStatsValue}>{displayResult.wrongAnswers || 0}</Text>
+                        </View>
+                        <View style={[styles.attemptedStatsRow, isTablet && styles.attemptedStatsRowTablet]}>
+                          <Text style={styles.attemptedStatsLabel} numberOfLines={1}>
+                            Unattempted
+                          </Text>
+                          <Text style={styles.attemptedStatsValue}>{displayResult.unattempted || 0}</Text>
+                        </View>
+                        <View style={[styles.attemptedStatsRow, isTablet && styles.attemptedStatsRowTablet]}>
+                          <Text style={styles.attemptedStatsLabel} numberOfLines={1}>
+                            Time
+                          </Text>
+                          <Text style={styles.attemptedStatsValue} numberOfLines={1}>
+                            {displayResult.timeTaken
+                              ? `${Math.floor(displayResult.timeTaken / 60)}m ${displayResult.timeTaken % 60}s`
+                              : 'N/A'}
                           </Text>
                         </View>
                       </View>
                     </View>
+                    </View>
 
-                    <View style={styles.attemptedStatsList}>
-                      <View style={styles.attemptedStatsRow}>
-                        <Text style={styles.attemptedStatsLabel}>Correct Answers</Text>
-                        <Text style={styles.attemptedStatsValue}>{displayResult.correctAnswers || 0}</Text>
-                      </View>
-                      <View style={styles.attemptedStatsRow}>
-                        <Text style={styles.attemptedStatsLabel}>Wrong Answers</Text>
-                        <Text style={styles.attemptedStatsValue}>{displayResult.wrongAnswers || 0}</Text>
-                      </View>
-                      <View style={styles.attemptedStatsRow}>
-                        <Text style={styles.attemptedStatsLabel}>Unattempted</Text>
-                        <Text style={styles.attemptedStatsValue}>{displayResult.unattempted || 0}</Text>
-                      </View>
-                      <View style={styles.attemptedStatsRow}>
-                        <Text style={styles.attemptedStatsLabel}>Time Taken</Text>
-                        <Text style={styles.attemptedStatsValue}>
-                          {displayResult.timeTaken
-                            ? `${Math.floor(displayResult.timeTaken / 60)}m ${displayResult.timeTaken % 60}s`
-                            : 'N/A'}
+                    <View
+                      style={[
+                        styles.attemptedCardFooter,
+                        isTablet && styles.attemptedCardFooterAligned,
+                        isGridLayout && styles.attemptedCardFooterGridPin,
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.attemptedGradeBadge,
+                          isTablet && styles.attemptedGradeBadgeAligned,
+                          { backgroundColor: gradeBg },
+                        ]}
+                      >
+                        <Text style={styles.attemptedGradeText} numberOfLines={1}>
+                          {grade}
                         </Text>
                       </View>
-                    </View>
 
-                    <View style={[styles.attemptedGradeBadge, { backgroundColor: gradeBg }]}>
-                      <Text style={styles.attemptedGradeText}>{grade}</Text>
+                      <TouchableOpacity
+                        style={[
+                          styles.attemptedDetailsButton,
+                          isTablet && styles.attemptedDetailsButtonGrid,
+                        ]}
+                        disabled={loadingExamResults}
+                        onPress={() => void openAttemptedExamResults(exam, displayResult)}
+                      >
+                        <Ionicons name="eye-outline" size={18} color="#111827" />
+                        <Text style={styles.attemptedDetailsButtonText} numberOfLines={1}>
+                          View Details
+                        </Text>
+                      </TouchableOpacity>
                     </View>
-
-                    <TouchableOpacity
-                      style={styles.attemptedDetailsButton}
-                      disabled={loadingExamResults}
-                      onPress={() => void openAttemptedExamResults(exam, displayResult)}
-                    >
-                      <Ionicons name="eye-outline" size={18} color="#111827" />
-                      <Text style={styles.attemptedDetailsButtonText}>View Details</Text>
-                    </TouchableOpacity>
                   </LinearGradient>
                 );
               })}
@@ -979,106 +1034,7 @@ export default function ExamsView({
       {/* Rankings Tab */}
       {activeTab === 'ranking' && (
         <View style={styles.content}>
-          {rankings.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="trophy-outline" size={64} color="#d1d5db" />
-              <Text style={styles.emptyStateTitle}>No Rankings Yet</Text>
-              <Text style={styles.emptyStateText}>Complete exams to see your rankings.</Text>
-            </View>
-          ) : (
-            <View style={styles.rankingsList}>
-              {/* Overall Performance Summary */}
-              <GlassCard variant="elevated" padding={16} style={styles.summaryCardWrap}>
-                <View style={styles.summaryHeader}>
-                  <Ionicons name="bar-chart" size={24} color={STUDENT.statGradients.efficiency[0]} />
-                  <Text style={styles.summaryTitle}>Overall Performance Summary</Text>
-                </View>
-                <View style={styles.summaryGrid}>
-                  <View style={styles.summaryItem}>
-                    <Text style={styles.summaryLabel}>Average Percentile</Text>
-                    <CountUpText target={avgPercentile} style={styles.summaryValue} />
-                  </View>
-                  <View style={styles.summaryItem}>
-                    <Text style={styles.summaryLabel}>Exams Completed</Text>
-                    <CountUpText target={rankings.length} style={styles.summaryValue} />
-                  </View>
-                  <View style={styles.summaryItem}>
-                    <Text style={styles.summaryLabel}>Average Score</Text>
-                    <CountUpText target={avgScore} suffix="%" style={styles.summaryValue} />
-                  </View>
-                </View>
-              </GlassCard>
-
-              {/* Individual Rankings */}
-              {rankings.map((ranking: any, index: number) => {
-                const percentile = ranking.percentile || 0;
-                const percentileBadge = percentile >= 90 
-                  ? { bg: '#fef3c7', text: '#d97706', label: 'Top 10%' }
-                  : percentile >= 75
-                  ? { bg: '#d1fae5', text: '#059669', label: 'Top 25%' }
-                  : percentile >= 50
-                  ? { bg: '#dbeafe', text: '#2563eb', label: 'Top 50%' }
-                  : { bg: '#f3f4f6', text: '#6b7280', label: 'Below 50%' };
-                
-                return (
-                  <GlassCard key={ranking._id || index} variant="elevated" padding={16} style={styles.rankingCardWrap}>
-                    <View style={styles.rankingHeader}>
-                      <View style={styles.rankingPosition}>
-                        <Text style={styles.rankingPositionText}>#{ranking.rank || index + 1}</Text>
-                      </View>
-                      <View style={styles.rankingInfo}>
-                        <Text style={styles.rankingTitle}>
-                          {ranking.examId?.title || ranking.examTitle || 'Exam'}
-                        </Text>
-                        <Text style={styles.rankingSubtitle}>
-                          Score: {ranking.percentage?.toFixed(1) || 0}% | Marks: {ranking.obtainedMarks || 0}/{ranking.totalMarks || 0}
-                        </Text>
-                      </View>
-                      <View style={styles.rankingTrophy}>
-                        {ranking.rank <= 3 && (
-                          <Ionicons 
-                            name="trophy" 
-                            size={24} 
-                            color={ranking.rank === 1 ? '#fbbf24' : ranking.rank === 2 ? '#94a3b8' : '#cd7f32'} 
-                          />
-                        )}
-                      </View>
-                    </View>
-                    <View style={styles.rankingStats}>
-                      <View style={[styles.rankingStatCard, { backgroundColor: '#dbeafe' }]}>
-                        <Ionicons name="trophy" size={16} color="#2563eb" />
-                        <Text style={styles.rankingStatLabel}>Rank</Text>
-                        <Text style={[styles.rankingStatValue, { color: '#2563eb' }]}>
-                          #{ranking.rank || index + 1}
-                        </Text>
-                        <Text style={styles.rankingStatSubtext}>out of {ranking.totalStudents || 'N/A'}</Text>
-                      </View>
-                      <View style={[styles.rankingStatCard, { backgroundColor: percentileBadge.bg }]}>
-                        <Ionicons name="trending-up" size={16} color={percentileBadge.text} />
-                        <Text style={styles.rankingStatLabel}>Percentile</Text>
-                        <Text style={[styles.rankingStatValue, { color: percentileBadge.text }]}>
-                          {percentile}
-                        </Text>
-                        <View style={[styles.percentileBadge, { backgroundColor: percentileBadge.bg }]}>
-                          <Text style={[styles.percentileBadgeText, { color: percentileBadge.text }]}>
-                            {percentileBadge.label}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                    {ranking.completedAt && (
-                      <View style={styles.rankingFooter}>
-                        <Ionicons name="calendar" size={14} color="#6b7280" />
-                        <Text style={styles.rankingFooterText}>
-                          Completed: {new Date(ranking.completedAt).toLocaleDateString()}
-                        </Text>
-                      </View>
-                    )}
-                  </GlassCard>
-                );
-              })}
-            </View>
-          )}
+          <RankingsTab rankings={rankings} />
         </View>
       )}
 
@@ -1092,7 +1048,7 @@ export default function ExamsView({
               <Text style={styles.emptyStateText}>No upcoming exams scheduled at the moment.</Text>
             </View>
           ) : (
-            <View style={styles.examsList}>
+            <View style={[styles.examsList, isTablet && styles.examsListTablet]}>
               {upcomingExams.map((exam) => {
                 const typeColor = getExamTypeColor(exam.examType);
                 const classLabels = getExamClassLabelsForStudent(exam, user?.classNumber);
@@ -1251,6 +1207,11 @@ const styles = StyleSheet.create({
     paddingBottom: 110,
     flexGrow: 1,
   },
+  scrollContentTablet: {
+    maxWidth: EXAMS_CONTENT_MAX_WIDTH,
+    alignSelf: 'center',
+    width: '100%',
+  },
   header: {
     marginBottom: STUDENT_SPACING.xl,
   },
@@ -1318,6 +1279,21 @@ const styles = StyleSheet.create({
     paddingBottom: STUDENT_SPACING.xxl,
     gap: STUDENT_SPACING.lg,
   },
+  attemptedListTablet: {
+    alignSelf: 'center',
+    width: '100%',
+  },
+  attemptedListGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'stretch',
+    alignContent: 'flex-start',
+  },
+  examsListTablet: {
+    maxWidth: EXAMS_CARD_MAX_WIDTH,
+    alignSelf: 'center',
+    width: '100%',
+  },
   examCardWrap: {
     marginBottom: STUDENT_SPACING.md,
   },
@@ -1375,21 +1351,74 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: STUDENT.textSecondary,
   },
-  rankingCardWrap: {
-    marginBottom: STUDENT_SPACING.md,
-  },
-  summaryCardWrap: {
-    marginBottom: STUDENT_SPACING.lg,
-  },
   attemptedCard: {
     borderRadius: 16,
     padding: 16,
     gap: 14,
+    flexDirection: 'column',
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 4,
+  },
+  attemptedCardTablet: {
+    alignSelf: 'center',
+  },
+  attemptedCardGridItem: {
+    alignSelf: 'stretch',
+    flexGrow: 1,
+    justifyContent: 'space-between',
+  },
+  attemptedCardBody: {
+    gap: 14,
+  },
+  attemptedCardBodyGrid: {
+    flexGrow: 1,
+  },
+  attemptedCardMetrics: {
+    gap: 12,
+  },
+  attemptedCardMetricsTablet: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 12,
+  },
+  attemptedCardMetricsCompact: {
+    gap: 10,
+  },
+  attemptedCardMetricsGrid: {
+    flexDirection: 'column',
+    gap: 10,
+  },
+  attemptedCardFooter: {
+    gap: 10,
+  },
+  attemptedCardFooterTablet: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  attemptedCardFooterCompact: {
+    gap: 8,
+  },
+  attemptedCardFooterAligned: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 10,
+    width: '100%',
+  },
+  attemptedCardFooterGridPin: {
+    marginTop: 'auto',
+    flexShrink: 0,
+  },
+  attemptedGradeBadgeAligned: {
+    alignSelf: 'stretch',
+    justifyContent: 'center',
+    maxWidth: '46%',
+    minHeight: 44,
+    marginTop: 0,
   },
   attemptedCardTitle: {
     fontSize: 17,
@@ -1542,65 +1571,50 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#111827',
   },
-  rankingsList: {
-    gap: STUDENT_SPACING.md,
-  },
-  rankingHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: STUDENT_SPACING.md,
-  },
-  rankingPosition: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: STUDENT.accent,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  rankingPositionText: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: STUDENT.textOnPrimary,
-  },
-  rankingInfo: {
-    flex: 1,
-    gap: 4,
-  },
-  rankingTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: STUDENT.text,
-  },
-  rankingSubtitle: {
-    fontSize: 14,
-    color: STUDENT.textMuted,
-  },
-  rankingTrophy: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   attemptedScoreBox: {
     backgroundColor: 'rgba(255,255,255,0.92)',
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 14,
+    alignSelf: 'stretch',
+  },
+  attemptedScoreBoxTablet: {
+    flex: 1,
+    minWidth: 0,
+    maxWidth: 300,
+    justifyContent: 'center',
+  },
+  attemptedScoreBoxCompact: {
+    width: '100%',
+  },
+  attemptedScoreBoxGrid: {
+    width: '100%',
+    maxWidth: '100%',
+    alignItems: 'center',
   },
   attemptedScoreRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
   },
+  attemptedScoreRowGrid: {
+    justifyContent: 'center',
+    width: '100%',
+  },
   attemptedScoreTextWrap: {
-    flex: 1,
+    flexShrink: 1,
     gap: 2,
   },
   attemptedScoreMain: {
     fontSize: 28,
     fontWeight: '800',
     color: STUDENT.text,
+  },
+  attemptedScoreMainCompact: {
+    fontSize: 22,
+  },
+  attemptedScoreMainGrid: {
+    fontSize: 24,
   },
   attemptedScoreDenom: {
     fontSize: 16,
@@ -1621,21 +1635,47 @@ const styles = StyleSheet.create({
   attemptedStatsList: {
     gap: 8,
   },
+  attemptedStatsListTablet: {
+    flex: 1,
+    minWidth: 0,
+    gap: 6,
+  },
+  attemptedStatsListGrid: {
+    width: '100%',
+    flexGrow: 0,
+    gap: 6,
+  },
   attemptedStatsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
   },
+  attemptedStatsRowTablet: {
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    minHeight: 38,
+    alignItems: 'center',
+  },
   attemptedStatsLabel: {
-    fontSize: 13,
+    flex: 1,
+    flexShrink: 1,
+    fontSize: 12,
     color: '#fff',
     fontWeight: '500',
+    lineHeight: 16,
   },
   attemptedStatsValue: {
+    flexShrink: 0,
+    width: 64,
     fontSize: 14,
     fontWeight: '700',
     color: '#fff',
+    textAlign: 'right',
+    lineHeight: 18,
   },
   attemptedGradeBadge: {
     alignSelf: 'center',
@@ -1644,6 +1684,7 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.45)',
+    flexShrink: 0,
   },
   attemptedGradeText: {
     fontSize: 13,
@@ -1658,7 +1699,21 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.92)',
     borderRadius: 10,
     paddingVertical: 12,
+    paddingHorizontal: 12,
     marginTop: 2,
+    overflow: 'hidden',
+  },
+  attemptedDetailsButtonTablet: {
+    flex: 1,
+    marginTop: 0,
+    minHeight: 44,
+  },
+  attemptedDetailsButtonGrid: {
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
+    marginTop: 0,
+    minHeight: 44,
   },
   attemptedDetailsButtonText: {
     fontSize: 15,
@@ -1668,6 +1723,9 @@ const styles = StyleSheet.create({
   attemptPickerSection: {
     gap: 6,
     marginBottom: 4,
+  },
+  attemptPickerPlaceholder: {
+    minHeight: 66,
   },
   attemptPickerLabel: {
     fontSize: 12,
@@ -1745,86 +1803,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#fff',
-  },
-  summaryTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: STUDENT.statGradients.efficiency[0],
-  },
-  summaryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: STUDENT_SPACING.lg,
-  },
-  summaryGrid: {
-    flexDirection: 'row',
-    gap: STUDENT_SPACING.md,
-  },
-  summaryItem: {
-    flex: 1,
-    backgroundColor: STUDENT.surface,
-    borderRadius: STUDENT_RADIUS.sm,
-    padding: 12,
-    alignItems: 'center',
-  },
-  summaryLabel: {
-    fontSize: 12,
-    color: STUDENT.textMuted,
-    marginBottom: 8,
-  },
-  summaryValue: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: STUDENT.statGradients.efficiency[0],
-  },
-  rankingStats: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 12,
-  },
-  rankingStatCard: {
-    flex: 1,
-    borderRadius: 8,
-    padding: 12,
-    alignItems: 'center',
-    gap: 4,
-  },
-  rankingStatLabel: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  rankingStatValue: {
-    fontSize: 20,
-    fontWeight: '800',
-  },
-  rankingStatSubtext: {
-    fontSize: 10,
-    color: '#9ca3af',
-    marginTop: 4,
-  },
-  percentileBadge: {
-    marginTop: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  percentileBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  rankingFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-  },
-  rankingFooterText: {
-    fontSize: 12,
-    color: '#6b7280',
   },
 });
 

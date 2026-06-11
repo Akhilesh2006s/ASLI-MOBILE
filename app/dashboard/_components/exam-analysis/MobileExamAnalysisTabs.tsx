@@ -21,13 +21,15 @@ import PerformanceDNARadar from '../../../../src/components/ui/charts/Performanc
 import StackedTaxonomyBar from '../../../../src/components/ui/charts/StackedTaxonomyBar';
 import AdvancedPerformanceDashboardMobile from './AdvancedPerformanceDashboardMobile';
 import AnalysisCard from './AnalysisCard';
-import { ANALYSIS, analysisStyles } from './exam-analysis-ui';
+import { ANALYSIS, analysisStyles, useExamAnalysisLayout } from './exam-analysis-ui';
 import {
   AiExamAnalysis,
   ExamAnalysisResult,
   QuestionFilterId,
   buildMistakeTaxonomy,
+  buildPatternAlerts,
   buildPerformanceInsights,
+  getDnaSummaryMessage,
   buildQuestionFilterCounts,
   buildQuestionRowStatuses,
   buildScoreReconciliation,
@@ -43,6 +45,7 @@ import {
   getDisplayPercentage,
   getGradeFromResult,
   getMarksPercentage,
+  strongAttemptLabel,
   resolveTotalMarks,
   getOptionText,
   getQuestionAnalysisBlocks,
@@ -68,6 +71,8 @@ type TabProps = {
 };
 
 export function AiReportTabMobile({ result, examTitle, studentName, aiAnalysis, aiLoading, aiError }: TabProps) {
+  const { isTablet } = useExamAnalysisLayout();
+  const ringSize = isTablet ? 150 : 132;
   const attemptedCount = (result.correctAnswers || 0) + (result.wrongAnswers || 0);
   const totalQuestionCount =
     Number(result.totalQuestions || 0) || attemptedCount + (result.unattempted || 0);
@@ -148,10 +153,82 @@ export function AiReportTabMobile({ result, examTitle, studentName, aiAnalysis, 
     return lead;
   }, [aiAnalysis, studentName, result, examTotalMarks, marksPercent, attemptedCount, totalQuestionCount, completionRate, accuracyRate]);
 
+  const statsBoxes = (
+    <View style={[panelStyles.statsRow3, isTablet && panelStyles.statsRow3Tablet]}>
+      <View style={[panelStyles.statBox, { backgroundColor: '#ECFDF5', borderColor: '#BBF7D0' }]}>
+        <Text style={[panelStyles.statVal, { color: '#34D399' }]}>{result.correctAnswers || 0}</Text>
+        <Text style={panelStyles.statLab}>Correct</Text>
+      </View>
+      <View style={[panelStyles.statBox, { backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}>
+        <Text style={[panelStyles.statVal, { color: '#F87171' }]}>{result.wrongAnswers || 0}</Text>
+        <Text style={panelStyles.statLab}>Wrong</Text>
+      </View>
+      <View style={[panelStyles.statBox, { backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }]}>
+        <Text style={[panelStyles.statVal, { color: '#64748b' }]}>{result.unattempted || 0}</Text>
+        <Text style={panelStyles.statLab}>Skipped</Text>
+      </View>
+    </View>
+  );
+
+  const progressSection = (
+    <View style={[panelStyles.progressSection, isTablet && panelStyles.progressSectionTablet]}>
+      <View style={panelStyles.progressBlock}>
+        <View style={panelStyles.progressRow}>
+          <Text style={panelStyles.progressLabel}>Accuracy Rate</Text>
+          <Text style={panelStyles.progressPct}>{accuracyRate.toFixed(1)}%</Text>
+        </View>
+        <View style={panelStyles.progressTrack}>
+          <View style={[panelStyles.progressFill, { width: `${Math.min(100, accuracyRate)}%` }]} />
+        </View>
+      </View>
+      <View style={panelStyles.progressBlock}>
+        <View style={panelStyles.progressRow}>
+          <Text style={panelStyles.progressLabel}>Completion Rate</Text>
+          <Text style={panelStyles.progressPct}>{completionRate.toFixed(0)}%</Text>
+        </View>
+        <View style={panelStyles.progressTrack}>
+          <View style={[panelStyles.progressFillPink, { width: `${Math.min(100, completionRate)}%` }]} />
+        </View>
+      </View>
+    </View>
+  );
+
+  const timeBox = (
+    <View style={panelStyles.timeBox}>
+      <Ionicons name="time-outline" size={18} color="#2563eb" />
+      <Text style={panelStyles.timeLabel}>Time Taken</Text>
+      <Text style={panelStyles.timeVal}>{formatExamTime(result.timeTaken)}</Text>
+    </View>
+  );
+
+  const scoreRing = (
+    <View style={panelStyles.scoreRingCol}>
+      <View style={panelStyles.scoreRingWrap}>
+        <DonutChart
+          size={ringSize}
+          segments={[
+            { value: Math.max(0.5, marksPercent), color: '#9333EA' },
+            { value: Math.max(0.5, 100 - marksPercent), color: '#ECEEF3' },
+          ]}
+        />
+        <View style={[panelStyles.scoreRingCenter, { width: ringSize, height: ringSize }]}>
+          <Text style={[panelStyles.scoreRingMarks, isTablet && panelStyles.scoreRingMarksTablet]}>
+            {result.obtainedMarks || 0}
+          </Text>
+          <Text style={panelStyles.scoreRingTotal}>/ {examTotalMarks}</Text>
+          <Text style={panelStyles.scoreRingGrade}>Grade {gradeLetter}</Text>
+        </View>
+      </View>
+      <View style={panelStyles.attemptBadge}>
+        <Text style={panelStyles.attemptBadgeText}>{strongAttemptLabel(marksPercent)}</Text>
+      </View>
+    </View>
+  );
+
   return (
     <ScrollView
       style={panelStyles.tabScroll}
-      contentContainerStyle={analysisStyles.scrollContent}
+      contentContainerStyle={[analysisStyles.scrollContent, isTablet && analysisStyles.scrollContentTablet]}
       showsVerticalScrollIndicator={false}
       nestedScrollEnabled
     >
@@ -163,67 +240,35 @@ export function AiReportTabMobile({ result, examTitle, studentName, aiAnalysis, 
         </LinearGradient>
 
         <View style={panelStyles.scoreCardBody}>
-        <View style={panelStyles.scoreRingRow}>
-          <DonutChart
-            size={112}
-            centerLabel={gradeLetter}
-            segments={[
-              { value: Math.max(0.5, marksPercent), color: ANALYSIS.accent },
-              { value: Math.max(0.5, 100 - marksPercent), color: '#E2E8F0' },
-            ]}
-          />
-          <View style={panelStyles.scoreRingMeta}>
-            <Text style={panelStyles.scoreBig}>{result.obtainedMarks || 0}</Text>
-            <Text style={panelStyles.scoreDenom}>out of {examTotalMarks} marks</Text>
-            <Text style={panelStyles.scoreRingPct}>{marksPercent.toFixed(1)}% score</Text>
+        {isTablet ? (
+          <View style={panelStyles.scoreCardTablet}>
+            {scoreRing}
+            <View style={panelStyles.scoreCardTabletMid}>
+              <Text style={panelStyles.scoreBigTablet}>{result.obtainedMarks || 0}</Text>
+              <Text style={panelStyles.scoreDenomTablet}>out of {examTotalMarks} marks (net)</Text>
+              <Text style={panelStyles.scoreRingPct}>{marksPercent.toFixed(1)}% score</Text>
+              {statsBoxes}
+            </View>
+            <View style={panelStyles.scoreCardTabletEnd}>
+              {progressSection}
+              {timeBox}
+            </View>
           </View>
-        </View>
-        <View style={panelStyles.statsRow3}>
-          <View style={[panelStyles.statBox, { backgroundColor: '#ECFDF5', borderColor: '#BBF7D0' }]}>
-            <Text style={[panelStyles.statVal, { color: '#34D399' }]}>{result.correctAnswers || 0}</Text>
-            <Text style={panelStyles.statLab}>Correct</Text>
-          </View>
-          <View style={[panelStyles.statBox, { backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}>
-            <Text style={[panelStyles.statVal, { color: '#F87171' }]}>{result.wrongAnswers || 0}</Text>
-            <Text style={panelStyles.statLab}>Wrong</Text>
-          </View>
-          <View style={[panelStyles.statBox, { backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }]}>
-            <Text style={[panelStyles.statVal, { color: '#64748b' }]}>{result.unattempted || 0}</Text>
-            <Text style={panelStyles.statLab}>Skipped</Text>
-          </View>
-        </View>
-
-        <View style={panelStyles.progressSection}>
-        <View style={panelStyles.progressBlock}>
-          <View style={panelStyles.progressRow}>
-            <Text style={panelStyles.progressLabel}>Accuracy Rate</Text>
-            <Text style={panelStyles.progressPct}>{accuracyRate.toFixed(1)}%</Text>
-          </View>
-          <View style={panelStyles.progressTrack}>
-            <View style={[panelStyles.progressFill, { width: `${Math.min(100, accuracyRate)}%` }]} />
-          </View>
-        </View>
-        <View style={panelStyles.progressBlock}>
-          <View style={panelStyles.progressRow}>
-            <Text style={panelStyles.progressLabel}>Completion Rate</Text>
-            <Text style={panelStyles.progressPct}>{completionRate.toFixed(0)}%</Text>
-          </View>
-          <View style={panelStyles.progressTrack}>
-            <View style={[panelStyles.progressFillPink, { width: `${Math.min(100, completionRate)}%` }]} />
-          </View>
-        </View>
-        </View>
-
-        <View style={panelStyles.scoreFooterSection}>
-        <View style={panelStyles.timeBox}>
-          <Ionicons name="time-outline" size={18} color="#2563eb" />
-          <Text style={panelStyles.timeLabel}>Time Taken</Text>
-          <Text style={panelStyles.timeVal}>{formatExamTime(result.timeTaken)}</Text>
-        </View>
-        <View style={panelStyles.gradePill}>
-          <Text style={panelStyles.gradePillText}>Grade {gradeLetter}</Text>
-        </View>
-        </View>
+        ) : (
+          <>
+            <View style={panelStyles.scoreRingRow}>
+              {scoreRing}
+              <View style={panelStyles.scoreRingMeta}>
+                <Text style={panelStyles.scoreBig}>{result.obtainedMarks || 0}</Text>
+                <Text style={panelStyles.scoreDenom}>out of {examTotalMarks} marks (net)</Text>
+                <Text style={panelStyles.scoreRingPct}>{marksPercent.toFixed(1)}% score</Text>
+              </View>
+            </View>
+            {statsBoxes}
+            {progressSection}
+            <View style={panelStyles.scoreFooterSection}>{timeBox}</View>
+          </>
+        )}
         </View>
       </View>
 
@@ -250,14 +295,14 @@ export function AiReportTabMobile({ result, examTitle, studentName, aiAnalysis, 
             ]}
           />
         </View>
-        <View style={panelStyles.snapshotGrid}>
+        <View style={[panelStyles.snapshotGrid, isTablet && panelStyles.snapshotGridTablet]}>
           {[
             { l: 'Attempted', v: String(attemptedCount), c: '#059669' },
             { l: 'Unattempted', v: String(result.unattempted || 0), c: '#2563eb' },
             { l: 'Wrong', v: String(result.wrongAnswers || 0), c: '#dc2626' },
             { l: 'Accuracy', v: `${accuracyRate.toFixed(0)}%`, c: '#9333ea' },
           ].map((cell) => (
-            <View key={cell.l} style={panelStyles.snapshotCell}>
+            <View key={cell.l} style={[panelStyles.snapshotCell, isTablet && panelStyles.snapshotCellTablet]}>
               <Text style={panelStyles.snapshotLab}>{cell.l}</Text>
               <Text style={[panelStyles.snapshotVal, { color: cell.c }]}>{cell.v}</Text>
             </View>
@@ -316,7 +361,7 @@ export function AiReportTabMobile({ result, examTitle, studentName, aiAnalysis, 
             { label: 'Procedural', count: mistakeTaxonomy.procedural },
             { label: 'Time pressure', count: mistakeTaxonomy.time },
           ].map((item) => (
-            <View key={item.label} style={panelStyles.taxonomyCell}>
+            <View key={item.label} style={[panelStyles.taxonomyCell, isTablet && panelStyles.taxonomyCellTablet]}>
               <Text style={panelStyles.taxonomyCount}>{item.count}</Text>
               <Text style={panelStyles.taxonomyLabel}>{item.label}</Text>
             </View>
@@ -479,6 +524,8 @@ export function QuestionsTabMobile({
   aiAnalysis: AiExamAnalysis | null;
   aiLoading?: boolean;
 }) {
+  const { isTablet, isWide } = useExamAnalysisLayout();
+  const questionCardWidth = isWide ? '31.5%' : isTablet ? '48.5%' : '100%';
   const [filter, setFilter] = useState<QuestionFilterId>('all');
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const questions = result.questions || [];
@@ -508,35 +555,59 @@ export function QuestionsTabMobile({
 
   const selectedQuestion = selectedIndex != null ? questions[selectedIndex] : null;
 
-  return (
-    <View style={{ flex: 1 }}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={panelStyles.filterRowModern}>
-        {([
-          { id: 'all' as const, label: `All · ${counts.all}` },
-          { id: 'correct' as const, label: `Correct · ${counts.correct}` },
-          { id: 'wrong' as const, label: `Wrong · ${counts.wrong}` },
-          { id: 'skipped' as const, label: `Skipped · ${counts.skipped}` },
-          { id: 'wrong-quick' as const, label: `⚡ Wrong-quick · ${counts.wrongQuick}` },
-          { id: 'hard-wrong' as const, label: `Hard+Wrong · ${counts.hardWrong}` },
-          { id: 'time-pressure' as const, label: `⏱ Time-pressure · ${counts.timePressure}` },
-        ]).map((pill) => (
-          <TouchableOpacity
-            key={pill.id}
-            style={[analysisStyles.filterPill, filter === pill.id && analysisStyles.filterPillActive]}
-            onPress={() => setFilter(pill.id)}
-          >
-            <Text style={[analysisStyles.filterPillText, filter === pill.id && analysisStyles.filterPillTextActive]}>
-              {pill.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+  const filterOptions: { id: QuestionFilterId; label: string }[] = [
+    { id: 'all', label: `All · ${counts.all}` },
+    { id: 'correct', label: `Correct · ${counts.correct}` },
+    { id: 'wrong', label: `Wrong · ${counts.wrong}` },
+    { id: 'skipped', label: `Skipped · ${counts.skipped}` },
+    { id: 'wrong-quick', label: `⚡ Wrong-quick · ${counts.wrongQuick}` },
+    { id: 'hard-wrong', label: `Hard+Wrong · ${counts.hardWrong}` },
+    { id: 'time-pressure', label: `⏱ Time-pressure · ${counts.timePressure}` },
+  ];
 
-      <ScrollView contentContainerStyle={analysisStyles.scrollContent} showsVerticalScrollIndicator={false}>
+  const filterPills = filterOptions.map((pill) => (
+    <TouchableOpacity
+      key={pill.id}
+      style={[
+        analysisStyles.filterPill,
+        panelStyles.filterPillWrap,
+        filter === pill.id && analysisStyles.filterPillActive,
+      ]}
+      onPress={() => setFilter(pill.id)}
+    >
+      <Text style={[analysisStyles.filterPillText, filter === pill.id && analysisStyles.filterPillTextActive]}>
+        {pill.label}
+      </Text>
+    </TouchableOpacity>
+  ));
+
+  return (
+    <View style={panelStyles.questionsTabRoot}>
+      {isTablet ? (
+        <View style={[panelStyles.filterRowModern, panelStyles.filterRowTablet, analysisStyles.headerConstrained]}>
+          {filterPills}
+        </View>
+      ) : (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={panelStyles.filterScroll}
+          contentContainerStyle={[panelStyles.filterRowModern, panelStyles.filterRowContent]}
+        >
+          {filterPills}
+        </ScrollView>
+      )}
+
+      <ScrollView
+        style={panelStyles.questionsTabScroll}
+        contentContainerStyle={[analysisStyles.scrollContent, isTablet && analysisStyles.scrollContentTablet]}
+        showsVerticalScrollIndicator={false}
+      >
         {filteredIndices.length === 0 ? (
-          <Text style={panelStyles.emptyText}>No questions match this filter.</Text>
+          <Text style={[panelStyles.emptyText, panelStyles.emptyTextFull]}>No questions match this filter.</Text>
         ) : (
-          filteredIndices.map((index) => {
+          <View style={[panelStyles.questionsList, isTablet && panelStyles.questionsListTablet]}>
+          {filteredIndices.map((index) => {
             const question = questions[index];
             const ua = getUserAnswerForQuestion(question, index, result.answers);
             const attempted = ua !== undefined && ua !== null && ua !== '';
@@ -555,6 +626,7 @@ export function QuestionsTabMobile({
                 key={index}
                 style={[
                   panelStyles.questionCard,
+                  isTablet && { width: questionCardWidth, marginBottom: 0 },
                   correct ? panelStyles.qCorrect : attempted ? panelStyles.qWrong : panelStyles.qSkipped,
                 ]}
                 onPress={() => setSelectedIndex(index)}
@@ -582,12 +654,14 @@ export function QuestionsTabMobile({
                 ) : null}
               </TouchableOpacity>
             );
-          })
+          })}
+          </View>
         )}
       </ScrollView>
 
       <Modal visible={selectedIndex != null} animationType="slide" onRequestClose={() => setSelectedIndex(null)}>
-        <View style={panelStyles.modalWrap}>
+        <View style={[panelStyles.modalWrap, isTablet && panelStyles.modalWrapTablet]}>
+          <View style={[panelStyles.modalSheet, isTablet && panelStyles.modalSheetTablet]}>
           {selectedQuestion && selectedIndex != null && (() => {
             const ua = getUserAnswerForQuestion(selectedQuestion, selectedIndex, result.answers);
             const userAnswerTexts = resolveAnswerTexts(selectedQuestion, ua);
@@ -694,6 +768,7 @@ export function QuestionsTabMobile({
               </ScrollView>
             );
           })()}
+          </View>
         </View>
       </Modal>
     </View>
@@ -711,6 +786,7 @@ export function AdvancedTabMobile({
   result?: ExamAnalysisResult;
   aiAnalysis?: AiExamAnalysis | null;
 }) {
+  const { isTablet } = useExamAnalysisLayout();
   const mistakeTaxonomy = useMemo(
     () => (result ? buildMistakeTaxonomy(result, aiAnalysis || null) : null),
     [result, aiAnalysis]
@@ -722,7 +798,7 @@ export function AdvancedTabMobile({
   return (
     <ScrollView
       style={panelStyles.tabScroll}
-      contentContainerStyle={analysisStyles.scrollContent}
+      contentContainerStyle={[analysisStyles.scrollContent, isTablet && analysisStyles.scrollContentTablet]}
       showsVerticalScrollIndicator={false}
       nestedScrollEnabled
       keyboardShouldPersistTaps="handled"
@@ -741,7 +817,7 @@ export function AdvancedTabMobile({
               { label: 'Time', count: mistakeTaxonomy.time },
               { label: 'Reading', count: mistakeTaxonomy.reading },
             ].map((item) => (
-              <View key={item.label} style={panelStyles.taxonomyCell}>
+              <View key={item.label} style={[panelStyles.taxonomyCell, isTablet && panelStyles.taxonomyCellTablet]}>
                 <Text style={panelStyles.taxonomyCount}>{item.count}</Text>
                 <Text style={panelStyles.taxonomyLabel}>{item.label}</Text>
               </View>
@@ -781,9 +857,17 @@ function DistributionBar({ label, count, total, color }: { label: string; count:
 }
 
 export function InsightsTabMobile({ result, aiAnalysis }: { result: ExamAnalysisResult; aiAnalysis: AiExamAnalysis | null }) {
-  const insights = buildPerformanceInsights(result, aiAnalysis);
-  const weakAreas = buildWeakAreas(result);
+  const { isTablet, isWide } = useExamAnalysisLayout();
   const mistakeTaxonomy = useMemo(() => buildMistakeTaxonomy(result, aiAnalysis), [result, aiAnalysis]);
+  const insights = useMemo(
+    () => buildPerformanceInsights(result, aiAnalysis),
+    [result, aiAnalysis]
+  );
+  const patternAlerts = useMemo(
+    () => buildPatternAlerts(result, aiAnalysis, mistakeTaxonomy),
+    [result, aiAnalysis, mistakeTaxonomy]
+  );
+  const weakAreas = buildWeakAreas(result);
   const displayPercentage = getDisplayPercentage(result);
   const totalQuestionCount =
     Number(result.totalQuestions || 0) ||
@@ -800,10 +884,12 @@ export function InsightsTabMobile({ result, aiAnalysis }: { result: ExamAnalysis
   return (
     <ScrollView
       style={panelStyles.tabScroll}
-      contentContainerStyle={analysisStyles.scrollContent}
+      contentContainerStyle={[analysisStyles.scrollContent, isTablet && analysisStyles.scrollContentTablet]}
       showsVerticalScrollIndicator={false}
       nestedScrollEnabled
     >
+      <View style={isWide ? panelStyles.insightsTopRow : undefined}>
+      <View style={isWide ? panelStyles.insightsTopCol : undefined}>
       <AnalysisCard title="Question Distribution" icon="pie-chart-outline" accent={ANALYSIS.accent}>
         <View style={panelStyles.chartCenter}>
           <DonutChart
@@ -823,7 +909,9 @@ export function InsightsTabMobile({ result, aiAnalysis }: { result: ExamAnalysis
         <DistributionBar label="Wrong" count={result.wrongAnswers || 0} total={totalQuestionCount} color="#ef4444" />
         <DistributionBar label="Unattempted" count={result.unattempted || 0} total={totalQuestionCount} color="#9ca3af" />
       </AnalysisCard>
+      </View>
 
+      <View style={isWide ? panelStyles.insightsTopCol : undefined}>
       <AnalysisCard title="Performance DNA" icon="git-network" accent={ANALYSIS.purple}>
         <PerformanceDNARadar scores={dnaScores} size={260} />
         <DnaBar label="Accuracy" value={dnaScores.accuracy} />
@@ -835,9 +923,11 @@ export function InsightsTabMobile({ result, aiAnalysis }: { result: ExamAnalysis
           <Text style={panelStyles.dnaBadgeText}>{dnaProfileLabel}</Text>
         </View>
         <Text style={panelStyles.metaText}>
-          Your DNA says: you knew more than your marks show — fix pacing and careless slips to unlock hidden potential.
+          {getDnaSummaryMessage(dnaScores, dnaProfileLabel, result)}
         </Text>
       </AnalysisCard>
+      </View>
+      </View>
 
       <AnalysisCard title="Time Intelligence" icon="timer" accent="#0EA5E9">
         <View style={panelStyles.timeIntelHero}>
@@ -871,11 +961,11 @@ export function InsightsTabMobile({ result, aiAnalysis }: { result: ExamAnalysis
       </AnalysisCard>
 
       <Text style={panelStyles.sectionHeading}>Subject-wise performance</Text>
-      <View style={panelStyles.subjectGrid}>
+      <View style={[panelStyles.subjectGrid, isTablet && panelStyles.subjectGridTablet]}>
         {Object.entries(result.subjectWiseScore || {}).map(([subject, score]) => {
           const pct = score.total > 0 ? (score.correct / score.total) * 100 : 0;
           return (
-            <View key={subject} style={panelStyles.insightSubjectCard}>
+            <View key={subject} style={[panelStyles.insightSubjectCard, isTablet && panelStyles.insightSubjectCardTablet]}>
               <Text style={panelStyles.insightSubjectName}>{subject.charAt(0).toUpperCase() + subject.slice(1)}</Text>
               <Text style={panelStyles.insightSubjectPct}>{pct.toFixed(1)}%</Text>
               <Text style={panelStyles.metaText}>{score.correct}/{score.total} correct</Text>
@@ -912,24 +1002,24 @@ export function InsightsTabMobile({ result, aiAnalysis }: { result: ExamAnalysis
         )}
       </AnalysisCard>
 
-      <Text style={panelStyles.sectionHeading}>Pattern Alerts</Text>
-      {[
-        { icon: '⚡', title: 'Careless errors', desc: `${mistakeTaxonomy.careless} this time — fast wrong answers climbing.`, fix: '10 min slow-mode drill daily' },
-        { icon: '🧠', title: 'Weak chapter', desc: (aiAnalysis?.focusAreas?.[0]?.issue || 'Stuck below target accuracy.').slice(0, 80), fix: '8-min concept video + 10 Qs' },
-        { icon: '📉', title: 'Confidence trend', desc: `Trend: ${String(aiAnalysis?.predictions?.trend || 'stable')}.`, fix: 'Start mocks with your anchor subject' },
-        { icon: '⏱', title: 'Stamina drops in last 25%', desc: 'Accuracy often falls when time pressure peaks.', fix: 'Practice longer test stamina' },
-      ].map((alert, i) => (
-        <View key={i} style={panelStyles.alertCard}>
-          <Text style={panelStyles.alertTitle}>{alert.icon} {alert.title}</Text>
-          <Text style={panelStyles.bodyText}>{alert.desc}</Text>
-          <Text style={panelStyles.alertFix}>→ Fix: {alert.fix}</Text>
-        </View>
-      ))}
+      {patternAlerts.length > 0 ? (
+        <>
+          <Text style={panelStyles.sectionHeading}>Pattern Alerts</Text>
+          {patternAlerts.map((alert, i) => (
+            <View key={`${alert.title}-${i}`} style={panelStyles.alertCard}>
+              <Text style={panelStyles.alertTitle}>{alert.icon} {alert.title}</Text>
+              <Text style={panelStyles.bodyText}>{alert.desc}</Text>
+              <Text style={panelStyles.alertFix}>→ Fix: {alert.fix}</Text>
+            </View>
+          ))}
+        </>
+      ) : null}
     </ScrollView>
   );
 }
 
 export function PlanTabMobile({ studentName, aiAnalysis }: { studentName: string; aiAnalysis: AiExamAnalysis | null }) {
+  const { isTablet, isWide } = useExamAnalysisLayout();
   const [selectedDay, setSelectedDay] = useState(0);
   const planTopics = useMemo(() => generatePlanTopics(aiAnalysis), [aiAnalysis]);
   const activeTopic = planTopics[selectedDay] ?? planTopics[0];
@@ -954,7 +1044,10 @@ export function PlanTabMobile({ studentName, aiAnalysis }: { studentName: string
   }, [aiAnalysis]);
 
   return (
-    <ScrollView contentContainerStyle={analysisStyles.scrollContent} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      contentContainerStyle={[analysisStyles.scrollContent, isTablet && analysisStyles.scrollContentTablet]}
+      showsVerticalScrollIndicator={false}
+    >
       <LinearGradient colors={[...ANALYSIS.gradientHero]} style={panelStyles.planHero}>
         <Text style={panelStyles.planHeroTitle}>YOUR TOPIC PLAN</Text>
         <Text style={panelStyles.planHeroSub}>Personalised from your weak areas</Text>
@@ -1006,7 +1099,14 @@ export function PlanTabMobile({ studentName, aiAnalysis }: { studentName: string
         <Text style={panelStyles.metaText}>Auto-ordered by weakness</Text>
         <View style={panelStyles.videoGrid}>
           {planVideoCards.map((v, i) => (
-            <View key={`${v.subj}-${i}`} style={[panelStyles.videoCard, { backgroundColor: v.bg }]}>
+            <View
+              key={`${v.subj}-${i}`}
+              style={[
+                panelStyles.videoCard,
+                isWide && panelStyles.videoCardWide,
+                { backgroundColor: v.bg },
+              ]}
+            >
               <Text style={panelStyles.videoSubj}>{v.subj} · {v.min} MIN</Text>
               <Ionicons name="play-circle" size={28} color="#9ca3af" style={{ alignSelf: 'center', marginVertical: 8 }} />
               <Text style={panelStyles.videoTitle}>{v.title}</Text>
@@ -1045,16 +1145,76 @@ const panelStyles = StyleSheet.create({
   },
   progressSection: { marginTop: 20, gap: 12 },
   scoreFooterSection: { marginTop: 20, gap: 12 },
+  questionsTabRoot: { flex: 1 },
+  questionsTabScroll: { flex: 1 },
+  filterScroll: { flexGrow: 0, flexShrink: 0 },
+  filterRowContent: { alignItems: 'center' },
   filterRowModern: { paddingHorizontal: 16, paddingVertical: 12, gap: 8, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  filterRowTablet: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignSelf: 'center',
+    width: '100%',
+  },
+  filterPillWrap: { alignSelf: 'flex-start' },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 },
   hero: { borderRadius: 18, padding: 20, gap: 6 },
   heroBadge: { color: 'rgba(255,255,255,0.9)', fontSize: 12, fontWeight: '600' },
   heroTitle: { color: '#fff', fontSize: 24, fontWeight: '800' },
   heroSub: { color: 'rgba(255,255,255,0.9)', fontSize: 14 },
   scoreCard: { backgroundColor: '#fff', borderRadius: 18, padding: 18, gap: 12, borderWidth: 1, borderColor: '#e5e7eb' },
-  scoreRingRow: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 0 },
-  scoreRingMeta: { flex: 1, gap: 2 },
-  scoreRingPct: { fontSize: 13, fontWeight: '700', color: '#3B82F6', marginTop: 4 },
+  scoreCardTablet: { flexDirection: 'row', alignItems: 'flex-start', gap: 20 },
+  scoreCardTabletMid: { flex: 1.1, minWidth: 0, alignItems: 'center' },
+  scoreCardTabletEnd: { flex: 1.2, minWidth: 0, gap: 12 },
+  scoreBigTablet: { fontSize: 46, fontWeight: '800', color: '#111827', textAlign: 'center' },
+  scoreDenomTablet: { color: '#6b7280', fontSize: 13, textAlign: 'center', marginBottom: 8 },
+  statsRow3Tablet: { marginTop: 12, paddingTop: 0, borderTopWidth: 0, width: '100%' },
+  progressSectionTablet: { marginTop: 0 },
+  scoreRingMarksTablet: { fontSize: 30 },
+  snapshotGridTablet: { gap: 10 },
+  snapshotCellTablet: { width: '23.5%' },
+  questionsList: { width: '100%' },
+  questionsListTablet: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between' },
+  modalWrapTablet: {
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalSheet: { flex: 1 },
+  modalSheetTablet: {
+    flex: 0,
+    width: '100%',
+    maxWidth: 720,
+    maxHeight: '92%',
+    borderRadius: 20,
+    overflow: 'hidden',
+    backgroundColor: '#fff',
+  },
+  insightsTopRow: { flexDirection: 'row', gap: 16, alignItems: 'stretch' },
+  insightsTopCol: { flex: 1, minWidth: 0 },
+  subjectGridTablet: { gap: 14 },
+  insightSubjectCardTablet: { width: '31%' },
+  scoreRingRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 16, marginBottom: 0 },
+  scoreRingCol: { alignItems: 'center', gap: 10 },
+  scoreRingWrap: { position: 'relative', alignItems: 'center', justifyContent: 'center' },
+  scoreRingCenter: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scoreRingMarks: { fontSize: 28, fontWeight: '800', color: '#1E293B', lineHeight: 30 },
+  scoreRingTotal: { fontSize: 13, fontWeight: '700', color: '#64748B', marginTop: 2 },
+  scoreRingGrade: { fontSize: 12, fontWeight: '700', color: '#7C3AED', marginTop: 4 },
+  attemptBadge: {
+    backgroundColor: '#ECFDF5',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  attemptBadgeText: { color: '#059669', fontWeight: '700', fontSize: 12 },
+  scoreRingMeta: { flex: 1, gap: 2, paddingTop: 8 },
+  scoreRingPct: { fontSize: 13, fontWeight: '700', color: '#7C3AED', marginTop: 4 },
   scoreBig: { fontSize: 42, fontWeight: '800', color: '#111827' },
   scoreDenom: { color: '#6b7280', fontSize: 14 },
   chartCenter: { alignItems: 'center', gap: 12, marginBottom: 4 },
@@ -1073,15 +1233,13 @@ const panelStyles = StyleSheet.create({
   progressBlock: { gap: 6 },
   progressRow: { flexDirection: 'row', justifyContent: 'space-between' },
   progressLabel: { fontSize: 13, fontWeight: '600', color: '#374151' },
-  progressPct: { fontSize: 13, fontWeight: '700', color: '#3B82F6' },
+  progressPct: { fontSize: 13, fontWeight: '700', color: '#7C3AED' },
   progressTrack: { height: 8, backgroundColor: '#E2E8F0', borderRadius: 6, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: '#93C5FD', borderRadius: 6 },
   progressFillPink: { height: '100%', backgroundColor: '#7DD3FC', borderRadius: 6 },
   timeBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#eff6ff', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#bfdbfe' },
   timeLabel: { flex: 1, fontSize: 13, fontWeight: '600', color: '#1e40af' },
   timeVal: { fontSize: 14, fontWeight: '700', color: '#111827' },
-  gradePill: { alignSelf: 'center', backgroundColor: '#EFF6FF', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6, borderWidth: 1, borderColor: '#BFDBFE' },
-  gradePillText: { color: '#3B82F6', fontWeight: '800', fontSize: 13 },
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#e9edf3', gap: 10 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   cardIcon: { fontSize: 16 },
@@ -1137,6 +1295,7 @@ const panelStyles = StyleSheet.create({
   qText: { fontSize: 14, color: '#111827', lineHeight: 20 },
   qInsight: { fontSize: 12, color: '#7c3aed', marginTop: 6 },
   emptyText: { textAlign: 'center', color: '#9ca3af', padding: 24, fontSize: 14 },
+  emptyTextFull: { width: '100%' },
   modalWrap: { flex: 1, backgroundColor: '#fff' },
   modalBody: { padding: 20, paddingTop: 48 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
@@ -1308,6 +1467,7 @@ const panelStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e2e8f0',
   },
+  taxonomyCellTablet: { width: '22.5%' },
   taxonomyCount: { fontSize: 24, fontWeight: '800', color: '#111827' },
   taxonomyLabel: { fontSize: 11, color: '#6b7280', fontWeight: '600', marginTop: 4, textAlign: 'center' },
   qTime: { fontSize: 11, color: '#6b7280', marginLeft: 'auto' },
@@ -1352,6 +1512,7 @@ const panelStyles = StyleSheet.create({
   quadrantVal: { fontSize: 20, fontWeight: '800' },
   videoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 },
   videoCard: { width: '47%', borderRadius: 12, padding: 12, minHeight: 120 },
+  videoCardWide: { width: '31%' },
   videoSubj: { fontSize: 10, fontWeight: '800', color: '#6b7280' },
   videoTitle: { fontSize: 12, fontWeight: '700', color: '#111827', textAlign: 'center', marginTop: 4 },
 });
