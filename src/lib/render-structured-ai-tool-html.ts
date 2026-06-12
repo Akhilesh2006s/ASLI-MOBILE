@@ -12,6 +12,22 @@ import { resolveWorksheetFromPayload } from './parse-worksheet-mcq';
 import { resolveStoryFromPayload, type ParsedStory, type StoryQuestion } from './parse-story-content';
 import { resolveConceptsFromPayload, type NormalizedConcept } from './parse-concept-mastery';
 import {
+  cleanReflectionProse,
+  dedupeStringLines,
+  normalizeParsedActivityFields,
+  resolveActivitiesFromPayload,
+  studentActivitySectionsComplete,
+  teacherActivitySectionsComplete,
+  type ParsedActivity,
+} from './parse-activity-markdown';
+import {
+  flashcardsHaveVisibleBody,
+  resolveFlashcardsFromPayload,
+  resolveStudentDeckMeta,
+  resolveTeacherDeckMeta,
+  type Flashcard,
+} from './parse-flashcards';
+import {
   contentHasNumberedTemplateSections,
   resolveRichDisplayContent,
 } from './ai-tool-display-content';
@@ -22,6 +38,7 @@ import {
   emptySectionPlaceholderHtml,
   escapeHtml,
   heroTitleCardHtml,
+  numberedMaterialsHtml,
   numberedStepsHtml,
   richTextHtml,
   sectionCardHtml,
@@ -45,7 +62,7 @@ function renderConceptBreakdownHtml(content: string, rawContent: unknown): strin
         html += sectionCardHtml({
           sectionNum: 'Section 2',
           title: 'Simple Definition',
-          stripe: 'border-violet-500',
+          stripe: 'border-violet-300',
           iconWrap: 'bg-violet-100 text-violet-800',
           iconSvg: '<span>🧠</span>',
           borderColor: 'border-violet-200/90',
@@ -56,18 +73,18 @@ function renderConceptBreakdownHtml(content: string, rawContent: unknown): strin
         html += sectionCardHtml({
           sectionNum: 'Section 3',
           title: 'Step-by-Step Breakdown',
-          stripe: 'border-indigo-500',
+          stripe: 'border-indigo-300',
           iconWrap: 'bg-indigo-100 text-indigo-800',
           iconSvg: '<span>📋</span>',
           borderColor: 'border-violet-200/90',
-          body: numberedStepsHtml(concept.breakdownSteps, 'bg-indigo-600'),
+          body: numberedStepsHtml(concept.breakdownSteps, 'bg-indigo-100 text-indigo-800'),
         });
       }
       if (concept.realLifeExamples.length) {
         html += sectionCardHtml({
           sectionNum: 'Section 4',
           title: 'Real-life and Indian Context Examples',
-          stripe: 'border-emerald-500',
+          stripe: 'border-emerald-300',
           iconWrap: 'bg-emerald-100 text-emerald-800',
           iconSvg: '<span>💡</span>',
           borderColor: 'border-violet-200/90',
@@ -78,7 +95,7 @@ function renderConceptBreakdownHtml(content: string, rawContent: unknown): strin
         html += sectionCardHtml({
           sectionNum: 'Section 5',
           title: 'Important Terms and Keywords',
-          stripe: 'border-amber-500',
+          stripe: 'border-amber-300',
           iconWrap: 'bg-amber-100 text-amber-900',
           iconSvg: '<span>🏷</span>',
           borderColor: 'border-violet-200/90',
@@ -89,7 +106,7 @@ function renderConceptBreakdownHtml(content: string, rawContent: unknown): strin
         html += sectionCardHtml({
           sectionNum: 'Section 9',
           title: 'Quick Revision Summary',
-          stripe: 'border-violet-600',
+          stripe: 'border-violet-300',
           iconWrap: 'bg-violet-100 text-violet-900',
           iconSvg: '<span>✨</span>',
           borderColor: 'border-violet-200/90',
@@ -113,7 +130,7 @@ function renderChapterSummaryHtml(content: string, rawContent: unknown): string 
     html += sectionCardHtml({
       sectionNum: 'Section 2',
       title: 'Overview of the Chapter',
-      stripe: 'border-sky-500',
+      stripe: 'border-sky-300',
       iconWrap: 'bg-sky-100 text-sky-800',
       iconSvg: '<span>📖</span>',
       borderColor: 'border-blue-200/90',
@@ -124,7 +141,7 @@ function renderChapterSummaryHtml(content: string, rawContent: unknown): string 
     html += sectionCardHtml({
       sectionNum: 'Section 3',
       title: 'Learning Objectives',
-      stripe: 'border-indigo-500',
+      stripe: 'border-indigo-300',
       iconWrap: 'bg-indigo-100 text-indigo-800',
       iconSvg: '<span>🎯</span>',
       borderColor: 'border-blue-200/90',
@@ -135,7 +152,7 @@ function renderChapterSummaryHtml(content: string, rawContent: unknown): string 
     html += sectionCardHtml({
       sectionNum: 'Section 4',
       title: 'Important Concepts and Explanations',
-      stripe: 'border-violet-500',
+      stripe: 'border-violet-300',
       iconWrap: 'bg-violet-100 text-violet-800',
       iconSvg: '<span>✨</span>',
       borderColor: 'border-blue-200/90',
@@ -146,7 +163,7 @@ function renderChapterSummaryHtml(content: string, rawContent: unknown): string 
     html += sectionCardHtml({
       sectionNum: 'Section 9',
       title: 'Quick Revision Notes',
-      stripe: 'border-violet-500',
+      stripe: 'border-violet-300',
       iconWrap: 'bg-violet-100 text-violet-800',
       iconSvg: '<span>📝</span>',
       borderColor: 'border-blue-200/90',
@@ -168,7 +185,7 @@ function renderKeyPointsHtml(content: string, rawContent: unknown): string | nul
     html += sectionCardHtml({
       sectionNum: 'Section 2',
       title: 'Important Concepts',
-      stripe: 'border-amber-500',
+      stripe: 'border-amber-300',
       iconWrap: 'bg-amber-100 text-amber-900',
       iconSvg: '<span>⭐</span>',
       borderColor: 'border-amber-200/90',
@@ -179,7 +196,7 @@ function renderKeyPointsHtml(content: string, rawContent: unknown): string | nul
     html += sectionCardHtml({
       sectionNum: 'Section 4',
       title: 'Formulae',
-      stripe: 'border-violet-500',
+      stripe: 'border-violet-300',
       iconWrap: 'bg-violet-100 text-violet-800',
       iconSvg: '<span>∑</span>',
       borderColor: 'border-amber-200/90',
@@ -195,7 +212,7 @@ function renderKeyPointsHtml(content: string, rawContent: unknown): string | nul
     html += sectionCardHtml({
       sectionNum: 'Section 10',
       title: 'One-Minute Summary',
-      stripe: 'border-emerald-500',
+      stripe: 'border-emerald-300',
       iconWrap: 'bg-emerald-100 text-emerald-800',
       iconSvg: '<span>⏱</span>',
       borderColor: 'border-amber-200/90',
@@ -236,7 +253,7 @@ function renderPracticeQaHtml(content: string, rawContent: unknown): string | nu
     html += sectionCardHtml({
       sectionNum: sec.displayLabel || sec.label || 'Section',
       title: sec.label || 'Questions',
-      stripe: 'border-emerald-500',
+      stripe: 'border-emerald-300',
       iconWrap: 'bg-emerald-100 text-emerald-800',
       iconSvg: '<span>❓</span>',
       body,
@@ -257,7 +274,7 @@ function renderQuickAssignmentHtml(content: string, rawContent: unknown): string
     html += sectionCardHtml({
       sectionNum: 'Section 2',
       title: 'Instructions',
-      stripe: 'border-orange-500',
+      stripe: 'border-orange-300',
       iconWrap: 'bg-orange-100 text-orange-800',
       iconSvg: '<span>📋</span>',
       body: richTextHtml(assignment.instructions),
@@ -267,7 +284,7 @@ function renderQuickAssignmentHtml(content: string, rawContent: unknown): string
     html += sectionCardHtml({
       sectionNum: 'Section 3',
       title: 'Application Tasks',
-      stripe: 'border-amber-500',
+      stripe: 'border-amber-300',
       iconWrap: 'bg-amber-100 text-amber-800',
       iconSvg: '<span>✓</span>',
       body: numberedStepsHtml(assignment.applicationTasks),
@@ -277,7 +294,7 @@ function renderQuickAssignmentHtml(content: string, rawContent: unknown): string
     html += sectionCardHtml({
       sectionNum: 'Section 4',
       title: 'Concept Questions',
-      stripe: 'border-emerald-500',
+      stripe: 'border-emerald-300',
       iconWrap: 'bg-emerald-100 text-emerald-800',
       iconSvg: '<span>❓</span>',
       body: assignment.conceptQuestions
@@ -314,7 +331,7 @@ function renderMockTestHtml(content: string, rawContent: unknown): string | null
     html += sectionCardHtml({
       sectionNum: section.id || 'Section',
       title: section.title || 'Questions',
-      stripe: 'border-violet-500',
+      stripe: 'border-violet-300',
       iconWrap: 'bg-violet-100 text-violet-800',
       iconSvg: '<span>📝</span>',
       body,
@@ -346,7 +363,7 @@ function renderExamPaperHtml(content: string, rawContent: unknown): string | nul
     html += sectionCardHtml({
       sectionNum: section.id || 'Section',
       title: section.title || 'Questions',
-      stripe: 'border-blue-500',
+      stripe: 'border-blue-300',
       iconWrap: 'bg-blue-100 text-blue-800',
       iconSvg: '<span>📄</span>',
       body,
@@ -355,41 +372,667 @@ function renderExamPaperHtml(content: string, rawContent: unknown): string | nul
   return html;
 }
 
+const ACTIVITY_SECTION_THEMES = [
+  { stripe: 'border-indigo-300', iconWrap: 'bg-indigo-100 text-indigo-800' },
+  { stripe: 'border-violet-300', iconWrap: 'bg-violet-100 text-violet-800' },
+  { stripe: 'border-emerald-300', iconWrap: 'bg-emerald-100 text-emerald-800' },
+  { stripe: 'border-sky-300', iconWrap: 'bg-sky-100 text-sky-800' },
+  { stripe: 'border-amber-300', iconWrap: 'bg-amber-100 text-amber-800' },
+  { stripe: 'border-teal-300', iconWrap: 'bg-teal-100 text-teal-800' },
+] as const;
+
+type NormalizedActivityRow = {
+  title: string;
+  subtopicLink: string;
+  learningObjectives: string[];
+  ncfAlignment: string[];
+  materials: string[];
+  steps: string[];
+  teacherInstructions: string[];
+  studentInstructions: string[];
+  differentiation: string;
+  assessmentRubric: string[];
+  expectedOutcomes: string;
+  realLife: string;
+  reflection: string;
+};
+
+function coalesceActivityTextLines(v: unknown): string[] {
+  if (Array.isArray(v)) {
+    return v
+      .map((x) =>
+        String(x ?? '')
+          .replace(/^\s*\d+[\).\s]+/i, '')
+          .replace(/^\s*[-*•]\s*/, '')
+          .trim(),
+      )
+      .filter(Boolean);
+  }
+  if (typeof v === 'string' && v.trim()) {
+    return v
+      .split(/\n+/)
+      .map((line) =>
+        line
+          .replace(/^\s*\d+[\).\s]+/i, '')
+          .replace(/^\s*[-*•]\s*/, '')
+          .trim(),
+      )
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function firstActivityText(...values: unknown[]): string {
+  for (const v of values) {
+    if (Array.isArray(v)) {
+      const joined = v
+        .map((x) => String(x ?? '').trim())
+        .filter(Boolean)
+        .join('\n');
+      if (joined.trim()) return joined.trim();
+    } else {
+      const s = String(v ?? '').trim();
+      if (s) return s;
+    }
+  }
+  return '';
+}
+
+function normalizeActivityRow(
+  raw: ParsedActivity,
+  idx: number,
+  mode: 'student' | 'teacher',
+): NormalizedActivityRow {
+  const a = normalizeParsedActivityFields(raw);
+  const ncfRaw = a.ncf_competency_alignment;
+  const ncf = dedupeStringLines(
+    Array.isArray(ncfRaw)
+      ? ncfRaw.map((x) => String(x).trim()).filter(Boolean)
+      : String(ncfRaw || '')
+          .split(/[;\n]+/)
+          .map((x) => x.trim())
+          .filter(Boolean),
+  );
+  const studentSteps = coalesceActivityTextLines(a.student_instructions);
+  const procedureSteps = coalesceActivityTextLines(
+    a.step_by_step_procedure || a.steps || a.instructions,
+  );
+  const steps =
+    mode === 'teacher' ? procedureSteps : studentSteps.length ? studentSteps : procedureSteps;
+
+  return {
+    title: String(a.title || a.name || `Activity ${idx + 1}`).trim(),
+    subtopicLink: firstActivityText(a.subtopic_link_prior_knowledge),
+    learningObjectives: dedupeStringLines(
+      coalesceActivityTextLines(a.learning_objectives || a.learningObjectives),
+    ),
+    ncfAlignment: ncf,
+    materials: dedupeStringLines(coalesceActivityTextLines(a.materials_required || a.materials)),
+    steps,
+    teacherInstructions: coalesceActivityTextLines(
+      a.teacher_instructions || a.teacherInstructions,
+    ),
+    studentInstructions: studentSteps.length
+      ? studentSteps
+      : coalesceActivityTextLines(a.student_instructions || a.studentInstructions),
+    differentiation: String(a.differentiation_support_extension || a.differentiation || '').trim(),
+    assessmentRubric: dedupeStringLines(
+      coalesceActivityTextLines(a.assessment_criteria_rubric || a.assessment || a.evaluation),
+    ),
+    expectedOutcomes: firstActivityText(
+      a.expected_learning_outcomes,
+      a.learning_outcome,
+      a.learning_outcomes,
+      a.expected_outcome,
+    ),
+    realLife: String(a.real_life_application || '').trim(),
+    reflection: cleanReflectionProse(String(a.reflection_exit_ticket || a.reflection || '')),
+  };
+}
+
+function activitiesFromRawPayload(rawContent: unknown): ParsedActivity[] | undefined {
+  if (!rawContent || typeof rawContent !== 'object') return undefined;
+  const rc = rawContent as Record<string, unknown>;
+  if (Array.isArray(rc.activities)) return rc.activities as ParsedActivity[];
+  return undefined;
+}
+
+function appendActivitySectionCards(
+  activity: NormalizedActivityRow,
+  mode: 'student' | 'teacher',
+  startThemeIndex = 0,
+): { html: string; nextThemeIndex: number } {
+  type SectionSpec = {
+    num: number;
+    title: string;
+    iconSvg: string;
+    hasContent: (a: NormalizedActivityRow) => boolean;
+    body: (a: NormalizedActivityRow) => string;
+  };
+
+  const teacherSections: SectionSpec[] = [
+    {
+      num: 2,
+      title: 'Subtopic link and prior knowledge required',
+      iconSvg: '<span>📚</span>',
+      hasContent: (a) => !!a.subtopicLink,
+      body: (a) => richTextHtml(a.subtopicLink),
+    },
+    {
+      num: 3,
+      title: 'Learning objectives',
+      iconSvg: '<span>🎯</span>',
+      hasContent: (a) => a.learningObjectives.length > 0,
+      body: (a) => checkListHtml(a.learningObjectives),
+    },
+    {
+      num: 4,
+      title: 'NCF competency / learning outcome alignment',
+      iconSvg: '<span>🏫</span>',
+      hasContent: (a) => a.ncfAlignment.length > 0,
+      body: (a) => bulletListHtml(a.ncfAlignment),
+    },
+    {
+      num: 5,
+      title: 'Materials required',
+      iconSvg: '<span>📦</span>',
+      hasContent: (a) => a.materials.length > 0,
+      body: (a) => numberedMaterialsHtml(a.materials),
+    },
+    {
+      num: 6,
+      title: 'Step-by-step procedure',
+      iconSvg: '<span>📋</span>',
+      hasContent: (a) => a.steps.length > 0,
+      body: (a) => numberedStepsHtml(a.steps, 'bg-emerald-100 text-emerald-800'),
+    },
+    {
+      num: 7,
+      title: 'Teacher instructions',
+      iconSvg: '<span>👩‍🏫</span>',
+      hasContent: (a) => a.teacherInstructions.length > 0,
+      body: (a) => bulletListHtml(a.teacherInstructions),
+    },
+    {
+      num: 8,
+      title: 'Student instructions',
+      iconSvg: '<span>🎒</span>',
+      hasContent: (a) => a.studentInstructions.length > 0,
+      body: (a) => bulletListHtml(a.studentInstructions),
+    },
+    {
+      num: 9,
+      title: 'Differentiation',
+      iconSvg: '<span>🔀</span>',
+      hasContent: (a) => !!a.differentiation,
+      body: (a) => richTextHtml(a.differentiation),
+    },
+    {
+      num: 10,
+      title: 'Assessment rubric',
+      iconSvg: '<span>📊</span>',
+      hasContent: (a) => a.assessmentRubric.length > 0,
+      body: (a) => bulletListHtml(a.assessmentRubric),
+    },
+    {
+      num: 11,
+      title: 'Expected learning outcomes',
+      iconSvg: '<span>🏆</span>',
+      hasContent: (a) => !!a.expectedOutcomes,
+      body: (a) => richTextHtml(a.expectedOutcomes),
+    },
+    {
+      num: 12,
+      title: 'Real-life application',
+      iconSvg: '<span>✨</span>',
+      hasContent: (a) => !!a.realLife,
+      body: (a) => richTextHtml(a.realLife),
+    },
+    {
+      num: 13,
+      title: 'Reflection / exit ticket',
+      iconSvg: '<span>💡</span>',
+      hasContent: (a) => !!a.reflection,
+      body: (a) => richTextHtml(a.reflection),
+    },
+  ];
+
+  const studentSections: SectionSpec[] = [
+    {
+      num: 2,
+      title: 'Subtopic link and prior knowledge required',
+      iconSvg: '<span>📚</span>',
+      hasContent: (a) => !!a.subtopicLink,
+      body: (a) => richTextHtml(a.subtopicLink),
+    },
+    {
+      num: 3,
+      title: "Learning Objectives - Bloom's Taxonomy Aligned",
+      iconSvg: '<span>🎯</span>',
+      hasContent: (a) => a.learningObjectives.length > 0,
+      body: (a) => checkListHtml(a.learningObjectives),
+    },
+    {
+      num: 6,
+      title: 'Step-by-step Student Procedure',
+      iconSvg: '<span>📋</span>',
+      hasContent: (a) => a.steps.length > 0,
+      body: (a) => numberedStepsHtml(a.steps, 'bg-emerald-100 text-emerald-800'),
+    },
+  ];
+
+  const sections = mode === 'teacher' ? teacherSections : studentSections;
+  let html = '';
+  let themeIndex = startThemeIndex;
+
+  for (const sec of sections) {
+    if (!sec.hasContent(activity)) continue;
+    const theme = ACTIVITY_SECTION_THEMES[themeIndex % ACTIVITY_SECTION_THEMES.length];
+    themeIndex += 1;
+    html += sectionCardHtml({
+      sectionNum: `Section ${sec.num}`,
+      title: sec.title,
+      stripe: theme.stripe,
+      iconWrap: theme.iconWrap,
+      iconSvg: sec.iconSvg,
+      body: sec.body(activity),
+    });
+  }
+
+  return { html, nextThemeIndex: themeIndex };
+}
+
+function renderActivityProjectHtml(
+  content: string,
+  rawContent: unknown,
+  variant: Variant,
+): string | null {
+  const mode = variant === 'student' ? 'student' : 'teacher';
+  const rows = resolveActivitiesFromPayload(activitiesFromRawPayload(rawContent), content);
+  const isComplete =
+    mode === 'student' ? studentActivitySectionsComplete : teacherActivitySectionsComplete;
+  const activities = rows.filter(isComplete).map((row, idx) => normalizeActivityRow(row, idx, mode));
+  if (!activities.length) return null;
+
+  return activities
+    .map((activity, idx) => {
+      const heroTheme = mode === 'teacher' ? 'indigo' : 'orange';
+      const eyebrow =
+        mode === 'teacher' ? '1. Title of activity / project' : '1. Project / Activity Title';
+      let html = heroTitleCardHtml({
+        eyebrow,
+        title: activity.title,
+        theme: heroTheme,
+        badge: activities.length > 1 ? `Activity ${idx + 1} of ${activities.length}` : undefined,
+      });
+      html += appendActivitySectionCards(activity, mode).html;
+      return html;
+    })
+    .join('<div class="h-4"></div>');
+}
+
+function flashcardGridHtml(cards: Flashcard[]): string {
+  if (!cards.length) return emptySectionPlaceholderHtml();
+  return cards
+    .map((card, i) => {
+      const meta = [
+        card.difficultyTag ? `Difficulty: ${card.difficultyTag}` : '',
+        card.memoryHookQuickTip || card.memoryCue
+          ? `Memory hook: ${card.memoryHookQuickTip || card.memoryCue}`
+          : '',
+        card.skillFocus ? `Skill: ${card.skillFocus}` : '',
+      ]
+        .filter(Boolean)
+        .join(' · ');
+      return `<div class="mb-2 rounded-lg border border-violet-200 bg-violet-50/60 px-3 py-2">
+        <p class="text-[10px] font-bold uppercase tracking-wider text-violet-600">Card ${i + 1}</p>
+        <p class="text-xs font-semibold text-slate-600 mt-1">Front</p>
+        <p class="text-sm text-slate-800">${escapeHtml(card.front)}</p>
+        <p class="text-xs font-semibold text-slate-600 mt-2">Back</p>
+        <p class="text-sm text-slate-800">${escapeHtml(card.back)}</p>
+        ${meta ? `<p class="text-xs text-violet-700 mt-1">${escapeHtml(meta)}</p>` : ''}
+      </div>`;
+    })
+    .join('');
+}
+
+function contextChipsHtml(chips: Array<{ label: string; value: string }>): string {
+  if (!chips.length) return emptySectionPlaceholderHtml();
+  return `<div class="flex flex-wrap gap-2">${chips
+    .map(
+      (chip) =>
+        `<span class="inline-flex rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs text-indigo-800"><strong>${escapeHtml(chip.label)}:</strong> ${escapeHtml(chip.value)}</span>`,
+    )
+    .join('')}</div>`;
+}
+
+function appendThemedSectionCards(
+  specs: Array<{
+    num: number;
+    title: string;
+    iconSvg: string;
+    hasContent: () => boolean;
+    body: string;
+  }>,
+  startThemeIndex = 0,
+): string {
+  let html = '';
+  let themeIndex = startThemeIndex;
+  for (const spec of specs) {
+    if (!spec.hasContent()) continue;
+    const theme = ACTIVITY_SECTION_THEMES[themeIndex % ACTIVITY_SECTION_THEMES.length];
+    themeIndex += 1;
+    html += sectionCardHtml({
+      sectionNum: `Section ${spec.num}`,
+      title: spec.title,
+      stripe: theme.stripe,
+      iconWrap: theme.iconWrap,
+      iconSvg: spec.iconSvg,
+      body: spec.body,
+    });
+  }
+  return html;
+}
+
+function renderFlashcardHtml(content: string, rawContent: unknown, variant: Variant): string | null {
+  const { cards } = resolveFlashcardsFromPayload(content, rawContent);
+  if (!flashcardsHaveVisibleBody(cards)) return null;
+
+  if (variant === 'teacher') {
+    const meta = resolveTeacherDeckMeta(content, rawContent);
+    const title = meta?.title || 'Flashcard deck';
+    const topicLabel =
+      meta?.topic ||
+      (meta?.topicAndSubtopicLink
+        ? meta.topicAndSubtopicLink.split(/\s*[—–\-:]\s*/)[0]?.trim()
+        : '');
+    const subtopicLabel =
+      meta?.subtopic ||
+      (meta?.topicAndSubtopicLink
+        ? meta.topicAndSubtopicLink.split(/\s*[—–\-:]\s*/).slice(1).join(' — ').trim()
+        : '');
+
+    const contextChips = [
+      topicLabel ? { label: 'Topic', value: topicLabel } : null,
+      subtopicLabel ? { label: 'Subtopic', value: subtopicLabel } : null,
+      meta?.classLevel ? { label: 'Class', value: meta.classLevel } : null,
+      meta?.difficultyLevel ? { label: 'Difficulty', value: meta.difficultyLevel } : null,
+      meta?.bloomLevel ? { label: "Bloom's", value: meta.bloomLevel } : null,
+    ].filter(Boolean) as Array<{ label: string; value: string }>;
+
+    let html = heroTitleCardHtml({
+      eyebrow: 'Flashcard Generator',
+      title,
+      theme: 'violet',
+      badge: `${cards.length} cards`,
+    });
+
+    html += appendThemedSectionCards([
+      {
+        num: 1,
+        title: 'Context & Alignment',
+        iconSvg: '<span>ℹ️</span>',
+        hasContent: () => contextChips.length > 0,
+        body: contextChipsHtml(contextChips),
+      },
+      {
+        num: 2,
+        title: 'Foundations',
+        iconSvg: '<span>📚</span>',
+        hasContent: () =>
+          Boolean(
+            meta?.priorKnowledgeRequired ||
+              (meta?.learningObjectives?.length ?? 0) > 0 ||
+              meta?.ncfCompetencyAlignment,
+          ),
+        body: [
+          meta?.priorKnowledgeRequired
+            ? `<p class="text-sm text-slate-800"><strong>Prior knowledge:</strong> ${escapeHtml(meta.priorKnowledgeRequired)}</p>`
+            : '',
+          meta?.learningObjectives?.length
+            ? `<p class="text-sm font-semibold text-slate-800 mt-2">Learning objectives</p>${bulletListHtml(meta.learningObjectives)}`
+            : '',
+          meta?.ncfCompetencyAlignment
+            ? `<p class="text-sm text-slate-800 mt-2"><strong>NCF alignment:</strong> ${escapeHtml(meta.ncfCompetencyAlignment)}</p>`
+            : '',
+        ].join(''),
+      },
+      {
+        num: 3,
+        title: 'The Card Set: Application & HOTS',
+        iconSvg: '<span>⚡</span>',
+        hasContent: () => cards.length > 0,
+        body: flashcardGridHtml(cards),
+      },
+      {
+        num: 4,
+        title: 'Study Aids',
+        iconSvg: '<span>💡</span>',
+        hasContent: () =>
+          Boolean(
+            meta?.deckMemoryHook ||
+              (meta?.commonMistakesToAvoid?.length ?? 0) > 0 ||
+              meta?.selfCheckRapidRecallRound,
+          ),
+        body: [
+          meta?.deckMemoryHook
+            ? `<p class="text-sm text-slate-800"><strong>Deck memory hook:</strong> ${escapeHtml(meta.deckMemoryHook)}</p>`
+            : '',
+          meta?.commonMistakesToAvoid?.length
+            ? `<p class="text-sm font-semibold text-slate-800 mt-2">Common mistakes to avoid</p>${bulletListHtml(meta.commonMistakesToAvoid)}`
+            : '',
+          meta?.selfCheckRapidRecallRound
+            ? `<p class="text-sm text-slate-800 mt-2"><strong>Self-check round:</strong> ${escapeHtml(meta.selfCheckRapidRecallRound)}</p>`
+            : '',
+        ].join(''),
+      },
+      {
+        num: 5,
+        title: 'Wrap-Up',
+        iconSvg: '<span>🏁</span>',
+        hasContent: () =>
+          Boolean(
+            meta?.realLifeConnection || meta?.differentiationSupport || meta?.reflectionExitTicket,
+          ),
+        body: [
+          meta?.realLifeConnection
+            ? `<p class="text-sm text-slate-800"><strong>Real-life connection:</strong> ${escapeHtml(meta.realLifeConnection)}</p>`
+            : '',
+          meta?.differentiationSupport
+            ? `<p class="text-sm text-slate-800 mt-2"><strong>Differentiation:</strong> ${escapeHtml(meta.differentiationSupport)}</p>`
+            : '',
+          meta?.reflectionExitTicket
+            ? `<p class="text-sm text-slate-800 mt-2"><strong>Reflection:</strong> ${escapeHtml(meta.reflectionExitTicket)}</p>`
+            : '',
+        ].join(''),
+      },
+    ]);
+
+    return html;
+  }
+
+  const meta = resolveStudentDeckMeta(content, rawContent);
+  let html = heroTitleCardHtml({
+    eyebrow: 'My Study Decks',
+    title: meta.title || 'Study deck',
+    theme: 'violet',
+    badge: `${cards.length} flashcards`,
+  });
+
+  html += appendThemedSectionCards([
+    {
+      num: 2,
+      title: 'Subtopic Link and Prior Knowledge Required',
+      iconSvg: '<span>📚</span>',
+      hasContent: () => !!meta.subtopicLinkPriorKnowledge,
+      body: richTextHtml(meta.subtopicLinkPriorKnowledge),
+    },
+    {
+      num: 3,
+      title: "Learning Objectives - Bloom's Taxonomy Aligned",
+      iconSvg: '<span>🎯</span>',
+      hasContent: () => meta.learningObjectives.length > 0,
+      body: checkListHtml(meta.learningObjectives),
+    },
+    {
+      num: 4,
+      title: 'NCF Competency / Learning Outcome Alignment',
+      iconSvg: '<span>🏫</span>',
+      hasContent: () => !!meta.ncfAlignment,
+      body: richTextHtml(meta.ncfAlignment),
+    },
+    {
+      num: 5,
+      title: 'Flashcard Set',
+      iconSvg: '<span>⚡</span>',
+      hasContent: () => cards.length > 0,
+      body: flashcardGridHtml(cards),
+    },
+    {
+      num: 8,
+      title: 'Self-Check Round',
+      iconSvg: '<span>✅</span>',
+      hasContent: () => !!meta.selfCheckRound,
+      body: richTextHtml(meta.selfCheckRound),
+    },
+    {
+      num: 9,
+      title: 'Common Mistakes to Avoid',
+      iconSvg: '<span>⚠️</span>',
+      hasContent: () => meta.commonMistakesToAvoid.length > 0,
+      body: bulletListHtml(meta.commonMistakesToAvoid),
+    },
+    {
+      num: 10,
+      title: 'Expected Learning Outcomes',
+      iconSvg: '<span>🏆</span>',
+      hasContent: () => meta.expectedLearningOutcomes.length > 0,
+      body: bulletListHtml(meta.expectedLearningOutcomes),
+    },
+    {
+      num: 11,
+      title: 'Real-life Application',
+      iconSvg: '<span>✨</span>',
+      hasContent: () => !!meta.realLifeApplication,
+      body: richTextHtml(meta.realLifeApplication),
+    },
+    {
+      num: 12,
+      title: 'Reflection / Exit Ticket',
+      iconSvg: '<span>💡</span>',
+      hasContent: () => !!meta.reflectionExitTicket,
+      body: richTextHtml(meta.reflectionExitTicket),
+    },
+  ]);
+
+  return html;
+}
+
 function renderLessonPlannerHtml(content: string, rawContent: unknown): string | null {
   const { lessons, markdownFallback } = resolveLessonsFromPayload(content, rawContent);
   if (markdownFallback || !lessons.length) return null;
   return lessons
     .map((lesson) => {
-      let html = heroTitleCardHtml({
-        eyebrow: 'Lesson Plan',
-        title: lesson.lessonName || 'Lesson',
-        theme: 'amber',
-      });
-      if (lesson.learningObjectives?.length) {
-        html += sectionCardHtml({
-          sectionNum: 'Section 2',
-          title: 'Learning Objectives',
-          stripe: 'border-amber-500',
-          iconWrap: 'bg-amber-100 text-amber-800',
-          iconSvg: '<span>🎯</span>',
-          body: bulletListHtml(lesson.learningObjectives),
-        });
-      }
       const procedure = lesson.studyPlanTable?.length
         ? lesson.studyPlanTable
         : lesson.classroomActivities?.length
           ? lesson.classroomActivities
           : lesson.timeline;
-      if (procedure?.length) {
-        html += sectionCardHtml({
-          sectionNum: 'Section 4',
-          title: 'Procedure / Schedule',
-          stripe: 'border-emerald-500',
-          iconWrap: 'bg-emerald-100 text-emerald-800',
+
+      let html = heroTitleCardHtml({
+        eyebrow: 'Lesson Planner',
+        title: lesson.lessonName || 'Lesson',
+        theme: 'amber',
+        badge: lesson.durationLabel || lesson.subjectArea || undefined,
+      });
+
+      html += appendThemedSectionCards([
+        {
+          num: 2,
+          title: 'Study goal / subtopic link',
+          iconSvg: '<span>🎯</span>',
+          hasContent: () => !!lesson.studyGoalSubtopicLink,
+          body: richTextHtml(lesson.studyGoalSubtopicLink),
+        },
+        {
+          num: 3,
+          title: 'Prior knowledge / readiness',
+          iconSvg: '<span>📚</span>',
+          hasContent: () => !!(lesson.priorKnowledgeReadiness || lesson.priorKnowledge),
+          body: richTextHtml(lesson.priorKnowledgeReadiness || lesson.priorKnowledge),
+        },
+        {
+          num: 4,
+          title: 'Learning objectives',
+          iconSvg: '<span>✅</span>',
+          hasContent: () => lesson.learningObjectives.length > 0,
+          body: checkListHtml(lesson.learningObjectives),
+        },
+        {
+          num: 5,
+          title: 'NCF alignment',
+          iconSvg: '<span>🏫</span>',
+          hasContent: () => lesson.ncfAlignment.length > 0,
+          body: bulletListHtml(lesson.ncfAlignment),
+        },
+        {
+          num: 6,
+          title: 'Study plan / procedure',
           iconSvg: '<span>📋</span>',
-          body: numberedStepsHtml(procedure),
-        });
-      }
+          hasContent: () => (procedure?.length ?? 0) > 0,
+          body: numberedStepsHtml(procedure || [], 'bg-emerald-100 text-emerald-800'),
+        },
+        {
+          num: 7,
+          title: 'Concept learning slot',
+          iconSvg: '<span>🧠</span>',
+          hasContent: () => !!lesson.conceptLearningSlot,
+          body: richTextHtml(lesson.conceptLearningSlot),
+        },
+        {
+          num: 8,
+          title: 'Practice slot',
+          iconSvg: '<span>✏️</span>',
+          hasContent: () => !!lesson.practiceSlot,
+          body: richTextHtml(lesson.practiceSlot),
+        },
+        {
+          num: 9,
+          title: 'Breaks & focus tips',
+          iconSvg: '<span>⏱</span>',
+          hasContent: () => !!lesson.breaksFocusTips,
+          body: richTextHtml(lesson.breaksFocusTips),
+        },
+        {
+          num: 10,
+          title: 'Self-assessment checkpoint',
+          iconSvg: '<span>🔍</span>',
+          hasContent: () => !!lesson.selfAssessmentCheckpoint,
+          body: richTextHtml(lesson.selfAssessmentCheckpoint),
+        },
+        {
+          num: 11,
+          title: 'Support & extension plan',
+          iconSvg: '<span>🔀</span>',
+          hasContent: () => !!lesson.supportExtensionPlan,
+          body: richTextHtml(lesson.supportExtensionPlan),
+        },
+        {
+          num: 12,
+          title: 'Expected learning outcomes',
+          iconSvg: '<span>🏆</span>',
+          hasContent: () => lesson.expectedLearningOutcomes.length > 0,
+          body: bulletListHtml(lesson.expectedLearningOutcomes),
+        },
+        {
+          num: 13,
+          title: 'Reflection / exit ticket',
+          iconSvg: '<span>💡</span>',
+          hasContent: () => !!lesson.reflectionExitTicket,
+          body: richTextHtml(lesson.reflectionExitTicket),
+        },
+      ]);
+
       return html;
     })
     .join('<div class="h-4"></div>');
@@ -400,31 +1043,80 @@ function renderDailyClassPlanHtml(content: string, rawContent: unknown): string 
   if (markdownFallback || !plans.length) return null;
   return plans
     .map((plan) => {
+      const schedule = plan.timeSlots.length
+        ? plan.timeSlots.map((slot) =>
+            [slot.time, slot.activity, slot.type].filter(Boolean).join(' — '),
+          )
+        : plan.timeline.length
+          ? plan.timeline
+          : plan.classroomActivities;
+
       let html = heroTitleCardHtml({
         eyebrow: 'Daily Class Plan',
         title: plan.title || 'Class Plan',
         theme: 'indigo',
+        badge: plan.dayPeriodBreakup || undefined,
       });
-      if (plan.objectives?.length) {
-        html += sectionCardHtml({
-          sectionNum: 'Section 2',
-          title: 'Learning Objectives',
-          stripe: 'border-indigo-500',
-          iconWrap: 'bg-indigo-100 text-indigo-800',
+
+      html += appendThemedSectionCards([
+        {
+          num: 2,
+          title: 'Learning objectives',
           iconSvg: '<span>🎯</span>',
-          body: bulletListHtml(plan.objectives),
-        });
-      }
-      if (plan.classroomActivities?.length) {
-        html += sectionCardHtml({
-          sectionNum: 'Section 3',
-          title: 'Classroom Activities',
-          stripe: 'border-violet-500',
-          iconWrap: 'bg-violet-100 text-violet-800',
+          hasContent: () => plan.objectives.length > 0,
+          body: checkListHtml(plan.objectives),
+        },
+        {
+          num: 3,
+          title: 'Teaching methods',
+          iconSvg: '<span>👩‍🏫</span>',
+          hasContent: () => plan.teachingMethods.length > 0,
+          body: bulletListHtml(plan.teachingMethods),
+        },
+        {
+          num: 4,
+          title: 'Classroom activities / schedule',
           iconSvg: '<span>⏱</span>',
-          body: numberedStepsHtml(plan.classroomActivities),
-        });
-      }
+          hasContent: () => schedule.length > 0,
+          body: numberedStepsHtml(schedule, 'bg-indigo-100 text-indigo-800'),
+        },
+        {
+          num: 5,
+          title: 'Exit ticket',
+          iconSvg: '<span>🎫</span>',
+          hasContent: () => !!plan.exitTicket,
+          body: richTextHtml(plan.exitTicket),
+        },
+        {
+          num: 6,
+          title: 'Differentiated support',
+          iconSvg: '<span>🔀</span>',
+          hasContent: () => !!plan.differentiatedSupport,
+          body: richTextHtml(plan.differentiatedSupport),
+        },
+        {
+          num: 7,
+          title: 'Homework follow-up',
+          iconSvg: '<span>📝</span>',
+          hasContent: () => !!plan.homeworkFollowup,
+          body: richTextHtml(plan.homeworkFollowup),
+        },
+        {
+          num: 8,
+          title: 'Teaching aids',
+          iconSvg: '<span>🧰</span>',
+          hasContent: () => plan.teachingAids.length > 0,
+          body: bulletListHtml(plan.teachingAids),
+        },
+        {
+          num: 9,
+          title: 'Teacher reflection',
+          iconSvg: '<span>💡</span>',
+          hasContent: () => !!plan.teacherReflection,
+          body: richTextHtml(plan.teacherReflection),
+        },
+      ]);
+
       return html;
     })
     .join('<div class="h-4"></div>');
@@ -484,7 +1176,7 @@ function renderHomeworkHtml(content: string, rawContent: unknown): string | null
     {
       num: 2,
       title: 'Clear Student Instructions',
-      stripe: 'border-orange-500',
+      stripe: 'border-orange-300',
       iconWrap: 'bg-orange-100 text-orange-800',
       icon: '📋',
       body: homework.instructions.trim()
@@ -494,7 +1186,7 @@ function renderHomeworkHtml(content: string, rawContent: unknown): string | null
     {
       num: 3,
       title: 'Practice Questions',
-      stripe: 'border-amber-500',
+      stripe: 'border-amber-300',
       iconWrap: 'bg-amber-100 text-amber-800',
       icon: '❓',
       body: homeworkPracticeQuestionsHtml(homework.practiceQuestions),
@@ -502,7 +1194,7 @@ function renderHomeworkHtml(content: string, rawContent: unknown): string | null
     {
       num: 4,
       title: 'Application-based Tasks',
-      stripe: 'border-yellow-500',
+      stripe: 'border-yellow-300',
       iconWrap: 'bg-yellow-100 text-yellow-900',
       icon: '💡',
       body: homework.applicationTasks.length
@@ -512,7 +1204,7 @@ function renderHomeworkHtml(content: string, rawContent: unknown): string | null
     {
       num: 5,
       title: 'One Creative / Thinking Question',
-      stripe: 'border-violet-500',
+      stripe: 'border-violet-300',
       iconWrap: 'bg-violet-100 text-violet-800',
       icon: '🧠',
       body: homework.creativeThinkingQuestion.trim()
@@ -522,7 +1214,7 @@ function renderHomeworkHtml(content: string, rawContent: unknown): string | null
     {
       num: 6,
       title: 'One Real-life Observation Task',
-      stripe: 'border-cyan-500',
+      stripe: 'border-cyan-300',
       iconWrap: 'bg-cyan-100 text-cyan-800',
       icon: '👁',
       body: homework.realLifeObservationTask.trim()
@@ -532,8 +1224,8 @@ function renderHomeworkHtml(content: string, rawContent: unknown): string | null
     {
       num: 7,
       title: 'Challenge Question',
-      stripe: 'border-rose-500',
-      iconWrap: 'bg-rose-100 text-rose-800',
+      stripe: 'border-amber-300',
+      iconWrap: 'bg-amber-100 text-amber-800',
       icon: '✨',
       body: homework.challengeQuestion.trim()
         ? richTextHtml(homework.challengeQuestion)
@@ -542,7 +1234,7 @@ function renderHomeworkHtml(content: string, rawContent: unknown): string | null
     {
       num: 8,
       title: 'Support Hint for Struggling Learners',
-      stripe: 'border-teal-500',
+      stripe: 'border-teal-300',
       iconWrap: 'bg-teal-100 text-teal-800',
       icon: '💬',
       body: homework.supportHint.trim()
@@ -552,7 +1244,7 @@ function renderHomeworkHtml(content: string, rawContent: unknown): string | null
     {
       num: 9,
       title: 'Answer Hints / Key Points',
-      stripe: 'border-emerald-500',
+      stripe: 'border-emerald-300',
       iconWrap: 'bg-emerald-100 text-emerald-800',
       icon: '🔑',
       body: homework.answerHints.trim()
@@ -562,7 +1254,7 @@ function renderHomeworkHtml(content: string, rawContent: unknown): string | null
     {
       num: 10,
       title: 'Parent Note',
-      stripe: 'border-indigo-500',
+      stripe: 'border-indigo-300',
       iconWrap: 'bg-indigo-100 text-indigo-800',
       icon: '👪',
       body: homework.parentNote.trim()
@@ -599,7 +1291,7 @@ function renderWorksheetHtml(content: string, rawContent: unknown): string | nul
   html += sectionCardHtml({
     sectionNum: 'Section 2',
     title: 'Learning Objectives',
-    stripe: 'border-emerald-500',
+    stripe: 'border-emerald-300',
     iconWrap: 'bg-emerald-100 text-emerald-800',
     iconSvg: '<span>🎯</span>',
     borderColor: 'border-emerald-200/80',
@@ -611,7 +1303,7 @@ function renderWorksheetHtml(content: string, rawContent: unknown): string | nul
   html += sectionCardHtml({
     sectionNum: 'Section 3',
     title: 'Instructions to Students',
-    stripe: 'border-teal-500',
+    stripe: 'border-teal-300',
     iconWrap: 'bg-teal-100 text-teal-800',
     iconSvg: '<span>📋</span>',
     borderColor: 'border-emerald-200/80',
@@ -626,7 +1318,7 @@ function renderWorksheetHtml(content: string, rawContent: unknown): string | nul
     html += sectionCardHtml({
       sectionNum: sec.displayLabel || sec.label || 'Section',
       title: sec.label || 'Questions',
-      stripe: 'border-emerald-500',
+      stripe: 'border-emerald-300',
       iconWrap: 'bg-emerald-100 text-emerald-800',
       iconSvg: '<span>✓</span>',
       borderColor: 'border-emerald-200/80',
@@ -659,7 +1351,7 @@ function renderWorksheetHtml(content: string, rawContent: unknown): string | nul
   html += sectionCardHtml({
     sectionNum: 'Section 9',
     title: 'Answer Key',
-    stripe: 'border-sky-500',
+    stripe: 'border-sky-300',
     iconWrap: 'bg-sky-100 text-sky-800',
     iconSvg: '<span>🔑</span>',
     borderColor: 'border-emerald-200/80',
@@ -672,7 +1364,7 @@ function renderWorksheetHtml(content: string, rawContent: unknown): string | nul
   html += sectionCardHtml({
     sectionNum: 'Section 10',
     title: "Bloom's Level & Difficulty",
-    stripe: 'border-violet-500',
+    stripe: 'border-violet-300',
     iconWrap: 'bg-violet-100 text-violet-800',
     iconSvg: '<span>🎓</span>',
     borderColor: 'border-emerald-200/80',
@@ -689,7 +1381,7 @@ function storyQuestionsHtml(questions: StoryQuestion[], badgeClass: string): str
     .map(
       (q, i) =>
         `<div class="mb-2 flex gap-2 rounded-lg border border-slate-200/80 bg-white/80 px-3 py-2">
-          <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${badgeClass} text-xs font-bold text-white">${i + 1}</span>
+          <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${badgeClass} text-xs font-bold">${i + 1}</span>
           <p class="text-sm text-slate-800 leading-relaxed">${escapeHtml(q.question)}</p>
         </div>`,
     )
@@ -708,7 +1400,7 @@ function renderTeacherStoryPassageSections(story: ParsedStory): string {
     {
       num: 2,
       title: 'Topic and Subtopic Connection',
-      stripe: 'border-cyan-500',
+      stripe: 'border-cyan-300',
       iconWrap: 'bg-cyan-100 text-cyan-800',
       icon: '🎯',
       body: story.topicSubtopicConnection?.trim()
@@ -718,7 +1410,7 @@ function renderTeacherStoryPassageSections(story: ParsedStory): string {
     {
       num: 3,
       title: 'Prior Knowledge Required',
-      stripe: 'border-sky-500',
+      stripe: 'border-sky-300',
       iconWrap: 'bg-sky-100 text-sky-800',
       icon: '📚',
       body: story.priorKnowledgeRequired?.trim()
@@ -728,7 +1420,7 @@ function renderTeacherStoryPassageSections(story: ParsedStory): string {
     {
       num: 4,
       title: "Learning Objectives – Bloom's Taxonomy Aligned",
-      stripe: 'border-violet-500',
+      stripe: 'border-violet-300',
       iconWrap: 'bg-violet-100 text-violet-800',
       icon: '🎯',
       body: story.learningObjectives.length
@@ -738,7 +1430,7 @@ function renderTeacherStoryPassageSections(story: ParsedStory): string {
     {
       num: 5,
       title: 'NCF Competency / Learning Outcome Alignment',
-      stripe: 'border-blue-500',
+      stripe: 'border-blue-300',
       iconWrap: 'bg-blue-100 text-blue-800',
       icon: '🎓',
       body: story.ncfAlignment?.trim()
@@ -748,7 +1440,7 @@ function renderTeacherStoryPassageSections(story: ParsedStory): string {
     {
       num: 6,
       title: 'Vocabulary Warm-up',
-      stripe: 'border-teal-500',
+      stripe: 'border-teal-300',
       iconWrap: 'bg-teal-100 text-teal-800',
       icon: '📝',
       body: story.vocabulary.length
@@ -758,7 +1450,7 @@ function renderTeacherStoryPassageSections(story: ParsedStory): string {
     {
       num: 7,
       title: 'Pre-reading Thinking Prompt',
-      stripe: 'border-amber-500',
+      stripe: 'border-amber-300',
       iconWrap: 'bg-amber-100 text-amber-800',
       icon: '💡',
       body: story.preReadingPrompt?.trim()
@@ -768,7 +1460,7 @@ function renderTeacherStoryPassageSections(story: ParsedStory): string {
     {
       num: 8,
       title: 'Story / Passage Content',
-      stripe: 'border-amber-500',
+      stripe: 'border-amber-300',
       iconWrap: 'bg-amber-100 text-amber-800',
       icon: '📖',
       body: story.passage?.trim()
@@ -778,31 +1470,31 @@ function renderTeacherStoryPassageSections(story: ParsedStory): string {
     {
       num: 9,
       title: 'Read and Recall Questions',
-      stripe: 'border-indigo-500',
+      stripe: 'border-indigo-300',
       iconWrap: 'bg-indigo-100 text-indigo-800',
       icon: '❓',
-      body: storyQuestionsHtml(story.readRecallQuestions, 'bg-indigo-600'),
+      body: storyQuestionsHtml(story.readRecallQuestions, 'bg-indigo-100 text-indigo-800'),
     },
     {
       num: 10,
       title: 'Think and Infer Questions',
-      stripe: 'border-sky-500',
+      stripe: 'border-sky-300',
       iconWrap: 'bg-sky-100 text-sky-800',
       icon: '❓',
-      body: storyQuestionsHtml(story.thinkInferQuestions, 'bg-sky-600'),
+      body: storyQuestionsHtml(story.thinkInferQuestions, 'bg-sky-100 text-sky-800'),
     },
     {
       num: 11,
       title: 'Apply and Connect Questions',
-      stripe: 'border-emerald-500',
+      stripe: 'border-emerald-300',
       iconWrap: 'bg-emerald-100 text-emerald-800',
       icon: '❓',
-      body: storyQuestionsHtml(story.applyConnectQuestions, 'bg-emerald-600'),
+      body: storyQuestionsHtml(story.applyConnectQuestions, 'bg-emerald-100 text-emerald-800'),
     },
     {
       num: 12,
       title: 'Vocabulary and Grammar Practice',
-      stripe: 'border-teal-500',
+      stripe: 'border-teal-300',
       iconWrap: 'bg-teal-100 text-teal-800',
       icon: '📝',
       body:
@@ -815,7 +1507,7 @@ function renderTeacherStoryPassageSections(story: ParsedStory): string {
     {
       num: 13,
       title: 'Creative Response Activity',
-      stripe: 'border-purple-500',
+      stripe: 'border-purple-300',
       iconWrap: 'bg-purple-100 text-purple-800',
       icon: '✨',
       body: story.creativeResponseActivity?.trim()
@@ -825,7 +1517,7 @@ function renderTeacherStoryPassageSections(story: ParsedStory): string {
     {
       num: 14,
       title: 'Answer Key / Suggested Responses',
-      stripe: 'border-yellow-500',
+      stripe: 'border-yellow-300',
       iconWrap: 'bg-yellow-100 text-yellow-900',
       icon: '🔑',
       body:
@@ -838,8 +1530,8 @@ function renderTeacherStoryPassageSections(story: ParsedStory): string {
     {
       num: 15,
       title: 'Common Mistakes to Avoid',
-      stripe: 'border-rose-500',
-      iconWrap: 'bg-rose-100 text-rose-800',
+      stripe: 'border-amber-300',
+      iconWrap: 'bg-amber-100 text-amber-800',
       icon: '⚠️',
       body: story.commonMistakesToAvoid?.trim()
         ? richTextHtml(story.commonMistakesToAvoid)
@@ -848,7 +1540,7 @@ function renderTeacherStoryPassageSections(story: ParsedStory): string {
     {
       num: 16,
       title: 'Differentiation Support',
-      stripe: 'border-emerald-500',
+      stripe: 'border-emerald-300',
       iconWrap: 'bg-emerald-100 text-emerald-800',
       icon: '👥',
       body: story.differentiationSupport?.trim()
@@ -858,7 +1550,7 @@ function renderTeacherStoryPassageSections(story: ParsedStory): string {
     {
       num: 17,
       title: 'Expected Learning Outcomes',
-      stripe: 'border-violet-500',
+      stripe: 'border-violet-300',
       iconWrap: 'bg-violet-100 text-violet-800',
       icon: '🎓',
       body: story.expectedLearningOutcomes?.trim()
@@ -868,7 +1560,7 @@ function renderTeacherStoryPassageSections(story: ParsedStory): string {
     {
       num: 18,
       title: 'Real-life Application',
-      stripe: 'border-orange-500',
+      stripe: 'border-orange-300',
       iconWrap: 'bg-orange-100 text-orange-800',
       icon: '🌍',
       body: story.realLifeApplication?.trim()
@@ -878,7 +1570,7 @@ function renderTeacherStoryPassageSections(story: ParsedStory): string {
     {
       num: 19,
       title: 'Reflection / Exit Ticket',
-      stripe: 'border-fuchsia-500',
+      stripe: 'border-fuchsia-300',
       iconWrap: 'bg-fuchsia-100 text-fuchsia-800',
       icon: '💬',
       body: story.reflection?.trim()
@@ -928,7 +1620,7 @@ function renderStoryHtml(content: string, rawContent: unknown): string | null {
     html += sectionCardHtml({
       sectionNum: `Passage ${p.passageNumber}`,
       title: 'Reading Passage',
-      stripe: 'border-sky-500',
+      stripe: 'border-sky-300',
       iconWrap: 'bg-sky-100 text-sky-800',
       iconSvg: '<span>📖</span>',
       body: richTextHtml(p.paragraph),
@@ -937,7 +1629,7 @@ function renderStoryHtml(content: string, rawContent: unknown): string | null {
       html += sectionCardHtml({
         sectionNum: `Questions ${p.passageNumber}`,
         title: 'Comprehension Questions',
-        stripe: 'border-indigo-500',
+        stripe: 'border-indigo-300',
         iconWrap: 'bg-indigo-100 text-indigo-800',
         iconSvg: '<span>❓</span>',
         body: numberedStepsHtml(p.questions),
@@ -964,49 +1656,49 @@ function renderConceptMasterySections(concept: NormalizedConcept): string {
     {
       num: 1,
       title: 'Simple definition',
-      stripe: 'border-fuchsia-500',
+      stripe: 'border-fuchsia-300',
       iconWrap: 'bg-fuchsia-100 text-fuchsia-800',
       body: conceptSectionBody(concept.simpleDefinition),
     },
     {
       num: 2,
       title: 'Why this concept is important',
-      stripe: 'border-violet-500',
+      stripe: 'border-violet-300',
       iconWrap: 'bg-violet-100 text-violet-800',
       body: conceptSectionBody(concept.whyImportant),
     },
     {
       num: 3,
       title: 'Prior knowledge needed',
-      stripe: 'border-purple-500',
+      stripe: 'border-purple-300',
       iconWrap: 'bg-purple-100 text-purple-800',
       body: conceptSectionBody(concept.priorKnowledge),
     },
     {
       num: 4,
       title: 'Step-by-step explanation',
-      stripe: 'border-indigo-500',
+      stripe: 'border-indigo-300',
       iconWrap: 'bg-indigo-100 text-indigo-800',
       body: conceptSectionBody(concept.explanation),
     },
     {
       num: 5,
       title: 'Diagram / visualisation suggestion',
-      stripe: 'border-blue-500',
+      stripe: 'border-blue-300',
       iconWrap: 'bg-blue-100 text-blue-800',
       body: conceptSectionBody(concept.diagramSuggestion),
     },
     {
       num: 6,
       title: 'Real-life examples',
-      stripe: 'border-cyan-500',
+      stripe: 'border-cyan-300',
       iconWrap: 'bg-cyan-100 text-cyan-800',
       body: conceptSectionBody(concept.realLifeExamples),
     },
     {
       num: 7,
       title: 'Common misconceptions and corrections',
-      stripe: 'border-amber-500',
+      stripe: 'border-amber-300',
       iconWrap: 'bg-amber-100 text-amber-900',
       body: concept.misconceptions.length
         ? bulletListHtml(concept.misconceptions, 'text-amber-700')
@@ -1015,16 +1707,16 @@ function renderConceptMasterySections(concept: NormalizedConcept): string {
     {
       num: 8,
       title: 'Concept check questions',
-      stripe: 'border-rose-500',
-      iconWrap: 'bg-rose-100 text-rose-800',
+      stripe: 'border-amber-300',
+      iconWrap: 'bg-amber-100 text-amber-800',
       body: concept.conceptCheckQuestions.length
-        ? numberedStepsHtml(concept.conceptCheckQuestions, 'bg-rose-600')
+        ? numberedStepsHtml(concept.conceptCheckQuestions, 'bg-amber-100 text-amber-800')
         : emptySectionPlaceholderHtml(),
     },
     {
       num: 9,
       title: 'Key points to remember',
-      stripe: 'border-emerald-500',
+      stripe: 'border-emerald-300',
       iconWrap: 'bg-emerald-100 text-emerald-800',
       body: concept.keyPoints.length
         ? checkListHtml(concept.keyPoints)
@@ -1033,21 +1725,21 @@ function renderConceptMasterySections(concept: NormalizedConcept): string {
     {
       num: 10,
       title: 'Exam tips',
-      stripe: 'border-sky-500',
+      stripe: 'border-sky-300',
       iconWrap: 'bg-sky-100 text-sky-800',
       body: conceptSectionBody(concept.examTips),
     },
     {
       num: 11,
       title: 'Higher-order thinking question',
-      stripe: 'border-pink-500',
+      stripe: 'border-pink-300',
       iconWrap: 'bg-pink-100 text-pink-800',
       body: conceptSectionBody(concept.hotsQuestion),
     },
     {
       num: 12,
       title: 'Quick self-reflection prompt',
-      stripe: 'border-fuchsia-600',
+      stripe: 'border-fuchsia-300',
       iconWrap: 'bg-fuchsia-50 text-fuchsia-900',
       body: conceptSectionBody(concept.reflectionPrompt),
     },
@@ -1104,6 +1796,10 @@ const STRUCTURED_RENDERERS: Record<
   'story-passage-creator': (c, r) => renderStoryHtml(c, r),
   'reading-practice-room': (c, r) => renderStoryHtml(c, r),
   'concept-mastery-helper': (c, r) => renderConceptMasteryHtml(c, r),
+  'activity-project-generator': renderActivityProjectHtml,
+  'project-idea-lab': renderActivityProjectHtml,
+  'flashcard-generator': renderFlashcardHtml,
+  'my-study-decks': renderFlashcardHtml,
 };
 
 const FULL_STRUCTURED_MARKDOWN_TOOLS = new Set([
@@ -1112,6 +1808,13 @@ const FULL_STRUCTURED_MARKDOWN_TOOLS = new Set([
   'homework-creator',
   'story-passage-creator',
   'reading-practice-room',
+  'activity-project-generator',
+  'project-idea-lab',
+  'lesson-planner',
+  'daily-class-plan-maker',
+  'exam-question-paper-generator',
+  'flashcard-generator',
+  'my-study-decks',
 ]);
 
 export function tryRenderStructuredAiToolHtml(

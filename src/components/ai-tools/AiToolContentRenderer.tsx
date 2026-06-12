@@ -97,15 +97,19 @@ export default function AiToolContentRenderer({
   const useNativeActivity = useMemo(() => {
     if (toolType !== 'activity-project-generator' && toolType !== 'project-idea-lab') return false;
     if (hasFullTemplateMarkdown) return false;
+    // Teacher activity uses the colored WebView renderer (same section tints as student tools).
+    if (toolType === 'activity-project-generator' && variant === 'teacher') return false;
     const mode = toolType === 'project-idea-lab' ? 'student' : variant;
     return activitiesPayloadIsComplete(activitiesFromRaw(rawContent), cleaned, mode);
   }, [toolType, cleaned, rawContent, hasFullTemplateMarkdown, variant]);
 
   const useNativeFlashcard = useMemo(() => {
     if (toolType !== 'my-study-decks' && toolType !== 'flashcard-generator') return false;
+    // Teacher flashcards use the colored WebView renderer (tinted section cards).
+    if (toolType === 'flashcard-generator' && variant === 'teacher') return false;
     const { cards } = resolveFlashcardsFromPayload(cleaned, rawContent);
     return flashcardsHaveVisibleBody(cards);
-  }, [toolType, cleaned, rawContent]);
+  }, [toolType, cleaned, rawContent, variant]);
 
   if (useNativeStudyGuide) {
     return <SmartStudyGuideViewer content={cleaned} rawContent={rawContent} />;

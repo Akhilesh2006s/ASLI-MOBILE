@@ -100,7 +100,7 @@ export const STUDENT_TOOL_CONFIGS: Record<string, StudentToolConfig> = {
     name: 'Mock Test Builder',
     description: '12-section mock tests with question paper, answer key, solutions, and remedial guidance',
     icon: 'checkmark-circle',
-    color: '#ef4444',
+    color: '#6366f1',
     fields: cascadeFields([
       { name: 'questionCount', label: 'Number of Questions', type: 'number', placeholder: '20' },
       { name: 'duration', label: 'Test Duration (minutes)', type: 'number', placeholder: '90' },
@@ -111,7 +111,7 @@ export const STUDENT_TOOL_CONFIGS: Record<string, StudentToolConfig> = {
     name: 'Mock Test Builder',
     description: 'Legacy route — same as Mock Test Builder',
     icon: 'checkmark-circle',
-    color: '#ef4444',
+    color: '#6366f1',
     fields: cascadeFields([
       { name: 'questionCount', label: 'Number of Questions', type: 'number', placeholder: '20' },
       { name: 'duration', label: 'Exam Duration (minutes)', type: 'number', placeholder: '90' },

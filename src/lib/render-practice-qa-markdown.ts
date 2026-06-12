@@ -1,4 +1,5 @@
 import { formatInlineMarkdown, renderMarkdown } from './render-teacher-markdown';
+import { lightDocHeaderHtml } from './ai-tool-html-primitives';
 import {
   parseMarkdownDocTitle,
   parseMarkdownSectionHeading,
@@ -149,10 +150,11 @@ export function renderPracticeQaMarkdown(text: string): string {
   const parts = sortSectionHtmlEntries(sectionEntries);
 
   const headerHtml = shouldRenderDocHeader(docTitle, sectionEntries)
-    ? `<header class="rounded-2xl bg-gradient-to-r from-emerald-700 via-green-600 to-teal-600 px-5 py-4 mb-4 text-white shadow-lg">` +
-      `<p class="text-xs font-semibold uppercase tracking-widest text-emerald-100 mb-1">Smart Q&amp;A Practice</p>` +
-      `<h3 class="text-lg font-bold">${formatInlineMarkdown(docTitle)}</h3>` +
-      `</header>`
+    ? lightDocHeaderHtml({
+        eyebrow: 'Smart Q&A Practice',
+        titleHtml: formatInlineMarkdown(docTitle),
+        theme: 'emerald',
+      })
     : '';
 
   return (

@@ -8,19 +8,19 @@ const PALETTE: Record<string, Partial<Record<number | string, string>>> = {
   gray: { 50: '#f9fafb', 100: '#f3f4f6', 200: '#e5e7eb', 300: '#d1d5db', 700: '#374151', 800: '#1f2937', 900: '#111827' },
   stone: { 200: '#e7e5e4', 400: '#a8a29e', 500: '#78716c', 700: '#44403c', 900: '#1c1917' },
   rose: {
-    50: '#fff1f2',
-    100: '#ffe4e6',
-    200: '#fecdd3',
-    300: '#fda4af',
-    400: '#fb7185',
-    500: '#f43f5e',
-    600: '#e11d48',
-    700: '#be123c',
-    800: '#9f1239',
-    900: '#881337',
-    950: '#4c0519',
+    50: '#eef2ff',
+    100: '#e0e7ff',
+    200: '#c7d2fe',
+    300: '#a5b4fc',
+    400: '#818cf8',
+    500: '#6366f1',
+    600: '#4f46e5',
+    700: '#4338ca',
+    800: '#3730a3',
+    900: '#312e81',
+    950: '#1e1b4b',
   },
-  red: { 600: '#dc2626' },
+  red: { 600: '#4f46e5' },
   orange: { 50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 500: '#f97316', 600: '#ea580c', 800: '#9a3412', 900: '#7c2d12' },
   amber: {
     50: '#fffbeb',
@@ -131,24 +131,24 @@ function colorUtilities(): string {
 
 const GRADIENT_RULES = `
 .bg-gradient-to-b.from-white.to-slate-50\\/30{background:linear-gradient(to bottom,#fff,rgba(248,250,252,.3))}
-.bg-gradient-to-br.from-white.to-rose-50\\/40{background:linear-gradient(to bottom right,#fff,rgba(255,241,242,.4))}
-.bg-gradient-to-r.from-rose-700.via-red-600.to-rose-800{background:linear-gradient(to right,#be123c,#dc2626,#9f1239)}
-.bg-gradient-to-r.from-blue-700.via-sky-600.to-indigo-600{background:linear-gradient(to right,#1d4ed8,#0284c7,#4f46e5)}
-.bg-gradient-to-r.from-emerald-700.via-green-600.to-teal-600{background:linear-gradient(to right,#047857,#16a34a,#0d9488)}
-.bg-gradient-to-r.from-violet-700.via-purple-600.to-indigo-600{background:linear-gradient(to right,#6d28d9,#9333ea,#4f46e5)}
-.bg-gradient-to-r.from-amber-700.via-orange-600.to-amber-600{background:linear-gradient(to right,#b45309,#ea580c,#d97706)}
-.bg-gradient-to-r.from-indigo-700.via-violet-600.to-cyan-600{background:linear-gradient(to right,#4338ca,#7c3aed,#0891b2)}
-.bg-gradient-to-r.from-rose-700.via-red-600.to-orange-600{background:linear-gradient(to right,#be123c,#dc2626,#ea580c)}
-.bg-gradient-to-br.from-indigo-600.to-violet-600{background:linear-gradient(to bottom right,#4f46e5,#7c3aed)}
-.bg-gradient-to-br.from-orange-500.to-amber-500{background:linear-gradient(to bottom right,#f97316,#f59e0b)}
-.bg-gradient-to-br.from-violet-600.to-purple-600{background:linear-gradient(to bottom right,#7c3aed,#9333ea)}
-.bg-gradient-to-br.from-blue-600.to-sky-600{background:linear-gradient(to bottom right,#2563eb,#0284c7)}
-.bg-gradient-to-br.from-amber-500.to-orange-500{background:linear-gradient(to bottom right,#f59e0b,#f97316)}
-.bg-gradient-to-r.from-indigo-500.to-violet-500{background:linear-gradient(to right,#6366f1,#8b5cf6)}
-.bg-gradient-to-r.from-orange-500.to-amber-500{background:linear-gradient(to right,#f97316,#f59e0b)}
-.bg-gradient-to-r.from-violet-500.to-purple-500{background:linear-gradient(to right,#8b5cf6,#9333ea)}
-.bg-gradient-to-r.from-blue-500.to-sky-500{background:linear-gradient(to right,#3b82f6,#0ea5e9)}
-.bg-gradient-to-r.from-amber-500.to-orange-500{background:linear-gradient(to right,#f59e0b,#f97316)}
+.bg-gradient-to-br.from-white.to-rose-50\\/40{background:linear-gradient(to bottom right,#fff,rgba(238,242,255,.4))}
+.bg-gradient-to-r.from-rose-700.via-red-600.to-rose-800{background:linear-gradient(to right,#eef2ff,#fff,#e0e7ff)}
+.bg-gradient-to-r.from-blue-700.via-sky-600.to-indigo-600{background:linear-gradient(to right,#eff6ff,#fff,#eef2ff)}
+.bg-gradient-to-r.from-emerald-700.via-green-600.to-teal-600{background:linear-gradient(to right,#ecfdf5,#fff,#f0fdfa)}
+.bg-gradient-to-r.from-violet-700.via-purple-600.to-indigo-600{background:linear-gradient(to right,#f5f3ff,#fff,#eef2ff)}
+.bg-gradient-to-r.from-amber-700.via-orange-600.to-amber-600{background:linear-gradient(to right,#fffbeb,#fff,#fff7ed)}
+.bg-gradient-to-r.from-indigo-700.via-violet-600.to-cyan-600{background:linear-gradient(to right,#eef2ff,#fff,#ecfeff)}
+.bg-gradient-to-r.from-rose-700.via-red-600.to-orange-600{background:linear-gradient(to right,#eef2ff,#fff,#fffbeb)}
+.bg-gradient-to-br.from-indigo-600.to-violet-600{background:linear-gradient(to bottom right,#eef2ff,#ede9fe)}
+.bg-gradient-to-br.from-orange-500.to-amber-500{background:linear-gradient(to bottom right,#fff7ed,#fffbeb)}
+.bg-gradient-to-br.from-violet-600.to-purple-600{background:linear-gradient(to bottom right,#f5f3ff,#ede9fe)}
+.bg-gradient-to-br.from-blue-600.to-sky-600{background:linear-gradient(to bottom right,#eff6ff,#e0f2fe)}
+.bg-gradient-to-br.from-amber-500.to-orange-500{background:linear-gradient(to bottom right,#fffbeb,#ffedd5)}
+.bg-gradient-to-r.from-indigo-500.to-violet-500{background:linear-gradient(to right,#eef2ff,#ede9fe)}
+.bg-gradient-to-r.from-orange-500.to-amber-500{background:linear-gradient(to right,#fff7ed,#fffbeb)}
+.bg-gradient-to-r.from-violet-500.to-purple-500{background:linear-gradient(to right,#f5f3ff,#ede9fe)}
+.bg-gradient-to-r.from-blue-500.to-sky-500{background:linear-gradient(to right,#eff6ff,#e0f2fe)}
+.bg-gradient-to-r.from-amber-500.to-orange-500{background:linear-gradient(to right,#fffbeb,#ffedd5)}
 `;
 
 const BASE_RULES = `

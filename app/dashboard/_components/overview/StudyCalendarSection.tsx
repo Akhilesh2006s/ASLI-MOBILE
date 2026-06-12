@@ -1,11 +1,16 @@
 import React, { memo, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import GlassCard from '../../../../src/components/student/GlassCard';
+import StudentExamPreviewCard from '../../../../src/components/student/StudentExamPreviewCard';
 import {
   buildExamCalendarEntries,
+  buildDayExamMarkers,
   formatCalendarDateKey,
   parseCalendarDate,
+  type ExamCalendarEntry,
+  type ExamDayRole,
 } from '../../../../src/lib/exam-calendar-entries';
 import { STUDENT, STUDENT_RADIUS } from '../../../../src/theme/student';
 
@@ -20,12 +25,24 @@ type CalendarEntry = {
   endTime?: string;
   teacher?: string;
   room?: string;
+  examDayRole?: ExamDayRole;
+  windowStart?: Date;
+  windowEnd?: Date;
 };
+
+const EXAM_MARKER_COLORS = {
+  start: '#059669',
+  end: '#e11d48',
+  middle: '#d97706',
+  single: '#2563eb',
+  quiz: '#f59e0b',
+} as const;
 
 type Props = {
   incompleteQuizzes: any[];
   exams: any[];
-  completedExamIds?: Set<string>;
+  examAttemptCounts?: Record<string, number>;
+  studentClassNumber?: string | number | null;
   onOpenQuiz: (quiz: any) => void;
   onOpenExam: (examId: string) => void;
 };
@@ -33,7 +50,8 @@ type Props = {
 function StudyCalendarSectionComponent({
   incompleteQuizzes,
   exams,
-  completedExamIds,
+  examAttemptCounts = {},
+  studentClassNumber,
   onOpenQuiz,
   onOpenExam,
 }: Props) {
@@ -81,6 +99,14 @@ function StudyCalendarSectionComponent({
     return acc;
   }, [calendarEntries]);
 
+  const dayMarkersByDate = useMemo(() => {
+    const acc: Record<string, ReturnType<typeof buildDayExamMarkers>> = {};
+    Object.entries(entriesByDate).forEach(([key, entries]) => {
+      acc[key] = buildDayExamMarkers(entries);
+    });
+    return acc;
+  }, [entriesByDate]);
+
   const selectedDateEntries = useMemo(() => {
     const key = formatCalendarDateKey(selectedDate);
     return (entriesByDate[key] || []).sort((a, b) => a.date.getTime() - b.date.getTime());
@@ -122,7 +148,9 @@ function StudyCalendarSectionComponent({
         <View style={styles.calHeader}>
           <View>
             <Text style={styles.calTitle}>Study Calendar</Text>
-            <Text style={styles.calSub}>Quizzes by due date; exams on their scheduled dates</Text>
+            <Text style={styles.calSub}>
+              Quizzes by due date; exam opens (green), active (amber), and closes (rose)
+            </Text>
           </View>
           <View style={styles.monthNav}>
             <TouchableOpacity
@@ -180,15 +208,39 @@ function StudyCalendarSectionComponent({
               );
             }
             const dayKey = formatCalendarDateKey(day);
-            const count = (entriesByDate[dayKey] || []).length;
+            const dayMarkers = dayMarkersByDate[dayKey];
+            const count = dayMarkers?.totalCount ?? 0;
             const isSelected = formatCalendarDateKey(selectedDate) === dayKey;
             const isToday = formatCalendarDateKey(new Date()) === dayKey;
+            const hasExamStart = (dayMarkers?.examStartCount ?? 0) > 0;
+            const hasExamEnd = (dayMarkers?.examEndCount ?? 0) > 0;
+            const hasExamSingle = (dayMarkers?.examSingleCount ?? 0) > 0;
+            const hasExamMiddle = (dayMarkers?.examMiddleCount ?? 0) > 0;
+            const examDots: { key: string; color: string }[] = [];
+            if (dayMarkers) {
+              for (let i = 0; i < dayMarkers.examStartCount; i += 1) {
+                examDots.push({ key: `start-${i}`, color: EXAM_MARKER_COLORS.start });
+              }
+              for (let i = 0; i < dayMarkers.examEndCount; i += 1) {
+                examDots.push({ key: `end-${i}`, color: EXAM_MARKER_COLORS.end });
+              }
+              for (let i = 0; i < dayMarkers.examMiddleCount; i += 1) {
+                examDots.push({ key: `middle-${i}`, color: EXAM_MARKER_COLORS.middle });
+              }
+              for (let i = 0; i < dayMarkers.examSingleCount; i += 1) {
+                examDots.push({ key: `single-${i}`, color: EXAM_MARKER_COLORS.single });
+              }
+            }
             return (
               <TouchableOpacity
                 key={dayKey}
                 style={[
                   styles.dayCell,
                   isTablet && dayCellSize ? { width: dayCellSize, height: dayCellSize } : null,
+                  hasExamMiddle && !isSelected && !hasExamStart && !hasExamEnd ? styles.dayExamMiddle : null,
+                  hasExamSingle && !isSelected ? styles.dayExamSingle : null,
+                  hasExamStart && !isSelected && !hasExamSingle ? styles.dayExamStart : null,
+                  hasExamEnd && !isSelected && !hasExamSingle ? styles.dayExamEnd : null,
                   isSelected && styles.daySelected,
                   isToday && !isSelected && styles.dayToday,
                 ]}
@@ -196,7 +248,26 @@ function StudyCalendarSectionComponent({
               >
                 <Text style={[styles.dayNum, isSelected && styles.dayNumSelected]}>{day.getDate()}</Text>
                 {isToday && !isSelected ? <View style={styles.todayDot} /> : null}
-                {count > 0 ? (
+                {examDots.length > 0 ? (
+                  <View style={styles.examMarkerRow}>
+                    {examDots.slice(0, 3).map((dot) => (
+                      <View
+                        key={dot.key}
+                        style={[
+                          styles.examMarkerDot,
+                          { backgroundColor: isSelected ? STUDENT.textOnPrimary : dot.color },
+                        ]}
+                      />
+                    ))}
+                  </View>
+                ) : null}
+                {(dayMarkers?.quizCount ?? 0) > 0 ? (
+                  <View style={[styles.badge, isSelected && styles.badgeSelected]}>
+                    <Text style={[styles.badgeText, isSelected && styles.badgeTextSelected]}>
+                      {dayMarkers?.quizCount}
+                    </Text>
+                  </View>
+                ) : count > 0 && examDots.length === 0 ? (
                   <View style={[styles.badge, isSelected && styles.badgeSelected]}>
                     <Text style={[styles.badgeText, isSelected && styles.badgeTextSelected]}>{count}</Text>
                   </View>
@@ -204,6 +275,24 @@ function StudyCalendarSectionComponent({
               </TouchableOpacity>
             );
           })}
+        </View>
+        <View style={styles.legendRow}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: EXAM_MARKER_COLORS.start }]} />
+            <Text style={styles.legendText}>Opens</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: EXAM_MARKER_COLORS.middle }]} />
+            <Text style={styles.legendText}>Active</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: EXAM_MARKER_COLORS.end }]} />
+            <Text style={styles.legendText}>Closes</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: EXAM_MARKER_COLORS.quiz }]} />
+            <Text style={styles.legendText}>Quiz</Text>
+          </View>
         </View>
       </GlassCard>
   );
@@ -223,25 +312,27 @@ function StudyCalendarSectionComponent({
           </View>
         ) : (
           selectedDateEntries.map((entry) => {
-            const examCompleted =
-              entry.type === 'exam' && completedExamIds?.has(String(entry.id));
-            const badgeStyle =
-              entry.type === 'exam'
-                ? examCompleted
-                  ? styles.badgeExamCompleted
-                  : styles.badgeExam
-                : entry.type === 'quiz'
-                  ? styles.badgeQuiz
-                  : styles.badgeClass;
-            const badgeLabel =
-              entry.type === 'exam'
-                ? examCompleted
-                  ? 'COMPLETED'
-                  : 'EXAM'
-                : entry.type.toUpperCase();
+            if (entry.type === 'exam') {
+              const examEntry = entry as ExamCalendarEntry;
+              const examId = String(examEntry.id || examEntry.source?._id || examEntry.source?.id || '');
+              const usedAttempts = examAttemptCounts[examId] || 0;
+              return (
+                <StudentExamPreviewCard
+                  key={`${entry.type}-${entry.id}-${entry.date.getTime()}-${entry.examDayRole || 'exam'}`}
+                  exam={examEntry.source || examEntry}
+                  examDayRole={examEntry.examDayRole}
+                  usedAttempts={usedAttempts}
+                  studentClassNumber={studentClassNumber}
+                  hasAttempted={usedAttempts > 0}
+                  onViewInExams={() => onOpenExam(examId)}
+                  onStartPress={() => router.push(`/exam/${examId}`)}
+                />
+              );
+            }
+
             return (
               <TouchableOpacity
-                key={`${entry.type}-${entry.id}-${entry.date.getTime()}`}
+                key={`${entry.type}-${entry.id}-${entry.date.getTime()}-quiz`}
                 style={styles.eventRow}
                 onPress={() => openEntry(entry)}
                 activeOpacity={0.85}
@@ -250,15 +341,8 @@ function StudyCalendarSectionComponent({
                   <Text style={styles.eventTitle} numberOfLines={1}>
                     {entry.title}
                   </Text>
-                  <View style={[styles.typeBadge, badgeStyle]}>
-                    <Text
-                      style={[
-                        styles.typeBadgeText,
-                        examCompleted && styles.typeBadgeTextCompleted,
-                      ]}
-                    >
-                      {badgeLabel}
-                    </Text>
+                  <View style={[styles.typeBadge, styles.badgeQuiz]}>
+                    <Text style={styles.typeBadgeText}>QUIZ</Text>
                   </View>
                 </View>
                 <Text style={styles.eventSubject}>{entry.subject}</Text>
@@ -317,6 +401,10 @@ const styles = StyleSheet.create({
   },
   daySelected: { backgroundColor: STUDENT.primary },
   dayToday: { backgroundColor: STUDENT.bgAccent, borderWidth: 1, borderColor: STUDENT.primaryLight },
+  dayExamMiddle: { backgroundColor: '#fff7ed', borderWidth: 1, borderColor: '#fed7aa' },
+  dayExamStart: { borderTopWidth: 3, borderTopColor: EXAM_MARKER_COLORS.start },
+  dayExamEnd: { borderBottomWidth: 3, borderBottomColor: EXAM_MARKER_COLORS.end },
+  dayExamSingle: { borderWidth: 2, borderColor: EXAM_MARKER_COLORS.single },
   todayDot: {
     position: 'absolute',
     top: 4,
@@ -339,6 +427,32 @@ const styles = StyleSheet.create({
   badgeSelected: { backgroundColor: STUDENT.textOnPrimary },
   badgeText: { fontSize: 9, fontWeight: '800', color: STUDENT.warning },
   badgeTextSelected: { color: STUDENT.primary },
+  examMarkerRow: {
+    position: 'absolute',
+    bottom: 3,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 3,
+  },
+  examMarkerDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  legendRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: STUDENT.surfaceBorder,
+  },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  legendDot: { width: 8, height: 8, borderRadius: 4 },
+  legendText: { fontSize: 11, color: STUDENT.textMuted, fontWeight: '600' },
   eventsTitle: { fontSize: 16, fontWeight: '800', color: STUDENT.text },
   eventsSub: { fontSize: 12, color: STUDENT.textMuted, marginTop: 4, marginBottom: 10 },
   eventsEmpty: { alignItems: 'center', paddingVertical: 16, gap: 6 },
@@ -354,12 +468,8 @@ const styles = StyleSheet.create({
   eventTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   eventTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: STUDENT.text },
   typeBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  badgeExam: { backgroundColor: `${STUDENT.danger}18` },
-  badgeExamCompleted: { backgroundColor: '#d1fae5' },
   badgeQuiz: { backgroundColor: `${STUDENT.warning}18` },
-  badgeClass: { backgroundColor: STUDENT.accentSoft },
   typeBadgeText: { fontSize: 10, fontWeight: '800', color: STUDENT.textSecondary },
-  typeBadgeTextCompleted: { color: '#047857' },
   eventSubject: { fontSize: 12, color: STUDENT.textMuted, marginTop: 4 },
   eventTime: { fontSize: 11, color: STUDENT.textMuted, marginTop: 2 },
 });

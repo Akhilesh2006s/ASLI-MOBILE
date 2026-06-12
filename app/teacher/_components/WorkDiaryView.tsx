@@ -385,7 +385,7 @@ export default function WorkDiaryView() {
           <Ionicons name="bookmark" size={20} color="#fff" />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>New daily entry</Text>
+          <Text style={styles.headerTitle}>New diary entry</Text>
           <Text style={styles.headerSub}>
             Log what you covered — visible to your students and school admin.
           </Text>

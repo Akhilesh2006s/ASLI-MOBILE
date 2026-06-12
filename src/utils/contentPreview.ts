@@ -361,7 +361,7 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
       background: #fff;
       box-shadow: 0 2px 8px rgba(0,0,0,0.35);
     }
-    #error { color: #fca5a5; padding: 24px; text-align: center; font-family: sans-serif; font-size: 14px; }
+    #error { display: none; color: #fca5a5; padding: 24px; text-align: center; font-family: sans-serif; font-size: 14px; }
     #progress { color: #cbd5e1; text-align: center; font-size: 12px; padding: 8px; font-family: sans-serif; }
   </style>
 </head>
@@ -375,6 +375,11 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
       const progressEl = () => document.getElementById('progress');
       const pagesEl = () => document.getElementById('pages');
 
+      function clearError() {
+        const err = document.getElementById('error');
+        if (err) err.remove();
+      }
+
       function showError(msg) {
         const s = statusEl();
         const p = progressEl();
@@ -382,11 +387,21 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
         if (p) p.remove();
         const errEl = document.createElement('div');
         errEl.id = 'error';
+        errEl.style.display = 'block';
         errEl.textContent = msg || 'Could not display this PDF.';
         document.body.appendChild(errEl);
+      }
+
+      /** In the app WebView, keep loading UI and let native retry — never flash HTML errors. */
+      function reportPdfFailure(msg) {
+        clearError();
         if (window.ReactNativeWebView) {
+          const s = statusEl();
+          if (s) s.textContent = 'Opening document…';
           window.ReactNativeWebView.postMessage('pdf-error');
+          return;
         }
+        showError(msg);
       }
 
       async function renderPdf(pdf) {
@@ -438,8 +453,9 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
       }
 
       async function openPdf(getDocumentParams) {
+        clearError();
         if (typeof pdfjsLib === 'undefined') {
-          showError('PDF viewer failed to load. Check your internet connection.');
+          reportPdfFailure('PDF viewer failed to load. Check your internet connection.');
           return false;
         }
         const s = statusEl();
@@ -449,7 +465,7 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
           const pdf = await pdfjsLib.getDocument(getDocumentParams).promise;
           return await renderPdf(pdf);
         } catch (err) {
-          showError('Could not display this PDF. Please try again.');
+          reportPdfFailure('Could not display this PDF. Please try again.');
           return false;
         }
       }

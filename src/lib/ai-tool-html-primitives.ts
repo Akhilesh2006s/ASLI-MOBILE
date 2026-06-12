@@ -1,5 +1,62 @@
 import { renderMarkdown } from './render-teacher-markdown';
 
+type LightHeaderTheme = 'blue' | 'amber' | 'indigo' | 'emerald' | 'violet' | 'slate';
+
+const LIGHT_HEADER_THEMES: Record<
+  LightHeaderTheme,
+  { border: string; bg: string; eyebrow: string }
+> = {
+  blue: {
+    border: 'border-blue-200',
+    bg: 'bg-gradient-to-br from-blue-50 via-white to-sky-50',
+    eyebrow: 'text-blue-600',
+  },
+  amber: {
+    border: 'border-amber-200',
+    bg: 'bg-gradient-to-br from-amber-50 via-white to-orange-50',
+    eyebrow: 'text-amber-700',
+  },
+  indigo: {
+    border: 'border-indigo-200',
+    bg: 'bg-gradient-to-br from-indigo-50 via-white to-slate-50',
+    eyebrow: 'text-indigo-600',
+  },
+  slate: {
+    border: 'border-slate-200',
+    bg: 'bg-gradient-to-br from-slate-50 via-white to-indigo-50',
+    eyebrow: 'text-indigo-600',
+  },
+  emerald: {
+    border: 'border-emerald-200',
+    bg: 'bg-gradient-to-br from-emerald-50 via-white to-teal-50',
+    eyebrow: 'text-emerald-700',
+  },
+  violet: {
+    border: 'border-violet-200',
+    bg: 'bg-gradient-to-br from-violet-50 via-white to-indigo-50',
+    eyebrow: 'text-violet-600',
+  },
+};
+
+/** Soft document header for AI tool output — light background, readable dark text. */
+export function lightDocHeaderHtml(opts: {
+  eyebrow: string;
+  titleHtml: string;
+  theme: LightHeaderTheme;
+  titleTag?: 'h1' | 'h3';
+  extraClass?: string;
+}): string {
+  const t = LIGHT_HEADER_THEMES[opts.theme];
+  const tag = opts.titleTag ?? 'h3';
+  const titleSize = tag === 'h1' ? 'text-xl' : 'text-lg';
+  const extra = opts.extraClass ? ` ${opts.extraClass}` : '';
+  return (
+    `<header class="rounded-2xl border ${t.border} ${t.bg} px-4 py-4 mb-4 shadow-sm${extra}">` +
+    `<p class="text-[10px] font-semibold uppercase tracking-widest ${t.eyebrow} mb-1">${escapeHtml(opts.eyebrow)}</p>` +
+    `<${tag} class="${titleSize} font-bold text-slate-800 mt-1">${opts.titleHtml}</${tag}>` +
+    `</header>`
+  );
+}
 export function emptySectionPlaceholderHtml(
   message = 'Not included in this generation.'
 ): string {
@@ -36,6 +93,25 @@ export function sectionNumberIconSvg(num: number): string {
   return `<span class="text-sm font-bold tabular-nums leading-none">${escapeHtml(label)}</span>`;
 }
 
+function themeFromStripe(stripe: string) {
+  const match = stripe.match(/border-([a-z]+)-(\d+)/);
+  if (!match) {
+    return {
+      border: 'border-slate-200/80',
+      bg: 'bg-slate-50/80',
+      label: 'text-slate-500',
+      title: 'text-slate-900',
+    };
+  }
+  const color = match[1];
+  return {
+    border: `border-${color}-200/80`,
+    bg: `bg-${color}-50/80`,
+    label: `text-${color}-600`,
+    title: `text-${color}-900`,
+  };
+}
+
 export function sectionCardHtml(opts: {
   sectionNum: string;
   title: string;
@@ -43,21 +119,28 @@ export function sectionCardHtml(opts: {
   iconWrap: string;
   iconSvg: string;
   borderColor?: string;
+  bg?: string;
+  labelClass?: string;
+  titleClass?: string;
   body: string;
 }): string {
-  const border = opts.borderColor || 'border-stone-200/90';
+  const derived = themeFromStripe(opts.stripe);
+  const border = opts.borderColor || derived.border;
+  const bg = opts.bg || derived.bg;
+  const labelClass = opts.labelClass || derived.label;
+  const titleClass = opts.titleClass || derived.title;
   return `
-<section class="h-fit w-full rounded-2xl bg-white border ${border} shadow-sm shadow-stone-200/40 overflow-hidden mb-3">
-  <div class="flex items-center gap-2.5 px-3 py-2.5 border-l-[5px] ${opts.stripe}">
+<section class="mb-3 overflow-hidden rounded-xl border ${border} ${bg} shadow-sm">
+  <header class="flex items-center gap-2.5 border-b border-slate-100/80 bg-white/60 px-3 py-2.5 border-l-[5px] ${opts.stripe}">
     <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${opts.iconWrap}">
       ${opts.iconSvg}
     </div>
     <div class="min-w-0">
-      <p class="text-[10px] font-bold uppercase tracking-wider text-stone-400">${escapeHtml(opts.sectionNum)}</p>
-      <h4 class="text-sm font-bold text-stone-900 leading-tight">${escapeHtml(opts.title)}</h4>
+      <p class="text-[10px] font-bold uppercase tracking-wider ${labelClass}">${escapeHtml(opts.sectionNum)}</p>
+      <h4 class="text-sm font-bold ${titleClass} leading-tight">${escapeHtml(opts.title)}</h4>
     </div>
-  </div>
-  <div class="px-3 pb-3 pt-1 text-sm leading-relaxed text-stone-700">${opts.body}</div>
+  </header>
+  <div class="px-3 py-2 text-sm leading-relaxed text-slate-700">${opts.body}</div>
 </section>`;
 }
 
@@ -77,20 +160,20 @@ export function checkListHtml(items: string[]): string {
     .map(
       (line) =>
         `<li class="flex gap-2 rounded-lg bg-violet-50/80 px-3 py-2 text-sm text-slate-800">
-          <span class="shrink-0 text-violet-600 mt-0.5">✓</span>
+          <span class="shrink-0 text-violet-500 mt-0.5">✓</span>
           <span>${escapeHtml(line)}</span>
         </li>`
     )
     .join('')}</ul>`;
 }
 
-export function numberedStepsHtml(items: string[], color = 'bg-emerald-600'): string {
+export function numberedStepsHtml(items: string[], color = 'bg-emerald-100 text-emerald-800'): string {
   if (!items.length) return richTextHtml('');
   return `<ol class="space-y-2.5 list-none pl-0 m-0">${items
     .map(
       (step, i) =>
         `<li class="flex gap-3 text-sm leading-relaxed text-stone-700">
-          <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${color} text-xs font-semibold text-white">${i + 1}</span>
+          <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${color} text-xs font-semibold">${i + 1}</span>
           <span class="pt-1 min-w-0 flex-1">${escapeHtml(step)}</span>
         </li>`
     )
@@ -150,52 +233,52 @@ export function heroTitleCardHtml(opts: {
     indigo: {
       border: 'border-indigo-200/90',
       shadow: 'shadow-indigo-100/50',
-      gradient: 'radial-gradient(circle_at_0%_0%,rgba(99,102,241,0.1),transparent_55%)',
-      icon: 'from-indigo-600 to-violet-600 shadow-indigo-300/40',
+      gradient: 'radial-gradient(circle_at_0%_0%,rgba(99,102,241,0.06),transparent_55%)',
+      icon: 'bg-indigo-100 text-indigo-700 border border-indigo-200',
       eyebrow: 'text-indigo-600',
       badge: 'border-indigo-200 text-indigo-700',
       barBg: 'bg-indigo-100',
-      barFill: 'from-indigo-500 to-violet-500',
+      barFill: 'from-indigo-200 to-violet-200',
     },
     orange: {
       border: 'border-orange-200',
       shadow: 'shadow-orange-100/60',
-      gradient: 'radial-gradient(circle_at_100%_0%,rgba(251,146,60,0.12),transparent_50%)',
-      icon: 'from-orange-500 to-amber-500 shadow-orange-300/40',
+      gradient: 'radial-gradient(circle_at_100%_0%,rgba(251,146,60,0.08),transparent_50%)',
+      icon: 'bg-orange-100 text-orange-700 border border-orange-200',
       eyebrow: 'text-orange-600',
       badge: 'border-orange-200 text-orange-700',
       barBg: 'bg-orange-100',
-      barFill: 'from-orange-500 to-amber-500',
+      barFill: 'from-orange-200 to-amber-200',
     },
     violet: {
       border: 'border-violet-200',
       shadow: 'shadow-violet-100/50',
-      gradient: 'radial-gradient(circle_at_0%_0%,rgba(139,92,246,0.1),transparent_55%)',
-      icon: 'from-violet-600 to-purple-600 shadow-violet-300/40',
+      gradient: 'radial-gradient(circle_at_0%_0%,rgba(139,92,246,0.06),transparent_55%)',
+      icon: 'bg-violet-100 text-violet-700 border border-violet-200',
       eyebrow: 'text-violet-600',
       badge: 'border-violet-200 text-violet-700',
       barBg: 'bg-violet-100',
-      barFill: 'from-violet-500 to-purple-500',
+      barFill: 'from-violet-200 to-purple-200',
     },
     blue: {
       border: 'border-blue-200',
       shadow: 'shadow-blue-100/50',
-      gradient: 'radial-gradient(circle_at_0%_0%,rgba(59,130,246,0.1),transparent_55%)',
-      icon: 'from-blue-600 to-sky-600 shadow-blue-300/40',
+      gradient: 'radial-gradient(circle_at_0%_0%,rgba(59,130,246,0.06),transparent_55%)',
+      icon: 'bg-blue-100 text-blue-700 border border-blue-200',
       eyebrow: 'text-blue-600',
       badge: 'border-blue-200 text-blue-700',
       barBg: 'bg-blue-100',
-      barFill: 'from-blue-500 to-sky-500',
+      barFill: 'from-blue-200 to-sky-200',
     },
     amber: {
       border: 'border-amber-200',
       shadow: 'shadow-amber-100/50',
-      gradient: 'radial-gradient(circle_at_0%_0%,rgba(245,158,11,0.1),transparent_55%)',
-      icon: 'from-amber-500 to-orange-500 shadow-amber-300/40',
+      gradient: 'radial-gradient(circle_at_0%_0%,rgba(245,158,11,0.06),transparent_55%)',
+      icon: 'bg-amber-100 text-amber-700 border border-amber-200',
       eyebrow: 'text-amber-600',
       badge: 'border-amber-200 text-amber-700',
       barBg: 'bg-amber-100',
-      barFill: 'from-amber-500 to-orange-500',
+      barFill: 'from-amber-200 to-orange-200',
     },
   };
   const t = themes[opts.theme];
@@ -217,7 +300,7 @@ export function heroTitleCardHtml(opts: {
   <div class="absolute inset-0" style="background:${t.gradient}"></div>
   <div class="relative flex flex-col gap-4 p-5">
     <div class="flex items-start gap-4">
-      <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${t.icon} text-white shadow-lg text-2xl">⚗</div>
+      <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${t.icon} text-2xl">⚗</div>
       <div class="min-w-0 flex-1">
         ${opts.badge ? `<span class="inline-flex items-center rounded-md border ${t.badge} text-[10px] font-semibold px-2 py-0.5 mb-2">${escapeHtml(opts.badge)}</span>` : ''}
         <p class="text-[10px] font-bold uppercase tracking-wider ${t.eyebrow} mb-1">${escapeHtml(opts.eyebrow)}</p>

@@ -7,6 +7,9 @@ type ContentLike = {
   id?: string;
   title?: string;
   type?: string;
+  topic?: string;
+  chapter?: string;
+  module?: string;
   fileUrl?: string;
   fileUrls?: string[];
   youtubeUrl?: string;
@@ -41,7 +44,10 @@ export function openContentPreview(
   if (isVideoType) {
     const contentPayload = {
       _id: contentId || 'preview',
-      title: item.title || 'Video',
+      title: item.title || item.topic || 'Video',
+      topic: item.topic,
+      chapter: item.chapter,
+      module: item.module,
       fileUrl: resolveContentUrl(rawUrl),
       youtubeUrl: item.youtubeUrl,
       videoUrl: item.videoUrl,

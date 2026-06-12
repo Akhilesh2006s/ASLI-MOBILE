@@ -11,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../services/api/api';
 import { useSchoolProgram } from '../../hooks/useSchoolProgram';
-import { filterContentsBySchoolProgram } from '../../lib/school-program';
+import { prepareLibraryContents } from '../../lib/dedupe-library-content';
 import { openDigitalLibraryType } from '../../lib/digital-library-nav';
 import PremiumSectionHeader from './PremiumSectionHeader';
 import { STUDENT, STUDENT_RADIUS, SUBJECT_COLORS } from '../../theme/student';
@@ -41,11 +41,7 @@ export default function DigitalLibraryBrowseSection({
       try {
         const { data } = await api.get('/api/student/asli-prep-content');
         if (cancelled) return;
-        const rows = filterContentsBySchoolProgram(
-          data?.data || data || [],
-          isAsliPrepExclusive
-        );
-        setAllContent(Array.isArray(rows) ? rows : []);
+        setAllContent(prepareLibraryContents(data?.data || data || [], isAsliPrepExclusive));
       } catch (error) {
         console.error('Failed to load digital library counts:', error);
         if (!cancelled) setAllContent([]);

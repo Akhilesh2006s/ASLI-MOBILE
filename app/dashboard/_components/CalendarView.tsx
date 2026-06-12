@@ -6,7 +6,7 @@ import { API_BASE_URL } from '../../../src/lib/api-config';
 import { router, useFocusEffect } from 'expo-router';
 import { openContentPreview } from '../../../src/utils/openContentPreview';
 import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
-import { filterContentsBySchoolProgram } from '../../../src/lib/school-program';
+import { prepareLibraryContents } from '../../../src/lib/dedupe-library-content';
 
 interface ContentItem {
   _id: string;
@@ -49,7 +49,7 @@ export default function CalendarView({ contents: propContents, onMarkAsDone, com
 
   useEffect(() => {
     if (propContents && propContents.length > 0) {
-      setContents(filterContentsBySchoolProgram(propContents, isAsliPrepExclusive));
+      setContents(prepareLibraryContents(propContents, isAsliPrepExclusive));
       return;
     }
     fetchContents();
@@ -76,9 +76,7 @@ export default function CalendarView({ contents: propContents, onMarkAsDone, com
 
       if (response.ok) {
         const data = await response.json();
-        setContents(
-          filterContentsBySchoolProgram(data.data || data || [], isAsliPrepExclusive)
-        );
+        setContents(prepareLibraryContents(data.data || data || [], isAsliPrepExclusive));
       }
     } catch (error) {
       console.error('Failed to fetch contents:', error);

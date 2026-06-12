@@ -78,16 +78,6 @@ interface ExamResult {
   timeTaken: number;
 }
 
-type CalendarFocusExam = {
-  examId: string;
-  mode: 'upcoming' | 'ended' | 'live' | 'completed';
-  title: string;
-  startDate: string;
-  endDate: string;
-  scoreLabel?: string;
-  completedAt?: string;
-};
-
 type ExamsViewProps = {
   dark?: boolean;
   initialTab?: 'available' | 'attempted' | 'ranking' | 'upcoming';
@@ -162,7 +152,7 @@ export default function ExamsView({
     result: ExamAnalysisResult;
   } | null>(null);
   const [loadingExamResults, setLoadingExamResults] = useState(false);
-  const [calendarFocusExam, setCalendarFocusExam] = useState<CalendarFocusExam | null>(null);
+  const [highlightedExamId, setHighlightedExamId] = useState<string | null>(null);
   const handledFocusExamIdRef = useRef<string | null>(null);
 
   const studentClassNumber = normalizeClassNumber(user?.classNumber);
@@ -551,6 +541,9 @@ export default function ExamsView({
     handledFocusExamIdRef.current = targetId;
     onFocusExamHandled?.();
 
+    setExamSubjectFilter('all');
+    setHighlightedExamId(targetId);
+
     if (!exam) {
       setActiveTab('available');
       return;
@@ -559,49 +552,26 @@ export default function ExamsView({
     const now = new Date();
     const start = new Date(exam.startDate);
     const end = new Date(exam.endDate);
-    const scheduleLabel = {
-      title: exam.title || 'Exam',
-      startDate: start.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
-      endDate: end.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
-    };
-
     const attempts = attemptCountByExamId.get(targetId) || 0;
-    if (attempts > 0) {
-      const latest = attemptedResultRows.find((r) => getExamIdFromResult(r) === targetId);
-      const scoreLabel = latest
-        ? `${latest.obtainedMarks || 0}/${latest.totalMarks || exam.totalMarks} (${getDisplayPercentage(latest)}%)`
-        : undefined;
-      const completedAt = latest?.completedAt
-        ? new Date(latest.completedAt).toLocaleDateString('en-IN', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
-          })
-        : undefined;
-      setCalendarFocusExam({
-        examId: targetId,
-        mode: 'completed',
-        ...scheduleLabel,
-        scoreLabel,
-        completedAt,
-      });
-      setActiveTab('attempted');
-      return;
-    }
+    const maxAttempts = getMaxAttemptsForExam(exam);
+    const inWindow = now >= start && now <= end;
+    const attemptsExhausted = attempts >= maxAttempts;
 
     if (now < start) {
-      setCalendarFocusExam({ examId: targetId, mode: 'upcoming', ...scheduleLabel });
       setActiveTab('upcoming');
       return;
     }
 
-    if (now > end) {
-      setCalendarFocusExam({ examId: targetId, mode: 'ended', ...scheduleLabel });
+    if (attempts > 0 && (attemptsExhausted || !inWindow)) {
       setActiveTab('attempted');
       return;
     }
 
-    setCalendarFocusExam({ examId: targetId, mode: 'live', ...scheduleLabel });
+    if (inWindow) {
+      setActiveTab('available');
+      return;
+    }
+
     setActiveTab('available');
   }, [
     focusExamId,
@@ -609,9 +579,48 @@ export default function ExamsView({
     isLoading,
     resultsLoaded,
     attemptCountByExamId,
-    attemptedResultRows,
-    getExamIdFromResult,
     onFocusExamHandled,
+  ]);
+
+  useEffect(() => {
+    if (!highlightedExamId || !resultsLoaded) return;
+
+    const exam = exams.find((e) => String(e._id) === highlightedExamId);
+    if (!exam) return;
+
+    const now = new Date();
+    const start = new Date(exam.startDate);
+    const end = new Date(exam.endDate);
+    const inWindow = now >= start && now <= end;
+    const inAttempted = attemptedResultRows.some(
+      (result) => getExamIdFromResult(result) === highlightedExamId
+    );
+    const inAvailable = availableActiveExams.some((e) => String(e._id) === highlightedExamId);
+    const inUpcoming = upcomingExams.some((e) => String(e._id) === highlightedExamId);
+
+    if (activeTab === 'attempted' && !inAttempted) {
+      if (inAvailable) setActiveTab('available');
+      else if (inUpcoming) setActiveTab('upcoming');
+      return;
+    }
+
+    if (activeTab === 'available' && !inAvailable && inAttempted) {
+      setActiveTab('attempted');
+      return;
+    }
+
+    if (activeTab === 'upcoming' && !inUpcoming && inAvailable && inWindow) {
+      setActiveTab('available');
+    }
+  }, [
+    highlightedExamId,
+    resultsLoaded,
+    activeTab,
+    exams,
+    attemptedResultRows,
+    availableActiveExams,
+    upcomingExams,
+    getExamIdFromResult,
   ]);
 
   const examTabChips = useMemo(
@@ -677,56 +686,12 @@ export default function ExamsView({
         <ChipNav
           chips={examTabChips}
           active={activeTab}
-          onChange={(id) => setActiveTab(id as typeof activeTab)}
+          onChange={(id) => {
+            setActiveTab(id as typeof activeTab);
+            setHighlightedExamId(null);
+          }}
         />
       </View>
-
-      {calendarFocusExam ? (
-        <View
-          style={[
-            styles.calendarFocusBanner,
-            calendarFocusExam.mode === 'upcoming'
-              ? styles.calendarFocusUpcoming
-              : calendarFocusExam.mode === 'live'
-                ? styles.calendarFocusLive
-                : calendarFocusExam.mode === 'completed'
-                  ? styles.calendarFocusCompleted
-                  : styles.calendarFocusEnded,
-          ]}
-        >
-          <View style={styles.calendarFocusTextWrap}>
-            <Text style={styles.calendarFocusTitle}>
-              {calendarFocusExam.mode === 'upcoming'
-                ? 'Upcoming exam'
-                : calendarFocusExam.mode === 'live'
-                  ? 'Live exam'
-                  : calendarFocusExam.mode === 'completed'
-                    ? 'Exam completed'
-                    : 'Past exam'}{' '}
-              — {calendarFocusExam.title}
-            </Text>
-            <Text style={styles.calendarFocusSub}>
-              {calendarFocusExam.mode === 'upcoming'
-                ? `Opens ${calendarFocusExam.startDate} · Closes ${calendarFocusExam.endDate}. You can start it once the exam window begins.`
-                : calendarFocusExam.mode === 'live'
-                  ? `Open now until ${calendarFocusExam.endDate}. Tap Start Exam on the card below when you are ready.`
-                  : calendarFocusExam.mode === 'completed'
-                    ? calendarFocusExam.scoreLabel
-                      ? `You scored ${calendarFocusExam.scoreLabel}${
-                          calendarFocusExam.completedAt ? ` on ${calendarFocusExam.completedAt}` : ''
-                        }. Review your attempt below.`
-                      : 'You have already completed this exam. Review your attempt below.'
-                    : `Ran ${calendarFocusExam.startDate} – ${calendarFocusExam.endDate}. Check your attempts below if you already took it.`}
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={styles.calendarFocusDismiss}
-            onPress={() => setCalendarFocusExam(null)}
-          >
-            <Text style={styles.calendarFocusDismissText}>Dismiss</Text>
-          </TouchableOpacity>
-        </View>
-      ) : null}
 
       {/* Available Exams Tab */}
       {activeTab === 'available' && (
@@ -755,9 +720,7 @@ export default function ExamsView({
                 const hydratedQuestionCount = Array.isArray(exam.questions)
                   ? exam.questions.length
                   : Number(exam.totalQuestions || 0);
-                const isCalendarFocus =
-                  calendarFocusExam?.examId === String(exam._id) &&
-                  calendarFocusExam.mode === 'live';
+                const isCalendarFocus = highlightedExamId === String(exam._id);
                 return (
                   <GlassCard
                     key={exam._id}
@@ -833,7 +796,12 @@ export default function ExamsView({
       {/* Attempted Exams Tab */}
       {activeTab === 'attempted' && (
         <View style={styles.content}>
-          {attemptedResultRows.length === 0 ? (
+          {!resultsLoaded ? (
+            <View style={styles.shimmerWrap}>
+              <ShimmerCard />
+              <ShimmerCard />
+            </View>
+          ) : attemptedResultRows.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="checkmark-circle-outline" size={64} color="#d1d5db" />
               <Text style={styles.emptyStateTitle}>No Attempted Exams</Text>
@@ -876,9 +844,7 @@ export default function ExamsView({
                 const obtainedMarksDisplay = Number(displayResult.obtainedMarks ?? 0);
                 const distributionSegments = buildQuestionDistributionSegments(displayResult);
 
-                const isCalendarFocus =
-                  calendarFocusExam?.examId === examIdStr &&
-                  (calendarFocusExam.mode === 'ended' || calendarFocusExam.mode === 'completed');
+                const isCalendarFocus = highlightedExamId === examIdStr;
                 return (
                   <LinearGradient
                     key={examIdStr}
@@ -1052,9 +1018,7 @@ export default function ExamsView({
               {upcomingExams.map((exam) => {
                 const typeColor = getExamTypeColor(exam.examType);
                 const classLabels = getExamClassLabelsForStudent(exam, user?.classNumber);
-                const isCalendarFocus =
-                  calendarFocusExam?.examId === String(exam._id) &&
-                  calendarFocusExam.mode === 'upcoming';
+                const isCalendarFocus = highlightedExamId === String(exam._id);
                 return (
                   <GlassCard
                     key={exam._id}

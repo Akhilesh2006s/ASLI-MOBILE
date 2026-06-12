@@ -21,6 +21,8 @@ import EduOTTVideoCard from '../../../src/components/eduott/EduOTTVideoCard';
 import { resolveContentDurationSeconds } from '../../../src/utils/eduottVideoUtils';
 import { extractPlainSubjectName, getSubjectClassLabel } from '../../../src/lib/subject-names';
 import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
+import { dedupeLibraryContents } from '../../../src/lib/dedupe-library-content';
+import { getVideoDisplayTitle } from '../../../src/lib/video-chapter-schedule';
 
 type EduOTTSubTab = 'videos' | 'live-sessions';
 
@@ -85,7 +87,7 @@ export default function EduOTTView() {
     try {
       setIsLoading(true);
       const res = await teacherService.asliPrepContent({ type: 'Video' });
-      const videosArray = asArray<any>(res.data);
+      const videosArray = dedupeLibraryContents(asArray<any>(res.data));
 
       const mappedVideos = videosArray.map((content: any) => {
         const videoFileUrl = content.fileUrls?.[0] || content.fileUrl || content.videoUrl || '';
@@ -104,7 +106,7 @@ export default function EduOTTView() {
 
         return {
           _id: content._id || content.id,
-          title: content.title || 'Untitled Video',
+          title: getVideoDisplayTitle({ ...content, type: 'Video' }),
           description: content.description || '',
           duration: resolveContentDurationSeconds({
             duration: content.duration,

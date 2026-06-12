@@ -181,16 +181,6 @@ export const analysisStyles = StyleSheet.create({
     borderColor: COLORS.border,
     ...SHADOW.sm,
   },
-  cardAccent: {
-    position: 'absolute',
-    left: 0,
-    top: SPACING.lg,
-    bottom: SPACING.lg,
-    width: 4,
-    borderTopRightRadius: 4,
-    borderBottomRightRadius: 4,
-    backgroundColor: ANALYSIS.accent,
-  },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
   cardIconWrap: {
     width: 36,

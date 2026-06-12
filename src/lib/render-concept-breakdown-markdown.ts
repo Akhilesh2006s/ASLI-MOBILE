@@ -1,4 +1,5 @@
 import { formatInlineMarkdown, renderMarkdown } from './render-teacher-markdown';
+import { lightDocHeaderHtml } from './ai-tool-html-primitives';
 import {
   parseMarkdownDocTitle,
   parseMarkdownSectionHeading,
@@ -158,10 +159,12 @@ export function renderConceptBreakdownMarkdown(text: string): string {
   const parts = sortSectionHtmlEntries(sectionEntries);
 
   const docHeader = shouldRenderDocHeader(docTitle, sectionEntries)
-    ? `<header class="mb-4 overflow-hidden rounded-2xl border border-violet-200 bg-gradient-to-r from-violet-700 via-purple-600 to-indigo-600 px-4 py-4 text-white shadow-lg">` +
-      `<p class="text-[10px] font-semibold uppercase tracking-widest text-violet-100">Concept Breakdown Explainer</p>` +
-      `<h1 class="text-xl font-bold mt-1">${formatInlineMarkdown(docTitle)}</h1>` +
-      `</header>`
+    ? lightDocHeaderHtml({
+        eyebrow: 'Concept Breakdown Explainer',
+        titleHtml: formatInlineMarkdown(docTitle),
+        theme: 'violet',
+        titleTag: 'h1',
+      })
     : '';
 
   if (!parts.length) {

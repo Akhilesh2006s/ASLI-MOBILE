@@ -2,7 +2,7 @@ import api from '../services/api/api';
 import { apiFetch } from './api-config';
 import { consolidateLearningPathSubjects } from './learning-path-admin';
 import { isActiveCatalogSubject, isSoftDeletedSubjectName } from './subject-names';
-import { filterContentsBySchoolProgram } from './school-program';
+import { prepareLibraryContents } from './dedupe-library-content';
 
 export type LearningPathRole = 'admin' | 'teacher' | 'student';
 
@@ -100,7 +100,7 @@ async function loadTeacherLearningPathCatalog(
           `/api/teacher/asli-prep-content?subject=${encodeURIComponent(subjectId)}`
         );
         const asliPrepContent = sortContentNewestFirst(
-          filterContentsBySchoolProgram(parseContentPayload(data), isAsliPrepExclusive)
+          prepareLibraryContents(parseContentPayload(data), isAsliPrepExclusive)
         );
         if (asliPrepContent.length === 0) return null;
 
@@ -142,7 +142,7 @@ export async function loadLearningPathCatalog(
     fetchAllPrepContent(role),
   ]);
 
-  const allContent = filterContentsBySchoolProgram(allContentRaw, isAsliPrepExclusive);
+  const allContent = prepareLibraryContents(allContentRaw, isAsliPrepExclusive);
   const bySubjectId = new Map<string, any[]>();
 
   for (const item of allContent) {
@@ -209,7 +209,7 @@ export function countContentByType(
   contents: any[],
   isAsliPrepExclusive: boolean
 ): Record<string, number> {
-  const filtered = filterContentsBySchoolProgram(contents, isAsliPrepExclusive);
+  const filtered = prepareLibraryContents(contents, isAsliPrepExclusive);
   const counts: Record<string, number> = {};
   for (const item of filtered) {
     const t = item.type || 'Material';

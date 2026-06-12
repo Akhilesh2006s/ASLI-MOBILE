@@ -19,7 +19,7 @@ import {
   type LearningPathContentItem,
 } from '../../src/lib/learningPathContent';
 import { useSchoolProgram } from '../../src/hooks/useSchoolProgram';
-import { filterContentsBySchoolProgram } from '../../src/lib/school-program';
+import { prepareLibraryContents } from '../../src/lib/dedupe-library-content';
 
 function pickParam(v: string | string[] | undefined): string {
   if (v == null) return '';
@@ -59,7 +59,7 @@ export default function SubjectContent() {
       });
       const raw = contentRes.data?.data ?? contentRes.data;
       const list = Array.isArray(raw) ? raw : [];
-      setContent(filterContentsBySchoolProgram(list, isAsliPrepExclusive));
+      setContent(prepareLibraryContents(list, isAsliPrepExclusive));
     } catch (error) {
       console.error('Error fetching subject data:', error);
       setContent([]);

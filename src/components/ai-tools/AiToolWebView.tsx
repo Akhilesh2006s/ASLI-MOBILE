@@ -3,6 +3,7 @@ import { View, StyleSheet, Platform } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { renderAiToolOutputHtml } from '../../lib/render-ai-tool-output-html';
 import { resolveRichDisplayContent } from '../../lib/ai-tool-display-content';
+import { simpleContentFingerprint } from '../../lib/ai-tool-rotation-label';
 
 type Props = {
   toolType: string;
@@ -48,8 +49,8 @@ export default function AiToolWebView({ toolType, content, rawContent, variant =
 
   const contentKey = useMemo(() => {
     const display = resolveRichDisplayContent(content, rawContent);
-    return `${toolType}:${display.length}:${html.length}`;
-  }, [toolType, content, rawContent, html.length]);
+    return `${toolType}:${simpleContentFingerprint(display)}:${simpleContentFingerprint(html)}`;
+  }, [toolType, content, rawContent, html]);
 
   const webViewRef = useRef<WebView>(null);
   const [height, setHeight] = useState(INITIAL_HEIGHT);

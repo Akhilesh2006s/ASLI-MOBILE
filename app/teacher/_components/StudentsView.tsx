@@ -24,7 +24,7 @@ const STUDENT_SUB_TABS = [
   { id: 'list', label: 'Student List', icon: 'people' as const },
   { id: 'track-progress', label: 'Track Progress', icon: 'bar-chart' as const },
   { id: 'submissions', label: 'Submissions', icon: 'document-text' as const },
-  { id: 'daily', label: 'Daily', icon: 'bookmark' as const },
+  { id: 'daily', label: 'Diary', icon: 'bookmark' as const },
 ];
 
 type Props = {

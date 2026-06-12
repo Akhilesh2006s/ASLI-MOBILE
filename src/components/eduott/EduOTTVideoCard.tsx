@@ -127,7 +127,7 @@ function EduOTTVideoCardComponent({
 
   const bodyBlock = (
     <View style={[styles.body, isHorizontal && styles.bodyHorizontal]}>
-      <Text style={[styles.title, isHorizontal && styles.titleHorizontal, { color: theme.title }]} numberOfLines={3}>
+      <Text style={[styles.title, isHorizontal && styles.titleHorizontal, { color: theme.title }]}>
         {title}
       </Text>
 
@@ -277,10 +277,8 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '700',
     lineHeight: 21,
-    letterSpacing: 0.2,
-    textTransform: 'uppercase',
   },
   titleHorizontal: {
     fontSize: 13,

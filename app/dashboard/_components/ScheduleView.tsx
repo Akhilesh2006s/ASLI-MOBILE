@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
-import { filterContentsBySchoolProgram } from '../../../src/lib/school-program';
+import { prepareLibraryContents } from '../../../src/lib/dedupe-library-content';
 
 export default function ScheduleView() {
   const { isAsliPrepExclusive } = useSchoolProgram();
@@ -39,7 +39,7 @@ export default function ScheduleView() {
 
       if (contentRes.ok) {
         const contentData = await contentRes.json();
-        const allContent = filterContentsBySchoolProgram(
+        const allContent = prepareLibraryContents(
           contentData.data || contentData || [],
           isAsliPrepExclusive
         );

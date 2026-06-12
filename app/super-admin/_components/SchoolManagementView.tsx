@@ -538,7 +538,11 @@ export default function SchoolManagementView() {
             />
           </View>
         ) : (
-          filteredAdmins.map((admin) => renderSchoolCard(admin))
+          filteredAdmins.map((admin) => (
+            <View key={String(admin.id || admin._id || admin.email)}>
+              {renderSchoolCard(admin)}
+            </View>
+          ))
         )}
       </ScrollView>
 

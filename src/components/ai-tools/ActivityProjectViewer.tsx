@@ -119,7 +119,7 @@ const TEACHER_SECTIONS: SectionDef[] = [
     num: 2,
     title: 'Subtopic link and prior knowledge required',
     icon: 'book-outline',
-    stripe: '#0ea5e9',
+    stripe: '#7dd3fc',
     hasContent: (a) => !!a.subtopicLink,
     render: (a) => <Text style={styles.preWrap}>{a.subtopicLink}</Text>,
   },
@@ -127,7 +127,7 @@ const TEACHER_SECTIONS: SectionDef[] = [
     num: 3,
     title: 'Learning objectives',
     icon: 'radio-button-on-outline',
-    stripe: '#8b5cf6',
+    stripe: '#c4b5fd',
     hasContent: (a) => a.learningObjectives.length > 0,
     render: (a) => <CheckList items={a.learningObjectives} />,
   },
@@ -135,7 +135,7 @@ const TEACHER_SECTIONS: SectionDef[] = [
     num: 4,
     title: 'NCF competency / learning outcome alignment',
     icon: 'school-outline',
-    stripe: '#3b82f6',
+    stripe: '#93c5fd',
     hasContent: (a) => a.ncfAlignment.length > 0,
     render: (a) => <BulletList items={a.ncfAlignment} />,
   },
@@ -143,7 +143,7 @@ const TEACHER_SECTIONS: SectionDef[] = [
     num: 5,
     title: 'Materials required',
     icon: 'cube-outline',
-    stripe: '#f59e0b',
+    stripe: '#fcd34d',
     hasContent: (a) => a.materials.length > 0,
     render: (a) => <NumberedMaterials items={a.materials} />,
   },
@@ -151,15 +151,15 @@ const TEACHER_SECTIONS: SectionDef[] = [
     num: 6,
     title: 'Step-by-step procedure',
     icon: 'list-outline',
-    stripe: '#10b981',
+    stripe: '#6ee7b7',
     hasContent: (a) => a.steps.length > 0,
-    render: (a) => <NumberedSteps items={a.steps} color="#059669" />,
+    render: (a) => <NumberedSteps items={a.steps} color="#d1fae5" />,
   },
   {
     num: 7,
     title: 'Teacher instructions',
     icon: 'people-outline',
-    stripe: '#6366f1',
+    stripe: '#a5b4fc',
     hasContent: (a) => a.teacherInstructions.length > 0,
     render: (a) => <BulletList items={a.teacherInstructions} />,
   },
@@ -167,7 +167,7 @@ const TEACHER_SECTIONS: SectionDef[] = [
     num: 8,
     title: 'Student instructions',
     icon: 'school-outline',
-    stripe: '#14b8a6',
+    stripe: '#5eead4',
     hasContent: (a) => a.studentInstructions.length > 0,
     render: (a) => <BulletList items={a.studentInstructions} />,
   },
@@ -175,7 +175,7 @@ const TEACHER_SECTIONS: SectionDef[] = [
     num: 9,
     title: 'Differentiation',
     icon: 'git-branch-outline',
-    stripe: '#ec4899',
+    stripe: '#f9a8d4',
     hasContent: (a) => !!a.differentiation,
     render: (a) => <Text style={styles.preWrap}>{a.differentiation}</Text>,
   },
@@ -183,7 +183,7 @@ const TEACHER_SECTIONS: SectionDef[] = [
     num: 10,
     title: 'Assessment rubric',
     icon: 'clipboard-outline',
-    stripe: '#f43f5e',
+    stripe: '#fcd34d',
     hasContent: (a) => a.assessmentRubric.length > 0,
     render: (a) => <BulletList items={a.assessmentRubric} />,
   },
@@ -191,7 +191,7 @@ const TEACHER_SECTIONS: SectionDef[] = [
     num: 11,
     title: 'Expected learning outcomes',
     icon: 'trophy-outline',
-    stripe: '#0891b2',
+    stripe: '#67e8f9',
     hasContent: (a) => !!a.expectedOutcomes,
     render: (a) => <Text style={styles.preWrap}>{a.expectedOutcomes}</Text>,
   },
@@ -199,7 +199,7 @@ const TEACHER_SECTIONS: SectionDef[] = [
     num: 12,
     title: 'Real-life application',
     icon: 'sparkles-outline',
-    stripe: '#d946ef',
+    stripe: '#e879f9',
     hasContent: (a) => !!a.realLife,
     render: (a) => <Text style={styles.preWrap}>{a.realLife}</Text>,
   },
@@ -207,37 +207,49 @@ const TEACHER_SECTIONS: SectionDef[] = [
     num: 13,
     title: 'Reflection / exit ticket',
     icon: 'bulb-outline',
-    stripe: '#f97316',
+    stripe: '#fdba74',
     hasContent: (a) => !!a.reflection,
     render: (a) => <Text style={styles.preWrap}>{a.reflection}</Text>,
   },
+];
+
+const SECTION_CARD_THEMES = [
+  { stripe: '#a5b4fc', border: '#c7d2fe', bg: '#eef2ff', label: '#6366f1', title: '#312e81' },
+  { stripe: '#c4b5fd', border: '#ddd6fe', bg: '#f5f3ff', label: '#7c3aed', title: '#4c1d95' },
+  { stripe: '#6ee7b7', border: '#a7f3d0', bg: '#ecfdf5', label: '#059669', title: '#064e3b' },
+  { stripe: '#7dd3fc', border: '#bae6fd', bg: '#f0f9ff', label: '#0284c7', title: '#0c4a6e' },
+  { stripe: '#fcd34d', border: '#fde68a', bg: '#fffbeb', label: '#d97706', title: '#78350f' },
+  { stripe: '#5eead4', border: '#99f6e4', bg: '#f0fdfa', label: '#0d9488', title: '#134e4a' },
 ];
 
 function SectionCard({
   sectionNum,
   title,
   icon,
-  stripe,
+  themeIndex = 0,
   children,
 }: {
   sectionNum: string;
   title: string;
   icon: keyof typeof Ionicons.glyphMap;
-  stripe: string;
+  stripe?: string;
+  themeIndex?: number;
   children: ReactNode;
 }) {
+  const theme = SECTION_CARD_THEMES[themeIndex % SECTION_CARD_THEMES.length];
+  const accent = theme.stripe;
   return (
-    <View style={styles.sectionCard}>
-      <View style={[styles.sectionHeader, { borderLeftColor: stripe }]}>
-        <View style={[styles.sectionIcon, { backgroundColor: `${stripe}18` }]}>
-          <Ionicons name={icon} size={14} color={stripe} />
+    <View style={[styles.sectionCard, { borderColor: theme.border, backgroundColor: theme.bg }]}>
+      <View style={[styles.sectionHeader, { borderLeftColor: accent, backgroundColor: theme.bg }]}>
+        <View style={[styles.sectionIcon, { backgroundColor: theme.border }]}>
+          <Ionicons name={icon} size={14} color={theme.label} />
         </View>
         <View style={styles.sectionHeaderText}>
-          <Text style={styles.sectionNum}>{sectionNum}</Text>
-          <Text style={styles.sectionTitle}>{title}</Text>
+          <Text style={[styles.sectionNum, { color: theme.label }]}>{sectionNum}</Text>
+          <Text style={[styles.sectionTitle, { color: theme.title }]}>{title}</Text>
         </View>
       </View>
-      <View style={styles.sectionBody}>{children}</View>
+      <View style={[styles.sectionBody, { backgroundColor: theme.bg }]}>{children}</View>
     </View>
   );
 }
@@ -303,7 +315,7 @@ const STUDENT_SECTIONS: SectionDef[] = [
     num: 2,
     title: 'Subtopic link and prior knowledge required',
     icon: 'book-outline',
-    stripe: '#0ea5e9',
+    stripe: '#7dd3fc',
     hasContent: (a) => !!a.subtopicLink,
     render: (a) => <Text style={styles.preWrap}>{a.subtopicLink}</Text>,
   },
@@ -311,7 +323,7 @@ const STUDENT_SECTIONS: SectionDef[] = [
     num: 3,
     title: "Learning Objectives - Bloom's Taxonomy Aligned",
     icon: 'radio-button-on-outline',
-    stripe: '#8b5cf6',
+    stripe: '#c4b5fd',
     hasContent: (a) => a.learningObjectives.length > 0,
     render: (a) => <CheckList items={a.learningObjectives} />,
   },
@@ -319,9 +331,9 @@ const STUDENT_SECTIONS: SectionDef[] = [
     num: 6,
     title: 'Step-by-step Student Procedure',
     icon: 'list-outline',
-    stripe: '#10b981',
+    stripe: '#6ee7b7',
     hasContent: (a) => a.steps.length > 0,
-    render: (a) => <NumberedSteps items={a.steps} color="#059669" />,
+    render: (a) => <NumberedSteps items={a.steps} color="#d1fae5" />,
   },
 ];
 
@@ -331,7 +343,7 @@ function StudentActivityCard({ activity }: { activity: NormalizedActivity }) {
       <View style={[styles.heroCard, styles.heroCardStudent]}>
         <View style={styles.heroRow}>
           <View style={[styles.heroIconWrap, styles.heroIconWrapStudent]}>
-            <Ionicons name="flask-outline" size={28} color="#fff" />
+            <Ionicons name="flask-outline" size={28} color="#ea580c" />
           </View>
           <View style={styles.heroContent}>
             <Text style={[styles.heroEyebrow, styles.heroEyebrowStudent]}>1. Project / Activity Title</Text>
@@ -339,13 +351,14 @@ function StudentActivityCard({ activity }: { activity: NormalizedActivity }) {
           </View>
         </View>
       </View>
-      {STUDENT_SECTIONS.filter((s) => s.hasContent(activity)).map((sec) => (
+      {STUDENT_SECTIONS.filter((s) => s.hasContent(activity)).map((sec, index) => (
         <SectionCard
           key={sec.num}
           sectionNum={`Section ${sec.num}`}
           title={sec.title}
           icon={sec.icon}
           stripe={sec.stripe}
+          themeIndex={index}
         >
           {sec.render(activity)}
         </SectionCard>
@@ -360,7 +373,7 @@ function TeacherActivityCard({ activity }: { activity: NormalizedActivity }) {
       <View style={styles.heroCard}>
         <View style={styles.heroRow}>
           <View style={styles.heroIconWrap}>
-            <Ionicons name="flask-outline" size={28} color="#fff" />
+            <Ionicons name="flask-outline" size={28} color="#4f46e5" />
           </View>
           <View style={styles.heroContent}>
             <Text style={styles.heroEyebrow}>1. Title of activity / project</Text>
@@ -369,13 +382,14 @@ function TeacherActivityCard({ activity }: { activity: NormalizedActivity }) {
         </View>
       </View>
 
-      {TEACHER_SECTIONS.filter((sec) => sec.hasContent(activity)).map((sec) => (
+      {TEACHER_SECTIONS.filter((sec) => sec.hasContent(activity)).map((sec, index) => (
         <SectionCard
           key={sec.num}
           sectionNum={`Section ${sec.num}`}
           title={sec.title}
           icon={sec.icon}
           stripe={sec.stripe}
+          themeIndex={index}
         >
           {sec.render(activity)}
         </SectionCard>
@@ -473,13 +487,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
-  shellHeaderTeacher: { backgroundColor: '#4f46e5' },
-  shellHeaderStudent: { backgroundColor: '#f97316' },
+  shellHeaderTeacher: { backgroundColor: '#eef2ff', borderBottomWidth: 1, borderBottomColor: '#c7d2fe' },
+  shellHeaderStudent: { backgroundColor: '#fff7ed', borderBottomWidth: 1, borderBottomColor: '#fed7aa' },
   shellHeaderIcon: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.85)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -488,9 +502,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 1,
     textTransform: 'uppercase',
-    color: 'rgba(255,255,255,0.85)',
+    color: '#64748b',
   },
-  shellTitle: { fontSize: 17, fontWeight: '800', color: '#fff', marginTop: 2 },
+  shellTitle: { fontSize: 17, fontWeight: '800', color: '#0f172a', marginTop: 2 },
   tabScroll: { maxHeight: 44, backgroundColor: '#eef2ff' },
   tabRow: { paddingHorizontal: 10, paddingVertical: 8, gap: 8 },
   tab: {
@@ -522,11 +536,11 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 16,
-    backgroundColor: '#4f46e5',
+    backgroundColor: '#e0e7ff',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroIconWrapStudent: { backgroundColor: '#f97316' },
+  heroIconWrapStudent: { backgroundColor: '#ffedd5' },
   heroContent: { flex: 1 },
   sectionsBadge: {
     alignSelf: 'flex-start',
@@ -552,12 +566,10 @@ const styles = StyleSheet.create({
   progressLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
   progressLabel: { fontSize: 11, fontWeight: '600', color: '#64748b' },
   progressTrack: { height: 8, borderRadius: 999, backgroundColor: '#e0e7ff', overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 999, backgroundColor: '#6366f1' },
+  progressFill: { height: '100%', borderRadius: 999, backgroundColor: '#a5b4fc' },
   sectionCard: {
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    backgroundColor: '#fff',
     overflow: 'hidden',
   },
   sectionHeader: {
@@ -567,7 +579,6 @@ const styles = StyleSheet.create({
     borderLeftWidth: 5,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: '#f8fafc',
   },
   sectionIcon: {
     width: 36,
@@ -633,7 +644,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepBadgeText: { fontSize: 12, fontWeight: '700', color: '#fff' },
+  stepBadgeText: { fontSize: 12, fontWeight: '700', color: '#047857' },
   stepText: { flex: 1, fontSize: 14, lineHeight: 22, color: '#334155', paddingTop: 4 },
   emptyWrap: {
     alignItems: 'center',

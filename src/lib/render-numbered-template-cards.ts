@@ -1,9 +1,9 @@
 import {
   emptySectionPlaceholderHtml,
   heroTitleCardHtml,
-  sectionCardHtml,
   sectionNumberIconSvg,
 } from './ai-tool-html-primitives';
+import { themedNumberedSectionCardHtml } from './themed-markdown-sections';
 import { parseNumberedTemplateSections } from './ai-tool-display-content';
 import { sectionTitlesMatch } from './themed-markdown-sections';
 import { renderMarkdown } from './render-teacher-markdown';
@@ -24,6 +24,8 @@ const TOOL_META: Record<string, { eyebrow: string; theme: ThemeName }> = {
   'mock-test-builder': { eyebrow: 'Mock Test', theme: 'violet' },
   'activity-project-generator': { eyebrow: 'Activities & Projects', theme: 'indigo' },
   'project-idea-lab': { eyebrow: 'Project Idea Lab', theme: 'amber' },
+  'worksheet-mcq-generator': { eyebrow: 'Worksheet & MCQ', theme: 'indigo' },
+  'concept-mastery-helper': { eyebrow: 'Concept Mastery', theme: 'violet' },
 };
 
 /** Homework Creator: section 1 is the doc title; sections 2–10 are always shown on web. */
@@ -55,13 +57,43 @@ function fillCanonicalSections(
   });
 }
 
-const STRIPE_CYCLE = [
-  { stripe: 'border-indigo-500', iconWrap: 'bg-indigo-100 text-indigo-800', border: 'border-indigo-200/80' },
-  { stripe: 'border-violet-500', iconWrap: 'bg-violet-100 text-violet-800', border: 'border-violet-200/80' },
-  { stripe: 'border-emerald-500', iconWrap: 'bg-emerald-100 text-emerald-800', border: 'border-emerald-200/80' },
-  { stripe: 'border-sky-500', iconWrap: 'bg-sky-100 text-sky-800', border: 'border-sky-200/80' },
-  { stripe: 'border-amber-500', iconWrap: 'bg-amber-100 text-amber-900', border: 'border-amber-200/80' },
-  { stripe: 'border-teal-500', iconWrap: 'bg-teal-100 text-teal-800', border: 'border-teal-200/80' },
+const SECTION_THEME_CYCLE = [
+  {
+    border: 'border-indigo-200/80',
+    bg: 'bg-indigo-50/80',
+    title: 'text-indigo-900',
+    label: 'text-indigo-600',
+  },
+  {
+    border: 'border-violet-200/80',
+    bg: 'bg-violet-50/80',
+    title: 'text-violet-900',
+    label: 'text-violet-600',
+  },
+  {
+    border: 'border-emerald-200/80',
+    bg: 'bg-emerald-50/80',
+    title: 'text-emerald-900',
+    label: 'text-emerald-600',
+  },
+  {
+    border: 'border-sky-200/80',
+    bg: 'bg-sky-50/80',
+    title: 'text-sky-900',
+    label: 'text-sky-600',
+  },
+  {
+    border: 'border-amber-200/80',
+    bg: 'bg-amber-50/80',
+    title: 'text-amber-900',
+    label: 'text-amber-700',
+  },
+  {
+    border: 'border-teal-200/80',
+    bg: 'bg-teal-50/80',
+    title: 'text-teal-900',
+    label: 'text-teal-600',
+  },
 ];
 
 function sectionBodyHtml(body: string): string {
@@ -99,15 +131,15 @@ export function renderNumberedTemplateAsCards(toolType: string, text: string): s
   });
 
   (visibleSections.length ? visibleSections : sorted).forEach((sec, index) => {
-    const style = STRIPE_CYCLE[index % STRIPE_CYCLE.length];
-    html += sectionCardHtml({
-      sectionNum: `Section ${sec.num}`,
-      title: sec.title.replace(/^\d+\.\s*/, ''),
-      stripe: style.stripe,
-      iconWrap: style.iconWrap,
-      iconSvg: sectionNumberIconSvg(sec.num),
-      borderColor: style.border,
-      body: sectionBodyHtml(sec.body),
+    const theme = SECTION_THEME_CYCLE[index % SECTION_THEME_CYCLE.length];
+    html += themedNumberedSectionCardHtml({
+      sectionNum: sec.num,
+      sectionTitle: sec.title.replace(/^\d+\.\s*/, ''),
+      bodyHtml: sectionBodyHtml(sec.body),
+      border: theme.border,
+      bg: theme.bg,
+      titleClass: theme.title,
+      labelClass: theme.label,
     });
   });
 

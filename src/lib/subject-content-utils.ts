@@ -1,4 +1,5 @@
 import { API_BASE_URL } from './api-config';
+import { getVideoDisplayTitle } from './video-chapter-schedule';
 import {
   displaySubjectName,
   extractClassNumberFromSubjectName,
@@ -100,16 +101,9 @@ export function isVideoNumber(value: string): boolean {
 }
 
 export function getVideoContentDisplayTitle(
-  item: Pick<ContentItem, 'type' | 'title' | 'chapter' | 'module'>
+  item: Pick<ContentItem, 'type' | 'title' | 'chapter' | 'module'> & { topic?: string }
 ): string {
-  const title = String(item.title || '').trim();
-  if (item.type !== 'Video') return title;
-  const chapter = videoNumberOnly(item.chapter || '');
-  const module = videoNumberOnly(item.module || '');
-  if (!chapter && !module) return title;
-  if (chapter && module) return `chapter - ${chapter} module - ${module} · ${title}`;
-  if (chapter) return `chapter - ${chapter} · ${title}`;
-  return `module - ${module} · ${title}`;
+  return getVideoDisplayTitle(item);
 }
 
 export function syllabusLabel(board: string): string {

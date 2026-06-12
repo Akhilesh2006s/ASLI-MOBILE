@@ -1,6 +1,6 @@
 import { Text, StyleSheet, ScrollView, Pressable, View, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -14,6 +14,8 @@ import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } fro
 const CONTENT_MAX = 1080;
 const GRID_GAP = TEACHER_SPACING.md;
 const TABLET_CARD_HEIGHT = 196;
+/** Floating tab bar height — just enough to scroll the last tool card above it. */
+const TAB_BAR_CLEARANCE = 56;
 
 const TOOL_THEMES: Record<string, { bg: string; border: string; iconBg: string }> = {
   '#ea580c': { bg: '#FFF7ED', border: '#FDBA74', iconBg: '#FFEDD5' },
@@ -38,15 +40,11 @@ function usePressScale(to = 0.96) {
 
 function useVidyaAILayout() {
   const { width } = useWindowDimensions();
-  const columns = width >= 1024 ? 3 : width >= 768 ? 2 : 1;
-  const isGrid = columns > 1;
   const shellWidth = Math.min(width, CONTENT_MAX);
-  const gridInnerWidth = shellWidth - TEACHER_SPACING.lg * 2;
-  const cardWidth = isGrid
-    ? (gridInnerWidth - GRID_GAP * (columns - 1)) / columns
-    : gridInnerWidth;
+  const listInnerWidth = shellWidth - TEACHER_SPACING.lg * 2;
 
-  return { isGrid, columns, shellWidth, cardWidth };
+  // Single-column list on all screen sizes (including digital boards).
+  return { isGrid: false, columns: 1, shellWidth, cardWidth: listInnerWidth };
 }
 
 function ToolCard({
@@ -116,24 +114,18 @@ function ToolCard({
 
 export default function VidyaAIView() {
   const chatPress = usePressScale();
+  const insets = useSafeAreaInsets();
   const { isGrid, shellWidth, cardWidth } = useVidyaAILayout();
+  const scrollBottomPad = TAB_BAR_CLEARANCE + Math.max(insets.bottom, 8);
 
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.scrollContent}
+      contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottomPad }]}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
     >
       <View style={[styles.innerShell, { width: shellWidth }]}>
-        <View style={styles.header}>
-          <VidyaAvatar size={48} borderColor="#93c5fd" />
-          <View style={styles.headerText}>
-            <Text style={styles.headerTitle}>Vidya AI</Text>
-            <Text style={styles.headerSubtitle}>AI-powered teaching assistant</Text>
-          </View>
-        </View>
-
         <Pressable
           onPress={() => router.push('/teacher/vidya-chat' as any)}
           onPressIn={chatPress.onPressIn}
@@ -177,38 +169,10 @@ const styles = StyleSheet.create({
     backgroundColor: TEACHER.bg,
   },
   scrollContent: {
-    paddingBottom: 120,
     alignItems: 'center',
   },
   innerShell: {
     alignSelf: 'center',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: TEACHER_SPACING.xl,
-    borderBottomWidth: 1,
-    borderBottomColor: TEACHER.surfaceBorder,
-    gap: 12,
-    backgroundColor: TEACHER.bg,
-  },
-  headerIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerText: {
-    flex: 1,
-  },
-  headerTitle: {
-    ...TEACHER_TYPO.section,
-    color: TEACHER.text,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: TEACHER.textMuted,
   },
   chatCard: {
     flexDirection: 'row',
@@ -219,13 +183,6 @@ const styles = StyleSheet.create({
     marginBottom: TEACHER_SPACING.sm,
     padding: TEACHER_SPACING.lg,
     ...glassCard,
-  },
-  chatCardIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   chatCardBody: {
     flex: 1,
@@ -242,8 +199,9 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   section: {
-    padding: TEACHER_SPACING.lg,
+    paddingHorizontal: TEACHER_SPACING.lg,
     paddingTop: TEACHER_SPACING.md,
+    paddingBottom: 0,
   },
   sectionTitle: {
     ...TEACHER_TYPO.section,

@@ -92,7 +92,7 @@ function VideoCardComponent({
         </View>
 
         <View style={styles.content}>
-          <Text style={styles.title} numberOfLines={2}>
+          <Text style={styles.title}>
             {title}
           </Text>
           <Text style={styles.subtitle} numberOfLines={1}>

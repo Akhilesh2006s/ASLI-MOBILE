@@ -31,10 +31,9 @@ import { StudentHomeHeader } from '../../../src/components/student';
 import TeacherDiaryFeed from '../../../src/components/student/TeacherDiaryFeed';
 import { STUDENT } from '../../../src/theme/student';
 import { openContentPreview } from '../../../src/utils/openContentPreview';
-import {
-  filterContentsBySchoolProgram,
-  resolveIsAsliPrepExclusive,
-} from '../../../src/lib/school-program';
+import { resolveIsAsliPrepExclusive } from '../../../src/lib/school-program';
+import { prepareLibraryContents } from '../../../src/lib/dedupe-library-content';
+import { buildExamAttemptCounts } from '../../../src/lib/student-exam-display';
 
 /** Web-parity home modules only — no RemarksView/DigitalLibrary extras */
 
@@ -103,7 +102,7 @@ const OverviewView = memo(function OverviewView({
     Record<string, ChapterCompletedDates>
   >({});
   const [exams, setExams] = useState<any[]>([]);
-  const [completedExamIds, setCompletedExamIds] = useState<Set<string>>(new Set());
+  const [examAttemptCounts, setExamAttemptCounts] = useState<Record<string, number>>({});
   const [remarks, setRemarks] = useState<any[]>([]);
   const [riskReports, setRiskReports] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -176,19 +175,7 @@ const OverviewView = memo(function OverviewView({
         resultsData = resultsJson.data || resultsJson.results || resultsJson || [];
       }
 
-      const completedIds = new Set<string>();
-      resultsData.forEach((result: any) => {
-        const raw = result?.examId ?? result?.exam;
-        if (!raw) return;
-        const examId =
-          typeof raw === 'string'
-            ? raw
-            : typeof raw === 'object' && raw._id != null
-              ? String(raw._id)
-              : String(raw);
-        if (examId && examId !== '[object Object]') completedIds.add(examId);
-      });
-      setCompletedExamIds(completedIds);
+      setExamAttemptCounts(buildExamAttemptCounts(resultsData));
 
       let rankingsData = [];
       if (rankingsRes.ok) {
@@ -287,7 +274,7 @@ const OverviewView = memo(function OverviewView({
             );
             if (contentResponse.ok) {
               const contentData = await contentResponse.json();
-              const contents = filterContentsBySchoolProgram(
+              const contents = prepareLibraryContents(
                 contentData.data || contentData || [],
                 isAsliPrepExclusive
               );
@@ -395,7 +382,7 @@ const OverviewView = memo(function OverviewView({
 
       if (contentRes.ok) {
         const contentData = await contentRes.json();
-        const allContent = filterContentsBySchoolProgram(
+        const allContent = prepareLibraryContents(
           contentData.data || contentData || [],
           isAsliPrepExclusive
         );
@@ -764,7 +751,8 @@ const OverviewView = memo(function OverviewView({
       <StudyCalendarSection
         incompleteQuizzes={incompleteQuizzes}
         exams={exams}
-        completedExamIds={completedExamIds}
+        examAttemptCounts={examAttemptCounts}
+        studentClassNumber={user?.classNumber}
         onOpenQuiz={(quiz) => router.push(`/quiz/${quiz._id || quiz.id}`)}
         onOpenExam={(examId) => onOpenExam?.(examId)}
       />

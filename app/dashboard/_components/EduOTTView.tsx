@@ -20,6 +20,8 @@ import SearchBar from './eduott/SearchBar';
 import FilterChips from './eduott/FilterChips';
 import EduOTTVideoCard from '../../../src/components/eduott/EduOTTVideoCard';
 import { resolveContentDurationSeconds } from '../../../src/utils/eduottVideoUtils';
+import { dedupeLibraryContents } from '../../../src/lib/dedupe-library-content';
+import { getVideoDisplayTitle } from '../../../src/lib/video-chapter-schedule';
 import {
   extractPlainSubjectName,
   getSubjectClassLabel,
@@ -119,7 +121,7 @@ function mapContentToVideoItem(content: any): VideoItem {
 
   return {
     _id: content._id,
-    title: content.title || 'Untitled Video',
+    title: getVideoDisplayTitle({ ...content, type: 'Video' }),
     description: content.description || '',
     topic: content.topic || '',
     chapter: content.chapter || '',
@@ -142,6 +144,10 @@ function mapContentToVideoItem(content: any): VideoItem {
       (videoFileUrl.includes('youtube.com') || videoFileUrl.includes('youtu.be'))
     ),
   };
+}
+
+function mapAndDedupeVideos(list: unknown[]): VideoItem[] {
+  return dedupeLibraryContents(Array.isArray(list) ? list : []).map(mapContentToVideoItem);
 }
 
 const EDUOTT_GRID_MAX_WIDTH = 1080;
@@ -217,7 +223,7 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
           if (vRes.ok) {
             const data = await vRes.json();
             const list = data.data || data || [];
-            setVideoCatalog(list.map(mapContentToVideoItem));
+            setVideoCatalog(mapAndDedupeVideos(list));
           } else setVideoCatalog([]);
           if (sRes.ok) {
             const data = await sRes.json();
@@ -284,7 +290,7 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
         if (response.ok) {
           const data = await response.json();
           const videosList = data.data || data || [];
-          setVideos(videosList.map(mapContentToVideoItem));
+          setVideos(mapAndDedupeVideos(videosList));
         } else {
           setVideos([]);
         }
@@ -494,7 +500,7 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
         });
         if (vRes.ok) {
           const data = await vRes.json();
-          setVideoCatalog((data.data || data || []).map(mapContentToVideoItem));
+          setVideoCatalog(mapAndDedupeVideos(data.data || data || []));
         }
         const vUrl = buildVideosUrl(selectedClass, selectedSubject);
         const v2 = await fetch(vUrl, {
@@ -502,7 +508,7 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
         });
         if (v2.ok) {
           const data = await v2.json();
-          setVideos((data.data || data || []).map(mapContentToVideoItem));
+          setVideos(mapAndDedupeVideos(data.data || data || []));
         }
       } else {
         setVideoCatalog([]);

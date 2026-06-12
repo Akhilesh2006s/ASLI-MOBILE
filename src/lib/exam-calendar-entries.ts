@@ -30,8 +30,42 @@ export function eachLocalDayInRange(start: Date, end: Date): Date[] {
   return days;
 }
 
-export function buildExamCalendarEntries(exams: any[]) {
-  const entries: { id: string; type: 'exam'; title: string; subject: string; date: Date; source: any }[] = [];
+export type ExamDayRole = 'start' | 'end' | 'middle' | 'single';
+
+export function getExamDayRole(day: Date, start: Date, end: Date): ExamDayRole {
+  const dayKey = formatCalendarDateKey(day);
+  const startKey = formatCalendarDateKey(start);
+  const endKey = formatCalendarDateKey(end);
+  if (startKey === endKey) return 'single';
+  if (dayKey === startKey) return 'start';
+  if (dayKey === endKey) return 'end';
+  return 'middle';
+}
+
+export function isDateWithinExamWindow(day: Date, exam: any): boolean {
+  const start = parseCalendarDate(exam?.startDate);
+  const end = parseCalendarDate(exam?.endDate) || start;
+  if (!start) return false;
+  const key = formatCalendarDateKey(day);
+  const startKey = formatCalendarDateKey(start);
+  const endKey = formatCalendarDateKey(end);
+  return key >= startKey && key <= endKey;
+}
+
+export type ExamCalendarEntry = {
+  id: string;
+  type: 'exam';
+  title: string;
+  subject: string;
+  date: Date;
+  source: any;
+  examDayRole: ExamDayRole;
+  windowStart: Date;
+  windowEnd: Date;
+};
+
+export function buildExamCalendarEntries(exams: any[]): ExamCalendarEntry[] {
+  const entries: ExamCalendarEntry[] = [];
   for (const exam of exams) {
     const start = parseCalendarDate(exam?.startDate);
     const end = parseCalendarDate(exam?.endDate) || start;
@@ -48,8 +82,98 @@ export function buildExamCalendarEntries(exams: any[]) {
         subject: getExamSubjectLabel(exam),
         date: slot,
         source: exam,
+        examDayRole: getExamDayRole(day, start, end),
+        windowStart: start,
+        windowEnd: end,
       });
     }
   }
   return entries;
+}
+
+export type DayExamMarkers = {
+  quizCount: number;
+  examStartCount: number;
+  examEndCount: number;
+  examMiddleCount: number;
+  examSingleCount: number;
+  totalCount: number;
+};
+
+export function buildDayExamMarkers(
+  entries: { type: string; examDayRole?: ExamDayRole }[]
+): DayExamMarkers {
+  let quizCount = 0;
+  let examStartCount = 0;
+  let examEndCount = 0;
+  let examMiddleCount = 0;
+  let examSingleCount = 0;
+
+  for (const entry of entries) {
+    if (entry.type === 'quiz') {
+      quizCount += 1;
+      continue;
+    }
+    if (entry.type !== 'exam') continue;
+    switch (entry.examDayRole) {
+      case 'start':
+        examStartCount += 1;
+        break;
+      case 'end':
+        examEndCount += 1;
+        break;
+      case 'middle':
+        examMiddleCount += 1;
+        break;
+      default:
+        examSingleCount += 1;
+        break;
+    }
+  }
+
+  return {
+    quizCount,
+    examStartCount,
+    examEndCount,
+    examMiddleCount,
+    examSingleCount,
+    totalCount: entries.length,
+  };
+}
+
+export function formatExamWindowDate(date: Date): string {
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+export function formatExamEventDetail(entry: ExamCalendarEntry): string {
+  const startLabel = formatExamWindowDate(entry.windowStart);
+  const endLabel = formatExamWindowDate(entry.windowEnd);
+  const openTime = entry.windowStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const closeTime = entry.windowEnd.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  switch (entry.examDayRole) {
+    case 'start':
+      return `Opens ${openTime} · Window until ${endLabel}`;
+    case 'end':
+      return `Closes ${closeTime} · Opened ${startLabel}`;
+    case 'middle':
+      return `Active window · ${startLabel} – ${endLabel}`;
+    default:
+      return `${openTime} – ${closeTime} · ${startLabel}`;
+  }
+}
+
+export function getExamDayRoleLabel(role: ExamDayRole | undefined): string | null {
+  switch (role) {
+    case 'start':
+      return 'OPENS';
+    case 'end':
+      return 'CLOSES';
+    case 'middle':
+      return 'ACTIVE';
+    case 'single':
+      return 'EXAM DAY';
+    default:
+      return null;
+  }
 }

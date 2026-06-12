@@ -53,10 +53,7 @@ export default function GlassCard({
         {children}
       </LinearGradient>
     ) : (
-      <View style={cardStyle}>
-        {variant === 'elevated' ? <View style={styles.topBar} /> : null}
-        {children}
-      </View>
+      <View style={cardStyle}>{children}</View>
     );
 
   const animatedInner = animate ? (
@@ -158,15 +155,5 @@ const styles = StyleSheet.create({
   cardFillParent: {
     flex: 1,
     minHeight: '100%',
-  },
-  topBar: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 3,
-    borderTopLeftRadius: STUDENT_RADIUS.card,
-    borderTopRightRadius: STUDENT_RADIUS.card,
-    backgroundColor: STUDENT.primary,
   },
 });

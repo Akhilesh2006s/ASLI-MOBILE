@@ -72,7 +72,7 @@ export const STUDENT_AI_TOOLS: StudentAiTool[] = [
     name: 'Mock Test Builder',
     description: 'Generate mock tests with exam-style questions',
     icon: 'checkmark-circle-outline',
-    color: '#ef4444',
+    color: '#6366f1',
   },
   {
     id: 'project-idea-lab',

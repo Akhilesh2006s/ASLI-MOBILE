@@ -8,7 +8,6 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -282,7 +281,7 @@ function StudentDeckView({ meta, cards }: { meta: StudentDeckMeta; cards: Flashc
       num: 2,
       title: 'Subtopic Link and Prior Knowledge Required',
       icon: 'locate-outline',
-      stripe: '#06b6d4',
+      stripe: '#67e8f9',
       body: meta.subtopicLinkPriorKnowledge ? (
         <Text style={styles.bodyText}>{meta.subtopicLinkPriorKnowledge}</Text>
       ) : (
@@ -293,7 +292,7 @@ function StudentDeckView({ meta, cards }: { meta: StudentDeckMeta; cards: Flashc
       num: 3,
       title: "Learning Objectives - Bloom's Taxonomy Aligned",
       icon: 'radio-button-on-outline',
-      stripe: '#6366f1',
+      stripe: '#a5b4fc',
       body:
         meta.learningObjectives.length > 0 ? (
           <BulletList items={meta.learningObjectives} />
@@ -305,7 +304,7 @@ function StudentDeckView({ meta, cards }: { meta: StudentDeckMeta; cards: Flashc
       num: 4,
       title: 'NCF Competency / Learning Outcome Alignment',
       icon: 'school-outline',
-      stripe: '#3b82f6',
+      stripe: '#93c5fd',
       body: meta.ncfAlignment ? (
         <Text style={styles.bodyText}>{meta.ncfAlignment}</Text>
       ) : (
@@ -316,14 +315,14 @@ function StudentDeckView({ meta, cards }: { meta: StudentDeckMeta; cards: Flashc
       num: 5,
       title: 'Flashcard Set',
       icon: 'flash-outline',
-      stripe: '#8b5cf6',
+      stripe: '#c4b5fd',
       body: <FlipCardSession cards={cards} />,
     },
     {
       num: 6,
       title: 'Difficulty Tag for Each Card',
       icon: 'speedometer-outline',
-      stripe: '#f59e0b',
+      stripe: '#fcd34d',
       body: hasDifficulty ? (
         <PerCardList
           cards={cards}
@@ -338,7 +337,7 @@ function StudentDeckView({ meta, cards }: { meta: StudentDeckMeta; cards: Flashc
       num: 7,
       title: 'Memory Hook / Quick Tip',
       icon: 'bulb-outline',
-      stripe: '#eab308',
+      stripe: '#fde047',
       body: hasMemory ? (
         <PerCardList
           cards={cards}
@@ -353,7 +352,7 @@ function StudentDeckView({ meta, cards }: { meta: StudentDeckMeta; cards: Flashc
       num: 8,
       title: 'Self-Check Round',
       icon: 'checkmark-circle-outline',
-      stripe: '#14b8a6',
+      stripe: '#5eead4',
       body: (
         <>
           {meta.selfCheckRound ? (
@@ -375,7 +374,7 @@ function StudentDeckView({ meta, cards }: { meta: StudentDeckMeta; cards: Flashc
       num: 9,
       title: 'Common Mistakes to Avoid',
       icon: 'warning-outline',
-      stripe: '#f97316',
+      stripe: '#fdba74',
       body:
         meta.commonMistakesToAvoid.length > 0 ? (
           <BulletList items={meta.commonMistakesToAvoid} />
@@ -387,7 +386,7 @@ function StudentDeckView({ meta, cards }: { meta: StudentDeckMeta; cards: Flashc
       num: 10,
       title: 'Expected Learning Outcomes',
       icon: 'trophy-outline',
-      stripe: '#a855f7',
+      stripe: '#d8b4fe',
       body:
         meta.expectedLearningOutcomes.length > 0 ? (
           <BulletList items={meta.expectedLearningOutcomes} />
@@ -399,7 +398,7 @@ function StudentDeckView({ meta, cards }: { meta: StudentDeckMeta; cards: Flashc
       num: 11,
       title: 'Real-life Application',
       icon: 'sparkles-outline',
-      stripe: '#10b981',
+      stripe: '#6ee7b7',
       body: meta.realLifeApplication ? (
         <Text style={styles.bodyText}>{meta.realLifeApplication}</Text>
       ) : (
@@ -410,7 +409,7 @@ function StudentDeckView({ meta, cards }: { meta: StudentDeckMeta; cards: Flashc
       num: 12,
       title: 'Reflection / Exit Ticket',
       icon: 'chatbubble-ellipses-outline',
-      stripe: '#64748b',
+      stripe: '#cbd5e1',
       body: meta.reflectionExitTicket ? (
         <Text style={styles.bodyText}>{meta.reflectionExitTicket}</Text>
       ) : (
@@ -422,9 +421,9 @@ function StudentDeckView({ meta, cards }: { meta: StudentDeckMeta; cards: Flashc
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
       <View style={styles.deckShell}>
-        <LinearGradient colors={['#7c3aed', '#4f46e5', '#6d28d9']} style={styles.hero}>
+        <View style={[styles.hero, styles.heroLight]}>
           <View style={styles.heroIcon}>
-            <Ionicons name="layers-outline" size={22} color="#fff" />
+            <Ionicons name="layers-outline" size={22} color="#6d28d9" />
           </View>
           <View style={styles.heroText}>
             <Text style={styles.heroEyebrow}>My Study Decks</Text>
@@ -433,7 +432,7 @@ function StudentDeckView({ meta, cards }: { meta: StudentDeckMeta; cards: Flashc
             </Text>
             <Text style={styles.heroSub}>{cards.length} flashcards in deck</Text>
           </View>
-        </LinearGradient>
+        </View>
 
         <View style={styles.inner}>
           {sections.map((sec) => (
@@ -482,7 +481,7 @@ function TeacherDeckView({
       num: 1,
       title: 'Context & Alignment',
       icon: 'information-circle-outline',
-      stripe: '#6366f1',
+      stripe: '#a5b4fc',
       body: (
         <View style={styles.chipGrid}>
           {contextChips.map((chip) => (
@@ -496,7 +495,7 @@ function TeacherDeckView({
       num: 2,
       title: 'Foundations',
       icon: 'library-outline',
-      stripe: '#8b5cf6',
+      stripe: '#c4b5fd',
       body: (
         <View style={styles.gap8}>
           {meta.priorKnowledgeRequired ? (
@@ -536,7 +535,7 @@ function TeacherDeckView({
       num: 4,
       title: 'Study Aids',
       icon: 'bulb-outline',
-      stripe: '#f59e0b',
+      stripe: '#fcd34d',
       body: (
         <View style={styles.gap8}>
           {meta.deckMemoryHook ? (
@@ -569,7 +568,7 @@ function TeacherDeckView({
       num: 5,
       title: 'Wrap-Up',
       icon: 'flag-outline',
-      stripe: '#10b981',
+      stripe: '#6ee7b7',
       body: (
         <View style={styles.gap8}>
           {meta.realLifeConnection ? (
@@ -601,9 +600,9 @@ function TeacherDeckView({
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
       <View style={styles.deckShell}>
-        <LinearGradient colors={['#4338ca', '#5b21b6', '#7c3aed']} style={styles.hero}>
+        <View style={[styles.hero, styles.heroLight]}>
           <View style={styles.heroIcon}>
-            <Ionicons name="albums-outline" size={22} color="#fff" />
+            <Ionicons name="albums-outline" size={22} color="#6d28d9" />
           </View>
           <View style={styles.heroText}>
             <Text style={styles.heroEyebrow}>Flash Card Generator</Text>
@@ -612,7 +611,7 @@ function TeacherDeckView({
             </Text>
             <Text style={styles.heroSub}>{cards.length} task/solution cards</Text>
           </View>
-        </LinearGradient>
+        </View>
 
         <View style={styles.inner}>
           {sections.map((sec) => (
@@ -714,11 +713,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
   },
+  heroLight: {
+    backgroundColor: '#f5f3ff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e9d5ff',
+  },
   heroIcon: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: '#ede9fe',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -728,10 +732,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 1,
     textTransform: 'uppercase',
-    color: 'rgba(255,255,255,0.85)',
+    color: '#7c3aed',
   },
-  heroTitle: { fontSize: 18, fontWeight: '800', color: '#fff', marginTop: 2 },
-  heroSub: { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+  heroTitle: { fontSize: 18, fontWeight: '800', color: '#0f172a', marginTop: 2 },
+  heroSub: { fontSize: 12, color: '#64748b', marginTop: 2 },
   inner: { padding: 10, gap: 8 },
   section1Card: {
     borderRadius: 14,

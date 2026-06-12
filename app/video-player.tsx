@@ -13,6 +13,7 @@ import {
   getAuthHeaders,
   resolveContentUrl,
 } from '../src/utils/contentPreview';
+import { getVideoDisplayTitle } from '../src/lib/video-chapter-schedule';
 
 const VIDEO_CONTENT_MAX = 960;
 
@@ -71,7 +72,7 @@ function transformLibraryVideo(videoData: any) {
 
   return {
     _id: videoData._id || videoData.id,
-    title: videoData.title || 'Untitled Video',
+    title: getVideoDisplayTitle({ ...videoData, type: videoData.type || 'Video' }),
     description: videoData.description || '',
     topic: videoData.topic || '',
     chapter: videoData.chapter || '',
@@ -289,7 +290,7 @@ export default function VideoPlayer() {
               <Ionicons name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
             <View style={styles.headerText}>
-              <Text style={styles.headerTitle} numberOfLines={isTablet ? 2 : 1}>{video.title}</Text>
+              <Text style={styles.headerTitle}>{video.title}</Text>
               <View style={styles.headerBadges}>
                 {video.difficulty && (
                   <View style={styles.badge}>
@@ -516,6 +517,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#fff',
     marginBottom: 8,
+    flexShrink: 1,
   },
   headerBadges: {
     flexDirection: 'row',

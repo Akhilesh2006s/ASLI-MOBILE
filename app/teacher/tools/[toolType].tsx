@@ -47,8 +47,14 @@ import {
   storeAiToolSuccessPayload,
   shouldShowAiToolErrorAlert,
   validateActivityToolDisplay,
+  fetchAiToolGeneratedContentFallback,
+  isAiToolClientValidationError,
   type AiToolGenerationMeta,
 } from '../../../src/lib/ai-tool-generate';
+import {
+  buildAiToolContentRenderKey,
+  formatAiToolRotationLabel,
+} from '../../../src/lib/ai-tool-rotation-label';
 import {
   filterSubjectsForAiTool,
   isStoryPassageLanguageSubject,
@@ -257,6 +263,11 @@ export default function TeacherToolPage() {
   const [activeDropdown, setActiveDropdown] = useState<DropdownState | null>(null);
 
   const config = toolType && isTeacherToolType(toolType) ? getTeacherToolConfig(toolType) : null;
+  const rotationLabel = useMemo(() => formatAiToolRotationLabel(responseMeta), [responseMeta]);
+  const contentRenderKey = useMemo(
+    () => buildAiToolContentRenderKey(toolType, generatedContent, responseMeta),
+    [toolType, generatedContent, responseMeta]
+  );
   const accent = config?.color || TEACHER.primary;
 
   const boardOptions = getAiToolBoardOptions(isAsliPrepExclusive, schoolBoardName);
@@ -690,8 +701,59 @@ export default function TeacherToolPage() {
       }
     } catch (error: any) {
       console.error('Generation error:', error);
-      setFallbackEmptyMessage(error.message || 'Network error. Please try again.');
-      Alert.alert('Error', error.message || 'Network error. Please try again.');
+      const errMsg = String(error?.message || 'Network error. Please try again.');
+      if (isAiToolClientValidationError(errMsg) || /AI_TOOL_DATA_NOT_FOUND/i.test(errMsg)) {
+        setFallbackEmptyMessage(errMsg);
+        Alert.alert('Error', errMsg);
+        return;
+      }
+
+      try {
+        const selectedClass = formParams.gradeLevel;
+        const selectedSubject = formParams.subject || formParams.subjects;
+        if (!selectedClass || !selectedSubject) {
+          throw new Error('Missing class or subject for fallback');
+        }
+        const token = await SecureStore.getItemAsync('authToken');
+        if (!token) throw new Error('Please sign in again.');
+
+        const fallbackResult = await fetchAiToolGeneratedContentFallback({
+          apiBaseUrl: API_BASE_URL,
+          token,
+          classLabel: String(selectedClass),
+          subject: String(selectedSubject),
+          topic: String(formParams.topic || ''),
+          subTopic: String(formParams.subTopic || ''),
+          toolType: String(toolType || ''),
+        });
+
+        if (!fallbackResult.ok) {
+          setGeneratedContent('');
+          setRawGeneratedContent(null);
+          setResponseMeta(null);
+          setFallbackEmptyMessage(`${errMsg} ${fallbackResult.fallbackMessage}`.trim());
+          if (shouldShowAiToolErrorAlert(fallbackResult.code)) {
+            Alert.alert(fallbackResult.title, fallbackResult.message);
+          }
+          return;
+        }
+
+        const stored = storeAiToolSuccessPayload(
+          toolType,
+          fallbackResult.content,
+          fallbackResult.rawContent,
+          'teacher'
+        );
+        setResponseMeta(fallbackResult.metadata);
+        setFromAiFailure(false);
+        setParamsExpanded(false);
+        setGeneratedContent(stored.generatedContent);
+        setRawGeneratedContent(stored.rawGeneratedContent);
+      } catch (fallbackError: any) {
+        const fe = String(fallbackError?.message || 'Fallback lookup failed');
+        setFallbackEmptyMessage(`${errMsg} ${fe}`.trim());
+        Alert.alert('Error', `${errMsg} ${fe}`.trim());
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -905,7 +967,15 @@ export default function TeacherToolPage() {
         </View>
       ) : generatedContent ? (
         <View style={styles.outputWrap} collapsable={false}>
+          {rotationLabel ? (
+            <View style={styles.rotationBadge}>
+              <Ionicons name="layers-outline" size={14} color={accent} />
+              <Text style={[styles.rotationBadgeText, { color: accent }]}>{rotationLabel}</Text>
+              <Text style={styles.rotationHint}>Tap Generate for another record</Text>
+            </View>
+          ) : null}
           <AiToolContentRenderer
+            key={contentRenderKey}
             toolType={toolType}
             content={generatedContent}
             rawContent={rawGeneratedContent}
@@ -1068,6 +1138,21 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   outputSection: { width: '100%' },
   outputWrap: { width: '100%', minHeight: 240 },
+  rotationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: TEACHER_RADIUS.md,
+    backgroundColor: TEACHER.surface,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
+  },
+  rotationBadgeText: { fontSize: 13, fontWeight: '700' },
+  rotationHint: { ...TEACHER_TYPO.caption, color: TEACHER.navInactive },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1168,7 +1253,7 @@ const styles = StyleSheet.create({
   },
   fieldLabel: { flex: 1, ...TEACHER_TYPO.body, fontWeight: '700', color: TEACHER.textSecondary },
   fieldSpinner: { marginLeft: 'auto' },
-  required: { color: TEACHER.danger },
+  required: { color: TEACHER.primary },
   dropdownTrigger: {
     minHeight: 52,
     borderRadius: TEACHER_RADIUS.md,

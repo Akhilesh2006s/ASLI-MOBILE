@@ -399,7 +399,11 @@ export default function TeacherDashboard() {
         exiting={FadeOut.duration(200)}
         style={[
           styles.content,
-          isFullHeight && activeTab !== 'eduott' && activeTab !== 'learning-paths' && styles.contentFull,
+          isFullHeight &&
+            activeTab !== 'eduott' &&
+            activeTab !== 'learning-paths' &&
+            activeTab !== 'vidya-ai' &&
+            styles.contentFull,
         ]}
       >
         {isFullHeight ? (

@@ -13,7 +13,6 @@ type Props = {
 export default function AnalysisCard({ title, icon = 'document-text', accent = ANALYSIS.accent, children }: Props) {
   return (
     <View style={analysisStyles.card}>
-      <View style={[analysisStyles.cardAccent, { backgroundColor: accent }]} />
       <View style={analysisStyles.cardHeader}>
         <View style={analysisStyles.cardIconWrap}>
           <Ionicons name={icon} size={18} color={accent} />

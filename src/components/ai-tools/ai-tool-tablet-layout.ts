@@ -5,7 +5,9 @@ export const AI_TOOL_SPLIT_MAX_WIDTH = 1200;
 
 export function useAiToolTabletLayout() {
   const { width } = useWindowDimensions();
-  const isTablet = width >= AI_TOOL_TABLET_MIN;
+  // Always use stacked form → output (phone layout). Digital boards / wide tablets
+  // should not show parameters and preview side-by-side.
+  const isTablet = false;
   const splitMaxWidth = Math.min(width, AI_TOOL_SPLIT_MAX_WIDTH);
   return { isTablet, splitMaxWidth };
 }

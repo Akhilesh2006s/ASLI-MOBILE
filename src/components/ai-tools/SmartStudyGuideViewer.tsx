@@ -114,28 +114,28 @@ function buildBodySections(guide: StudyGuideContent) {
 
   if (guide.chapterOverview.trim()) {
     sections.push(
-      <GuideSectionCard key="2" sectionNum="Section 2" title="Chapter and Subtopic Overview" icon="book-outline" stripe="#2563eb">
+      <GuideSectionCard key="2" sectionNum="Section 2" title="Chapter and Subtopic Overview" icon="book-outline" stripe="#93c5fd">
         <RichTextBlock text={guide.chapterOverview} />
       </GuideSectionCard>
     );
   }
   if (guide.learningObjectives.length > 0) {
     sections.push(
-      <GuideSectionCard key="3" sectionNum="Section 3" title="Learning Objectives" icon="flag-outline" stripe="#7c3aed">
-        <BulletList items={guide.learningObjectives} color="#7c3aed" />
+      <GuideSectionCard key="3" sectionNum="Section 3" title="Learning Objectives" icon="flag-outline" stripe="#c4b5fd">
+        <BulletList items={guide.learningObjectives} color="#8b5cf6" />
       </GuideSectionCard>
     );
   }
   if (guide.priorKnowledge.length > 0) {
     sections.push(
-      <GuideSectionCard key="4" sectionNum="Section 4" title="Prior Knowledge Required" icon="school-outline" stripe="#0891b2">
+      <GuideSectionCard key="4" sectionNum="Section 4" title="Prior Knowledge Required" icon="school-outline" stripe="#67e8f9">
         <BulletList items={guide.priorKnowledge} color="#0891b2" />
       </GuideSectionCard>
     );
   }
   if (guide.keyConcepts.length > 0) {
     sections.push(
-      <GuideSectionCard key="5" sectionNum="Section 5" title="Key Concepts Explained" icon="bulb-outline" stripe="#4f46e5">
+      <GuideSectionCard key="5" sectionNum="Section 5" title="Key Concepts Explained" icon="bulb-outline" stripe="#a5b4fc">
         <View style={styles.conceptList}>
           {guide.keyConcepts.map((c, i) => (
             <View key={`${c.name}-${i}`} style={styles.conceptCard}>
@@ -149,7 +149,7 @@ function buildBodySections(guide: StudyGuideContent) {
   }
   if (guide.definitions.length > 0 || guide.formulae.length > 0) {
     sections.push(
-      <GuideSectionCard key="6" sectionNum="Section 6" title="Important Definitions and Formulae" icon="calculator-outline" stripe="#d97706">
+      <GuideSectionCard key="6" sectionNum="Section 6" title="Important Definitions and Formulae" icon="calculator-outline" stripe="#fcd34d">
         {guide.definitions.map((d, i) => (
           <View key={`def-${i}`} style={styles.definitionRow}>
             <Text style={styles.definitionTerm}>{d.term}</Text>
@@ -168,28 +168,28 @@ function buildBodySections(guide: StudyGuideContent) {
   }
   if (guide.conceptFlow.trim()) {
     sections.push(
-      <GuideSectionCard key="7" sectionNum="Section 7" title="Concept Flow / Mind Map" icon="git-network-outline" stripe="#0d9488">
+      <GuideSectionCard key="7" sectionNum="Section 7" title="Concept Flow / Mind Map" icon="git-network-outline" stripe="#5eead4">
         <RichTextBlock text={guide.conceptFlow} />
       </GuideSectionCard>
     );
   }
   if (guide.realLifeExamples.length > 0) {
     sections.push(
-      <GuideSectionCard key="8" sectionNum="Section 8" title="Real-life Examples" icon="leaf-outline" stripe="#65a30d">
+      <GuideSectionCard key="8" sectionNum="Section 8" title="Real-life Examples" icon="leaf-outline" stripe="#bef264">
         <BulletList items={guide.realLifeExamples} color="#65a30d" />
       </GuideSectionCard>
     );
   }
   if (guide.quickRevisionNotes.length > 0) {
     sections.push(
-      <GuideSectionCard key="9" sectionNum="Section 9" title="Quick Revision Notes" icon="flash-outline" stripe="#ea580c">
+      <GuideSectionCard key="9" sectionNum="Section 9" title="Quick Revision Notes" icon="flash-outline" stripe="#fdba74">
         <BulletList items={guide.quickRevisionNotes} color="#ea580c" />
       </GuideSectionCard>
     );
   }
   if (guide.practiceQuestions.length > 0) {
     sections.push(
-      <GuideSectionCard key="10" sectionNum="Section 10" title="Practice Questions" icon="help-circle-outline" stripe="#4f46e5">
+      <GuideSectionCard key="10" sectionNum="Section 10" title="Practice Questions" icon="help-circle-outline" stripe="#a5b4fc">
         <View style={styles.practiceList}>
           {guide.practiceQuestions.map((q, i) => (
             <PracticeQuestionCard key={`${q.question}-${i}`} q={q} index={i} />
@@ -200,7 +200,7 @@ function buildBodySections(guide: StudyGuideContent) {
   }
   if (guide.improvementTips.length > 0) {
     sections.push(
-      <GuideSectionCard key="11" sectionNum="Section 11" title="Tips for Further Improvement" icon="sparkles-outline" stripe="#c026d3">
+      <GuideSectionCard key="11" sectionNum="Section 11" title="Tips for Further Improvement" icon="sparkles-outline" stripe="#f0abfc">
         <BulletList items={guide.improvementTips} color="#c026d3" />
       </GuideSectionCard>
     );
@@ -290,7 +290,7 @@ function LinearGuideHeader({
   return (
     <View style={styles.heroHeader}>
       <View style={styles.heroIcon}>
-        <Ionicons name="bookmark" size={20} color="#fff" />
+        <Ionicons name="bookmark" size={20} color="#6366f1" />
       </View>
       <View style={styles.heroText}>
         <Text style={styles.heroEyebrow}>Smart Study Guide</Text>
@@ -337,13 +337,15 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 16,
     paddingVertical: 16,
-    backgroundColor: '#4338ca',
+    backgroundColor: '#eef2ff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#c7d2fe',
   },
   heroIcon: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: '#e0e7ff',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -353,9 +355,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 1.2,
     textTransform: 'uppercase',
-    color: 'rgba(255,255,255,0.8)',
+    color: '#6366f1',
   },
-  heroTitle: { marginTop: 4, fontSize: 18, fontWeight: '800', color: '#fff' },
+  heroTitle: { marginTop: 4, fontSize: 18, fontWeight: '800', color: '#0f172a' },
   heroBadges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
   heroBadge: {
     fontSize: 10,
@@ -455,7 +457,7 @@ const styles = StyleSheet.create({
     minWidth: 28,
     height: 24,
     borderRadius: 8,
-    backgroundColor: '#4f46e5',
+    backgroundColor: '#a5b4fc',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 6,

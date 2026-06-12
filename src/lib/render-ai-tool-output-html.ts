@@ -1,6 +1,7 @@
 import { renderMarkdown } from './render-teacher-markdown';
 import {
   contentHasNumberedTemplateSections,
+  countNumberedTemplateSections,
   resolveRichDisplayContent,
 } from './ai-tool-display-content';
 import { stripStructuredAiToolMetadata } from './strip-ai-tool-metadata';
@@ -56,15 +57,15 @@ const TOOL_SHELLS: Record<string, ToolShell> = {
     wrapperClass: 'rounded-2xl border border-indigo-200/80 p-3',
     wrapperStyle: 'background:linear-gradient(to bottom,#eef2ff,#fff,#f5f3ff)',
   },
-  'project-idea-lab': {
-    label: 'Project Idea Lab',
-    wrapperClass: 'rounded-2xl border border-yellow-200/80 p-3',
-    wrapperStyle: 'background:linear-gradient(to bottom,#fefce8,#fff,#fffbeb)',
-  },
   'worksheet-mcq-generator': {
     label: 'Worksheet & MCQ Generator',
     wrapperClass: 'rounded-2xl border border-emerald-200/80 p-3',
     wrapperStyle: 'background:linear-gradient(to bottom,#ecfdf5,#fff,#f0fdf4)',
+  },
+  'project-idea-lab': {
+    label: 'Project Idea Lab',
+    wrapperClass: 'rounded-2xl border border-yellow-200/80 p-3',
+    wrapperStyle: 'background:linear-gradient(to bottom,#fefce8,#fff,#fffbeb)',
   },
   'homework-creator': {
     label: 'Homework Creator',
@@ -102,6 +103,20 @@ const TOOL_SHELLS: Record<string, ToolShell> = {
     wrapperStyle: 'background:linear-gradient(to bottom,#f5f3ff,#fff,#ede9fe)',
   },
 };
+
+/** Teacher Vidya tools — prefer structured or tinted section cards over plain markdown. */
+const TEACHER_STRUCTURED_TOOLS = new Set([
+  'activity-project-generator',
+  'worksheet-mcq-generator',
+  'concept-mastery-helper',
+  'lesson-planner',
+  'exam-question-paper-generator',
+  'daily-class-plan-maker',
+  'homework-creator',
+  'story-passage-creator',
+  'short-notes-summaries-maker',
+  'flashcard-generator',
+]);
 
 const TOOL_RENDERERS: Record<string, (text: string) => string> = {
   'smart-study-guide-generator': renderSmartStudyGuideMarkdown,
@@ -189,7 +204,7 @@ export function getToolOutputPanelBorder(toolType: string): string | undefined {
     'worksheet-mcq-generator': '#6ee7b7',
     'homework-creator': '#fdba74',
     'exam-question-paper-generator': '#cbd5e1',
-    'mock-test-builder': '#fca5a5',
+    'mock-test-builder': '#c7d2fe',
     'story-passage-creator': '#93c5fd',
     'reading-practice-room': '#93c5fd',
     'flashcard-generator': '#f9a8d4',
@@ -220,16 +235,35 @@ export function renderAiToolOutputHtml(
     'homework-creator',
     'story-passage-creator',
     'reading-practice-room',
+    'activity-project-generator',
+    'project-idea-lab',
+    'lesson-planner',
+    'daily-class-plan-maker',
+    'exam-question-paper-generator',
+    'flashcard-generator',
+    'short-notes-summaries-maker',
   ]);
 
+  const teacherHasSections = countNumberedTemplateSections(display) >= 1;
+
   let inner: string;
-  if (structured && structuredFullTools.has(toolType)) {
+  if (variant === 'teacher') {
+    if (structured && TEACHER_STRUCTURED_TOOLS.has(toolType)) {
+      inner = structured;
+    } else if (numberedTemplate || teacherHasSections) {
+      inner = renderNumberedTemplateAsCards(toolType, display);
+    } else if (themedMarkdown) {
+      inner = themedMarkdown(display);
+    } else if (structured) {
+      inner = structured;
+    } else {
+      inner = renderMarkdown(display);
+    }
+  } else if (structured && structuredFullTools.has(toolType)) {
     inner = structured;
   } else if (numberedTemplate && themedMarkdown) {
-    // Student tools: themed markdown shows every numbered section with tool colors.
     inner = themedMarkdown(display);
   } else if (numberedTemplate) {
-    // Teacher tools: card layout from numbered template (all sections + design).
     inner = renderNumberedTemplateAsCards(toolType, display);
   } else if (structured) {
     inner = structured;

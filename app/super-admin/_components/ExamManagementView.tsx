@@ -22,6 +22,7 @@ import { exportCsvFile } from '../../../src/utils/csvExport';
 import { AdminGridList, useAdminListLayout } from '../../admin/_ui';
 import { EXAM_CALENDAR_PREFILL_KEY } from '../../../src/lib/super-admin-calendar';
 import { getExamClassStrings } from '../../../src/lib/exam-classes';
+import DateTimePickerField, { parseDateTimeLocal } from '../../../src/components/shared/DateTimePickerField';
 import {
   type Exam,
   type SchoolOption,
@@ -1070,7 +1071,11 @@ export default function ExamManagementView() {
               <Ionicons name="close" size={24} color="#6b7280" />
             </Pressable>
           </View>
-          <ScrollView style={styles.formModalBody} keyboardShouldPersistTaps="handled">
+          <ScrollView
+            style={styles.formModalBody}
+            contentContainerStyle={styles.formModalBodyContent}
+            keyboardShouldPersistTaps="handled"
+          >
             <Text style={styles.formHint}>
               Create a new exam for students. Make it available to all schools or specific schools only.
             </Text>
@@ -1097,7 +1102,12 @@ export default function ExamManagementView() {
                 ) : schools.length === 0 ? (
                   <Text style={styles.formHint}>No schools available</Text>
                 ) : (
-                  <View style={styles.checkboxList}>
+                  <ScrollView
+                    style={styles.checkboxListScroll}
+                    contentContainerStyle={styles.checkboxListContent}
+                    nestedScrollEnabled
+                    keyboardShouldPersistTaps="handled"
+                  >
                     {schools.map((school) => (
                       <Pressable key={school.id} style={styles.checkboxRow} onPress={() => toggleTargetSchool(school.id)}>
                         <Ionicons
@@ -1108,7 +1118,7 @@ export default function ExamManagementView() {
                         <Text style={styles.checkboxLabel}>{school.name}</Text>
                       </Pressable>
                     ))}
-                  </View>
+                  </ScrollView>
                 )}
               </View>
             )}
@@ -1122,35 +1132,47 @@ export default function ExamManagementView() {
             <View style={styles.formGroup}>
               <Text style={styles.formLabel}>Assigned Classes *</Text>
               <TextInput style={styles.formInput} value={classSearch} onChangeText={setClassSearch} placeholder="Search class..." />
-              <View style={styles.checkboxList}>
+              {examForm.assignedClasses.length > 0 ? (
+                <View style={styles.chipWrap}>
+                  {examForm.assignedClasses.map((cls) => (
+                    <View key={cls} style={styles.selectedChip}>
+                      <Text style={styles.selectedChipText}>Class {cls}</Text>
+                      <Pressable onPress={() => toggleAssignedClass(cls)}>
+                        <Ionicons name="close" size={14} color="#0369a1" />
+                      </Pressable>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+              <ScrollView
+                style={styles.checkboxListScroll}
+                contentContainerStyle={styles.checkboxListContent}
+                nestedScrollEnabled
+                keyboardShouldPersistTaps="handled"
+              >
                 {filteredClassOptions.map((cls) => (
                   <Pressable key={cls} style={styles.checkboxRow} onPress={() => toggleAssignedClass(cls)}>
                     <Ionicons name={examForm.assignedClasses.includes(cls) ? 'checkbox' : 'square-outline'} size={20} color="#f97316" />
                     <Text style={styles.checkboxLabel}>Class {cls}</Text>
                   </Pressable>
                 ))}
-              </View>
-              <View style={styles.chipWrap}>
-                {examForm.assignedClasses.map((cls) => (
-                  <View key={cls} style={styles.selectedChip}>
-                    <Text style={styles.selectedChipText}>Class {cls}</Text>
-                    <Pressable onPress={() => toggleAssignedClass(cls)}>
-                      <Ionicons name="close" size={14} color="#0369a1" />
-                    </Pressable>
-                  </View>
-                ))}
-              </View>
+              </ScrollView>
             </View>
             <View style={styles.formGroup}>
               <Text style={styles.formLabel}>Subjects *</Text>
-              <View style={styles.checkboxList}>
+              <ScrollView
+                style={styles.checkboxListScroll}
+                contentContainerStyle={styles.checkboxListContent}
+                nestedScrollEnabled
+                keyboardShouldPersistTaps="handled"
+              >
                 {EXAM_SUBJECTS.map((subject) => (
                   <Pressable key={subject.value} style={styles.checkboxRow} onPress={() => toggleSubject(subject.value)}>
                     <Ionicons name={examForm.subjects.includes(subject.value) ? 'checkbox' : 'square-outline'} size={20} color="#f97316" />
                     <Text style={styles.checkboxLabel}>{subject.label}</Text>
                   </Pressable>
                 ))}
-              </View>
+              </ScrollView>
             </View>
             <View style={styles.formGroup}>
               <Text style={styles.formLabel}>No. of Attempts *</Text>
@@ -1178,12 +1200,19 @@ export default function ExamManagementView() {
               <TextInput style={styles.formInput} keyboardType="numeric" value={examForm.totalMarks} onChangeText={(v) => setExamForm((p) => ({ ...p, totalMarks: v }))} placeholder="360" />
             </View>
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Start Date * (YYYY-MM-DDTHH:mm)</Text>
-              <TextInput style={styles.formInput} value={examForm.startDate} onChangeText={(v) => setExamForm((p) => ({ ...p, startDate: v }))} placeholder="2024-12-25T10:00" />
+              <DateTimePickerField
+                label="Start Date *"
+                value={examForm.startDate}
+                onChange={(startDate) => setExamForm((p) => ({ ...p, startDate }))}
+              />
             </View>
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>End Date * (YYYY-MM-DDTHH:mm)</Text>
-              <TextInput style={styles.formInput} value={examForm.endDate} onChangeText={(v) => setExamForm((p) => ({ ...p, endDate: v }))} placeholder="2024-12-25T13:00" />
+              <DateTimePickerField
+                label="End Date *"
+                value={examForm.endDate}
+                minimumDate={examForm.startDate ? parseDateTimeLocal(examForm.startDate) : undefined}
+                onChange={(endDate) => setExamForm((p) => ({ ...p, endDate }))}
+              />
             </View>
             <View style={styles.formGroup}>
               <Text style={styles.formLabel}>Instructions</Text>
@@ -1254,7 +1283,11 @@ export default function ExamManagementView() {
               <Ionicons name="close" size={24} color="#6b7280" />
             </Pressable>
           </View>
-          <ScrollView style={styles.formModalBody} keyboardShouldPersistTaps="handled">
+          <ScrollView
+            style={styles.formModalBody}
+            contentContainerStyle={styles.formModalBodyContent}
+            keyboardShouldPersistTaps="handled"
+          >
             <View style={styles.bulkModeRow}>
               <ChipToggle label="Upload CSV/XLSX" selected={bulkMode === 'csv'} onPress={() => setBulkMode('csv')} />
               <ChipToggle label="Upload from PDF" selected={bulkMode === 'pdf'} onPress={() => setBulkMode('pdf')} />
@@ -1664,7 +1697,8 @@ const styles = StyleSheet.create({
   formModalHeader: { flexDirection: 'row', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
   formModalTitle: { fontSize: 20, fontWeight: '800', color: '#111827' },
   formModalSubtitle: { fontSize: 13, color: '#6b7280', marginTop: 2 },
-  formModalBody: { flex: 1, padding: 20 },
+  formModalBody: { flex: 1 },
+  formModalBodyContent: { padding: 20, paddingBottom: 32 },
   formModalFooter: { flexDirection: 'row', gap: 12, padding: 20, borderTopWidth: 1, borderTopColor: '#e5e7eb' },
   formGroup: { marginBottom: 16 },
   formLabel: { fontSize: 14, fontWeight: '600', color: '#111827', marginBottom: 8 },
@@ -1678,10 +1712,17 @@ const styles = StyleSheet.create({
   chipSelected: { backgroundColor: '#fff7ed', borderColor: '#f97316' },
   chipText: { fontSize: 13, fontWeight: '600', color: '#6b7280' },
   chipTextSelected: { color: '#c2410c' },
-  checkboxList: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, padding: 8, maxHeight: 160 },
+  checkboxListScroll: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    maxHeight: 200,
+    marginTop: 8,
+  },
+  checkboxListContent: { padding: 8 },
   checkboxRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },
   checkboxLabel: { fontSize: 14, color: '#111827', flex: 1 },
-  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10, marginBottom: 4 },
   selectedChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#e0f2fe', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
   selectedChipText: { fontSize: 12, color: '#0369a1', fontWeight: '600' },
   cancelButton: { flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#f3f4f6', alignItems: 'center' },

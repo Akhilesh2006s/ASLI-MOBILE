@@ -10,6 +10,9 @@ export type AiToolFieldConfig = {
 export type AiToolGenerationMeta = {
   source?: string;
   sourceLabel?: string;
+  matchType?: string | null;
+  totalCandidates?: number;
+  selectedIndex?: number;
   aiUnavailable?: boolean;
   chunksUsed?: number;
   citations?: Array<{
@@ -172,6 +175,99 @@ function resolveApiError(data: ReturnType<typeof parseResponseBody>, response: R
     message: message || 'AI generation failed',
     code,
     fallbackMessage: message || 'Failed to generate content. Please try again.',
+  };
+}
+
+const CLIENT_VALIDATION_ERROR =
+  /invalid subject|topic is required|sub topic is required|class number and subject are required|only available for english and hindi|incomplete for|missing sections|not in the correct tool format/i;
+
+export function isAiToolClientValidationError(message: string): boolean {
+  return CLIENT_VALIDATION_ERROR.test(message);
+}
+
+export async function fetchAiToolGeneratedContentFallback({
+  apiBaseUrl,
+  token,
+  classLabel,
+  subject,
+  topic,
+  subTopic,
+  toolType,
+}: {
+  apiBaseUrl: string;
+  token: string;
+  classLabel: string;
+  subject: string;
+  topic: string;
+  subTopic: string;
+  toolType: string;
+}): Promise<AiToolGenerateResult> {
+  const params = new URLSearchParams({
+    class: classLabel,
+    subject,
+    topic,
+    subTopic,
+    toolType,
+  });
+
+  const response = await fetch(`${apiBaseUrl}/api/teacher/ai/generated-content?${params.toString()}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    return {
+      ok: false,
+      title: 'Error',
+      message: 'Fallback lookup failed',
+      fallbackMessage: 'Fallback lookup failed. Please try again.',
+    };
+  }
+
+  const data = await response.json();
+  const fallbackContent = data?.data?.generatedContent ?? data?.data?.content ?? '';
+
+  if (
+    data?.code === 'AI_TOOL_CONTENT_INCOMPLETE' ||
+    data?.code === 'AI_TOOL_WRONG_TYPE' ||
+    (data?.success && !data?.data)
+  ) {
+    return {
+      ok: false,
+      title: 'Content incomplete',
+      message:
+        data?.message ||
+        'Saved content is incomplete or not in the correct tool format for this tool.',
+      code: data?.code,
+      fallbackMessage:
+        data?.message ||
+        'Ask your Super Admin to complete all sections before this can be shown.',
+    };
+  }
+
+  if (data?.success && String(fallbackContent).trim().length > 0) {
+    return {
+      ok: true,
+      content: String(fallbackContent),
+      rawContent: null,
+      metadata: {
+        matchType: data?.data?.matchType,
+        totalCandidates: data?.data?.totalCandidates,
+        selectedIndex: data?.data?.selectedIndex,
+        source: data?.data?.source,
+        sourceLabel: data?.data?.sourceLabel,
+      },
+      fromAiFailure: false,
+    };
+  }
+
+  return {
+    ok: false,
+    title: 'Generation failed',
+    message: data?.message || 'No saved copy matched this selection.',
+    fallbackMessage: data?.message || 'No saved copy matched this selection.',
   };
 }
 

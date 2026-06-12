@@ -6,23 +6,45 @@ export function videoNumberOnly(value: string | undefined): string {
   return String(value || '').replace(/\D/g, '');
 }
 
+export type ScheduleContentSubjectRef =
+  | { _id?: string; id?: string; name?: string }
+  | string;
+
+export type ScheduleContentRow = {
+  type?: string;
+  chapter?: string;
+  module?: string;
+  title?: string;
+  topic?: string;
+  subject?: ScheduleContentSubjectRef;
+  subjectId?: ScheduleContentSubjectRef;
+  _id?: string;
+  id?: string;
+  createdAt?: string;
+  date?: string;
+};
+
 export function getContentSubjectId(content: {
-  subject?: { _id?: string; id?: string } | string;
-  subjectId?: string;
+  subject?: ScheduleContentSubjectRef;
+  subjectId?: ScheduleContentSubjectRef;
 }): string {
   const s = content?.subject;
   if (s && typeof s === 'object') return String(s._id || s.id || '');
   if (typeof s === 'string') return s;
-  return String(content?.subjectId || '');
+  const sid = content?.subjectId;
+  if (sid && typeof sid === 'object') return String(sid._id || sid.id || '');
+  if (typeof sid === 'string') return sid;
+  return '';
 }
 
 export function getVideoDisplayTitle(content: {
   type?: string;
   title?: string;
+  topic?: string;
   chapter?: string;
   module?: string;
 }): string {
-  const title = String(content.title || '').trim();
+  const title = String(content.title || content.topic || '').trim() || 'Untitled Video';
   if (!isVideoContentType(content.type)) return title;
   const chapter = videoNumberOnly(content.chapter);
   const mod = videoNumberOnly(content.module);
@@ -69,18 +91,11 @@ export function getActiveChapterNumber(
 }
 
 export function filterIncompleteVideosForTodaysTasks(
-  incompleteVideos: {
-    type?: string;
-    chapter?: string;
-    subject?: { _id?: string; id?: string } | string;
-    subjectId?: string;
-    _id?: string;
-    id?: string;
-  }[],
-  allVideosForSchedule: typeof incompleteVideos,
+  incompleteVideos: ScheduleContentRow[],
+  allVideosForSchedule: ScheduleContentRow[],
   completedIds: Set<string>,
   progressBySubject: Record<string, ChapterCompletedDates>
-): typeof incompleteVideos {
+): ScheduleContentRow[] {
   const withoutChapter = incompleteVideos.filter(
     (c) => isVideoContentType(c.type) && !videoNumberOnly(c.chapter)
   );
@@ -89,7 +104,7 @@ export function filterIncompleteVideosForTodaysTasks(
     (c) => isVideoContentType(c.type) && videoNumberOnly(c.chapter)
   );
   const subjectIds = [...new Set(allWithChapter.map(getContentSubjectId).filter(Boolean))];
-  const visible: typeof incompleteVideos = [...withoutChapter];
+  const visible: ScheduleContentRow[] = [...withoutChapter];
 
   for (const subjectId of subjectIds) {
     const allSubjectVideos = allWithChapter.filter((v) => getContentSubjectId(v) === subjectId);
@@ -127,8 +142,8 @@ function normalizeContentTypeKey(type: string | undefined): string {
 }
 
 function getSubjectLabel(item: {
-  subject?: { _id?: string; id?: string; name?: string } | string;
-  subjectId?: { _id?: string; id?: string; name?: string } | string;
+  subject?: ScheduleContentSubjectRef;
+  subjectId?: ScheduleContentSubjectRef;
 }): string {
   if (typeof item.subject === 'object' && item.subject?.name) return String(item.subject.name);
   if (typeof item.subject === 'string' && item.subject.trim()) return item.subject.trim();
@@ -140,8 +155,8 @@ function getSubjectLabel(item: {
 /** Stable subject bucket key for round-robin (prefer id, fall back to name). */
 export function getTaskSubjectKey(
   item: {
-    subject?: { _id?: string; id?: string; name?: string } | string;
-    subjectId?: { _id?: string; id?: string; name?: string } | string;
+    subject?: ScheduleContentSubjectRef;
+    subjectId?: ScheduleContentSubjectRef;
   },
   isQuiz = false
 ): string {
@@ -207,7 +222,7 @@ function pickBestFromSubjectBucket<TQ, TC>(
 }
 
 /** Round-robin across subjects; within each subject pick best available type. */
-function pickSubjectWise<T extends { subject?: unknown; subjectId?: unknown }>(
+function pickSubjectWise<T extends { subject?: ScheduleContentSubjectRef; subjectId?: ScheduleContentSubjectRef }>(
   items: T[],
   maxItems: number,
   getSubject: (item: T) => string
@@ -242,8 +257,14 @@ function pickSubjectWise<T extends { subject?: unknown; subjectId?: unknown }>(
  * using the best content type available in that subject (quiz → video → homework → …).
  */
 export function capTodaysTasksForDay<
-  T extends { _id?: string; id?: string; subject?: unknown; subjectId?: unknown },
-  U extends { type?: string; _id?: string; id?: string; subject?: unknown; subjectId?: unknown },
+  T extends { _id?: string; id?: string; subject?: ScheduleContentSubjectRef; subjectId?: ScheduleContentSubjectRef },
+  U extends {
+    type?: string;
+    _id?: string;
+    id?: string;
+    subject?: ScheduleContentSubjectRef;
+    subjectId?: ScheduleContentSubjectRef;
+  },
 >(quizzes: T[], content: U[], limit = TODAYS_TASKS_DAILY_LIMIT): { quizzes: T[]; content: U[] } {
   const buckets = groupBySubject(
     [...quizzes],
@@ -293,16 +314,7 @@ export type BuildTodaysTasksOptions = {
 };
 
 export function buildTodaysTasksContentList(
-  allContent: {
-    type?: string;
-    chapter?: string;
-    subject?: { _id?: string; id?: string } | string;
-    subjectId?: string;
-    _id?: string;
-    id?: string;
-    createdAt?: string;
-    date?: string;
-  }[],
+  allContent: ScheduleContentRow[],
   videoCompletedIds: Set<string>,
   progressBySubject: Record<string, ChapterCompletedDates>,
   options: BuildTodaysTasksOptions = {}
@@ -347,7 +359,7 @@ export function buildTodaysTasksContentList(
 
 export function nextChapterCompletedDates(
   subjectId: string,
-  allVideos: { type?: string; chapter?: string; subject?: unknown; subjectId?: string }[],
+  allVideos: ScheduleContentRow[],
   completedIds: Set<string>,
   currentDates: ChapterCompletedDates
 ): ChapterCompletedDates | null {

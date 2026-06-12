@@ -6,7 +6,7 @@ import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { openContentPreview } from '../../../src/utils/openContentPreview';
 import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
-import { filterContentsBySchoolProgram } from '../../../src/lib/school-program';
+import { prepareLibraryContents } from '../../../src/lib/dedupe-library-content';
 
 export default function BrowseView() {
   const { isAsliPrepExclusive, libraryTiles } = useSchoolProgram();
@@ -46,11 +46,8 @@ export default function BrowseView() {
 
       if (response.ok) {
         const data = await response.json();
-        const fetchedContent = filterContentsBySchoolProgram(
-          data.data || data || [],
-          isAsliPrepExclusive
-        );
-        
+        const fetchedContent = prepareLibraryContents(data.data || data || [], isAsliPrepExclusive);
+
         const counts: { [key: string]: number } = {};
         visibleTypes.forEach(type => {
           counts[type.id] = fetchedContent.filter((c: any) => 
@@ -80,10 +77,7 @@ export default function BrowseView() {
 
       if (response.ok) {
         const data = await response.json();
-        const fetchedContent = filterContentsBySchoolProgram(
-          data.data || data || [],
-          isAsliPrepExclusive
-        );
+        const fetchedContent = prepareLibraryContents(data.data || data || [], isAsliPrepExclusive);
         const filtered = fetchedContent.filter((c: any) => 
           c.type && c.type.toLowerCase() === selectedType?.toLowerCase()
         );
@@ -97,9 +91,7 @@ export default function BrowseView() {
   };
 
   const handleOpenContent = (contentItem: any) => {
-    if (contentItem.fileUrl) {
-      openContentPreview(router, contentItem);
-    }
+    openContentPreview(router, contentItem);
   };
 
   const getContentIcon = (contentItem: any) => {

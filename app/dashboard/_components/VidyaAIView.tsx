@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { filterVisibleStudentTools, type StudentAiTool } from '../../../src/lib/student-ai-tools';
-import VidyaAvatar from '../../../src/components/vidya/VidyaAvatar';
-import GlassCard from '../../../src/components/student/GlassCard';
 import { ShimmerCard } from '../../../src/components/student/StudentShimmer';
 import {
   STUDENT,
@@ -17,16 +20,83 @@ import {
   STUDENT_TYPO,
 } from '../../../src/theme/student';
 
-const GRID_H_PAD = 36;
-const GRID_GAP = STUDENT_SPACING.md;
+const LIST_GAP = STUDENT_SPACING.md;
+const STUDENT_TOOLS_SUBTITLE =
+  'Select a tool to get started. All tools use Gemini AI to generate content based on your input.';
+
+const TOOL_THEMES: Record<string, { bg: string; border: string; iconBg: string }> = {
+  '#3b82f6': { bg: '#EFF6FF', border: '#93C5FD', iconBg: '#DBEAFE' },
+  '#2563eb': { bg: '#EFF6FF', border: '#93C5FD', iconBg: '#DBEAFE' },
+  '#fb923c': { bg: '#FFF7ED', border: '#FDBA74', iconBg: '#FFEDD5' },
+  '#ea580c': { bg: '#FFF7ED', border: '#FDBA74', iconBg: '#FFEDD5' },
+  '#14b8a6': { bg: '#F0FDFA', border: '#5EEAD4', iconBg: '#CCFBF1' },
+  '#0d9488': { bg: '#F0FDFA', border: '#5EEAD4', iconBg: '#CCFBF1' },
+  '#ec4899': { bg: '#FDF2F8', border: '#F9A8D4', iconBg: '#FCE7F3' },
+  '#db2777': { bg: '#FDF2F8', border: '#F9A8D4', iconBg: '#FCE7F3' },
+  '#6366f1': { bg: '#EEF2FF', border: '#C7D2FE', iconBg: '#E0E7FF' },
+  '#eab308': { bg: '#FEFCE8', border: '#FDE047', iconBg: '#FEF9C3' },
+  '#d97706': { bg: '#FFFBEB', border: '#FCD34D', iconBg: '#FEF3C7' },
+  '#8b5cf6': { bg: '#F5F3FF', border: '#C4B5FD', iconBg: '#EDE9FE' },
+  '#7c3aed': { bg: '#F5F3FF', border: '#C4B5FD', iconBg: '#EDE9FE' },
+};
+
+function getToolTheme(color: string) {
+  return TOOL_THEMES[color] ?? { bg: '#F8FAFC', border: '#E2E8F0', iconBg: `${color}18` };
+}
+
+function usePressScale(to = 0.98) {
+  const scale = useSharedValue(1);
+  const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const onPressIn = () => {
+    scale.value = withSpring(to, { damping: 14, stiffness: 300 });
+  };
+  const onPressOut = () => {
+    scale.value = withSpring(1, { damping: 14, stiffness: 300 });
+  };
+  return { style, onPressIn, onPressOut };
+}
+
+function ToolCard({ tool, onPress }: { tool: StudentAiTool; onPress: () => void }) {
+  const press = usePressScale();
+  const theme = getToolTheme(tool.color);
+
+  return (
+    <Pressable onPress={onPress} onPressIn={press.onPressIn} onPressOut={press.onPressOut}>
+      <Animated.View
+        style={[
+          styles.toolCard,
+          {
+            backgroundColor: theme.bg,
+            borderColor: theme.border,
+            borderLeftColor: theme.border,
+          },
+          press.style,
+        ]}
+      >
+        <View style={[styles.toolIcon, { backgroundColor: theme.iconBg }]}>
+          <Ionicons
+            name={tool.icon as keyof typeof Ionicons.glyphMap}
+            size={22}
+            color={tool.color}
+          />
+        </View>
+
+        <View style={styles.toolBody}>
+          <Text style={styles.toolTitle} numberOfLines={2}>
+            {tool.name}
+          </Text>
+          <Text style={styles.toolDescription} numberOfLines={2}>
+            {tool.description}
+          </Text>
+        </View>
+
+        <Ionicons name="chevron-forward" size={18} color={tool.color} style={styles.toolChevron} />
+      </Animated.View>
+    </Pressable>
+  );
+}
 
 export default function VidyaAIView() {
-  const { width } = useWindowDimensions();
-  const compact = width < 380;
-  const isTablet = width >= 768;
-  const columns = isTablet ? 3 : 2;
-  const cardWidth = (width - GRID_H_PAD - GRID_GAP * (columns - 1)) / columns;
-  const cardHeight = compact ? 178 : 192;
   const [subjectNames, setSubjectNames] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -55,81 +125,37 @@ export default function VidyaAIView() {
     })();
   }, []);
 
-  const visibleTools = useMemo(() => filterVisibleStudentTools(subjectNames), [subjectNames]);
+  const visibleTools = useMemo(
+    () => filterVisibleStudentTools(subjectNames).filter((tool) => tool.id !== 'ai-chat'),
+    [subjectNames],
+  );
 
   const openTool = (tool: StudentAiTool) => {
-    if (tool.id === 'ai-chat') {
-      router.push('/ai-tutor');
-      return;
-    }
     router.push(`/student/tools/${tool.id}` as any);
   };
 
   return (
     <View style={styles.container}>
-      <Animated.View entering={FadeInDown.duration(STUDENT_ANIMATION.normal)} style={styles.vidyaHeader}>
-        <VidyaAvatar size={44} borderColor="#c7d2fe" />
-        <View style={styles.vidyaHeaderText}>
-          <Text style={[styles.vidyaTitle, compact && { fontSize: 20 }]}>Vidya AI</Text>
-          <Text style={styles.vidyaSubtitle}>Your AI study buddy — tools & chat</Text>
-        </View>
-      </Animated.View>
-
-      <Animated.View entering={FadeInDown.duration(STUDENT_ANIMATION.normal).delay(40)}>
-        <Text style={[styles.headerTitle, compact && { fontSize: 22 }]}>AI Tools</Text>
-        <Text style={styles.headerSubtitle}>Tap a tool to generate study content instantly</Text>
+      <Animated.View entering={FadeInDown.duration(STUDENT_ANIMATION.normal).delay(50)}>
+        <Text style={styles.sectionTitle}>Available Tools</Text>
+        <Text style={styles.sectionSubtitle}>{STUDENT_TOOLS_SUBTITLE}</Text>
       </Animated.View>
 
       {isLoading ? (
-        <View style={styles.shimmerGrid}>
-          <ShimmerCard style={{ width: cardWidth, height: cardHeight }} />
-          <ShimmerCard style={{ width: cardWidth, height: cardHeight }} />
-          <ShimmerCard style={{ width: cardWidth, height: cardHeight }} />
-          <ShimmerCard style={{ width: cardWidth, height: cardHeight }} />
+        <View style={styles.toolsList}>
+          <ShimmerCard style={styles.shimmerRow} />
+          <ShimmerCard style={styles.shimmerRow} />
+          <ShimmerCard style={styles.shimmerRow} />
+          <ShimmerCard style={styles.shimmerRow} />
         </View>
       ) : (
-        <View style={styles.toolsGrid}>
+        <View style={styles.toolsList}>
           {visibleTools.map((tool, index) => (
             <Animated.View
               key={tool.id}
               entering={FadeInDown.duration(STUDENT_ANIMATION.normal).delay(80 + index * 45)}
-              style={[styles.toolCell, { width: cardWidth, height: cardHeight }]}
             >
-              <GlassCard
-                variant="elevated"
-                padding={compact ? 14 : 16}
-                style={styles.toolCard}
-                onPress={() => openTool(tool)}
-              >
-                <View style={styles.toolCardBody}>
-                  <View style={[styles.toolTint, { backgroundColor: `${tool.color}08` }]} />
-                  <View style={styles.toolBadgeRow}>
-                    <View style={[styles.toolIconContainer, { backgroundColor: `${tool.color}22` }]}>
-                      <Ionicons
-                        name={tool.icon as keyof typeof Ionicons.glyphMap}
-                        size={22}
-                        color={tool.color}
-                      />
-                    </View>
-                    <View style={styles.aiPoweredBadge}>
-                      <Ionicons name="sparkles" size={10} color={STUDENT.accent} />
-                      <Text style={styles.aiPoweredText}>AI</Text>
-                    </View>
-                  </View>
-                  <View style={styles.toolTextBlock}>
-                    <Text style={styles.toolTitle} numberOfLines={2}>
-                      {tool.name}
-                    </Text>
-                    <Text style={styles.toolDescription} numberOfLines={2}>
-                      {tool.description}
-                    </Text>
-                  </View>
-                  <View style={styles.toolFooter}>
-                    <Text style={[styles.toolLink, { color: tool.color }]}>Open</Text>
-                    <Ionicons name="arrow-forward" size={14} color={tool.color} />
-                  </View>
-                </View>
-              </GlassCard>
+              <ToolCard tool={tool} onPress={() => openTool(tool)} />
             </Animated.View>
           ))}
         </View>
@@ -140,114 +166,68 @@ export default function VidyaAIView() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  vidyaHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: STUDENT_SPACING.lg,
-  },
-  vidyaHeaderText: { flex: 1, minWidth: 0 },
-  vidyaTitle: {
+  sectionTitle: {
     ...STUDENT_TYPO.section,
+    fontSize: 20,
     color: STUDENT.text,
+    marginBottom: 8,
   },
-  vidyaSubtitle: {
-    marginTop: 2,
-    fontSize: 13,
+  sectionSubtitle: {
+    fontSize: 14,
     color: STUDENT.textMuted,
-    lineHeight: 18,
+    marginBottom: 20,
+    lineHeight: 20,
   },
-  headerTitle: {
-    ...STUDENT_TYPO.section,
-    color: STUDENT.text,
-  },
-  headerSubtitle: {
-    marginTop: 4,
-    marginBottom: STUDENT_SPACING.lg,
-    fontSize: 13,
-    color: STUDENT.textMuted,
-    lineHeight: 18,
-  },
-  shimmerGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: GRID_GAP,
-  },
-  toolsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: GRID_GAP,
-    alignItems: 'stretch',
+  toolsList: {
+    gap: LIST_GAP,
     paddingBottom: STUDENT_SPACING.md,
   },
-  toolCell: {
-    overflow: 'hidden',
-    alignSelf: 'stretch',
+  shimmerRow: {
+    width: '100%',
+    height: 96,
   },
   toolCard: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-    alignSelf: 'stretch',
-  },
-  toolCardBody: {
-    flex: 1,
-    minHeight: '100%',
-    justifyContent: 'space-between',
-  },
-  toolTint: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: STUDENT_RADIUS.card,
-  },
-  toolBadgeRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    gap: STUDENT_SPACING.md,
+    width: '100%',
+    padding: STUDENT_SPACING.lg,
+    borderRadius: STUDENT_RADIUS.lg,
+    borderWidth: 1,
+    borderLeftWidth: 4,
+    minHeight: 96,
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  toolTextBlock: {
-    flex: 1,
-    justifyContent: 'flex-start',
-    paddingVertical: 8,
-  },
-  toolIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: STUDENT_RADIUS.md,
+  toolIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    flexShrink: 0,
   },
-  aiPoweredBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: STUDENT.accentSoft,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: STUDENT_RADIUS.full,
-    borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
+  toolBody: {
+    flex: 1,
+    minWidth: 0,
   },
-  aiPoweredText: { fontSize: 10, fontWeight: '800', color: STUDENT.accent },
   toolTitle: {
-    fontSize: 14,
-    fontWeight: '800',
+    fontSize: 15,
+    fontWeight: '700',
     color: STUDENT.text,
-    marginBottom: 4,
+    marginBottom: 6,
     lineHeight: 20,
-    height: 40,
   },
   toolDescription: {
-    fontSize: 12,
+    fontSize: 13,
     color: STUDENT.textMuted,
     lineHeight: 18,
-    height: 36,
   },
-  toolFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 'auto',
-    paddingTop: 4,
+  toolChevron: {
+    opacity: 0.55,
+    flexShrink: 0,
   },
-  toolLink: { fontSize: 12, fontWeight: '700' },
 });

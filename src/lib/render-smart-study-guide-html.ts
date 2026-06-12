@@ -83,9 +83,9 @@ export function renderSmartStudyGuideHtml(text: string): string {
     const h1 = trimmed.match(/^#\s+(.+)$/);
     if (h1 && !trimmed.startsWith('##')) {
       docHeader = `
-        <header style="margin-bottom:14px;border-radius:18px;padding:16px;background:linear-gradient(90deg,#4338ca,#7c3aed,#0891b2);color:#fff;box-shadow:0 10px 30px rgba(79,70,229,0.25);">
-          <p style="margin:0;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;opacity:0.85;">Smart Study Guide</p>
-          <h1 style="margin:6px 0 0;font-size:20px;font-weight:800;">${formatInline(h1[1].trim())}</h1>
+        <header style="margin-bottom:14px;border-radius:18px;padding:16px;border:1px solid #c7d2fe;background:linear-gradient(135deg,#eef2ff,#fff,#ecfeff);box-shadow:0 2px 8px rgba(99,102,241,0.08);">
+          <p style="margin:0;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#4f46e5;">Smart Study Guide</p>
+          <h1 style="margin:6px 0 0;font-size:20px;font-weight:800;color:#0f172a;">${formatInline(h1[1].trim())}</h1>
         </header>
       `;
       continue;

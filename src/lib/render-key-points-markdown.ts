@@ -1,4 +1,5 @@
 import { formatInlineMarkdown, renderMarkdown } from './render-teacher-markdown';
+import { lightDocHeaderHtml } from './ai-tool-html-primitives';
 import {
   parseMarkdownDocTitle,
   parseMarkdownSectionHeading,
@@ -135,9 +136,12 @@ export function renderKeyPointsMarkdown(text: string): string {
   const parts = sortSectionHtmlEntries(sectionEntries);
 
   const headerHtml = shouldRenderDocHeader(docTitle, sectionEntries)
-    ? `<div class="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-700 via-orange-600 to-amber-600 p-4 mb-3 text-white shadow-lg">` +
-      `<p class="text-[10px] font-semibold uppercase tracking-widest text-amber-100">Key Points Extractor</p>` +
-      `<h3 class="text-lg font-bold">${formatInlineMarkdown(docTitle)}</h3></div>`
+    ? lightDocHeaderHtml({
+        eyebrow: 'Key Points Extractor',
+        titleHtml: formatInlineMarkdown(docTitle),
+        theme: 'amber',
+        extraClass: 'mb-3',
+      })
     : '';
 
   return (

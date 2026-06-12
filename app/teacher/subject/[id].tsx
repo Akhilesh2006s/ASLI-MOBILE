@@ -17,7 +17,7 @@ import { FilterDropdown, TeacherShimmer } from '../../../src/components/teacher'
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../../src/theme/teacher';
 import { useContentViewerBack } from '../../../src/hooks/useBackNavigation';
 import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
-import { filterContentsBySchoolProgram } from '../../../src/lib/school-program';
+import { prepareLibraryContents } from '../../../src/lib/dedupe-library-content';
 import { groupContentsByType } from '../../../src/lib/learning-path-content-groups';
 
 type ContentItem = {
@@ -83,7 +83,7 @@ export default function TeacherSubjectContentScreen() {
       const subData = subRes.data?.subject ?? subRes.data;
       setSubject(subData || { _id: subjectId, name: 'Subject' });
       const raw = Array.isArray(contentRes.data) ? contentRes.data : [];
-      setContents(filterContentsBySchoolProgram(raw, isAsliPrepExclusive));
+      setContents(prepareLibraryContents(raw, isAsliPrepExclusive));
       setClasses(Array.isArray(classRes.data) ? classRes.data : []);
     } catch {
       setSubject({ _id: subjectId, name: 'Subject' });

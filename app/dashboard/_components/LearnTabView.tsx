@@ -87,15 +87,18 @@ export default function LearnTabView({ username }: { username: string }) {
         </Pressable>
       )}
       {chip === 'tools' && (
-        <View style={styles.toolsGrid}>
+        <View style={styles.toolsList}>
           {TOOLS.map((t) => (
             <Pressable
               key={t.id}
-              style={styles.toolCard}
+              style={styles.toolRow}
               onPress={() => router.push(`/student/tools/${t.id}` as any)}
             >
               <Ionicons name={t.icon} size={22} color={STUDENT.primary} />
-              <Text style={styles.toolName}>{t.name}</Text>
+              <Text style={styles.toolName} numberOfLines={1}>
+                {t.name}
+              </Text>
+              <Ionicons name="chevron-forward" size={18} color={STUDENT.textMuted} />
             </Pressable>
           ))}
         </View>
@@ -122,20 +125,26 @@ const styles = StyleSheet.create({
   },
   linkTitle: { fontSize: 16, fontWeight: '800', color: STUDENT.text },
   linkSub: { fontSize: 12, color: STUDENT.textMuted, marginTop: 4 },
-  toolsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  toolsList: {
     gap: 10,
     marginTop: 8,
   },
-  toolCard: {
-    width: '47%',
+  toolRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    width: '100%',
     backgroundColor: STUDENT.surface,
     borderWidth: 1,
     borderColor: STUDENT.surfaceBorder,
     borderRadius: 14,
     padding: 14,
-    gap: 8,
   },
-  toolName: { fontSize: 13, fontWeight: '700', color: STUDENT.text },
+  toolName: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: 14,
+    fontWeight: '700',
+    color: STUDENT.text,
+  },
 });

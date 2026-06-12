@@ -159,11 +159,7 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
     );
   }
 
-  const loadingLabel = resolving
-    ? 'Starting preview…'
-    : !webReady
-      ? 'Loading viewer…'
-      : 'Opening document…';
+  const loadingLabel = 'Starting preview…';
 
   return (
     <View style={[styles.wrap, style]} collapsable={false}>
@@ -207,7 +203,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(82, 86, 89, 0.88)',
+    backgroundColor: '#525659',
     zIndex: 10,
     elevation: 10,
   },

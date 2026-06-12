@@ -1,4 +1,5 @@
 import { formatInlineMarkdown, renderMarkdown } from './render-teacher-markdown';
+import { lightDocHeaderHtml } from './ai-tool-html-primitives';
 import {
   parseMarkdownDocTitle,
   parseMarkdownSectionHeading,
@@ -162,10 +163,12 @@ export function renderSmartStudyGuideMarkdown(text: string): string {
   const parts = sortSectionHtmlEntries(sectionEntries);
 
   const docHeader = shouldRenderDocHeader(docTitle, sectionEntries)
-    ? `<header class="mb-4 overflow-hidden rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-700 via-violet-600 to-cyan-600 px-4 py-4 text-white shadow-lg">` +
-      `<p class="text-[10px] font-semibold uppercase tracking-widest text-indigo-100">Smart Study Guide</p>` +
-      `<h1 class="text-xl font-bold mt-1">${formatInlineMarkdown(docTitle)}</h1>` +
-      `</header>`
+    ? lightDocHeaderHtml({
+        eyebrow: 'Smart Study Guide',
+        titleHtml: formatInlineMarkdown(docTitle),
+        theme: 'indigo',
+        titleTag: 'h1',
+      })
     : '';
 
   if (!parts.length) {

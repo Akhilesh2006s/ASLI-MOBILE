@@ -12,10 +12,11 @@ import { useContentViewerBack } from '../src/hooks/useBackNavigation';
 import { openContentPreview } from '../src/utils/openContentPreview';
 import { useSchoolProgram } from '../src/hooks/useSchoolProgram';
 import {
-  filterContentsBySchoolProgram,
   getAllowedContentTypes,
   type ContentTypeName,
 } from '../src/lib/school-program';
+import { prepareLibraryContents } from '../src/lib/dedupe-library-content';
+import { getVideoDisplayTitle } from '../src/lib/video-chapter-schedule';
 
 interface Content {
   _id: string;
@@ -31,6 +32,8 @@ interface Content {
     name: string;
   } | string;
   topic?: string;
+  chapter?: string;
+  module?: string;
   fileUrl?: string;
   fileUrls?: string[];
   youtubeUrl?: string;
@@ -144,7 +147,7 @@ export default function AsliPrepContent() {
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          setContents(filterContentsBySchoolProgram(data.data || [], isAsliPrepExclusive));
+          setContents(prepareLibraryContents(data.data || [], isAsliPrepExclusive));
         }
       }
     } catch (error) {
@@ -263,8 +266,8 @@ export default function AsliPrepContent() {
             ) : null}
           </View>
           
-          <Text style={styles.contentTitle} numberOfLines={2}>
-            {content.title}
+          <Text style={styles.contentTitle}>
+            {content.type === 'Video' ? getVideoDisplayTitle(content) : content.title}
           </Text>
           
           {typeof content.description === 'string' && content.description.length > 0 ? (

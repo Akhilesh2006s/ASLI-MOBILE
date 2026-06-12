@@ -7,6 +7,8 @@ import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../src/lib/api-config';
+import { dedupeLibraryContents } from '../src/lib/dedupe-library-content';
+import { getVideoDisplayTitle } from '../src/lib/video-chapter-schedule';
 import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
 
 interface Video {
@@ -24,6 +26,9 @@ interface Video {
     _id: string;
     name: string;
   } | string;
+  chapter?: string;
+  module?: string;
+  topic?: string;
   views?: number;
   createdAt: string;
 }
@@ -60,7 +65,7 @@ export default function VideoLectures() {
 
       if (response.ok) {
         const data = await response.json();
-        setVideos(data.data || data || []);
+        setVideos(dedupeLibraryContents(data.data || data || []));
       }
     } catch (error) {
       console.error('Failed to fetch videos:', error);
@@ -159,7 +164,7 @@ export default function VideoLectures() {
           </View>
         </View>
         <View style={styles.videoInfo}>
-          <Text style={styles.videoTitle} numberOfLines={2}>{video.title}</Text>
+          <Text style={styles.videoTitle}>{getVideoDisplayTitle({ ...video, type: 'Video' })}</Text>
           <Text style={styles.videoSubject}>{subjectName}</Text>
           <View style={styles.videoMeta}>
             {video.difficulty && (

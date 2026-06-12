@@ -1,4 +1,5 @@
 import { formatInlineMarkdown, renderMarkdown } from './render-teacher-markdown';
+import { lightDocHeaderHtml } from './ai-tool-html-primitives';
 import {
   parseMarkdownDocTitle,
   parseMarkdownSectionHeading,
@@ -138,9 +139,11 @@ export function renderChapterSummaryMarkdown(text: string): string {
   const parts = sortSectionHtmlEntries(sectionEntries);
 
   const headerHtml = shouldRenderDocHeader(docTitle, sectionEntries)
-    ? `<header class="rounded-2xl bg-gradient-to-r from-blue-700 via-sky-600 to-indigo-600 px-5 py-4 mb-4 text-white shadow-lg">` +
-      `<p class="text-xs font-semibold uppercase tracking-widest text-blue-100 mb-1">Chapter Summary Creator</p>` +
-      `<h3 class="text-lg font-bold">${formatInlineMarkdown(docTitle)}</h3></header>`
+    ? lightDocHeaderHtml({
+        eyebrow: 'Chapter Summary Creator',
+        titleHtml: formatInlineMarkdown(docTitle),
+        theme: 'blue',
+      })
     : '';
 
   return (
