@@ -1,3 +1,4 @@
+import { activitiesPayloadIsComplete } from './parse-activity-markdown';
 import { isStoryPassageLanguageSubject } from './student-ai-tools';
 
 export type AiToolFieldConfig = {
@@ -38,6 +39,35 @@ export type AiToolGenerateFailure = {
 };
 
 export type AiToolGenerateResult = AiToolGenerateSuccess | AiToolGenerateFailure;
+
+const INLINE_ONLY_ERROR_CODES = new Set([
+  'AI_TOOL_CONTENT_INCOMPLETE',
+  'AI_TOOL_WRONG_TYPE',
+  'AI_TOOL_DATA_NOT_FOUND',
+]);
+
+export function shouldShowAiToolErrorAlert(code?: string): boolean {
+  return !code || !INLINE_ONLY_ERROR_CODES.has(code);
+}
+
+function activitiesFromRaw(rawContent: unknown) {
+  if (!rawContent || typeof rawContent !== 'object') return undefined;
+  const rc = rawContent as Record<string, unknown>;
+  if (Array.isArray(rc.activities)) return rc.activities;
+  return undefined;
+}
+
+export function validateActivityToolDisplay(
+  toolType: string,
+  content: string,
+  rawContent: unknown,
+  variant: 'student' | 'teacher',
+): string | null {
+  if (toolType !== 'activity-project-generator' && toolType !== 'project-idea-lab') return null;
+  const mode = toolType === 'project-idea-lab' ? 'student' : variant;
+  if (activitiesPayloadIsComplete(activitiesFromRaw(rawContent), content, mode)) return null;
+  return 'Complete activity content is not available for this selection. All template sections must be filled.';
+}
 
 type ValidateOptions = {
   config: { fields: AiToolFieldConfig[] };

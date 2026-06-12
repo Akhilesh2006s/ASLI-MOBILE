@@ -153,8 +153,10 @@ const GRADIENT_RULES = `
 
 const BASE_RULES = `
 *,*::before,*::after{box-sizing:border-box}
-html,body{margin:0;padding:0;background:transparent;-webkit-text-size-adjust:100%}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#334155;line-height:1.5}
+html,body{margin:0;padding:0;background:#fff;-webkit-text-size-adjust:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#334155;line-height:1.5;padding:12px 14px 16px}
+.ai-tool-fallback-pre{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px;font-size:13px;line-height:1.55;color:#334155;overflow-x:auto}
+.ai-tool-empty-message{color:#64748b;font-size:14px;text-align:center;padding:24px 12px}
 img{max-width:100%;height:auto}
 table{border-collapse:collapse}
 pre{white-space:pre-wrap;word-break:break-word}

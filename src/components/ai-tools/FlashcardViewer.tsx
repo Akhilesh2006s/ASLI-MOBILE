@@ -436,14 +436,6 @@ function StudentDeckView({ meta, cards }: { meta: StudentDeckMeta; cards: Flashc
         </LinearGradient>
 
         <View style={styles.inner}>
-          <View style={styles.section1Card}>
-            <Text style={styles.section1Label}>Section 1</Text>
-            <View style={styles.deckBadge}>
-              <Text style={styles.deckBadgeText}>Deck</Text>
-            </View>
-            <Text style={styles.section1Title}>{meta.title}</Text>
-          </View>
-
           {sections.map((sec) => (
             <SectionCard
               key={sec.num}

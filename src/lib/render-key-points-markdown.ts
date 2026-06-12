@@ -1,8 +1,9 @@
 import { formatInlineMarkdown, renderMarkdown } from './render-teacher-markdown';
 import {
-  bodyTextFromLines,
   parseMarkdownDocTitle,
   parseMarkdownSectionHeading,
+  resolveSection1Title,
+  shouldRenderDocHeader,
   sortSectionHtmlEntries,
   type SectionHtmlEntry,
   themedNumberedSectionCardHtml,
@@ -55,7 +56,7 @@ export function renderKeyPointsMarkdown(text: string): string {
       return;
     }
     if (currentSection === 1) {
-      const titleText = bodyTextFromLines(bodyLines) || docTitle;
+      const titleText = resolveSection1Title(bodyLines, currentTitle, docTitle);
       if (titleText) {
         sectionEntries.push({
           num: 1,
@@ -104,6 +105,10 @@ export function renderKeyPointsMarkdown(text: string): string {
 
     const heading = parseMarkdownSectionHeading(line);
     if (heading) {
+      if (currentSection === heading.num) {
+        if (!currentTitle.trim() && heading.title.trim()) currentTitle = heading.title.trim();
+        continue;
+      }
       flushSection();
       currentSection = heading.num;
       currentTitle = heading.title;
@@ -129,7 +134,7 @@ export function renderKeyPointsMarkdown(text: string): string {
 
   const parts = sortSectionHtmlEntries(sectionEntries);
 
-  const headerHtml = docTitle
+  const headerHtml = shouldRenderDocHeader(docTitle, sectionEntries)
     ? `<div class="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-700 via-orange-600 to-amber-600 p-4 mb-3 text-white shadow-lg">` +
       `<p class="text-[10px] font-semibold uppercase tracking-widest text-amber-100">Key Points Extractor</p>` +
       `<h3 class="text-lg font-bold">${formatInlineMarkdown(docTitle)}</h3></div>`

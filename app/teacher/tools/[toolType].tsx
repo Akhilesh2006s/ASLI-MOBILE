@@ -37,10 +37,16 @@ import {
   useAiToolTabletLayout,
 } from '../../../src/components/ai-tools/ai-tool-tablet-layout';
 import {
+  useAiToolOutputScroll,
+  useQueueAiToolScrollOnGenerate,
+} from '../../../src/components/ai-tools/useAiToolOutputScroll';
+import {
   validateAiToolForm,
   executeAiToolGenerate,
   buildTeacherAiRequestBody,
   storeAiToolSuccessPayload,
+  shouldShowAiToolErrorAlert,
+  validateActivityToolDisplay,
   type AiToolGenerationMeta,
 } from '../../../src/lib/ai-tool-generate';
 import {
@@ -54,7 +60,6 @@ import {
   CLASS_OPTIONS,
   type TeacherToolFieldConfig,
 } from '../../../src/lib/teacher-ai-tool-configs';
-import { stripStructuredAiToolMetadata } from '../../../src/lib/strip-ai-tool-metadata';
 import {
   getAiToolBoardOptions,
   getDefaultAiToolBoard,
@@ -243,6 +248,8 @@ export default function TeacherToolPage() {
   const [paramsExpanded, setParamsExpanded] = useState(true);
   const scrollY = useSharedValue(0);
   const { isTablet } = useAiToolTabletLayout();
+  const { scrollRef, onOutputLayout, queueScrollToOutput, resetOutputScroll } =
+    useAiToolOutputScroll(isTablet);
   const [assignedSubjectNames, setAssignedSubjectNames] = useState<string[]>([]);
   const [availableNCERTTopics, setAvailableNCERTTopics] = useState<string[]>([]);
   const [schoolBoardName, setSchoolBoardName] = useState('CBSE');
@@ -297,11 +304,6 @@ export default function TeacherToolPage() {
     [toolType, availableSubjects]
   );
 
-  const displayGeneratedContent = useMemo(
-    () => stripStructuredAiToolMetadata(generatedContent),
-    [generatedContent]
-  );
-
   const paramsSummary = useMemo(() => {
     return [
       selectedBoard,
@@ -317,11 +319,7 @@ export default function TeacherToolPage() {
   const showCollapsedParams = !!generatedContent && !isGenerating;
   const showParameterForms = !showCollapsedParams || paramsExpanded;
 
-  useEffect(() => {
-    if (generatedContent) {
-      setParamsExpanded(false);
-    }
-  }, [generatedContent]);
+  useQueueAiToolScrollOnGenerate(generatedContent, isGenerating, isTablet, queueScrollToOutput);
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
@@ -628,6 +626,7 @@ export default function TeacherToolPage() {
     }
 
     setIsGenerating(true);
+    resetOutputScroll();
     setGeneratedContent('');
     setRawGeneratedContent(null);
     setResponseMeta(null);
@@ -659,14 +658,30 @@ export default function TeacherToolPage() {
         setRawGeneratedContent(null);
         setResponseMeta(null);
         setFallbackEmptyMessage(result.fallbackMessage);
-        Alert.alert(result.title, result.message);
+        if (shouldShowAiToolErrorAlert(result.code)) {
+          Alert.alert(result.title, result.message);
+        }
+        return;
+      }
+
+      const stored = storeAiToolSuccessPayload(toolType, result.content, result.rawContent, 'teacher');
+      const activityDisplayError = validateActivityToolDisplay(
+        toolType,
+        stored.generatedContent,
+        stored.rawGeneratedContent,
+        'teacher',
+      );
+      if (activityDisplayError) {
+        setGeneratedContent('');
+        setRawGeneratedContent(null);
+        setResponseMeta(null);
+        setFallbackEmptyMessage(activityDisplayError);
         return;
       }
 
       setResponseMeta(result.metadata);
       setFromAiFailure(result.fromAiFailure);
-
-      const stored = storeAiToolSuccessPayload(toolType, result.content, result.rawContent, 'teacher');
+      setParamsExpanded(false);
       setGeneratedContent(stored.generatedContent);
       setRawGeneratedContent(stored.rawGeneratedContent);
 
@@ -877,7 +892,11 @@ export default function TeacherToolPage() {
   );
 
   const outputPanel = (
-    <>
+    <View
+      style={styles.outputSection}
+      collapsable={false}
+      onLayout={generatedContent && !isGenerating ? onOutputLayout : undefined}
+    >
       {isGenerating ? (
         <View style={styles.generatingBox}>
           <ActivityIndicator size="large" color={accent} />
@@ -885,13 +904,15 @@ export default function TeacherToolPage() {
           <Text style={styles.generatingText}>Please wait while we prepare your content</Text>
         </View>
       ) : generatedContent ? (
-        <AiToolContentRenderer
-          toolType={toolType}
-          content={displayGeneratedContent}
-          rawContent={rawGeneratedContent}
-          accent={accent}
-          variant="teacher"
-        />
+        <View style={styles.outputWrap} collapsable={false}>
+          <AiToolContentRenderer
+            toolType={toolType}
+            content={generatedContent}
+            rawContent={rawGeneratedContent}
+            accent={accent}
+            variant="teacher"
+          />
+        </View>
       ) : (
         <View style={styles.emptyResult}>
           <Ionicons name="sparkles" size={28} color={TEACHER.navInactive} />
@@ -901,7 +922,7 @@ export default function TeacherToolPage() {
           <Text style={styles.emptyResultText}>Choose tool parameters and tap Generate.</Text>
         </View>
       )}
-    </>
+    </View>
   );
 
   return (
@@ -960,8 +981,9 @@ export default function TeacherToolPage() {
           </View>
         ) : (
         <AnimatedScrollView
+          ref={scrollRef}
           style={styles.scroll}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: generatedContent ? 24 : 100 }]}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           onScroll={scrollHandler}
@@ -1044,6 +1066,8 @@ export default function TeacherToolPage() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: TEACHER.bg },
   flex: { flex: 1 },
+  outputSection: { width: '100%' },
+  outputWrap: { width: '100%', minHeight: 240 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -1,7 +1,11 @@
 import { formatInlineMarkdown, renderMarkdown } from './render-teacher-markdown';
 import {
-  bodyTextFromLines,
   parseMarkdownDocTitle,
+  parseMarkdownSectionHeading,
+  resolveSection1Title,
+  shouldRenderDocHeader,
+  sortSectionHtmlEntries,
+  type SectionHtmlEntry,
   themedNumberedSectionCardHtml,
   themedSection1TitleCardHtml,
 } from './themed-markdown-sections';
@@ -55,7 +59,7 @@ export function renderConceptBreakdownMarkdown(text: string): string {
   }
 
   const lines = processed.split('\n');
-  const parts: string[] = [];
+  const sectionEntries: SectionHtmlEntry[] = [];
   let docTitle = '';
   let currentSection = 0;
   let currentTitle = '';
@@ -68,10 +72,11 @@ export function renderConceptBreakdownMarkdown(text: string): string {
       return;
     }
     if (currentSection === 1) {
-      const titleText = bodyTextFromLines(bodyLines) || docTitle;
+      const titleText = resolveSection1Title(bodyLines, currentTitle, docTitle);
       if (titleText) {
-        parts.push(
-          themedSection1TitleCardHtml({
+        sectionEntries.push({
+          num: 1,
+          html: themedSection1TitleCardHtml({
             title: titleText,
             badge: 'Concept Title',
             border: 'border-violet-300',
@@ -79,7 +84,7 @@ export function renderConceptBreakdownMarkdown(text: string): string {
             labelClass: 'text-violet-700',
             badgeClass: 'bg-violet-100 text-violet-900',
           }),
-        );
+        });
         renderedSection1 = true;
       }
       bodyLines = [];
@@ -88,17 +93,21 @@ export function renderConceptBreakdownMarkdown(text: string): string {
       return;
     }
     const style = sectionStyle(currentSection);
-    parts.push(
-      themedNumberedSectionCardHtml({
-        sectionNum: currentSection,
-        sectionTitle: currentTitle,
-        bodyHtml: bodyLinesToHtml(bodyLines),
-        border: style.border,
-        bg: style.bg,
-        titleClass: style.title,
-        labelClass: 'text-violet-600',
-      }),
-    );
+    const bodyHtml = bodyLinesToHtml(bodyLines);
+    if (bodyHtml.trim()) {
+      sectionEntries.push({
+        num: currentSection,
+        html: themedNumberedSectionCardHtml({
+          sectionNum: currentSection,
+          sectionTitle: currentTitle,
+          bodyHtml,
+          border: style.border,
+          bg: style.bg,
+          titleClass: style.title,
+          labelClass: 'text-violet-600',
+        }),
+      });
+    }
     bodyLines = [];
     currentSection = 0;
     currentTitle = '';
@@ -115,11 +124,15 @@ export function renderConceptBreakdownMarkdown(text: string): string {
       continue;
     }
 
-    const mainSec = trimmed.match(/^#{1,3}\s+(\d{1,2})\.\s*(.+)$/);
-    if (mainSec) {
+    const heading = parseMarkdownSectionHeading(trimmed);
+    if (heading) {
+      if (currentSection === heading.num) {
+        if (!currentTitle.trim() && heading.title.trim()) currentTitle = heading.title.trim();
+        continue;
+      }
       flushSection();
-      currentSection = Number(mainSec[1]);
-      currentTitle = mainSec[2].trim();
+      currentSection = heading.num;
+      currentTitle = heading.title;
       continue;
     }
 
@@ -129,8 +142,9 @@ export function renderConceptBreakdownMarkdown(text: string): string {
   flushSection();
 
   if (!renderedSection1 && docTitle) {
-    parts.unshift(
-      themedSection1TitleCardHtml({
+    sectionEntries.unshift({
+      num: 1,
+      html: themedSection1TitleCardHtml({
         title: docTitle,
         badge: 'Concept Title',
         border: 'border-violet-300',
@@ -138,10 +152,12 @@ export function renderConceptBreakdownMarkdown(text: string): string {
         labelClass: 'text-violet-700',
         badgeClass: 'bg-violet-100 text-violet-900',
       }),
-    );
+    });
   }
 
-  const docHeader = docTitle
+  const parts = sortSectionHtmlEntries(sectionEntries);
+
+  const docHeader = shouldRenderDocHeader(docTitle, sectionEntries)
     ? `<header class="mb-4 overflow-hidden rounded-2xl border border-violet-200 bg-gradient-to-r from-violet-700 via-purple-600 to-indigo-600 px-4 py-4 text-white shadow-lg">` +
       `<p class="text-[10px] font-semibold uppercase tracking-widest text-violet-100">Concept Breakdown Explainer</p>` +
       `<h1 class="text-xl font-bold mt-1">${formatInlineMarkdown(docTitle)}</h1>` +

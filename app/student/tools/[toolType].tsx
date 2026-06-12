@@ -59,12 +59,17 @@ import {
   aiToolTabletStyles,
   useAiToolTabletLayout,
 } from '../../../src/components/ai-tools/ai-tool-tablet-layout';
-import { stripStructuredAiToolMetadata } from '../../../src/lib/strip-ai-tool-metadata';
+import {
+  useAiToolOutputScroll,
+  useQueueAiToolScrollOnGenerate,
+} from '../../../src/components/ai-tools/useAiToolOutputScroll';
 import {
   validateAiToolForm,
   executeAiToolGenerate,
   buildStudentAiRequestBody,
   storeAiToolSuccessPayload,
+  shouldShowAiToolErrorAlert,
+  validateActivityToolDisplay,
   type AiToolGenerationMeta,
 } from '../../../src/lib/ai-tool-generate';
 import {
@@ -183,6 +188,8 @@ export default function StudentToolPage() {
   const [paramsExpanded, setParamsExpanded] = useState(true);
   const scrollY = useSharedValue(0);
   const { isTablet } = useAiToolTabletLayout();
+  const { scrollRef, onOutputLayout, queueScrollToOutput, resetOutputScroll } =
+    useAiToolOutputScroll(isTablet);
 
   const configKey = toolType ? resolveStudentToolConfigKey(toolType) : '';
   const config = configKey ? getStudentToolConfig(configKey) || getStudentToolConfig(toolType || '') : null;
@@ -191,10 +198,6 @@ export default function StudentToolPage() {
     toolType === READING_PRACTICE_TOOL_ID || toolType === 'story-passage-creator';
   const isSmartStudyGuide = toolType === 'smart-study-guide-generator';
   const accent = isSmartStudyGuide ? '#4f46e5' : config?.color || '#3b82f6';
-  const displayGeneratedContent = useMemo(
-    () => stripStructuredAiToolMetadata(generatedContent),
-    [generatedContent]
-  );
 
   const boardOptions = getAiToolBoardOptions(isAsliPrepExclusive, schoolBoardName);
   const selectedBoard = formParams.board || getDefaultAiToolBoard(isAsliPrepExclusive, schoolBoardName);
@@ -214,11 +217,7 @@ export default function StudentToolPage() {
   const showCollapsedParams = !!generatedContent && !isGenerating;
   const showParameterForms = !showCollapsedParams || paramsExpanded;
 
-  useEffect(() => {
-    if (generatedContent) {
-      setParamsExpanded(false);
-    }
-  }, [generatedContent]);
+  useQueueAiToolScrollOnGenerate(generatedContent, isGenerating, isTablet, queueScrollToOutput);
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
@@ -566,6 +565,7 @@ export default function StudentToolPage() {
     }
 
     setIsGenerating(true);
+    resetOutputScroll();
     setGeneratedContent('');
     setRawGeneratedContent(null);
     setResponseMeta(null);
@@ -597,14 +597,30 @@ export default function StudentToolPage() {
         setRawGeneratedContent(null);
         setResponseMeta(null);
         setFallbackEmptyMessage(result.fallbackMessage);
-        Alert.alert(result.title, result.message);
+        if (shouldShowAiToolErrorAlert(result.code)) {
+          Alert.alert(result.title, result.message);
+        }
+        return;
+      }
+
+      const stored = storeAiToolSuccessPayload(toolType || '', result.content, result.rawContent, 'student');
+      const activityDisplayError = validateActivityToolDisplay(
+        toolType || '',
+        stored.generatedContent,
+        stored.rawGeneratedContent,
+        'student',
+      );
+      if (activityDisplayError) {
+        setGeneratedContent('');
+        setRawGeneratedContent(null);
+        setResponseMeta(null);
+        setFallbackEmptyMessage(activityDisplayError);
         return;
       }
 
       setResponseMeta(result.metadata);
       setFromAiFailure(result.fromAiFailure);
-
-      const stored = storeAiToolSuccessPayload(toolType || '', result.content, result.rawContent, 'student');
+      setParamsExpanded(false);
       setGeneratedContent(stored.generatedContent);
       setRawGeneratedContent(stored.rawGeneratedContent);
 
@@ -842,7 +858,11 @@ export default function StudentToolPage() {
   );
 
   const outputPanel = (
-    <>
+    <View
+      style={styles.outputSection}
+      collapsable={false}
+      onLayout={generatedContent && !isGenerating ? onOutputLayout : undefined}
+    >
       {isGenerating ? (
         <View style={styles.generatingBox}>
           <ActivityIndicator size="large" color={accent} />
@@ -850,13 +870,15 @@ export default function StudentToolPage() {
           <Text style={styles.generatingText}>Please wait while we prepare your content</Text>
         </View>
       ) : generatedContent ? (
-        <AiToolContentRenderer
-          toolType={toolType || ''}
-          content={displayGeneratedContent}
-          rawContent={rawGeneratedContent}
-          accent={accent}
-          variant="student"
-        />
+        <View style={styles.outputWrap} collapsable={false}>
+          <AiToolContentRenderer
+            toolType={toolType || ''}
+            content={generatedContent}
+            rawContent={rawGeneratedContent}
+            accent={accent}
+            variant="student"
+          />
+        </View>
       ) : (
         <View style={styles.emptyResult}>
           <View style={styles.emptyResultIcon}>
@@ -868,7 +890,7 @@ export default function StudentToolPage() {
           <Text style={styles.emptyResultText}>Choose tool parameters and tap Generate.</Text>
         </View>
       )}
-    </>
+    </View>
   );
 
   return (
@@ -932,8 +954,9 @@ export default function StudentToolPage() {
           </View>
         ) : (
         <AnimatedScrollView
+          ref={scrollRef}
           style={styles.scroll}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: generatedContent ? 24 : 100 }]}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           onScroll={scrollHandler}
@@ -1021,6 +1044,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: STUDENT.bg },
   containerPremium: { flex: 1, backgroundColor: '#f5f7ff' },
   flex: { flex: 1 },
+  outputSection: { width: '100%' },
+  outputWrap: { width: '100%', minHeight: 240 },
   generatingBox: {
     alignItems: 'center',
     justifyContent: 'center',

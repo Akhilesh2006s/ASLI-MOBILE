@@ -6,6 +6,8 @@ import {
   dedupeStringLines,
   normalizeParsedActivityFields,
   resolveActivitiesFromPayload,
+  studentActivitySectionsComplete,
+  teacherActivitySectionsComplete,
   type ParsedActivity,
 } from '../../lib/parse-activity-markdown';
 import { stripStructuredAiToolMetadata } from '../../lib/strip-ai-tool-metadata';
@@ -211,14 +213,6 @@ const TEACHER_SECTIONS: SectionDef[] = [
   },
 ];
 
-function EmptySectionHint() {
-  return (
-    <Text style={styles.emptySectionHint}>
-      Not included in this generation — try regenerating with more detail if you need this section.
-    </Text>
-  );
-}
-
 function SectionCard({
   sectionNum,
   title,
@@ -361,10 +355,6 @@ function StudentActivityCard({ activity }: { activity: NormalizedActivity }) {
 }
 
 function TeacherActivityCard({ activity }: { activity: NormalizedActivity }) {
-  const filled = TEACHER_SECTIONS.filter((s) => s.hasContent(activity)).length;
-  const total = TEACHER_SECTIONS.length;
-  const progressPct = Math.round((filled / total) * 100);
-
   return (
     <View style={styles.activityBody}>
       <View style={styles.heroCard}>
@@ -373,27 +363,13 @@ function TeacherActivityCard({ activity }: { activity: NormalizedActivity }) {
             <Ionicons name="flask-outline" size={28} color="#fff" />
           </View>
           <View style={styles.heroContent}>
-            <View style={styles.sectionsBadge}>
-              <Text style={styles.sectionsBadgeText}>
-                {filled}/{total} sections
-              </Text>
-            </View>
             <Text style={styles.heroEyebrow}>1. Title of activity / project</Text>
             <Text style={styles.heroTitle}>{activity.title}</Text>
-            <View style={styles.progressWrap}>
-              <View style={styles.progressLabels}>
-                <Text style={styles.progressLabel}>Content completeness</Text>
-                <Text style={styles.progressLabel}>{progressPct}%</Text>
-              </View>
-              <View style={styles.progressTrack}>
-                <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
-              </View>
-            </View>
           </View>
         </View>
       </View>
 
-      {TEACHER_SECTIONS.map((sec) => (
+      {TEACHER_SECTIONS.filter((sec) => sec.hasContent(activity)).map((sec) => (
         <SectionCard
           key={sec.num}
           sectionNum={`Section ${sec.num}`}
@@ -401,7 +377,7 @@ function TeacherActivityCard({ activity }: { activity: NormalizedActivity }) {
           icon={sec.icon}
           stripe={sec.stripe}
         >
-          {sec.hasContent(activity) ? sec.render(activity) : <EmptySectionHint />}
+          {sec.render(activity)}
         </SectionCard>
       ))}
     </View>
@@ -419,13 +395,12 @@ export default function ActivityProjectViewer({ content, rawContent, variant = '
   const parsedContent = useMemo(() => stripStructuredAiToolMetadata(String(content || '')), [content]);
   const mode = variant === 'student' ? 'student' : 'teacher';
 
-  const resolved = useMemo(
-    () =>
-      resolveActivitiesFromPayload(activitiesFromRaw(rawContent), parsedContent).map((a, i) =>
-        normalizeActivity(a, i, mode)
-      ),
-    [parsedContent, rawContent, mode]
-  );
+  const resolved = useMemo(() => {
+    const rows = resolveActivitiesFromPayload(activitiesFromRaw(rawContent), parsedContent).filter((row) =>
+      mode === 'student' ? studentActivitySectionsComplete(row) : teacherActivitySectionsComplete(row),
+    );
+    return rows.map((a, i) => normalizeActivity(a, i, mode));
+  }, [parsedContent, rawContent, mode]);
 
   const [activeIdx, setActiveIdx] = useState(0);
   const safeIdx = Math.min(activeIdx, Math.max(0, resolved.length - 1));
@@ -435,8 +410,10 @@ export default function ActivityProjectViewer({ content, rawContent, variant = '
     return (
       <View style={styles.emptyWrap}>
         <Ionicons name="flask-outline" size={40} color="#cbd5e1" />
-        <Text style={styles.emptyTitle}>No activity found for this selection</Text>
-        <Text style={styles.emptyHint}>Try generating again or pick another topic.</Text>
+        <Text style={styles.emptyTitle}>Complete activity content is not available</Text>
+        <Text style={styles.emptyHint}>
+          All template sections must be filled. Try generating again or ask Super Admin to add full content.
+        </Text>
       </View>
     );
   }

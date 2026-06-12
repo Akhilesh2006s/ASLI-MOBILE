@@ -9,7 +9,10 @@ import {
   studyGuideViewerPayloadFromRecord,
   studyGuideHasVisibleBody,
 } from '../../lib/parse-smart-study-guide';
-import { resolveActivitiesFromPayload } from '../../lib/parse-activity-markdown';
+import {
+  activitiesPayloadIsComplete,
+  resolveActivitiesFromPayload,
+} from '../../lib/parse-activity-markdown';
 import {
   contentHasNumberedTemplateSections,
   resolveRichDisplayContent,
@@ -94,9 +97,9 @@ export default function AiToolContentRenderer({
   const useNativeActivity = useMemo(() => {
     if (toolType !== 'activity-project-generator' && toolType !== 'project-idea-lab') return false;
     if (hasFullTemplateMarkdown) return false;
-    const activities = resolveActivitiesFromPayload(activitiesFromRaw(rawContent), cleaned);
-    return activities.length > 0;
-  }, [toolType, cleaned, rawContent, hasFullTemplateMarkdown]);
+    const mode = toolType === 'project-idea-lab' ? 'student' : variant;
+    return activitiesPayloadIsComplete(activitiesFromRaw(rawContent), cleaned, mode);
+  }, [toolType, cleaned, rawContent, hasFullTemplateMarkdown, variant]);
 
   const useNativeFlashcard = useMemo(() => {
     if (toolType !== 'my-study-decks' && toolType !== 'flashcard-generator') return false;

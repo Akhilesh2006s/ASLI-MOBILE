@@ -1131,7 +1131,7 @@ export function tryRenderStructuredAiToolHtml(
   const renderer = STRUCTURED_RENDERERS[toolType];
   if (!renderer) return null;
   try {
-    const body = renderer(content, rawContent ?? null, variant);
+    const body = renderer(display, rawContent ?? null, variant);
     if (!body?.trim()) return null;
     return body;
   } catch {

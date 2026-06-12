@@ -61,6 +61,35 @@ export function bodyTextFromLines(bodyLines: string[]): string {
     .trim();
 }
 
+export function normalizeSectionTitle(title: string): string {
+  return String(title || '').replace(/^\d+\.\s*/, '').trim().toLowerCase();
+}
+
+export function sectionTitlesMatch(a: string, b: string): boolean {
+  const left = normalizeSectionTitle(a);
+  const right = normalizeSectionTitle(b);
+  return Boolean(left && right && left === right);
+}
+
+/** Section 1 title: body text, then heading label, then document `#` title. */
+export function resolveSection1Title(
+  bodyLines: string[],
+  sectionTitle: string,
+  docTitle: string,
+): string {
+  return bodyTextFromLines(bodyLines) || sectionTitle.trim() || docTitle.trim();
+}
+
+export function hasSection1Entry(entries: SectionHtmlEntry[]): boolean {
+  return entries.some((entry) => entry.num === 1);
+}
+
+/** Gradient doc header is redundant when a Section 1 card already exists. */
+export function shouldRenderDocHeader(docTitle: string, entries: SectionHtmlEntry[]): boolean {
+  if (!docTitle.trim()) return false;
+  return !hasSection1Entry(entries);
+}
+
 /** Template sections use `### 2. Title` or `## 1. Title` — not plain `1. list item` body lines. */
 export function parseMarkdownSectionHeading(line: string): { num: number; title: string } | null {
   const md = line.trim().match(/^#{1,3}\s+(\d{1,2})\.\s+(.+)$/);
@@ -70,12 +99,32 @@ export function parseMarkdownSectionHeading(line: string): { num: number; title:
 
 export type SectionHtmlEntry = { num: number; html: string };
 
+function visibleTextFromHtml(html: string): number {
+  const text = String(html || '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<header[\s\S]*?<\/header>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (text.replace(/untitled|section \d+/gi, '').trim().length === 0) return 0;
+  return text.length;
+}
+
+/** One card per section number — prefer the entry with more visible body content. */
 export function sortSectionHtmlEntries(entries: SectionHtmlEntry[]): string[] {
-  const byNum = new Map<number, string>();
+  const byNum = new Map<number, SectionHtmlEntry>();
   for (const entry of entries) {
-    if (!byNum.has(entry.num)) byNum.set(entry.num, entry.html);
+    const prev = byNum.get(entry.num);
+    if (!prev) {
+      byNum.set(entry.num, entry);
+      continue;
+    }
+    if (visibleTextFromHtml(entry.html) > visibleTextFromHtml(prev.html)) {
+      byNum.set(entry.num, entry);
+    }
   }
   return [...byNum.entries()]
     .sort(([a], [b]) => a - b)
-    .map(([, html]) => html);
+    .map(([, entry]) => entry.html);
 }

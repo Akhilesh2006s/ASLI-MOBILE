@@ -1,7 +1,8 @@
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { renderAiToolOutputHtml } from '../../lib/render-ai-tool-output-html';
+import { resolveRichDisplayContent } from '../../lib/ai-tool-display-content';
 
 type Props = {
   toolType: string;
@@ -9,6 +10,9 @@ type Props = {
   rawContent?: unknown;
   variant?: 'student' | 'teacher';
 };
+
+const MIN_HEIGHT = 240;
+const INITIAL_HEIGHT = 520;
 
 const HEIGHT_SCRIPT = `
 (function() {
@@ -24,7 +28,7 @@ const HEIGHT_SCRIPT = `
     }
   }
   sendHeight();
-  [50, 150, 350, 700, 1200, 2000, 3500].forEach(function(ms) {
+  [50, 150, 350, 700, 1200, 2000].forEach(function(ms) {
     setTimeout(sendHeight, ms);
   });
   if (typeof ResizeObserver !== 'undefined') {
@@ -41,33 +45,60 @@ export default function AiToolWebView({ toolType, content, rawContent, variant =
     () => renderAiToolOutputHtml(toolType, content, rawContent, variant),
     [toolType, content, rawContent, variant]
   );
+
+  const contentKey = useMemo(() => {
+    const display = resolveRichDisplayContent(content, rawContent);
+    return `${toolType}:${display.length}:${html.length}`;
+  }, [toolType, content, rawContent, html.length]);
+
   const webViewRef = useRef<WebView>(null);
-  const [height, setHeight] = useState(480);
+  const [height, setHeight] = useState(INITIAL_HEIGHT);
+  const heightDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const applyHeight = useCallback((next: number) => {
+    const target = Math.max(MIN_HEIGHT, next);
+    setHeight((prev) => {
+      if (Math.abs(target - prev) < 12) return prev;
+      return target;
+    });
+  }, []);
 
   const measureHeight = useCallback(() => {
     webViewRef.current?.injectJavaScript(HEIGHT_SCRIPT);
   }, []);
 
   useEffect(() => {
-    setHeight(480);
-    const timer = setTimeout(measureHeight, 40);
-    return () => clearTimeout(timer);
+    const timers = [40, 200, 600, 1200].map((ms) => setTimeout(measureHeight, ms));
+    return () => {
+      timers.forEach(clearTimeout);
+      if (heightDebounceRef.current) clearTimeout(heightDebounceRef.current);
+    };
   }, [html, measureHeight]);
 
-  const onMessage = useCallback((event: { nativeEvent: { data: string } }) => {
-    const next = Number(event.nativeEvent.data);
-    if (Number.isFinite(next) && next > 0) {
-      setHeight((prev) => (next > prev - 4 ? next : prev));
-    }
-  }, []);
+  const onMessage = useCallback(
+    (event: { nativeEvent: { data: string } }) => {
+      const next = Number(event.nativeEvent.data);
+      if (!Number.isFinite(next) || next <= 0) return;
+      if (heightDebounceRef.current) clearTimeout(heightDebounceRef.current);
+      heightDebounceRef.current = setTimeout(() => applyHeight(next), 80);
+    },
+    [applyHeight]
+  );
+
+  const webViewHeight = Math.max(height, MIN_HEIGHT);
 
   return (
-    <View style={[styles.wrap, { height }]}>
+    <View style={[styles.wrap, { minHeight: MIN_HEIGHT, height: webViewHeight }]} collapsable={false}>
       <WebView
+        key={contentKey}
         ref={webViewRef}
         originWhitelist={['*']}
         source={{ html }}
-        style={[styles.webView, { height }]}
+        style={[
+          styles.webView,
+          { height: webViewHeight },
+          Platform.OS === 'android' ? styles.webViewAndroid : null,
+        ]}
         scrollEnabled={false}
         showsVerticalScrollIndicator={false}
         onMessage={onMessage}
@@ -76,6 +107,10 @@ export default function AiToolWebView({ toolType, content, rawContent, variant =
         javaScriptEnabled
         domStorageEnabled
         mixedContentMode="always"
+        collapsable={false}
+        androidLayerType="hardware"
+        setBuiltInZoomControls={false}
+        setDisplayZoomControls={false}
       />
     </View>
   );
@@ -83,5 +118,6 @@ export default function AiToolWebView({ toolType, content, rawContent, variant =
 
 const styles = StyleSheet.create({
   wrap: { width: '100%' },
-  webView: { width: '100%', backgroundColor: 'transparent' },
+  webView: { width: '100%', backgroundColor: '#ffffff', opacity: 0.99 },
+  webViewAndroid: { backgroundColor: '#ffffff' },
 });

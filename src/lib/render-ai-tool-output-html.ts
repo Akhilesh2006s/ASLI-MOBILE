@@ -3,6 +3,8 @@ import {
   contentHasNumberedTemplateSections,
   resolveRichDisplayContent,
 } from './ai-tool-display-content';
+import { stripStructuredAiToolMetadata } from './strip-ai-tool-metadata';
+import { escapeHtml } from './ai-tool-html-primitives';
 import { AI_TOOL_OUTPUT_STYLES } from './ai-tool-output-styles';
 import { renderNumberedTemplateAsCards } from './render-numbered-template-cards';
 import { tryRenderStructuredAiToolHtml } from './render-structured-ai-tool-html';
@@ -128,6 +130,52 @@ function wrapWithShell(toolType: string, innerHtml: string): string {
   return `<div class="${shell.wrapperClass}" style="${shell.wrapperStyle || ''}">${badges}${innerHtml}</div>`;
 }
 
+function renderAiToolFallbackBody(content: string, rawContent?: unknown): string {
+  const stripped = stripStructuredAiToolMetadata(String(content || '')).trim();
+  if (stripped && !stripped.startsWith('{')) {
+    return renderMarkdown(stripped);
+  }
+
+  const display = resolveRichDisplayContent(content, rawContent);
+  if (display.trim()) {
+    return renderMarkdown(display);
+  }
+
+  if (stripped.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(stripped) as { formatted?: string; markdown?: string };
+      const formatted = String(parsed.formatted || parsed.markdown || '').trim();
+      if (formatted) return renderMarkdown(formatted);
+    } catch {
+      /* fall through */
+    }
+  }
+
+  if (rawContent != null) {
+    const rawText =
+      typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent, null, 2);
+    if (rawText.trim()) {
+      return `<pre class="ai-tool-fallback-pre">${escapeHtml(rawText.slice(0, 80000))}</pre>`;
+    }
+  }
+
+  if (stripped) {
+    return `<pre class="ai-tool-fallback-pre">${escapeHtml(stripped.slice(0, 80000))}</pre>`;
+  }
+
+  return '<p class="ai-tool-empty-message">Generated content could not be displayed. Please try generating again.</p>';
+}
+
+function bodyHasVisibleOutput(html: string): boolean {
+  const text = String(html || '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text.length > 0;
+}
+
 export function getToolOutputPanelBorder(toolType: string): string | undefined {
   const borders: Record<string, string> = {
     'smart-study-guide-generator': '#c7d2fe',
@@ -189,6 +237,10 @@ export function renderAiToolOutputHtml(
     inner = themedMarkdown(display);
   } else {
     inner = renderMarkdown(display);
+  }
+
+  if (!bodyHasVisibleOutput(inner)) {
+    inner = renderAiToolFallbackBody(content, rawContent);
   }
 
   const body = TOOL_SHELLS[toolType] ? wrapWithShell(toolType, inner) : inner;

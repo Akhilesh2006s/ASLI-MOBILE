@@ -269,13 +269,6 @@ export default function SmartStudyGuideViewer({ content, rawContent }: Props) {
         />
 
         <View style={styles.guideBody}>
-          <View style={styles.titleSection}>
-            <Text style={styles.titleSectionNum}>Section 1</Text>
-            <View style={styles.titleBadge}>
-              <Text style={styles.titleBadgeText}>Study Guide Title</Text>
-            </View>
-            <Text style={styles.guideTitle}>{guide.title}</Text>
-          </View>
           {bodySections}
         </View>
       </View>

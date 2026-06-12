@@ -5,6 +5,7 @@ import {
   sectionNumberIconSvg,
 } from './ai-tool-html-primitives';
 import { parseNumberedTemplateSections } from './ai-tool-display-content';
+import { sectionTitlesMatch } from './themed-markdown-sections';
 import { renderMarkdown } from './render-teacher-markdown';
 
 type ThemeName = 'indigo' | 'orange' | 'violet' | 'blue' | 'amber';
@@ -75,9 +76,12 @@ export function renderNumberedTemplateAsCards(toolType: string, text: string): s
   const meta = TOOL_META[toolType] || { eyebrow: 'Generated Content', theme: 'indigo' as ThemeName };
   const { title, sections } = parseNumberedTemplateSections(text);
 
+  const heroTitle =
+    title || sections.find((s) => s.num === 1)?.title.replace(/^\d+\.\s*/, '') || meta.eyebrow;
+
   let html = heroTitleCardHtml({
     eyebrow: meta.eyebrow,
-    title: title || sections.find((s) => s.num === 1)?.title || meta.eyebrow,
+    title: heroTitle,
     theme: meta.theme,
   });
 
@@ -85,9 +89,14 @@ export function renderNumberedTemplateAsCards(toolType: string, text: string): s
     toolType,
     [...sections].filter((s) => s.num > 0).sort((a, b) => a.num - b.num),
   );
-  const visibleSections = sorted.filter(
-    (sec) => !(sec.num === 1 && title && sec.title.replace(/^\d+\.\s*/, '') === title),
-  );
+  const visibleSections = sorted.filter((sec) => {
+    if (sec.num !== 1) return true;
+    // Hero card already represents Section 1 (title). Skip empty duplicate Section 1 cards.
+    if (!sec.body.trim()) return false;
+    if (title && sectionTitlesMatch(title, sec.title)) return false;
+    if (sectionTitlesMatch(heroTitle, sec.title)) return false;
+    return true;
+  });
 
   (visibleSections.length ? visibleSections : sorted).forEach((sec, index) => {
     const style = STRIPE_CYCLE[index % STRIPE_CYCLE.length];

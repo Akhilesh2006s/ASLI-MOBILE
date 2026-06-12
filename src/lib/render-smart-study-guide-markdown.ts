@@ -1,7 +1,11 @@
 import { formatInlineMarkdown, renderMarkdown } from './render-teacher-markdown';
 import {
-  bodyTextFromLines,
   parseMarkdownDocTitle,
+  parseMarkdownSectionHeading,
+  resolveSection1Title,
+  shouldRenderDocHeader,
+  sortSectionHtmlEntries,
+  type SectionHtmlEntry,
   themedNumberedSectionCardHtml,
   themedSection1TitleCardHtml,
 } from './themed-markdown-sections';
@@ -60,8 +64,7 @@ export function renderSmartStudyGuideMarkdown(text: string): string {
   }
 
   const lines = processed.split('\n');
-  const parts: string[] = [];
-  let docHeader = '';
+  const sectionEntries: SectionHtmlEntry[] = [];
   let docTitle = '';
   let currentSection = 0;
   let currentTitle = '';
@@ -74,10 +77,11 @@ export function renderSmartStudyGuideMarkdown(text: string): string {
       return;
     }
     if (currentSection === 1) {
-      const titleText = bodyTextFromLines(bodyLines) || docTitle;
+      const titleText = resolveSection1Title(bodyLines, currentTitle, docTitle);
       if (titleText) {
-        parts.push(
-          themedSection1TitleCardHtml({
+        sectionEntries.push({
+          num: 1,
+          html: themedSection1TitleCardHtml({
             title: titleText,
             badge: 'Study Guide Title',
             border: 'border-indigo-300',
@@ -85,7 +89,7 @@ export function renderSmartStudyGuideMarkdown(text: string): string {
             labelClass: 'text-indigo-700',
             badgeClass: 'bg-indigo-100 text-indigo-900',
           }),
-        );
+        });
         renderedSection1 = true;
       }
       bodyLines = [];
@@ -94,17 +98,21 @@ export function renderSmartStudyGuideMarkdown(text: string): string {
       return;
     }
     const style = sectionStyle(currentSection || 1);
-    parts.push(
-      themedNumberedSectionCardHtml({
-        sectionNum: currentSection,
-        sectionTitle: currentTitle,
-        bodyHtml: bodyLinesToHtml(bodyLines),
-        border: style.border,
-        bg: style.bg,
-        titleClass: style.title,
-        labelClass: 'text-indigo-500',
-      }),
-    );
+    const bodyHtml = bodyLinesToHtml(bodyLines);
+    if (bodyHtml.trim()) {
+      sectionEntries.push({
+        num: currentSection,
+        html: themedNumberedSectionCardHtml({
+          sectionNum: currentSection,
+          sectionTitle: currentTitle,
+          bodyHtml,
+          border: style.border,
+          bg: style.bg,
+          titleClass: style.title,
+          labelClass: 'text-indigo-500',
+        }),
+      });
+    }
     bodyLines = [];
     currentSection = 0;
     currentTitle = '';
@@ -117,19 +125,18 @@ export function renderSmartStudyGuideMarkdown(text: string): string {
     const docLineTitle = parseMarkdownDocTitle(trimmed);
     if (docLineTitle) {
       docTitle = docLineTitle;
-      docHeader =
-        `<header class="mb-4 overflow-hidden rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-700 via-violet-600 to-cyan-600 px-4 py-4 text-white shadow-lg">` +
-        `<p class="text-[10px] font-semibold uppercase tracking-widest text-indigo-100">Smart Study Guide</p>` +
-        `<h1 class="text-xl font-bold mt-1">${formatInlineMarkdown(docTitle)}</h1>` +
-        `</header>`;
       continue;
     }
 
-    const mainSec = trimmed.match(/^#{1,3}\s+(\d{1,2})\.\s*(.+)$/);
-    if (mainSec) {
+    const heading = parseMarkdownSectionHeading(trimmed);
+    if (heading) {
+      if (currentSection === heading.num) {
+        if (!currentTitle.trim() && heading.title.trim()) currentTitle = heading.title.trim();
+        continue;
+      }
       flushSection();
-      currentSection = Number(mainSec[1]);
-      currentTitle = mainSec[2].trim();
+      currentSection = heading.num;
+      currentTitle = heading.title;
       continue;
     }
 
@@ -139,8 +146,9 @@ export function renderSmartStudyGuideMarkdown(text: string): string {
   flushSection();
 
   if (!renderedSection1 && docTitle) {
-    parts.unshift(
-      themedSection1TitleCardHtml({
+    sectionEntries.unshift({
+      num: 1,
+      html: themedSection1TitleCardHtml({
         title: docTitle,
         badge: 'Study Guide Title',
         border: 'border-indigo-300',
@@ -148,8 +156,17 @@ export function renderSmartStudyGuideMarkdown(text: string): string {
         labelClass: 'text-indigo-700',
         badgeClass: 'bg-indigo-100 text-indigo-900',
       }),
-    );
+    });
   }
+
+  const parts = sortSectionHtmlEntries(sectionEntries);
+
+  const docHeader = shouldRenderDocHeader(docTitle, sectionEntries)
+    ? `<header class="mb-4 overflow-hidden rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-700 via-violet-600 to-cyan-600 px-4 py-4 text-white shadow-lg">` +
+      `<p class="text-[10px] font-semibold uppercase tracking-widest text-indigo-100">Smart Study Guide</p>` +
+      `<h1 class="text-xl font-bold mt-1">${formatInlineMarkdown(docTitle)}</h1>` +
+      `</header>`
+    : '';
 
   if (!parts.length) {
     return `<div class="prose prose-sm max-w-none text-slate-800">${renderMarkdown(processed)}</div>`;

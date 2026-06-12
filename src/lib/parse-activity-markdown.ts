@@ -888,6 +888,128 @@ function activityMarkdownSource(content?: string): string {
   }
 }
 
+function coalesceActivityLines(v: unknown): string[] {
+  if (Array.isArray(v)) {
+    return v
+      .map((x) =>
+        String(x ?? '')
+          .replace(/^\s*\d+[\).\s]+/i, '')
+          .replace(/^\s*[-*•]\s*/, '')
+          .trim(),
+      )
+      .filter(Boolean);
+  }
+  if (typeof v === 'string' && v.trim()) {
+    return v
+      .split(/\n+/)
+      .map((line) =>
+        line
+          .replace(/^\s*\d+[\).\s]+/i, '')
+          .replace(/^\s*[-*•]\s*/, '')
+          .trim(),
+      )
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function firstNonEmptyActivityField(...values: unknown[]): string {
+  for (const v of values) {
+    if (Array.isArray(v)) {
+      const joined = v
+        .map((x) => String(x ?? '').trim())
+        .filter(Boolean)
+        .join('\n');
+      if (joined.trim()) return joined.trim();
+    } else {
+      const s = String(v ?? '').trim();
+      if (s) return s;
+    }
+  }
+  return '';
+}
+
+/** True when every teacher template section (2–13) has visible body content. */
+export function teacherActivitySectionsComplete(raw: ParsedActivity): boolean {
+  const a = normalizeParsedActivityFields(raw);
+  const ncfRaw = a.ncf_competency_alignment;
+  const ncf = dedupeStringLines(
+    Array.isArray(ncfRaw)
+      ? ncfRaw.map((x) => String(x).trim()).filter(Boolean)
+      : String(ncfRaw || '')
+          .split(/[;\n]+/)
+          .map((x) => x.trim())
+          .filter(Boolean),
+  );
+  const procedureSteps = coalesceActivityLines(a.step_by_step_procedure || a.steps || a.instructions);
+  const teacherInstructions = coalesceActivityLines(a.teacher_instructions || a.teacherInstructions);
+  const studentInstructions = coalesceActivityLines(a.student_instructions || a.studentInstructions);
+  const learningObjectives = dedupeStringLines(
+    coalesceActivityLines(a.learning_objectives || a.learningObjectives),
+  );
+  const materials = dedupeStringLines(coalesceActivityLines(a.materials_required || a.materials));
+  const assessmentRubric = dedupeStringLines(
+    coalesceActivityLines(a.assessment_criteria_rubric || a.assessment || a.evaluation),
+  );
+  const expectedOutcomes = firstNonEmptyActivityField(
+    a.expected_learning_outcomes,
+    a.learning_outcome,
+    a.learning_outcomes,
+    a.expected_outcome,
+  );
+  const differentiation = String(a.differentiation_support_extension || a.differentiation || '').trim();
+  const realLife = String(a.real_life_application || '').trim();
+  const reflection = cleanReflectionProse(String(a.reflection_exit_ticket || a.reflection || ''));
+  const subtopicLink = firstNonEmptyActivityField(a.subtopic_link_prior_knowledge);
+
+  return (
+    !!String(a.title || a.name || '').trim() &&
+    !!subtopicLink &&
+    learningObjectives.length > 0 &&
+    ncf.length > 0 &&
+    materials.length > 0 &&
+    procedureSteps.length > 0 &&
+    teacherInstructions.length > 0 &&
+    studentInstructions.length > 0 &&
+    !!differentiation &&
+    assessmentRubric.length > 0 &&
+    !!expectedOutcomes &&
+    !!realLife &&
+    !!reflection
+  );
+}
+
+/** True when every student Project Idea Lab section has visible body content. */
+export function studentActivitySectionsComplete(raw: ParsedActivity): boolean {
+  const a = normalizeParsedActivityFields(raw);
+  const learningObjectives = dedupeStringLines(
+    coalesceActivityLines(a.learning_objectives || a.learningObjectives),
+  );
+  const studentSteps = coalesceActivityLines(a.student_instructions || a.studentInstructions);
+  const procedureSteps = coalesceActivityLines(a.step_by_step_procedure || a.steps || a.instructions);
+  const steps = studentSteps.length ? studentSteps : procedureSteps;
+  const subtopicLink = firstNonEmptyActivityField(a.subtopic_link_prior_knowledge);
+
+  return (
+    !!String(a.title || a.name || '').trim() &&
+    !!subtopicLink &&
+    learningObjectives.length > 0 &&
+    steps.length > 0
+  );
+}
+
+export function activitiesPayloadIsComplete(
+  activities: ParsedActivity[] | undefined | null,
+  content?: string,
+  mode: 'teacher' | 'student' = 'teacher',
+): boolean {
+  const rows = resolveActivitiesFromPayload(activities, content);
+  if (!rows.length) return false;
+  const check =
+    mode === 'student' ? studentActivitySectionsComplete : teacherActivitySectionsComplete;
+  return rows.some(check);
+}
+
 export function resolveActivitiesFromPayload(
   activities: ParsedActivity[] | undefined | null,
   content?: string,

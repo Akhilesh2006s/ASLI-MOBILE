@@ -26,7 +26,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.aslilearn.mobile",
-      "versionCode": 3,
+      "versionCode": 4,
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "INTERNET",

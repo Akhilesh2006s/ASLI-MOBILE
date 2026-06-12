@@ -1,8 +1,9 @@
 import { formatInlineMarkdown, renderMarkdown } from './render-teacher-markdown';
 import {
-  bodyTextFromLines,
   parseMarkdownDocTitle,
   parseMarkdownSectionHeading,
+  resolveSection1Title,
+  shouldRenderDocHeader,
   sortSectionHtmlEntries,
   type SectionHtmlEntry,
   themedNumberedSectionCardHtml,
@@ -60,7 +61,7 @@ export function renderQuickAssignmentMarkdown(text: string): string {
     if (displayNum === 13) displayNum = 11;
 
     if (displayNum === 1) {
-      const titleText = bodyTextFromLines(bodyLines) || docTitle;
+      const titleText = resolveSection1Title(bodyLines, currentTitle, docTitle);
       if (titleText) {
         sectionEntries.push({
           num: 1,
@@ -110,10 +111,14 @@ export function renderQuickAssignmentMarkdown(text: string): string {
 
     const heading = parseMarkdownSectionHeading(line);
     if (heading) {
-      flushSection();
       let num = heading.num;
       if (num === 11) num = 10;
       if (num === 13) num = 11;
+      if (currentSection === num) {
+        if (!currentTitle.trim() && heading.title.trim()) currentTitle = heading.title.trim();
+        continue;
+      }
+      flushSection();
       currentSection = num;
       currentTitle = heading.title;
       continue;
@@ -138,7 +143,7 @@ export function renderQuickAssignmentMarkdown(text: string): string {
 
   const parts = sortSectionHtmlEntries(sectionEntries);
 
-  const headerHtml = docTitle
+  const headerHtml = shouldRenderDocHeader(docTitle, sectionEntries)
     ? `<div class="rounded-2xl border border-rose-200 bg-gradient-to-r from-rose-700 via-red-600 to-orange-600 p-4 mb-3 text-white shadow-lg">` +
       `<p class="text-[10px] font-semibold uppercase tracking-widest text-rose-100">Quick Assignment Builder</p>` +
       `<h3 class="text-lg font-bold">${formatInlineMarkdown(docTitle)}</h3></div>`

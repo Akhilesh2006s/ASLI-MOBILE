@@ -1,7 +1,13 @@
 /** Shared helpers for AI tool display text (mobile WebView + native routing). */
 
+import { stripStructuredAiToolMetadata } from './strip-ai-tool-metadata';
+
+function cleanDisplayText(text: string): string {
+  return stripStructuredAiToolMetadata(String(text || '')).trim();
+}
+
 export function extractDisplayContent(content: string): string {
-  const raw = String(content || '').trim();
+  const raw = cleanDisplayText(content);
   if (!raw.startsWith('{')) return raw;
   try {
     const parsed = JSON.parse(raw) as {
@@ -9,8 +15,8 @@ export function extractDisplayContent(content: string): string {
       markdown?: string;
       raw?: unknown;
     };
-    const primary = parsed.formatted || parsed.markdown || '';
-    if (primary.trim()) return primary;
+    const primary = cleanDisplayText(parsed.formatted || parsed.markdown || '');
+    if (primary) return primary;
     const nested = markdownFromUnknown(parsed.raw);
     return nested || raw;
   } catch {
@@ -20,10 +26,17 @@ export function extractDisplayContent(content: string): string {
 
 function markdownFromUnknown(value: unknown): string {
   if (!value) return '';
-  if (typeof value === 'string') return value.trim();
+  if (typeof value === 'string') return cleanDisplayText(value);
   if (typeof value === 'object' && !Array.isArray(value)) {
     const rec = value as Record<string, unknown>;
-    return String(rec.markdown || rec.generatedContent || rec.formatted || '').trim();
+    const direct = cleanDisplayText(
+      String(rec.markdown || rec.generatedContent || rec.formatted || rec.content || '')
+    );
+    if (direct) return direct;
+    if (rec.structuredContent && typeof rec.structuredContent === 'object') {
+      const nested = markdownFromUnknown(rec.structuredContent);
+      if (nested) return nested;
+    }
   }
   return '';
 }
@@ -50,7 +63,7 @@ export function resolveRichDisplayContent(content: string, rawContent?: unknown)
     best = fromRaw;
   }
 
-  return best;
+  return cleanDisplayText(best);
 }
 
 /** Super Admin templates: `1. Title`, `### 2. Learning Objectives`, `## 3. ...`, etc. */
@@ -64,6 +77,38 @@ export function countNumberedTemplateSections(text: string): number {
 }
 
 export type ParsedTemplateSection = { num: number; title: string; body: string };
+
+/** Merge duplicate section numbers — Super Admin content often repeats headers (`### 6.` then `6.`). */
+export function dedupeParsedTemplateSections(sections: ParsedTemplateSection[]): ParsedTemplateSection[] {
+  const byNum = new Map<number, ParsedTemplateSection>();
+  for (const sec of sections) {
+    const existing = byNum.get(sec.num);
+    if (!existing) {
+      byNum.set(sec.num, { ...sec });
+      continue;
+    }
+    const existingBody = existing.body.trim();
+    const incomingBody = sec.body.trim();
+    let body = existingBody;
+    if (!existingBody && incomingBody) {
+      body = incomingBody;
+    } else if (existingBody && !incomingBody) {
+      body = existingBody;
+    } else if (incomingBody.length > existingBody.length) {
+      body = incomingBody;
+    } else if (existingBody.length > incomingBody.length) {
+      body = existingBody;
+    } else if (existingBody && incomingBody && existingBody !== incomingBody) {
+      body = `${existingBody}\n\n${incomingBody}`.trim();
+    }
+    byNum.set(sec.num, {
+      num: sec.num,
+      title: existing.title.trim() || sec.title,
+      body,
+    });
+  }
+  return Array.from(byNum.values()).sort((a, b) => a.num - b.num);
+}
 
 /**
  * Parse numbered template markdown into sections.
@@ -95,6 +140,10 @@ export function parseNumberedTemplateSections(text: string): {
   };
 
   const tryStartSection = (num: number, title: string) => {
+    if (currentSection === num) {
+      if (!currentTitle.trim() && title.trim()) currentTitle = title.trim();
+      return;
+    }
     flush();
     currentSection = num;
     currentTitle = title.trim();
@@ -165,5 +214,5 @@ export function parseNumberedTemplateSections(text: string): {
   }
   flush();
 
-  return { title: docHeader, sections };
+  return { title: docHeader, sections: dedupeParsedTemplateSections(sections) };
 }

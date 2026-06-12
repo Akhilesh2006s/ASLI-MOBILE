@@ -1,8 +1,9 @@
 import { formatInlineMarkdown, renderMarkdown } from './render-teacher-markdown';
 import {
-  bodyTextFromLines,
   parseMarkdownDocTitle,
   parseMarkdownSectionHeading,
+  resolveSection1Title,
+  shouldRenderDocHeader,
   sortSectionHtmlEntries,
   type SectionHtmlEntry,
   themedNumberedSectionCardHtml,
@@ -58,7 +59,7 @@ export function renderChapterSummaryMarkdown(text: string): string {
       return;
     }
     if (currentSection === 1) {
-      const titleText = bodyTextFromLines(bodyLines) || docTitle;
+      const titleText = resolveSection1Title(bodyLines, currentTitle, docTitle);
       if (titleText) {
         sectionEntries.push({
           num: 1,
@@ -107,6 +108,10 @@ export function renderChapterSummaryMarkdown(text: string): string {
 
     const heading = parseMarkdownSectionHeading(t);
     if (heading) {
+      if (currentSection === heading.num) {
+        if (!currentTitle.trim() && heading.title.trim()) currentTitle = heading.title.trim();
+        continue;
+      }
       flushSection();
       currentSection = heading.num;
       currentTitle = heading.title;
@@ -132,7 +137,7 @@ export function renderChapterSummaryMarkdown(text: string): string {
 
   const parts = sortSectionHtmlEntries(sectionEntries);
 
-  const headerHtml = docTitle
+  const headerHtml = shouldRenderDocHeader(docTitle, sectionEntries)
     ? `<header class="rounded-2xl bg-gradient-to-r from-blue-700 via-sky-600 to-indigo-600 px-5 py-4 mb-4 text-white shadow-lg">` +
       `<p class="text-xs font-semibold uppercase tracking-widest text-blue-100 mb-1">Chapter Summary Creator</p>` +
       `<h3 class="text-lg font-bold">${formatInlineMarkdown(docTitle)}</h3></header>`
