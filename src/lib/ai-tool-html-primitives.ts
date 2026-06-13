@@ -1,4 +1,6 @@
 import { renderMarkdown } from './render-teacher-markdown';
+import { stripMarkdownSyntax } from './strip-markdown-syntax';
+import { stripAiToolGenerationLabel } from './strip-ai-tool-generation-label';
 
 type LightHeaderTheme = 'blue' | 'amber' | 'indigo' | 'emerald' | 'violet' | 'slate';
 
@@ -72,17 +74,22 @@ export function escapeHtml(text: string): string {
 }
 
 export function richTextHtml(text: string): string {
-  const raw = String(text || '').trim();
+  const raw = stripMarkdownSyntax(String(text || '').trim());
   if (!raw) {
     return '<p class="text-xs italic text-slate-400 rounded-md border border-dashed border-slate-200 bg-slate-50 px-2 py-1">Not included.</p>';
   }
-  const hasMarkdown =
-    raw.includes('|') ||
-    /^\s*#{1,6}\s/m.test(raw) ||
-    /\*\*[^*]+\*\*/.test(raw) ||
-    /^\s*[-*•]\s/m.test(raw);
-  if (hasMarkdown) {
+  const hasTable = raw.includes('|') && /^\s*\|/m.test(raw);
+  if (hasTable) {
     return `<div class="prose prose-sm max-w-none text-slate-800">${renderMarkdown(raw)}</div>`;
+  }
+  const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean);
+  if (lines.length > 1 && lines.every((l) => l.startsWith('• '))) {
+    return `<ul class="list-none space-y-2 pl-0">${lines
+      .map(
+        (line) =>
+          `<li class="flex gap-2 text-sm text-slate-800"><span class="mt-0.5 shrink-0 text-orange-600">•</span><span class="whitespace-pre-wrap leading-relaxed">${escapeHtml(line.replace(/^•\s+/, ''))}</span></li>`,
+      )
+      .join('')}</ul>`;
   }
   return `<p class="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">${escapeHtml(raw)}</p>`;
 }
@@ -282,6 +289,7 @@ export function heroTitleCardHtml(opts: {
     },
   };
   const t = themes[opts.theme];
+  const displayTitle = stripAiToolGenerationLabel(opts.title, opts.eyebrow);
   const progress =
     opts.progressPct != null
       ? `<div class="mt-4">
@@ -304,7 +312,7 @@ export function heroTitleCardHtml(opts: {
       <div class="min-w-0 flex-1">
         ${opts.badge ? `<span class="inline-flex items-center rounded-md border ${t.badge} text-[10px] font-semibold px-2 py-0.5 mb-2">${escapeHtml(opts.badge)}</span>` : ''}
         <p class="text-[10px] font-bold uppercase tracking-wider ${t.eyebrow} mb-1">${escapeHtml(opts.eyebrow)}</p>
-        <h4 class="text-xl font-bold text-stone-900 leading-snug tracking-tight">${escapeHtml(opts.title)}</h4>
+        <h4 class="text-xl font-bold text-stone-900 leading-snug tracking-tight">${escapeHtml(displayTitle)}</h4>
         ${progress}
       </div>
     </div>

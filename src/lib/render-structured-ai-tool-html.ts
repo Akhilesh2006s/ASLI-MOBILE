@@ -31,6 +31,7 @@ import {
   contentHasNumberedTemplateSections,
   resolveRichDisplayContent,
 } from './ai-tool-display-content';
+import { stripAiToolGenerationLabel } from './strip-ai-tool-generation-label';
 import {
   bulletListHtml,
   checkListHtml,
@@ -54,7 +55,7 @@ function renderConceptBreakdownHtml(content: string, rawContent: unknown): strin
   return concepts
     .map((concept, idx) => {
       let html = heroTitleCardHtml({
-        eyebrow: concepts.length > 1 ? `Concept ${idx + 1} of ${concepts.length}` : 'Section 1 · Concept Title',
+        eyebrow: 'Concept Title',
         title: concept.conceptTitle,
         theme: 'violet',
       });
@@ -461,7 +462,7 @@ function normalizeActivityRow(
     mode === 'teacher' ? procedureSteps : studentSteps.length ? studentSteps : procedureSteps;
 
   return {
-    title: String(a.title || a.name || `Activity ${idx + 1}`).trim(),
+    title: stripAiToolGenerationLabel(String(a.title || a.name || ''), 'Activity'),
     subtopicLink: firstActivityText(a.subtopic_link_prior_knowledge),
     learningObjectives: dedupeStringLines(
       coalesceActivityTextLines(a.learning_objectives || a.learningObjectives),
@@ -658,12 +659,11 @@ function renderActivityProjectHtml(
     .map((activity, idx) => {
       const heroTheme = mode === 'teacher' ? 'indigo' : 'orange';
       const eyebrow =
-        mode === 'teacher' ? '1. Title of activity / project' : '1. Project / Activity Title';
+        mode === 'teacher' ? 'Title of activity / project' : 'Project / Activity Title';
       let html = heroTitleCardHtml({
         eyebrow,
         title: activity.title,
         theme: heroTheme,
-        badge: activities.length > 1 ? `Activity ${idx + 1} of ${activities.length}` : undefined,
       });
       html += appendActivitySectionCards(activity, mode).html;
       return html;
@@ -1162,7 +1162,7 @@ function renderHomeworkHtml(content: string, rawContent: unknown): string | null
     eyebrow: 'Homework Creator',
     title: homework.title || 'Homework Assignment',
     theme: 'orange',
-    badge: '1. Homework Title',
+    badge: 'Homework Title',
   });
 
   const sections: Array<{
@@ -1603,7 +1603,7 @@ function renderStoryHtml(content: string, rawContent: unknown): string | null {
           eyebrow: 'Story & Passage Creator',
           title: story.title || 'Reading Passage',
           theme: 'blue',
-          badge: '1. Story / Passage Title',
+          badge: 'Story / Passage Title',
         });
         html += renderTeacherStoryPassageSections(story);
         return html;

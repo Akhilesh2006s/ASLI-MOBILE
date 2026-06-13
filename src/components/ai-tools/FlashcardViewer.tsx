@@ -421,19 +421,6 @@ function StudentDeckView({ meta, cards }: { meta: StudentDeckMeta; cards: Flashc
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
       <View style={styles.deckShell}>
-        <View style={[styles.hero, styles.heroLight]}>
-          <View style={styles.heroIcon}>
-            <Ionicons name="layers-outline" size={22} color="#6d28d9" />
-          </View>
-          <View style={styles.heroText}>
-            <Text style={styles.heroEyebrow}>My Study Decks</Text>
-            <Text style={styles.heroTitle} numberOfLines={2}>
-              {meta.title}
-            </Text>
-            <Text style={styles.heroSub}>{cards.length} flashcards in deck</Text>
-          </View>
-        </View>
-
         <View style={styles.inner}>
           {sections.map((sec) => (
             <SectionCard

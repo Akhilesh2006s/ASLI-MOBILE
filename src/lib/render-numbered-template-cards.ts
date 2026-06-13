@@ -7,6 +7,7 @@ import { themedNumberedSectionCardHtml } from './themed-markdown-sections';
 import { parseNumberedTemplateSections } from './ai-tool-display-content';
 import { sectionTitlesMatch } from './themed-markdown-sections';
 import { renderMarkdown } from './render-teacher-markdown';
+import { stripAiToolGenerationLabel } from './strip-ai-tool-generation-label';
 
 type ThemeName = 'indigo' | 'orange' | 'violet' | 'blue' | 'amber';
 
@@ -108,8 +109,10 @@ export function renderNumberedTemplateAsCards(toolType: string, text: string): s
   const meta = TOOL_META[toolType] || { eyebrow: 'Generated Content', theme: 'indigo' as ThemeName };
   const { title, sections } = parseNumberedTemplateSections(text);
 
-  const heroTitle =
-    title || sections.find((s) => s.num === 1)?.title.replace(/^\d+\.\s*/, '') || meta.eyebrow;
+  const heroTitle = stripAiToolGenerationLabel(
+    title || sections.find((s) => s.num === 1)?.title.replace(/^\d+\.\s*/, '') || meta.eyebrow,
+    meta.eyebrow,
+  );
 
   let html = heroTitleCardHtml({
     eyebrow: meta.eyebrow,
@@ -134,7 +137,7 @@ export function renderNumberedTemplateAsCards(toolType: string, text: string): s
     const theme = SECTION_THEME_CYCLE[index % SECTION_THEME_CYCLE.length];
     html += themedNumberedSectionCardHtml({
       sectionNum: sec.num,
-      sectionTitle: sec.title.replace(/^\d+\.\s*/, ''),
+      sectionTitle: stripAiToolGenerationLabel(sec.title.replace(/^\d+\.\s*/, ''), sec.title.replace(/^\d+\.\s*/, '')),
       bodyHtml: sectionBodyHtml(sec.body),
       border: theme.border,
       bg: theme.bg,

@@ -2,6 +2,8 @@
  * Parse Story & Passage Creator output (JSON, markdown sections, legacy passages bundle).
  */
 
+import { stripAiToolGenerationLabel } from './strip-ai-tool-generation-label';
+
 export type StoryQuestion = {
   question: string;
   answer?: string;
@@ -131,10 +133,12 @@ function normalizeStoryFromObject(raw: Record<string, unknown>, fallbackTitle?: 
     undefined;
 
   return {
-    title:
+    title: stripAiToolGenerationLabel(
       str(raw.reading_practice_title || raw.readingPracticeTitle || raw.title) ||
-      fallbackTitle ||
+        fallbackTitle ||
+        'Reading Practice',
       'Reading Practice',
+    ),
     subtopicLinkPriorKnowledge,
     topicSubtopicConnection:
       str(raw.topic_subtopic_connection || raw.topic_and_subtopic_connection || raw.topicSubtopicConnection) ||
@@ -692,6 +696,7 @@ function parseStoryFromMarkdown(text: string): ParsedStory | null {
     }
   }
   if (!title) title = 'Story';
+  title = stripAiToolGenerationLabel(title, 'Story');
 
   const sections = new Map<number, string>();
   const lines = bodyStart.split('\n');
@@ -818,7 +823,7 @@ function parseFromUnknown(parsed: unknown): ResolvedStoryContent {
     const stories = parsed
       .map((row, i) =>
         row && typeof row === 'object'
-          ? normalizeStoryFromObject(row as Record<string, unknown>, `Story ${i + 1}`)
+          ? normalizeStoryFromObject(row as Record<string, unknown>, 'Story')
           : null,
       )
       .filter((s): s is ParsedStory => !!s && storyHasContent(s));

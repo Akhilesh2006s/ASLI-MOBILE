@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { LayoutChangeEvent, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { COLORS } from '../../../theme';
-import { barHeight, buildTicks, chartMax, CHART_THEME, gridBottom } from './chart-theme';
+import { barHeight, buildTicks, chartMax, CHART_THEME, gridBottom, slotWidthForCount } from './chart-theme';
 
 type DataPoint = {
   label: string;
@@ -28,20 +28,82 @@ export default function BarChart({
   formatYTick = defaultFormatYTick,
   formatBarValue,
 }: Props) {
+  const { width: screenW } = useWindowDimensions();
+  const [measuredW, setMeasuredW] = useState(0);
   const formatBar = formatBarValue ?? formatYTick;
   const plotH = height - 56;
-  const labelH = 28;
 
   const rawMax = Math.max(...data.map((d) => d.value), 0);
   const max = maxValue ?? chartMax(rawMax > 0 ? rawMax : 1);
   const yTicks = useMemo(() => buildTicks(max), [max]);
 
+  const shellWidth = measuredW > 0 ? measuredW : Math.max(280, screenW - 64);
+  const plotWidth = Math.max(180, shellWidth - 44);
+  const slotWidth = slotWidthForCount(plotWidth, data.length, 72, 120);
+  const chartContentW = data.length * slotWidth;
+  const needsScroll = chartContentW > plotWidth + 8;
+  const barW = Math.min(64, Math.max(28, Math.floor(slotWidth * 0.52)));
+
+  const onShellLayout = (event: LayoutChangeEvent) => {
+    const next = event.nativeEvent.layout.width;
+    if (next > 0 && Math.abs(next - measuredW) > 2) {
+      setMeasuredW(next);
+    }
+  };
+
   if (!data.length) return null;
 
-  const barW = Math.min(40, Math.max(28, Math.floor(220 / data.length)));
+  const plotBody = (
+    <>
+      <View style={[styles.plotArea, { height: plotH }]}>
+        {yTicks.map((tick) => (
+          <View
+            key={`grid-${tick}`}
+            style={[styles.gridLine, { bottom: gridBottom(tick, max, plotH) }]}
+          />
+        ))}
+        <View style={[styles.barsLayer, needsScroll ? { width: chartContentW } : undefined]}>
+          {data.map((item, i) => {
+            const h = barHeight(item.value, max, plotH, 8);
+            return (
+              <View
+                key={`${item.label}-${i}`}
+                style={[styles.barSlot, needsScroll ? { width: slotWidth } : undefined]}
+              >
+                {h > 0 ? (
+                  <Text style={[styles.barValue, { bottom: h + 4, width: slotWidth }]}>{formatBar(item.value)}</Text>
+                ) : null}
+                <View
+                  style={[
+                    styles.bar,
+                    {
+                      width: barW,
+                      height: h,
+                      backgroundColor: item.color || COLORS.primary,
+                    },
+                  ]}
+                />
+              </View>
+            );
+          })}
+        </View>
+      </View>
+      <View style={[styles.xRow, needsScroll ? { width: chartContentW } : undefined]}>
+        {data.map((item, i) => (
+          <Text
+            key={`xl-${item.label}-${i}`}
+            style={[styles.xLabel, needsScroll ? { width: slotWidth } : undefined]}
+            numberOfLines={2}
+          >
+            {item.label}
+          </Text>
+        ))}
+      </View>
+    </>
+  );
 
   return (
-    <View style={styles.shell} collapsable={false}>
+    <View style={styles.shell} collapsable={false} onLayout={onShellLayout}>
       <View style={styles.chartRow}>
         <View style={[styles.yAxis, { height: plotH }]}>
           {yTicks.map((tick) => (
@@ -51,45 +113,19 @@ export default function BarChart({
           ))}
         </View>
 
-        <View style={styles.plotCol}>
-          <View style={[styles.plotArea, { height: plotH }]}>
-            {yTicks.map((tick) => (
-              <View
-                key={`grid-${tick}`}
-                style={[styles.gridLine, { bottom: gridBottom(tick, max, plotH) }]}
-              />
-            ))}
-            <View style={styles.barsLayer}>
-              {data.map((item, i) => {
-                const h = barHeight(item.value, max, plotH, 8);
-                return (
-                  <View key={`${item.label}-${i}`} style={styles.barSlot}>
-                    {h > 0 ? (
-                      <Text style={[styles.barValue, { bottom: h + 4 }]}>{formatBar(item.value)}</Text>
-                    ) : null}
-                    <View
-                      style={[
-                        styles.bar,
-                        {
-                          width: barW,
-                          height: h,
-                          backgroundColor: item.color || COLORS.primary,
-                        },
-                      ]}
-                    />
-                  </View>
-                );
-              })}
-            </View>
-          </View>
-          <View style={styles.xRow}>
-            {data.map((item, i) => (
-              <Text key={`xl-${item.label}-${i}`} style={styles.xLabel} numberOfLines={1}>
-                {item.label}
-              </Text>
-            ))}
-          </View>
-        </View>
+        {needsScroll ? (
+          <ScrollView
+            horizontal
+            nestedScrollEnabled
+            showsHorizontalScrollIndicator={data.length > 4}
+            style={styles.plotScroll}
+            contentContainerStyle={{ minWidth: chartContentW }}
+          >
+            <View style={{ width: chartContentW }}>{plotBody}</View>
+          </ScrollView>
+        ) : (
+          <View style={styles.plotCol}>{plotBody}</View>
+        )}
       </View>
     </View>
   );
@@ -120,7 +156,8 @@ const styles = StyleSheet.create({
     color: CHART_THEME.label,
     textAlign: 'right',
   },
-  plotCol: { flex: 1 },
+  plotCol: { flex: 1, minWidth: 0 },
+  plotScroll: { flex: 1, minWidth: 0 },
   plotArea: {
     position: 'relative',
     borderBottomWidth: 1.5,
@@ -179,9 +216,11 @@ const styles = StyleSheet.create({
   },
   xLabel: {
     flex: 1,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
     color: CHART_THEME.label,
     textAlign: 'center',
+    lineHeight: 14,
+    paddingHorizontal: 2,
   },
 });

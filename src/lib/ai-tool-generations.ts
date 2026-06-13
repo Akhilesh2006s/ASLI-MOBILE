@@ -1,5 +1,6 @@
 import api from '../services/api/api';
 import type { McqQuestion } from './mcq-record-utils';
+import { stripMarkdownSyntax } from './strip-markdown-syntax';
 
 export type BranchItem = { value: string; count: number };
 
@@ -75,17 +76,7 @@ export function labelEmpty(v: string) {
 }
 
 export function toEditablePlainText(content: string) {
-  return String(content || '')
-    .replace(/\r\n/g, '\n')
-    .replace(/^#{1,6}\s+/gm, '')
-    .replace(/\*\*(.*?)\*\*/g, '$1')
-    .replace(/\*(.*?)\*/g, '$1')
-    .replace(/`{1,3}/g, '')
-    .replace(/^[-*_]{3,}\s*$/gm, '')
-    .replace(/\[(.*?)\]\((.*?)\)/g, '$1')
-    .replace(/!\[(.*?)\]\((.*?)\)/g, '$1')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+  return stripMarkdownSyntax(content);
 }
 
 export function questionsToStructuredPayload(questions: McqQuestion[]) {

@@ -1,6 +1,7 @@
 /** Shared helpers for AI tool display text (mobile WebView + native routing). */
 
 import { stripStructuredAiToolMetadata } from './strip-ai-tool-metadata';
+import { stripAiToolGenerationLabel } from './strip-ai-tool-generation-label';
 
 function cleanDisplayText(text: string): string {
   return stripStructuredAiToolMetadata(String(text || '')).trim();
@@ -214,5 +215,11 @@ export function parseNumberedTemplateSections(text: string): {
   }
   flush();
 
-  return { title: docHeader, sections: dedupeParsedTemplateSections(sections) };
+  return {
+    title: stripAiToolGenerationLabel(docHeader),
+    sections: dedupeParsedTemplateSections(sections).map((sec) => ({
+      ...sec,
+      title: stripAiToolGenerationLabel(sec.title.replace(/^\d+\.\s*/, ''), sec.title.replace(/^\d+\.\s*/, '')),
+    })),
+  };
 }

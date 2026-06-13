@@ -1,3 +1,5 @@
+import { stripAiToolGenerationLabel } from './strip-ai-tool-generation-label';
+
 export type FlashcardType = 'question' | 'note' | 'fact';
 
 export type Flashcard = {
@@ -508,7 +510,7 @@ function parseDeckMetaFromFormatted(text: string): Partial<StudentDeckMeta> {
       .filter(Boolean);
 
   return {
-    title: pickBlock('Deck Title').replace(/^#+\s*/, '') || undefined,
+    title: stripAiToolGenerationLabel(pickBlock('Deck Title').replace(/^#+\s*/, ''), 'Study Deck') || undefined,
     subtopicLinkPriorKnowledge: pickBlock('Subtopic Link and Prior Knowledge Required') || undefined,
     learningObjectives: objectivesBlock ? listFromBlock(objectivesBlock) : undefined,
     ncfAlignment: pickBlock('NCF Competency[^*]*') || undefined,
@@ -539,10 +541,12 @@ export function resolveStudentDeckMeta(content: string, rawContent?: unknown): S
 
   const fromFormatted = parseDeckMetaFromFormatted(content);
 
-  const title =
+  const title = stripAiToolGenerationLabel(
     pickText(sources, 'deck_title', 'deckTitle', 'title', 'studyScheduleTitle') ||
-    fromFormatted.title ||
-    'My Study Deck';
+      fromFormatted.title ||
+      'My Study Deck',
+    'My Study Deck',
+  );
 
   const learningObjectives =
     pickList(sources, 'learningObjectives', 'learning_objectives', 'objectives').length > 0
@@ -629,7 +633,7 @@ export function resolveTeacherDeckMeta(content: string, rawContent?: unknown): T
   if (!title && !topic && !subtopic && !topicLink) return null;
 
   return {
-    title: title || 'Flashcard deck',
+    title: stripAiToolGenerationLabel(title, 'Flashcard deck'),
     topic,
     subtopic,
     topicAndSubtopicLink: topicLink,

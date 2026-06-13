@@ -1,14 +1,15 @@
 import { formatInlineMarkdown } from './render-teacher-markdown';
+import { stripAiToolGenerationLabel } from './strip-ai-tool-generation-label';
 
 /** `# Title` or `## Title` (without `N.` prefix) — common Super Admin doc headers. */
 export function parseMarkdownDocTitle(line: string): string | null {
   const t = line.trim();
   const h1 = t.match(/^#\s+(.+)$/);
-  if (h1 && !t.startsWith('##')) return h1[1].trim();
+  if (h1 && !t.startsWith('##')) return stripAiToolGenerationLabel(h1[1].trim());
   const h2 = t.match(/^##\s+(.+)$/);
   if (h2 && !t.startsWith('###')) {
     const inner = h2[1].trim();
-    if (!/^\d{1,2}\.\s/.test(inner)) return inner;
+    if (!/^\d{1,2}\.\s/.test(inner)) return stripAiToolGenerationLabel(inner);
   }
   return null;
 }
@@ -21,7 +22,7 @@ export function themedSection1TitleCardHtml(opts: {
   labelClass: string;
   badgeClass: string;
 }): string {
-  const safeTitle = opts.title.trim() || 'Untitled';
+  const safeTitle = stripAiToolGenerationLabel(opts.title, 'Untitled');
   return (
     `<section class="mb-3 overflow-hidden rounded-xl border ${opts.border} ${opts.bg} shadow-sm">` +
     `<div class="px-3 py-3 sm:px-4 sm:py-3.5">` +
@@ -62,7 +63,7 @@ export function bodyTextFromLines(bodyLines: string[]): string {
 }
 
 export function normalizeSectionTitle(title: string): string {
-  return String(title || '').replace(/^\d+\.\s*/, '').trim().toLowerCase();
+  return stripAiToolGenerationLabel(String(title || '').replace(/^\d+\.\s*/, '')).toLowerCase();
 }
 
 export function sectionTitlesMatch(a: string, b: string): boolean {
@@ -77,7 +78,10 @@ export function resolveSection1Title(
   sectionTitle: string,
   docTitle: string,
 ): string {
-  return bodyTextFromLines(bodyLines) || sectionTitle.trim() || docTitle.trim();
+  return stripAiToolGenerationLabel(
+    bodyTextFromLines(bodyLines) || sectionTitle.trim() || docTitle.trim(),
+    'Untitled',
+  );
 }
 
 export function hasSection1Entry(entries: SectionHtmlEntry[]): boolean {

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -374,17 +374,15 @@ export function AiReportTabMobile({ result, examTitle, studentName, aiAnalysis, 
 
       {subjectRows.length > 0 && (
         <AnalysisCard title="Subject Mastery" icon="school" accent={ANALYSIS.purple}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <BarChart
-              data={subjectRows.map((row) => ({
-                label: row.subject.slice(0, 4),
-                value: Math.round(row.pct),
-                color: row.pct >= 80 ? '#16a34a' : row.pct >= 60 ? '#2563eb' : '#ea580c',
-              }))}
-              height={150}
-              maxValue={100}
-            />
-          </ScrollView>
+          <BarChart
+            data={subjectRows.map((row) => ({
+              label: isTablet ? row.subject : row.subject.slice(0, 4),
+              value: Math.round(row.pct),
+              color: row.pct >= 80 ? '#16a34a' : row.pct >= 60 ? '#2563eb' : '#ea580c',
+            }))}
+            height={isTablet ? 220 : 180}
+            maxValue={100}
+          />
           {subjectRows.map((row) => (
             <View key={row.subject} style={panelStyles.subjectRow}>
               <Text style={panelStyles.subjectName}>{row.subject}</Text>
@@ -648,9 +646,6 @@ export function QuestionsTabMobile({
                   <Text style={panelStyles.qErrorTag}>
                     {errType === 'careless' ? 'Careless' : errType === 'conceptual' ? 'Conceptual' : errType === 'time-pressure' ? 'Time pressure' : 'Reading'}
                   </Text>
-                ) : null}
-                {qi?.fixStrategy || qi?.insight ? (
-                  <Text style={panelStyles.qInsight} numberOfLines={2}>{qi.fixStrategy || qi.insight}</Text>
                 ) : null}
               </TouchableOpacity>
             );
@@ -1018,12 +1013,53 @@ export function InsightsTabMobile({ result, aiAnalysis }: { result: ExamAnalysis
   );
 }
 
+const PLAN_DAY_CARD_WIDTH = 160;
+const PLAN_DAY_CARD_GAP = 10;
+
 export function PlanTabMobile({ studentName, aiAnalysis }: { studentName: string; aiAnalysis: AiExamAnalysis | null }) {
-  const { isTablet, isWide } = useExamAnalysisLayout();
+  const { isTablet, isWide, contentWidth, width } = useExamAnalysisLayout();
   const [selectedDay, setSelectedDay] = useState(0);
+  const verticalScrollRef = useRef<ScrollView>(null);
+  const planDaysScrollRef = useRef<ScrollView>(null);
+  const planQueueOffsetRef = useRef(0);
   const planTopics = useMemo(() => generatePlanTopics(aiAnalysis), [aiAnalysis]);
   const activeTopic = planTopics[selectedDay] ?? planTopics[0];
   const planQueue = useMemo(() => generatePlanQueueItems(activeTopic?.title || 'Focus', selectedDay), [activeTopic?.title, selectedDay]);
+
+  const listViewportWidth = (isTablet ? contentWidth : width) - 32;
+
+  const scrollPlanDayIntoView = useCallback(
+    (index: number) => {
+      const cardStep = PLAN_DAY_CARD_WIDTH + PLAN_DAY_CARD_GAP;
+      const scrollX = Math.max(
+        0,
+        index * cardStep + PLAN_DAY_CARD_WIDTH / 2 - listViewportWidth / 2
+      );
+      planDaysScrollRef.current?.scrollTo({ x: scrollX, animated: true });
+    },
+    [listViewportWidth]
+  );
+
+  const scrollPlanQueueIntoView = useCallback(() => {
+    verticalScrollRef.current?.scrollTo({
+      y: Math.max(0, planQueueOffsetRef.current - 12),
+      animated: true,
+    });
+  }, []);
+
+  const selectPlanDay = useCallback(
+    (index: number) => {
+      setSelectedDay(index);
+      requestAnimationFrame(() => {
+        scrollPlanDayIntoView(index);
+        requestAnimationFrame(() => {
+          scrollPlanQueueIntoView();
+        });
+      });
+    },
+    [scrollPlanDayIntoView, scrollPlanQueueIntoView]
+  );
+
   const planVideoCards = useMemo(() => {
     const focus = aiAnalysis?.focusAreas || [];
     const fromFocus = focus.slice(0, 3).map((f, i) => ({
@@ -1045,8 +1081,10 @@ export function PlanTabMobile({ studentName, aiAnalysis }: { studentName: string
 
   return (
     <ScrollView
+      ref={verticalScrollRef}
       contentContainerStyle={[analysisStyles.scrollContent, isTablet && analysisStyles.scrollContentTablet]}
       showsVerticalScrollIndicator={false}
+      nestedScrollEnabled
     >
       <LinearGradient colors={[...ANALYSIS.gradientHero]} style={panelStyles.planHero}>
         <Text style={panelStyles.planHeroTitle}>YOUR TOPIC PLAN</Text>
@@ -1064,12 +1102,19 @@ export function PlanTabMobile({ studentName, aiAnalysis }: { studentName: string
         </View>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={panelStyles.planDaysRow}>
+      <View style={panelStyles.planDaysScrollWrap}>
+      <ScrollView
+        ref={planDaysScrollRef}
+        horizontal
+        nestedScrollEnabled
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={panelStyles.planDaysRow}
+      >
         {planTopics.map((topic, i) => (
           <TouchableOpacity
             key={topic.topicNum}
             style={[panelStyles.planDayCard, selectedDay === i && panelStyles.planDayCardActive]}
-            onPress={() => setSelectedDay(i)}
+            onPress={() => selectPlanDay(i)}
           >
             {selectedDay === i && <Text style={panelStyles.planActiveLabel}>ACTIVE</Text>}
             <Text style={panelStyles.planDayTitle} numberOfLines={2}>{topic.title}</Text>
@@ -1078,7 +1123,14 @@ export function PlanTabMobile({ studentName, aiAnalysis }: { studentName: string
           </TouchableOpacity>
         ))}
       </ScrollView>
+      </View>
 
+      <View
+        collapsable={false}
+        onLayout={(event) => {
+          planQueueOffsetRef.current = event.nativeEvent.layout.y;
+        }}
+      >
       <AnalysisCard title={activeTopic?.title || 'Focus topic'} icon="bookmark" accent={ANALYSIS.accent}>
         <Text style={panelStyles.metaText}>{activeTopic?.subtitle} · {activeTopic?.duration}</Text>
         <Text style={panelStyles.queueHeading}>WARM-UP · {planQueue.warmup.length} EASY Qs</Text>
@@ -1094,6 +1146,7 @@ export function PlanTabMobile({ studentName, aiAnalysis }: { studentName: string
           <Text key={item.id} style={panelStyles.queueItem}>+{i + 1} · {item.minutes}m — {item.title}</Text>
         ))}
       </AnalysisCard>
+      </View>
 
       <AnalysisCard title="Video Queue · 30 minutes total" icon="play-circle" accent={ANALYSIS.purple}>
         <Text style={panelStyles.metaText}>Auto-ordered by weakness</Text>
@@ -1293,7 +1346,6 @@ const panelStyles = StyleSheet.create({
   qNum: { fontWeight: '800', color: '#111827' },
   qSubject: { fontSize: 12, color: '#6b7280', textTransform: 'capitalize' },
   qText: { fontSize: 14, color: '#111827', lineHeight: 20 },
-  qInsight: { fontSize: 12, color: '#7c3aed', marginTop: 6 },
   emptyText: { textAlign: 'center', color: '#9ca3af', padding: 24, fontSize: 14 },
   emptyTextFull: { width: '100%' },
   modalWrap: { flex: 1, backgroundColor: '#fff' },
@@ -1422,7 +1474,8 @@ const panelStyles = StyleSheet.create({
   planAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#93C5FD', alignItems: 'center', justifyContent: 'center' },
   planAvatarText: { color: '#fff', fontWeight: '800' },
   planWhyTitle: { fontWeight: '800', color: '#111827', marginBottom: 4 },
-  planDaysRow: { gap: 10, paddingVertical: 4 },
+  planDaysScrollWrap: { flexGrow: 0, flexShrink: 0 },
+  planDaysRow: { gap: 10, paddingVertical: 4, paddingHorizontal: 2 },
   planDayCard: { width: 160, backgroundColor: '#f9fafb', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#e5e7eb' },
   planDayCardActive: { backgroundColor: '#EFF6FF', borderColor: '#93C5FD' },
   planActiveLabel: { fontSize: 10, fontWeight: '800', color: '#3B82F6', marginBottom: 4 },

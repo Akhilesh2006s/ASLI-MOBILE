@@ -11,6 +11,7 @@ import {
   type ParsedActivity,
 } from '../../lib/parse-activity-markdown';
 import { stripStructuredAiToolMetadata } from '../../lib/strip-ai-tool-metadata';
+import { stripAiToolGenerationLabel } from '../../lib/strip-ai-tool-generation-label';
 
 type NormalizedActivity = {
   sl: number;
@@ -89,7 +90,7 @@ function normalizeActivity(raw: ParsedActivity, idx: number, mode: 'student' | '
 
   return {
     sl: Number(a.sl_no) || idx + 1,
-    title: String(a.title || a.name || `Activity ${idx + 1}`).trim(),
+    title: stripAiToolGenerationLabel(String(a.title || a.name || ''), 'Activity'),
     subtopicLink: firstNonEmptyFromActivity(a.subtopic_link_prior_knowledge),
     learningObjectives: dedupeStringLines(coalesceLines(a.learning_objectives || a.learningObjectives)),
     ncfAlignment: ncf,
@@ -346,7 +347,7 @@ function StudentActivityCard({ activity }: { activity: NormalizedActivity }) {
             <Ionicons name="flask-outline" size={28} color="#ea580c" />
           </View>
           <View style={styles.heroContent}>
-            <Text style={[styles.heroEyebrow, styles.heroEyebrowStudent]}>1. Project / Activity Title</Text>
+            <Text style={[styles.heroEyebrow, styles.heroEyebrowStudent]}>Project / Activity Title</Text>
             <Text style={styles.heroTitle}>{activity.title}</Text>
           </View>
         </View>
@@ -376,7 +377,7 @@ function TeacherActivityCard({ activity }: { activity: NormalizedActivity }) {
             <Ionicons name="flask-outline" size={28} color="#4f46e5" />
           </View>
           <View style={styles.heroContent}>
-            <Text style={styles.heroEyebrow}>1. Title of activity / project</Text>
+            <Text style={styles.heroEyebrow}>Title of activity / project</Text>
             <Text style={styles.heroTitle}>{activity.title}</Text>
           </View>
         </View>
@@ -457,7 +458,7 @@ export default function ActivityProjectViewer({ content, rawContent, variant = '
               style={[styles.tab, idx === safeIdx && styles.tabActive]}
             >
               <Text style={[styles.tabText, idx === safeIdx && styles.tabTextActive]} numberOfLines={1}>
-                {act.title?.trim() ? act.title.slice(0, 28) : `Item ${idx + 1}`}
+                {act.title?.trim() ? act.title.slice(0, 28) : 'Activity'}
               </Text>
             </Pressable>
           ))}

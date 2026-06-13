@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AiToolWebView from './AiToolWebView';
 import { stripStructuredAiToolMetadata } from '../../lib/strip-ai-tool-metadata';
+import { stripAiToolGenerationLabel } from '../../lib/strip-ai-tool-generation-label';
 import {
   resolveStudyGuideFromPayload,
   studyGuideViewerPayloadFromRecord,
@@ -262,7 +263,7 @@ export default function SmartStudyGuideViewer({ content, rawContent }: Props) {
 
       <View style={styles.guideShell}>
         <LinearGuideHeader
-          title={guide.title}
+          title={stripAiToolGenerationLabel(guide.title, 'Study Guide')}
           conceptCount={guide.keyConcepts.length}
           practiceCount={guide.practiceQuestions.length}
           mcqCount={mcqCount}

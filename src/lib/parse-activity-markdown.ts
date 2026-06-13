@@ -2,6 +2,8 @@
  * Parse Activity & Project Generator markdown (## Activity N + numbered sections) into structured rows.
  */
 
+import { stripAiToolGenerationLabel } from './strip-ai-tool-generation-label';
+
 export type ParsedActivity = {
   sl_no?: number;
   title?: string;
@@ -681,7 +683,8 @@ function parseActivityBlock(block: string, index: number): ParsedActivity | null
     ? titleMatch[2].trim()
     : activityTitleLine
       ? activityTitleLine[1].replace(/^Activity\s*\d+\s*:\s*/i, '').trim()
-      : `Activity ${sl_no}`;
+      : '';
+  title = stripAiToolGenerationLabel(title, 'Activity');
 
   const bodyStart = titleMatch
     ? trimmed.slice(titleMatch.index! + titleMatch[0].length)
