@@ -1,15 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Modal, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
   Easing,
   runOnJS,
@@ -17,8 +7,8 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAdminTheme } from '../_ui/useAdminTheme';
+import AdminNavPanel from './AdminNavPanel';
 
 export type AdminNavView =
   | 'overview'
@@ -41,7 +31,7 @@ export type AdminNavView =
 type NavItem = {
   id: AdminNavView;
   label: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: keyof typeof import('@expo/vector-icons').Ionicons.glyphMap;
 };
 
 export const ADMIN_NAV_ITEMS: NavItem[] = [
@@ -82,7 +72,6 @@ export default function AdminNavDrawer({
   onSelect,
   onLogout,
 }: Props) {
-  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { colors } = useAdminTheme();
   const drawerWidth = Math.min(width * 0.82, 320);
@@ -134,82 +123,17 @@ export default function AdminNavDrawer({
             styles.drawer,
             {
               width: drawerWidth,
-              paddingTop: insets.top,
               borderRightColor: colors.drawerBorder,
             },
             drawerStyle,
           ]}
         >
-          <LinearGradient colors={[...colors.drawerGradient]} style={StyleSheet.absoluteFill} />
-
-          <View style={[styles.logoSection, { borderBottomColor: colors.drawerBorder }]}>
-            <View style={[styles.logoBadge, { backgroundColor: colors.drawerSurface }]}>
-              <Text style={[styles.logoBadgeText, { color: colors.primary }]}>AS</Text>
-            </View>
-            <View style={styles.logoTextWrap}>
-              <Text style={[styles.logoTitle, { color: colors.drawerText }]}>ASLILEARN AI</Text>
-              <Text style={[styles.logoSubtitle, { color: colors.drawerTextMuted }]}>Admin Panel</Text>
-            </View>
-          </View>
-
-          <ScrollView
-            style={styles.navScroll}
-            contentContainerStyle={styles.navContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {ADMIN_NAV_ITEMS.map((item) => {
-              const isActive = activeView === item.id;
-              return (
-                <Pressable
-                  key={item.id}
-                  style={[
-                    styles.navItem,
-                    isActive && [styles.navItemActive, { backgroundColor: colors.navActiveBg }],
-                  ]}
-                  onPress={() => onSelect(item.id)}
-                >
-                  <Ionicons
-                    name={item.icon}
-                    size={20}
-                    color={isActive ? colors.navActiveText : colors.drawerText}
-                  />
-                  <Text
-                    style={[
-                      styles.navLabel,
-                      { color: isActive ? colors.navActiveText : colors.drawerText },
-                      isActive && styles.navLabelActive,
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {item.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-
-          <View
-            style={[
-              styles.footer,
-              { paddingBottom: Math.max(insets.bottom, 16), borderTopColor: colors.drawerBorder },
-            ]}
-          >
-            <View style={styles.userRow}>
-              <View style={[styles.userAvatar, { backgroundColor: colors.drawerSurface }]}>
-                <Ionicons name="person" size={16} color={colors.drawerText} />
-              </View>
-              <View style={styles.userTextWrap}>
-                <Text style={[styles.userName, { color: colors.drawerText }]} numberOfLines={1}>
-                  {userName}
-                </Text>
-                <Text style={[styles.userRole, { color: colors.drawerTextMuted }]}>Administrator</Text>
-              </View>
-            </View>
-            <Pressable style={styles.logoutBtn} onPress={onLogout}>
-              <Ionicons name="log-out-outline" size={18} color={colors.drawerTextMuted} />
-              <Text style={[styles.logoutText, { color: colors.drawerTextMuted }]}>Logout</Text>
-            </Pressable>
-          </View>
+          <AdminNavPanel
+            activeView={activeView}
+            userName={userName}
+            onSelect={onSelect}
+            onLogout={onLogout}
+          />
         </Animated.View>
       </View>
     </Modal>
@@ -234,101 +158,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 10,
     elevation: 8,
-  },
-  logoSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    borderBottomWidth: 1,
-  },
-  logoBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoBadgeText: {
-    fontWeight: '800',
-    fontSize: 18,
-  },
-  logoTextWrap: {
-    flex: 1,
-    minWidth: 0,
-  },
-  logoTitle: {
-    fontWeight: '800',
-    fontSize: 16,
-  },
-  logoSubtitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  navScroll: {
-    flex: 1,
-  },
-  navContent: {
-    padding: 16,
-    gap: 4,
-  },
-  navItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  navItemActive: {},
-  navLabel: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  navLabelActive: {
-    fontWeight: '700',
-  },
-  footer: {
-    borderTopWidth: 1,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    gap: 12,
-  },
-  userRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  userAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  userTextWrap: {
-    flex: 1,
-    minWidth: 0,
-  },
-  userName: {
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  userRole: {
-    fontSize: 12,
-    marginTop: 1,
-  },
-  logoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 10,
-  },
-  logoutText: {
-    fontWeight: '600',
-    fontSize: 14,
   },
 });

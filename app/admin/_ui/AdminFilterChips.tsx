@@ -1,11 +1,11 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useAdminTheme } from './useAdminTheme';
-import AdminScalePressable from './AdminScalePressable';
 
 export type FilterChip = {
   id: string;
   label: string;
+  shortLabel?: string;
 };
 
 type Props = {
@@ -14,54 +14,129 @@ type Props = {
   onSelect: (id: string) => void;
 };
 
-export default function AdminFilterChips({ chips, selected, onSelect }: Props) {
-  const { colors, radius } = useAdminTheme();
-
+function TabDivider({ color }: { color: string }) {
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-      {chips.map((chip) => {
+    <View style={styles.dividerWrap}>
+      <Text style={[styles.dividerText, { color }]}>|</Text>
+    </View>
+  );
+}
+
+function TabRow({
+  chips,
+  selected,
+  onSelect,
+  colors,
+  compact,
+}: {
+  chips: FilterChip[];
+  selected: string;
+  onSelect: (id: string) => void;
+  colors: ReturnType<typeof useAdminTheme>['colors'];
+  compact?: boolean;
+}) {
+  return (
+    <>
+      {chips.map((chip, index) => {
         const active = chip.id === selected;
+        const caption = chip.shortLabel ?? chip.label;
         return (
-          <AdminScalePressable
-            key={chip.id}
-            onPress={() => onSelect(chip.id)}
-            style={[
-              styles.chip,
-              {
-                borderRadius: radius.full,
-                backgroundColor: active ? colors.primary : colors.surface,
-                borderColor: active ? colors.primary : colors.surfaceBorder,
-              },
-            ]}
-          >
-            <Text
+          <React.Fragment key={chip.id}>
+            {index > 0 ? <TabDivider color={colors.textMuted} /> : null}
+            <Pressable
+              onPress={() => onSelect(chip.id)}
               style={[
-                styles.label,
-                { color: active ? colors.textInverse : colors.textSecondary },
+                styles.tab,
+                compact && styles.tabCompact,
+                { backgroundColor: active ? colors.primaryMuted : colors.surface },
               ]}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: active }}
             >
-              {chip.label}
-            </Text>
-          </AdminScalePressable>
+              <Text
+                style={[
+                  styles.tabText,
+                  { color: active ? colors.primary : colors.textSecondary },
+                  active && styles.tabTextActive,
+                ]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.75}
+              >
+                {caption}
+              </Text>
+            </Pressable>
+          </React.Fragment>
         );
       })}
-    </ScrollView>
+    </>
+  );
+}
+
+export default function AdminFilterChips({ chips, selected, onSelect }: Props) {
+  const { colors } = useAdminTheme();
+  const scrollable = chips.length > 4;
+
+  if (scrollable) {
+    return (
+      <View style={[styles.wrap, { borderColor: colors.surfaceBorder, backgroundColor: colors.surface }]}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scrollRow}>
+          <TabRow chips={chips} selected={selected} onSelect={onSelect} colors={colors} compact />
+        </ScrollView>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.wrap, { borderColor: colors.surfaceBorder, backgroundColor: colors.surface }]}>
+      <TabRow chips={chips} selected={selected} onSelect={onSelect} colors={colors} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
+  wrap: {
+    width: '100%',
     flexDirection: 'row',
-    gap: 8,
-    paddingVertical: 4,
-  },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    borderRadius: 14,
     borderWidth: 1,
+    overflow: 'hidden',
   },
-  label: {
-    fontSize: 13,
+  scrollRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    minWidth: '100%',
+  },
+  tab: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+  },
+  tabCompact: {
+    flex: 0,
+    minWidth: 104,
+    paddingHorizontal: 12,
+  },
+  tabText: {
+    fontSize: 17,
     fontWeight: '600',
+    textAlign: 'center',
+  },
+  tabTextActive: {
+    fontWeight: '800',
+  },
+  dividerWrap: {
+    width: 14,
+    alignSelf: 'stretch',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dividerText: {
+    fontSize: 16,
+    fontWeight: '300',
+    lineHeight: 18,
   },
 });

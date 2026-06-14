@@ -363,8 +363,10 @@ const styles = StyleSheet.create({
   heroBadge: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#fff',
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    color: '#4338ca',
+    backgroundColor: '#e0e7ff',
+    borderWidth: 1,
+    borderColor: '#c7d2fe',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 999,

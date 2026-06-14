@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import api from '../../../src/services/api/api';
+import { useIsTablet } from '../../../src/hooks/useIsTablet';
 import type { AdminNavView } from './AdminNavDrawer';
 import {
   AdminScalePressable,
@@ -48,6 +49,7 @@ function StatCard({
   theme,
   delay = 0,
   loading,
+  wide,
 }: {
   label: string;
   value: string | number;
@@ -55,6 +57,7 @@ function StatCard({
   theme: { bg: string; accent: string; iconBg: string };
   delay?: number;
   loading?: boolean;
+  wide?: boolean;
 }) {
   const { colors, radius } = useAdminTheme();
 
@@ -63,6 +66,7 @@ function StatCard({
       entering={FadeInUp.delay(delay).duration(450).springify()}
       style={[
         styles.statCard,
+        wide && styles.statCardWide,
         {
           borderRadius: radius.lg,
           backgroundColor: theme.bg,
@@ -123,7 +127,8 @@ function AnalysisPanel({
 export default function OverviewView({ onNavigate }: Props) {
   const { colors, spacing, radius } = useAdminTheme();
   const { width } = useWindowDimensions();
-  const isWide = width >= 680;
+  const isTablet = useIsTablet();
+  const isWide = isTablet || width >= 680;
 
   const [stats, setStats] = useState<Stats>({
     totalStudents: 0,
@@ -210,13 +215,14 @@ export default function OverviewView({ onNavigate }: Props) {
       }
     >
       {/* Stat cards */}
-      <View style={styles.statsGrid}>
+      <View style={[styles.statsGrid, isTablet && styles.statsGridTablet]}>
         <StatCard
           label="Total Students"
           value={stats.totalStudents}
           icon="people"
           theme={statCards[0]}
           delay={0}
+          wide={isTablet}
         />
         <StatCard
           label="Active Classes"
@@ -224,6 +230,7 @@ export default function OverviewView({ onNavigate }: Props) {
           icon="school"
           theme={statCards[1]}
           delay={60}
+          wide={isTablet}
         />
         <StatCard
           label="Active Users"
@@ -231,6 +238,7 @@ export default function OverviewView({ onNavigate }: Props) {
           icon="pulse"
           theme={statCards[2]}
           delay={120}
+          wide={isTablet}
         />
         <StatCard
           label="Teachers"
@@ -238,6 +246,7 @@ export default function OverviewView({ onNavigate }: Props) {
           icon="person"
           theme={statCards[3]}
           delay={180}
+          wide={isTablet}
         />
       </View>
 
@@ -414,11 +423,17 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 10,
   },
+  statsGridTablet: {
+    flexWrap: 'nowrap',
+  },
   statCard: {
     flex: 1,
     minWidth: '46%',
     borderWidth: 1,
     overflow: 'hidden',
+  },
+  statCardWide: {
+    minWidth: 0,
   },
   statInner: {
     padding: 14,

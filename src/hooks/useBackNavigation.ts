@@ -1,5 +1,6 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { BackHandler } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 
@@ -100,7 +101,8 @@ function dashboardPathForRole(role: string | null): string {
  */
 export async function navigateToDashboardSection(
   router: ReturnType<typeof useRouter>,
-  returnTo: ContentReturnTarget
+  returnTo: ContentReturnTarget,
+  method: 'navigate' | 'replace' = 'navigate'
 ) {
   const role = await SecureStore.getItemAsync('userRole');
   const pathname = dashboardPathForRole(role);
@@ -110,7 +112,12 @@ export async function navigateToDashboardSection(
       : role === 'student'
         ? 'learning'
         : 'learning-paths';
-  router.navigate({ pathname, params: { tab } });
+  const target = { pathname, params: { tab } };
+  if (method === 'replace') {
+    router.replace(target);
+  } else {
+    router.navigate(target);
+  }
 }
 
 /** @deprecated use navigateToDashboardSection */
@@ -120,25 +127,37 @@ export function navigateToEduOTTDashboard(router: ReturnType<typeof useRouter>) 
 
 /**
  * Back navigation for video-player, drive-viewer, and similar content screens.
+ * Handles hardware back, header back, and iOS swipe-back consistently.
  */
 export function useContentViewerBack(returnTo?: string) {
   const router = useRouter();
+  const navigation = useNavigation();
+  const handlingBack = useRef(false);
 
   const goBack = useCallback(async () => {
-    if (returnTo === 'eduott') {
-      await navigateToDashboardSection(router, 'eduott');
-      return;
+    if (handlingBack.current) return;
+    handlingBack.current = true;
+
+    try {
+      if (router.canGoBack()) {
+        router.back();
+        return;
+      }
+      if (returnTo === 'eduott') {
+        await navigateToDashboardSection(router, 'eduott', 'replace');
+        return;
+      }
+      if (returnTo === 'learning') {
+        await navigateToDashboardSection(router, 'learning', 'replace');
+        return;
+      }
+      const path = await getDashboardPath();
+      router.replace(path || '/dashboard');
+    } finally {
+      setTimeout(() => {
+        handlingBack.current = false;
+      }, 350);
     }
-    if (returnTo === 'learning') {
-      await navigateToDashboardSection(router, 'learning');
-      return;
-    }
-    if (router.canGoBack()) {
-      router.back();
-      return;
-    }
-    const path = await getDashboardPath();
-    router.navigate(path || '/dashboard');
   }, [returnTo, router]);
 
   useEffect(() => {
@@ -148,6 +167,18 @@ export function useContentViewerBack(returnTo?: string) {
     });
     return () => backHandler.remove();
   }, [goBack]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      const actionType = e.data.action.type;
+      if (actionType !== 'GO_BACK' && actionType !== 'POP') return;
+      if (handlingBack.current) return;
+
+      e.preventDefault();
+      void goBack();
+    });
+    return unsubscribe;
+  }, [navigation, goBack]);
 
   return goBack;
 }

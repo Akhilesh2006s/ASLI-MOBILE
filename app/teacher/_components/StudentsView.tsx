@@ -21,10 +21,10 @@ import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } fro
 type StudentsSubTab = 'list' | 'track-progress' | 'submissions' | 'daily' | 'remarks';
 
 const STUDENT_SUB_TABS = [
-  { id: 'list', label: 'Student List', icon: 'people' as const },
-  { id: 'track-progress', label: 'Track Progress', icon: 'bar-chart' as const },
-  { id: 'submissions', label: 'Submissions', icon: 'document-text' as const },
-  { id: 'daily', label: 'Diary', icon: 'bookmark' as const },
+  { id: 'list', label: 'Student List', shortLabel: 'List', icon: 'people' as const },
+  { id: 'track-progress', label: 'Track Progress', shortLabel: 'Progress', icon: 'bar-chart' as const },
+  { id: 'submissions', label: 'Submissions', shortLabel: 'Submit', icon: 'document-text' as const },
+  { id: 'daily', label: 'Diary', shortLabel: 'Diary', icon: 'bookmark' as const },
 ];
 
 type Props = {
@@ -235,6 +235,15 @@ export default function StudentsView({ initialSubTab, progressClassFilter, progr
 
   return (
     <View style={styles.container}>
+      <View style={styles.subNavBar}>
+        <SubNavChips
+          items={STUDENT_SUB_TABS}
+          active={activeSubTab}
+          onChange={(id) => setActiveSubTab(id as StudentsSubTab)}
+          variant="students"
+        />
+      </View>
+
       {activeSubTab === 'list' ? (
         <ScrollView
           style={styles.list}
@@ -242,12 +251,6 @@ export default function StudentsView({ initialSubTab, progressClassFilter, progr
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <SubNavChips
-            items={STUDENT_SUB_TABS}
-            active={activeSubTab}
-            onChange={(id) => setActiveSubTab(id as StudentsSubTab)}
-            variant="students"
-          />
           <View style={styles.countHeader}>
             <Text style={styles.countTitle}>{filteredStudentCount} Students</Text>
             <View style={styles.countBadge}>
@@ -273,24 +276,16 @@ export default function StudentsView({ initialSubTab, progressClassFilter, progr
           )}
         </ScrollView>
       ) : (
-        <>
-          <SubNavChips
-            items={STUDENT_SUB_TABS}
-            active={activeSubTab}
-            onChange={(id) => setActiveSubTab(id as StudentsSubTab)}
-            variant="students"
-          />
-          <View style={styles.subTabBody}>
-            {activeSubTab === 'track-progress' && (
-              <TrackProgressView
-                initialClassFilter={progressClassFilter}
-                initialStudentId={progressStudentId}
-              />
-            )}
-            {activeSubTab === 'submissions' && <HomeworkSubmissionsView />}
-            {activeSubTab === 'daily' && <WorkDiaryView />}
-          </View>
-        </>
+        <View style={styles.subTabBody}>
+          {activeSubTab === 'track-progress' && (
+            <TrackProgressView
+              initialClassFilter={progressClassFilter}
+              initialStudentId={progressStudentId}
+            />
+          )}
+          {activeSubTab === 'submissions' && <HomeworkSubmissionsView />}
+          {activeSubTab === 'daily' && <WorkDiaryView />}
+        </View>
       )}
 
       {/* Add Remark Modal */}
@@ -402,6 +397,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: TEACHER.bg,
+  },
+  subNavBar: {
+    backgroundColor: TEACHER.bg,
+    paddingTop: TEACHER_SPACING.xs,
+    zIndex: 20,
+    elevation: 4,
   },
   countHeader: {
     flexDirection: 'row',

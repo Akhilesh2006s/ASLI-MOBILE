@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { LayoutChangeEvent, useWindowDimensions } from 'react-native';
+import { ADMIN_SIDEBAR_WIDTH, useIsTablet } from '../../../src/hooks/useIsTablet';
 
 const CONTENT_MAX = 1080;
 const GRID_GAP = 12;
@@ -7,6 +8,8 @@ const TABLET_MIN = 768;
 
 export function useAdminTabletLayout(shellPaddingMd = 16) {
   const { width: windowWidth } = useWindowDimensions();
+  const isTabletDevice = useIsTablet();
+  const layoutWidth = isTabletDevice ? windowWidth - ADMIN_SIDEBAR_WIDTH : windowWidth;
   const [measuredWidth, setMeasuredWidth] = useState(0);
 
   const onShellLayout = useCallback((event: LayoutChangeEvent) => {
@@ -19,8 +22,8 @@ export function useAdminTabletLayout(shellPaddingMd = 16) {
   const contentWidth =
     measuredWidth > 0
       ? Math.min(measuredWidth, CONTENT_MAX)
-      : Math.min(windowWidth, CONTENT_MAX) - shellPaddingMd * 2;
-  const isTablet = (measuredWidth > 0 ? measuredWidth : windowWidth) >= TABLET_MIN;
+      : Math.min(layoutWidth, CONTENT_MAX) - shellPaddingMd * 2;
+  const isTablet = (measuredWidth > 0 ? measuredWidth : layoutWidth) >= TABLET_MIN;
   const gridColumns = isTablet ? 2 : 1;
   const gridInnerWidth = contentWidth;
   const cardWidth =
@@ -31,7 +34,7 @@ export function useAdminTabletLayout(shellPaddingMd = 16) {
     isTablet && gridInnerWidth > 0
       ? (gridInnerWidth - GRID_GAP * 3) / 4
       : undefined;
-  const modalMaxWidth = isTablet ? Math.min(560, windowWidth - 48) : undefined;
+  const modalMaxWidth = isTablet ? Math.min(560, layoutWidth - 48) : undefined;
 
   return {
     isTablet,
@@ -55,9 +58,11 @@ export function useAdminGridLayout(
 ) {
   const { width: windowWidth } = useWindowDimensions();
   const layout = useAdminTabletLayout(shellPaddingMd);
+  const isTabletDevice = useIsTablet();
+  const layoutWidth = isTabletDevice ? windowWidth - ADMIN_SIDEBAR_WIDTH : windowWidth;
   const columnsAt768 = options?.columnsAt768 ?? 2;
   const columnsAt1024 = options?.columnsAt1024 ?? 3;
-  const maxColumns = !layout.isTablet ? 1 : windowWidth >= 1024 ? columnsAt1024 : columnsAt768;
+  const maxColumns = !layout.isTablet ? 1 : layoutWidth >= 1024 ? columnsAt1024 : columnsAt768;
   const numColumns = itemCount > 0 ? Math.min(maxColumns, itemCount) : maxColumns;
   const cardWidth =
     numColumns > 1

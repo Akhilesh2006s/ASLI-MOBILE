@@ -10,10 +10,10 @@ import QuizzesView from './QuizzesView';
 type ContentSubTab = 'assessments' | 'videos' | 'homework' | 'quizzes';
 
 const SUB_TABS = [
-  { id: 'assessments', label: 'Assessments' },
-  { id: 'videos', label: 'Videos' },
-  { id: 'homework', label: 'Homework' },
-  { id: 'quizzes', label: 'Quizzes' },
+  { id: 'assessments', label: 'Assessments', shortLabel: 'Assess' },
+  { id: 'videos', label: 'Videos', shortLabel: 'Videos' },
+  { id: 'homework', label: 'Homework', shortLabel: 'Homework' },
+  { id: 'quizzes', label: 'Quizzes', shortLabel: 'Quizzes' },
 ];
 
 type Props = { initialSubTab?: ContentSubTab };

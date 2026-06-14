@@ -625,10 +625,10 @@ export default function ExamsView({
 
   const examTabChips = useMemo(
     () => [
-      { id: 'available', label: 'Available Exams' },
-      { id: 'attempted', label: 'Attempted Exams' },
-      { id: 'ranking', label: 'My Rankings' },
-      { id: 'upcoming', label: 'Upcoming' },
+      { id: 'available', label: 'Available Exams', shortLabel: 'Available' },
+      { id: 'attempted', label: 'Attempted Exams', shortLabel: 'Attempted' },
+      { id: 'ranking', label: 'My Rankings', shortLabel: 'Rankings' },
+      { id: 'upcoming', label: 'Upcoming Exams', shortLabel: 'Upcoming' },
     ],
     []
   );
@@ -682,7 +682,7 @@ export default function ExamsView({
         </View>
       </View>
 
-      <View style={[styles.tabsContainer, compact && { marginBottom: 14 }]}>
+      <View style={styles.tabsContainer}>
         <ChipNav
           chips={examTabChips}
           active={activeTab}

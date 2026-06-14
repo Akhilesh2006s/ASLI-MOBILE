@@ -15,9 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import Header from './eduott/Header';
-import TabSwitcher, { EduOTTTab } from './eduott/TabSwitcher';
 import SearchBar from './eduott/SearchBar';
-import FilterChips from './eduott/FilterChips';
+import StudentFilterDropdown from '../../../src/components/student/StudentFilterDropdown';
 import EduOTTVideoCard from '../../../src/components/eduott/EduOTTVideoCard';
 import { resolveContentDurationSeconds } from '../../../src/utils/eduottVideoUtils';
 import { dedupeLibraryContents } from '../../../src/lib/dedupe-library-content';
@@ -174,11 +173,9 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
     listEpoch,
     setSelectedClass,
     setSelectedSubject,
-    clearFilters,
-    clearClass,
-    clearSubject,
   } = useEduOTTFilters();
 
+  type EduOTTTab = 'videos' | 'live-sessions';
   const [activeTab, setActiveTab] = useState<EduOTTTab>('videos');
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [liveSessions, setLiveSessions] = useState<LiveSession[]>([]);
@@ -434,17 +431,21 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
     [filteredVideos, visibleCount]
   );
 
-  const videoClassChipOptions = useMemo(
-    () => globalClassOptions.map((c) => ({ value: c, label: `Class ${c}` })),
+  const classDropdownOptions = useMemo(
+    () => [
+      { value: 'all', label: 'All Classes' },
+      ...globalClassOptions.map((c) => ({ value: c, label: `Class ${c}` })),
+    ],
     [globalClassOptions]
   );
-  const videoSubjectChipOptions = useMemo(
-    () => globalSubjectOptions.map((n) => ({ value: n, label: n })),
+
+  const subjectDropdownOptions = useMemo(
+    () => [
+      { value: 'all', label: 'All Subjects' },
+      ...globalSubjectOptions.map((n) => ({ value: n, label: n })),
+    ],
     [globalSubjectOptions]
   );
-
-  const classChipSelected = selectedClass ?? 'all';
-  const subjectChipSelected = selectedSubject ?? 'all';
 
   const handlePlayVideo = useCallback((video: VideoItem) => {
     if (!video._id) return;
@@ -611,51 +612,44 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
         </View>
         <View style={styles.summaryStats}>
           {isAsliPrepExclusive && (
-            <TouchableOpacity style={styles.statChip} activeOpacity={0.85} onPress={() => setActiveTab('videos')}>
-              <Text style={styles.statChipText}>🎥 {videos.length} Videos</Text>
+            <TouchableOpacity
+              style={[styles.statChip, activeTab === 'videos' && styles.statChipActive]}
+              activeOpacity={0.85}
+              onPress={() => setActiveTab('videos')}
+            >
+              <Text style={[styles.statChipText, activeTab === 'videos' && styles.statChipTextActive]}>
+                🎥 {videos.length} Videos
+              </Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={styles.statChip} activeOpacity={0.85} onPress={() => setActiveTab('live-sessions')}>
-            <Text style={styles.statChipText}>🔴 {liveSessions.filter(x => x.status === 'live').length} Live</Text>
+          <TouchableOpacity
+            style={[styles.statChip, activeTab === 'live-sessions' && styles.statChipActive]}
+            activeOpacity={0.85}
+            onPress={() => setActiveTab('live-sessions')}
+          >
+            <Text style={[styles.statChipText, activeTab === 'live-sessions' && styles.statChipTextActive]}>
+              🔴 {liveSessions.filter((x) => x.status === 'live').length} Live
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {isAsliPrepExclusive && (
-        <TabSwitcher activeTab={activeTab} onChange={setActiveTab} />
-      )}
-
-      <FilterChips
-        sectionLabel="Class"
-        selected={classChipSelected}
-        onSelect={(v) => setSelectedClass(v === 'all' ? null : v)}
-        options={videoClassChipOptions}
-      />
-      <FilterChips
-        sectionLabel="Subject"
-        selected={subjectChipSelected}
-        onSelect={(v) => setSelectedSubject(v === 'all' ? null : v)}
-        options={videoSubjectChipOptions}
-      />
-
-      {(selectedClass != null || selectedSubject != null) && (
-        <View style={styles.activeFiltersRow}>
-          <Text style={styles.activeFiltersLabel}>Active:</Text>
-          {selectedClass != null && (
-            <TouchableOpacity style={styles.activeChip} onPress={clearClass}>
-              <Text style={styles.activeChipText}>Class: {selectedClass} ✕</Text>
-            </TouchableOpacity>
-          )}
-          {selectedSubject != null && (
-            <TouchableOpacity style={styles.activeChipAlt} onPress={clearSubject}>
-              <Text style={styles.activeChipText}>Subject: {selectedSubject} ✕</Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity onPress={clearFilters}>
-            <Text style={styles.clearAllText}>Clear filters</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      <View style={styles.filterRow}>
+        <StudentFilterDropdown
+          label="Class"
+          value={selectedClass ?? 'all'}
+          placeholder="All Classes"
+          options={classDropdownOptions}
+          onChange={(v) => setSelectedClass(v === 'all' ? null : v)}
+        />
+        <StudentFilterDropdown
+          label="Subject"
+          value={selectedSubject ?? 'all'}
+          placeholder="All Subjects"
+          options={subjectDropdownOptions}
+          onChange={(v) => setSelectedSubject(v === 'all' ? null : v)}
+        />
+      </View>
     </>
   );
 
@@ -828,52 +822,27 @@ const styles = StyleSheet.create({
     borderColor: STUDENT.surfaceBorder,
     alignItems: 'center',
   },
+  statChipActive: {
+    backgroundColor: STUDENT.navActiveBg,
+    borderColor: STUDENT.primary,
+  },
   statChipText: {
     fontSize: 13,
     fontWeight: '700',
     color: STUDENT.text,
   },
+  statChipTextActive: {
+    color: STUDENT.primaryDark,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: STUDENT_SPACING.sm,
+    marginBottom: STUDENT_SPACING.md,
+  },
   resultsCount: {
     ...STUDENT_TYPO.caption,
     color: STUDENT.textMuted,
     marginBottom: STUDENT_SPACING.sm,
-  },
-  activeFiltersRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 10,
-  },
-  activeFiltersLabel: {
-    ...STUDENT_TYPO.caption,
-    color: STUDENT.textMuted,
-  },
-  activeChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: STUDENT_RADIUS.full,
-    backgroundColor: STUDENT.accentSoft,
-    borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
-  },
-  activeChipAlt: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: STUDENT_RADIUS.full,
-    backgroundColor: STUDENT.navActiveBg,
-    borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
-  },
-  activeChipText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: STUDENT.text,
-  },
-  clearAllText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: STUDENT.accent,
   },
   emptyState: {
     alignItems: 'center',

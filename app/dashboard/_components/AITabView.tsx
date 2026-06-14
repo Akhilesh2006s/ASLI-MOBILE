@@ -50,7 +50,7 @@ export default function AITabView() {
             <VidyaAvatar size={48} borderColor="#c7d2fe" />
             <View style={styles.chatTextWrap}>
               <Text style={styles.chatTitle}>Vidya AI Chat</Text>
-              <Text style={styles.chatSub}>Ask doubts · LaTeX math · Instant answers</Text>
+              <Text style={styles.chatSub}>Ask doubts · Instant answers</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={STUDENT.primaryDark} />
           </Animated.View>

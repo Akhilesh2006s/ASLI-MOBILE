@@ -76,7 +76,6 @@ import {
 } from '../../../src/lib/ai-tool-generate';
 import {
   buildAiToolContentRenderKey,
-  formatAiToolRotationLabel,
 } from '../../../src/lib/ai-tool-rotation-label';
 import {
   STUDENT,
@@ -200,7 +199,6 @@ export default function StudentToolPage() {
   const configKey = toolType ? resolveStudentToolConfigKey(toolType) : '';
   const config = configKey ? getStudentToolConfig(configKey) || getStudentToolConfig(toolType || '') : null;
   const apiToolType = toolType ? resolveStudentAiApiToolType(toolType) : '';
-  const rotationLabel = useMemo(() => formatAiToolRotationLabel(responseMeta), [responseMeta]);
   const contentRenderKey = useMemo(
     () => buildAiToolContentRenderKey(toolType || '', generatedContent, responseMeta),
     [toolType, generatedContent, responseMeta]
@@ -939,13 +937,6 @@ export default function StudentToolPage() {
         </View>
       ) : generatedContent ? (
         <View style={styles.outputWrap} collapsable={false}>
-          {rotationLabel ? (
-            <View style={styles.rotationBadge}>
-              <Ionicons name="layers-outline" size={14} color={accent} />
-              <Text style={[styles.rotationBadgeText, { color: accent }]}>{rotationLabel}</Text>
-              <Text style={styles.rotationHint}>Tap Generate for another record</Text>
-            </View>
-          ) : null}
           <AiToolContentRenderer
             key={contentRenderKey}
             toolType={toolType || ''}
@@ -1122,21 +1113,6 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   outputSection: { width: '100%' },
   outputWrap: { width: '100%', minHeight: 240 },
-  rotationBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: STUDENT_RADIUS.md,
-    backgroundColor: STUDENT.surface,
-    borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
-  },
-  rotationBadgeText: { fontSize: 13, fontWeight: '700' },
-  rotationHint: { ...STUDENT_TYPO.caption, color: STUDENT.navInactive },
   generatingBox: {
     alignItems: 'center',
     justifyContent: 'center',

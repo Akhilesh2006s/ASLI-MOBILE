@@ -1,13 +1,5 @@
 import type { AiToolGenerationMeta } from './ai-tool-generate';
 
-/** Shown when Super Admin saved multiple records for the same selection. */
-export function formatAiToolRotationLabel(meta?: AiToolGenerationMeta | null): string | null {
-  const total = meta?.totalCandidates;
-  const idx = meta?.selectedIndex;
-  if (!total || total <= 1 || idx == null || idx < 0) return null;
-  return `Record ${idx + 1} of ${total}`;
-}
-
 export function simpleContentFingerprint(text: string): string {
   let hash = 0;
   const value = String(text || '');
@@ -25,3 +17,4 @@ export function buildAiToolContentRenderKey(
   const idx = meta?.selectedIndex ?? -1;
   return `${toolType}:${idx}:${simpleContentFingerprint(content)}`;
 }
+

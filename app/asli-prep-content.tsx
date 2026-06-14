@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -56,42 +56,41 @@ export default function AsliPrepContent() {
   }>();
   const returnTo = typeof returnToRaw === 'string' ? returnToRaw : '';
   const goBack = useContentViewerBack(returnTo || undefined);
-  const { isAsliPrepExclusive, isTypeAllowed } = useSchoolProgram();
+  const { isAsliPrepExclusive, loading: programLoading } = useSchoolProgram();
   const allowedTypes = getAllowedContentTypes(isAsliPrepExclusive);
-  const resolveTypeParam = useCallback(() => {
+  const fetchSeqRef = useRef(0);
+
+  const lockedTypeFromRoute = useMemo((): ContentTypeName | null => {
     const raw = Array.isArray(typeParam) ? typeParam[0] : typeParam;
-    if (typeof raw === 'string' && allowedTypes.includes(raw as ContentTypeName)) {
+    if (typeof raw === 'string' && VALID_TYPES.includes(raw as (typeof VALID_TYPES)[number])) {
       return raw as ContentTypeName;
     }
-    return 'all' as const;
-  }, [typeParam, allowedTypes]);
+    return null;
+  }, [typeParam]);
 
-  const selectedTypeFilter = resolveTypeParam();
-  const lockedType = selectedTypeFilter !== 'all' ? selectedTypeFilter : null;
+  const lockedType = lockedTypeFromRoute;
+  const selectedTypeFilter = lockedTypeFromRoute ?? ('all' as const);
 
   const [contents, setContents] = useState<Content[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState({
     subject: 'all',
-    type: resolveTypeParam(),
-    topic: ''
+    type: lockedTypeFromRoute ?? ('all' as const),
+    topic: '',
   });
 
   useEffect(() => {
-    const nextType = resolveTypeParam();
-    setFilters((prev) => (prev.type === nextType ? prev : { ...prev, type: nextType }));
-  }, [resolveTypeParam]);
+    if (!lockedTypeFromRoute) return;
+    setFilters((prev) =>
+      prev.type === lockedTypeFromRoute ? prev : { ...prev, type: lockedTypeFromRoute }
+    );
+  }, [lockedTypeFromRoute]);
+
   const [subjects, setSubjects] = useState<any[]>([]);
 
   useEffect(() => {
     fetchSubjects();
   }, []);
-
-  useEffect(() => {
-    fetchContents();
-  }, [filters, isAsliPrepExclusive]);
-
-  const previewOpts = returnTo === 'learning' ? { returnTo: 'learning' as const } : undefined;
 
   const fetchSubjects = async () => {
     try {
@@ -128,8 +127,12 @@ export default function AsliPrepContent() {
     }
   };
 
-  const fetchContents = async () => {
+  const fetchContents = useCallback(async () => {
+    if (programLoading) return;
+
+    const seq = ++fetchSeqRef.current;
     setIsLoading(true);
+
     try {
       const token = await SecureStore.getItemAsync('authToken');
       const queryParams = new URLSearchParams();
@@ -139,23 +142,32 @@ export default function AsliPrepContent() {
 
       const response = await fetch(`${API_BASE_URL}/api/student/asli-prep-content?${queryParams}`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
       });
+
+      if (seq !== fetchSeqRef.current) return;
 
       if (response.ok) {
         const data = await response.json();
-        if (data.success) {
-          setContents(prepareLibraryContents(data.data || [], isAsliPrepExclusive));
+        const rows = Array.isArray(data?.data) ? data.data : [];
+        if (data?.success !== false) {
+          setContents(prepareLibraryContents(rows, isAsliPrepExclusive));
         }
       }
     } catch (error) {
       console.error('Failed to fetch content:', error);
     } finally {
-      setIsLoading(false);
+      if (seq === fetchSeqRef.current) {
+        setIsLoading(false);
+      }
     }
-  };
+  }, [filters, isAsliPrepExclusive, programLoading]);
+
+  useEffect(() => {
+    void fetchContents();
+  }, [fetchContents]);
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -203,11 +215,14 @@ export default function AsliPrepContent() {
     return `${mins}m`;
   };
 
+  const normalizedType = (value?: string) => String(value || '').trim().toLowerCase();
+
   const filteredContents = useMemo(() => {
     return contents.filter((content) => {
       const subjectId = getSubjectId(content);
       const matchesSubject = filters.subject === 'all' || subjectId === filters.subject;
-      const matchesType = filters.type === 'all' || content.type === filters.type;
+      const matchesType =
+        filters.type === 'all' || normalizedType(content.type) === normalizedType(filters.type);
       const matchesTopic =
         !filters.topic || content.topic?.toLowerCase().includes(filters.topic.toLowerCase());
       return matchesSubject && matchesType && matchesTopic;
@@ -227,9 +242,9 @@ export default function AsliPrepContent() {
         Alert.alert('Content', 'No preview available for this item.');
         return;
       }
-      openContentPreview(router, content, previewOpts);
+      openContentPreview(router, content);
     },
-    [previewOpts]
+    []
   );
 
   const getSubjectName = useCallback((content: Content) => {
@@ -399,7 +414,7 @@ export default function AsliPrepContent() {
       </View>
 
       {/* Content List */}
-      {isLoading ? (
+      {programLoading || isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#9333ea" />
           <Text style={styles.loadingText}>Loading content...</Text>

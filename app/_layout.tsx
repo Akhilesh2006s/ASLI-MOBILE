@@ -125,9 +125,27 @@ function AuthGate() {
       <Stack.Screen name="practice-tests" />
       <Stack.Screen name="video-lectures" />
       <Stack.Screen name="live-stream" />
-      <Stack.Screen name="video-player" />
-      <Stack.Screen name="drive-viewer" />
-      <Stack.Screen name="asli-prep-content" />
+      <Stack.Screen
+        name="video-player"
+        options={{
+          gestureEnabled: true,
+          fullScreenGestureEnabled: true,
+        }}
+      />
+      <Stack.Screen
+        name="drive-viewer"
+        options={{
+          gestureEnabled: true,
+          fullScreenGestureEnabled: true,
+        }}
+      />
+      <Stack.Screen
+        name="asli-prep-content"
+        options={{
+          gestureEnabled: true,
+          fullScreenGestureEnabled: true,
+        }}
+      />
       <Stack.Screen name="iq-rank-boost-subjects" />
       <Stack.Screen name="iq-rank-boost-quiz/[quizId]" />
       <Stack.Screen name="onboarding" />

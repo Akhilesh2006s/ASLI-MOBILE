@@ -53,7 +53,6 @@ import {
 } from '../../../src/lib/ai-tool-generate';
 import {
   buildAiToolContentRenderKey,
-  formatAiToolRotationLabel,
 } from '../../../src/lib/ai-tool-rotation-label';
 import {
   filterSubjectsForAiTool,
@@ -263,7 +262,6 @@ export default function TeacherToolPage() {
   const [activeDropdown, setActiveDropdown] = useState<DropdownState | null>(null);
 
   const config = toolType && isTeacherToolType(toolType) ? getTeacherToolConfig(toolType) : null;
-  const rotationLabel = useMemo(() => formatAiToolRotationLabel(responseMeta), [responseMeta]);
   const contentRenderKey = useMemo(
     () => buildAiToolContentRenderKey(toolType, generatedContent, responseMeta),
     [toolType, generatedContent, responseMeta]
@@ -967,13 +965,6 @@ export default function TeacherToolPage() {
         </View>
       ) : generatedContent ? (
         <View style={styles.outputWrap} collapsable={false}>
-          {rotationLabel ? (
-            <View style={styles.rotationBadge}>
-              <Ionicons name="layers-outline" size={14} color={accent} />
-              <Text style={[styles.rotationBadgeText, { color: accent }]}>{rotationLabel}</Text>
-              <Text style={styles.rotationHint}>Tap Generate for another record</Text>
-            </View>
-          ) : null}
           <AiToolContentRenderer
             key={contentRenderKey}
             toolType={toolType}
@@ -1138,21 +1129,6 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   outputSection: { width: '100%' },
   outputWrap: { width: '100%', minHeight: 240 },
-  rotationBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: TEACHER_RADIUS.md,
-    backgroundColor: TEACHER.surface,
-    borderWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
-  },
-  rotationBadgeText: { fontSize: 13, fontWeight: '700' },
-  rotationHint: { ...TEACHER_TYPO.caption, color: TEACHER.navInactive },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

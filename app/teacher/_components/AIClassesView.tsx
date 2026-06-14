@@ -35,9 +35,9 @@ type Props = {
 };
 
 const SUB_TABS = [
-  { id: 'classes', label: 'Classes', icon: 'school-outline' as const },
-  { id: 'timetable', label: 'Timetable', icon: 'calendar-outline' as const },
-  { id: 'schedule', label: 'Schedule', icon: 'time-outline' as const },
+  { id: 'classes', label: 'Classes', shortLabel: 'Classes', icon: 'school-outline' as const },
+  { id: 'timetable', label: 'Timetable', shortLabel: 'Schedule', icon: 'calendar-outline' as const },
+  { id: 'schedule', label: 'Schedule', shortLabel: 'Today', icon: 'time-outline' as const },
 ];
 
 const STAT_ITEMS = [
