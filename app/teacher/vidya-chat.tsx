@@ -9,7 +9,7 @@ import { collectVidyaSubjectLabels } from '../../src/lib/vidya-subjects';
 import teacherService, { asArray } from '../../src/services/api/teacherService';
 import { TEACHER, TEACHER_SPACING } from '../../src/theme/teacher';
 import VidyaAvatar from '../../src/components/vidya/VidyaAvatar';
-import VidyaAIViewChat from './_components/VidyaAIViewChat';
+import { isVidyaEnabledForUser } from '../../src/lib/vidya-access';
 
 function extractSubjectNames(subs: any[]): string[] {
   return subs
@@ -31,6 +31,10 @@ export default function TeacherVidyaChatScreen() {
       try {
         const res = await teacherService.me();
         const user = res.data?.user ?? res.data;
+        if (!isVidyaEnabledForUser(user)) {
+          router.replace('/teacher/dashboard');
+          return;
+        }
         if (user?._id || user?.id) {
           setTeacherId(user._id || user.id);
         }

@@ -17,10 +17,11 @@ import ExamsTabView from './_components/ExamsTabView';
 import AITabView from './_components/AITabView';
 import ProfileTabView from './_components/ProfileTabView';
 import VidyaAIFloatingAssistant from '../../src/components/vidya/VidyaAIFloatingAssistant';
+import { useVidyaChatAccess } from '../../src/hooks/useVidyaChatAccess';
 
 type TabId = 'home' | 'learning' | 'eduott' | 'exams' | 'vidya' | 'settings';
 
-const TABS: StudentTab[] = [
+const ALL_TABS: StudentTab[] = [
   { id: 'home', label: 'Home', icon: 'home-outline', activeIcon: 'home' },
   { id: 'learning', label: 'Learning', icon: 'book-outline', activeIcon: 'book' },
   { id: 'eduott', label: 'EduOTT', icon: 'videocam-outline', activeIcon: 'videocam' },
@@ -64,11 +65,25 @@ export default function StudentDashboard() {
     else if (tab === 'exams') setActiveTab('exams');
     else if (tab === 'vidya') setActiveTab('vidya');
     else if (tab === 'settings') setActiveTab('settings');
-  }, [tab]);
+  }, [tab, user]);
 
   const firstName = useMemo(
     () => user?.fullName?.split(' ')[0] || user?.email?.split('@')[0] || 'Student',
     [user]
+  );
+
+  const vidyaChatEnabled = useVidyaChatAccess(user);
+
+  const studentTabs = useMemo(
+    () =>
+      vidyaChatEnabled
+        ? ALL_TABS
+        : ALL_TABS.map((t) =>
+            t.id === 'vidya'
+              ? { ...t, label: 'AI Tools', icon: 'sparkles-outline' as const, activeIcon: 'sparkles' as const }
+              : t
+          ),
+    [vidyaChatEnabled]
   );
 
   const checkAuth = async () => {
@@ -198,7 +213,7 @@ export default function StudentDashboard() {
             contentContainerStyle={pad}
             showsVerticalScrollIndicator={false}
           >
-            <AITabView />
+            <AITabView chatEnabled={vidyaChatEnabled} />
           </ScrollView>
         );
       case 'settings':
@@ -240,16 +255,17 @@ export default function StudentDashboard() {
         {renderTabContent()}
       </Animated.View>
 
-      <StudentTabBar tabs={TABS} activeTab={activeTab} onTabChange={handleTabChange} />
+      <StudentTabBar tabs={studentTabs} activeTab={activeTab} onTabChange={handleTabChange} />
 
-      <VidyaAIFloatingAssistant
-        role="student"
-        hidden={activeTab === 'vidya'}
-        onPress={() => {
-          if (activeTab === 'vidya') return;
-          router.push('/ai-tutor');
-        }}
-      />
+      {vidyaChatEnabled ? (
+        <VidyaAIFloatingAssistant
+          role="student"
+          hidden={activeTab === 'vidya'}
+          onPress={() => {
+            router.push('/ai-tutor');
+          }}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

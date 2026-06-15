@@ -111,7 +111,7 @@ function ToolCard({
   );
 }
 
-export default function VidyaAIView() {
+export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: boolean }) {
   const chatPress = usePressScale();
   const { isGrid, shellWidth, cardWidth } = useVidyaAILayout();
   const scrollBottomPad = TAB_BAR_CLEARANCE + TEACHER_SPACING.lg;
@@ -124,6 +124,7 @@ export default function VidyaAIView() {
       keyboardShouldPersistTaps="handled"
     >
       <View style={[styles.innerShell, { width: shellWidth }]}>
+        {chatEnabled ? (
         <Pressable
           onPress={() => router.push('/teacher/vidya-chat' as any)}
           onPressIn={chatPress.onPressIn}
@@ -140,6 +141,7 @@ export default function VidyaAIView() {
             <Ionicons name="chevron-forward" size={20} color={TEACHER.primaryDark} />
           </Animated.View>
         </Pressable>
+        ) : null}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Available Tools</Text>

@@ -14,7 +14,7 @@ type AuthState = {
   isAuthenticated: boolean;
   signIn: (payload: LoginPayload) => Promise<any>;
   signOut: () => Promise<void>;
-  refreshAuth: () => Promise<void>;
+  refreshAuth: (options?: { silent?: boolean }) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
@@ -25,8 +25,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const refreshAuth = async () => {
-    setIsLoading(true);
+  const refreshAuth = async (options?: { silent?: boolean }) => {
+    const silent = options?.silent === true;
+    if (!silent) {
+      setIsLoading(true);
+    }
     try {
       const stored = await authService.getStoredAuth();
       if (!stored?.token) {

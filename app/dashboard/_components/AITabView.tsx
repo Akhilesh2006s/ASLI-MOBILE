@@ -30,16 +30,19 @@ function usePressScale(to = 0.98) {
   return { style, onPressIn, onPressOut };
 }
 
-export default function AITabView() {
+export default function AITabView({ chatEnabled = true }: { chatEnabled?: boolean }) {
   const chatPress = usePressScale();
 
   return (
     <View style={styles.wrap}>
       <Animated.View entering={FadeInDown.duration(STUDENT_ANIMATION.normal)} style={styles.vidyaHeader}>
         <Text style={styles.vidyaTitle}>Vidya AI</Text>
-        <Text style={styles.vidyaSubtitle}>Your AI study buddy — tools & chat</Text>
+        <Text style={styles.vidyaSubtitle}>
+          {chatEnabled ? 'Your AI study buddy — tools & chat' : 'Your AI study tools'}
+        </Text>
       </Animated.View>
 
+      {chatEnabled ? (
       <Animated.View entering={FadeInDown.duration(STUDENT_ANIMATION.normal).delay(30)}>
         <Pressable
           onPress={() => router.push('/ai-tutor')}
@@ -56,8 +59,9 @@ export default function AITabView() {
           </Animated.View>
         </Pressable>
       </Animated.View>
+      ) : null}
 
-      <VidyaAIView />
+      <VidyaAIView chatEnabled={chatEnabled} />
     </View>
   );
 }

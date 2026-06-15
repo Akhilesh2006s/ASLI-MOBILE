@@ -88,7 +88,7 @@ function AuthGate() {
     }
   }, [isLoading, isAuthenticated, pathname, role, router]);
 
-  if (isLoading && pathname !== '/') {
+  if (isLoading && pathname === '/') {
     return (
       <View style={styles.loadingContainer}>
         <LoadingState variant="stats" style={{ width: '100%', paddingHorizontal: 24 }} />

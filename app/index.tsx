@@ -24,8 +24,15 @@ export default function Index() {
     };
   }, []);
 
-  if (!splashDone || isLoading) {
+  if (!splashDone) {
     return <AppSplash exiting={splashExiting} />;
+  }
+
+  if (isLoading) {
+    if (isAuthenticated) {
+      return <Redirect href={getDashboardByRole(role)} />;
+    }
+    return <AppSplash exiting />;
   }
 
   if (!isAuthenticated) {

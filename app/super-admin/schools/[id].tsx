@@ -153,6 +153,25 @@ export default function SchoolDetailScreen() {
           </View>
 
           <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Vidya AI chatbot access</Text>
+            <View style={styles.accessRow}>
+              <Text style={styles.accessLabel}>Teachers</Text>
+              <Text style={styles.accessValue}>
+                {profile.vidyaEnabledForTeachers !== false ? 'On' : 'Off'}
+              </Text>
+            </View>
+            <View style={styles.accessRow}>
+              <Text style={styles.accessLabel}>Students</Text>
+              <Text style={styles.accessValue}>
+                {profile.vidyaEnabledForStudents !== false ? 'On' : 'Off'}
+              </Text>
+            </View>
+            <Text style={styles.accessHint}>
+              AI tools remain available when the chatbot is off. Edit the school to change access.
+            </Text>
+          </View>
+
+          <View style={styles.section}>
             <Text style={styles.sectionTitle}>Admin portal access</Text>
             {isUnlimitedPortalAccess(profile.permissions) ? (
               <Text style={styles.accessFull}>Full portal access — all modules enabled.</Text>
@@ -245,6 +264,10 @@ const styles = StyleSheet.create({
   accessFull: { fontSize: 13, color: '#065f46', backgroundColor: '#d1fae5', padding: 10, borderRadius: 8 },
   accessLimited: { fontSize: 13, color: '#92400e', backgroundColor: '#fef3c7', padding: 10, borderRadius: 8, marginBottom: 8 },
   permItem: { fontSize: 13, color: '#334155', marginLeft: 4, marginTop: 4 },
+  accessRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  accessLabel: { fontSize: 13, color: '#64748b' },
+  accessValue: { fontSize: 13, fontWeight: '700', color: '#0f172a' },
+  accessHint: { fontSize: 12, color: '#64748b', marginTop: 6, lineHeight: 17 },
   billingNote: { fontSize: 12, color: '#92400e', backgroundColor: '#fffbeb', padding: 10, borderRadius: 8, marginBottom: 8 },
   billingError: { fontSize: 12, color: '#b91c1c', backgroundColor: '#fee2e2', padding: 10, borderRadius: 8, marginBottom: 8 },
   subHeading: { fontSize: 13, fontWeight: '700', color: '#334155', marginBottom: 6 },

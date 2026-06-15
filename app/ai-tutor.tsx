@@ -9,12 +9,14 @@ import VidyaAvatar from '../src/components/vidya/VidyaAvatar';
 import { useAuth } from '../src/context/AuthContext';
 import { collectVidyaSubjectLabels } from '../src/lib/vidya-subjects';
 import { API_BASE_URL } from '../src/lib/api-config';
-import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
 import * as SecureStore from 'expo-secure-store';
+import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
+import { useVidyaChatAccess } from '../src/hooks/useVidyaChatAccess';
 
 export default function AITutor() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
+  const vidyaChatEnabled = useVidyaChatAccess(user);
   const [dashboardPath, setDashboardPath] = useState<string>('/dashboard');
   const [subjects, setSubjects] = useState<any[]>([]);
   const [loadingSubjects, setLoadingSubjects] = useState(true);
@@ -26,6 +28,12 @@ export default function AITutor() {
   }, []);
 
   useBackNavigation(dashboardPath, false);
+
+  useEffect(() => {
+    if (!authLoading && user && !vidyaChatEnabled) {
+      router.replace('/dashboard?tab=vidya');
+    }
+  }, [authLoading, user, vidyaChatEnabled]);
 
   useEffect(() => {
     let mounted = true;

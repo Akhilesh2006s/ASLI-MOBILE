@@ -125,8 +125,13 @@ export function hasStoryPassageLanguageSubject(subjects: string[]): boolean {
   return subjects.some(isStoryPassageLanguageSubject);
 }
 
-export function filterVisibleStudentTools(subjectNames: string[]): StudentAiTool[] {
+export function filterVisibleStudentTools(
+  subjectNames: string[],
+  options?: { includeChat?: boolean },
+): StudentAiTool[] {
+  const includeChat = options?.includeChat !== false;
   return STUDENT_AI_TOOLS.filter((tool) => {
+    if (tool.id === 'ai-chat' && !includeChat) return false;
     if (tool.id !== READING_PRACTICE_TOOL_ID) return true;
     if (subjectNames.length === 0) return true;
     return hasStoryPassageLanguageSubject(subjectNames);

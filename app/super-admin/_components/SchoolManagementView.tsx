@@ -205,6 +205,27 @@ function SchoolFormModal({ visible, mode, form, setForm, submitting, onClose, on
             </View>
           ) : null}
 
+          <Text style={styles.formSection}>Vidya AI chatbot access</Text>
+          <Text style={styles.formHint}>
+            Control whether teachers and students can use the Vidya AI chatbot. AI tools stay available when chat is off.
+          </Text>
+          <View style={styles.switchRow}>
+            <Text style={styles.switchLabel}>Vidya chatbot for teachers</Text>
+            <Switch
+              value={form.vidyaEnabledForTeachers}
+              onValueChange={(v) => setForm((p) => ({ ...p, vidyaEnabledForTeachers: v }))}
+              trackColor={{ true: '#f97316' }}
+            />
+          </View>
+          <View style={[styles.switchRow, { marginBottom: mode === 'edit' ? 0 : 24 }]}>
+            <Text style={styles.switchLabel}>Vidya chatbot for students</Text>
+            <Switch
+              value={form.vidyaEnabledForStudents}
+              onValueChange={(v) => setForm((p) => ({ ...p, vidyaEnabledForStudents: v }))}
+              trackColor={{ true: '#f97316' }}
+            />
+          </View>
+
           {mode === 'edit' ? (
             <View style={[styles.switchRow, { marginBottom: 24 }]}>
               <Text style={styles.switchLabel}>Active account</Text>
@@ -679,6 +700,7 @@ const styles = StyleSheet.create({
   formModalTitle: { fontSize: 20, fontWeight: '800', color: '#0f172a' },
   formScroll: { flex: 1, paddingHorizontal: 16 },
   formSection: { fontSize: 13, fontWeight: '800', color: '#ea580c', marginTop: 16, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
+  formHint: { fontSize: 12, color: '#64748b', marginBottom: 10, lineHeight: 17 },
   input: {
     borderWidth: 1,
     borderColor: '#cbd5e1',

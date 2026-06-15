@@ -426,12 +426,12 @@ export default function Profile() {
                 </View>
                 <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/ai-tutor')}>
+              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/dashboard?tab=vidya')}>
                 <View style={styles.menuLeft}>
                   <View style={styles.menuIcon}>
                     <Ionicons name="sparkles-outline" size={18} color="#8b5cf6" />
                   </View>
-                  <Text style={styles.menuText}>Vidya AI</Text>
+                  <Text style={styles.menuText}>AI Tools</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
               </TouchableOpacity>

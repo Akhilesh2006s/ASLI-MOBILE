@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
@@ -27,13 +27,14 @@ import EduOTTView from './_components/EduOTTView';
 import LearningPathsView from './_components/LearningPathsView';
 import VidyaAIView from './_components/VidyaAIView';
 import VidyaAIFloatingAssistant from '../../src/components/vidya/VidyaAIFloatingAssistant';
+import { useVidyaChatAccess } from '../../src/hooks/useVidyaChatAccess';
 import ContentView from './_components/ContentView';
 import ProfileView from './_components/ProfileView';
 
 /** Matches web teacher dashboard tabs */
 type TabId = 'dashboard' | 'students' | 'eduott' | 'learning-paths' | 'vidya-ai';
 
-const TABS: TeacherTab[] = [
+const ALL_TABS: TeacherTab[] = [
   { id: 'dashboard', label: 'Home', icon: 'home-outline', activeIcon: 'home' },
   { id: 'students', label: 'Students', icon: 'people-outline', activeIcon: 'people' },
   { id: 'eduott', label: 'EduOTT', icon: 'play-circle-outline', activeIcon: 'play-circle' },
@@ -128,7 +129,21 @@ export default function TeacherDashboard() {
     else if (tab === 'vidya-ai') setActiveTab('vidya-ai');
     else if (tab === 'students') setActiveTab('students');
     else if (tab === 'dashboard') setActiveTab('dashboard');
-  }, [tab]);
+  }, [tab, user]);
+
+  const vidyaChatEnabled = useVidyaChatAccess(user);
+
+  const teacherTabs = useMemo(
+    () =>
+      vidyaChatEnabled
+        ? ALL_TABS
+        : ALL_TABS.map((t) =>
+            t.id === 'vidya-ai'
+              ? { ...t, label: 'AI Tools' }
+              : t
+          ),
+    [vidyaChatEnabled]
+  );
 
   const loadData = async () => {
     try {
@@ -318,7 +333,7 @@ export default function TeacherDashboard() {
           </View>
         );
       case 'vidya-ai':
-        return <VidyaAIView />;
+        return <VidyaAIView chatEnabled={vidyaChatEnabled} />;
       default:
         return <AIClassesView stats={stats} />;
     }
@@ -423,7 +438,7 @@ export default function TeacherDashboard() {
 
       {!overlay ? (
         <TeacherTabBar
-          tabs={TABS}
+          tabs={teacherTabs}
           activeTab={activeTab}
           onTabChange={(id) => {
             if (id === activeTab && !['students', 'vidya-ai', 'eduott', 'learning-paths'].includes(id)) {
@@ -471,14 +486,16 @@ export default function TeacherDashboard() {
         />
       </BottomSheet>
 
-      <VidyaAIFloatingAssistant
-        role="teacher"
-        hidden={overlay != null || activeTab === 'vidya-ai'}
-        onPress={() => {
-          setNavTarget({});
-          setActiveTab('vidya-ai');
-        }}
-      />
+      {vidyaChatEnabled ? (
+        <VidyaAIFloatingAssistant
+          role="teacher"
+          hidden={overlay != null || activeTab === 'vidya-ai'}
+          onPress={() => {
+            setNavTarget({});
+            setActiveTab('vidya-ai');
+          }}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

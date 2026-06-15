@@ -34,6 +34,8 @@ export type SchoolAdmin = {
   permissions: string[];
   teacherPermissions: string[];
   studentPermissions: string[];
+  vidyaEnabledForTeachers?: boolean;
+  vidyaEnabledForStudents?: boolean;
   status: string;
   joinDate: string;
   stats?: {
@@ -233,6 +235,8 @@ export function mapAdminFromApi(admin: any): SchoolAdmin {
     permissions: Array.isArray(admin.permissions) ? admin.permissions : [],
     teacherPermissions: Array.isArray(admin.teacherPermissions) ? admin.teacherPermissions : [],
     studentPermissions: Array.isArray(admin.studentPermissions) ? admin.studentPermissions : [],
+    vidyaEnabledForTeachers: admin.vidyaEnabledForTeachers !== false,
+    vidyaEnabledForStudents: admin.vidyaEnabledForStudents !== false,
     state: admin?.state || sd?.state || admin?.place || '',
     schoolDetails: {
       ...emptySchoolDetails(),
@@ -267,10 +271,8 @@ export type SchoolFormState = {
   schoolDetails: SchoolDetailsForm;
   accessMode: 'unlimited' | 'limited';
   limitedFeatures: string[];
-  teacherAccessMode: 'unlimited' | 'limited';
-  teacherLimitedFeatures: string[];
-  studentAccessMode: 'unlimited' | 'limited';
-  studentLimitedFeatures: string[];
+  vidyaEnabledForTeachers: boolean;
+  vidyaEnabledForStudents: boolean;
   isActive: boolean;
 };
 
@@ -292,10 +294,8 @@ export function emptySchoolForm(): SchoolFormState {
     schoolDetails: emptySchoolDetails(),
     accessMode: 'unlimited',
     limitedFeatures: [...SCHOOL_PORTAL_FEATURE_IDS],
-    teacherAccessMode: 'unlimited',
-    teacherLimitedFeatures: [...TEACHER_PORTAL_FEATURE_IDS],
-    studentAccessMode: 'unlimited',
-    studentLimitedFeatures: [...STUDENT_PORTAL_FEATURE_IDS],
+    vidyaEnabledForTeachers: true,
+    vidyaEnabledForStudents: true,
     isActive: true,
   };
 }
@@ -304,10 +304,6 @@ export function schoolFormFromAdmin(admin: SchoolAdmin): SchoolFormState {
   const sd = admin.schoolDetails || emptySchoolDetails();
   const perms = admin.permissions || [];
   const unlimited = isUnlimitedPortalAccess(perms);
-  const teacherPerms = admin.teacherPermissions || [];
-  const teacherUnlimited = isUnlimitedTeacherPortalAccess(teacherPerms);
-  const studentPerms = admin.studentPermissions || [];
-  const studentUnlimited = isUnlimitedStudentPortalAccess(studentPerms);
   const rawCurriculum =
     admin.curriculumBoard ||
     (isCurriculumBoardCode(admin.board) ? String(admin.board).toUpperCase().trim() : '');
@@ -334,14 +330,8 @@ export function schoolFormFromAdmin(admin: SchoolAdmin): SchoolFormState {
     limitedFeatures: unlimited
       ? [...SCHOOL_PORTAL_FEATURE_IDS]
       : SCHOOL_PORTAL_FEATURE_IDS.filter((f) => perms.includes(f)),
-    teacherAccessMode: teacherUnlimited ? 'unlimited' : 'limited',
-    teacherLimitedFeatures: teacherUnlimited
-      ? [...TEACHER_PORTAL_FEATURE_IDS]
-      : TEACHER_PORTAL_FEATURE_IDS.filter((f) => teacherPerms.includes(f)),
-    studentAccessMode: studentUnlimited ? 'unlimited' : 'limited',
-    studentLimitedFeatures: studentUnlimited
-      ? [...STUDENT_PORTAL_FEATURE_IDS]
-      : STUDENT_PORTAL_FEATURE_IDS.filter((f) => studentPerms.includes(f)),
+    vidyaEnabledForTeachers: admin.vidyaEnabledForTeachers !== false,
+    vidyaEnabledForStudents: admin.vidyaEnabledForStudents !== false,
     isActive: admin.status === 'active' || admin.status === 'Active',
   };
 }
@@ -362,8 +352,8 @@ export function buildCreatePayload(form: SchoolFormState) {
     secondaryContactPhone: sanitizePhoneInput(form.secondaryContactPhone),
     pin: form.pin.trim(),
     permissions: resolvePortalPermissions(form.accessMode, form.limitedFeatures),
-    teacherPermissions: resolveTeacherPortalPermissions(form.teacherAccessMode, form.teacherLimitedFeatures),
-    studentPermissions: resolveStudentPortalPermissions(form.studentAccessMode, form.studentLimitedFeatures),
+    vidyaEnabledForTeachers: form.vidyaEnabledForTeachers,
+    vidyaEnabledForStudents: form.vidyaEnabledForStudents,
     schoolDetails: { ...form.schoolDetails, state: form.state },
   };
 }
@@ -384,8 +374,8 @@ export function buildUpdatePayload(form: SchoolFormState) {
     pin: form.pin.trim(),
     isActive: form.isActive,
     permissions: resolvePortalPermissions(form.accessMode, form.limitedFeatures),
-    teacherPermissions: resolveTeacherPortalPermissions(form.teacherAccessMode, form.teacherLimitedFeatures),
-    studentPermissions: resolveStudentPortalPermissions(form.studentAccessMode, form.studentLimitedFeatures),
+    vidyaEnabledForTeachers: form.vidyaEnabledForTeachers,
+    vidyaEnabledForStudents: form.vidyaEnabledForStudents,
     schoolDetails: { ...form.schoolDetails, state: form.state },
   };
 }

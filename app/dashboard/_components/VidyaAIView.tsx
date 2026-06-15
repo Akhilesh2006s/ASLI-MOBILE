@@ -96,7 +96,7 @@ function ToolCard({ tool, onPress }: { tool: StudentAiTool; onPress: () => void 
   );
 }
 
-export default function VidyaAIView() {
+export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: boolean }) {
   const [subjectNames, setSubjectNames] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -126,8 +126,8 @@ export default function VidyaAIView() {
   }, []);
 
   const visibleTools = useMemo(
-    () => filterVisibleStudentTools(subjectNames).filter((tool) => tool.id !== 'ai-chat'),
-    [subjectNames],
+    () => filterVisibleStudentTools(subjectNames, { includeChat: chatEnabled }),
+    [subjectNames, chatEnabled],
   );
 
   const openTool = (tool: StudentAiTool) => {
