@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -44,7 +44,33 @@ export default function DetailedAnalysisView({
   attemptsRemaining = 0,
   embedded = false,
 }: DetailedAnalysisViewProps) {
+  const { isTablet, width: windowWidth } = useExamAnalysisLayout();
   const [activeTab, setActiveTab] = useState<AnalysisTab>('ai');
+  const tabsScrollRef = useRef<ScrollView>(null);
+  const tabLayoutsRef = useRef<Partial<Record<AnalysisTab, { x: number; width: number }>>>({});
+  const tabsViewportWidthRef = useRef(0);
+
+  const scrollTabIntoView = useCallback((id: AnalysisTab, animated = true) => {
+    const layout = tabLayoutsRef.current[id];
+    const viewport = tabsViewportWidthRef.current || windowWidth;
+    if (!layout) return;
+    const targetX = Math.max(0, layout.x - viewport / 2 + layout.width / 2);
+    tabsScrollRef.current?.scrollTo({ x: targetX, animated });
+  }, [windowWidth]);
+
+  const selectTab = useCallback(
+    (id: AnalysisTab) => {
+      setActiveTab(id);
+      requestAnimationFrame(() => scrollTabIntoView(id));
+      setTimeout(() => scrollTabIntoView(id), 50);
+    },
+    [scrollTabIntoView]
+  );
+
+  useEffect(() => {
+    const timer = setTimeout(() => scrollTabIntoView(activeTab, false), 80);
+    return () => clearTimeout(timer);
+  }, [activeTab, scrollTabIntoView]);
   const [displayResult, setDisplayResult] = useState<ExamAnalysisResult | null>(result ?? null);
   const [reviewHydrated, setReviewHydrated] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<AiExamAnalysis | null>(null);
@@ -236,11 +262,36 @@ export default function DetailedAnalysisView({
     getMarksPercentage(displayResult) || getDisplayPercentage(displayResult)
   );
   const grade = getGradeFromResult(displayResult);
-  const { isTablet } = useExamAnalysisLayout();
+
+  const tabEntries = Object.entries(TAB_META) as [AnalysisTab, (typeof TAB_META)[AnalysisTab]][];
+
+  const renderTab = (id: AnalysisTab, tab: (typeof TAB_META)[AnalysisTab]) => (
+    <Pressable
+      key={id}
+      style={[analysisStyles.tabPill, activeTab === id && analysisStyles.tabPillActive]}
+      onPress={() => selectTab(id)}
+      onLayout={(event) => {
+        const { x, width } = event.nativeEvent.layout;
+        tabLayoutsRef.current[id] = { x, width };
+      }}
+      hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: activeTab === id }}
+    >
+      <Ionicons
+        name={tab.icon}
+        size={15}
+        color={activeTab === id ? ANALYSIS.accent : '#94A3B8'}
+      />
+      <Text style={[analysisStyles.tabPillText, activeTab === id && analysisStyles.tabPillTextActive]}>
+        {tab.label}
+      </Text>
+    </Pressable>
+  );
 
   return (
     <Shell {...shellProps}>
-      <View style={analysisStyles.header}>
+      <View style={analysisStyles.header} collapsable={false}>
         <LinearGradient colors={[...ANALYSIS.gradient]} style={styles.headerGradient}>
           <View style={[analysisStyles.headerTop, isTablet && analysisStyles.headerConstrained, embedded && styles.headerEmbedded]}>
             {!embedded ? (
@@ -279,50 +330,27 @@ export default function DetailedAnalysisView({
           </View>
         </LinearGradient>
 
-        <View style={[analysisStyles.tabsWrap, isTablet && analysisStyles.headerConstrained]}>
-          {isTablet ? (
-            <View style={analysisStyles.tabsRowTablet}>
-              {(Object.entries(TAB_META) as [AnalysisTab, (typeof TAB_META)[AnalysisTab]][]).map(([id, tab]) => (
-                <TouchableOpacity
-                  key={id}
-                  style={[analysisStyles.tabPill, activeTab === id && analysisStyles.tabPillActive]}
-                  onPress={() => setActiveTab(id)}
-                >
-                  <Ionicons
-                    name={tab.icon}
-                    size={15}
-                    color={activeTab === id ? ANALYSIS.accent : '#94A3B8'}
-                  />
-                  <Text style={[analysisStyles.tabPillText, activeTab === id && analysisStyles.tabPillTextActive]}>
-                    {tab.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={analysisStyles.tabsScroll}>
-              {(Object.entries(TAB_META) as [AnalysisTab, (typeof TAB_META)[AnalysisTab]][]).map(([id, tab]) => (
-                <TouchableOpacity
-                  key={id}
-                  style={[analysisStyles.tabPill, activeTab === id && analysisStyles.tabPillActive]}
-                  onPress={() => setActiveTab(id)}
-                >
-                  <Ionicons
-                    name={tab.icon}
-                    size={15}
-                    color={activeTab === id ? ANALYSIS.accent : '#94A3B8'}
-                  />
-                  <Text style={[analysisStyles.tabPillText, activeTab === id && analysisStyles.tabPillTextActive]}>
-                    {tab.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          )}
+        <View
+          style={[analysisStyles.tabsWrap, isTablet && analysisStyles.headerConstrained]}
+          collapsable={false}
+        >
+          <ScrollView
+            ref={tabsScrollRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={analysisStyles.tabsScroll}
+            onLayout={(event) => {
+              tabsViewportWidthRef.current = event.nativeEvent.layout.width;
+            }}
+          >
+            {tabEntries.map(([id, tab]) => renderTab(id, tab))}
+          </ScrollView>
         </View>
       </View>
 
-      <View style={styles.body}>
+      <View style={styles.body} key={activeTab}>
         {activeTab === 'ai' && (
           <AiReportTabMobile
             result={displayResult}
@@ -340,13 +368,23 @@ export default function DetailedAnalysisView({
             aiLoading={aiLoading}
           />
         )}
-        {activeTab === 'advanced' && advancedExamId ? (
-          <AdvancedTabMobile
-            examId={advancedExamId}
-            resultId={displayResult._id}
-            result={displayResult}
-            aiAnalysis={aiAnalysis}
-          />
+        {activeTab === 'advanced' ? (
+          advancedExamId ? (
+            <AdvancedTabMobile
+              examId={advancedExamId}
+              resultId={displayResult._id}
+              result={displayResult}
+              aiAnalysis={aiAnalysis}
+            />
+          ) : (
+            <View style={styles.advancedUnavailable}>
+              <Ionicons name="stats-chart-outline" size={36} color="#9ca3af" />
+              <Text style={styles.advancedUnavailableTitle}>Advanced analytics unavailable</Text>
+              <Text style={styles.advancedUnavailableText}>
+                Exam details could not be loaded. Go back and open this attempt again from View Details.
+              </Text>
+            </View>
+          )
         ) : null}
         {activeTab === 'insights' && (
           <InsightsTabMobile result={displayResult} aiAnalysis={aiAnalysis} />
@@ -362,7 +400,16 @@ export default function DetailedAnalysisView({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   headerGradient: { paddingBottom: 4 },
-  body: { flex: 1 },
+  body: { flex: 1, zIndex: 0 },
+  advancedUnavailable: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    gap: 10,
+  },
+  advancedUnavailableTitle: { fontSize: 16, fontWeight: '800', color: '#111827' },
+  advancedUnavailableText: { fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 20 },
   headerEmbedded: { paddingTop: 0 },
   missingState: {
     alignItems: 'center',

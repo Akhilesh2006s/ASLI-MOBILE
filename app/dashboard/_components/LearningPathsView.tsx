@@ -49,11 +49,11 @@ function AnimatedProgressBar({ progress, delay = 0 }: { progress: number; delay?
 export default function LearningPathsView({ dark }: { dark?: boolean }) {
   const { width } = useWindowDimensions();
   const compact = width < 380;
-  const isTablet = width >= 768;
-  const scrollPad = 36;
-  const gap = STUDENT_SPACING.md;
-  const columns = isTablet ? 3 : 2;
-  const cardWidth = (width - scrollPad - gap * (columns - 1)) / columns;
+  const useThreeColumns = width >= 380;
+  const subjectTileWidth = useThreeColumns ? '31.5%' : '48%';
+  const subjectCardPadding = useThreeColumns ? 12 : 16;
+  const subjectIconSize = useThreeColumns ? 44 : 52;
+  const subjectGlyphSize = useThreeColumns ? 22 : 26;
   const [activeTab, setActiveTab] = useState<'subjects' | 'quizzes'>('subjects');
   const [subjects, setSubjects] = useState<any[]>([]);
   const [quizzes, setQuizzes] = useState<any[]>([]);
@@ -152,8 +152,8 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
                   <GlassCard
                     key={subject._id || subject.id}
                     variant="elevated"
-                    style={{ width: cardWidth }}
-                    padding={16}
+                    style={[styles.subjectTile, { width: subjectTileWidth }]}
+                    padding={subjectCardPadding}
                     animate
                     delay={index * 50}
                     onPress={() =>
@@ -166,13 +166,23 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
                     <View style={styles.subjectCardInner}>
                       <LinearGradient
                         colors={[color, `${color}cc`]}
-                        style={styles.subjectIconContainer}
+                        style={[
+                          styles.subjectIconContainer,
+                          {
+                            width: subjectIconSize,
+                            height: subjectIconSize,
+                            borderRadius: subjectIconSize / 2,
+                          },
+                        ]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
                       >
-                        <Ionicons name={iconName as any} size={26} color={STUDENT.textOnPrimary} />
+                        <Ionicons name={iconName as any} size={subjectGlyphSize} color={STUDENT.textOnPrimary} />
                       </LinearGradient>
-                      <Text style={styles.subjectName} numberOfLines={2}>
+                      <Text
+                        style={[styles.subjectName, useThreeColumns && styles.subjectNameCompact]}
+                        numberOfLines={2}
+                      >
                         {subject.name}
                       </Text>
                     </View>
@@ -324,9 +334,13 @@ const styles = StyleSheet.create({
   subjectsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: STUDENT_SPACING.md,
+    justifyContent: 'space-between',
+    gap: STUDENT_SPACING.sm,
     width: '100%',
     alignSelf: 'stretch',
+  },
+  subjectTile: {
+    marginBottom: STUDENT_SPACING.xs,
   },
   subjectCardInner: {
     alignItems: 'center',
@@ -334,9 +348,6 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   subjectIconContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -346,6 +357,10 @@ const styles = StyleSheet.create({
     color: STUDENT.text,
     textAlign: 'center',
     width: '100%',
+  },
+  subjectNameCompact: {
+    fontSize: 13,
+    lineHeight: 17,
   },
   quizzesList: {
     gap: STUDENT_SPACING.lg,

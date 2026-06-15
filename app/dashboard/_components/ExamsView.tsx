@@ -1140,8 +1140,10 @@ export default function ExamsView({
         <Modal
           visible={showExamResults}
           animationType="slide"
+          presentationStyle="fullScreen"
           onRequestClose={() => setShowExamResults(false)}
         >
+          <View style={styles.examResultsModal}>
           <ExamResultsView
             result={selectedExamForResults.result}
             examTitle={selectedExamForResults.exam.title}
@@ -1156,6 +1158,7 @@ export default function ExamsView({
                 (attemptHistoryByExamId.get(String(selectedExamForResults.exam._id))?.length || 0)
             )}
           />
+          </View>
         </Modal>
       ) : null}
     </>
@@ -1163,6 +1166,10 @@ export default function ExamsView({
 }
 
 const styles = StyleSheet.create({
+  examResultsModal: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
   container: {
     flex: 1,
     backgroundColor: STUDENT.bg,

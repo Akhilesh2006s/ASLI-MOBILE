@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import VidyaAvatar from './VidyaAvatar';
 
 export type VidyaAssistantRole = 'student' | 'admin' | 'teacher' | 'super_admin';
@@ -11,6 +12,7 @@ type Props = {
 };
 
 export default function VidyaAIFloatingAssistant({ onPress, hidden = false }: Props) {
+  const insets = useSafeAreaInsets();
   const handlePress = useCallback(() => {
     onPress();
   }, [onPress]);
@@ -18,7 +20,13 @@ export default function VidyaAIFloatingAssistant({ onPress, hidden = false }: Pr
   if (hidden) return null;
 
   return (
-    <View style={styles.container} pointerEvents="box-none">
+    <View
+      style={[
+        styles.container,
+        { bottom: 118 + Math.max(insets.bottom, 12) },
+      ]}
+      pointerEvents="box-none"
+    >
       <TouchableOpacity
         style={styles.touchTarget}
         onPress={handlePress}
@@ -35,9 +43,8 @@ export default function VidyaAIFloatingAssistant({ onPress, hidden = false }: Pr
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 100,
-    right: 16,
-    zIndex: 1000,
+    right: 20,
+    zIndex: 40,
     alignItems: 'flex-end',
   },
   touchTarget: {

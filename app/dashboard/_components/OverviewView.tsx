@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, useWindowDimensions } from 'react-native';
+import type React from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -82,7 +83,6 @@ const OverviewView = memo(function OverviewView({
   const { width } = useWindowDimensions();
   const compact = width < 380;
   const isTablet = width >= 768;
-  const statCardWidth = '48%';
   const [stats, setStats] = useState({
     questionsAnswered: 0,
     accuracyRate: 0,
@@ -622,8 +622,126 @@ const OverviewView = memo(function OverviewView({
   const dayStreak = Number(user?.dayStreak ?? 0);
   const schoolName = String(user?.assignedAdmin?.schoolName || user?.schoolName || '').trim();
 
+  const calendarSectionProps = {
+    incompleteQuizzes,
+    exams,
+    examAttemptCounts,
+    studentClassNumber: user?.classNumber,
+    onOpenQuiz: (quiz: any) => router.push(`/quiz/${quiz._id || quiz.id}`),
+    onOpenExam: (examId: string) => onOpenExam?.(examId),
+  };
+
+  const renderStatCard = (
+    cardKey: 'today' | 'study' | 'week' | 'efficiency',
+    body: React.ReactNode
+  ) => (
+    <View
+      style={[
+        styles.statCard,
+        isTablet && styles.statCardTablet,
+        { backgroundColor: STAT_SUMMARY_CARDS[cardKey].bg },
+      ]}
+    >
+      <View style={styles.statCardContent}>{body}</View>
+    </View>
+  );
+
+  const todayStatBody = (
+    <>
+      <View style={[styles.statIconWrap, { backgroundColor: STAT_SUMMARY_CARDS.today.iconBg }]}>
+        <Ionicons name={STAT_SUMMARY_CARDS.today.icon} size={20} color={STAT_SUMMARY_CARDS.today.accent} />
+      </View>
+      <Text style={styles.statLabel}>Today's Progress</Text>
+      <Text style={[styles.statValue, { color: STAT_SUMMARY_CARDS.today.accent }]}>
+        {completedTodos}/{totalTodos}
+      </Text>
+      <View style={[styles.statProgressBar, { backgroundColor: `${STAT_SUMMARY_CARDS.today.accent}22` }]}>
+        <View
+          style={[
+            styles.statProgressFill,
+            { width: `${todayProgress}%`, backgroundColor: STAT_SUMMARY_CARDS.today.accent },
+          ]}
+        />
+      </View>
+      <Text style={styles.statSubtext}>Tasks completed {todayProgress}%</Text>
+    </>
+  );
+
+  const studyStatBody = (
+    <>
+      <View style={[styles.statIconWrap, { backgroundColor: STAT_SUMMARY_CARDS.study.iconBg }]}>
+        <Ionicons name={STAT_SUMMARY_CARDS.study.icon} size={20} color={STAT_SUMMARY_CARDS.study.accent} />
+      </View>
+      <Text style={styles.statLabel}>Study Time</Text>
+      <Text style={[styles.statValue, { color: STAT_SUMMARY_CARDS.study.accent }]}>
+        {studyTimeToday >= 60
+          ? `${(studyTimeToday / 60).toFixed(1)} hrs`
+          : studyTimeToday < 1 && studyTimeToday > 0
+            ? '<1m'
+            : `${Math.round(studyTimeToday)}m`}
+      </Text>
+      <View style={[styles.statProgressBar, { backgroundColor: `${STAT_SUMMARY_CARDS.study.accent}22` }]}>
+        <View
+          style={[
+            styles.statProgressFill,
+            { width: `${studyTodayProgress}%`, backgroundColor: STAT_SUMMARY_CARDS.study.accent },
+          ]}
+        />
+      </View>
+      <Text style={styles.statSubtext}>Logged in today</Text>
+    </>
+  );
+
+  const weekStatBody = (
+    <>
+      <View style={[styles.statIconWrap, { backgroundColor: STAT_SUMMARY_CARDS.week.iconBg }]}>
+        <Ionicons name={STAT_SUMMARY_CARDS.week.icon} size={20} color={STAT_SUMMARY_CARDS.week.accent} />
+      </View>
+      <Text style={styles.statLabel}>This Week</Text>
+      <Text style={[styles.statValue, { color: STAT_SUMMARY_CARDS.week.accent }]}>
+        {studyTimeThisWeek >= 60
+          ? `${(studyTimeThisWeek / 60).toFixed(1)} hrs`
+          : studyTimeThisWeek < 1 && studyTimeThisWeek > 0
+            ? '<1m'
+            : `${Math.round(studyTimeThisWeek)}m`}
+      </Text>
+      <View style={[styles.statProgressBar, { backgroundColor: `${STAT_SUMMARY_CARDS.week.accent}22` }]}>
+        <View
+          style={[
+            styles.statProgressFill,
+            { width: `${studyWeekProgress}%`, backgroundColor: STAT_SUMMARY_CARDS.week.accent },
+          ]}
+        />
+      </View>
+      <Text style={styles.statSubtext}>Logged this week</Text>
+    </>
+  );
+
+  const efficiencyStatBody = (
+    <>
+      <View style={[styles.statIconWrap, { backgroundColor: STAT_SUMMARY_CARDS.efficiency.iconBg }]}>
+        <Ionicons
+          name={STAT_SUMMARY_CARDS.efficiency.icon}
+          size={20}
+          color={STAT_SUMMARY_CARDS.efficiency.accent}
+        />
+      </View>
+      <Text style={styles.statLabel}>Efficiency</Text>
+      <Text style={[styles.statValue, { color: STAT_SUMMARY_CARDS.efficiency.accent }]}>{efficiency}%</Text>
+      <View style={[styles.statProgressBar, { backgroundColor: `${STAT_SUMMARY_CARDS.efficiency.accent}22` }]}>
+        <View
+          style={[
+            styles.statProgressFill,
+            { width: `${efficiency}%`, backgroundColor: STAT_SUMMARY_CARDS.efficiency.accent },
+          ]}
+        />
+      </View>
+      <Text style={styles.statSubtext}>Completion rate</Text>
+    </>
+  );
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isTablet && styles.containerTablet]}>
       <StudentHomeHeader
         user={user}
         streak={dayStreak}
@@ -631,131 +749,35 @@ const OverviewView = memo(function OverviewView({
         onLogout={onLogout}
       />
 
-      {/* Summary Statistics Cards */}
-      <View style={styles.statsGrid}>
-        <View
-          style={[
-            styles.statCard,
-            { width: statCardWidth, backgroundColor: STAT_SUMMARY_CARDS.today.bg },
-          ]}
-        >
-          <View style={styles.statCardContent}>
-            <View style={[styles.statIconWrap, { backgroundColor: STAT_SUMMARY_CARDS.today.iconBg }]}>
-              <Ionicons name={STAT_SUMMARY_CARDS.today.icon} size={20} color={STAT_SUMMARY_CARDS.today.accent} />
+      {/* Summary Statistics + calendar (tablet uses aligned left/right columns) */}
+      {isTablet ? (
+        <View style={styles.tabletMasterRow}>
+          <View style={styles.tabletMasterCol}>
+            <View style={styles.tabletStatsCol}>
+              {renderStatCard('today', todayStatBody)}
+              {renderStatCard('week', weekStatBody)}
             </View>
-            <Text style={styles.statLabel}>Today's Progress</Text>
-            <Text style={[styles.statValue, { color: STAT_SUMMARY_CARDS.today.accent }]}>
-              {completedTodos}/{totalTodos}
-            </Text>
-            <View style={[styles.statProgressBar, { backgroundColor: `${STAT_SUMMARY_CARDS.today.accent}22` }]}>
-              <View
-                style={[
-                  styles.statProgressFill,
-                  { width: `${todayProgress}%`, backgroundColor: STAT_SUMMARY_CARDS.today.accent },
-                ]}
-              />
+            <StudyCalendarSection {...calendarSectionProps} layout="calendar-only" />
+          </View>
+          <View style={styles.tabletMasterCol}>
+            <View style={styles.tabletStatsCol}>
+              {renderStatCard('study', studyStatBody)}
+              {renderStatCard('efficiency', efficiencyStatBody)}
             </View>
-            <Text style={styles.statSubtext}>Tasks completed {todayProgress}%</Text>
+            <StudyCalendarSection {...calendarSectionProps} layout="events-only" />
           </View>
         </View>
-
-        <View
-          style={[
-            styles.statCard,
-            { width: statCardWidth, backgroundColor: STAT_SUMMARY_CARDS.study.bg },
-          ]}
-        >
-          <View style={styles.statCardContent}>
-            <View style={[styles.statIconWrap, { backgroundColor: STAT_SUMMARY_CARDS.study.iconBg }]}>
-              <Ionicons name={STAT_SUMMARY_CARDS.study.icon} size={20} color={STAT_SUMMARY_CARDS.study.accent} />
-            </View>
-            <Text style={styles.statLabel}>Study Time</Text>
-            <Text style={[styles.statValue, { color: STAT_SUMMARY_CARDS.study.accent }]}>
-              {studyTimeToday >= 60
-                ? `${(studyTimeToday / 60).toFixed(1)} hrs`
-                : studyTimeToday < 1 && studyTimeToday > 0
-                  ? '<1m'
-                  : `${Math.round(studyTimeToday)}m`}
-            </Text>
-            <View style={[styles.statProgressBar, { backgroundColor: `${STAT_SUMMARY_CARDS.study.accent}22` }]}>
-              <View
-                style={[
-                  styles.statProgressFill,
-                  { width: `${studyTodayProgress}%`, backgroundColor: STAT_SUMMARY_CARDS.study.accent },
-                ]}
-              />
-            </View>
-            <Text style={styles.statSubtext}>Logged in today</Text>
+      ) : (
+        <>
+          <View style={styles.statsGrid}>
+            {renderStatCard('today', todayStatBody)}
+            {renderStatCard('study', studyStatBody)}
+            {renderStatCard('week', weekStatBody)}
+            {renderStatCard('efficiency', efficiencyStatBody)}
           </View>
-        </View>
-
-        <View
-          style={[
-            styles.statCard,
-            { width: statCardWidth, backgroundColor: STAT_SUMMARY_CARDS.week.bg },
-          ]}
-        >
-          <View style={styles.statCardContent}>
-            <View style={[styles.statIconWrap, { backgroundColor: STAT_SUMMARY_CARDS.week.iconBg }]}>
-              <Ionicons name={STAT_SUMMARY_CARDS.week.icon} size={20} color={STAT_SUMMARY_CARDS.week.accent} />
-            </View>
-            <Text style={styles.statLabel}>This Week</Text>
-            <Text style={[styles.statValue, { color: STAT_SUMMARY_CARDS.week.accent }]}>
-              {studyTimeThisWeek >= 60
-                ? `${(studyTimeThisWeek / 60).toFixed(1)} hrs`
-                : studyTimeThisWeek < 1 && studyTimeThisWeek > 0
-                  ? '<1m'
-                  : `${Math.round(studyTimeThisWeek)}m`}
-            </Text>
-            <View style={[styles.statProgressBar, { backgroundColor: `${STAT_SUMMARY_CARDS.week.accent}22` }]}>
-              <View
-                style={[
-                  styles.statProgressFill,
-                  { width: `${studyWeekProgress}%`, backgroundColor: STAT_SUMMARY_CARDS.week.accent },
-                ]}
-              />
-            </View>
-            <Text style={styles.statSubtext}>Logged this week</Text>
-          </View>
-        </View>
-
-        <View
-          style={[
-            styles.statCard,
-            { width: statCardWidth, backgroundColor: STAT_SUMMARY_CARDS.efficiency.bg },
-          ]}
-        >
-          <View style={styles.statCardContent}>
-            <View style={[styles.statIconWrap, { backgroundColor: STAT_SUMMARY_CARDS.efficiency.iconBg }]}>
-              <Ionicons
-                name={STAT_SUMMARY_CARDS.efficiency.icon}
-                size={20}
-                color={STAT_SUMMARY_CARDS.efficiency.accent}
-              />
-            </View>
-            <Text style={styles.statLabel}>Efficiency</Text>
-            <Text style={[styles.statValue, { color: STAT_SUMMARY_CARDS.efficiency.accent }]}>{efficiency}%</Text>
-            <View style={[styles.statProgressBar, { backgroundColor: `${STAT_SUMMARY_CARDS.efficiency.accent}22` }]}>
-              <View
-                style={[
-                  styles.statProgressFill,
-                  { width: `${efficiency}%`, backgroundColor: STAT_SUMMARY_CARDS.efficiency.accent },
-                ]}
-              />
-            </View>
-            <Text style={styles.statSubtext}>Completion rate</Text>
-          </View>
-        </View>
-      </View>
-
-      <StudyCalendarSection
-        incompleteQuizzes={incompleteQuizzes}
-        exams={exams}
-        examAttemptCounts={examAttemptCounts}
-        studentClassNumber={user?.classNumber}
-        onOpenQuiz={(quiz) => router.push(`/quiz/${quiz._id || quiz.id}`)}
-        onOpenExam={(examId) => onOpenExam?.(examId)}
-      />
+          <StudyCalendarSection {...calendarSectionProps} />
+        </>
+      )}
 
       <ClassTimetableSection schoolName={schoolName} />
 
@@ -838,6 +860,24 @@ export default OverviewView;
 const styles = StyleSheet.create({
   container: {
     gap: 16,
+  },
+  containerTablet: {
+    width: '100%',
+  },
+  tabletMasterRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 16,
+    width: '100%',
+  },
+  tabletMasterCol: {
+    flex: 1,
+    minWidth: 0,
+    gap: 12,
+  },
+  tabletStatsCol: {
+    gap: 12,
+    width: '100%',
   },
   quickStatsScroll: {
     gap: 10,
@@ -928,17 +968,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
+    alignItems: 'stretch',
   },
   statCard: {
-    width: '47%',
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '47%',
+    maxWidth: '48%',
     borderRadius: 24,
     padding: 16,
-    minHeight: 140,
+    minHeight: 152,
     borderWidth: 0,
     ...STUDENT.shadow.sm,
   },
+  statCardTablet: {
+    flexGrow: 0,
+    flexShrink: 0,
+    flexBasis: 'auto',
+    maxWidth: '100%',
+    width: '100%',
+  },
   statCardContent: {
     flex: 1,
+    justifyContent: 'space-between',
   },
   statIconWrap: {
     width: 36,

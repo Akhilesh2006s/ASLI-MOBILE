@@ -177,3 +177,38 @@ export function getExamDayRoleLabel(role: ExamDayRole | undefined): string | nul
       return null;
   }
 }
+
+export type SchoolEventCalendarEntry = {
+  id: string;
+  type: 'event';
+  title: string;
+  subject: string;
+  date: Date;
+  source: any;
+  description?: string;
+};
+
+export function buildSchoolEventCalendarEntries(events: any[]): SchoolEventCalendarEntry[] {
+  const entries: SchoolEventCalendarEntry[] = [];
+  for (const event of events) {
+    const title = String(event?.title || event?.name || 'School event');
+    const start = parseCalendarDate(event?.startDate || event?.date);
+    const end = parseCalendarDate(event?.endDate || event?.startDate || event?.date) || start;
+    if (!start || !end) continue;
+    const id = String(event?.id || event?._id || title);
+    for (const day of eachLocalDayInRange(start, end)) {
+      const slot = new Date(day);
+      slot.setHours(start.getHours(), start.getMinutes(), 0, 0);
+      entries.push({
+        id,
+        type: 'event',
+        title,
+        subject: 'School event',
+        date: slot,
+        source: event,
+        description: String(event?.description || ''),
+      });
+    }
+  }
+  return entries;
+}

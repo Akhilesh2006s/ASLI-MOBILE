@@ -8,6 +8,7 @@ import {
   Alert,
   Image,
   Pressable,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../../src/services/api/api';
@@ -85,6 +86,12 @@ const EVENT_COLORS = ['#10b981', '#6366F1', '#ec4899', '#8b5cf6', '#f59e0b', '#e
 
 export default function CalendarView() {
   const { colors, spacing, radius } = useAdminTheme();
+  const { width: screenWidth } = useWindowDimensions();
+  const calendarCellSize = useMemo(() => {
+    const maxGridWidth = screenWidth >= 768 ? 392 : Math.max(280, screenWidth - 48);
+    return Math.max(34, Math.floor(maxGridWidth / 7));
+  }, [screenWidth]);
+  const calendarGridWidth = calendarCellSize * 7;
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -380,9 +387,9 @@ export default function CalendarView() {
           </AdminScalePressable>
         </View>
 
-        <View style={styles.miniGrid}>
+        <View style={[styles.miniGrid, { width: calendarGridWidth, alignSelf: 'center' }]}>
           {DAY_NAMES.map((day) => (
-            <View key={day} style={styles.dayHeader}>
+            <View key={day} style={[styles.dayHeader, { width: calendarCellSize }]}>
               <Text style={[styles.dayHeaderText, { color: colors.textMuted }]}>{day.slice(0, 1)}</Text>
             </View>
           ))}
@@ -396,6 +403,7 @@ export default function CalendarView() {
                 key={`${toLocalDateKey(date)}-${index}`}
                 style={[
                   styles.miniDay,
+                  { width: calendarCellSize, height: calendarCellSize },
                   !isCurrentMonthDay && styles.miniDayOtherMonth,
                   isTodayDate && {
                     backgroundColor: colors.primaryMuted,
@@ -684,9 +692,9 @@ const styles = StyleSheet.create({
   calendarNav: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   monthText: { fontSize: 18, fontWeight: '700' },
   miniGrid: { flexDirection: 'row', flexWrap: 'wrap' },
-  dayHeader: { width: '14.28%', alignItems: 'center', paddingVertical: 4 },
+  dayHeader: { alignItems: 'center', paddingVertical: 4 },
   dayHeaderText: { fontSize: 11, fontWeight: '700' },
-  miniDay: { width: '14.28%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
+  miniDay: { alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
   miniDayOtherMonth: { opacity: 0.35 },
   miniDayNumber: { fontSize: 13, fontWeight: '600' },
   dotRow: { flexDirection: 'row', gap: 2, marginTop: 2 },

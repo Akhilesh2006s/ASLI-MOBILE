@@ -1,11 +1,14 @@
-import React, { memo, useMemo, useState } from 'react';
+import React, { memo, useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
+import { API_BASE_URL } from '../../../../src/lib/api-config';
 import GlassCard from '../../../../src/components/student/GlassCard';
 import StudentExamPreviewCard from '../../../../src/components/student/StudentExamPreviewCard';
 import {
   buildExamCalendarEntries,
+  buildSchoolEventCalendarEntries,
   buildDayExamMarkers,
   formatCalendarDateKey,
   parseCalendarDate,
@@ -16,7 +19,7 @@ import { STUDENT, STUDENT_RADIUS } from '../../../../src/theme/student';
 
 type CalendarEntry = {
   id: string;
-  type: 'quiz' | 'exam' | 'timetable';
+  type: 'quiz' | 'exam' | 'timetable' | 'event';
   title: string;
   subject: string;
   date: Date;
@@ -38,6 +41,8 @@ const EXAM_MARKER_COLORS = {
   quiz: '#f59e0b',
 } as const;
 
+type StudyCalendarLayout = 'auto' | 'calendar-only' | 'events-only';
+
 type Props = {
   incompleteQuizzes: any[];
   exams: any[];
@@ -45,6 +50,7 @@ type Props = {
   studentClassNumber?: string | number | null;
   onOpenQuiz: (quiz: any) => void;
   onOpenExam: (examId: string) => void;
+  layout?: StudyCalendarLayout;
 };
 
 function StudyCalendarSectionComponent({
@@ -54,6 +60,7 @@ function StudyCalendarSectionComponent({
   studentClassNumber,
   onOpenQuiz,
   onOpenExam,
+  layout = 'auto',
 }: Props) {
   const { width: screenWidth } = useWindowDimensions();
   const isTablet = screenWidth >= 768;
@@ -67,6 +74,34 @@ function StudyCalendarSectionComponent({
   });
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [jumpDate, setJumpDate] = useState(formatCalendarDateKey(new Date()));
+  const [schoolCalendarEvents, setSchoolCalendarEvents] = useState<any[]>([]);
+
+  const calendarMonthKey = `${calendarMonth.getFullYear()}-${String(calendarMonth.getMonth() + 1).padStart(2, '0')}`;
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = await SecureStore.getItemAsync('authToken');
+        const response = await fetch(`${API_BASE_URL}/api/student/calendar/events?month=${calendarMonthKey}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        if (!response.ok || cancelled) return;
+        const payload = await response.json();
+        if (!cancelled) {
+          setSchoolCalendarEvents(Array.isArray(payload?.data) ? payload.data : []);
+        }
+      } catch {
+        if (!cancelled) setSchoolCalendarEvents([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [calendarMonthKey]);
 
   const calendarEntries = useMemo(() => {
     const quizEntries = incompleteQuizzes
@@ -86,8 +121,12 @@ function StudyCalendarSectionComponent({
         };
       })
       .filter(Boolean) as CalendarEntry[];
-    return [...quizEntries, ...buildExamCalendarEntries(exams)];
-  }, [incompleteQuizzes, exams]);
+    return [
+      ...quizEntries,
+      ...buildExamCalendarEntries(exams),
+      ...buildSchoolEventCalendarEntries(schoolCalendarEvents),
+    ];
+  }, [incompleteQuizzes, exams, schoolCalendarEvents]);
 
   const entriesByDate = useMemo(() => {
     const acc: Record<string, CalendarEntry[]> = {};
@@ -144,7 +183,7 @@ function StudyCalendarSectionComponent({
   };
 
   const renderCalendarCard = () => (
-      <GlassCard variant="default" padding={14}>
+      <GlassCard variant="default" padding={14} style={styles.cardFill}>
         <View style={styles.calHeader}>
           <View>
             <Text style={styles.calTitle}>Study Calendar</Text>
@@ -298,7 +337,7 @@ function StudyCalendarSectionComponent({
   );
 
   const renderEventsCard = () => (
-      <GlassCard variant="default" padding={14}>
+      <GlassCard variant="default" padding={14} style={styles.cardFill}>
         <Text style={styles.eventsTitle}>Study & exams</Text>
         <Text style={styles.eventsSub}>
           {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
@@ -330,6 +369,30 @@ function StudyCalendarSectionComponent({
               );
             }
 
+            if (entry.type === 'event') {
+              return (
+                <View
+                  key={`${entry.type}-${entry.id}-${entry.date.getTime()}`}
+                  style={styles.eventRow}
+                >
+                  <View style={styles.eventTop}>
+                    <Text style={styles.eventTitle} numberOfLines={2}>
+                      {entry.title}
+                    </Text>
+                    <View style={[styles.typeBadge, styles.badgeEvent]}>
+                      <Text style={styles.typeBadgeText}>EVENT</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.eventSubject}>{entry.subject}</Text>
+                  {entry.source?.description ? (
+                    <Text style={styles.eventTime} numberOfLines={3}>
+                      {entry.source.description}
+                    </Text>
+                  ) : null}
+                </View>
+              );
+            }
+
             return (
               <TouchableOpacity
                 key={`${entry.type}-${entry.id}-${entry.date.getTime()}-quiz`}
@@ -356,6 +419,14 @@ function StudyCalendarSectionComponent({
       </GlassCard>
   );
 
+  if (layout === 'calendar-only') {
+    return <View style={styles.wrap}>{renderCalendarCard()}</View>;
+  }
+
+  if (layout === 'events-only') {
+    return <View style={styles.wrap}>{renderEventsCard()}</View>;
+  }
+
   return (
     <View style={[styles.wrap, isTablet && styles.wrapTablet]}>
       <View style={isTablet ? styles.tabletCol : undefined}>{renderCalendarCard()}</View>
@@ -365,9 +436,10 @@ function StudyCalendarSectionComponent({
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: 12 },
-  wrapTablet: { flexDirection: 'row', alignItems: 'flex-start' },
-  tabletCol: { flex: 1, minWidth: 0 },
+  wrap: { gap: 12, width: '100%' },
+  wrapTablet: { flexDirection: 'row', alignItems: 'stretch', gap: 16, width: '100%' },
+  tabletCol: { flex: 1, minWidth: 0, alignSelf: 'stretch', width: '100%' },
+  cardFill: { width: '100%', alignSelf: 'stretch' },
   gridTablet: { justifyContent: 'center' },
   calHeader: { gap: 10, marginBottom: 10 },
   calTitle: { fontSize: 18, fontWeight: '800', color: STUDENT.primary },
@@ -469,6 +541,7 @@ const styles = StyleSheet.create({
   eventTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: STUDENT.text },
   typeBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   badgeQuiz: { backgroundColor: `${STUDENT.warning}18` },
+  badgeEvent: { backgroundColor: '#FEF3C7' },
   typeBadgeText: { fontSize: 10, fontWeight: '800', color: STUDENT.textSecondary },
   eventSubject: { fontSize: 12, color: STUDENT.textMuted, marginTop: 4 },
   eventTime: { fontSize: 11, color: STUDENT.textMuted, marginTop: 2 },

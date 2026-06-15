@@ -473,11 +473,11 @@ export default function ExamsView() {
             style={[styles.exportBtnPrimary, { backgroundColor: colors.primary, borderRadius: radius.sm }]}
           >
             <Ionicons name="download-outline" size={16} color="#fff" />
-            <Text style={styles.exportBtnPrimaryText}>Export CSV</Text>
+            <Text style={styles.exportBtnPrimaryText}>Export Analysis CSV</Text>
           </AdminScalePressable>
         </View>
         <Text style={[styles.exportHint, { color: colors.textMuted }]}>
-          Ranked results for your school — rank, student, marks, accuracy, time, and completion date.
+          School performance analysis report — exam name, overall snapshot, subject & complexity breakdown, and student ranking.
         </Text>
 
         <AdminGlassCard noAnimation style={{ marginBottom: spacing.sm }}>

@@ -1,5 +1,10 @@
 import { Alert } from 'react-native';
 import { exportCsvFile } from '../utils/csvExport';
+import {
+  buildSchoolPerformanceAnalysisCsv,
+  schoolPerformanceAnalysisFilename,
+  withExcelCsvBom,
+} from './college-performance-analysis-csv';
 
 /** Helpers for school-admin exam results view (parity with web exam-view-only). */
 
@@ -23,6 +28,14 @@ export type AdminExamResult = {
   timeTaken?: number;
   attemptNumber?: number;
   subjectWiseScore?: Record<string, { correct?: number; total?: number; marks?: number }>;
+  questionAnalytics?: Array<{
+    subject?: string;
+    chapter?: string;
+    difficulty?: string;
+    questionType?: string;
+    timeTaken?: number;
+    status?: 'correct' | 'wrong' | 'not_answered';
+  }>;
   completedAt: string;
 };
 
@@ -182,53 +195,16 @@ export function buildExamResultsCsv(
   examTitle: string,
   ranked: ReturnType<typeof rankExamResults>
 ): string {
-  const headers = [
-    'Rank',
-    'Student Name',
-    'Email',
-    'Class',
-    'Attempt',
-    'Correct',
-    'Wrong',
-    'Skipped',
-    'Marks Obtained',
-    'Total Marks',
-    'Marks %',
-    'Question Accuracy %',
-    'Time Taken',
-    'Completed At',
-  ];
-
-  const rows = ranked.map(({ result, marksPct, questionAcc }, idx) => [
-    idx + 1,
-    result.userId?.fullName || '',
-    result.userId?.email || '',
-    normalizeClassNumberForDisplay(result.userId?.classNumber),
-    result.attemptNumber || 1,
-    result.correctAnswers ?? '',
-    result.wrongAnswers ?? '',
-    result.unattempted ?? '',
-    result.obtainedMarks,
-    result.totalMarks,
-    `${marksPct.toFixed(2)}%`,
-    `${questionAcc}%`,
-    formatTimeTaken(result.timeTaken),
-    new Date(result.completedAt).toLocaleString(),
-  ]);
-
-  return [
-    headers.map((h) => `"${h}"`).join(','),
-    ...rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')),
-  ].join('\n');
+  return withExcelCsvBom(
+    buildSchoolPerformanceAnalysisCsv(
+      examTitle,
+      ranked.map(({ result }) => result),
+    ),
+  );
 }
 
 function buildExamResultsFilename(examTitle: string): string {
-  const slug = String(examTitle || 'exam')
-    .trim()
-    .replace(/[^\w.-]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .slice(0, 60);
-  return `${slug || 'exam'}_results_${new Date().toISOString().slice(0, 10)}.csv`;
+  return schoolPerformanceAnalysisFilename(examTitle);
 }
 
 /** Export ranked exam results as a downloadable `.csv` file. */

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, RefreshControl, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
+import { Alert, RefreshControl, ScrollView, StatusBar, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { Easing, SlideInRight, SlideOutLeft } from 'react-native-reanimated';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -124,6 +124,9 @@ export default function StudentDashboard() {
   };
 
   const pad = { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 120 };
+  const { width: windowWidth } = useWindowDimensions();
+  const isTablet = windowWidth >= 768;
+  const homePad = isTablet ? { ...pad, paddingHorizontal: 20 } : pad;
 
   const handleTabChange = (id: string) => {
     const next = id as TabId;
@@ -141,7 +144,7 @@ export default function StudentDashboard() {
           <ScrollView
             ref={homeScrollRef}
             style={styles.scroll}
-            contentContainerStyle={pad}
+            contentContainerStyle={homePad}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={STUDENT.primary} />
             }
