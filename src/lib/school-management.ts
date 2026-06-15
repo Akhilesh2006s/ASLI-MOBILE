@@ -32,6 +32,8 @@ export type SchoolAdmin = {
   secondaryContactPhone?: string;
   schoolDetails?: SchoolDetailsForm;
   permissions: string[];
+  teacherPermissions: string[];
+  studentPermissions: string[];
   status: string;
   joinDate: string;
   stats?: {
@@ -94,6 +96,47 @@ export const SCHOOL_PORTAL_FEATURE_IDS = SCHOOL_PORTAL_MODULE_GROUPS.flatMap((g)
   g.modules.map((m) => m.id)
 );
 
+export const TEACHER_PORTAL_MODULE_GROUPS: {
+  category: string;
+  modules: { id: string; title: string }[];
+}[] = [
+  {
+    category: 'Teaching',
+    modules: [
+      { id: 'Dashboard', title: 'Dashboard' },
+      { id: 'My Students', title: 'My students' },
+      { id: 'Learning Paths', title: 'Learning paths' },
+      { id: 'Edu OTT', title: 'Edu OTT & video' },
+      { id: 'Vidya AI', title: 'Vidya AI' },
+    ],
+  },
+];
+
+export const STUDENT_PORTAL_MODULE_GROUPS: {
+  category: string;
+  modules: { id: string; title: string }[];
+}[] = [
+  {
+    category: 'Learning',
+    modules: [
+      { id: 'Home', title: 'Home' },
+      { id: 'Learning Paths', title: 'Learning paths' },
+      { id: 'Edu OTT', title: 'Edu OTT' },
+      { id: 'Exams', title: 'Exams' },
+      { id: 'Vidya AI', title: 'Vidya AI' },
+      { id: 'Settings', title: 'Settings' },
+    ],
+  },
+];
+
+export const TEACHER_PORTAL_FEATURE_IDS = TEACHER_PORTAL_MODULE_GROUPS.flatMap((g) =>
+  g.modules.map((m) => m.id)
+);
+
+export const STUDENT_PORTAL_FEATURE_IDS = STUDENT_PORTAL_MODULE_GROUPS.flatMap((g) =>
+  g.modules.map((m) => m.id)
+);
+
 export function emptySchoolDetails(): SchoolDetailsForm {
   return {
     doorNo: '',
@@ -119,14 +162,42 @@ export function isValidOptionalPhone(phone: string) {
 }
 
 export function isUnlimitedPortalAccess(perms: string[] | undefined): boolean {
+  return isUnlimitedPortalAccessFor(perms, SCHOOL_PORTAL_FEATURE_IDS);
+}
+
+export function isUnlimitedTeacherPortalAccess(perms: string[] | undefined): boolean {
+  return isUnlimitedPortalAccessFor(perms, TEACHER_PORTAL_FEATURE_IDS);
+}
+
+export function isUnlimitedStudentPortalAccess(perms: string[] | undefined): boolean {
+  return isUnlimitedPortalAccessFor(perms, STUDENT_PORTAL_FEATURE_IDS);
+}
+
+function isUnlimitedPortalAccessFor(perms: string[] | undefined, allIds: readonly string[]): boolean {
   if (!perms || perms.length === 0) return true;
   const set = new Set(perms);
-  return SCHOOL_PORTAL_FEATURE_IDS.every((f) => set.has(f));
+  return allIds.every((f) => set.has(f));
 }
 
 export function resolvePortalPermissions(mode: 'unlimited' | 'limited', selected: string[]): string[] {
-  if (mode === 'unlimited') return [...SCHOOL_PORTAL_FEATURE_IDS];
-  return SCHOOL_PORTAL_FEATURE_IDS.filter((f) => selected.includes(f));
+  return resolvePortalPermissionsFor(mode, selected, SCHOOL_PORTAL_FEATURE_IDS);
+}
+
+export function resolveTeacherPortalPermissions(mode: 'unlimited' | 'limited', selected: string[]): string[] {
+  return resolvePortalPermissionsFor(mode, selected, TEACHER_PORTAL_FEATURE_IDS);
+}
+
+export function resolveStudentPortalPermissions(mode: 'unlimited' | 'limited', selected: string[]): string[] {
+  return resolvePortalPermissionsFor(mode, selected, STUDENT_PORTAL_FEATURE_IDS);
+}
+
+function resolvePortalPermissionsFor(
+  mode: 'unlimited' | 'limited',
+  selected: string[],
+  allIds: readonly string[]
+): string[] {
+  if (mode === 'unlimited') return [...allIds];
+  return allIds.filter((f) => selected.includes(f));
 }
 
 export function curriculumDisplayLabel(code?: string): string {
@@ -160,6 +231,8 @@ export function mapAdminFromApi(admin: any): SchoolAdmin {
     ...admin,
     id: admin.id || admin._id,
     permissions: Array.isArray(admin.permissions) ? admin.permissions : [],
+    teacherPermissions: Array.isArray(admin.teacherPermissions) ? admin.teacherPermissions : [],
+    studentPermissions: Array.isArray(admin.studentPermissions) ? admin.studentPermissions : [],
     state: admin?.state || sd?.state || admin?.place || '',
     schoolDetails: {
       ...emptySchoolDetails(),
@@ -194,6 +267,10 @@ export type SchoolFormState = {
   schoolDetails: SchoolDetailsForm;
   accessMode: 'unlimited' | 'limited';
   limitedFeatures: string[];
+  teacherAccessMode: 'unlimited' | 'limited';
+  teacherLimitedFeatures: string[];
+  studentAccessMode: 'unlimited' | 'limited';
+  studentLimitedFeatures: string[];
   isActive: boolean;
 };
 
@@ -215,6 +292,10 @@ export function emptySchoolForm(): SchoolFormState {
     schoolDetails: emptySchoolDetails(),
     accessMode: 'unlimited',
     limitedFeatures: [...SCHOOL_PORTAL_FEATURE_IDS],
+    teacherAccessMode: 'unlimited',
+    teacherLimitedFeatures: [...TEACHER_PORTAL_FEATURE_IDS],
+    studentAccessMode: 'unlimited',
+    studentLimitedFeatures: [...STUDENT_PORTAL_FEATURE_IDS],
     isActive: true,
   };
 }
@@ -223,6 +304,10 @@ export function schoolFormFromAdmin(admin: SchoolAdmin): SchoolFormState {
   const sd = admin.schoolDetails || emptySchoolDetails();
   const perms = admin.permissions || [];
   const unlimited = isUnlimitedPortalAccess(perms);
+  const teacherPerms = admin.teacherPermissions || [];
+  const teacherUnlimited = isUnlimitedTeacherPortalAccess(teacherPerms);
+  const studentPerms = admin.studentPermissions || [];
+  const studentUnlimited = isUnlimitedStudentPortalAccess(studentPerms);
   const rawCurriculum =
     admin.curriculumBoard ||
     (isCurriculumBoardCode(admin.board) ? String(admin.board).toUpperCase().trim() : '');
@@ -249,6 +334,14 @@ export function schoolFormFromAdmin(admin: SchoolAdmin): SchoolFormState {
     limitedFeatures: unlimited
       ? [...SCHOOL_PORTAL_FEATURE_IDS]
       : SCHOOL_PORTAL_FEATURE_IDS.filter((f) => perms.includes(f)),
+    teacherAccessMode: teacherUnlimited ? 'unlimited' : 'limited',
+    teacherLimitedFeatures: teacherUnlimited
+      ? [...TEACHER_PORTAL_FEATURE_IDS]
+      : TEACHER_PORTAL_FEATURE_IDS.filter((f) => teacherPerms.includes(f)),
+    studentAccessMode: studentUnlimited ? 'unlimited' : 'limited',
+    studentLimitedFeatures: studentUnlimited
+      ? [...STUDENT_PORTAL_FEATURE_IDS]
+      : STUDENT_PORTAL_FEATURE_IDS.filter((f) => studentPerms.includes(f)),
     isActive: admin.status === 'active' || admin.status === 'Active',
   };
 }
@@ -269,6 +362,8 @@ export function buildCreatePayload(form: SchoolFormState) {
     secondaryContactPhone: sanitizePhoneInput(form.secondaryContactPhone),
     pin: form.pin.trim(),
     permissions: resolvePortalPermissions(form.accessMode, form.limitedFeatures),
+    teacherPermissions: resolveTeacherPortalPermissions(form.teacherAccessMode, form.teacherLimitedFeatures),
+    studentPermissions: resolveStudentPortalPermissions(form.studentAccessMode, form.studentLimitedFeatures),
     schoolDetails: { ...form.schoolDetails, state: form.state },
   };
 }
@@ -289,6 +384,8 @@ export function buildUpdatePayload(form: SchoolFormState) {
     pin: form.pin.trim(),
     isActive: form.isActive,
     permissions: resolvePortalPermissions(form.accessMode, form.limitedFeatures),
+    teacherPermissions: resolveTeacherPortalPermissions(form.teacherAccessMode, form.teacherLimitedFeatures),
+    studentPermissions: resolveStudentPortalPermissions(form.studentAccessMode, form.studentLimitedFeatures),
     schoolDetails: { ...form.schoolDetails, state: form.state },
   };
 }

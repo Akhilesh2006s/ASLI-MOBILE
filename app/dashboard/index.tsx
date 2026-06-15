@@ -24,7 +24,7 @@ const TABS: StudentTab[] = [
   { id: 'home', label: 'Home', icon: 'home-outline', activeIcon: 'home' },
   { id: 'learning', label: 'Learning', icon: 'book-outline', activeIcon: 'book' },
   { id: 'eduott', label: 'EduOTT', icon: 'videocam-outline', activeIcon: 'videocam' },
-  { id: 'exams', label: 'Exams', icon: 'document-text-outline', activeIcon: 'document-text' },
+  { id: 'exams', label: 'Exams', icon: 'document-outline', activeIcon: 'document' },
   { id: 'vidya', label: 'Vidya', icon: 'chatbubble-ellipses-outline', activeIcon: 'chatbubble-ellipses' },
   { id: 'settings', label: 'Settings', icon: 'settings-outline', activeIcon: 'settings' },
 ];

@@ -23,7 +23,7 @@ export default function VidyaAIFloatingAssistant({ onPress, hidden = false }: Pr
     <View
       style={[
         styles.container,
-        { bottom: 118 + Math.max(insets.bottom, 12) },
+        { bottom: 82 + Math.max(insets.bottom, 10) },
       ]}
       pointerEvents="box-none"
     >

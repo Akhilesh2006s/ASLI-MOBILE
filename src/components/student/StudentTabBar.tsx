@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import React from 'react';
+import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { STUDENT, STUDENT_RADIUS } from '../../theme/student';
 
 export type StudentTab = {
@@ -19,29 +19,14 @@ type Props = {
   onTabChange: (id: string) => void;
 };
 
-const SPRING = { damping: 15, stiffness: 260 };
-const TAB_BAR_MAX_WIDTH = 960;
-const FAB_CLEARANCE = 64;
+const TAB_BAR_MAX_WIDTH = 520;
+const ICON_SIZE = 22;
+const ACTIVE_CIRCLE = 44;
 
 export default function StudentTabBar({ tabs, activeTab, onTabChange }: Props) {
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
-  const [barWidth, setBarWidth] = useState(0);
   const isTablet = windowWidth >= 768;
-  const activeIndex = Math.max(0, tabs.findIndex((t) => t.id === activeTab));
-  const indicatorX = useSharedValue(0);
-  const tabWidth = barWidth > 0 ? barWidth / tabs.length : 0;
-  const iconOnly = tabWidth > 0 && tabWidth < 64;
-  const compactLabel = tabWidth > 0 && tabWidth < 84 && !iconOnly;
-
-  useEffect(() => {
-    indicatorX.value = withSpring(activeIndex, SPRING);
-  }, [activeIndex, indicatorX]);
-
-  const slideStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: indicatorX.value * tabWidth }],
-    width: Math.max(tabWidth - 8, 0),
-  }));
 
   const handleTabPress = (id: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -52,17 +37,11 @@ export default function StudentTabBar({ tabs, activeTab, onTabChange }: Props) {
     <View
       style={[
         styles.wrap,
-        { paddingBottom: Math.max(insets.bottom, 12) },
-        isTablet ? styles.wrapTablet : styles.wrapPhone,
+        { paddingBottom: Math.max(insets.bottom, 10) },
+        isTablet && styles.wrapTablet,
       ]}
     >
-      <View
-        style={[styles.bar, isTablet && styles.barTablet]}
-        onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}
-      >
-        {tabWidth > 0 ? (
-          <Animated.View style={[styles.indicator, slideStyle, { left: 4 }]} />
-        ) : null}
+      <View style={[styles.bar, isTablet && styles.barTablet]}>
         {tabs.map((tab) => {
           const active = tab.id === activeTab;
           const iconName = active ? tab.activeIcon : tab.icon;
@@ -75,24 +54,14 @@ export default function StudentTabBar({ tabs, activeTab, onTabChange }: Props) {
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
             >
-              <Ionicons
-                name={iconName}
-                size={iconOnly ? 20 : 22}
-                color={active ? STUDENT.navActiveText : STUDENT.navInactive}
-              />
-              {iconOnly ? null : (
-                <Text
-                  style={[
-                    styles.label,
-                    compactLabel && styles.labelCompact,
-                    active ? styles.labelActive : styles.labelInactive,
-                  ]}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.75}
-                >
-                  {tab.label}
-                </Text>
+              {active ? (
+                <Animated.View entering={FadeIn.duration(180)} style={styles.activeCircle}>
+                  <Ionicons name={iconName} size={ICON_SIZE} color={STUDENT.navActiveText} />
+                </Animated.View>
+              ) : (
+                <View style={styles.iconSlot}>
+                  <Ionicons name={iconName} size={ICON_SIZE} color={STUDENT.navInactive} />
+                </View>
               )}
             </Pressable>
           );
@@ -105,17 +74,15 @@ export default function StudentTabBar({ tabs, activeTab, onTabChange }: Props) {
 const styles = StyleSheet.create({
   wrap: {
     position: 'absolute',
-    bottom: 12,
-    zIndex: 50,
+    bottom: 0,
+    left: 0,
+    right: 0,
     alignItems: 'center',
-  },
-  wrapPhone: {
-    left: 16,
-    right: 16 + FAB_CLEARANCE,
+    paddingHorizontal: 16,
+    zIndex: 50,
   },
   wrapTablet: {
-    left: 24,
-    right: 24,
+    paddingHorizontal: 24,
   },
   bar: {
     flexDirection: 'row',
@@ -125,43 +92,31 @@ const styles = StyleSheet.create({
     borderRadius: STUDENT_RADIUS.xxl,
     borderWidth: 1,
     borderColor: STUDENT.tabBarBorder,
-    paddingVertical: 6,
+    paddingVertical: 8,
     paddingHorizontal: 4,
     ...STUDENT.shadow.lg,
   },
   barTablet: {
     maxWidth: TAB_BAR_MAX_WIDTH,
   },
-  indicator: {
-    position: 'absolute',
-    top: 6,
-    bottom: 6,
-    borderRadius: STUDENT_RADIUS.xl,
-    backgroundColor: STUDENT.navActiveBg,
-  },
   tab: {
     flex: 1,
-    minWidth: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 52,
-    zIndex: 1,
-    gap: 2,
-    paddingHorizontal: 2,
+    minHeight: ACTIVE_CIRCLE,
   },
-  label: {
-    fontSize: 10,
-    fontWeight: '700',
-    textAlign: 'center',
-    width: '100%',
+  activeCircle: {
+    width: ACTIVE_CIRCLE,
+    height: ACTIVE_CIRCLE,
+    borderRadius: ACTIVE_CIRCLE / 2,
+    backgroundColor: STUDENT.navActiveBg,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  labelCompact: {
-    fontSize: 9,
-  },
-  labelActive: {
-    color: STUDENT.navActiveText,
-  },
-  labelInactive: {
-    color: STUDENT.navInactive,
+  iconSlot: {
+    width: ACTIVE_CIRCLE,
+    height: ACTIVE_CIRCLE,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
