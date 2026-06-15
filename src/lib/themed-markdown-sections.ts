@@ -94,11 +94,41 @@ export function shouldRenderDocHeader(docTitle: string, entries: SectionHtmlEntr
   return !hasSection1Entry(entries);
 }
 
-/** Template sections use `### 2. Title` or `## 1. Title` — not plain `1. list item` body lines. */
+const TEMPLATE_SECTION_TITLE =
+  /^(Section\s+[A-G]|Learning|Instructions|Objectives|Chapter|Topic|Simple|Why|Prior|Step|Diagram|Real|Common|Concept|Key|Exam|Higher|Quick|Worksheet|Mock|Answer|Bloom|NCF|Materials|Procedure|Teacher|Student|Differentiation|Assessment|Expected|Reflection|Subtopic|Study|Practice|Safety|Observation|Creative|Activity|Homework|Story|Passage|Important|Overview|Revision|Tips|Title|Definition|Formula|Application|Thinking|Challenge|Support|Parent|Clear)/i;
+
+function looksLikeTemplateSectionTitle(title: string, num: number): boolean {
+  const t = title.trim();
+  if (t.length < 4) return false;
+  if (TEMPLATE_SECTION_TITLE.test(t)) return true;
+  // Super Admin templates use sections 1–11 with titled headers.
+  return num >= 1 && num <= 11;
+}
+
+/** Template sections: `### 2. Title`, `## 1. Title`, plain `1. Title`, or `Section 2: Title`. */
 export function parseMarkdownSectionHeading(line: string): { num: number; title: string } | null {
-  const md = line.trim().match(/^#{1,3}\s+(\d{1,2})\.\s+(.+)$/);
-  if (!md) return null;
-  return { num: Number(md[1]), title: md[2].trim() };
+  const t = line.trim();
+  if (!t) return null;
+
+  const md = t.match(/^#{1,4}\s+(\d{1,2})\.\s+(.+)$/i);
+  if (md) return { num: Number(md[1]), title: md[2].trim() };
+
+  const bold = t.match(/^\*{1,2}(\d{1,2})\.\s*(.+?)\*{1,2}\s*$/i);
+  if (bold) return { num: Number(bold[1]), title: bold[2].trim() };
+
+  const sectionLabel = t.match(/^Section\s+(\d{1,2})\s*[:\-—]\s*(.+)$/i);
+  if (sectionLabel) return { num: Number(sectionLabel[1]), title: sectionLabel[2].trim() };
+
+  const plain = t.match(/^(\d{1,2})\.\s+(.+)$/);
+  if (plain) {
+    const num = Number(plain[1]);
+    const title = plain[2].trim();
+    if (looksLikeTemplateSectionTitle(title, num)) {
+      return { num, title };
+    }
+  }
+
+  return null;
 }
 
 export type SectionHtmlEntry = { num: number; html: string };

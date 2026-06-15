@@ -193,16 +193,17 @@ export function parseNumberedTemplateSections(text: string): {
       const title = plainNumbered[2].trim();
       const looksLikeTemplateHeader =
         title.length >= 4 &&
-        /^(Section\s+[A-G]|Learning|Instructions|Objectives|Chapter|Topic|Simple|Why|Prior|Step|Diagram|Real|Common|Concept|Key|Exam|Higher|Quick|Worksheet|Mock|Answer|Bloom|NCF|Materials|Procedure|Teacher|Student|Differentiation|Assessment|Expected|Reflection|Subtopic|Study|Practice|Safety|Observation|Creative|Activity|Homework|Story|Passage)/i.test(
-          title
-        );
+        (/^(Section\s+[A-G]|Learning|Instructions|Objectives|Chapter|Topic|Simple|Why|Prior|Step|Diagram|Real|Common|Concept|Key|Exam|Higher|Quick|Worksheet|Mock|Answer|Bloom|NCF|Materials|Procedure|Teacher|Student|Differentiation|Assessment|Expected|Reflection|Subtopic|Study|Practice|Safety|Observation|Creative|Activity|Homework|Story|Passage|Important|Overview|Revision|Tips|Title|Definition|Formula|Application|Thinking|Challenge|Support|Parent|Clear)/i.test(
+          title,
+        ) ||
+          (num >= 1 && num <= 11));
       if (looksLikeTemplateHeader) {
         tryStartSection(num, title);
         continue;
       }
     }
 
-    const sectionLabel = t.match(/^Section\s+(\d{1,2})\s*:\s*(.+)$/i);
+    const sectionLabel = t.match(/^Section\s+(\d{1,2})\s*[:\-—]\s*(.+)$/i);
     if (sectionLabel) {
       tryStartSection(Number(sectionLabel[1]), sectionLabel[2]);
       continue;

@@ -191,6 +191,34 @@ function bodyHasVisibleOutput(html: string): boolean {
   return text.length > 0;
 }
 
+/** Themed markdown renderers fall back to plain prose when section headings are not detected. */
+function themedHtmlHasSectionCards(html: string): boolean {
+  const s = String(html || '').trim();
+  if (!s) return false;
+  if (/^<div class="prose prose-sm max-w-none/i.test(s)) return false;
+  return (
+    s.includes('-markdown') ||
+    (s.includes('rounded-xl') && /Section\s+\d+/i.test(s)) ||
+    s.includes('hero-title-card')
+  );
+}
+
+function resolveStudentNumberedOutput(
+  toolType: string,
+  display: string,
+  themedMarkdown?: (text: string) => string
+): string {
+  const cards = renderNumberedTemplateAsCards(toolType, display);
+  if (themedMarkdown) {
+    const themed = themedMarkdown(display);
+    if (themedHtmlHasSectionCards(themed)) return themed;
+    if (bodyHasVisibleOutput(cards)) return cards;
+    return themed;
+  }
+  if (bodyHasVisibleOutput(cards)) return cards;
+  return renderMarkdown(display);
+}
+
 export function getToolOutputPanelBorder(toolType: string): string | undefined {
   const borders: Record<string, string> = {
     'smart-study-guide-generator': '#c7d2fe',
@@ -245,6 +273,7 @@ export function renderAiToolOutputHtml(
   ]);
 
   const teacherHasSections = countNumberedTemplateSections(display) >= 1;
+  const studentHasSections = countNumberedTemplateSections(display) >= 1;
 
   let inner: string;
   if (variant === 'teacher') {
@@ -261,10 +290,8 @@ export function renderAiToolOutputHtml(
     }
   } else if (structured && structuredFullTools.has(toolType)) {
     inner = structured;
-  } else if (numberedTemplate && themedMarkdown) {
-    inner = themedMarkdown(display);
-  } else if (numberedTemplate) {
-    inner = renderNumberedTemplateAsCards(toolType, display);
+  } else if (numberedTemplate || studentHasSections) {
+    inner = resolveStudentNumberedOutput(toolType, display, themedMarkdown);
   } else if (structured) {
     inner = structured;
   } else if (themedMarkdown) {
