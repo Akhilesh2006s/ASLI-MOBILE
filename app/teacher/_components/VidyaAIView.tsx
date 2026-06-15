@@ -1,5 +1,4 @@
 import { Text, StyleSheet, ScrollView, Pressable, View, useWindowDimensions } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   useAnimatedStyle,
@@ -14,8 +13,8 @@ import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } fro
 const CONTENT_MAX = 1080;
 const GRID_GAP = TEACHER_SPACING.md;
 const TABLET_CARD_HEIGHT = 196;
-/** Floating tab bar height — just enough to scroll the last tool card above it. */
-const TAB_BAR_CLEARANCE = 56;
+/** Floating teacher tab bar height + gap so the last tool card is fully visible. */
+const TAB_BAR_CLEARANCE = 100;
 
 const TOOL_THEMES: Record<string, { bg: string; border: string; iconBg: string }> = {
   '#ea580c': { bg: '#FFF7ED', border: '#FDBA74', iconBg: '#FFEDD5' },
@@ -114,9 +113,8 @@ function ToolCard({
 
 export default function VidyaAIView() {
   const chatPress = usePressScale();
-  const insets = useSafeAreaInsets();
   const { isGrid, shellWidth, cardWidth } = useVidyaAILayout();
-  const scrollBottomPad = TAB_BAR_CLEARANCE + Math.max(insets.bottom, 8);
+  const scrollBottomPad = TAB_BAR_CLEARANCE + TEACHER_SPACING.lg;
 
   return (
     <ScrollView
@@ -201,7 +199,7 @@ const styles = StyleSheet.create({
   section: {
     paddingHorizontal: TEACHER_SPACING.lg,
     paddingTop: TEACHER_SPACING.md,
-    paddingBottom: 0,
+    paddingBottom: TEACHER_SPACING.sm,
   },
   sectionTitle: {
     ...TEACHER_TYPO.section,
