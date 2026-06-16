@@ -76,8 +76,12 @@ export default function AdminStatCard({
               <Ionicons name={icon} size={22} color="#fff" />
             </View>
             <View style={styles.textBlock}>
-              <Text style={styles.label}>{label}</Text>
-              <Text style={[typo.stat, styles.value]}>{displayValue}</Text>
+              <Text style={styles.label} numberOfLines={1}>
+                {label}
+              </Text>
+              <Text style={[typo.stat, styles.value]} numberOfLines={1}>
+                {displayValue}
+              </Text>
               {subtext ? <Text style={styles.subtext}>{subtext}</Text> : null}
             </View>
           </>
@@ -102,9 +106,9 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
   gradient: {
-    padding: 16,
-    minHeight: 96,
-    justifyContent: 'center',
+    padding: 14,
+    minHeight: 104,
+    justifyContent: 'flex-start',
   },
   gradientCompact: {
     minHeight: 88,

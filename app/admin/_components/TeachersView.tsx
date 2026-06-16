@@ -625,18 +625,10 @@ export default function TeachersView() {
       />
 
       <View style={[styles.statsRow, isTablet && styles.statsRowTablet]}>
-        <View style={isTablet ? styles.statSlotTablet : styles.statSlot}>
-          <AdminStatCard label="Total" value={totalTeachers} icon="people" gradientIndex={0} delay={0} grid={false} />
-        </View>
-        <View style={isTablet ? styles.statSlotTablet : styles.statSlot}>
-          <AdminStatCard label="Active" value={activeTeachers} icon="checkmark-circle" gradientIndex={2} delay={50} grid={false} />
-        </View>
-        <View style={isTablet ? styles.statSlotTablet : styles.statSlot}>
-          <AdminStatCard label="Depts" value={departments.length} icon="business" gradientIndex={3} delay={100} grid={false} />
-        </View>
-        <View style={isTablet ? styles.statSlotTablet : styles.statSlot}>
-          <AdminStatCard label="Subjects" value={totalSubjects} icon="book" gradientIndex={1} delay={150} grid={false} />
-        </View>
+        <AdminStatCard label="Total" value={totalTeachers} icon="people" gradientIndex={0} delay={0} />
+        <AdminStatCard label="Active" value={activeTeachers} icon="checkmark-circle" gradientIndex={2} delay={50} />
+        <AdminStatCard label="Depts" value={departments.length} icon="business" gradientIndex={3} delay={100} />
+        <AdminStatCard label="Subjects" value={totalSubjects} icon="book" gradientIndex={1} delay={150} />
       </View>
 
       <AdminGlassCard delay={80} style={{ marginBottom: spacing.md, padding: spacing.md }}>
@@ -1086,26 +1078,13 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    alignItems: 'flex-start',
     gap: 8,
     marginBottom: 12,
     width: '100%',
   },
   statsRowTablet: {
     flexWrap: 'nowrap',
-    alignItems: 'stretch',
     gap: 12,
-  },
-  statSlot: {
-    width: '47%',
-    flexGrow: 0,
-    flexShrink: 0,
-  },
-  statSlotTablet: {
-    flex: 1,
-    minWidth: 0,
-    flexGrow: 1,
-    flexShrink: 1,
   },
   listContent: {
     gap: GRID_GAP,

@@ -138,7 +138,7 @@ export default function StudentDashboard() {
     ]);
   };
 
-  const pad = { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 120 };
+  const pad = { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 140 };
   const { width: windowWidth } = useWindowDimensions();
   const isTablet = windowWidth >= 768;
   const homePad = isTablet ? { ...pad, paddingHorizontal: 20 } : pad;
@@ -284,11 +284,11 @@ const styles = StyleSheet.create({
   },
   eduottPane: {
     flex: 1,
-    paddingBottom: 120,
+    paddingBottom: 140,
   },
   examsPane: {
     flex: 1,
     minHeight: 0,
-    paddingBottom: 120,
+    paddingBottom: 140,
   },
 });

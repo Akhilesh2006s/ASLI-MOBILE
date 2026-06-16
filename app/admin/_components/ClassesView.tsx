@@ -23,7 +23,6 @@ import {
   AdminGlassCard,
   AdminEmptyState,
   AdminSkeletonList,
-  AdminFAB,
   AdminScalePressable,
   useAdminTheme,
   useAdminListLayout,
@@ -797,31 +796,21 @@ export default function ClassesView() {
       </View>
 
       <View style={[styles.statsRow, isTablet && styles.statsRowTablet]}>
-        <View style={isTablet ? styles.statSlotTablet : styles.statSlot}>
-          <AdminStatCard label="Classes" value={classes.length} icon="school" gradientIndex={0} delay={0} grid={false} />
-        </View>
-        <View style={isTablet ? styles.statSlotTablet : styles.statSlot}>
-          <AdminStatCard label="Students" value={totalStudents} icon="people" gradientIndex={1} delay={50} grid={false} />
-        </View>
-        <View style={isTablet ? styles.statSlotTablet : styles.statSlot}>
-          <AdminStatCard label="Avg size" value={avgClassSize} icon="stats-chart" gradientIndex={2} delay={100} grid={false} />
-        </View>
-        <View style={isTablet ? styles.statSlotTablet : styles.statSlot}>
-          <AdminStatCard label="Subjects" value={classSubjects.length} icon="book-outline" gradientIndex={3} delay={150} grid={false} />
-        </View>
+        <AdminStatCard label="Classes" value={classes.length} icon="school" gradientIndex={0} delay={0} />
+        <AdminStatCard label="Students" value={totalStudents} icon="people" gradientIndex={1} delay={50} />
+        <AdminStatCard label="Avg size" value={avgClassSize} icon="stats-chart" gradientIndex={2} delay={100} />
+        <AdminStatCard label="Subjects" value={classSubjects.length} icon="book-outline" gradientIndex={3} delay={150} />
       </View>
 
       {activeTab === 'classes' && (
         <View style={styles.classesTabContent}>
-          <AdminGlassCard delay={80} style={[styles.toolbarCard, { marginBottom: spacing.md, padding: spacing.md, gap: spacing.sm }]}>
+          <AdminGlassCard delay={80} style={{ marginBottom: spacing.md, padding: spacing.md, gap: spacing.sm }}>
             <View style={styles.toolbarFilters}>
-              <View>
-                <AdminSearchBar
-                  placeholder="Search classes..."
-                  value={searchTerm}
-                  onChangeText={setSearchTerm}
-                />
-              </View>
+              <AdminSearchBar
+                placeholder="Search classes..."
+                value={searchTerm}
+                onChangeText={setSearchTerm}
+              />
 
               <TouchableOpacity
                 style={[
@@ -1261,7 +1250,6 @@ export default function ClassesView() {
         </View>
       </Modal>
     </AdminScreenShell>
-    {activeTab === 'classes' ? <AdminFAB onPress={() => setIsAddClassModalVisible(true)} /> : null}
     </>
   );
 }
@@ -1275,33 +1263,16 @@ const styles = StyleSheet.create({
     width: '100%',
     flexDirection: 'column',
   },
-  toolbarCard: {
-    width: '100%',
-    alignSelf: 'stretch',
-  },
   statsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    alignItems: 'flex-start',
     gap: 8,
     marginBottom: 12,
     width: '100%',
   },
   statsRowTablet: {
     flexWrap: 'nowrap',
-    alignItems: 'stretch',
     gap: 12,
-  },
-  statSlot: {
-    width: '47%',
-    flexGrow: 0,
-    flexShrink: 0,
-  },
-  statSlotTablet: {
-    flex: 1,
-    minWidth: 0,
-    flexGrow: 1,
-    flexShrink: 1,
   },
   listContent: {
     gap: GRID_GAP,
@@ -1375,17 +1346,6 @@ const styles = StyleSheet.create({
   },
   tabBtnTextActive: {
     color: '#fff',
-  },
-  toolbarCard: {
-    marginHorizontal: 16,
-    marginBottom: 14,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    gap: 10,
-    elevation: 2,
   },
   searchWrap: {
     flexDirection: 'row',

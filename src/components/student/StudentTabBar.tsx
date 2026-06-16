@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,8 +20,8 @@ type Props = {
 };
 
 const TAB_BAR_MAX_WIDTH = 520;
-const ICON_SIZE = 22;
-const ACTIVE_CIRCLE = 44;
+const ICON_SIZE = 20;
+const ACTIVE_CIRCLE = 36;
 
 export default function StudentTabBar({ tabs, activeTab, onTabChange }: Props) {
   const insets = useSafeAreaInsets();
@@ -63,6 +63,14 @@ export default function StudentTabBar({ tabs, activeTab, onTabChange }: Props) {
                   <Ionicons name={iconName} size={ICON_SIZE} color={STUDENT.navInactive} />
                 </View>
               )}
+              <Text
+                style={[styles.label, active ? styles.labelActive : styles.labelInactive]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.75}
+              >
+                {tab.label}
+              </Text>
             </Pressable>
           );
         })}
@@ -92,7 +100,7 @@ const styles = StyleSheet.create({
     borderRadius: STUDENT_RADIUS.xxl,
     borderWidth: 1,
     borderColor: STUDENT.tabBarBorder,
-    paddingVertical: 8,
+    paddingVertical: 6,
     paddingHorizontal: 4,
     ...STUDENT.shadow.lg,
   },
@@ -103,7 +111,9 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: ACTIVE_CIRCLE,
+    gap: 2,
+    paddingVertical: 2,
+    minWidth: 0,
   },
   activeCircle: {
     width: ACTIVE_CIRCLE,
@@ -118,5 +128,19 @@ const styles = StyleSheet.create({
     height: ACTIVE_CIRCLE,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  label: {
+    fontSize: 9,
+    textAlign: 'center',
+    width: '100%',
+    paddingHorizontal: 1,
+  },
+  labelActive: {
+    color: STUDENT.navActiveText,
+    fontWeight: '800',
+  },
+  labelInactive: {
+    color: STUDENT.navInactive,
+    fontWeight: '600',
   },
 });
