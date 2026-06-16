@@ -199,7 +199,6 @@ export default function ProfileView({ user, stats, onNavigate, onLogout }: Props
             <Text style={styles.roleText}>Teacher</Text>
           </View>
           <Text style={styles.meta}>ID: {user?.employeeId || user?._id?.slice(-6) || '—'}</Text>
-          {user?.schoolName ? <Text style={styles.meta}>{user.schoolName}</Text> : null}
         </LinearGradient>
       </Animated.View>
 

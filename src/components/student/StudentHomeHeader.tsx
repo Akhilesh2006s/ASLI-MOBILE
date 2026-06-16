@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
@@ -10,6 +10,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
+import { getSchoolBranding } from '../../lib/school-branding';
 import { STUDENT, STUDENT_RADIUS, studentGreeting } from '../../theme/student';
 
 type Props = {
@@ -25,7 +26,7 @@ export default function StudentHomeHeader({ user, streak = 0, onAvatarPress, onL
   const firstName = user?.fullName?.split(' ')[0] || user?.email?.split('@')[0] || 'Student';
   const classLabel = user?.className || user?.class;
   const section = user?.section;
-  const school = user?.schoolName || user?.school?.name || 'Your School';
+  const branding = getSchoolBranding(user);
   const dateStr = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'short',
@@ -83,23 +84,36 @@ export default function StudentHomeHeader({ user, streak = 0, onAvatarPress, onL
           </View>
         </View>
 
+        {branding ? (
+          <View style={styles.schoolRow}>
+            <View style={styles.schoolLogoWrap}>
+              {branding.schoolLogo ? (
+                <Image
+                  source={{ uri: branding.schoolLogo }}
+                  style={styles.schoolLogoImg}
+                  resizeMode="contain"
+                />
+              ) : (
+                <Ionicons name="school-outline" size={18} color="rgba(255,255,255,0.92)" />
+              )}
+            </View>
+            <Text style={styles.schoolName} numberOfLines={2}>
+              {branding.schoolName || 'Your School'}
+            </Text>
+          </View>
+        ) : null}
+
+        {classLabel ? (
           <View style={styles.badges}>
-            <View style={styles.badge}>
-              <Ionicons name="school-outline" size={12} color="rgba(255,255,255,0.9)" />
-              <Text style={styles.badgeText} numberOfLines={1}>
-                {school}
+            <View style={[styles.badge, styles.badgeAccent]}>
+              <Ionicons name="layers-outline" size={12} color={STUDENT.textOnPrimary} />
+              <Text style={styles.badgeTextAccent}>
+                Class {classLabel}
+                {section ? ` · ${section}` : ''}
               </Text>
             </View>
-            {classLabel ? (
-              <View style={[styles.badge, styles.badgeAccent]}>
-                <Ionicons name="layers-outline" size={12} color={STUDENT.textOnPrimary} />
-                <Text style={styles.badgeTextAccent}>
-                  Class {classLabel}
-                  {section ? ` · ${section}` : ''}
-                </Text>
-              </View>
-            ) : null}
           </View>
+        ) : null}
 
         {streak > 0 ? (
           <Animated.View style={[styles.streak, streakAnimStyle]}>
@@ -178,7 +192,45 @@ const styles = StyleSheet.create({
     borderColor: STUDENT.textOnPrimary,
   },
   avatarText: { color: STUDENT.textOnPrimary, fontWeight: '800', fontSize: 16 },
-  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 16 },
+  schoolRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 16,
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: STUDENT_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
+  schoolLogoWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    flexShrink: 0,
+  },
+  schoolLogoImg: {
+    width: 34,
+    height: 34,
+  },
+  schoolName: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: 15,
+    fontWeight: '800',
+    color: STUDENT.textOnPrimary,
+    letterSpacing: 0.1,
+    lineHeight: 20,
+  },
+  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -187,12 +239,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: STUDENT_RADIUS.full,
-    maxWidth: '100%',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
   },
   badgeAccent: { backgroundColor: 'rgba(255,255,255,0.18)' },
-  badgeText: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.95)' },
   badgeTextAccent: { fontSize: 11, fontWeight: '700', color: STUDENT.textOnPrimary },
   streak: {
     flexDirection: 'row',

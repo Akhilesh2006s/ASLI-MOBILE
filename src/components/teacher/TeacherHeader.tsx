@@ -16,6 +16,7 @@ import {
   formatTeacherTimeGreeting,
 } from '../../lib/teacher-text';
 import { TEACHER, TEACHER_SPACING, teacherSubjectBadgePalette } from '../../theme/teacher';
+import SchoolBrandRow from '../ui/SchoolBrandRow';
 import type { BackendStatus } from '../../services/api/teacherService';
 
 type Props = {
@@ -25,6 +26,8 @@ type Props = {
   title?: string;
   /** Teacher full name shown on the line below the greeting. */
   displayName?: string;
+  /** User profile — used to show school logo + name for the member's school. */
+  user?: any;
   /** @deprecated Prefer displayName */
   userName?: string;
   subjects?: string[];
@@ -43,6 +46,7 @@ export default function TeacherHeader({
   variant = 'home',
   title,
   displayName,
+  user,
   userName,
   subjects = [],
   nextClassLabel,
@@ -92,9 +96,11 @@ export default function TeacherHeader({
           { paddingTop: Math.max(insets.top, TEACHER_SPACING.sm) + TEACHER_SPACING.xs },
         ]}
       >
-        <Text style={styles.compactTitle} numberOfLines={1}>
-          {title || ' '}
-        </Text>
+        <View style={styles.compactMain}>
+          <Text style={styles.compactTitle} numberOfLines={1}>
+            {title || ' '}
+          </Text>
+        </View>
         {onLogout ? (
           <Pressable
             onPress={onLogout}
@@ -132,6 +138,7 @@ export default function TeacherHeader({
         <View style={styles.textBlock}>
           <Text style={styles.greeting}>{greetingLine}</Text>
           <Text style={styles.teacherName}>{teacherNameLine}</Text>
+          <SchoolBrandRow user={user} variant="onLight" style={styles.schoolBrand} fullWidth />
           {subjectLabels.length > 0 ? (
             <View style={styles.badges}>
               {subjectLabels.map((label, index) => {
@@ -196,8 +203,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: TEACHER.surfaceBorder,
   },
-  compactTitle: {
+  compactMain: {
     flex: 1,
+    minWidth: 0,
+    paddingRight: TEACHER_SPACING.sm,
+  },
+  compactTitle: {
     fontSize: 20,
     fontWeight: '800',
     color: TEACHER.text,
@@ -277,6 +288,11 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
     lineHeight: 30,
     marginTop: 6,
+  },
+  schoolBrand: {
+    marginTop: 10,
+    alignSelf: 'flex-start',
+    maxWidth: '100%',
   },
   badges: {
     flexDirection: 'row',

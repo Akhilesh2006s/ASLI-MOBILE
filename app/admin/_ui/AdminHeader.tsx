@@ -6,14 +6,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { adminGreeting } from '../../../src/theme/admin';
 import { useAdminTheme } from './useAdminTheme';
 import AdminScalePressable from './AdminScalePressable';
+import SchoolBrandRow from '../../../src/components/ui/SchoolBrandRow';
 
 type Props = {
   userName: string;
   subtitle?: string;
+  schoolUser?: { schoolName?: string; schoolLogo?: string };
+  showSchoolBrand?: boolean;
   onMenu?: () => void;
 };
 
-export default function AdminHeader({ userName, subtitle, onMenu }: Props) {
+export default function AdminHeader({ userName, subtitle, schoolUser, showSchoolBrand = false, onMenu }: Props) {
   const { colors, radius } = useAdminTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -50,6 +53,9 @@ export default function AdminHeader({ userName, subtitle, onMenu }: Props) {
               <Text style={styles.greeting}>
                 {adminGreeting()}, {firstName}
               </Text>
+              {showSchoolBrand ? (
+                <SchoolBrandRow user={schoolUser} variant="onPrimary" style={styles.schoolBrand} fullWidth />
+              ) : null}
               <Text style={[styles.roleLabel, compact ? styles.roleLabelCompact : null]}>
                 Admin Dashboard
               </Text>
@@ -145,6 +151,11 @@ const styles = StyleSheet.create({
   },
   roleLabelCompact: {
     fontSize: 20,
+  },
+  schoolBrand: {
+    marginTop: 6,
+    marginBottom: 4,
+    maxWidth: '100%',
   },
   subtitle: {
     fontSize: 13,

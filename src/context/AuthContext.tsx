@@ -64,7 +64,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const data = await authService.login(payload);
     setToken(data?.token || null);
     setRole(data?.user?.role || null);
-    setUser(data?.user || null);
+    try {
+      const me = await authService.me();
+      setUser(me?.user || data?.user || null);
+      if (me?.user?.role) setRole(me.user.role);
+    } catch {
+      setUser(data?.user || null);
+    }
     return data;
   };
 

@@ -374,6 +374,7 @@ export default function TeacherDashboard() {
         variant={showHomeHeader ? 'home' : 'compact'}
         title={headerTitle}
         displayName={resolveTeacherDisplayName(user)}
+        user={user}
         subjects={showHomeHeader ? subjects : []}
         nextClassLabel={showHomeHeader ? nextClass?.label : undefined}
         countdown={showHomeHeader ? nextClass?.countdown : undefined}

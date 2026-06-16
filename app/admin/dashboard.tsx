@@ -30,7 +30,7 @@ import AdminSidebar from './_components/AdminSidebar';
 import { AdminHeader, AdminTabBar, useAdminTheme } from './_ui';
 
 export default function AdminDashboard() {
-  const { signOut } = useAuth();
+  const { signOut, user: authUser } = useAuth();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
   const { colors, spacing } = useAdminTheme();
   const isTablet = useIsTablet();
@@ -39,6 +39,11 @@ export default function AdminDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [userName, setUserName] = useState('Admin');
+  const [schoolProfile, setSchoolProfile] = useState<{ schoolName?: string; schoolLogo?: string } | null>(null);
+  const schoolUser =
+    authUser?.role === 'admin'
+      ? { schoolName: authUser.schoolName, schoolLogo: authUser.schoolLogo }
+      : schoolProfile;
 
   useBackNavigation('/admin/dashboard', true);
 
@@ -76,6 +81,10 @@ export default function AdminDashboard() {
       if (data?.user?.role === 'admin') {
         setIsAuthenticated(true);
         setUserName(data.user.fullName || 'Admin');
+        setSchoolProfile({
+          schoolName: data.user.schoolName,
+          schoolLogo: data.user.schoolLogo,
+        });
       } else {
         router.replace('/auth/login');
       }
@@ -181,6 +190,8 @@ export default function AdminDashboard() {
     >
       <AdminHeader
         userName={userName}
+        schoolUser={schoolUser ?? undefined}
+        showSchoolBrand={isDashboard}
         subtitle={isDashboard ? 'Dashboard' : adminNavLabel(currentView)}
         onMenu={isTablet ? undefined : () => setMenuOpen(true)}
       />
