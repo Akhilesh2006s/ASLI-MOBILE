@@ -11,6 +11,8 @@ type Props = {
   rightLabel?: string;
   onRightPress?: () => void;
   subtitle?: string;
+  /** Larger title/subtitle on tablet tool screens */
+  tabletUi?: boolean;
 };
 
 export default function StudentScreenHeader({
@@ -19,12 +21,13 @@ export default function StudentScreenHeader({
   rightLabel,
   onRightPress,
   subtitle,
+  tabletUi,
 }: Props) {
   return (
     <Animated.View entering={FadeInDown.duration(200)}>
       <LinearGradient
         colors={[...STUDENT.heroGradient]}
-        style={styles.wrap}
+        style={[styles.wrap, tabletUi && styles.wrapTablet]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
@@ -35,14 +38,14 @@ export default function StudentScreenHeader({
             accessibilityLabel="Go back"
             accessibilityRole="button"
           >
-            <Ionicons name="chevron-back" size={24} color={STUDENT.textOnPrimary} />
+            <Ionicons name="chevron-back" size={tabletUi ? 26 : 24} color={STUDENT.textOnPrimary} />
           </Pressable>
           <View style={styles.titleWrap}>
-            <Text style={styles.title} numberOfLines={1}>
+            <Text style={[styles.title, tabletUi && styles.titleTablet]} numberOfLines={1}>
               {title}
             </Text>
             {subtitle ? (
-              <Text style={styles.subtitle} numberOfLines={1}>
+              <Text style={[styles.subtitle, tabletUi && styles.subtitleTablet]} numberOfLines={tabletUi ? 2 : 1}>
                 {subtitle}
               </Text>
             ) : null}
@@ -71,6 +74,10 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: STUDENT_RADIUS.xxl,
     borderBottomRightRadius: STUDENT_RADIUS.xxl,
   },
+  wrapTablet: {
+    paddingVertical: 22,
+    paddingHorizontal: 28,
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -90,11 +97,19 @@ const styles = StyleSheet.create({
     color: STUDENT.textOnPrimary,
     textAlign: 'center',
   },
+  titleTablet: {
+    fontSize: 26,
+    lineHeight: 32,
+  },
   subtitle: {
     ...STUDENT_TYPO.caption,
     color: 'rgba(255,255,255,0.82)',
     marginTop: 2,
     textAlign: 'center',
+  },
+  subtitleTablet: {
+    fontSize: 14,
+    lineHeight: 20,
   },
   rightBtn: {
     width: 44,

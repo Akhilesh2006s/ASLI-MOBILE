@@ -99,7 +99,10 @@ export function renderSmartStudyGuideMarkdown(text: string): string {
       return;
     }
     const style = sectionStyle(currentSection || 1);
-    const bodyHtml = bodyLinesToHtml(bodyLines);
+    let bodyHtml = bodyLinesToHtml(bodyLines);
+    if (currentSection === 10 && bodyHtml.trim()) {
+      bodyHtml = `<div class="practice-list-tablet">${bodyHtml}</div>`;
+    }
     if (bodyHtml.trim()) {
       sectionEntries.push({
         num: currentSection,

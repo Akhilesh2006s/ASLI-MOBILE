@@ -33,6 +33,7 @@ import {
 } from '../../../src/hooks/useBackNavigation';
 import AiToolContentRenderer from '../../../src/components/ai-tools/AiToolContentRenderer';
 import {
+  aiToolTabletPageStyles,
   aiToolTabletStyles,
   useAiToolTabletLayout,
 } from '../../../src/components/ai-tools/ai-tool-tablet-layout';
@@ -150,22 +151,28 @@ function FormSection({
   subtitle,
   accent,
   children,
+  tabletUi,
 }: {
   title: string;
   subtitle?: string;
   accent: string;
   children: ReactNode;
+  tabletUi?: boolean;
 }) {
   return (
     <View style={styles.sectionCard}>
       <View style={styles.sectionHeader}>
         <View style={[styles.sectionAccent, { backgroundColor: accent }]} />
-        <View style={styles.sectionHeaderText}>
-          <Text style={styles.sectionTitle}>{title}</Text>
-          {subtitle ? <Text style={styles.sectionSubtitle}>{subtitle}</Text> : null}
+        <View style={[styles.sectionHeaderText, tabletUi && aiToolTabletPageStyles.sectionHeaderText]}>
+          <Text style={[styles.sectionTitle, tabletUi && aiToolTabletPageStyles.sectionTitle]}>{title}</Text>
+          {subtitle ? (
+            <Text style={[styles.sectionSubtitle, tabletUi && aiToolTabletPageStyles.sectionSubtitle]}>
+              {subtitle}
+            </Text>
+          ) : null}
         </View>
       </View>
-      <View style={styles.sectionBody}>{children}</View>
+      <View style={[styles.sectionBody, tabletUi && aiToolTabletPageStyles.sectionBody]}>{children}</View>
     </View>
   );
 }
@@ -175,28 +182,36 @@ function ParametersSummaryBar({
   accent,
   expanded,
   onToggle,
+  tabletUi,
 }: {
   summary: string;
   accent: string;
   expanded: boolean;
   onToggle: () => void;
+  tabletUi?: boolean;
 }) {
   return (
-    <Pressable style={styles.paramsSummary} onPress={onToggle}>
+    <Pressable
+      style={[styles.paramsSummary, tabletUi && aiToolTabletPageStyles.paramsSummary]}
+      onPress={onToggle}
+    >
       <View style={[styles.paramsSummaryIcon, { backgroundColor: `${accent}22` }]}>
-        <Ionicons name="options-outline" size={18} color={accent} />
+        <Ionicons name="options-outline" size={tabletUi ? 20 : 18} color={accent} />
       </View>
       <View style={styles.paramsSummaryText}>
-        <Text style={styles.paramsSummaryTitle}>
+        <Text style={[styles.paramsSummaryTitle, tabletUi && aiToolTabletPageStyles.paramsSummaryTitle]}>
           {expanded ? 'Hide parameters' : 'Show parameters'}
         </Text>
         {!expanded && summary ? (
-          <Text style={styles.paramsSummaryMeta} numberOfLines={1}>
+          <Text
+            style={[styles.paramsSummaryMeta, tabletUi && aiToolTabletPageStyles.paramsSummaryMeta]}
+            numberOfLines={tabletUi ? 2 : 1}
+          >
             {summary}
           </Text>
         ) : null}
       </View>
-      <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={18} color={TEACHER.textMuted} />
+      <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={tabletUi ? 20 : 18} color={TEACHER.textMuted} />
     </Pressable>
   );
 }
@@ -205,13 +220,15 @@ function TeacherToolHeader({
   title,
   subtitle,
   onBack,
+  tabletUi,
 }: {
   title: string;
   subtitle?: string;
   onBack: () => void;
+  tabletUi?: boolean;
 }) {
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, tabletUi && styles.headerTablet]}>
       <LinearGradient
         colors={[...TEACHER.headerGradient]}
         start={{ x: 0, y: 0 }}
@@ -219,14 +236,14 @@ function TeacherToolHeader({
         style={StyleSheet.absoluteFill}
       />
       <Pressable onPress={onBack} style={styles.backBtn} hitSlop={8}>
-        <Ionicons name="arrow-back" size={22} color={TEACHER.text} />
+        <Ionicons name="arrow-back" size={tabletUi ? 24 : 22} color={TEACHER.text} />
       </Pressable>
       <View style={styles.headerText}>
-        <Text style={styles.headerTitle} numberOfLines={1}>
+        <Text style={[styles.headerTitle, tabletUi && styles.headerTitleTablet]} numberOfLines={1}>
           {title}
         </Text>
         {subtitle ? (
-          <Text style={styles.headerSubtitle} numberOfLines={2}>
+          <Text style={[styles.headerSubtitle, tabletUi && styles.headerSubtitleTablet]} numberOfLines={tabletUi ? 2 : 2}>
             {subtitle}
           </Text>
         ) : null}
@@ -252,7 +269,7 @@ export default function TeacherToolPage() {
   const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [paramsExpanded, setParamsExpanded] = useState(true);
   const scrollY = useSharedValue(0);
-  const { isTablet } = useAiToolTabletLayout();
+  const { isTablet, useSplitLayout } = useAiToolTabletLayout();
   const { scrollRef, onOutputLayout, queueScrollToOutput, resetOutputScroll } =
     useAiToolOutputScroll(isTablet);
   const [assignedSubjectNames, setAssignedSubjectNames] = useState<string[]>([]);
@@ -777,7 +794,7 @@ export default function TeacherToolPage() {
           <View style={[styles.fieldIconWrap, { backgroundColor: `${accent}22` }]}>
             <Ionicons name={icon} size={16} color={accent} />
           </View>
-          <Text style={styles.fieldLabel}>
+          <Text style={[styles.fieldLabel, isTablet && aiToolTabletPageStyles.fieldLabel]}>
             {label.replace(' *', '')}
             {required ? <Text style={styles.required}> *</Text> : null}
           </Text>
@@ -790,7 +807,7 @@ export default function TeacherToolPage() {
           disabled={disabled}
         >
           <Text
-            style={[styles.dropdownValue, isPlaceholder && styles.dropdownPlaceholder]}
+            style={[styles.dropdownValue, isPlaceholder && styles.dropdownPlaceholder, isTablet && aiToolTabletPageStyles.dropdownValue]}
             numberOfLines={2}
           >
             {display}
@@ -839,13 +856,13 @@ export default function TeacherToolPage() {
             <View style={[styles.fieldIconWrap, { backgroundColor: `${accent}22` }]}>
               <Ionicons name={FIELD_ICONS[field.name] || 'create-outline'} size={16} color={accent} />
             </View>
-            <Text style={styles.fieldLabel}>
+            <Text style={[styles.fieldLabel, isTablet && aiToolTabletPageStyles.fieldLabel]}>
               {field.label.replace(' *', '')}
               {field.required ? <Text style={styles.required}> *</Text> : null}
             </Text>
           </View>
           <TextInput
-            style={[styles.textArea, styles.textInput]}
+            style={[styles.textArea, styles.textInput, isTablet && aiToolTabletPageStyles.textInput]}
             placeholder={field.placeholder}
             value={value}
             onChangeText={(text) => handleInputChange(field.name, text)}
@@ -864,13 +881,13 @@ export default function TeacherToolPage() {
           <View style={[styles.fieldIconWrap, { backgroundColor: `${accent}22` }]}>
             <Ionicons name={FIELD_ICONS[field.name] || 'options-outline'} size={16} color={accent} />
           </View>
-          <Text style={styles.fieldLabel}>
+          <Text style={[styles.fieldLabel, isTablet && aiToolTabletPageStyles.fieldLabel]}>
             {field.label.replace(' *', '')}
             {field.required ? <Text style={styles.required}> *</Text> : null}
           </Text>
         </View>
         <TextInput
-          style={styles.textInput}
+          style={[styles.textInput, isTablet && aiToolTabletPageStyles.textInput]}
           placeholder={field.placeholder}
           value={value}
           onChangeText={(text) => handleInputChange(field.name, text)}
@@ -908,12 +925,13 @@ export default function TeacherToolPage() {
           accent={accent}
           expanded={paramsExpanded}
           onToggle={() => setParamsExpanded((prev) => !prev)}
+          tabletUi={isTablet}
         />
       ) : null}
 
       {showParameterForms ? (
         <>
-          <FormSection title="Tool Parameters" subtitle="Board and class details" accent={accent}>
+          <FormSection title="Tool Parameters" subtitle="Board and class details" accent={accent} tabletUi={isTablet}>
             {renderDropdownTrigger(
               'board',
               'Board',
@@ -928,7 +946,7 @@ export default function TeacherToolPage() {
             {isStoryLanguageTool(toolType) ? (
               <View style={styles.infoBanner}>
                 <Ionicons name="information-circle" size={18} color={TEACHER.primaryLight} />
-                <Text style={styles.infoBannerText}>
+                <Text style={[styles.infoBannerText, isTablet && aiToolTabletPageStyles.infoBannerText]}>
                   English and Hindi subjects only for this tool.
                 </Text>
               </View>
@@ -936,13 +954,18 @@ export default function TeacherToolPage() {
           </FormSection>
 
           {topicFields.length > 0 ? (
-            <FormSection title="Topic details" subtitle="Pick chapter and sub-topic from syllabus" accent={accent}>
+            <FormSection
+              title="Topic details"
+              subtitle="Pick chapter and sub-topic from syllabus"
+              accent={accent}
+              tabletUi={isTablet}
+            >
               {topicFields.map(renderField)}
             </FormSection>
           ) : null}
 
           {extraFields.length > 0 ? (
-            <FormSection title="Options" subtitle="Customize your output" accent={accent}>
+            <FormSection title="Options" subtitle="Customize your output" accent={accent} tabletUi={isTablet}>
               {extraFields.map(renderField)}
             </FormSection>
           ) : null}
@@ -960,8 +983,8 @@ export default function TeacherToolPage() {
       {isGenerating ? (
         <View style={styles.generatingBox}>
           <ActivityIndicator size="large" color={accent} />
-          <Text style={styles.generatingTitle}>Generating Content...</Text>
-          <Text style={styles.generatingText}>Please wait while we prepare your content</Text>
+          <Text style={[styles.generatingTitle, isTablet && aiToolTabletPageStyles.generatingTitle]}>Generating Content...</Text>
+          <Text style={[styles.generatingText, isTablet && aiToolTabletPageStyles.generatingText]}>Please wait while we prepare your content</Text>
         </View>
       ) : generatedContent ? (
         <View style={styles.outputWrap} collapsable={false}>
@@ -977,10 +1000,10 @@ export default function TeacherToolPage() {
       ) : (
         <View style={styles.emptyResult}>
           <Ionicons name="sparkles" size={28} color={TEACHER.navInactive} />
-          <Text style={styles.emptyResultTitle}>
+          <Text style={[styles.emptyResultTitle, isTablet && aiToolTabletPageStyles.emptyResultTitle]}>
             {fallbackEmptyMessage || 'Generated content will appear here'}
           </Text>
-          <Text style={styles.emptyResultText}>Choose tool parameters and tap Generate.</Text>
+          <Text style={[styles.emptyResultText, isTablet && aiToolTabletPageStyles.emptyResultText]}>Choose tool parameters and tap Generate.</Text>
         </View>
       )}
     </View>
@@ -995,6 +1018,7 @@ export default function TeacherToolPage() {
           title={config.name}
           subtitle={config.description}
           onBack={goBack}
+          tabletUi={isTablet}
         />
       </Animated.View>
 
@@ -1009,7 +1033,7 @@ export default function TeacherToolPage() {
           <Pressable onPress={goBack} style={styles.backBtn} hitSlop={8}>
             <Ionicons name="arrow-back" size={22} color={TEACHER.text} />
           </Pressable>
-          <Text style={styles.compactHeaderTitle} numberOfLines={1}>
+          <Text style={[styles.compactHeaderTitle, isTablet && aiToolTabletPageStyles.compactHeaderTitle]} numberOfLines={1}>
             {config.name}
           </Text>
           <View style={styles.headerSpacer} />
@@ -1021,7 +1045,7 @@ export default function TeacherToolPage() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
       >
-        {isTablet ? (
+        {useSplitLayout ? (
           <View style={aiToolTabletStyles.tabletSplit}>
             <ScrollView
               style={aiToolTabletStyles.tabletFormPane}
@@ -1044,7 +1068,11 @@ export default function TeacherToolPage() {
         <AnimatedScrollView
           ref={scrollRef}
           style={styles.scroll}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
+          contentContainerStyle={[
+            styles.scrollContent,
+            isTablet && aiToolTabletPageStyles.scrollContent,
+            { paddingBottom: 100 },
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           onScroll={scrollHandler}
@@ -1055,7 +1083,7 @@ export default function TeacherToolPage() {
         </AnimatedScrollView>
         )}
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, isTablet && aiToolTabletPageStyles.footer]}>
           <TouchableOpacity
             style={[styles.generateBtn, isGenerating && styles.generateBtnDisabled]}
             onPress={handleGenerate}
@@ -1064,19 +1092,19 @@ export default function TeacherToolPage() {
           >
             <LinearGradient
               colors={[accent, `${accent}DD`]}
-              style={styles.generateBtnGradient}
+              style={[styles.generateBtnGradient, isTablet && aiToolTabletPageStyles.generateBtnGradient]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             >
               {isGenerating ? (
                 <>
                   <ActivityIndicator size="small" color={TEACHER.textOnPrimary} />
-                  <Text style={styles.generateBtnText}>Generating...</Text>
+                  <Text style={[styles.generateBtnText, isTablet && aiToolTabletPageStyles.generateBtnText]}>Generating...</Text>
                 </>
               ) : (
                 <>
-                  <Ionicons name="sparkles" size={20} color={TEACHER.textOnPrimary} />
-                  <Text style={styles.generateBtnText}>Generate with AI</Text>
+                  <Ionicons name="sparkles" size={isTablet ? 22 : 20} color={TEACHER.textOnPrimary} />
+                  <Text style={[styles.generateBtnText, isTablet && aiToolTabletPageStyles.generateBtnText]}>Generate with AI</Text>
                 </>
               )}
             </LinearGradient>
@@ -1139,6 +1167,10 @@ const styles = StyleSheet.create({
     borderBottomColor: TEACHER.surfaceBorder,
     overflow: 'hidden',
   },
+  headerTablet: {
+    paddingHorizontal: 28,
+    paddingVertical: 18,
+  },
   backBtn: {
     width: 40,
     height: 40,
@@ -1149,7 +1181,9 @@ const styles = StyleSheet.create({
   },
   headerText: { flex: 1 },
   headerTitle: { ...TEACHER_TYPO.section, fontSize: 18, color: TEACHER.text },
+  headerTitleTablet: { fontSize: 24, lineHeight: 30 },
   headerSubtitle: { ...TEACHER_TYPO.caption, color: TEACHER.textMuted, marginTop: 2 },
+  headerSubtitleTablet: { fontSize: 14, lineHeight: 20 },
   headerSpacer: { width: 40 },
   compactHeader: {
     borderBottomWidth: 1,

@@ -24,7 +24,7 @@ export function themedSection1TitleCardHtml(opts: {
 }): string {
   const safeTitle = stripAiToolGenerationLabel(opts.title, 'Untitled');
   return (
-    `<section class="mb-3 overflow-hidden rounded-xl border ${opts.border} ${opts.bg} shadow-sm">` +
+    `<section class="mb-3 overflow-hidden rounded-xl border ${opts.border} ${opts.bg} shadow-sm ai-tool-section-card ai-tool-section-full">` +
     `<div class="px-3 py-3 sm:px-4 sm:py-3.5">` +
     `<p class="text-[9px] font-bold uppercase tracking-wider ${opts.labelClass}">Section 1</p>` +
     `<span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold mt-1 ${opts.badgeClass}">${opts.badge}</span>` +
@@ -44,7 +44,7 @@ export function themedNumberedSectionCardHtml(opts: {
 }): string {
   const label = opts.sectionTitle.trim() || `Section ${opts.sectionNum}`;
   return (
-    `<section class="mb-3 overflow-hidden rounded-xl border ${opts.border} ${opts.bg} shadow-sm">` +
+    `<section class="mb-3 overflow-hidden rounded-xl border ${opts.border} ${opts.bg} shadow-sm ai-tool-section-card${opts.sectionNum === 5 || opts.sectionNum === 6 || opts.sectionNum === 10 ? ' ai-tool-section-full' : ''}">` +
     `<header class="border-b border-slate-100/80 bg-white/60 px-3 py-2">` +
     `<p class="text-[9px] font-bold uppercase tracking-wider ${opts.labelClass}">Section ${opts.sectionNum}</p>` +
     `<h3 class="text-sm font-bold ${opts.titleClass}">${formatInlineMarkdown(label)}</h3>` +
@@ -132,6 +132,68 @@ export function parseMarkdownSectionHeading(line: string): { num: number; title:
 }
 
 export type SectionHtmlEntry = { num: number; html: string };
+
+/** Wrap numbered section cards in a grid (2 columns on tablet via CSS). */
+export function joinSectionCardsInGrid(sectionHtmls: string[]): string {
+  const joined = sectionHtmls.filter(Boolean).join('');
+  if (!joined.trim()) return '';
+  return markHeavyAiToolSectionsFullWidth(
+    `<div class="ai-tool-sections-grid">${joined}</div>`,
+  );
+}
+
+/** Tall / list-heavy sections span full width so short cards are not stretched beside them. */
+export function markHeavyAiToolSectionsFullWidth(html: string): string {
+  return html.replace(
+    /<section class="([^"]*\bai-tool-section-card\b[^"]*)"([^>]*)>([\s\S]*?)<\/section>/gi,
+    (full, className, attrs, body) => {
+      if (className.includes('ai-tool-section-full')) return full;
+      const plain = body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      const listItems = body.match(/<li[\s>]/gi)?.length ?? 0;
+      const heavy =
+        plain.length > 300 ||
+        listItems > 4 ||
+        /practice|mcq|optionRow|checkList|numberedSteps|stepRow|conceptCard|definitionRow|formulaRow|flashcard|practiceCard|practice-list/i.test(
+          body,
+        ) ||
+        /Q\d|objective|subjective/i.test(plain);
+      if (!heavy) return full;
+      const nextClass = `${className} ai-tool-section-full`.replace(/\s+/g, ' ').trim();
+      return `<section class="${nextClass}"${attrs}>${body}</section>`;
+    },
+  );
+}
+
+/**
+ * After hero / doc headers, wrap consecutive section cards for tablet 2-column layout.
+ * Phone layout stays a single column (grid CSS is tablet-only).
+ */
+export function wrapAiToolOutputSectionGrid(html: string): string {
+  if (!html?.trim()) return html;
+
+  let out = html;
+  if (!html.includes('ai-tool-sections-grid')) {
+    const firstIdx = html.search(/<section class="[^"]*\bai-tool-section-card\b/);
+    if (firstIdx < 0) return markHeavyAiToolSectionsFullWidth(html);
+
+    const prefix = html.slice(0, firstIdx);
+    const rest = html.slice(firstIdx);
+    const sectionRe = /<section class="[^"]*\bai-tool-section-card\b[^>]*>[\s\S]*?<\/section>/g;
+    const sections: string[] = [];
+    let consumed = 0;
+    let match: RegExpExecArray | null;
+    while ((match = sectionRe.exec(rest)) !== null) {
+      if (match.index !== consumed) break;
+      sections.push(match[0]);
+      consumed = match.index + match[0].length;
+    }
+    const suffix = rest.slice(consumed);
+    if (!sections.length) return markHeavyAiToolSectionsFullWidth(html);
+    out = prefix + joinSectionCardsInGrid(sections) + suffix;
+  }
+
+  return markHeavyAiToolSectionsFullWidth(out);
+}
 
 function visibleTextFromHtml(html: string): number {
   const text = String(html || '')

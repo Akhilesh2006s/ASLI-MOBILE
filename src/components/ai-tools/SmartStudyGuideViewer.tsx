@@ -2,6 +2,13 @@ import { useMemo, type ReactNode } from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AiToolWebView from './AiToolWebView';
+import {
+  useAiToolTabletLayout,
+  viewerTabletStyle,
+  aiToolViewerTabletStyles,
+  AI_TOOL_OUTPUT_MOBILE,
+} from './ai-tool-tablet-layout';
+import { TabletSectionsLayout, type TabletSectionItem } from './TabletSectionsLayout';
 import { stripStructuredAiToolMetadata } from '../../lib/strip-ai-tool-metadata';
 import { stripAiToolGenerationLabel } from '../../lib/strip-ai-tool-generation-label';
 import {
@@ -19,29 +26,49 @@ type Props = {
   rawContent?: unknown;
 };
 
-function BulletList({ items, color }: { items: string[]; color: string }) {
+function BulletList({
+  items,
+  color,
+  tabletUi,
+  boardUi,
+}: {
+  items: string[];
+  color: string;
+  tabletUi?: boolean;
+  boardUi?: boolean;
+}) {
   if (!items.length) return null;
   return (
     <View style={styles.bulletList}>
       {items.map((line, i) => (
         <View key={`${line}-${i}`} style={styles.bulletRow}>
           <Text style={[styles.bulletDot, { color }]}>•</Text>
-          <Text style={styles.bulletText}>{line}</Text>
+          <Text style={[styles.bulletText, viewerTabletStyle(!!tabletUi, 'bulletText', !!boardUi)]}>{line}</Text>
         </View>
       ))}
     </View>
   );
 }
 
-function RichTextBlock({ text }: { text: string }) {
+function RichTextBlock({ text, tabletUi, boardUi }: { text: string; tabletUi?: boolean; boardUi?: boolean }) {
   if (!text.trim()) return null;
-  return <Text style={styles.bodyText}>{text}</Text>;
+  return <Text style={[styles.bodyText, viewerTabletStyle(!!tabletUi, 'bodyText', !!boardUi)]}>{text}</Text>;
 }
 
-function PracticeQuestionCard({ q, index }: { q: StudyGuidePracticeQuestion; index: number }) {
+function PracticeQuestionCard({
+  q,
+  index,
+  tabletUi,
+  boardUi,
+}: {
+  q: StudyGuidePracticeQuestion;
+  index: number;
+  tabletUi?: boolean;
+  boardUi?: boolean;
+}) {
   const isMcq = q.type === 'objective' && q.options.length >= 2;
   return (
-    <View style={styles.practiceCard}>
+    <View style={[styles.practiceCard, tabletUi && aiToolViewerTabletStyles.practiceCardCol]}>
       <View style={styles.practiceHeader}>
         <View style={styles.practiceBadge}>
           <Text style={styles.practiceBadgeText}>Q{index + 1}</Text>
@@ -52,7 +79,7 @@ function PracticeQuestionCard({ q, index }: { q: StudyGuidePracticeQuestion; ind
           </Text>
         </View>
       </View>
-      <Text style={styles.practiceQuestion}>{q.question}</Text>
+      <Text style={[styles.practiceQuestion, viewerTabletStyle(!!tabletUi, 'practiceQuestion', !!boardUi)]}>{q.question}</Text>
       {isMcq ? (
         <View style={styles.optionsGrid}>
           {q.options.map((opt, i) => {
@@ -87,70 +114,84 @@ function GuideSectionCard({
   icon,
   stripe,
   children,
+  tabletUi,
+  boardUi,
 }: {
   sectionNum: string;
   title: string;
   icon: keyof typeof Ionicons.glyphMap;
   stripe: string;
   children: ReactNode;
+  tabletUi?: boolean;
+  boardUi?: boolean;
 }) {
   return (
     <View style={styles.sectionCard}>
       <View style={[styles.sectionCardHeader, { borderLeftColor: stripe }]}>
         <View style={[styles.sectionIconWrap, { backgroundColor: `${stripe}18` }]}>
-          <Ionicons name={icon} size={14} color={stripe} />
+          <Ionicons name={icon} size={tabletUi ? 16 : 14} color={stripe} />
         </View>
         <View style={styles.sectionHeaderText}>
-          <Text style={styles.sectionNumLabel}>{sectionNum}</Text>
-          <Text style={styles.sectionTitle}>{title}</Text>
+          <Text style={[styles.sectionNumLabel, viewerTabletStyle(!!tabletUi, 'sectionNum', !!boardUi)]}>{sectionNum}</Text>
+          <Text style={[styles.sectionTitle, viewerTabletStyle(!!tabletUi, 'sectionTitle', !!boardUi)]}>{title}</Text>
         </View>
       </View>
-      <View style={styles.sectionBody}>{children}</View>
+      <View style={[styles.sectionBody, viewerTabletStyle(!!tabletUi, 'sectionBody', !!boardUi)]}>{children}</View>
     </View>
   );
 }
 
-function buildBodySections(guide: StudyGuideContent) {
-  const sections: ReactNode[] = [];
+function buildBodySections(guide: StudyGuideContent, tabletUi = false, boardUi = false): TabletSectionItem[] {
+  const sections: TabletSectionItem[] = [];
+  const isFullWidth = (key: string) => tabletUi && ['5', '6', '10'].includes(key);
+  const push = (key: string, node: ReactNode, fullWidth = false) => {
+    sections.push({ key, node, fullWidth });
+  };
 
   if (guide.chapterOverview.trim()) {
-    sections.push(
-      <GuideSectionCard key="2" sectionNum="Section 2" title="Chapter and Subtopic Overview" icon="book-outline" stripe="#93c5fd">
-        <RichTextBlock text={guide.chapterOverview} />
-      </GuideSectionCard>
+    push(
+      '2',
+      <GuideSectionCard sectionNum="Section 2" title="Chapter and Subtopic Overview" icon="book-outline" stripe="#93c5fd" tabletUi={tabletUi} boardUi={boardUi}>
+        <RichTextBlock text={guide.chapterOverview} tabletUi={tabletUi} boardUi={boardUi} />
+      </GuideSectionCard>,
     );
   }
   if (guide.learningObjectives.length > 0) {
-    sections.push(
-      <GuideSectionCard key="3" sectionNum="Section 3" title="Learning Objectives" icon="flag-outline" stripe="#c4b5fd">
-        <BulletList items={guide.learningObjectives} color="#8b5cf6" />
-      </GuideSectionCard>
+    push(
+      '3',
+      <GuideSectionCard sectionNum="Section 3" title="Learning Objectives" icon="flag-outline" stripe="#c4b5fd" tabletUi={tabletUi} boardUi={boardUi}>
+        <BulletList items={guide.learningObjectives} color="#8b5cf6" tabletUi={tabletUi} boardUi={boardUi} />
+      </GuideSectionCard>,
     );
   }
   if (guide.priorKnowledge.length > 0) {
-    sections.push(
-      <GuideSectionCard key="4" sectionNum="Section 4" title="Prior Knowledge Required" icon="school-outline" stripe="#67e8f9">
-        <BulletList items={guide.priorKnowledge} color="#0891b2" />
-      </GuideSectionCard>
+    push(
+      '4',
+      <GuideSectionCard sectionNum="Section 4" title="Prior Knowledge Required" icon="school-outline" stripe="#67e8f9" tabletUi={tabletUi} boardUi={boardUi}>
+        <BulletList items={guide.priorKnowledge} color="#0891b2" tabletUi={tabletUi} boardUi={boardUi} />
+      </GuideSectionCard>,
     );
   }
   if (guide.keyConcepts.length > 0) {
-    sections.push(
-      <GuideSectionCard key="5" sectionNum="Section 5" title="Key Concepts Explained" icon="bulb-outline" stripe="#a5b4fc">
+    push(
+      '5',
+      <GuideSectionCard sectionNum="Section 5" title="Key Concepts Explained" icon="bulb-outline" stripe="#a5b4fc" tabletUi={tabletUi} boardUi={boardUi}>
         <View style={styles.conceptList}>
           {guide.keyConcepts.map((c, i) => (
             <View key={`${c.name}-${i}`} style={styles.conceptCard}>
-              <Text style={styles.conceptName}>{c.name}</Text>
-              <Text style={styles.conceptExplanation}>{c.explanation}</Text>
+              <Text style={[styles.conceptName, viewerTabletStyle(tabletUi, 'conceptName', boardUi)]}>{c.name}</Text>
+              <Text style={[styles.conceptExplanation, viewerTabletStyle(tabletUi, 'conceptExplanation', boardUi)]}>{c.explanation}</Text>
             </View>
           ))}
         </View>
-      </GuideSectionCard>
+      </GuideSectionCard>,
+      isFullWidth('5'),
     );
   }
   if (guide.definitions.length > 0 || guide.formulae.length > 0) {
-    sections.push(
-      <GuideSectionCard key="6" sectionNum="Section 6" title="Important Definitions and Formulae" icon="calculator-outline" stripe="#fcd34d">
+    push(
+      '6',
+      <GuideSectionCard sectionNum="Section 6" title="Important Definitions and Formulae" icon="calculator-outline" stripe="#fcd34d" tabletUi={tabletUi} boardUi={boardUi}>
         {guide.definitions.map((d, i) => (
           <View key={`def-${i}`} style={styles.definitionRow}>
             <Text style={styles.definitionTerm}>{d.term}</Text>
@@ -164,46 +205,53 @@ function buildBodySections(guide: StudyGuideContent) {
             {f.note ? <Text style={styles.formulaNote}>{f.note}</Text> : null}
           </View>
         ))}
-      </GuideSectionCard>
+      </GuideSectionCard>,
+      isFullWidth('6'),
     );
   }
   if (guide.conceptFlow.trim()) {
-    sections.push(
-      <GuideSectionCard key="7" sectionNum="Section 7" title="Concept Flow / Mind Map" icon="git-network-outline" stripe="#5eead4">
-        <RichTextBlock text={guide.conceptFlow} />
-      </GuideSectionCard>
+    push(
+      '7',
+      <GuideSectionCard sectionNum="Section 7" title="Concept Flow / Mind Map" icon="git-network-outline" stripe="#5eead4" tabletUi={tabletUi} boardUi={boardUi}>
+        <RichTextBlock text={guide.conceptFlow} tabletUi={tabletUi} boardUi={boardUi} />
+      </GuideSectionCard>,
     );
   }
   if (guide.realLifeExamples.length > 0) {
-    sections.push(
-      <GuideSectionCard key="8" sectionNum="Section 8" title="Real-life Examples" icon="leaf-outline" stripe="#bef264">
-        <BulletList items={guide.realLifeExamples} color="#65a30d" />
-      </GuideSectionCard>
+    push(
+      '8',
+      <GuideSectionCard sectionNum="Section 8" title="Real-life Examples" icon="leaf-outline" stripe="#bef264" tabletUi={tabletUi} boardUi={boardUi}>
+        <BulletList items={guide.realLifeExamples} color="#65a30d" tabletUi={tabletUi} boardUi={boardUi} />
+      </GuideSectionCard>,
     );
   }
   if (guide.quickRevisionNotes.length > 0) {
-    sections.push(
-      <GuideSectionCard key="9" sectionNum="Section 9" title="Quick Revision Notes" icon="flash-outline" stripe="#fdba74">
-        <BulletList items={guide.quickRevisionNotes} color="#ea580c" />
-      </GuideSectionCard>
+    push(
+      '9',
+      <GuideSectionCard sectionNum="Section 9" title="Quick Revision Notes" icon="flash-outline" stripe="#fdba74" tabletUi={tabletUi} boardUi={boardUi}>
+        <BulletList items={guide.quickRevisionNotes} color="#ea580c" tabletUi={tabletUi} boardUi={boardUi} />
+      </GuideSectionCard>,
     );
   }
   if (guide.practiceQuestions.length > 0) {
-    sections.push(
-      <GuideSectionCard key="10" sectionNum="Section 10" title="Practice Questions" icon="help-circle-outline" stripe="#a5b4fc">
-        <View style={styles.practiceList}>
+    push(
+      '10',
+      <GuideSectionCard sectionNum="Section 10" title="Practice Questions" icon="help-circle-outline" stripe="#a5b4fc" tabletUi={tabletUi} boardUi={boardUi}>
+        <View style={[styles.practiceList, tabletUi && aiToolViewerTabletStyles.practiceListGrid]}>
           {guide.practiceQuestions.map((q, i) => (
-            <PracticeQuestionCard key={`${q.question}-${i}`} q={q} index={i} />
+            <PracticeQuestionCard key={`${q.question}-${i}`} q={q} index={i} tabletUi={tabletUi} boardUi={boardUi} />
           ))}
         </View>
-      </GuideSectionCard>
+      </GuideSectionCard>,
+      isFullWidth('10'),
     );
   }
   if (guide.improvementTips.length > 0) {
-    sections.push(
-      <GuideSectionCard key="11" sectionNum="Section 11" title="Tips for Further Improvement" icon="sparkles-outline" stripe="#f0abfc">
-        <BulletList items={guide.improvementTips} color="#c026d3" />
-      </GuideSectionCard>
+    push(
+      '11',
+      <GuideSectionCard sectionNum="Section 11" title="Tips for Further Improvement" icon="sparkles-outline" stripe="#f0abfc" tabletUi={tabletUi} boardUi={boardUi}>
+        <BulletList items={guide.improvementTips} color="#c026d3" tabletUi={tabletUi} boardUi={boardUi} />
+      </GuideSectionCard>,
     );
   }
 
@@ -211,6 +259,7 @@ function buildBodySections(guide: StudyGuideContent) {
 }
 
 export default function SmartStudyGuideViewer({ content, rawContent }: Props) {
+  const { isTablet, isDigitalBoard } = useAiToolTabletLayout();
   const payload = useMemo(() => {
     if (rawContent != null) return { content: String(content || '').trim(), rawContent };
     return studyGuideViewerPayloadFromRecord({ generatedContent: content });
@@ -233,7 +282,7 @@ export default function SmartStudyGuideViewer({ content, rawContent }: Props) {
     );
   }
 
-  const bodySections = buildBodySections(guide);
+  const bodySections = buildBodySections(guide, isTablet, isDigitalBoard);
   const missingSections = getMissingStudyGuideSections(guide);
   const complete = isStudyGuideComplete(guide);
   const mcqCount = guide.practiceQuestions.filter((q) => q.type === 'objective' && q.options.length >= 2).length;
@@ -267,11 +316,11 @@ export default function SmartStudyGuideViewer({ content, rawContent }: Props) {
           conceptCount={guide.keyConcepts.length}
           practiceCount={guide.practiceQuestions.length}
           mcqCount={mcqCount}
+          tabletUi={isTablet}
+          boardUi={isDigitalBoard}
         />
 
-        <View style={styles.guideBody}>
-          {bodySections}
-        </View>
+        <TabletSectionsLayout sections={bodySections} isTablet={isTablet} style={styles.guideBody} />
       </View>
     </View>
   );
@@ -282,20 +331,24 @@ function LinearGuideHeader({
   conceptCount,
   practiceCount,
   mcqCount,
+  tabletUi,
+  boardUi,
 }: {
   title: string;
   conceptCount: number;
   practiceCount: number;
   mcqCount: number;
+  tabletUi?: boolean;
+  boardUi?: boolean;
 }) {
   return (
     <View style={styles.heroHeader}>
       <View style={styles.heroIcon}>
-        <Ionicons name="bookmark" size={20} color="#6366f1" />
+        <Ionicons name="bookmark" size={tabletUi ? 22 : 20} color="#6366f1" />
       </View>
       <View style={styles.heroText}>
-        <Text style={styles.heroEyebrow}>Smart Study Guide</Text>
-        <Text style={styles.heroTitle} numberOfLines={2}>
+        <Text style={[styles.heroEyebrow, viewerTabletStyle(!!tabletUi, 'heroEyebrow', !!boardUi)]}>Smart Study Guide</Text>
+        <Text style={[styles.heroTitle, viewerTabletStyle(!!tabletUi, 'guideTitle', !!boardUi)]} numberOfLines={2}>
           {title}
         </Text>
         <View style={styles.heroBadges}>
@@ -307,6 +360,8 @@ function LinearGuideHeader({
     </View>
   );
 }
+
+const M = AI_TOOL_OUTPUT_MOBILE;
 
 const styles = StyleSheet.create({
   root: { gap: 10 },
@@ -352,16 +407,16 @@ const styles = StyleSheet.create({
   },
   heroText: { flex: 1 },
   heroEyebrow: {
-    fontSize: 10,
+    fontSize: M.heroEyebrow,
     fontWeight: '700',
     letterSpacing: 1.2,
     textTransform: 'uppercase',
     color: '#6366f1',
   },
-  heroTitle: { marginTop: 4, fontSize: 18, fontWeight: '800', color: '#0f172a' },
+  heroTitle: { marginTop: 4, fontSize: M.heroTitle, fontWeight: '800', color: '#0f172a' },
   heroBadges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
   heroBadge: {
-    fontSize: 10,
+    fontSize: M.badge,
     fontWeight: '700',
     color: '#4338ca',
     backgroundColor: '#e0e7ff',
@@ -422,14 +477,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sectionHeaderText: { flex: 1 },
-  sectionNumLabel: { fontSize: 9, fontWeight: '800', letterSpacing: 0.6, textTransform: 'uppercase', color: '#818cf8' },
-  sectionTitle: { fontSize: 12, fontWeight: '800', color: '#0f172a' },
+  sectionNumLabel: { fontSize: M.sectionNum, fontWeight: '800', letterSpacing: 0.6, textTransform: 'uppercase', color: '#818cf8' },
+  sectionTitle: { fontSize: M.sectionTitle, fontWeight: '800', color: '#0f172a' },
   sectionBody: { paddingHorizontal: 10, paddingBottom: 10, paddingTop: 4 },
   bulletList: { gap: 8 },
   bulletRow: { flexDirection: 'row', gap: 8 },
-  bulletDot: { marginTop: 2, fontSize: 14, fontWeight: '800' },
-  bulletText: { flex: 1, fontSize: 14, lineHeight: 22, color: '#334155' },
-  bodyText: { fontSize: 14, lineHeight: 22, color: '#334155' },
+  bulletDot: { marginTop: 2, fontSize: M.body, fontWeight: '800' },
+  bulletText: { flex: 1, fontSize: M.body, lineHeight: M.bodyLh, color: '#334155' },
+  bodyText: { fontSize: M.body, lineHeight: M.bodyLh, color: '#334155' },
   conceptList: { gap: 8 },
   conceptCard: {
     borderRadius: 10,
@@ -438,15 +493,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
     padding: 10,
   },
-  conceptName: { fontSize: 14, fontWeight: '800', color: '#312e81' },
-  conceptExplanation: { marginTop: 4, fontSize: 13, lineHeight: 20, color: '#475569' },
+  conceptName: { fontSize: M.concept, fontWeight: '800', color: '#312e81' },
+  conceptExplanation: { marginTop: 4, fontSize: M.small, lineHeight: M.smallLh, color: '#475569' },
   definitionRow: { marginBottom: 8 },
-  definitionTerm: { fontSize: 13, fontWeight: '800', color: '#92400e' },
-  definitionText: { marginTop: 2, fontSize: 13, lineHeight: 20, color: '#475569' },
+  definitionTerm: { fontSize: M.formula, fontWeight: '800', color: '#92400e' },
+  definitionText: { marginTop: 2, fontSize: M.small, lineHeight: M.smallLh, color: '#475569' },
   formulaRow: { marginBottom: 8 },
-  formulaName: { fontSize: 13, fontWeight: '800', color: '#92400e' },
-  formulaText: { marginTop: 2, fontSize: 13, lineHeight: 20, color: '#0f172a', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
-  formulaNote: { marginTop: 2, fontSize: 12, color: '#64748b' },
+  formulaName: { fontSize: M.formula, fontWeight: '800', color: '#92400e' },
+  formulaText: { marginTop: 2, fontSize: M.small, lineHeight: M.smallLh, color: '#0f172a', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
+  formulaNote: { marginTop: 2, fontSize: M.caption, color: '#64748b' },
   practiceList: { gap: 8 },
   practiceCard: {
     borderRadius: 10,
@@ -472,7 +527,7 @@ const styles = StyleSheet.create({
   typeBadgeText: { fontSize: 10, fontWeight: '700' },
   typeBadgeTextMcq: { color: '#5b21b6' },
   typeBadgeTextSubjective: { color: '#0369a1' },
-  practiceQuestion: { fontSize: 14, fontWeight: '600', lineHeight: 20, color: '#0f172a' },
+  practiceQuestion: { fontSize: M.body, fontWeight: '600', lineHeight: M.bodyLh, color: '#0f172a' },
   optionsGrid: { marginTop: 8, gap: 6 },
   optionRow: {
     flexDirection: 'row',
@@ -493,7 +548,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   optionLabelText: { fontSize: 11, fontWeight: '800', color: '#312e81' },
-  optionText: { flex: 1, fontSize: 13, lineHeight: 18, color: '#475569', paddingTop: 2 },
+  optionText: { flex: 1, fontSize: M.small, lineHeight: M.smallLh, color: '#475569', paddingTop: 2 },
   answerBox: {
     marginTop: 8,
     borderRadius: 8,

@@ -154,9 +154,9 @@ const GRADIENT_RULES = `
 const BASE_RULES = `
 *,*::before,*::after{box-sizing:border-box}
 html,body{margin:0;padding:0;background:#fff;-webkit-text-size-adjust:100%}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#334155;line-height:1.5;padding:12px 14px 16px}
-.ai-tool-fallback-pre{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px;font-size:13px;line-height:1.55;color:#334155;overflow-x:auto}
-.ai-tool-empty-message{color:#64748b;font-size:14px;text-align:center;padding:24px 12px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#334155;line-height:1.55;font-size:16px;padding:12px 14px 16px}
+.ai-tool-fallback-pre{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px;font-size:15px;line-height:1.6;color:#334155;overflow-x:auto}
+.ai-tool-empty-message{color:#64748b;font-size:15px;text-align:center;padding:24px 12px}
 img{max-width:100%;height:auto}
 table{border-collapse:collapse}
 pre{white-space:pre-wrap;word-break:break-word}
@@ -199,9 +199,9 @@ pre{white-space:pre-wrap;word-break:break-word}
 .bg-gradient-to-br{background-image:linear-gradient(to bottom right,var(--tw-gradient-stops,transparent))}
 .bg-gradient-to-r{background-image:linear-gradient(to right,var(--tw-gradient-stops,transparent))}
 .bg-white{background-color:#fff}.bg-white\\/60{background-color:rgba(255,255,255,.6)}
-.text-left{text-align:left}.text-xs{font-size:.75rem;line-height:1rem}.text-sm{font-size:.875rem;line-height:1.25rem}
-.text-base{font-size:1rem;line-height:1.5rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-xl{font-size:1.25rem;line-height:1.75rem}
-.text-2xl{font-size:1.5rem;line-height:2rem}.text-\\[9px\\]{font-size:9px}.text-\\[10px\\]{font-size:10px}.text-\\[11px\\]{font-size:11px}
+.text-left{text-align:left}.text-xs{font-size:.8125rem;line-height:1.2rem}.text-sm{font-size:1rem;line-height:1.45rem}
+.text-base{font-size:1.0625rem;line-height:1.55rem}.text-lg{font-size:1.2rem;line-height:1.8rem}.text-xl{font-size:1.35rem;line-height:1.85rem}
+.text-2xl{font-size:1.6rem;line-height:2.1rem}.text-\\[9px\\]{font-size:10px}.text-\\[10px\\]{font-size:11px}.text-\\[11px\\]{font-size:12px}
 .font-medium{font-weight:500}.font-semibold{font-weight:600}.font-bold{font-weight:700}.font-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 .italic{font-style:italic}.uppercase{text-transform:uppercase}
 .leading-tight{line-height:1.25}.leading-snug{line-height:1.375}.leading-relaxed{line-height:1.625}
@@ -212,7 +212,7 @@ pre{white-space:pre-wrap;word-break:break-word}
 .space-y-1\\.5>:not([hidden])~:not([hidden]){margin-top:.375rem}
 .space-y-2>:not([hidden])~:not([hidden]){margin-top:.5rem}
 .space-y-2\\.5>:not([hidden])~:not([hidden]){margin-top:.625rem}
-.prose{color:#334155;max-width:65ch}.prose-sm{font-size:.875rem;line-height:1.5}
+.prose{color:#334155;max-width:65ch}.prose-sm{font-size:1rem;line-height:1.55}
 .prose h1,.prose h2,.prose h3,.prose h4{color:#111827;font-weight:700}
 .prose p{margin:.5rem 0}.prose strong{font-weight:600;color:#111827}
 .prose code{background:#f3f4f6;padding:.1rem .3rem;border-radius:.25rem;font-size:.85em}
@@ -220,7 +220,67 @@ pre{white-space:pre-wrap;word-break:break-word}
 .prose ul,.prose ol{margin:.5rem 0 .5rem 1.25rem}
 .smart-study-guide-markdown,.concept-breakdown-markdown,.chapter-summary-markdown,.key-points-markdown,
 .practice-qa-markdown,.mock-test-markdown,.quick-assignment-markdown{max-width:100%}
+.ai-tool-sections-grid{display:block}
+.ai-tool-hero-card{display:block}
 @media (min-width:640px){.sm\\:p-4{padding:1rem}}
 `;
 
-export const AI_TOOL_OUTPUT_STYLES = `${BASE_RULES}${colorUtilities()}${GRADIENT_RULES}`;
+/** Tablet — larger type, full-width prose, two-column sections. */
+const TABLET_RULES = `
+@media (min-width:768px){
+body{font-size:19px;line-height:1.6;padding:14px 20px 18px}
+.prose{max-width:none;font-size:1.125rem;line-height:1.65}
+.prose-sm{font-size:1.125rem;line-height:1.65}
+.prose h1,.prose h2,.prose h3,.prose h4{font-size:1.25em}
+.text-xs{font-size:.95rem;line-height:1.4rem}
+.text-sm{font-size:1.125rem;line-height:1.6rem}
+.text-base{font-size:1.2rem;line-height:1.7rem}
+.text-lg{font-size:1.4rem;line-height:1.9rem}
+.text-xl{font-size:1.6rem;line-height:2.1rem}
+.text-2xl{font-size:1.85rem;line-height:2.35rem}
+.text-\\[9px\\]{font-size:12px}
+.text-\\[10px\\]{font-size:13px}
+.text-\\[11px\\]{font-size:14px}
+.p-3{padding:.85rem}.p-4{padding:1rem}.p-5{padding:1.15rem}
+.px-3{padding-inline:.85rem}.py-2{padding-block:.55rem}
+.gap-4{gap:.85rem}
+.mb-3{margin-bottom:.65rem}
+.rounded-2xl .relative.flex.flex-col{gap:.75rem}
+.hero-title-card,.relative.overflow-hidden.rounded-2xl .relative.flex.flex-col.gap-4.p-5{padding:1.15rem}
+section.rounded-xl header h3,section.rounded-xl header h4{font-size:1.15rem;line-height:1.5}
+section.rounded-xl header p.text-\\[9px\\],section.rounded-xl header p.text-\\[10px\\]{font-size:13px}
+section.rounded-xl>div.px-3,section.rounded-xl>header.px-3{padding-inline:1rem}
+.ai-tool-fallback-pre{font-size:17px;line-height:1.6;padding:14px}
+.ai-tool-empty-message{font-size:17px}
+.ai-tool-sections-grid{column-count:2;column-gap:12px;display:block;margin-top:4px}
+.ai-tool-sections-grid>.ai-tool-section-card,.ai-tool-sections-grid>section.ai-tool-section-card{break-inside:avoid;-webkit-column-break-inside:avoid;page-break-inside:avoid;display:inline-block;width:100%;margin-bottom:12px!important;box-sizing:border-box;vertical-align:top}
+.ai-tool-sections-grid>.ai-tool-section-full{column-span:all;display:block;width:100%}
+.ai-tool-sections-grid .practice-list-tablet{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:start}
+.ai-tool-hero-card{margin-bottom:12px}
+}
+`;
+
+/** Digital board — largest readable type for classroom displays. */
+const BOARD_RULES = `
+@media (min-width:1024px){
+body{font-size:21px;line-height:1.65;padding:16px 24px 20px}
+.prose{font-size:1.25rem;line-height:1.7}
+.prose-sm{font-size:1.25rem;line-height:1.7}
+.prose h1,.prose h2,.prose h3,.prose h4{font-size:1.3em}
+.text-xs{font-size:1.05rem;line-height:1.45rem}
+.text-sm{font-size:1.2rem;line-height:1.65rem}
+.text-base{font-size:1.3rem;line-height:1.75rem}
+.text-lg{font-size:1.5rem;line-height:2rem}
+.text-xl{font-size:1.7rem;line-height:2.2rem}
+.text-2xl{font-size:2rem;line-height:2.45rem}
+.text-\\[9px\\]{font-size:13px}
+.text-\\[10px\\]{font-size:14px}
+.text-\\[11px\\]{font-size:15px}
+section.rounded-xl header h3,section.rounded-xl header h4{font-size:1.3rem;line-height:1.55}
+section.rounded-xl header p.text-\\[9px\\],section.rounded-xl header p.text-\\[10px\\]{font-size:15px}
+.ai-tool-fallback-pre{font-size:19px;line-height:1.65;padding:16px}
+.ai-tool-empty-message{font-size:19px}
+}
+`;
+
+export const AI_TOOL_OUTPUT_STYLES = `${BASE_RULES}${colorUtilities()}${GRADIENT_RULES}${TABLET_RULES}${BOARD_RULES}`;

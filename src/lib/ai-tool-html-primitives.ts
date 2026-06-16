@@ -137,7 +137,7 @@ export function sectionCardHtml(opts: {
   const labelClass = opts.labelClass || derived.label;
   const titleClass = opts.titleClass || derived.title;
   return `
-<section class="mb-3 overflow-hidden rounded-xl border ${border} ${bg} shadow-sm">
+<section class="mb-3 overflow-hidden rounded-xl border ${border} ${bg} shadow-sm ai-tool-section-card">
   <header class="flex items-center gap-2.5 border-b border-slate-100/80 bg-white/60 px-3 py-2.5 border-l-[5px] ${opts.stripe}">
     <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${opts.iconWrap}">
       ${opts.iconSvg}
@@ -304,7 +304,7 @@ export function heroTitleCardHtml(opts: {
       : '';
 
   return `
-<div class="relative overflow-hidden rounded-2xl border ${t.border} bg-white shadow-lg ${t.shadow} mb-3">
+<div class="relative overflow-hidden rounded-2xl border ${t.border} bg-white shadow-lg ${t.shadow} mb-3 ai-tool-hero-card">
   <div class="absolute inset-0" style="background:${t.gradient}"></div>
   <div class="relative flex flex-col gap-4 p-5">
     <div class="flex items-start gap-4">

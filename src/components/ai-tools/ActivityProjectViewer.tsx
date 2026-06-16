@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, createContext, useContext, type ReactNode } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -12,6 +12,24 @@ import {
 } from '../../lib/parse-activity-markdown';
 import { stripStructuredAiToolMetadata } from '../../lib/strip-ai-tool-metadata';
 import { stripAiToolGenerationLabel } from '../../lib/strip-ai-tool-generation-label';
+import {
+  aiToolViewerTabletStyles,
+  useAiToolTabletLayout,
+  viewerTabletStyle,
+  AI_TOOL_OUTPUT_MOBILE,
+} from './ai-tool-tablet-layout';
+import { TabletSectionsLayout } from './TabletSectionsLayout';
+
+type ViewerOutputCtx = { isTablet: boolean; isDigitalBoard: boolean };
+const ViewerTabletContext = createContext<ViewerOutputCtx>({ isTablet: false, isDigitalBoard: false });
+function useViewerTablet() {
+  return useContext(ViewerTabletContext);
+}
+
+function PreWrapText({ children }: { children: string }) {
+  const { isTablet, isDigitalBoard } = useViewerTablet();
+  return <Text style={[styles.preWrap, viewerTabletStyle(isTablet, 'preWrap', isDigitalBoard)]}>{children}</Text>;
+}
 
 type NormalizedActivity = {
   sl: number;
@@ -122,7 +140,7 @@ const TEACHER_SECTIONS: SectionDef[] = [
     icon: 'book-outline',
     stripe: '#7dd3fc',
     hasContent: (a) => !!a.subtopicLink,
-    render: (a) => <Text style={styles.preWrap}>{a.subtopicLink}</Text>,
+    render: (a) => <PreWrapText>{a.subtopicLink}</PreWrapText>,
   },
   {
     num: 3,
@@ -178,7 +196,7 @@ const TEACHER_SECTIONS: SectionDef[] = [
     icon: 'git-branch-outline',
     stripe: '#f9a8d4',
     hasContent: (a) => !!a.differentiation,
-    render: (a) => <Text style={styles.preWrap}>{a.differentiation}</Text>,
+    render: (a) => <PreWrapText>{a.differentiation}</PreWrapText>,
   },
   {
     num: 10,
@@ -194,7 +212,7 @@ const TEACHER_SECTIONS: SectionDef[] = [
     icon: 'trophy-outline',
     stripe: '#67e8f9',
     hasContent: (a) => !!a.expectedOutcomes,
-    render: (a) => <Text style={styles.preWrap}>{a.expectedOutcomes}</Text>,
+    render: (a) => <PreWrapText>{a.expectedOutcomes}</PreWrapText>,
   },
   {
     num: 12,
@@ -202,7 +220,7 @@ const TEACHER_SECTIONS: SectionDef[] = [
     icon: 'sparkles-outline',
     stripe: '#e879f9',
     hasContent: (a) => !!a.realLife,
-    render: (a) => <Text style={styles.preWrap}>{a.realLife}</Text>,
+    render: (a) => <PreWrapText>{a.realLife}</PreWrapText>,
   },
   {
     num: 13,
@@ -210,7 +228,7 @@ const TEACHER_SECTIONS: SectionDef[] = [
     icon: 'bulb-outline',
     stripe: '#fdba74',
     hasContent: (a) => !!a.reflection,
-    render: (a) => <Text style={styles.preWrap}>{a.reflection}</Text>,
+    render: (a) => <PreWrapText>{a.reflection}</PreWrapText>,
   },
 ];
 
@@ -237,31 +255,35 @@ function SectionCard({
   themeIndex?: number;
   children: ReactNode;
 }) {
+  const { isTablet, isDigitalBoard } = useViewerTablet();
+  const vt = (key: keyof typeof aiToolViewerTabletStyles) => viewerTabletStyle(isTablet, key, isDigitalBoard);
   const theme = SECTION_CARD_THEMES[themeIndex % SECTION_CARD_THEMES.length];
   const accent = theme.stripe;
   return (
     <View style={[styles.sectionCard, { borderColor: theme.border, backgroundColor: theme.bg }]}>
-      <View style={[styles.sectionHeader, { borderLeftColor: accent, backgroundColor: theme.bg }]}>
+      <View style={[styles.sectionHeader, { borderLeftColor: accent, backgroundColor: theme.bg }, vt('sectionHeader')]}>
         <View style={[styles.sectionIcon, { backgroundColor: theme.border }]}>
-          <Ionicons name={icon} size={14} color={theme.label} />
+          <Ionicons name={icon} size={isTablet ? 16 : 14} color={theme.label} />
         </View>
         <View style={styles.sectionHeaderText}>
-          <Text style={[styles.sectionNum, { color: theme.label }]}>{sectionNum}</Text>
-          <Text style={[styles.sectionTitle, { color: theme.title }]}>{title}</Text>
+          <Text style={[styles.sectionNum, { color: theme.label }, vt('sectionNum')]}>{sectionNum}</Text>
+          <Text style={[styles.sectionTitle, { color: theme.title }, vt('sectionTitle')]}>{title}</Text>
         </View>
       </View>
-      <View style={[styles.sectionBody, { backgroundColor: theme.bg }]}>{children}</View>
+      <View style={[styles.sectionBody, { backgroundColor: theme.bg }, vt('sectionBody')]}>{children}</View>
     </View>
   );
 }
 
 function CheckList({ items }: { items: string[] }) {
+  const { isTablet, isDigitalBoard } = useViewerTablet();
+  const vt = (key: keyof typeof aiToolViewerTabletStyles) => viewerTabletStyle(isTablet, key, isDigitalBoard);
   return (
     <View style={styles.checkList}>
       {items.map((line, i) => (
         <View key={`${line}-${i}`} style={styles.checkRow}>
-          <Ionicons name="checkmark-circle" size={16} color="#7c3aed" style={styles.checkIcon} />
-          <Text style={styles.checkText}>{line}</Text>
+          <Ionicons name="checkmark-circle" size={isTablet ? 18 : 16} color="#7c3aed" style={styles.checkIcon} />
+          <Text style={[styles.checkText, vt('checkText')]}>{line}</Text>
         </View>
       ))}
     </View>
@@ -269,12 +291,14 @@ function CheckList({ items }: { items: string[] }) {
 }
 
 function BulletList({ items }: { items: string[] }) {
+  const { isTablet, isDigitalBoard } = useViewerTablet();
+  const vt = (key: keyof typeof aiToolViewerTabletStyles) => viewerTabletStyle(isTablet, key, isDigitalBoard);
   return (
     <View style={styles.bulletList}>
       {items.map((line, i) => (
         <View key={`${line}-${i}`} style={styles.bulletRow}>
           <Text style={styles.bulletDot}>•</Text>
-          <Text style={styles.bulletText}>{line}</Text>
+          <Text style={[styles.bulletText, vt('bulletText')]}>{line}</Text>
         </View>
       ))}
     </View>
@@ -282,6 +306,8 @@ function BulletList({ items }: { items: string[] }) {
 }
 
 function NumberedMaterials({ items }: { items: string[] }) {
+  const { isTablet, isDigitalBoard } = useViewerTablet();
+  const vt = (key: keyof typeof aiToolViewerTabletStyles) => viewerTabletStyle(isTablet, key, isDigitalBoard);
   return (
     <View style={styles.matList}>
       {items.map((m, i) => (
@@ -289,7 +315,7 @@ function NumberedMaterials({ items }: { items: string[] }) {
           <View style={styles.matBadge}>
             <Text style={styles.matBadgeText}>{i + 1}</Text>
           </View>
-          <Text style={styles.matText}>{m}</Text>
+          <Text style={[styles.matText, vt('matText')]}>{m}</Text>
         </View>
       ))}
     </View>
@@ -297,6 +323,8 @@ function NumberedMaterials({ items }: { items: string[] }) {
 }
 
 function NumberedSteps({ items, color }: { items: string[]; color: string }) {
+  const { isTablet, isDigitalBoard } = useViewerTablet();
+  const vt = (key: keyof typeof aiToolViewerTabletStyles) => viewerTabletStyle(isTablet, key, isDigitalBoard);
   return (
     <View style={styles.stepList}>
       {items.map((step, i) => (
@@ -304,11 +332,44 @@ function NumberedSteps({ items, color }: { items: string[]; color: string }) {
           <View style={[styles.stepBadge, { backgroundColor: color }]}>
             <Text style={styles.stepBadgeText}>{i + 1}</Text>
           </View>
-          <Text style={styles.stepText}>{step}</Text>
+          <Text style={[styles.stepText, vt('stepText')]}>{step}</Text>
         </View>
       ))}
     </View>
   );
+}
+
+const TABLET_FULL_WIDTH_SECTION_NUMS = new Set([5, 6, 7, 8, 10, 11, 12, 13]);
+
+function sectionFullWidthOnTablet(sectionNum: number): boolean {
+  return TABLET_FULL_WIDTH_SECTION_NUMS.has(sectionNum);
+}
+
+function ActivitySectionsLayout({
+  defs,
+  activity,
+  tabletUi,
+}: {
+  defs: SectionDef[];
+  activity: NormalizedActivity;
+  tabletUi: boolean;
+}) {
+  const visible = defs.filter((sec) => sec.hasContent(activity));
+  const sections = visible.map((sec, index) => ({
+    key: String(sec.num),
+    fullWidth: tabletUi && sectionFullWidthOnTablet(sec.num),
+    node: (
+      <SectionCard
+        sectionNum={`Section ${sec.num}`}
+        title={sec.title}
+        icon={sec.icon}
+        themeIndex={index}
+      >
+        {sec.render(activity)}
+      </SectionCard>
+    ),
+  }));
+  return <TabletSectionsLayout sections={sections} isTablet={tabletUi} style={styles.sectionsWrap} />;
 }
 
 const STUDENT_SECTIONS: SectionDef[] = [
@@ -318,7 +379,7 @@ const STUDENT_SECTIONS: SectionDef[] = [
     icon: 'book-outline',
     stripe: '#7dd3fc',
     hasContent: (a) => !!a.subtopicLink,
-    render: (a) => <Text style={styles.preWrap}>{a.subtopicLink}</Text>,
+    render: (a) => <PreWrapText>{a.subtopicLink}</PreWrapText>,
   },
   {
     num: 3,
@@ -339,62 +400,46 @@ const STUDENT_SECTIONS: SectionDef[] = [
 ];
 
 function StudentActivityCard({ activity }: { activity: NormalizedActivity }) {
+  const { isTablet, isDigitalBoard } = useViewerTablet();
+  const vt = (key: keyof typeof aiToolViewerTabletStyles) => viewerTabletStyle(isTablet, key, isDigitalBoard);
   return (
-    <View style={styles.activityBody}>
-      <View style={[styles.heroCard, styles.heroCardStudent]}>
+    <View style={[styles.activityBody, vt('activityBody')]}>
+      <View style={[styles.heroCard, styles.heroCardStudent, vt('heroCard')]}>
         <View style={styles.heroRow}>
           <View style={[styles.heroIconWrap, styles.heroIconWrapStudent]}>
-            <Ionicons name="flask-outline" size={28} color="#ea580c" />
+            <Ionicons name="flask-outline" size={isTablet ? 32 : 28} color="#ea580c" />
           </View>
           <View style={styles.heroContent}>
-            <Text style={[styles.heroEyebrow, styles.heroEyebrowStudent]}>Project / Activity Title</Text>
-            <Text style={styles.heroTitle}>{activity.title}</Text>
+            <Text style={[styles.heroEyebrow, styles.heroEyebrowStudent, vt('heroEyebrow')]}>
+              Project / Activity Title
+            </Text>
+            <Text style={[styles.heroTitle, vt('heroTitle')]}>{activity.title}</Text>
           </View>
         </View>
       </View>
-      {STUDENT_SECTIONS.filter((s) => s.hasContent(activity)).map((sec, index) => (
-        <SectionCard
-          key={sec.num}
-          sectionNum={`Section ${sec.num}`}
-          title={sec.title}
-          icon={sec.icon}
-          stripe={sec.stripe}
-          themeIndex={index}
-        >
-          {sec.render(activity)}
-        </SectionCard>
-      ))}
+      <ActivitySectionsLayout defs={STUDENT_SECTIONS} activity={activity} tabletUi={isTablet} />
     </View>
   );
 }
 
 function TeacherActivityCard({ activity }: { activity: NormalizedActivity }) {
+  const { isTablet, isDigitalBoard } = useViewerTablet();
+  const vt = (key: keyof typeof aiToolViewerTabletStyles) => viewerTabletStyle(isTablet, key, isDigitalBoard);
   return (
-    <View style={styles.activityBody}>
-      <View style={styles.heroCard}>
+    <View style={[styles.activityBody, vt('activityBody')]}>
+      <View style={[styles.heroCard, vt('heroCard')]}>
         <View style={styles.heroRow}>
           <View style={styles.heroIconWrap}>
-            <Ionicons name="flask-outline" size={28} color="#4f46e5" />
+            <Ionicons name="flask-outline" size={isTablet ? 32 : 28} color="#4f46e5" />
           </View>
           <View style={styles.heroContent}>
-            <Text style={styles.heroEyebrow}>Title of activity / project</Text>
-            <Text style={styles.heroTitle}>{activity.title}</Text>
+            <Text style={[styles.heroEyebrow, vt('heroEyebrow')]}>Title of activity / project</Text>
+            <Text style={[styles.heroTitle, vt('heroTitle')]}>{activity.title}</Text>
           </View>
         </View>
       </View>
 
-      {TEACHER_SECTIONS.filter((sec) => sec.hasContent(activity)).map((sec, index) => (
-        <SectionCard
-          key={sec.num}
-          sectionNum={`Section ${sec.num}`}
-          title={sec.title}
-          icon={sec.icon}
-          stripe={sec.stripe}
-          themeIndex={index}
-        >
-          {sec.render(activity)}
-        </SectionCard>
-      ))}
+      <ActivitySectionsLayout defs={TEACHER_SECTIONS} activity={activity} tabletUi={isTablet} />
     </View>
   );
 }
@@ -407,6 +452,7 @@ function activitiesFromRaw(rawContent: unknown): ParsedActivity[] | undefined {
 }
 
 export default function ActivityProjectViewer({ content, rawContent, variant = 'teacher' }: Props) {
+  const { isTablet, isDigitalBoard } = useAiToolTabletLayout();
   const parsedContent = useMemo(() => stripStructuredAiToolMetadata(String(content || '')), [content]);
   const mode = variant === 'student' ? 'student' : 'teacher';
 
@@ -434,18 +480,28 @@ export default function ActivityProjectViewer({ content, rawContent, variant = '
   }
 
   const isTeacher = mode === 'teacher';
+  const vt = (key: keyof typeof aiToolViewerTabletStyles) => viewerTabletStyle(isTablet, key, isDigitalBoard);
 
   return (
+    <ViewerTabletContext.Provider value={{ isTablet, isDigitalBoard }}>
     <View style={[styles.shell, isTeacher ? styles.shellTeacher : styles.shellStudent]}>
-      <View style={[styles.shellHeader, isTeacher ? styles.shellHeaderTeacher : styles.shellHeaderStudent]}>
+      <View
+        style={[
+          styles.shellHeader,
+          isTeacher ? styles.shellHeaderTeacher : styles.shellHeaderStudent,
+          vt('shellHeader'),
+        ]}
+      >
         <View style={styles.shellHeaderIcon}>
-          <Ionicons name="flask-outline" size={20} color="#fff" />
+          <Ionicons name="flask-outline" size={isTablet ? 22 : 20} color="#fff" />
         </View>
         <View>
-          <Text style={styles.shellEyebrow}>
+          <Text style={[styles.shellEyebrow, vt('shellEyebrow')]}>
             {isTeacher ? 'Activity & Project Generator' : 'Lab journal'}
           </Text>
-          <Text style={styles.shellTitle}>{isTeacher ? 'Teacher lesson kit' : 'Project Idea Lab'}</Text>
+          <Text style={[styles.shellTitle, vt('shellTitle')]}>
+            {isTeacher ? 'Teacher lesson kit' : 'Project Idea Lab'}
+          </Text>
         </View>
       </View>
 
@@ -457,20 +513,27 @@ export default function ActivityProjectViewer({ content, rawContent, variant = '
               onPress={() => setActiveIdx(idx)}
               style={[styles.tab, idx === safeIdx && styles.tabActive]}
             >
-              <Text style={[styles.tabText, idx === safeIdx && styles.tabTextActive]} numberOfLines={1}>
-                {act.title?.trim() ? act.title.slice(0, 28) : 'Activity'}
+              <Text style={[styles.tabText, idx === safeIdx && styles.tabTextActive, vt('tabText')]} numberOfLines={1}>
+                {act.title?.trim() ? act.title.slice(0, isTablet ? 40 : 28) : 'Activity'}
               </Text>
             </Pressable>
           ))}
         </ScrollView>
       ) : null}
 
-      <ScrollView style={styles.scrollBody} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={[styles.scrollBody, vt('scrollBody')]}
+        nestedScrollEnabled
+        showsVerticalScrollIndicator={false}
+      >
         {isTeacher ? <TeacherActivityCard activity={current} /> : <StudentActivityCard activity={current} />}
       </ScrollView>
     </View>
+    </ViewerTabletContext.Provider>
   );
 }
+
+const M = AI_TOOL_OUTPUT_MOBILE;
 
 const styles = StyleSheet.create({
   shell: {
@@ -505,7 +568,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: '#64748b',
   },
-  shellTitle: { fontSize: 17, fontWeight: '800', color: '#0f172a', marginTop: 2 },
+  shellTitle: { fontSize: M.shellTitle, fontWeight: '800', color: '#0f172a', marginTop: 2 },
   tabScroll: { maxHeight: 44, backgroundColor: '#eef2ff' },
   tabRow: { paddingHorizontal: 10, paddingVertical: 8, gap: 8 },
   tab: {
@@ -515,10 +578,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(79,70,229,0.12)',
   },
   tabActive: { backgroundColor: '#fff' },
-  tabText: { fontSize: 11, fontWeight: '700', color: '#4f46e5', maxWidth: 140 },
+  tabText: { fontSize: M.tab, fontWeight: '700', color: '#4f46e5', maxWidth: 140 },
   tabTextActive: { color: '#312e81' },
   scrollBody: { maxHeight: 720 },
   activityBody: { padding: 10, gap: 10 },
+  sectionsWrap: { gap: 10 },
   heroCard: {
     borderRadius: 16,
     borderWidth: 1,
@@ -554,7 +618,7 @@ const styles = StyleSheet.create({
   },
   sectionsBadgeText: { fontSize: 10, fontWeight: '700', color: '#4338ca' },
   heroEyebrow: {
-    fontSize: 10,
+    fontSize: M.heroEyebrow,
     fontWeight: '800',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
@@ -562,10 +626,10 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   heroEyebrowStudent: { color: '#ea580c' },
-  heroTitle: { fontSize: 20, fontWeight: '800', color: '#0f172a', lineHeight: 28 },
+  heroTitle: { fontSize: M.heroTitle, fontWeight: '800', color: '#0f172a', lineHeight: M.heroTitle + 6 },
   progressWrap: { marginTop: 14 },
   progressLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-  progressLabel: { fontSize: 11, fontWeight: '600', color: '#64748b' },
+  progressLabel: { fontSize: M.caption, fontWeight: '600', color: '#64748b' },
   progressTrack: { height: 8, borderRadius: 999, backgroundColor: '#e0e7ff', overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 999, backgroundColor: '#a5b4fc' },
   sectionCard: {
@@ -590,15 +654,15 @@ const styles = StyleSheet.create({
   },
   sectionHeaderText: { flex: 1 },
   sectionNum: {
-    fontSize: 10,
+    fontSize: M.sectionNum,
     fontWeight: '800',
     letterSpacing: 0.6,
     textTransform: 'uppercase',
     color: '#94a3b8',
   },
-  sectionTitle: { fontSize: 13, fontWeight: '800', color: '#0f172a' },
+  sectionTitle: { fontSize: M.sectionTitle, fontWeight: '800', color: '#0f172a' },
   sectionBody: { paddingHorizontal: 12, paddingBottom: 12, paddingTop: 6 },
-  preWrap: { fontSize: 14, lineHeight: 22, color: '#334155' },
+  preWrap: { fontSize: M.body, lineHeight: M.bodyLh, color: '#334155' },
   checkList: { gap: 8 },
   checkRow: {
     flexDirection: 'row',
@@ -609,11 +673,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   checkIcon: { marginTop: 2 },
-  checkText: { flex: 1, fontSize: 14, lineHeight: 20, color: '#334155' },
+  checkText: { flex: 1, fontSize: M.body, lineHeight: M.bodyLh, color: '#334155' },
   bulletList: { gap: 6 },
   bulletRow: { flexDirection: 'row', gap: 8 },
-  bulletDot: { color: '#64748b', fontSize: 14, marginTop: 2 },
-  bulletText: { flex: 1, fontSize: 14, lineHeight: 20, color: '#334155' },
+  bulletDot: { color: '#64748b', fontSize: M.body, marginTop: 2 },
+  bulletText: { flex: 1, fontSize: M.body, lineHeight: M.bodyLh, color: '#334155' },
   matList: { gap: 8 },
   matRow: {
     flexDirection: 'row',
@@ -635,7 +699,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   matBadgeText: { fontSize: 11, fontWeight: '800', color: '#92400e' },
-  matText: { flex: 1, fontSize: 14, color: '#334155' },
+  matText: { flex: 1, fontSize: M.body, color: '#334155' },
   stepList: { gap: 10 },
   stepRow: { flexDirection: 'row', gap: 10 },
   stepBadge: {
@@ -646,7 +710,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   stepBadgeText: { fontSize: 12, fontWeight: '700', color: '#047857' },
-  stepText: { flex: 1, fontSize: 14, lineHeight: 22, color: '#334155', paddingTop: 4 },
+  stepText: { flex: 1, fontSize: M.body, lineHeight: M.bodyLh, color: '#334155', paddingTop: 4 },
   emptyWrap: {
     alignItems: 'center',
     justifyContent: 'center',

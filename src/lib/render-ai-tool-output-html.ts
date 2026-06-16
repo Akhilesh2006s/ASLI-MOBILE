@@ -9,6 +9,7 @@ import { escapeHtml } from './ai-tool-html-primitives';
 import { AI_TOOL_OUTPUT_STYLES } from './ai-tool-output-styles';
 import { renderNumberedTemplateAsCards } from './render-numbered-template-cards';
 import { tryRenderStructuredAiToolHtml } from './render-structured-ai-tool-html';
+import { wrapAiToolOutputSectionGrid } from './themed-markdown-sections';
 
 export {
   contentHasNumberedTemplateSections,
@@ -303,6 +304,8 @@ export function renderAiToolOutputHtml(
   if (!bodyHasVisibleOutput(inner)) {
     inner = renderAiToolFallbackBody(content, rawContent);
   }
+
+  inner = wrapAiToolOutputSectionGrid(inner);
 
   const body = TOOL_SHELLS[toolType] ? wrapWithShell(toolType, inner) : inner;
 

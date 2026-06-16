@@ -5,7 +5,7 @@ import {
 } from './ai-tool-html-primitives';
 import { themedNumberedSectionCardHtml } from './themed-markdown-sections';
 import { parseNumberedTemplateSections } from './ai-tool-display-content';
-import { sectionTitlesMatch } from './themed-markdown-sections';
+import { sectionTitlesMatch, joinSectionCardsInGrid } from './themed-markdown-sections';
 import { renderMarkdown } from './render-teacher-markdown';
 import { stripAiToolGenerationLabel } from './strip-ai-tool-generation-label';
 
@@ -133,9 +133,11 @@ export function renderNumberedTemplateAsCards(toolType: string, text: string): s
     return true;
   });
 
+  const sectionCards: string[] = [];
   (visibleSections.length ? visibleSections : sorted).forEach((sec, index) => {
     const theme = SECTION_THEME_CYCLE[index % SECTION_THEME_CYCLE.length];
-    html += themedNumberedSectionCardHtml({
+    sectionCards.push(
+      themedNumberedSectionCardHtml({
       sectionNum: sec.num,
       sectionTitle: stripAiToolGenerationLabel(sec.title.replace(/^\d+\.\s*/, ''), sec.title.replace(/^\d+\.\s*/, '')),
       bodyHtml: sectionBodyHtml(sec.body),
@@ -143,8 +145,9 @@ export function renderNumberedTemplateAsCards(toolType: string, text: string): s
       bg: theme.bg,
       titleClass: theme.title,
       labelClass: theme.label,
-    });
+    }),
+    );
   });
 
-  return html;
+  return html + joinSectionCardsInGrid(sectionCards);
 }

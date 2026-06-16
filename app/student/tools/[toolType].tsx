@@ -56,6 +56,7 @@ import StudentScreenHeader from '../../../src/components/student/StudentScreenHe
 import GlassCard from '../../../src/components/student/GlassCard';
 import AiToolContentRenderer from '../../../src/components/ai-tools/AiToolContentRenderer';
 import {
+  aiToolTabletPageStyles,
   aiToolTabletStyles,
   useAiToolTabletLayout,
 } from '../../../src/components/ai-tools/ai-tool-tablet-layout';
@@ -99,28 +100,36 @@ function ParametersSummaryBar({
   accent,
   expanded,
   onToggle,
+  tabletUi,
 }: {
   summary: string;
   accent: string;
   expanded: boolean;
   onToggle: () => void;
+  tabletUi?: boolean;
 }) {
   return (
-    <Pressable style={styles.paramsSummary} onPress={onToggle}>
+    <Pressable
+      style={[styles.paramsSummary, tabletUi && aiToolTabletPageStyles.paramsSummary]}
+      onPress={onToggle}
+    >
       <View style={[styles.paramsSummaryIcon, { backgroundColor: `${accent}22` }]}>
-        <Ionicons name="options-outline" size={18} color={accent} />
+        <Ionicons name="options-outline" size={tabletUi ? 20 : 18} color={accent} />
       </View>
       <View style={styles.paramsSummaryText}>
-        <Text style={styles.paramsSummaryTitle}>
+        <Text style={[styles.paramsSummaryTitle, tabletUi && aiToolTabletPageStyles.paramsSummaryTitle]}>
           {expanded ? 'Hide parameters' : 'Show parameters'}
         </Text>
         {!expanded && summary ? (
-          <Text style={styles.paramsSummaryMeta} numberOfLines={1}>
+          <Text
+            style={[styles.paramsSummaryMeta, tabletUi && aiToolTabletPageStyles.paramsSummaryMeta]}
+            numberOfLines={tabletUi ? 2 : 1}
+          >
             {summary}
           </Text>
         ) : null}
       </View>
-      <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={18} color={STUDENT.textMuted} />
+      <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={tabletUi ? 20 : 18} color={STUDENT.textMuted} />
     </Pressable>
   );
 }
@@ -154,22 +163,28 @@ function FormSection({
   subtitle,
   accent,
   children,
+  tabletUi,
 }: {
   title: string;
   subtitle?: string;
   accent: string;
   children: ReactNode;
+  tabletUi?: boolean;
 }) {
   return (
     <GlassCard padding={0}>
       <View style={styles.sectionHeader}>
         <View style={[styles.sectionAccent, { backgroundColor: accent }]} />
-        <View style={styles.sectionHeaderText}>
-          <Text style={styles.sectionTitle}>{title}</Text>
-          {subtitle ? <Text style={styles.sectionSubtitle}>{subtitle}</Text> : null}
+        <View style={[styles.sectionHeaderText, tabletUi && aiToolTabletPageStyles.sectionHeaderText]}>
+          <Text style={[styles.sectionTitle, tabletUi && aiToolTabletPageStyles.sectionTitle]}>{title}</Text>
+          {subtitle ? (
+            <Text style={[styles.sectionSubtitle, tabletUi && aiToolTabletPageStyles.sectionSubtitle]}>
+              {subtitle}
+            </Text>
+          ) : null}
         </View>
       </View>
-      <View style={styles.sectionBody}>{children}</View>
+      <View style={[styles.sectionBody, tabletUi && aiToolTabletPageStyles.sectionBody]}>{children}</View>
     </GlassCard>
   );
 }
@@ -192,7 +207,7 @@ export default function StudentToolPage() {
   const [activeDropdown, setActiveDropdown] = useState<DropdownState | null>(null);
   const [paramsExpanded, setParamsExpanded] = useState(true);
   const scrollY = useSharedValue(0);
-  const { isTablet } = useAiToolTabletLayout();
+  const { isTablet, useSplitLayout } = useAiToolTabletLayout();
   const { scrollRef, onOutputLayout, queueScrollToOutput, resetOutputScroll } =
     useAiToolOutputScroll(isTablet);
 
@@ -722,7 +737,7 @@ export default function StudentToolPage() {
           <View style={[styles.fieldIconWrap, { backgroundColor: `${accent}18` }]}>
             <Ionicons name={icon} size={16} color={accent} />
           </View>
-          <Text style={styles.fieldLabel}>
+          <Text style={[styles.fieldLabel, isTablet && aiToolTabletPageStyles.fieldLabel]}>
             {label.replace(' *', '')}
             {required ? <Text style={styles.required}> *</Text> : null}
           </Text>
@@ -735,7 +750,7 @@ export default function StudentToolPage() {
           disabled={disabled}
         >
           <Text
-            style={[styles.dropdownValue, isPlaceholder && styles.dropdownPlaceholder]}
+            style={[styles.dropdownValue, isPlaceholder && styles.dropdownPlaceholder, isTablet && aiToolTabletPageStyles.dropdownValue]}
             numberOfLines={2}
           >
             {display}
@@ -757,10 +772,10 @@ export default function StudentToolPage() {
             <View style={[styles.fieldIconWrap, { backgroundColor: `${accent}18` }]}>
               <Ionicons name="layers-outline" size={16} color={accent} />
             </View>
-            <Text style={styles.fieldLabel}>Class</Text>
+            <Text style={[styles.fieldLabel, isTablet && aiToolTabletPageStyles.fieldLabel]}>Class</Text>
           </View>
           <View style={styles.lockedField}>
-            <Text style={styles.lockedValue}>{assignedGradeLevel}</Text>
+            <Text style={[styles.lockedValue, isTablet && aiToolTabletPageStyles.lockedValue]}>{assignedGradeLevel}</Text>
             <View style={styles.lockedBadge}>
               <Ionicons name="lock-closed" size={12} color={STUDENT.textMuted} />
               <Text style={styles.lockedBadgeText}>Assigned</Text>
@@ -804,13 +819,13 @@ export default function StudentToolPage() {
             <View style={[styles.fieldIconWrap, { backgroundColor: `${accent}18` }]}>
               <Ionicons name={FIELD_ICONS[field.name] || 'create-outline'} size={16} color={accent} />
             </View>
-            <Text style={styles.fieldLabel}>
+            <Text style={[styles.fieldLabel, isTablet && aiToolTabletPageStyles.fieldLabel]}>
               {field.label.replace(' *', '')}
               {field.required ? <Text style={styles.required}> *</Text> : null}
           </Text>
           </View>
           <TextInput
-            style={[styles.textArea, styles.textInput]}
+            style={[styles.textArea, styles.textInput, isTablet && aiToolTabletPageStyles.textInput]}
             placeholder={field.placeholder}
             value={value}
             onChangeText={(text) => handleInputChange(field.name, text)}
@@ -829,13 +844,13 @@ export default function StudentToolPage() {
           <View style={[styles.fieldIconWrap, { backgroundColor: `${accent}18` }]}>
             <Ionicons name={FIELD_ICONS[field.name] || 'options-outline'} size={16} color={accent} />
         </View>
-          <Text style={styles.fieldLabel}>
+          <Text style={[styles.fieldLabel, isTablet && aiToolTabletPageStyles.fieldLabel]}>
             {field.label.replace(' *', '')}
             {field.required ? <Text style={styles.required}> *</Text> : null}
         </Text>
         </View>
         <TextInput
-          style={styles.textInput}
+          style={[styles.textInput, isTablet && aiToolTabletPageStyles.textInput]}
           placeholder={field.placeholder}
           value={value}
           onChangeText={(text) => handleInputChange(field.name, text)}
@@ -876,6 +891,7 @@ export default function StudentToolPage() {
           accent={accent}
           expanded={paramsExpanded}
           onToggle={() => setParamsExpanded((prev) => !prev)}
+          tabletUi={isTablet}
         />
       ) : null}
 
@@ -885,6 +901,7 @@ export default function StudentToolPage() {
             title={parameterTitle}
             subtitle={isSmartStudyGuide ? 'Board, class, subject, topic and sub-topic' : 'Board and class details'}
             accent={accent}
+            tabletUi={isTablet}
           >
             {renderDropdownTrigger(
               'board',
@@ -900,7 +917,7 @@ export default function StudentToolPage() {
             {isReadingPractice ? (
               <View style={styles.infoBanner}>
                 <Ionicons name="information-circle" size={18} color={STUDENT.accent} />
-                <Text style={styles.infoBannerText}>
+                <Text style={[styles.infoBannerText, isTablet && aiToolTabletPageStyles.infoBannerText]}>
                   English and Hindi subjects only for this tool.
                 </Text>
               </View>
@@ -908,13 +925,18 @@ export default function StudentToolPage() {
           </FormSection>
 
           {topicFields.length > 0 ? (
-            <FormSection title="Topic details" subtitle="Pick chapter and sub-topic from syllabus" accent={accent}>
+            <FormSection
+              title="Topic details"
+              subtitle="Pick chapter and sub-topic from syllabus"
+              accent={accent}
+              tabletUi={isTablet}
+            >
               {topicFields.map(renderField)}
             </FormSection>
           ) : null}
 
           {extraFields.length > 0 ? (
-            <FormSection title="Options" subtitle="Customize your output" accent={accent}>
+            <FormSection title="Options" subtitle="Customize your output" accent={accent} tabletUi={isTablet}>
               {extraFields.map(renderField)}
             </FormSection>
           ) : null}
@@ -932,8 +954,8 @@ export default function StudentToolPage() {
       {isGenerating ? (
         <View style={styles.generatingBox}>
           <ActivityIndicator size="large" color={accent} />
-          <Text style={styles.generatingTitle}>Generating Content...</Text>
-          <Text style={styles.generatingText}>Please wait while we prepare your content</Text>
+          <Text style={[styles.generatingTitle, isTablet && aiToolTabletPageStyles.generatingTitle]}>Generating Content...</Text>
+          <Text style={[styles.generatingText, isTablet && aiToolTabletPageStyles.generatingText]}>Please wait while we prepare your content</Text>
         </View>
       ) : generatedContent ? (
         <View style={styles.outputWrap} collapsable={false}>
@@ -951,10 +973,10 @@ export default function StudentToolPage() {
           <View style={styles.emptyResultIcon}>
             <Ionicons name="sparkles" size={28} color={STUDENT.navInactive} />
           </View>
-          <Text style={styles.emptyResultTitle}>
+          <Text style={[styles.emptyResultTitle, isTablet && aiToolTabletPageStyles.emptyResultTitle]}>
             {fallbackEmptyMessage || 'Generated content will appear here'}
           </Text>
-          <Text style={styles.emptyResultText}>Choose tool parameters and tap Generate.</Text>
+          <Text style={[styles.emptyResultText, isTablet && aiToolTabletPageStyles.emptyResultText]}>Choose tool parameters and tap Generate.</Text>
         </View>
       )}
     </View>
@@ -969,6 +991,7 @@ export default function StudentToolPage() {
           title={config.name}
           subtitle={config.description}
           onBack={() => router.back()}
+          tabletUi={isTablet}
         />
       </Animated.View>
 
@@ -988,7 +1011,7 @@ export default function StudentToolPage() {
           >
             <Ionicons name="chevron-back" size={24} color={STUDENT.textOnPrimary} />
           </Pressable>
-          <Text style={styles.compactHeaderTitle} numberOfLines={1}>
+          <Text style={[styles.compactHeaderTitle, isTablet && aiToolTabletPageStyles.compactHeaderTitle]} numberOfLines={1}>
             {config.name}
           </Text>
           <View style={styles.compactHeaderSpacer} />
@@ -1000,7 +1023,7 @@ export default function StudentToolPage() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
       >
-        {isTablet ? (
+        {useSplitLayout ? (
           <View style={aiToolTabletStyles.tabletSplit}>
             <ScrollView
               style={aiToolTabletStyles.tabletFormPane}
@@ -1023,7 +1046,11 @@ export default function StudentToolPage() {
         <AnimatedScrollView
           ref={scrollRef}
           style={styles.scroll}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
+          contentContainerStyle={[
+            styles.scrollContent,
+            isTablet && aiToolTabletPageStyles.scrollContent,
+            { paddingBottom: 100 },
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           onScroll={scrollHandler}
@@ -1034,7 +1061,7 @@ export default function StudentToolPage() {
         </AnimatedScrollView>
         )}
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, isTablet && aiToolTabletPageStyles.footer]}>
         <TouchableOpacity
             style={[styles.generateBtn, isGenerating && styles.generateBtnDisabled]}
           onPress={handleGenerate}
@@ -1047,19 +1074,19 @@ export default function StudentToolPage() {
                   ? ['#4f46e5', '#2563eb', '#0891b2']
                   : [accent, `${accent}DD`]
               }
-              style={styles.generateBtnGradient}
+              style={[styles.generateBtnGradient, isTablet && aiToolTabletPageStyles.generateBtnGradient]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
             {isGenerating ? (
                 <>
               <ActivityIndicator size="small" color={STUDENT.textOnPrimary} />
-                  <Text style={styles.generateBtnText}>Generating...</Text>
+                  <Text style={[styles.generateBtnText, isTablet && aiToolTabletPageStyles.generateBtnText]}>Generating...</Text>
                 </>
             ) : (
               <>
-                <Ionicons name="sparkles" size={20} color={STUDENT.textOnPrimary} />
-                  <Text style={styles.generateBtnText}>Generate with AI</Text>
+                <Ionicons name="sparkles" size={isTablet ? 22 : 20} color={STUDENT.textOnPrimary} />
+                  <Text style={[styles.generateBtnText, isTablet && aiToolTabletPageStyles.generateBtnText]}>Generate with AI</Text>
               </>
             )}
           </LinearGradient>
