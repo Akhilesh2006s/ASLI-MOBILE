@@ -775,7 +775,7 @@ const OverviewView = memo(function OverviewView({
             {renderStatCard('week', weekStatBody)}
             {renderStatCard('efficiency', efficiencyStatBody)}
           </View>
-          <StudyCalendarSection {...calendarSectionProps} />
+          <StudyCalendarSection {...calendarSectionProps} layout="events-only" />
         </>
       )}
 

@@ -160,6 +160,8 @@ function StudyCalendarSectionComponent({
     const cells: (Date | null)[] = [];
     for (let i = 0; i < offset; i += 1) cells.push(null);
     for (let d = 1; d <= daysInMonth; d += 1) cells.push(new Date(year, month, d));
+    // Keep a fixed 6x7 matrix to avoid row-wrapping glitches on some device widths.
+    while (cells.length < 42) cells.push(null);
     return cells;
   }, [calendarMonth]);
 
@@ -180,6 +182,24 @@ function StudyCalendarSectionComponent({
     if (entry.type === 'quiz' && entry.source) {
       onOpenQuiz(entry.source);
     }
+  };
+
+  const showMobileDateNav = !isTablet && (layout === 'events-only' || layout === 'auto');
+
+  const shiftSelectedDate = (days: number) => {
+    setSelectedDate((prev) => {
+      const next = new Date(prev);
+      next.setDate(prev.getDate() + days);
+      setJumpDate(formatCalendarDateKey(next));
+      return next;
+    });
+  };
+
+  const goToToday = () => {
+    const today = new Date();
+    setSelectedDate(today);
+    setJumpDate(formatCalendarDateKey(today));
+    setCalendarMonth(new Date(today.getFullYear(), today.getMonth(), 1));
   };
 
   const renderCalendarCard = () => (
@@ -339,10 +359,32 @@ function StudyCalendarSectionComponent({
   const renderEventsCard = () => (
       <GlassCard variant="default" padding={14} style={styles.cardFill}>
         <Text style={styles.eventsTitle}>Study & exams</Text>
-        <Text style={styles.eventsSub}>
-          {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
-          {' · '}Class timetable is in the table below
-        </Text>
+        {showMobileDateNav ? (
+          <View style={styles.mobileDateNav}>
+            <TouchableOpacity onPress={() => shiftSelectedDate(-1)} hitSlop={8} accessibilityLabel="Previous day">
+              <Ionicons name="chevron-back" size={22} color={STUDENT.textSecondary} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={goToToday} style={styles.mobileDateCenter} accessibilityLabel="Go to today">
+              <Text style={styles.mobileDateLabel}>
+                {selectedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+              </Text>
+              {formatCalendarDateKey(selectedDate) !== formatCalendarDateKey(new Date()) ? (
+                <Text style={styles.mobileDateTodayHint}>Tap for today</Text>
+              ) : null}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => shiftSelectedDate(1)} hitSlop={8} accessibilityLabel="Next day">
+              <Ionicons name="chevron-forward" size={22} color={STUDENT.textSecondary} />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <Text style={styles.eventsSub}>
+            {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+            {' · '}Class timetable is in the table below
+          </Text>
+        )}
+        {showMobileDateNav ? (
+          <Text style={styles.eventsSubMobile}>Class timetable is in the table below</Text>
+        ) : null}
         {selectedDateEntries.length === 0 ? (
           <View style={styles.eventsEmpty}>
             <Ionicons name="calendar-outline" size={32} color={STUDENT.surfaceBorder} />
@@ -429,8 +471,14 @@ function StudyCalendarSectionComponent({
 
   return (
     <View style={[styles.wrap, isTablet && styles.wrapTablet]}>
-      <View style={isTablet ? styles.tabletCol : undefined}>{renderCalendarCard()}</View>
-      <View style={isTablet ? styles.tabletCol : undefined}>{renderEventsCard()}</View>
+      {isTablet ? (
+        <>
+          <View style={styles.tabletCol}>{renderCalendarCard()}</View>
+          <View style={styles.tabletCol}>{renderEventsCard()}</View>
+        </>
+      ) : (
+        renderEventsCard()
+      )}
     </View>
   );
 }
@@ -463,7 +511,7 @@ const styles = StyleSheet.create({
   weekHeadText: { flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '700', color: STUDENT.textMuted },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   dayCell: {
-    width: '14.28%',
+    width: `${100 / 7}%`,
     aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -526,7 +574,22 @@ const styles = StyleSheet.create({
   legendDot: { width: 8, height: 8, borderRadius: 4 },
   legendText: { fontSize: 11, color: STUDENT.textMuted, fontWeight: '600' },
   eventsTitle: { fontSize: 16, fontWeight: '800', color: STUDENT.text },
+  mobileDateNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    marginBottom: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    borderRadius: STUDENT_RADIUS.inner,
+    backgroundColor: STUDENT.bgAccent,
+  },
+  mobileDateCenter: { flex: 1, alignItems: 'center', paddingHorizontal: 8 },
+  mobileDateLabel: { fontSize: 14, fontWeight: '700', color: STUDENT.text },
+  mobileDateTodayHint: { fontSize: 10, color: STUDENT.primary, fontWeight: '600', marginTop: 2 },
   eventsSub: { fontSize: 12, color: STUDENT.textMuted, marginTop: 4, marginBottom: 10 },
+  eventsSubMobile: { fontSize: 12, color: STUDENT.textMuted, marginBottom: 10 },
   eventsEmpty: { alignItems: 'center', paddingVertical: 16, gap: 6 },
   eventsEmptyTitle: { fontSize: 14, fontWeight: '600', color: STUDENT.textSecondary },
   eventsEmptySub: { fontSize: 12, color: STUDENT.textMuted, textAlign: 'center' },
