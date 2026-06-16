@@ -1,9 +1,10 @@
 import React from 'react';
-import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Image, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { adminGreeting } from '../../../src/theme/admin';
+import { getSchoolBranding } from '../../../src/lib/school-branding';
 import { useAdminTheme } from './useAdminTheme';
 import AdminScalePressable from './AdminScalePressable';
 import SchoolBrandRow from '../../../src/components/ui/SchoolBrandRow';
@@ -28,6 +29,8 @@ export default function AdminHeader({ userName, subtitle, schoolUser, showSchool
     .join('')
     .slice(0, 2)
     .toUpperCase() || 'A';
+  const schoolBranding = getSchoolBranding(schoolUser);
+  const schoolLogoUrl = schoolBranding?.schoolLogo ?? null;
 
   return (
     <View style={[styles.wrap, { backgroundColor: colors.headerGradient[0] }]}>
@@ -47,14 +50,29 @@ export default function AdminHeader({ userName, subtitle, schoolUser, showSchool
         <View style={styles.topRow}>
           <View style={styles.userBlock}>
             <View style={[styles.avatar, { borderRadius: radius.full }]}>
-              <Text style={styles.avatarText}>{initials}</Text>
+              {schoolLogoUrl ? (
+                <Image
+                  source={{ uri: schoolLogoUrl }}
+                  style={styles.avatarLogo}
+                  resizeMode="contain"
+                  accessibilityLabel={`${schoolBranding?.schoolName || 'School'} logo`}
+                />
+              ) : (
+                <Text style={styles.avatarText}>{initials}</Text>
+              )}
             </View>
             <View style={styles.textBlock}>
               <Text style={styles.greeting}>
                 {adminGreeting()}, {firstName}
               </Text>
               {showSchoolBrand ? (
-                <SchoolBrandRow user={schoolUser} variant="onPrimary" style={styles.schoolBrand} fullWidth />
+                <SchoolBrandRow
+                  schoolName={schoolBranding?.schoolName}
+                  variant="onPrimary"
+                  showLogo={!schoolLogoUrl}
+                  style={styles.schoolBrand}
+                  fullWidth
+                />
               ) : null}
               <Text style={[styles.roleLabel, compact ? styles.roleLabelCompact : null]}>
                 Admin Dashboard
@@ -122,11 +140,16 @@ const styles = StyleSheet.create({
   avatar: {
     width: 48,
     height: 48,
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: 'rgba(255,255,255,0.92)',
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarLogo: {
+    width: 40,
+    height: 40,
   },
   avatarText: {
     color: '#fff',

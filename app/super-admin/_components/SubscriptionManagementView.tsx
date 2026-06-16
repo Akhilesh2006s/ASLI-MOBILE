@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -21,8 +21,9 @@ import {
   formatInr,
   getStatusBadgeStyle,
 } from '../../../src/lib/subscription-management';
+import SchoolOrdersView from './SchoolOrdersView';
 
-type MainTab = 'payments' | 'subscriptions';
+type MainTab = 'school-orders' | 'payments' | 'subscriptions';
 
 function StatusBadge({ status }: { status: string }) {
   const style = getStatusBadgeStyle(status);
@@ -95,9 +96,11 @@ export default function SubscriptionManagementView() {
   const [refreshing, setRefreshing] = useState(false);
   const [data, setData] = useState<BillingPayload | null>(null);
   const [error, setError] = useState('');
-  const [mainTab, setMainTab] = useState<MainTab>('payments');
+  const [mainTab, setMainTab] = useState<MainTab>('school-orders');
+  const [schoolOrdersRefreshing, setSchoolOrdersRefreshing] = useState(false);
+  const schoolOrdersRefreshRef = useRef<((isRefresh?: boolean) => Promise<void>) | null>(null);
 
-  const load = useCallback(async (isRefresh = false) => {
+  const loadBilling = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
     try {
@@ -115,8 +118,26 @@ export default function SubscriptionManagementView() {
   }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    if (mainTab !== 'school-orders') {
+      void loadBilling();
+    }
+  }, [loadBilling, mainTab]);
+
+  const handleRefresh = useCallback(async () => {
+    if (mainTab === 'school-orders') {
+      const refreshOrders = schoolOrdersRefreshRef.current;
+      if (refreshOrders) {
+        setSchoolOrdersRefreshing(true);
+        try {
+          await refreshOrders(true);
+        } finally {
+          setSchoolOrdersRefreshing(false);
+        }
+      }
+      return;
+    }
+    await loadBilling(true);
+  }, [loadBilling, mainTab]);
 
   const openRazorpayDashboard = () => {
     Linking.openURL('https://dashboard.razorpay.com/').catch(() => {
@@ -124,163 +145,197 @@ export default function SubscriptionManagementView() {
     });
   };
 
-  if (loading && !data) {
-    return (
-      <ScrollView style={styles.content}>
+  const tabs: { id: MainTab; label: string; icon: keyof typeof Ionicons.glyphMap }[] = useMemo(
+    () => [
+      { id: 'school-orders', label: 'School Orders', icon: 'bag-outline' },
+      { id: 'payments', label: 'Payments', icon: 'card-outline' },
+      { id: 'subscriptions', label: 'Subscriptions', icon: 'repeat' as const },
+    ],
+    [],
+  );
+
+  const isPullRefreshing = mainTab === 'school-orders' ? schoolOrdersRefreshing : refreshing;
+
+  return (
+    <ScrollView
+      style={styles.root}
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator
+      keyboardShouldPersistTaps="handled"
+      nestedScrollEnabled
+      refreshControl={
+        <RefreshControl refreshing={isPullRefreshing} onRefresh={() => void handleRefresh()} />
+      }
+    >
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Payments & subscriptions</Text>
+        <Text style={styles.headerSubtitle}>
+          Manage school orders, Razorpay payments, and subscriptions.
+        </Text>
+      </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        nestedScrollEnabled
+        contentContainerStyle={styles.mainTabsScroll}
+      >
+        {tabs.map((tab) => (
+          <TouchableOpacity
+            key={tab.id}
+            style={[styles.mainTab, mainTab === tab.id && styles.mainTabActive]}
+            onPress={() => setMainTab(tab.id)}
+          >
+            <Ionicons
+              name={tab.icon}
+              size={16}
+              color={mainTab === tab.id ? '#fff' : '#6b7280'}
+            />
+            <Text style={[styles.mainTabText, mainTab === tab.id && styles.mainTabTextActive]}>
+              {tab.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {mainTab === 'school-orders' ? (
+        <SchoolOrdersView
+          embedded
+          onRegisterRefresh={(fn) => {
+            schoolOrdersRefreshRef.current = fn;
+          }}
+        />
+      ) : loading && !data ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#f97316" />
           <Text style={styles.loadingText}>Loading payments & subscriptions...</Text>
         </View>
-      </ScrollView>
-    );
-  }
-
-  return (
-    <ScrollView
-      style={styles.content}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} />}
-    >
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View style={styles.headerText}>
-            <Text style={styles.headerTitle}>Payments & subscriptions</Text>
-            <Text style={styles.headerSubtitle}>
-              Live data from Razorpay (payments and subscriptions). Configure API keys in the backend .env.
-            </Text>
-          </View>
-        </View>
-        <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.actionButton} onPress={() => load(true)} disabled={loading}>
-            <Ionicons name="refresh" size={18} color="#374151" />
-            <Text style={styles.actionButtonText}>{loading ? 'Loading...' : 'Refresh'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={openRazorpayDashboard}>
-            <Ionicons name="open-outline" size={18} color="#374151" />
-            <Text style={styles.actionButtonText}>Razorpay dashboard</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {error ? (
-        <View style={styles.errorAlert}>
-          <Ionicons name="alert-circle" size={20} color="#dc2626" />
-          <Text style={styles.errorAlertText}>{error}</Text>
-        </View>
-      ) : null}
-
-      {data && (
+      ) : (
         <>
-          {!data.razorpayConfigured && (
-            <View style={styles.warningAlert}>
-              <Ionicons name="warning" size={20} color="#92400e" />
-              <View style={styles.alertTextBlock}>
-                <Text style={styles.alertTitle}>Razorpay not connected</Text>
-                <Text style={styles.alertDesc}>
-                  Add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to your server environment (from the Razorpay Dashboard →
-                  API Keys), then restart the API. Tables will fill with live data.
-                </Text>
-              </View>
-            </View>
-          )}
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => void loadBilling(true)}
+              disabled={loading}
+            >
+              <Ionicons name="refresh" size={18} color="#374151" />
+              <Text style={styles.actionButtonText}>{loading ? 'Loading...' : 'Refresh'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionButton} onPress={openRazorpayDashboard}>
+              <Ionicons name="open-outline" size={18} color="#374151" />
+              <Text style={styles.actionButtonText}>Razorpay</Text>
+            </TouchableOpacity>
+          </View>
 
-          {data.razorpayError ? (
+          {error ? (
             <View style={styles.errorAlert}>
               <Ionicons name="alert-circle" size={20} color="#dc2626" />
-              <View style={styles.alertTextBlock}>
-                <Text style={styles.alertTitle}>Razorpay error</Text>
-                <Text style={styles.errorAlertText}>{data.razorpayError}</Text>
-              </View>
+              <Text style={styles.errorAlertText}>{error}</Text>
             </View>
           ) : null}
 
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <LinearGradient colors={['#6ee7b7', '#059669']} style={styles.statCardGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                <Ionicons name="cash" size={28} color="#fff" />
-                <Text style={styles.statCardLabel}>Captured revenue (listed)</Text>
-                <Text style={styles.statCardValue}>{formatInr(data.summary.capturedAmountInr)}</Text>
-                <Text style={styles.statCardHint}>Sum of captured payments in the current fetch (latest 50).</Text>
-              </LinearGradient>
-            </View>
-            <View style={styles.statCard}>
-              <LinearGradient colors={['#7dd3fc', '#0284c7']} style={styles.statCardGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                <Ionicons name="card" size={28} color="#fff" />
-                <Text style={styles.statCardLabel}>Payments</Text>
-                <Text style={styles.statCardValue}>{data.summary.paymentsListed}</Text>
-                <Text style={styles.statCardHint}>Rows loaded from Razorpay.</Text>
-              </LinearGradient>
-            </View>
-            <View style={styles.statCard}>
-              <LinearGradient colors={['#c4b5fd', '#7c3aed']} style={styles.statCardGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                <Ionicons name="repeat" size={28} color="#fff" />
-                <Text style={styles.statCardLabel}>Subscriptions</Text>
-                <Text style={styles.statCardValue}>{data.summary.subscriptionsListed}</Text>
-                <Text style={styles.statCardHint}>Razorpay subscription objects.</Text>
-              </LinearGradient>
-            </View>
-            <View style={styles.statCard}>
-              <LinearGradient colors={['#fdba74', '#fb923c']} style={styles.statCardGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                <Ionicons name="checkmark-circle" size={28} color="#fff" />
-                <Text style={styles.statCardLabel}>Active subscriptions</Text>
-                <Text style={styles.statCardValue}>{data.summary.activeSubscriptions}</Text>
-                <Text style={styles.statCardHint}>Status active / authenticated.</Text>
-              </LinearGradient>
-            </View>
-          </View>
+          {data && (
+            <>
+              {!data.razorpayConfigured && (
+                <View style={styles.warningAlert}>
+                  <Ionicons name="warning" size={20} color="#92400e" />
+                  <View style={styles.alertTextBlock}>
+                    <Text style={styles.alertTitle}>Razorpay not connected</Text>
+                    <Text style={styles.alertDesc}>
+                      Add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to your server .env, then restart
+                      the API.
+                    </Text>
+                  </View>
+                </View>
+              )}
 
-          <View style={styles.mainTabs}>
-            <TouchableOpacity
-              style={[styles.mainTab, mainTab === 'payments' && styles.mainTabActive]}
-              onPress={() => setMainTab('payments')}
-            >
-              <Text style={[styles.mainTabText, mainTab === 'payments' && styles.mainTabTextActive]}>
-                Payments & billing
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.mainTab, mainTab === 'subscriptions' && styles.mainTabActive]}
-              onPress={() => setMainTab('subscriptions')}
-            >
-              <Text style={[styles.mainTabText, mainTab === 'subscriptions' && styles.mainTabTextActive]}>
-                Subscriptions
-              </Text>
-            </TouchableOpacity>
-          </View>
+              {data.razorpayError ? (
+                <View style={styles.errorAlert}>
+                  <Ionicons name="alert-circle" size={20} color="#dc2626" />
+                  <View style={styles.alertTextBlock}>
+                    <Text style={styles.alertTitle}>Razorpay error</Text>
+                    <Text style={styles.errorAlertText}>{data.razorpayError}</Text>
+                  </View>
+                </View>
+              ) : null}
 
-          {mainTab === 'payments' ? (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Recent payments</Text>
-              <Text style={styles.sectionDesc}>
-                Card, UPI, netbanking, wallet — as reported by Razorpay.
-              </Text>
-              {data.payments.length === 0 ? (
-                <View style={styles.emptyBox}>
-                  <Text style={styles.emptyText}>
-                    No payments returned. Complete a test payment in Razorpay test mode or widen the date range in the
-                    Razorpay dashboard.
-                  </Text>
+              <View style={styles.statsGrid}>
+                <View style={styles.statCard}>
+                  <LinearGradient
+                    colors={['#6ee7b7', '#059669']}
+                    style={styles.statCardGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <Ionicons name="cash" size={28} color="#fff" />
+                    <Text style={styles.statCardLabel}>Captured revenue</Text>
+                    <Text style={styles.statCardValue}>{formatInr(data.summary.capturedAmountInr)}</Text>
+                  </LinearGradient>
+                </View>
+                <View style={styles.statCard}>
+                  <LinearGradient
+                    colors={['#7dd3fc', '#0284c7']}
+                    style={styles.statCardGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <Ionicons name="card" size={28} color="#fff" />
+                    <Text style={styles.statCardLabel}>Payments</Text>
+                    <Text style={styles.statCardValue}>{data.summary.paymentsListed}</Text>
+                  </LinearGradient>
+                </View>
+                <View style={styles.statCard}>
+                  <LinearGradient
+                    colors={['#c4b5fd', '#7c3aed']}
+                    style={styles.statCardGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <Ionicons name="repeat" size={28} color="#fff" />
+                    <Text style={styles.statCardLabel}>Subscriptions</Text>
+                    <Text style={styles.statCardValue}>{data.summary.subscriptionsListed}</Text>
+                  </LinearGradient>
+                </View>
+                <View style={styles.statCard}>
+                  <LinearGradient
+                    colors={['#fdba74', '#fb923c']}
+                    style={styles.statCardGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  >
+                    <Ionicons name="checkmark-circle" size={28} color="#fff" />
+                    <Text style={styles.statCardLabel}>Active</Text>
+                    <Text style={styles.statCardValue}>{data.summary.activeSubscriptions}</Text>
+                  </LinearGradient>
+                </View>
+              </View>
+
+              {mainTab === 'payments' ? (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Recent payments</Text>
+                  {data.payments.length === 0 ? (
+                    <View style={styles.emptyBox}>
+                      <Text style={styles.emptyText}>No payments returned from Razorpay.</Text>
+                    </View>
+                  ) : (
+                    data.payments.map((payment) => <PaymentCard key={payment.id} payment={payment} />)
+                  )}
                 </View>
               ) : (
-                data.payments.map((payment) => <PaymentCard key={payment.id} payment={payment} />)
-              )}
-            </View>
-          ) : (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Subscriptions</Text>
-              <Text style={styles.sectionDesc}>Recurring plans managed in Razorpay.</Text>
-              {data.subscriptions.length === 0 ? (
-                <View style={styles.emptyBox}>
-                  <Text style={styles.emptyText}>
-                    No subscriptions yet. Create plans and subscriptions in the Razorpay dashboard, or via your app's
-                    checkout flow.
-                  </Text>
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Subscriptions</Text>
+                  {data.subscriptions.length === 0 ? (
+                    <View style={styles.emptyBox}>
+                      <Text style={styles.emptyText}>No subscriptions yet.</Text>
+                    </View>
+                  ) : (
+                    data.subscriptions.map((subscription) => (
+                      <SubscriptionCard key={subscription.id} subscription={subscription} />
+                    ))
+                  )}
                 </View>
-              ) : (
-                data.subscriptions.map((subscription) => (
-                  <SubscriptionCard key={subscription.id} subscription={subscription} />
-                ))
               )}
-            </View>
+            </>
           )}
         </>
       )}
@@ -289,44 +344,38 @@ export default function SubscriptionManagementView() {
 }
 
 const styles = StyleSheet.create({
-  content: { flex: 1 },
+  root: { flex: 1 },
+  scrollContent: { paddingBottom: 120, flexGrow: 1 },
+  header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 },
+  headerTitle: { fontSize: 20, fontWeight: '800', color: '#111827' },
+  headerSubtitle: { fontSize: 13, color: '#6b7280', marginTop: 4, lineHeight: 18 },
+  mainTabsScroll: { paddingHorizontal: 16, gap: 8, paddingVertical: 12 },
+  mainTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    backgroundColor: '#f3f4f6',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  mainTabActive: { backgroundColor: '#ea580c', borderColor: '#ea580c' },
+  mainTabText: { fontSize: 13, fontWeight: '600', color: '#6b7280' },
+  mainTabTextActive: { color: '#fff' },
   loadingContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 40,
   },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
-  },
-  headerTop: {
-    marginBottom: 12,
-  },
-  headerText: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#111827',
-    marginBottom: 6,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    lineHeight: 20,
-  },
+  loadingText: { marginTop: 16, fontSize: 14, color: '#6b7280' },
   headerActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+    paddingHorizontal: 16,
+    marginBottom: 12,
   },
   actionButton: {
     flexDirection: 'row',
@@ -339,11 +388,7 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
     backgroundColor: '#fff',
   },
-  actionButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#374151',
-  },
+  actionButtonText: { fontSize: 13, fontWeight: '600', color: '#374151' },
   warningAlert: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -368,26 +413,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#fecaca',
   },
-  alertTextBlock: {
-    flex: 1,
-  },
-  alertTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  alertDesc: {
-    fontSize: 13,
-    color: '#92400e',
-    lineHeight: 18,
-  },
-  errorAlertText: {
-    flex: 1,
-    fontSize: 13,
-    color: '#991b1b',
-    lineHeight: 18,
-  },
+  alertTextBlock: { flex: 1 },
+  alertTitle: { fontSize: 14, fontWeight: '700', color: '#111827', marginBottom: 4 },
+  alertDesc: { fontSize: 13, color: '#92400e', lineHeight: 18 },
+  errorAlertText: { flex: 1, fontSize: 13, color: '#991b1b', lineHeight: 18 },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -400,74 +429,13 @@ const styles = StyleSheet.create({
     minWidth: '47%',
     borderRadius: 10,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 5,
+    elevation: 3,
   },
-  statCardGradient: {
-    padding: 14,
-    minHeight: 120,
-  },
-  statCardLabel: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.9)',
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  statCardValue: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#fff',
-    marginBottom: 6,
-  },
-  statCardHint: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.85)',
-    lineHeight: 14,
-  },
-  mainTabs: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    gap: 8,
-    marginBottom: 16,
-  },
-  mainTab: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    backgroundColor: '#f3f4f6',
-    alignItems: 'center',
-  },
-  mainTabActive: {
-    backgroundColor: '#fb923c',
-  },
-  mainTabText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6b7280',
-    textAlign: 'center',
-  },
-  mainTabTextActive: {
-    color: '#fff',
-  },
-  section: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  sectionDesc: {
-    fontSize: 13,
-    color: '#6b7280',
-    marginBottom: 16,
-  },
+  statCardGradient: { padding: 14, minHeight: 110 },
+  statCardLabel: { fontSize: 11, color: 'rgba(255,255,255,0.9)', marginTop: 8, marginBottom: 4 },
+  statCardValue: { fontSize: 20, fontWeight: '800', color: '#fff' },
+  section: { paddingHorizontal: 16, paddingBottom: 24 },
+  sectionTitle: { fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 12 },
   emptyBox: {
     padding: 24,
     backgroundColor: '#f9fafb',
@@ -475,22 +443,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e5e7eb',
   },
-  emptyText: {
-    fontSize: 13,
-    color: '#6b7280',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
+  emptyText: { fontSize: 13, color: '#6b7280', textAlign: 'center', lineHeight: 20 },
   rowCard: {
     backgroundColor: '#fff',
     borderRadius: 10,
     padding: 14,
     marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
     borderWidth: 1,
     borderColor: '#f3f4f6',
   },
@@ -501,93 +459,23 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     gap: 8,
   },
-  rowCardDate: {
-    fontSize: 12,
-    color: '#6b7280',
-    flex: 1,
-  },
-  rowCardAmount: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  rowCardId: {
-    fontSize: 11,
-    fontFamily: 'monospace',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  rowCardMeta: {
-    marginBottom: 8,
-  },
-  rowCardMetaText: {
-    fontSize: 13,
-    color: '#6b7280',
-    textTransform: 'capitalize',
-  },
-  customerBlock: {
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
-  },
-  customerEmail: {
-    fontSize: 13,
-    color: '#111827',
-  },
-  customerContact: {
-    fontSize: 12,
-    color: '#9ca3af',
-    marginTop: 2,
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  statusBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'capitalize',
-  },
-  subGrid: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 12,
-  },
-  subGridItem: {
-    flex: 1,
-  },
-  subGridLabel: {
-    fontSize: 11,
-    color: '#9ca3af',
-    marginBottom: 2,
-  },
-  subGridValue: {
-    fontSize: 12,
-    fontFamily: 'monospace',
-    color: '#374151',
-  },
-  periodBlock: {
-    marginBottom: 8,
-  },
-  periodLabel: {
-    fontSize: 11,
-    color: '#9ca3af',
-    marginBottom: 4,
-  },
-  periodValue: {
-    fontSize: 12,
-    color: '#111827',
-  },
-  periodArrow: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginTop: 2,
-  },
-  paidLeft: {
-    fontSize: 13,
-    color: '#374151',
-    fontWeight: '600',
-  },
+  rowCardDate: { fontSize: 12, color: '#6b7280', flex: 1 },
+  rowCardAmount: { fontSize: 20, fontWeight: '800', color: '#111827', marginBottom: 4 },
+  rowCardId: { fontSize: 11, fontFamily: 'monospace', color: '#374151', marginBottom: 8 },
+  rowCardMeta: { marginBottom: 8 },
+  rowCardMetaText: { fontSize: 13, color: '#6b7280', textTransform: 'capitalize' },
+  customerBlock: { paddingTop: 8, borderTopWidth: 1, borderTopColor: '#f3f4f6' },
+  customerEmail: { fontSize: 13, color: '#111827' },
+  customerContact: { fontSize: 12, color: '#9ca3af', marginTop: 2 },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  statusBadgeText: { fontSize: 11, fontWeight: '700', textTransform: 'capitalize' },
+  subGrid: { flexDirection: 'row', gap: 12, marginBottom: 12 },
+  subGridItem: { flex: 1 },
+  subGridLabel: { fontSize: 11, color: '#9ca3af', marginBottom: 2 },
+  subGridValue: { fontSize: 12, fontFamily: 'monospace', color: '#374151' },
+  periodBlock: { marginBottom: 8 },
+  periodLabel: { fontSize: 11, color: '#9ca3af', marginBottom: 4 },
+  periodValue: { fontSize: 12, color: '#111827' },
+  periodArrow: { fontSize: 12, color: '#6b7280', marginTop: 2 },
+  paidLeft: { fontSize: 13, color: '#374151', fontWeight: '600' },
 });

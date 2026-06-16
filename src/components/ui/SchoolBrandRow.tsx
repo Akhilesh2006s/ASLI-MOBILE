@@ -12,6 +12,7 @@ type Props = {
   variant?: Variant;
   compact?: boolean;
   fullWidth?: boolean;
+  showLogo?: boolean;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -22,6 +23,7 @@ export default function SchoolBrandRow({
   variant = 'onPrimary',
   compact = false,
   fullWidth = false,
+  showLogo = true,
   style,
 }: Props) {
   const branding =
@@ -40,27 +42,29 @@ export default function SchoolBrandRow({
 
   return (
     <View style={[styles.row, fullWidth && styles.rowFullWidth, compact && styles.rowCompact, style]}>
-      <View
-        style={[
-          styles.logoWrap,
-          { width: logoSize, height: logoSize, borderRadius: compact ? 8 : 10 },
-          isOnPrimary ? styles.logoWrapOnPrimary : styles.logoWrapOnLight,
-        ]}
-      >
-        {branding.schoolLogo ? (
-          <Image
-            source={{ uri: branding.schoolLogo }}
-            style={[styles.logoImg, { width: logoSize - 4, height: logoSize - 4 }]}
-            resizeMode="contain"
-          />
-        ) : (
-          <Ionicons
-            name="school-outline"
-            size={iconSize}
-            color={isOnPrimary ? 'rgba(255,255,255,0.92)' : '#ea580c'}
-          />
-        )}
-      </View>
+      {showLogo ? (
+        <View
+          style={[
+            styles.logoWrap,
+            { width: logoSize, height: logoSize, borderRadius: compact ? 8 : 10 },
+            isOnPrimary ? styles.logoWrapOnPrimary : styles.logoWrapOnLight,
+          ]}
+        >
+          {branding.schoolLogo ? (
+            <Image
+              source={{ uri: branding.schoolLogo }}
+              style={[styles.logoImg, { width: logoSize - 4, height: logoSize - 4 }]}
+              resizeMode="contain"
+            />
+          ) : (
+            <Ionicons
+              name="school-outline"
+              size={iconSize}
+              color={isOnPrimary ? 'rgba(255,255,255,0.92)' : '#ea580c'}
+            />
+          )}
+        </View>
+      ) : null}
       <Text
         style={[
           styles.name,
