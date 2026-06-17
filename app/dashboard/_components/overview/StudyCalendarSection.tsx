@@ -184,7 +184,7 @@ function StudyCalendarSectionComponent({
     }
   };
 
-  const showMobileDateNav = !isTablet && (layout === 'events-only' || layout === 'auto');
+  const showMobileDateNav = !isTablet && layout === 'events-only';
 
   const shiftSelectedDate = (days: number) => {
     setSelectedDate((prev) => {
@@ -477,7 +477,10 @@ function StudyCalendarSectionComponent({
           <View style={styles.tabletCol}>{renderEventsCard()}</View>
         </>
       ) : (
-        renderEventsCard()
+        <>
+          {renderCalendarCard()}
+          {renderEventsCard()}
+        </>
       )}
     </View>
   );
