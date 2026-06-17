@@ -19,6 +19,7 @@ import AssessmentsView from './_components/AssessmentsView';
 import QuizzesView from './_components/QuizzesView';
 import LearningPathsView from './_components/LearningPathsView';
 import EduOTTView from './_components/EduOTTView';
+import { EduOTTFilterProvider } from '../../src/contexts/edu-ott-filter-context';
 import VideosView from './_components/VideosView';
 import TimetableView from './_components/TimetableView';
 import CalendarView from './_components/CalendarView';
@@ -155,7 +156,11 @@ export default function AdminDashboard() {
       case 'learning-paths':
         return <LearningPathsView />;
       case 'eduott':
-        return <EduOTTView />;
+        return (
+          <EduOTTFilterProvider>
+            <EduOTTView username={userName} />
+          </EduOTTFilterProvider>
+        );
       case 'videos':
         return <VideosView />;
       case 'timetable':

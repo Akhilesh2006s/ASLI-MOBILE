@@ -8,6 +8,7 @@ import {
   RefreshControl,
   useWindowDimensions,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ShimmerCard } from '../../../src/components/student/StudentShimmer';
 import { STUDENT, STUDENT_RADIUS, STUDENT_SPACING, STUDENT_TYPO } from '../../../src/theme/student';
 import { router } from 'expo-router';
@@ -28,25 +29,67 @@ import {
 import { useEduOTTFilters } from '../../../src/contexts/edu-ott-filter-context';
 import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
 
+export type EduOTTRole = 'student' | 'teacher' | 'admin';
+
+const DASHBOARD_LABELS: Record<EduOTTRole, string> = {
+  student: 'Student Dashboard',
+  teacher: 'Teacher Dashboard',
+  admin: 'Admin Dashboard',
+};
+
+function authHeaders(token: string) {
+  return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+}
+
 function buildVideosUrl(
+  role: EduOTTRole,
   selectedClass: string | null,
   selectedSubject: string | null
 ): string {
   const params = new URLSearchParams({ type: 'Video' });
-  if (selectedClass) params.set('class', selectedClass);
-  if (selectedSubject) params.set('subject', selectedSubject);
-  return `${API_BASE_URL}/api/student/asli-prep-content?${params.toString()}`;
+  if (role === 'student') {
+    if (selectedClass) params.set('class', selectedClass);
+    if (selectedSubject) params.set('subject', selectedSubject);
+  }
+  return `${API_BASE_URL}/api/${role}/asli-prep-content?${params.toString()}`;
 }
 
 function buildStreamsUrl(
+  role: EduOTTRole,
   selectedClass: string | null,
   selectedSubject: string | null
 ): string {
   const params = new URLSearchParams();
-  if (selectedClass) params.set('class', selectedClass);
-  if (selectedSubject) params.set('subject', selectedSubject);
+  if (role === 'student') {
+    if (selectedClass) params.set('class', selectedClass);
+    if (selectedSubject) params.set('subject', selectedSubject);
+  }
   const q = params.toString();
-  return `${API_BASE_URL}/api/student/streams${q ? `?${q}` : ''}`;
+  return `${API_BASE_URL}/api/${role}/streams${q ? `?${q}` : ''}`;
+}
+
+async function fetchRoleVideos(token: string, role: EduOTTRole): Promise<VideoItem[]> {
+  const headers = authHeaders(token);
+  let response = await fetch(buildVideosUrl(role, null, null), { headers });
+  if (role === 'admin' && !response.ok) {
+    response = await fetch(`${API_BASE_URL}/api/admin/videos`, { headers });
+  }
+  if (!response.ok) return [];
+  const data = await response.json();
+  return mapAndDedupeVideos(data.data || data || []);
+}
+
+function matchesClassSubject(
+  subjectName: string | undefined,
+  classNumber: string | undefined,
+  selectedClass: string | null,
+  selectedSubject: string | null
+): boolean {
+  const classLabel = getSubjectClassLabel({ name: subjectName, classNumber });
+  const plainSubject = extractPlainSubjectName(subjectName || '').trim();
+  if (selectedClass && classLabel !== selectedClass) return false;
+  if (selectedSubject && plainSubject !== selectedSubject) return false;
+  return true;
 }
 
 interface VideoItem {
@@ -92,6 +135,7 @@ interface LiveSession {
 
 interface EduOTTViewProps {
   username?: string;
+  role?: EduOTTRole;
 }
 
 function mapContentToVideoItem(content: any): VideoItem {
@@ -150,6 +194,7 @@ function mapAndDedupeVideos(list: unknown[]): VideoItem[] {
 }
 
 const EDUOTT_GRID_MAX_WIDTH = 1080;
+const TAB_BAR_CLEARANCE = 120;
 
 function useEduOTTGridLayout() {
   const { width: screenWidth } = useWindowDimensions();
@@ -164,9 +209,14 @@ function useEduOTTGridLayout() {
   return { numColumns, isGrid, gridCardWidth };
 }
 
-export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
+export default function EduOTTView({ username = 'Student', role = 'student' }: EduOTTViewProps) {
   const { numColumns, isGrid, gridCardWidth } = useEduOTTGridLayout();
+  const insets = useSafeAreaInsets();
   const { isAsliPrepExclusive, loading: programLoading } = useSchoolProgram();
+  const useClientSideFilters = role !== 'student';
+  const dashboardLabel = DASHBOARD_LABELS[role];
+  const bottomClearance =
+    role === 'student' ? 0 : TAB_BAR_CLEARANCE + Math.max(insets.bottom, 10);
   const {
     selectedClass,
     selectedSubject,
@@ -200,39 +250,17 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
       const token = await SecureStore.getItemAsync('authToken');
       if (!token) return;
       try {
-        const fetches: Promise<Response>[] = [
-          fetch(`${API_BASE_URL}/api/student/streams`, {
-            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          }),
-        ];
-        if (isAsliPrepExclusive) {
-          fetches.unshift(
-            fetch(`${API_BASE_URL}/api/student/asli-prep-content?type=Video`, {
-              headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-            })
-          );
-        }
-        const results = await Promise.all(fetches);
+        const [videoList, sRes] = await Promise.all([
+          isAsliPrepExclusive ? fetchRoleVideos(token, role) : Promise.resolve([]),
+          fetch(buildStreamsUrl(role, null, null), { headers: authHeaders(token) }),
+        ]);
         if (cancelled) return;
-        if (isAsliPrepExclusive) {
-          const vRes = results[0];
-          const sRes = results[1];
-          if (vRes.ok) {
-            const data = await vRes.json();
-            const list = data.data || data || [];
-            setVideoCatalog(mapAndDedupeVideos(list));
-          } else setVideoCatalog([]);
-          if (sRes.ok) {
-            const data = await sRes.json();
-            setSessionCatalog(data.data || data || []);
-          } else setSessionCatalog([]);
+        setVideoCatalog(videoList);
+        if (sRes.ok) {
+          const data = await sRes.json();
+          setSessionCatalog(data.data || data || []);
         } else {
-          setVideoCatalog([]);
-          const sRes = results[0];
-          if (sRes.ok) {
-            const data = await sRes.json();
-            setSessionCatalog(data.data || data || []);
-          } else setSessionCatalog([]);
+          setSessionCatalog([]);
         }
       } catch {
         if (!cancelled) {
@@ -247,7 +275,7 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
     return () => {
       cancelled = true;
     };
-  }, [isAsliPrepExclusive, programLoading]);
+  }, [isAsliPrepExclusive, programLoading, role]);
 
   useEffect(
     () => setVisibleCount(10),
@@ -275,16 +303,18 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
           return;
         }
 
-        const response = await fetch(buildVideosUrl(selectedClass, selectedSubject), {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
+        const response = useClientSideFilters
+          ? null
+          : await fetch(buildVideosUrl(role, selectedClass, selectedSubject), {
+              headers: authHeaders(token),
+            });
 
         if (cancelled) return;
 
-        if (response.ok) {
+        if (useClientSideFilters) {
+          const list = await fetchRoleVideos(token, role);
+          if (!cancelled) setVideos(list);
+        } else if (response?.ok) {
           const data = await response.json();
           const videosList = data.data || data || [];
           setVideos(mapAndDedupeVideos(videosList));
@@ -303,7 +333,14 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
     return () => {
       cancelled = true;
     };
-  }, [activeTab, selectedClass, selectedSubject, listEpoch, isAsliPrepExclusive]);
+  }, [
+    activeTab,
+    isAsliPrepExclusive,
+    role,
+    useClientSideFilters,
+    listEpoch,
+    ...(useClientSideFilters ? [] : [selectedClass, selectedSubject]),
+  ]);
 
   useEffect(() => {
     if (activeTab !== 'live-sessions') {
@@ -321,12 +358,12 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
           return;
         }
 
-        const response = await fetch(buildStreamsUrl(selectedClass, selectedSubject), {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
+        const response = await fetch(
+          useClientSideFilters ? buildStreamsUrl(role, null, null) : buildStreamsUrl(role, selectedClass, selectedSubject),
+          {
+            headers: authHeaders(token),
+          }
+        );
 
         if (cancelled) return;
 
@@ -349,7 +386,13 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
     return () => {
       cancelled = true;
     };
-  }, [activeTab, selectedClass, selectedSubject, listEpoch]);
+  }, [
+    activeTab,
+    role,
+    useClientSideFilters,
+    listEpoch,
+    ...(useClientSideFilters ? [] : [selectedClass, selectedSubject]),
+  ]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -406,25 +449,45 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
     return Array.from(names).filter(Boolean).sort((a, b) => a.localeCompare(b));
   }, [videoCatalog, sessionCatalog, selectedClass]);
 
+  const classSubjectFilteredVideos = useMemo(
+    () =>
+      useClientSideFilters
+        ? videos.filter((video) =>
+            matchesClassSubject(video.subjectName, video.classNumber, selectedClass, selectedSubject)
+          )
+        : videos,
+    [videos, selectedClass, selectedSubject, useClientSideFilters]
+  );
+
+  const classSubjectFilteredSessions = useMemo(
+    () =>
+      useClientSideFilters
+        ? liveSessions.filter((session) =>
+            matchesClassSubject(session.subject?.name, session.classNumber, selectedClass, selectedSubject)
+          )
+        : liveSessions,
+    [liveSessions, selectedClass, selectedSubject, useClientSideFilters]
+  );
+
   const filteredVideos = useMemo(() => {
-    return videos.filter((video) => {
+    return classSubjectFilteredVideos.filter((video) => {
       const matchesSearch =
         !searchTerm ||
         video.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (video.description || '').toLowerCase().includes(searchTerm.toLowerCase());
       return matchesSearch;
     });
-  }, [videos, searchTerm]);
+  }, [classSubjectFilteredVideos, searchTerm]);
 
   const filteredSessions = useMemo(() => {
-    return liveSessions.filter((session) => {
+    return classSubjectFilteredSessions.filter((session) => {
       const matchesSearch =
         !sessionSearchTerm ||
         session.title.toLowerCase().includes(sessionSearchTerm.toLowerCase()) ||
         (session.description || '').toLowerCase().includes(sessionSearchTerm.toLowerCase());
       return matchesSearch;
     });
-  }, [liveSessions, sessionSearchTerm]);
+  }, [classSubjectFilteredSessions, sessionSearchTerm]);
 
   const visibleVideos = useMemo(
     () => filteredVideos.slice(0, visibleCount),
@@ -492,24 +555,22 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
       return;
     }
     try {
-      const sRes = await fetch(`${API_BASE_URL}/api/student/streams`, {
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      });
+      const [videoList, sRes] = await Promise.all([
+        isAsliPrepExclusive ? fetchRoleVideos(token, role) : Promise.resolve([]),
+        fetch(buildStreamsUrl(role, null, null), { headers: authHeaders(token) }),
+      ]);
       if (isAsliPrepExclusive) {
-        const vRes = await fetch(`${API_BASE_URL}/api/student/asli-prep-content?type=Video`, {
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        });
-        if (vRes.ok) {
-          const data = await vRes.json();
-          setVideoCatalog(mapAndDedupeVideos(data.data || data || []));
-        }
-        const vUrl = buildVideosUrl(selectedClass, selectedSubject);
-        const v2 = await fetch(vUrl, {
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        });
-        if (v2.ok) {
-          const data = await v2.json();
-          setVideos(mapAndDedupeVideos(data.data || data || []));
+        setVideoCatalog(videoList);
+        if (useClientSideFilters) {
+          setVideos(videoList);
+        } else {
+          const v2 = await fetch(buildVideosUrl(role, selectedClass, selectedSubject), {
+            headers: authHeaders(token),
+          });
+          if (v2.ok) {
+            const data = await v2.json();
+            setVideos(mapAndDedupeVideos(data.data || data || []));
+          }
         }
       } else {
         setVideoCatalog([]);
@@ -517,20 +578,24 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
       }
       if (sRes.ok) {
         const data = await sRes.json();
-        setSessionCatalog(data.data || data || []);
-      }
-      const sUrl = buildStreamsUrl(selectedClass, selectedSubject);
-      const s2 = await fetch(sUrl, {
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      });
-      if (s2.ok) {
-        const data = await s2.json();
-        setLiveSessions(data.data || data || []);
+        const allSessions = data.data || data || [];
+        setSessionCatalog(allSessions);
+        if (useClientSideFilters) {
+          setLiveSessions(allSessions);
+        } else {
+          const s2 = await fetch(buildStreamsUrl(role, selectedClass, selectedSubject), {
+            headers: authHeaders(token),
+          });
+          if (s2.ok) {
+            const sData = await s2.json();
+            setLiveSessions(sData.data || sData || []);
+          }
+        }
       }
     } finally {
       setRefreshing(false);
     }
-  }, [selectedClass, selectedSubject, isAsliPrepExclusive]);
+  }, [selectedClass, selectedSubject, isAsliPrepExclusive, role, useClientSideFilters]);
 
   const onEndReached = useCallback(() => {
     if (visibleCount < filteredVideos.length) {
@@ -596,7 +661,7 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
 
   const listHeader = (
     <>
-      <Header username={username} />
+      <Header username={username} dashboardLabel={dashboardLabel} />
 
       <View style={styles.summaryCard}>
         <View style={styles.summaryTop}>
@@ -618,7 +683,7 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
               onPress={() => setActiveTab('videos')}
             >
               <Text style={[styles.statChipText, activeTab === 'videos' && styles.statChipTextActive]}>
-                🎥 {videos.length} Videos
+                🎥 {classSubjectFilteredVideos.length} Videos
               </Text>
             </TouchableOpacity>
           )}
@@ -628,7 +693,7 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
             onPress={() => setActiveTab('live-sessions')}
           >
             <Text style={[styles.statChipText, activeTab === 'live-sessions' && styles.statChipTextActive]}>
-              🔴 {liveSessions.filter((x) => x.status === 'live').length} Live
+              🔴 {classSubjectFilteredSessions.filter((x) => x.status === 'live').length} Live
             </Text>
           </TouchableOpacity>
         </View>
@@ -752,7 +817,7 @@ export default function EduOTTView({ username = 'Student' }: EduOTTViewProps) {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, bottomClearance > 0 && { paddingBottom: bottomClearance }]}>
       {activeTab === 'videos' ? renderVideoContent() : renderLiveContent()}
     </View>
   );

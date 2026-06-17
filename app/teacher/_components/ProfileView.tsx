@@ -16,6 +16,7 @@ import teacherService from '../../../src/services/api/teacherService';
 import { TeacherShimmer, TimetableView } from '../../../src/components/teacher';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
 import EduOTTView from './EduOTTView';
+import { EduOTTFilterProvider } from '../../../src/contexts/edu-ott-filter-context';
 import WorkDiaryView from './WorkDiaryView';
 
 type Props = {
@@ -152,7 +153,9 @@ export default function ProfileView({ user, stats, onNavigate, onLogout }: Props
           <Ionicons name="arrow-back" size={20} color={TEACHER.primaryLight} />
           <Text style={styles.backText}>Back to Profile</Text>
         </Pressable>
-        <EduOTTView />
+        <EduOTTFilterProvider>
+          <EduOTTView username={user?.fullName || 'Teacher'} />
+        </EduOTTFilterProvider>
       </View>
     );
   }

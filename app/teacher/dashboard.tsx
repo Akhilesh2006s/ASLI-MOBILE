@@ -24,6 +24,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AIClassesView from './_components/AIClassesView';
 import StudentsView from './_components/StudentsView';
 import EduOTTView from './_components/EduOTTView';
+import { EduOTTFilterProvider } from '../../src/contexts/edu-ott-filter-context';
 import LearningPathsView from './_components/LearningPathsView';
 import VidyaAIView from './_components/VidyaAIView';
 import VidyaAIFloatingAssistant from '../../src/components/vidya/VidyaAIFloatingAssistant';
@@ -323,7 +324,9 @@ export default function TeacherDashboard() {
       case 'eduott':
         return (
           <View style={styles.fullTabPane}>
-            <EduOTTView />
+            <EduOTTFilterProvider>
+              <EduOTTView username={resolveTeacherDisplayName(user)} />
+            </EduOTTFilterProvider>
           </View>
         );
       case 'learning-paths':

@@ -5,9 +5,10 @@ import { STUDENT, STUDENT_RADIUS, STUDENT_TYPO } from '../../../../src/theme/stu
 
 interface HeaderProps {
   username: string;
+  dashboardLabel?: string;
 }
 
-function HeaderComponent({ username }: HeaderProps) {
+function HeaderComponent({ username, dashboardLabel = 'Student Dashboard' }: HeaderProps) {
   const initial = (username || 'S').trim().charAt(0).toUpperCase();
 
   return (
@@ -23,7 +24,7 @@ function HeaderComponent({ username }: HeaderProps) {
             <Text style={styles.avatarText}>{initial}</Text>
           </View>
           <View>
-            <Text style={styles.smallText}>Student Dashboard</Text>
+            <Text style={styles.smallText}>{dashboardLabel}</Text>
             <Text style={styles.title}>EduOTT</Text>
             <Text style={styles.subtitle}>Welcome back, {username}</Text>
           </View>
