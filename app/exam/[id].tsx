@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,10 @@ import {
   TextInput,
   Modal,
   BackHandler,
+  Image,
+  FlatList,
+  Pressable,
+  useWindowDimensions,
 } from 'react-native';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,21 +23,40 @@ import { usePreventRemove } from '@react-navigation/native';
 import { API_BASE_URL } from '../../src/lib/api-config';
 import * as SecureStore from 'expo-secure-store';
 import { getDashboardPath } from '../../src/hooks/useBackNavigation';
-import MathRenderer from '../../src/components/MathRenderer';
 import ExamResultsView from '../../src/components/student/ExamResultsView';
 import { ExamAnalysisResult } from '../../src/lib/exam-analysis-helpers';
+import { normalizeAndFormatExamDisplayText } from '../../src/lib/exam-text-normalize';
 
 const MAX_EXIT_ATTEMPTS = 5;
+const PALETTE_COLUMNS = 5;
+const PALETTE_PAGE_SIZE = 20;
 
 type Question = {
   _id: string;
   questionText?: string;
   question?: string;
+  questionImage?: string;
   questionType?: 'mcq' | 'multiple' | 'integer' | string;
   options?: Array<string | { text: string; isCorrect?: boolean }>;
   marks?: number;
   subject?: string;
 };
+
+function answerKey(question: Question | null | undefined): string {
+  if (!question?._id) return '';
+  return String(question._id);
+}
+
+function isAnswerProvided(question: Question, raw: unknown): boolean {
+  if (raw === undefined || raw === null) return false;
+  const t = question.questionType || 'mcq';
+  if (t === 'multiple') return Array.isArray(raw) && raw.length > 0;
+  return String(raw).trim() !== '';
+}
+
+function normalizeExamText(value: unknown, subject?: string): string {
+  return normalizeAndFormatExamDisplayText(value, subject);
+}
 
 type Exam = {
   _id: string;
@@ -111,10 +134,17 @@ export default function ExamPage() {
   const [dashboardPath, setDashboardPath] = useState('/dashboard');
   const [exitAttempts, setExitAttempts] = useState(0);
   const [showExitWarning, setShowExitWarning] = useState(false);
+  const [flaggedQuestions, setFlaggedQuestions] = useState<Set<number>>(new Set());
+  const [palettePage, setPalettePage] = useState(0);
+  const [showQuestionDropdown, setShowQuestionDropdown] = useState(false);
+  const { width: screenWidth } = useWindowDimensions();
+  const paletteListRef = useRef<FlatList<number>>(null);
   const [examResult, setExamResult] = useState<ExamAnalysisResult | null>(null);
   const [questionTimings, setQuestionTimings] = useState<Record<string, number>>({});
   const submittedRef = useRef(false);
   const autoSubmitTriggeredRef = useRef(false);
+  const submitInFlightRef = useRef(false);
+  const submitExamRef = useRef<() => Promise<void>>(async () => {});
   const questionEnterTimestampRef = useRef<number>(Date.now());
   const lastTrackedQuestionIdRef = useRef<string | null>(null);
 
@@ -128,7 +158,7 @@ export default function ExamPage() {
   }, [id]);
 
   const recordExitAttempt = useCallback(() => {
-    if (submittedRef.current || isSubmitting || !exam) return;
+    if (submittedRef.current || submitInFlightRef.current || isSubmitting || !exam) return;
     setExitAttempts((prev) => Math.min(prev + 1, MAX_EXIT_ATTEMPTS));
     setShowExitWarning(true);
   }, [exam, isSubmitting]);
@@ -136,6 +166,36 @@ export default function ExamPage() {
   usePreventRemove(examInProgress, () => {
     recordExitAttempt();
   });
+
+  useEffect(() => {
+    if (!showQuestionDropdown || !exam?.questions?.length) return;
+    const targetPage = Math.floor(currentIndex / PALETTE_PAGE_SIZE);
+    setPalettePage(targetPage);
+    requestAnimationFrame(() => {
+      paletteListRef.current?.scrollToOffset({
+        offset: targetPage * screenWidth,
+        animated: false,
+      });
+    });
+  }, [showQuestionDropdown, currentIndex, exam?.questions?.length, screenWidth]);
+
+  const scrollToPalettePage = useCallback(
+    (page: number) => {
+      setPalettePage(page);
+      paletteListRef.current?.scrollToOffset({
+        offset: page * screenWidth,
+        animated: true,
+      });
+    },
+    [screenWidth]
+  );
+
+  const palettePageIndexes = useMemo(() => {
+    const total = exam?.questions?.length ?? 0;
+    if (!total) return [];
+    const pageCount = Math.ceil(total / PALETTE_PAGE_SIZE);
+    return Array.from({ length: pageCount }, (_, index) => index);
+  }, [exam?.questions?.length]);
 
   useEffect(() => {
     if (!examInProgress) return;
@@ -190,11 +250,13 @@ export default function ExamPage() {
   }, [exam, currentIndex, examResult, recordCurrentQuestionDuration]);
 
   const submitExam = useCallback(async () => {
-    if (!exam || submittedRef.current || isSubmitting) return;
+    if (!exam || submittedRef.current || submitInFlightRef.current) return;
     submittedRef.current = true;
+    submitInFlightRef.current = true;
     setIsSubmitting(true);
     setIsGrading(true);
     setShowExitWarning(false);
+    setShowQuestionDropdown(false);
 
     const finalTimings = recordCurrentQuestionDuration();
     const timeTaken = Math.max(0, exam.duration * 60 - timeLeft);
@@ -223,11 +285,11 @@ export default function ExamPage() {
 
       const json = await response.json().catch(() => ({}));
       if (!response.ok) {
-        Alert.alert('Submit Failed', json?.message || 'Could not save exam result.');
         submittedRef.current = false;
         autoSubmitTriggeredRef.current = false;
-        setIsGrading(false);
-        setIsSubmitting(false);
+        Alert.alert('Submit Failed', json?.message || 'Could not save exam result.', [
+          { text: 'Go to Dashboard', onPress: () => router.replace(dashboardPath) },
+        ]);
         return;
       }
 
@@ -236,6 +298,8 @@ export default function ExamPage() {
       setExamResult(merged);
     } catch (error: unknown) {
       const aborted = error instanceof Error && error.name === 'AbortError';
+      submittedRef.current = false;
+      autoSubmitTriggeredRef.current = false;
       if (aborted) {
         Alert.alert(
           'Grading is taking longer than usual',
@@ -243,15 +307,18 @@ export default function ExamPage() {
           [{ text: 'OK', onPress: () => router.replace(dashboardPath) }]
         );
       } else {
-        Alert.alert('Error', 'Failed to submit exam. Please try again.');
-        submittedRef.current = false;
-        autoSubmitTriggeredRef.current = false;
+        Alert.alert('Error', 'Failed to submit exam. Please try again.', [
+          { text: 'Go to Dashboard', onPress: () => router.replace(dashboardPath) },
+        ]);
       }
     } finally {
+      submitInFlightRef.current = false;
       setIsGrading(false);
       setIsSubmitting(false);
     }
-  }, [exam, timeLeft, answers, dashboardPath, router, isSubmitting, recordCurrentQuestionDuration]);
+  }, [exam, timeLeft, answers, dashboardPath, router, recordCurrentQuestionDuration]);
+
+  submitExamRef.current = submitExam;
 
   useEffect(() => {
     if (
@@ -264,11 +331,10 @@ export default function ExamPage() {
     }
 
     autoSubmitTriggeredRef.current = true;
-    const timer = setTimeout(() => {
-      void submitExam();
-    }, 1200);
-    return () => clearTimeout(timer);
-  }, [exitAttempts, examInProgress, submitExam]);
+    setShowExitWarning(false);
+    setIsGrading(true);
+    void submitExamRef.current();
+  }, [exitAttempts, examInProgress]);
 
   useEffect(() => {
     if (!exam || timeLeft <= 0 || submittedRef.current) return;
@@ -338,11 +404,43 @@ export default function ExamPage() {
         const idx = existing.indexOf(value);
         if (idx >= 0) existing.splice(idx, 1);
         else existing.push(value);
+        if (existing.length === 0) {
+          const next = { ...prev };
+          delete next[questionId];
+          return next;
+        }
         return { ...prev, [questionId]: existing };
       });
     } else {
-      setAnswers((prev) => ({ ...prev, [questionId]: value }));
+      setAnswers((prev) => {
+        if (prev[questionId] === value) {
+          const next = { ...prev };
+          delete next[questionId];
+          return next;
+        }
+        return { ...prev, [questionId]: value };
+      });
     }
+  };
+
+  const handleClearCurrentAnswer = () => {
+    if (!currentQuestion) return;
+    const qid = answerKey(currentQuestion);
+    if (!qid) return;
+    setAnswers((prev) => {
+      const next = { ...prev };
+      delete next[qid];
+      return next;
+    });
+  };
+
+  const toggleFlagQuestion = (index: number) => {
+    setFlaggedQuestions((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
   };
 
   const confirmSubmit = () => {
@@ -370,6 +468,7 @@ export default function ExamPage() {
     }
     submittedRef.current = false;
     autoSubmitTriggeredRef.current = false;
+    submitInFlightRef.current = false;
     setExamResult(null);
     setIsGrading(false);
     setAnswers({});
@@ -377,6 +476,9 @@ export default function ExamPage() {
     setTimeLeft((Number(exam.duration) || 60) * 60);
     setExitAttempts(0);
     setShowExitWarning(false);
+    setPalettePage(0);
+    setShowQuestionDropdown(false);
+    setFlaggedQuestions(new Set());
     setQuestionTimings({});
     lastTrackedQuestionIdRef.current = null;
     questionEnterTimestampRef.current = Date.now();
@@ -439,16 +541,83 @@ export default function ExamPage() {
   const qType = currentQuestion.questionType || 'mcq';
   const options = currentQuestion.options || [];
   const maxExitReached = exitAttempts >= MAX_EXIT_ATTEMPTS;
+  const currentQid = answerKey(currentQuestion);
+  const hasCurrentAnswer = isAnswerProvided(currentQuestion, answers[currentQid]);
+  const questionImageUri = currentQuestion.questionImage
+    ? currentQuestion.questionImage.startsWith('http')
+      ? currentQuestion.questionImage
+      : `${API_BASE_URL}${currentQuestion.questionImage}`
+    : null;
+  const answeredCount = exam.questions.filter((q) =>
+    isAnswerProvided(q, answers[answerKey(q)])
+  ).length;
+  const paletteGap = 8;
+  const palettePadding = 16;
+  const paletteItemSize = Math.min(
+    48,
+    Math.floor(
+      (screenWidth - palettePadding * 2 - paletteGap * (PALETTE_COLUMNS - 1)) / PALETTE_COLUMNS
+    )
+  );
+  const palettePageCount = palettePageIndexes.length;
+  const paletteRowCount =
+    palettePageCount > 1
+      ? Math.ceil(PALETTE_PAGE_SIZE / PALETTE_COLUMNS)
+      : Math.ceil(exam.questions.length / PALETTE_COLUMNS);
+  const paletteGridHeight =
+    paletteRowCount * paletteItemSize + Math.max(0, paletteRowCount - 1) * paletteGap;
+
+  const goToQuestion = (index: number) => {
+    setCurrentIndex(index);
+    setShowQuestionDropdown(false);
+  };
+
+  const renderPaletteItem = (q: Question, index: number) => {
+    const answered = isAnswerProvided(q, answers[answerKey(q)]);
+    const flagged = flaggedQuestions.has(index);
+    const isCurrent = index === currentIndex;
+    return (
+      <TouchableOpacity
+        key={answerKey(q) || `q-${index}`}
+        style={[
+          styles.paletteItem,
+          { width: paletteItemSize, height: paletteItemSize },
+          isCurrent && styles.paletteItemCurrent,
+          !isCurrent && answered && styles.paletteItemAnswered,
+          !isCurrent && flagged && styles.paletteItemFlagged,
+          !isCurrent && flagged && answered && styles.paletteItemFlaggedAnswered,
+        ]}
+        onPress={() => goToQuestion(index)}
+        activeOpacity={0.75}
+      >
+        <Text
+          style={[
+            styles.paletteItemText,
+            isCurrent && styles.paletteItemTextCurrent,
+            !isCurrent && answered && styles.paletteItemTextAnswered,
+            !isCurrent && flagged && styles.paletteItemTextFlagged,
+          ]}
+        >
+          {index + 1}
+        </Text>
+        {flagged ? (
+          <View style={styles.paletteFlagDot}>
+            <Ionicons name="flag" size={8} color="#92400e" />
+          </View>
+        ) : null}
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <>
       <Stack.Screen options={{ gestureEnabled: false }} />
 
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <LinearGradient colors={['#ea580c', '#c2410c']} style={styles.header}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <LinearGradient colors={['#ea580c', '#ea580c']} style={styles.header}>
           <View style={styles.headerRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.examTitle} numberOfLines={1}>
+              <Text style={styles.examTitle} numberOfLines={2}>
                 {exam.title}
               </Text>
               <Text style={styles.examMeta}>
@@ -467,17 +636,53 @@ export default function ExamPage() {
               ]}
             />
           </View>
-          {exitAttempts > 0 ? (
+        </LinearGradient>
+
+        {exitAttempts > 0 ? (
+          <View style={styles.exitStrip}>
             <Text
               style={[
                 styles.exitAttemptsText,
-                maxExitReached ? styles.exitAttemptsDanger : styles.exitAttemptsWarn,
+                maxExitReached ? styles.exitAttemptsDanger : null,
               ]}
             >
               Exit attempts: {exitAttempts}/{MAX_EXIT_ATTEMPTS}
             </Text>
-          ) : null}
-        </LinearGradient>
+          </View>
+        ) : null}
+
+        <View style={styles.navPanel}>
+          <View style={styles.navPanelTop}>
+            <Text style={styles.navPanelTitle}>Questions</Text>
+            <Text style={styles.navPanelMeta}>
+              {answeredCount} of {exam.questions.length} answered
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.questionDropdown}
+            onPress={() => setShowQuestionDropdown(true)}
+            activeOpacity={0.85}
+          >
+            <View style={styles.questionDropdownLeft}>
+              <Text style={styles.questionDropdownLabel}>Jump to question</Text>
+              <Text style={styles.questionDropdownValue}>
+                Question {currentIndex + 1} of {exam.questions.length}
+              </Text>
+            </View>
+            <View style={styles.questionDropdownRight}>
+              {hasCurrentAnswer ? (
+                <View style={[styles.statusPill, styles.statusPillAnswered]}>
+                  <Text style={styles.statusPillTextAnswered}>Answered</Text>
+                </View>
+              ) : null}
+              {flaggedQuestions.has(currentIndex) ? (
+                <Ionicons name="flag" size={16} color="#ca8a04" />
+              ) : null}
+              <Ionicons name="chevron-down" size={20} color="#6b7280" />
+            </View>
+          </TouchableOpacity>
+        </View>
 
         <ScrollView
           style={styles.body}
@@ -485,65 +690,215 @@ export default function ExamPage() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <MathRenderer formula={qText} style={styles.questionText} />
-
-          {qType === 'integer' ? (
-            <TextInput
-              style={styles.integerInput}
-              keyboardType="numeric"
-              placeholder="Enter your answer"
-              value={String(answers[currentQuestion._id] ?? '')}
-              onChangeText={(t) => handleSelect(currentQuestion._id, t)}
-            />
-          ) : (
-            options.map((opt, index) => {
-              const label = optionLabel(opt, index);
-              const selected =
-                qType === 'multiple'
-                  ? Array.isArray(answers[currentQuestion._id]) &&
-                    answers[currentQuestion._id].includes(label)
-                  : answers[currentQuestion._id] === label;
-              return (
+          <View style={styles.questionCard}>
+            <View style={styles.questionCardHeader}>
+              <View style={styles.questionNumberBadge}>
+                <Text style={styles.questionNumberBadgeText}>Q{currentIndex + 1}</Text>
+              </View>
+              <View style={styles.questionCardActions}>
                 <TouchableOpacity
-                  key={`${currentQuestion._id}-${index}`}
-                  style={[styles.option, selected && styles.optionSelected]}
-                  onPress={() => handleSelect(currentQuestion._id, label, qType === 'multiple')}
+                  style={[
+                    styles.flagBtn,
+                    flaggedQuestions.has(currentIndex) && styles.flagBtnActive,
+                  ]}
+                  onPress={() => toggleFlagQuestion(currentIndex)}
                 >
-                  <Text style={[styles.optionText, selected && styles.optionTextSelected]}>{label}</Text>
+                  <Ionicons
+                    name={flaggedQuestions.has(currentIndex) ? 'flag' : 'flag-outline'}
+                    size={18}
+                    color={flaggedQuestions.has(currentIndex) ? '#ca8a04' : '#9ca3af'}
+                  />
                 </TouchableOpacity>
-              );
-            })
-          )}
+                {hasCurrentAnswer ? (
+                  <TouchableOpacity style={styles.clearBtn} onPress={handleClearCurrentAnswer}>
+                    <Text style={styles.clearBtnText}>Clear</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            </View>
+
+            <Text style={styles.questionText}>
+              {normalizeExamText(qText, currentQuestion.subject)}
+            </Text>
+
+            {questionImageUri ? (
+              <Image
+                source={{ uri: questionImageUri }}
+                style={styles.questionImage}
+                resizeMode="contain"
+              />
+            ) : null}
+
+            {qType === 'integer' ? (
+              <TextInput
+                style={styles.integerInput}
+                keyboardType="numeric"
+                placeholder="Enter your answer"
+                placeholderTextColor="#9ca3af"
+                value={String(answers[currentQuestion._id] ?? '')}
+                onChangeText={(t) => {
+                  if (!t.trim()) {
+                    setAnswers((prev) => {
+                      const next = { ...prev };
+                      delete next[currentQuestion._id];
+                      return next;
+                    });
+                    return;
+                  }
+                  handleSelect(currentQuestion._id, t);
+                }}
+              />
+            ) : (
+              options.map((opt, index) => {
+                const label = optionLabel(opt, index);
+                const displayLabel = normalizeExamText(label, currentQuestion.subject);
+                const selected =
+                  qType === 'multiple'
+                    ? Array.isArray(answers[currentQuestion._id]) &&
+                      answers[currentQuestion._id].includes(label)
+                    : answers[currentQuestion._id] === label;
+                return (
+                  <TouchableOpacity
+                    key={`${currentQuestion._id}-${index}`}
+                    style={[styles.option, selected && styles.optionSelected]}
+                    onPress={() => handleSelect(currentQuestion._id, label, qType === 'multiple')}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
+                      {displayLabel}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })
+            )}
+          </View>
         </ScrollView>
 
         <View style={styles.footer}>
           <TouchableOpacity
-            style={[styles.navBtn, currentIndex === 0 && styles.navBtnDisabled]}
+            style={[styles.navBtn, styles.prevBtn, currentIndex === 0 && styles.navBtnDisabled]}
             disabled={currentIndex === 0}
             onPress={() => setCurrentIndex((i) => Math.max(0, i - 1))}
           >
-            <Text style={styles.navBtnText}>Previous</Text>
+            <Text style={[styles.navBtnText, currentIndex === 0 && styles.navBtnTextDisabled]}>
+              Previous
+            </Text>
           </TouchableOpacity>
 
-          {currentIndex < exam.questions.length - 1 ? (
-            <TouchableOpacity style={styles.navBtn} onPress={() => setCurrentIndex((i) => i + 1)}>
-              <Text style={styles.navBtnText}>Next</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={[styles.navBtn, styles.submitBtn]}
-              onPress={confirmSubmit}
-              disabled={isSubmitting}
+          <TouchableOpacity
+            style={[
+              styles.navBtn,
+              styles.nextBtn,
+              currentIndex >= exam.questions.length - 1 && styles.navBtnDisabled,
+            ]}
+            disabled={currentIndex >= exam.questions.length - 1}
+            onPress={() => setCurrentIndex((i) => Math.min(exam.questions.length - 1, i + 1))}
+          >
+            <Text
+              style={[
+                styles.navBtnText,
+                currentIndex >= exam.questions.length - 1 && styles.navBtnTextDisabled,
+              ]}
             >
-              {isSubmitting ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.navBtnText}>Submit</Text>
-              )}
-            </TouchableOpacity>
-          )}
+              Next
+            </Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
+
+      <Modal
+        visible={showQuestionDropdown}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowQuestionDropdown(false)}
+      >
+        <Pressable style={styles.dropdownOverlay} onPress={() => setShowQuestionDropdown(false)}>
+          <Pressable style={styles.dropdownSheet} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.dropdownSheetHeader}>
+              <Text style={styles.dropdownSheetTitle}>Select Question</Text>
+              <TouchableOpacity onPress={() => setShowQuestionDropdown(false)} hitSlop={8}>
+                <Ionicons name="close" size={22} color="#374151" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.dropdownSheetSubtitle}>
+              {answeredCount} of {exam.questions.length} answered · tap a number to jump
+            </Text>
+
+            {palettePageCount > 1 ? (
+              <View style={styles.palettePager}>
+                {palettePageIndexes.map((pageIndex) => {
+                  const start = pageIndex * PALETTE_PAGE_SIZE + 1;
+                  const end = Math.min((pageIndex + 1) * PALETTE_PAGE_SIZE, exam.questions.length);
+                  const active = palettePage === pageIndex;
+                  return (
+                    <TouchableOpacity
+                      key={`palette-page-${pageIndex}`}
+                      style={[styles.palettePagerBtn, active && styles.palettePagerBtnActive]}
+                      onPress={() => scrollToPalettePage(pageIndex)}
+                    >
+                      <Text style={[styles.palettePagerText, active && styles.palettePagerTextActive]}>
+                        Q{start}–{end}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+                <Text style={styles.paletteSwipeHint}>Swipe →</Text>
+              </View>
+            ) : null}
+
+            <FlatList
+              ref={paletteListRef}
+              data={palettePageIndexes}
+              horizontal
+              pagingEnabled
+              scrollEnabled={palettePageCount > 1}
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(pageIndex) => `dropdown-palette-page-${pageIndex}`}
+              style={{ height: paletteGridHeight }}
+              getItemLayout={(_, index) => ({
+                length: screenWidth,
+                offset: screenWidth * index,
+                index,
+              })}
+              onMomentumScrollEnd={(event) => {
+                const nextPage = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
+                if (nextPage >= 0 && nextPage < palettePageCount) {
+                  setPalettePage(nextPage);
+                }
+              }}
+              renderItem={({ item: pageIndex }) => {
+                const startIndex = pageIndex * PALETTE_PAGE_SIZE;
+                const pageQuestions = exam.questions.slice(
+                  startIndex,
+                  startIndex + PALETTE_PAGE_SIZE
+                );
+                return (
+                  <View style={[styles.palettePage, { width: screenWidth }]}>
+                    <View style={[styles.paletteGrid, { gap: paletteGap, minHeight: paletteGridHeight }]}>
+                      {pageQuestions.map((q, offset) => renderPaletteItem(q, startIndex + offset))}
+                    </View>
+                  </View>
+                );
+              }}
+            />
+
+            <View style={styles.dropdownLegend}>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, styles.legendDotCurrent]} />
+                <Text style={styles.legendText}>Current</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, styles.legendDotAnswered]} />
+                <Text style={styles.legendText}>Answered</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, styles.legendDotFlagged]} />
+                <Text style={styles.legendText}>Flagged</Text>
+              </View>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <Modal visible={showExitWarning} transparent animationType="fade" onRequestClose={() => {}}>
         <View style={styles.modalOverlay}>
@@ -572,7 +927,23 @@ export default function ExamPage() {
             {maxExitReached ? (
               <View style={styles.autoSubmitBox}>
                 <ActivityIndicator color="#dc2626" />
-                <Text style={styles.autoSubmitText}>Submitting your exam...</Text>
+                <Text style={styles.autoSubmitText}>
+                  {isGrading || isSubmitting
+                    ? 'Submitting your exam...'
+                    : 'Preparing auto-submit...'}
+                </Text>
+                {!isGrading && !isSubmitting ? (
+                  <TouchableOpacity
+                    style={styles.forceSubmitBtn}
+                    onPress={() => {
+                      autoSubmitTriggeredRef.current = true;
+                      setShowExitWarning(false);
+                      void submitExamRef.current();
+                    }}
+                  >
+                    <Text style={styles.forceSubmitBtnText}>Submit now</Text>
+                  </TouchableOpacity>
+                ) : null}
               </View>
             ) : (
               <TouchableOpacity
@@ -590,79 +961,310 @@ export default function ExamPage() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9fafb' },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  container: { flex: 1, backgroundColor: '#ffffff' },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff' },
   loadingText: { marginTop: 12, color: '#6b7280', fontSize: 16 },
   gradingTitle: { marginTop: 16, fontSize: 18, fontWeight: '700', color: '#111827' },
   gradingHint: { marginTop: 8, fontSize: 14, color: '#6b7280', textAlign: 'center', paddingHorizontal: 32 },
-  header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  examTitle: { fontSize: 18, fontWeight: '800', color: '#fff' },
-  examMeta: { fontSize: 13, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
+  header: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 12 },
+  headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  examTitle: { fontSize: 20, fontWeight: '800', color: '#fff', lineHeight: 26 },
+  examMeta: { fontSize: 14, color: 'rgba(255,255,255,0.95)', marginTop: 4, fontWeight: '500' },
   headerSubmitBtn: {
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.6)',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingHorizontal: 14,
+    borderWidth: 1.5,
+    borderColor: '#fff',
+    backgroundColor: 'transparent',
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
+    marginTop: 2,
   },
-  headerSubmitText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  progressTrack: { height: 4, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 2, marginTop: 10 },
+  headerSubmitText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  progressTrack: { height: 3, backgroundColor: 'rgba(255,255,255,0.35)', borderRadius: 2, marginTop: 12 },
   progressFill: { height: '100%', backgroundColor: '#fff', borderRadius: 2 },
+  exitStrip: {
+    backgroundColor: '#c2410c',
+    paddingVertical: 7,
+    alignItems: 'center',
+  },
   exitAttemptsText: {
-    marginTop: 8,
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
     textAlign: 'center',
   },
-  exitAttemptsWarn: { color: '#fef08a' },
   exitAttemptsDanger: { color: '#fecaca' },
-  body: { flex: 1 },
+  body: { flex: 1, backgroundColor: '#f3f4f6' },
   bodyContent: {
-    padding: 16,
-    paddingBottom: 32,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 20,
     flexGrow: 1,
   },
-  questionText: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 20 },
-  option: {
+  navPanel: {
     backgroundColor: '#fff',
-    borderWidth: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+    paddingTop: 10,
+    paddingBottom: 12,
+    paddingHorizontal: 16,
+  },
+  navPanelTop: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  navPanelTitle: { fontSize: 15, fontWeight: '800', color: '#111827' },
+  navPanelMeta: { fontSize: 12, color: '#6b7280', fontWeight: '600' },
+  questionDropdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f9fafb',
+    borderWidth: 1,
     borderColor: '#e5e7eb',
     borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  questionDropdownLeft: { flex: 1, minWidth: 0 },
+  questionDropdownLabel: { fontSize: 11, fontWeight: '600', color: '#9ca3af', marginBottom: 2 },
+  questionDropdownValue: { fontSize: 15, fontWeight: '800', color: '#111827' },
+  questionDropdownRight: { flexDirection: 'row', alignItems: 'center', gap: 8, marginLeft: 8 },
+  statusPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  statusPillAnswered: { backgroundColor: '#dcfce7' },
+  statusPillTextAnswered: { fontSize: 10, fontWeight: '700', color: '#166534' },
+  questionCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  questionCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  questionCardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  questionNumberBadge: {
+    backgroundColor: '#fff7ed',
+    borderWidth: 1,
+    borderColor: '#fed7aa',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  questionNumberBadgeText: { fontSize: 13, fontWeight: '800', color: '#c2410c' },
+  flagBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f9fafb',
+  },
+  flagBtnActive: { backgroundColor: '#fef9c3' },
+  clearBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  clearBtnText: { fontSize: 13, fontWeight: '600', color: '#6b7280' },
+  questionText: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 20,
+    textAlign: 'center',
+    lineHeight: 26,
+  },
+  questionImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+    marginBottom: 20,
+    backgroundColor: '#f9fafb',
+  },
+  option: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    marginBottom: 12,
   },
   optionSelected: { borderColor: '#ea580c', backgroundColor: '#fff7ed' },
-  optionText: { fontSize: 16, color: '#374151' },
+  optionText: { fontSize: 16, color: '#111827' },
   optionTextSelected: { color: '#c2410c', fontWeight: '700' },
   integerInput: {
     backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: '#e5e7eb',
-    borderRadius: 12,
-    padding: 14,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
     fontSize: 16,
+    color: '#111827',
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 16,
     backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
     gap: 12,
   },
   navBtn: {
     flex: 1,
-    backgroundColor: '#ea580c',
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
   },
+  prevBtn: { backgroundColor: '#d1d5db' },
+  nextBtn: { backgroundColor: '#ea580c' },
   navBtnDisabled: { backgroundColor: '#e5e7eb' },
-  submitBtn: { backgroundColor: '#16a34a' },
   navBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  navBtnTextDisabled: { color: '#9ca3af' },
+  palettePager: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingHorizontal: 20,
+    marginBottom: 10,
+  },
+  palettePagerBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#fff',
+  },
+  palettePagerBtnActive: {
+    backgroundColor: '#ea580c',
+    borderColor: '#ea580c',
+  },
+  palettePagerText: { fontSize: 12, fontWeight: '700', color: '#6b7280' },
+  palettePagerTextActive: { color: '#fff' },
+  paletteSwipeHint: { fontSize: 11, color: '#9ca3af', fontWeight: '600', marginLeft: 'auto' },
+  palettePage: {
+    paddingHorizontal: 16,
+  },
+  paletteGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  paletteItem: {
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  paletteItemCurrent: {
+    backgroundColor: '#ea580c',
+    borderColor: '#ea580c',
+    transform: [{ scale: 1.05 }],
+    shadowColor: '#ea580c',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  paletteItemAnswered: {
+    backgroundColor: '#dcfce7',
+    borderColor: '#86efac',
+  },
+  paletteItemFlagged: {
+    backgroundColor: '#fef9c3',
+    borderColor: '#facc15',
+  },
+  paletteItemFlaggedAnswered: {
+    backgroundColor: '#fde68a',
+    borderColor: '#f59e0b',
+  },
+  paletteItemText: { fontSize: 13, fontWeight: '700', color: '#4b5563' },
+  paletteItemTextCurrent: { color: '#fff' },
+  paletteItemTextAnswered: { color: '#166534' },
+  paletteItemTextFlagged: { color: '#92400e' },
+  paletteFlagDot: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+  },
+  dropdownOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  dropdownSheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 24,
+  },
+  dropdownSheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 4,
+  },
+  dropdownSheetTitle: { fontSize: 18, fontWeight: '800', color: '#111827' },
+  dropdownSheetSubtitle: {
+    fontSize: 13,
+    color: '#6b7280',
+    paddingHorizontal: 20,
+    marginBottom: 10,
+    fontWeight: '500',
+  },
+  dropdownLegend: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: 14,
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
+    marginTop: 8,
+  },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 4,
+    borderWidth: 1,
+  },
+  legendDotCurrent: { backgroundColor: '#ea580c', borderColor: '#ea580c' },
+  legendDotAnswered: { backgroundColor: '#dcfce7', borderColor: '#86efac' },
+  legendDotFlagged: { backgroundColor: '#fef9c3', borderColor: '#facc15' },
+  legendText: { fontSize: 11, color: '#6b7280', fontWeight: '600' },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.85)',
@@ -705,6 +1307,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   continueBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  autoSubmitBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
-  autoSubmitText: { fontSize: 14, fontWeight: '700', color: '#b91c1c' },
+  autoSubmitBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  autoSubmitText: { fontSize: 14, fontWeight: '700', color: '#b91c1c', textAlign: 'center' },
+  forceSubmitBtn: {
+    marginTop: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: '#ea580c',
+  },
+  forceSubmitBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 });
