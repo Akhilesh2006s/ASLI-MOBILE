@@ -22,7 +22,7 @@ import {
 
 const LIST_GAP = STUDENT_SPACING.md;
 const STUDENT_TOOLS_SUBTITLE =
-  'Select a tool to get started. All tools use Gemini AI to generate content based on your input.';
+  'Select A Tool To Get Started. All Tools Use Gemini AI To Generate Content Based On Your Input.';
 
 const TOOL_THEMES: Record<string, { bg: string; border: string; iconBg: string }> = {
   '#3b82f6': { bg: '#EFF6FF', border: '#93C5FD', iconBg: '#DBEAFE' },
@@ -96,7 +96,7 @@ function ToolCard({ tool, onPress }: { tool: StudentAiTool; onPress: () => void 
   );
 }
 
-export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: boolean }) {
+export default function VidyaAIView() {
   const [subjectNames, setSubjectNames] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -125,10 +125,7 @@ export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: bool
     })();
   }, []);
 
-  const visibleTools = useMemo(
-    () => filterVisibleStudentTools(subjectNames, { includeChat: chatEnabled }),
-    [subjectNames, chatEnabled],
-  );
+  const visibleTools = useMemo(() => filterVisibleStudentTools(subjectNames), [subjectNames]);
 
   const openTool = (tool: StudentAiTool) => {
     router.push(`/student/tools/${tool.id}` as any);

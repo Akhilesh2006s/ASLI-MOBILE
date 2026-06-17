@@ -1,6 +1,34 @@
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from './api-config';
-import { updateStudyTime } from '../utils/studyTimeTracker';
+import { updateStudyTime, getWeeklyStudyData } from '../utils/studyTimeTracker';
+import { toLocalDateKey } from './profile-overview-stats';
+
+export function dateStringToIsoKey(dateString: string): string {
+  const parsed = new Date(dateString);
+  if (Number.isNaN(parsed.getTime())) return dateString;
+  return toLocalDateKey(parsed);
+}
+
+/** Backend + local study minutes per calendar day (YYYY-MM-DD). */
+export async function fetchWeeklySessionMinutes(
+  token?: string | null
+): Promise<{ backend: Record<string, number>; local: Record<string, number> }> {
+  await updateStudyTime();
+  const localRaw = await getWeeklyStudyData();
+  const local: Record<string, number> = {};
+  for (const [dateStr, mins] of Object.entries(localRaw)) {
+    const key = dateStringToIsoKey(dateStr);
+    local[key] = Math.max(local[key] || 0, Number(mins) || 0);
+  }
+
+  if (!token) {
+    return { backend: {}, local };
+  }
+
+  const backendSession = await fetchSessionTimeFromBackend(token);
+  const backend = backendSession?.weeklyData || {};
+  return { backend, local };
+}
 
 export function getLocalIsoDateKey(date = new Date()): string {
   const y = date.getFullYear();

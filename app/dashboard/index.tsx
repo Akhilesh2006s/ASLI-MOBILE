@@ -18,6 +18,7 @@ import AITabView from './_components/AITabView';
 import ProfileTabView from './_components/ProfileTabView';
 import VidyaAIFloatingAssistant from '../../src/components/vidya/VidyaAIFloatingAssistant';
 import { useVidyaChatAccess } from '../../src/hooks/useVidyaChatAccess';
+import { resolveStudentFirstName } from '../../src/lib/student-text';
 
 type TabId = 'home' | 'learning' | 'eduott' | 'exams' | 'vidya' | 'settings';
 
@@ -67,10 +68,7 @@ export default function StudentDashboard() {
     else if (tab === 'settings') setActiveTab('settings');
   }, [tab, user]);
 
-  const firstName = useMemo(
-    () => user?.fullName?.split(' ')[0] || user?.email?.split('@')[0] || 'Student',
-    [user]
-  );
+  const firstName = useMemo(() => resolveStudentFirstName(user), [user]);
 
   const vidyaChatEnabled = useVidyaChatAccess(user);
 

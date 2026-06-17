@@ -11,7 +11,7 @@ import { collectVidyaSubjectLabels } from '../src/lib/vidya-subjects';
 import { API_BASE_URL } from '../src/lib/api-config';
 import * as SecureStore from 'expo-secure-store';
 import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
-import { useVidyaChatAccess } from '../src/hooks/useVidyaChatAccess';
+import { resolveStudentDisplayName } from '../src/lib/student-text';
 
 export default function AITutor() {
   const router = useRouter();
@@ -74,7 +74,7 @@ export default function AITutor() {
 
   const chatContext = useMemo(
     () => ({
-      studentName: user?.fullName || user?.email?.split('@')[0] || 'Student',
+      studentName: resolveStudentDisplayName(user),
       subjectOptions: vidyaSubjectNames,
       currentSubject: vidyaSubjectNames[0] || 'General Study',
       currentTopic: undefined,

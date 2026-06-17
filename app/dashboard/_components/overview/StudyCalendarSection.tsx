@@ -1,10 +1,12 @@
 import React, { memo, useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../../src/lib/api-config';
 import GlassCard from '../../../../src/components/student/GlassCard';
+import StudentCardDecor from '../../../../src/components/student/StudentCardDecor';
 import StudentExamPreviewCard from '../../../../src/components/student/StudentExamPreviewCard';
 import {
   buildExamCalendarEntries,
@@ -203,13 +205,16 @@ function StudyCalendarSectionComponent({
   };
 
   const renderCalendarCard = () => (
-      <GlassCard variant="default" padding={14} style={styles.cardFill}>
+      <LinearGradient
+        colors={[...STUDENT.heroGradient]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.calGradientShell}
+      >
+        <StudentCardDecor variant="calendar" />
         <View style={styles.calHeader}>
           <View>
-            <Text style={styles.calTitle}>Study Calendar</Text>
-            <Text style={styles.calSub}>
-              Quizzes by due date; exam opens (green), active (amber), and closes (rose)
-            </Text>
+            <Text style={styles.calTitleOnGradient}>Study Calendar</Text>
           </View>
           <View style={styles.monthNav}>
             <TouchableOpacity
@@ -217,9 +222,9 @@ function StudyCalendarSectionComponent({
                 setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
               }
             >
-              <Ionicons name="chevron-back" size={20} color={STUDENT.textSecondary} />
+              <Ionicons name="chevron-back" size={20} color="rgba(255,255,255,0.9)" />
             </TouchableOpacity>
-            <Text style={styles.monthLabel}>
+            <Text style={styles.monthLabelOnGradient}>
               {calendarMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </Text>
             <TouchableOpacity
@@ -227,10 +232,11 @@ function StudyCalendarSectionComponent({
                 setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
               }
             >
-              <Ionicons name="chevron-forward" size={20} color={STUDENT.textSecondary} />
+              <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.9)" />
             </TouchableOpacity>
           </View>
         </View>
+        <View style={styles.calInnerBody}>
         <View style={styles.jumpRow}>
           <TextInput
             style={styles.dateInput}
@@ -353,7 +359,8 @@ function StudyCalendarSectionComponent({
             <Text style={styles.legendText}>Quiz</Text>
           </View>
         </View>
-      </GlassCard>
+        </View>
+      </LinearGradient>
   );
 
   const renderEventsCard = () => (
@@ -369,7 +376,7 @@ function StudyCalendarSectionComponent({
                 {selectedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
               </Text>
               {formatCalendarDateKey(selectedDate) !== formatCalendarDateKey(new Date()) ? (
-                <Text style={styles.mobileDateTodayHint}>Tap for today</Text>
+                <Text style={styles.mobileDateTodayHint}>Tap For Today</Text>
               ) : null}
             </TouchableOpacity>
             <TouchableOpacity onPress={() => shiftSelectedDate(1)} hitSlop={8} accessibilityLabel="Next day">
@@ -383,13 +390,15 @@ function StudyCalendarSectionComponent({
           </Text>
         )}
         {showMobileDateNav ? (
-          <Text style={styles.eventsSubMobile}>Class timetable is in the table below</Text>
+          <Text style={styles.eventsSubMobile}>Class Timetable Is In The Table Below</Text>
         ) : null}
         {selectedDateEntries.length === 0 ? (
           <View style={styles.eventsEmpty}>
             <Ionicons name="calendar-outline" size={32} color={STUDENT.surfaceBorder} />
-            <Text style={styles.eventsEmptyTitle}>No study tasks or exams</Text>
-            <Text style={styles.eventsEmptySub}>Class sessions for this day are in the timetable table below.</Text>
+            <Text style={styles.eventsEmptyTitle}>No Study Tasks Or Exams</Text>
+            <Text style={styles.eventsEmptySub}>
+              Class Sessions For This Day Are In The Timetable Table Below.
+            </Text>
           </View>
         ) : (
           selectedDateEntries.map((entry) => {
@@ -491,12 +500,34 @@ const styles = StyleSheet.create({
   wrapTablet: { flexDirection: 'row', alignItems: 'stretch', gap: 16, width: '100%' },
   tabletCol: { flex: 1, minWidth: 0, alignSelf: 'stretch', width: '100%' },
   cardFill: { width: '100%', alignSelf: 'stretch' },
+  calGradientShell: {
+    width: '100%',
+    alignSelf: 'stretch',
+    borderRadius: 28,
+    padding: 14,
+    overflow: 'hidden',
+    ...STUDENT.shadow.md,
+  },
+  calInnerBody: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 12,
+    marginTop: 4,
+  },
   gridTablet: { justifyContent: 'center' },
-  calHeader: { gap: 10, marginBottom: 10 },
+  calHeader: { gap: 10, marginBottom: 10, zIndex: 1 },
   calTitle: { fontSize: 18, fontWeight: '800', color: STUDENT.primary },
+  calTitleOnGradient: { fontSize: 18, fontWeight: '800', color: '#ffffff' },
   calSub: { fontSize: 12, color: STUDENT.textMuted, marginTop: 2 },
   monthNav: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   monthLabel: { fontSize: 14, fontWeight: '700', color: STUDENT.textSecondary, minWidth: 140, textAlign: 'center' },
+  monthLabelOnGradient: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#ffffff',
+    minWidth: 140,
+    textAlign: 'center',
+  },
   jumpRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
   dateInput: {
     flex: 1,

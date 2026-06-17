@@ -38,7 +38,7 @@ export default function AITabView({ chatEnabled = true }: { chatEnabled?: boolea
       <Animated.View entering={FadeInDown.duration(STUDENT_ANIMATION.normal)} style={styles.vidyaHeader}>
         <Text style={styles.vidyaTitle}>Vidya AI</Text>
         <Text style={styles.vidyaSubtitle}>
-          {chatEnabled ? 'Your AI study buddy — tools & chat' : 'Your AI study tools'}
+          {chatEnabled ? 'Your AI Study Buddy — Tools & Chat' : 'Your AI Study Tools'}
         </Text>
       </Animated.View>
 
@@ -53,7 +53,7 @@ export default function AITabView({ chatEnabled = true }: { chatEnabled?: boolea
             <VidyaAvatar size={48} borderColor="#c7d2fe" />
             <View style={styles.chatTextWrap}>
               <Text style={styles.chatTitle}>Vidya AI Chat</Text>
-              <Text style={styles.chatSub}>Ask doubts · Instant answers</Text>
+              <Text style={styles.chatSub}>Ask Doubts · Instant Answers</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={STUDENT.primaryDark} />
           </Animated.View>
@@ -61,7 +61,7 @@ export default function AITabView({ chatEnabled = true }: { chatEnabled?: boolea
       </Animated.View>
       ) : null}
 
-      <VidyaAIView chatEnabled={chatEnabled} />
+      <VidyaAIView />
     </View>
   );
 }

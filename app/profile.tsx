@@ -16,7 +16,7 @@ import {
   computeProfileOverviewStats,
   getExamIdFromResult,
 } from '../src/lib/profile-overview-stats';
-import { getMergedStudyTime } from '../src/lib/session-time-sync';
+import { getMergedStudyTime, fetchWeeklySessionMinutes } from '../src/lib/session-time-sync';
 
 type ProfileTab = 'overview' | 'achievements' | 'progress' | 'settings';
 
@@ -104,7 +104,11 @@ export default function Profile() {
         const stats = computeProfileOverviewStats(examResults, rankings, streak);
         setProfileData((prev: any) => ({ ...prev, ...stats, dayStreak: stats.streak }));
         setTestsCompleted(examResults.length);
-        const weekly = buildWeeklyActivityStats(examResults, progressRecords);
+        const weeklySessions = await fetchWeeklySessionMinutes(token);
+        const weekly = buildWeeklyActivityStats(examResults, progressRecords, {
+          sessionMinutesByDate: weeklySessions.backend,
+          localSessionMinutesByDate: weeklySessions.local,
+        });
         setWeeklyActivity(weekly.map((d) => ({ day: d.day, hours: d.hours })));
         setWeeklyTotalHours(Math.round(weekly.reduce((s, d) => s + d.hours, 0) * 10) / 10);
         const study = await getMergedStudyTime();

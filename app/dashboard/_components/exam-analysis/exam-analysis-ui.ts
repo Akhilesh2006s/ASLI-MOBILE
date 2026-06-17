@@ -40,6 +40,8 @@ export const TAB_META = {
   plan: { label: 'Plan', icon: 'calendar' as const },
 };
 
+export const ANALYSIS_TAB_ORDER = Object.keys(TAB_META) as (keyof typeof TAB_META)[];
+
 export const analysisStyles = StyleSheet.create({
   canvas: { flex: 1, backgroundColor: ANALYSIS.canvas },
   header: {

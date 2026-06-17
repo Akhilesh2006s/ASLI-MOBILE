@@ -5,10 +5,10 @@ import { router } from 'expo-router';
 import { Image } from 'expo-image';
 
 const messages = [
-  "Need some help with your homework?",
-  "Need some help with maths?",
-  "Need some help with physics?",
-  "Need some help with chemistry?"
+  'Need Some Help With Your Homework?',
+  'Need Some Help With Maths?',
+  'Need Some Help With Physics?',
+  'Need Some Help With Chemistry?',
 ];
 
 export default function VidyaAICornerButton() {

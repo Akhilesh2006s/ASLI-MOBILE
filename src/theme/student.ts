@@ -20,8 +20,8 @@ export const STUDENT = {
   textSecondary: '#475569',
   textMuted: '#64748b',
   textOnPrimary: '#ffffff',
-  headerGradient: ['#047857', '#059669', '#10b981', '#34d399'] as const,
-  heroGradient: ['#064e3b', '#047857', '#10b981'] as const,
+  headerGradient: ['#006B44', '#00945C', '#00A669'] as const,
+  heroGradient: ['#006B44', '#008756', '#00A669'] as const,
   cardGradient: ['#ecfdf5', '#f0fdf4'] as const,
   tabBarBg: 'rgba(255,255,255,0.92)',
   tabBarBorder: 'rgba(16,185,129,0.20)',
@@ -117,7 +117,7 @@ export const SUBJECT_COLORS = [
 
 export function studentGreeting(): string {
   const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
+  if (h < 12) return 'Good Morning';
+  if (h < 17) return 'Good Afternoon';
+  return 'Good Evening';
 }

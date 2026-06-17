@@ -121,7 +121,7 @@ function LearningProgressModuleComponent({
             );
           })
         ) : (
-          <Text style={styles.noProgressText}>Complete exams to see your subject-wise progress</Text>
+          <Text style={styles.noProgressText}>Complete Exams To See Your Subject-Wise Progress</Text>
         )}
       </View>
     </View>

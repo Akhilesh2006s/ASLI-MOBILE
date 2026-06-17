@@ -29,6 +29,7 @@ import {
   saveCompletedScheduleIds,
 } from '../../../src/lib/todays-tasks-helpers';
 import { StudentHomeHeader } from '../../../src/components/student';
+import StudentCardDecor from '../../../src/components/student/StudentCardDecor';
 import TeacherDiaryFeed from '../../../src/components/student/TeacherDiaryFeed';
 import { STUDENT } from '../../../src/theme/student';
 import { openContentPreview } from '../../../src/utils/openContentPreview';
@@ -642,6 +643,7 @@ const OverviewView = memo(function OverviewView({
         { backgroundColor: STAT_SUMMARY_CARDS[cardKey].bg },
       ]}
     >
+      <StudentCardDecor variant={cardKey} color={STAT_SUMMARY_CARDS[cardKey].accent} />
       <View style={styles.statCardContent}>{body}</View>
     </View>
   );
@@ -663,7 +665,7 @@ const OverviewView = memo(function OverviewView({
           ]}
         />
       </View>
-      <Text style={styles.statSubtext}>Tasks completed {todayProgress}%</Text>
+      <Text style={styles.statSubtext}>Tasks Completed {todayProgress}%</Text>
     </>
   );
 
@@ -688,7 +690,7 @@ const OverviewView = memo(function OverviewView({
           ]}
         />
       </View>
-      <Text style={styles.statSubtext}>Logged in today</Text>
+      <Text style={styles.statSubtext}>Logged In Today</Text>
     </>
   );
 
@@ -713,7 +715,7 @@ const OverviewView = memo(function OverviewView({
           ]}
         />
       </View>
-      <Text style={styles.statSubtext}>Logged this week</Text>
+      <Text style={styles.statSubtext}>Logged This Week</Text>
     </>
   );
 
@@ -736,12 +738,16 @@ const OverviewView = memo(function OverviewView({
           ]}
         />
       </View>
-      <Text style={styles.statSubtext}>Completion rate</Text>
+      <Text style={styles.statSubtext}>Completion Rate</Text>
     </>
   );
 
   return (
     <View style={[styles.container, isTablet && styles.containerTablet]}>
+      <View style={styles.screenDecorWrap} pointerEvents="none">
+        <StudentCardDecor variant="screen" />
+      </View>
+
       <StudentHomeHeader
         user={user}
         streak={dayStreak}
@@ -829,7 +835,7 @@ const OverviewView = memo(function OverviewView({
             <View key={report._id} style={styles.riskCard}>
               <Text style={styles.riskTitle}>Performance Risk Analysis Report</Text>
               <Text style={styles.riskMeta}>
-                Sent by {report.adminId?.fullName || 'Administrator'} on{' '}
+                Sent By {report.adminId?.fullName || 'Administrator'} On{' '}
                 {new Date(report.sentAt).toLocaleDateString()}
               </Text>
             </View>
@@ -860,6 +866,12 @@ export default OverviewView;
 const styles = StyleSheet.create({
   container: {
     gap: 16,
+    position: 'relative',
+  },
+  screenDecorWrap: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 0,
+    overflow: 'hidden',
   },
   containerTablet: {
     width: '100%',
@@ -979,6 +991,8 @@ const styles = StyleSheet.create({
     padding: 16,
     minHeight: 152,
     borderWidth: 0,
+    overflow: 'hidden',
+    position: 'relative',
     ...STUDENT.shadow.sm,
   },
   statCardTablet: {
@@ -991,6 +1005,7 @@ const styles = StyleSheet.create({
   statCardContent: {
     flex: 1,
     justifyContent: 'space-between',
+    zIndex: 1,
   },
   statIconWrap: {
     width: 36,

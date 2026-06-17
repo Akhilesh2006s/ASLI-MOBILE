@@ -11,6 +11,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { getSchoolBranding } from '../../lib/school-branding';
+import { resolveStudentFirstName } from '../../lib/student-text';
+import StudentCardDecor from './StudentCardDecor';
 import { STUDENT, STUDENT_RADIUS, studentGreeting } from '../../theme/student';
 
 type Props = {
@@ -23,7 +25,7 @@ type Props = {
 export default function StudentHomeHeader({ user, streak = 0, onAvatarPress, onLogout }: Props) {
   const streakScale = useSharedValue(1);
 
-  const firstName = user?.fullName?.split(' ')[0] || user?.email?.split('@')[0] || 'Student';
+  const firstName = resolveStudentFirstName(user);
   const classLabel = user?.className || user?.class;
   const section = user?.section;
   const branding = getSchoolBranding(user);
@@ -57,8 +59,7 @@ export default function StudentHomeHeader({ user, streak = 0, onAvatarPress, onL
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
-        <View style={styles.orbTop} />
-        <View style={styles.orbBottom} />
+        <StudentCardDecor variant="hero" />
 
         <View style={styles.topRow}>
           <View style={styles.greetBlock}>
@@ -92,9 +93,10 @@ export default function StudentHomeHeader({ user, streak = 0, onAvatarPress, onL
                   source={{ uri: branding.schoolLogo }}
                   style={styles.schoolLogoImg}
                   resizeMode="contain"
+                  accessibilityLabel={`${branding.schoolName || 'School'} logo`}
                 />
               ) : (
-                <Ionicons name="school-outline" size={18} color="rgba(255,255,255,0.92)" />
+                <Ionicons name="school-outline" size={28} color={STUDENT.primaryDark} />
               )}
             </View>
             <Text style={styles.schoolName} numberOfLines={2}>
@@ -118,7 +120,7 @@ export default function StudentHomeHeader({ user, streak = 0, onAvatarPress, onL
         {streak > 0 ? (
           <Animated.View style={[styles.streak, streakAnimStyle]}>
             <Ionicons name="flame" size={14} color={STUDENT.warning} />
-            <Text style={styles.streakText}>{streak}-day study streak</Text>
+            <Text style={styles.streakText}>{streak}-Day Study Streak</Text>
           </Animated.View>
         ) : null}
       </LinearGradient>
@@ -128,29 +130,11 @@ export default function StudentHomeHeader({ user, streak = 0, onAvatarPress, onL
 
 const styles = StyleSheet.create({
   wrap: {
-    borderRadius: STUDENT_RADIUS.xxl,
+    borderRadius: 32,
     padding: 20,
     marginBottom: 16,
     overflow: 'hidden',
     ...STUDENT.shadow.md,
-  },
-  orbTop: {
-    position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    top: -40,
-    right: -20,
-  },
-  orbBottom: {
-    position: 'absolute',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    bottom: -20,
-    left: 30,
   },
   topRow: {
     flexDirection: 'row',
@@ -198,37 +182,41 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 16,
     width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: '#ffffff',
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderRadius: STUDENT_RADIUS.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 0,
+    shadowColor: '#064e3b',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.14,
+    shadowRadius: 8,
+    elevation: 4,
   },
   schoolLogoWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
+    width: 64,
+    height: 64,
+    borderRadius: 14,
+    backgroundColor: '#ffffff',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: STUDENT.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
     flexShrink: 0,
   },
   schoolLogoImg: {
-    width: 34,
-    height: 34,
+    width: 58,
+    height: 58,
   },
   schoolName: {
     flex: 1,
     minWidth: 0,
-    fontSize: 15,
-    fontWeight: '800',
-    color: STUDENT.textOnPrimary,
-    letterSpacing: 0.1,
-    lineHeight: 20,
+    fontSize: 14,
+    fontWeight: '700',
+    color: STUDENT.text,
+    letterSpacing: 0.05,
+    lineHeight: 18,
   },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
   badge: {

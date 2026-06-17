@@ -28,9 +28,15 @@ export type ProfileOverviewStats = {
 
 const WEEK_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
 
+export type WeeklyActivityOptions = {
+  sessionMinutesByDate?: Record<string, number>;
+  localSessionMinutesByDate?: Record<string, number>;
+};
+
 export function buildWeeklyActivityStats(
   examResults: any[],
-  progressRecords: any[] = []
+  progressRecords: any[] = [],
+  options?: WeeklyActivityOptions
 ): WeeklyDayStat[] {
   const now = new Date();
   const dayOfWeek = now.getDay();
@@ -59,7 +65,13 @@ export function buildWeeklyActivityStats(
     const d = new Date(monday);
     d.setDate(monday.getDate() + index);
     const dateKey = toLocalDateKey(d);
-    const seconds = secondsByDate.get(dateKey) || 0;
+    let seconds = secondsByDate.get(dateKey) || 0;
+
+    const backendMins = Number(options?.sessionMinutesByDate?.[dateKey]) || 0;
+    const localMins = Number(options?.localSessionMinutesByDate?.[dateKey]) || 0;
+    const sessionMins = Math.max(backendMins, localMins);
+    seconds += sessionMins * 60;
+
     const hours = Math.round((seconds / 3600) * 10) / 10;
     return {
       day: label,

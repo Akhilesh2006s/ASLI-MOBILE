@@ -68,13 +68,13 @@ function TodaysTasksSectionComponent({
       {isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator color={STUDENT.primary} />
-          <Text style={styles.loadingText}>Loading schedule...</Text>
+          <Text style={styles.loadingText}>Loading Schedule...</Text>
         </View>
       ) : incompleteQuizzes.length === 0 && incompleteContent.length === 0 ? (
         <View style={styles.center}>
           <Ionicons name="checkmark-circle" size={44} color={STUDENT.primary} />
-          <Text style={styles.emptyTitle}>All caught up!</Text>
-          <Text style={styles.emptySub}>No pending content or quizzes</Text>
+          <Text style={styles.emptyTitle}>All Caught Up!</Text>
+          <Text style={styles.emptySub}>No Pending Content Or Quizzes</Text>
         </View>
       ) : (
         <View style={styles.list}>

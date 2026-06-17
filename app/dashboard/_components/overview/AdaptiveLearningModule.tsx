@@ -152,7 +152,7 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
     <GlassCard variant="gradient" padding={14} style={dark ? styles.darkWrap : undefined}>
       <PremiumSectionHeader
         title="Adaptive Learning"
-        subtitle="Personalized resources from your performance — only content available in your library"
+        subtitle="Personalized Resources From Your Performance — Only Content Available In Your Library"
         icon="bulb-outline"
         accent={STUDENT.accent}
         badge="AI Powered"
@@ -165,14 +165,14 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
           <Ionicons name="alert-circle-outline" size={28} color={STUDENT.danger} />
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity onPress={fetchAdaptive}>
-            <Text style={styles.retry}>Try again</Text>
+            <Text style={styles.retry}>Try Again</Text>
           </TouchableOpacity>
         </View>
       ) : cards.length === 0 ? (
         <View style={styles.emptyBox}>
-          <Text style={styles.muted}>No adaptive recommendations yet.</Text>
+          <Text style={styles.muted}>No Adaptive Recommendations Yet.</Text>
           <Text style={styles.emptySub}>
-            Attempt exams so we can infer weak chapters and map them to your class library.
+            Attempt Exams So We Can Infer Weak Chapters And Map Them To Your Class Library.
           </Text>
         </View>
       ) : (
@@ -214,7 +214,7 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
                         item.kind === 'quiz' || item.kind === 'exam'
                           ? 'Open'
                           : item.displayType?.toLowerCase() === 'pdf'
-                            ? 'View only'
+                            ? 'View Only'
                             : item.displayType?.toLowerCase() === 'video'
                               ? 'Watch'
                               : 'View';
@@ -230,7 +230,7 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
                             <Text style={styles.recTitle} numberOfLines={2}>
                               {item.title}
                             </Text>
-                            {item.topicHint && item.topicHint !== 'From your library' ? (
+                            {item.topicHint && !/^from your library$/i.test(item.topicHint) ? (
                               <Text style={styles.recHint} numberOfLines={1}>
                                 Focus: {item.topicHint}
                               </Text>
@@ -246,12 +246,12 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
                     })}
                   </>
                 ) : (
-                  <Text style={styles.mutedSmall}>No library content available for this subject yet.</Text>
+                  <Text style={styles.mutedSmall}>No Library Content Available For This Subject Yet.</Text>
                 )}
 
                 {rec.gapsWithoutContent?.length > 0 ? (
                   <View style={styles.gapBox}>
-                    <Text style={styles.gapTitle}>No matching library items</Text>
+                    <Text style={styles.gapTitle}>No Matching Library Items</Text>
                     {rec.gapsWithoutContent.slice(0, 3).map((topic) => (
                       <Text key={topic} style={styles.gapItem}>
                         No content for: {topic}

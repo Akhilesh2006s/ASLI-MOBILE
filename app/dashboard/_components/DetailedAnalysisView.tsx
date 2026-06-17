@@ -1,10 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Pressable } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Pressable,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
+import { resolveStudentDisplayName } from '../../../src/lib/student-text';
 import {
   AiExamAnalysis,
   ExamAnalysisResult,
@@ -16,7 +26,13 @@ import {
   normalizeExamResultFromApi,
   normalizeMongoId,
 } from '../../../src/lib/exam-analysis-helpers';
-import { ANALYSIS, analysisStyles, TAB_META, useExamAnalysisLayout } from './exam-analysis/exam-analysis-ui';
+import {
+  ANALYSIS,
+  ANALYSIS_TAB_ORDER,
+  analysisStyles,
+  TAB_META,
+  useExamAnalysisLayout,
+} from './exam-analysis/exam-analysis-ui';
 import {
   AdvancedTabMobile,
   AiReportTabMobile,
@@ -46,7 +62,11 @@ export default function DetailedAnalysisView({
 }: DetailedAnalysisViewProps) {
   const { isTablet, width: windowWidth } = useExamAnalysisLayout();
   const [activeTab, setActiveTab] = useState<AnalysisTab>('ai');
+  const [visitedTabs, setVisitedTabs] = useState<Set<AnalysisTab>>(() => new Set(['ai']));
   const tabsScrollRef = useRef<ScrollView>(null);
+  const pagerRef = useRef<ScrollView>(null);
+  const activeTabRef = useRef<AnalysisTab>(activeTab);
+  activeTabRef.current = activeTab;
   const tabLayoutsRef = useRef<Partial<Record<AnalysisTab, { x: number; width: number }>>>({});
   const tabsViewportWidthRef = useRef(0);
 
@@ -58,19 +78,57 @@ export default function DetailedAnalysisView({
     tabsScrollRef.current?.scrollTo({ x: targetX, animated });
   }, [windowWidth]);
 
+  const markTabVisited = useCallback((id: AnalysisTab) => {
+    setVisitedTabs((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
+  }, []);
+
   const selectTab = useCallback(
     (id: AnalysisTab) => {
+      const index = ANALYSIS_TAB_ORDER.indexOf(id);
+      markTabVisited(id);
       setActiveTab(id);
+      if (index >= 0) {
+        pagerRef.current?.scrollTo({ x: index * windowWidth, animated: true });
+      }
       requestAnimationFrame(() => scrollTabIntoView(id));
       setTimeout(() => scrollTabIntoView(id), 50);
     },
-    [scrollTabIntoView]
+    [markTabVisited, scrollTabIntoView, windowWidth]
   );
+
+  const onPagerScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const index = Math.round(event.nativeEvent.contentOffset.x / windowWidth);
+      const id = ANALYSIS_TAB_ORDER[index];
+      if (!id) return;
+      markTabVisited(id);
+      if (id !== activeTab) {
+        setActiveTab(id);
+        requestAnimationFrame(() => scrollTabIntoView(id));
+      }
+    },
+    [activeTab, markTabVisited, scrollTabIntoView, windowWidth]
+  );
+
+  useEffect(() => {
+    const index = ANALYSIS_TAB_ORDER.indexOf(activeTab);
+    [index - 1, index, index + 1].forEach((i) => {
+      const id = ANALYSIS_TAB_ORDER[i];
+      if (id) markTabVisited(id);
+    });
+  }, [activeTab, markTabVisited]);
 
   useEffect(() => {
     const timer = setTimeout(() => scrollTabIntoView(activeTab, false), 80);
     return () => clearTimeout(timer);
   }, [activeTab, scrollTabIntoView]);
+
+  useEffect(() => {
+    const index = ANALYSIS_TAB_ORDER.indexOf(activeTabRef.current);
+    if (index >= 0) {
+      pagerRef.current?.scrollTo({ x: index * windowWidth, animated: false });
+    }
+  }, [windowWidth]);
   const [displayResult, setDisplayResult] = useState<ExamAnalysisResult | null>(result ?? null);
   const [reviewHydrated, setReviewHydrated] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<AiExamAnalysis | null>(null);
@@ -105,7 +163,7 @@ export default function DetailedAnalysisView({
         if (response.ok) {
           const data = await response.json();
           const user = data.user || data;
-          setStudentName(user?.fullName || user?.email?.split('@')[0] || 'Student');
+          setStudentName(resolveStudentDisplayName(user));
         }
       } catch {
         /* non-fatal */
@@ -265,6 +323,55 @@ export default function DetailedAnalysisView({
 
   const tabEntries = Object.entries(TAB_META) as [AnalysisTab, (typeof TAB_META)[AnalysisTab]][];
 
+  const renderTabContent = (id: AnalysisTab) => {
+    if (!visitedTabs.has(id)) return null;
+
+    switch (id) {
+      case 'ai':
+        return (
+          <AiReportTabMobile
+            result={displayResult}
+            examTitle={examTitle}
+            studentName={studentName}
+            aiAnalysis={aiAnalysis}
+            aiLoading={aiLoading}
+            aiError={aiError}
+          />
+        );
+      case 'questions':
+        return (
+          <QuestionsTabMobile
+            result={displayResult}
+            aiAnalysis={aiAnalysis}
+            aiLoading={aiLoading}
+          />
+        );
+      case 'advanced':
+        return advancedExamId ? (
+          <AdvancedTabMobile
+            examId={advancedExamId}
+            resultId={displayResult._id}
+            result={displayResult}
+            aiAnalysis={aiAnalysis}
+          />
+        ) : (
+          <View style={styles.advancedUnavailable}>
+            <Ionicons name="stats-chart-outline" size={36} color="#9ca3af" />
+            <Text style={styles.advancedUnavailableTitle}>Advanced analytics unavailable</Text>
+            <Text style={styles.advancedUnavailableText}>
+              Exam details could not be loaded. Go back and open this attempt again from View Details.
+            </Text>
+          </View>
+        );
+      case 'insights':
+        return <InsightsTabMobile result={displayResult} aiAnalysis={aiAnalysis} />;
+      case 'plan':
+        return <PlanTabMobile studentName={studentName} aiAnalysis={aiAnalysis} />;
+      default:
+        return null;
+    }
+  };
+
   const renderTab = (id: AnalysisTab, tab: (typeof TAB_META)[AnalysisTab]) => (
     <Pressable
       key={id}
@@ -350,49 +457,24 @@ export default function DetailedAnalysisView({
         </View>
       </View>
 
-      <View style={styles.body} key={activeTab}>
-        {activeTab === 'ai' && (
-          <AiReportTabMobile
-            result={displayResult}
-            examTitle={examTitle}
-            studentName={studentName}
-            aiAnalysis={aiAnalysis}
-            aiLoading={aiLoading}
-            aiError={aiError}
-          />
-        )}
-        {activeTab === 'questions' && (
-          <QuestionsTabMobile
-            result={displayResult}
-            aiAnalysis={aiAnalysis}
-            aiLoading={aiLoading}
-          />
-        )}
-        {activeTab === 'advanced' ? (
-          advancedExamId ? (
-            <AdvancedTabMobile
-              examId={advancedExamId}
-              resultId={displayResult._id}
-              result={displayResult}
-              aiAnalysis={aiAnalysis}
-            />
-          ) : (
-            <View style={styles.advancedUnavailable}>
-              <Ionicons name="stats-chart-outline" size={36} color="#9ca3af" />
-              <Text style={styles.advancedUnavailableTitle}>Advanced analytics unavailable</Text>
-              <Text style={styles.advancedUnavailableText}>
-                Exam details could not be loaded. Go back and open this attempt again from View Details.
-              </Text>
-            </View>
-          )
-        ) : null}
-        {activeTab === 'insights' && (
-          <InsightsTabMobile result={displayResult} aiAnalysis={aiAnalysis} />
-        )}
-        {activeTab === 'plan' && (
-          <PlanTabMobile studentName={studentName} aiAnalysis={aiAnalysis} />
-            )}
+      <ScrollView
+        ref={pagerRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        style={styles.body}
+        contentContainerStyle={styles.pagerContent}
+        nestedScrollEnabled
+        scrollEventThrottle={16}
+        onScroll={onPagerScroll}
+        keyboardShouldPersistTaps="handled"
+      >
+        {ANALYSIS_TAB_ORDER.map((id) => (
+          <View key={id} style={[styles.pagerPage, { width: windowWidth }]}>
+            {renderTabContent(id)}
           </View>
+        ))}
+      </ScrollView>
     </Shell>
   );
 }
@@ -401,6 +483,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   headerGradient: { paddingBottom: 4 },
   body: { flex: 1, zIndex: 0 },
+  pagerContent: { flexGrow: 1 },
+  pagerPage: { flex: 1 },
   advancedUnavailable: {
     flex: 1,
     alignItems: 'center',

@@ -26,7 +26,7 @@ function HeaderComponent({ username, dashboardLabel = 'Student Dashboard' }: Hea
           <View>
             <Text style={styles.smallText}>{dashboardLabel}</Text>
             <Text style={styles.title}>EduOTT</Text>
-            <Text style={styles.subtitle}>Welcome back, {username}</Text>
+            <Text style={styles.subtitle}>Welcome Back, {username}</Text>
           </View>
         </View>
       </View>

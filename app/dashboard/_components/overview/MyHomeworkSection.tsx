@@ -47,10 +47,10 @@ function MyHomeworkSectionComponent({ allContent, homeworkSubmissions, isLoading
       {isLoading && assignedHomework.length === 0 ? (
         <View style={styles.center}>
           <ActivityIndicator color={STUDENT.warning} />
-          <Text style={styles.loadingText}>Loading homework...</Text>
+          <Text style={styles.loadingText}>Loading Homework...</Text>
         </View>
       ) : assignedHomework.length === 0 ? (
-        <Text style={styles.empty}>No assigned homework right now.</Text>
+        <Text style={styles.empty}>No Assigned Homework Right Now.</Text>
       ) : (
         <>
           <Text style={styles.sectionLabel}>Assigned Homework ({assignedHomework.length})</Text>

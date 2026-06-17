@@ -19,6 +19,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import * as SecureStore from 'expo-secure-store';
+import { resolveStudentDisplayName } from '../../../src/lib/student-text';
 import GlassCard from '../../../src/components/student/GlassCard';
 import { ShimmerCard } from '../../../src/components/student/StudentShimmer';
 import { AnimatedStatInput, useCountUp } from '../../../src/hooks/useCountUp';
@@ -33,10 +34,12 @@ import { useAuth } from '../../../src/context/AuthContext';
 import studentService from '../../../src/services/api/studentService';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { dedupeStudentExamResults } from '../../../src/lib/dedupe-exam-results';
+import { fetchWeeklySessionMinutes, setupSessionTimeSync } from '../../../src/lib/session-time-sync';
 import {
   buildWeeklyActivityStats,
   computeProfileOverviewStats,
   getExamIdFromResult,
+  toLocalDateKey,
 } from '../../../src/lib/profile-overview-stats';
 
 type Props = {
@@ -90,16 +93,25 @@ function StatValue({
   );
 }
 
+function formatWeekHours(hours: number): string {
+  if (!Number.isFinite(hours) || hours <= 0) return '0h';
+  if (hours < 1) return `${Math.max(1, Math.round(hours * 60))}m`;
+  const rounded = Math.round(hours * 10) / 10;
+  return Number.isInteger(rounded) ? `${rounded}h` : `${rounded}h`;
+}
+
 function AnimatedWeekBar({ hours, completed, delay }: { hours: number; completed: boolean; delay: number }) {
   const height = useSharedValue(8);
 
   useEffect(() => {
-    const target = Math.max(8, Math.min(32, hours * 8 + 8));
+    const target = completed
+      ? Math.max(12, Math.min(52, 10 + hours * 3.5))
+      : 8;
     height.value = withDelay(
       delay,
       withTiming(target, { duration: 700, easing: Easing.out(Easing.quad) })
     );
-  }, [hours, delay, height]);
+  }, [hours, delay, height, completed]);
 
   const animStyle = useAnimatedStyle(() => ({
     height: height.value,
@@ -109,10 +121,19 @@ function AnimatedWeekBar({ hours, completed, delay }: { hours: number; completed
     <Animated.View
       style={[
         styles.weekHoursBox,
-        completed ? styles.weekHoursActive : styles.weekHoursIdle,
+        !completed && styles.weekHoursIdle,
         animStyle,
       ]}
-    />
+    >
+      {completed ? (
+        <LinearGradient
+          colors={[STUDENT.primaryLight, STUDENT.primary, STUDENT.primaryDark]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={StyleSheet.absoluteFillObject}
+        />
+      ) : null}
+    </Animated.View>
   );
 }
 
@@ -124,6 +145,8 @@ export default function ProfileTabView({ user, onLogout }: Props) {
   const [rankings, setRankings] = useState<any[]>([]);
   const [progressRecords, setProgressRecords] = useState<any[]>([]);
   const [streakCount, setStreakCount] = useState(0);
+  const [sessionMinutesByDate, setSessionMinutesByDate] = useState<Record<string, number>>({});
+  const [localSessionMinutesByDate, setLocalSessionMinutesByDate] = useState<Record<string, number>>({});
 
   useEffect(() => {
     studentService.getProfile().then((me) => setProfile(me?.user || user)).catch(() => setProfile(user));
@@ -188,14 +211,43 @@ export default function ProfileTabView({ user, onLogout }: Props) {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const refreshStudySessions = async () => {
+      const token = await SecureStore.getItemAsync('authToken');
+      const weeklySessions = await fetchWeeklySessionMinutes(token);
+      if (!cancelled) {
+        setSessionMinutesByDate(weeklySessions.backend);
+        setLocalSessionMinutesByDate(weeklySessions.local);
+      }
+    };
+
+    void refreshStudySessions();
+    const cleanup = setupSessionTimeSync(() => {
+      void refreshStudySessions();
+    });
+
+    return () => {
+      cancelled = true;
+      cleanup();
+    };
+  }, []);
+
+  const todayDateKey = useMemo(() => toLocalDateKey(new Date()), []);
+
   const stats = useMemo(
     () => computeProfileOverviewStats(examResults, rankings, streakCount),
     [examResults, rankings, streakCount]
   );
 
   const weeklyStats = useMemo(
-    () => buildWeeklyActivityStats(examResults, progressRecords),
-    [examResults, progressRecords]
+    () =>
+      buildWeeklyActivityStats(examResults, progressRecords, {
+        sessionMinutesByDate,
+        localSessionMinutesByDate,
+      }),
+    [examResults, progressRecords, sessionMinutesByDate, localSessionMinutesByDate]
   );
 
   const weeklyHoursTotal = useMemo(
@@ -253,7 +305,7 @@ export default function ProfileTabView({ user, onLogout }: Props) {
             </View>
           </View>
             <View style={styles.headerInfo}>
-              <Text style={styles.name}>{profile?.fullName || 'Student'}</Text>
+              <Text style={styles.name}>{resolveStudentDisplayName(profile)}</Text>
               <Text style={styles.email}>{profile?.email || ''}</Text>
               <View style={styles.badgeRow}>
                 {profileClassNumber ? (
@@ -338,23 +390,27 @@ export default function ProfileTabView({ user, onLogout }: Props) {
         ) : (
           <>
             <View style={styles.weekRow}>
-              {weeklyStats.map((day, index) => (
+              {weeklyStats.map((day, index) => {
+                const isToday = day.dateKey === todayDateKey;
+                return (
                 <View key={day.dateKey} style={styles.weekCell}>
-                  <Text style={styles.weekDay}>{day.day}</Text>
+                  <Text style={[styles.weekDay, isToday && styles.weekDayToday]}>{day.day}</Text>
                   <AnimatedWeekBar hours={day.hours} completed={day.completed} delay={index * 60} />
                   <Text
                     style={[
                       styles.weekHoursText,
                       day.completed ? styles.weekHoursTextActive : undefined,
+                      isToday && styles.weekHoursTextToday,
                     ]}
                   >
-                    {day.hours}h
+                    {formatWeekHours(day.hours)}
                   </Text>
                 </View>
-              ))}
+              );
+              })}
             </View>
             <Text style={styles.weekTotal}>Total: {weeklyHoursTotal} hours this week</Text>
-            <Text style={styles.weekSub}>From exam time and content study sessions.</Text>
+            <Text style={styles.weekSub}>From Exams, Content Sessions, And App Study Time.</Text>
           </>
         )}
       </GlassCard>
@@ -450,15 +506,17 @@ const styles = StyleSheet.create({
   weekRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 4, alignItems: 'flex-end' },
   weekCell: { flex: 1, alignItems: 'center', minWidth: 36 },
   weekDay: { fontSize: 11, color: STUDENT.textMuted, marginBottom: 6 },
+  weekDayToday: { color: STUDENT.primaryDark, fontWeight: '800' },
   weekHoursBox: {
     width: '100%',
     minHeight: 8,
     borderRadius: STUDENT_RADIUS.sm,
+    overflow: 'hidden',
   },
-  weekHoursActive: { backgroundColor: STUDENT.navActiveBg },
-  weekHoursIdle: { backgroundColor: STUDENT.surfaceHover },
+  weekHoursIdle: { backgroundColor: '#e2e8f0' },
   weekHoursText: { fontSize: 11, fontWeight: '700', color: STUDENT.textMuted, marginTop: 6 },
   weekHoursTextActive: { color: STUDENT.primaryDark },
+  weekHoursTextToday: { color: STUDENT.primary, fontWeight: '800' },
   weekTotal: { marginTop: 14, textAlign: 'center', fontSize: 13, color: STUDENT.textMuted },
   weekSub: { marginTop: 4, textAlign: 'center', fontSize: 12, color: STUDENT.navInactive },
   logoutBtn: {

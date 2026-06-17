@@ -73,7 +73,7 @@ function ClassTimetableSectionComponent({ schoolName }: Props) {
         {loading ? (
           <ActivityIndicator color={STUDENT.accent} style={{ padding: 24 }} />
         ) : slots.length === 0 ? (
-          <Text style={styles.empty}>No classes in your weekly timetable yet.</Text>
+          <Text style={styles.empty}>No Classes In Your Weekly Timetable Yet.</Text>
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View>
