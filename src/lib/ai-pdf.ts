@@ -114,7 +114,6 @@ export const AI_PDF_TOOL_OPTIONS = [
   { value: 'lesson-planner', label: 'Lesson Planner' },
   { value: 'study-schedule-maker', label: 'Study Schedule Maker' },
   { value: 'homework-creator', label: 'Homework Creator' },
-  { value: 'rubrics-evaluation-generator', label: 'Rubrics, Evaluation & Report Card' },
   { value: 'reading-practice-room', label: 'Reading Practice Room' },
   { value: 'story-passage-creator', label: 'Story and Passage Creator' },
   { value: 'short-notes-summaries-maker', label: 'Short Notes & Summaries' },
@@ -131,7 +130,7 @@ export const AI_PDF_TOOL_OPTIONS = [
   { value: 'quick-assignment-builder', label: 'Quick Assignment Builder' },
 ].sort((a, b) => a.label.localeCompare(b.label, 'en', { sensitivity: 'base' }));
 
-const DEPRECATED_TOOLS = new Set(['rubrics-evaluation-generator']);
+const DEPRECATED_TOOLS = new Set<string>();
 
 export function formatTokenCount(value: number) {
   const n = Number(value || 0);
