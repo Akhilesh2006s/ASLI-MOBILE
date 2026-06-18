@@ -347,18 +347,21 @@ function isJunkExamQuestion(q: ExamQuestion): boolean {
 }
 
 function parseBlueprintCounts(blueprint = ''): { a: number; b: number; c: number; d: number; e: number } {
+  const defaults = { a: 4, b: 3, c: 3, d: 2, e: 1 };
   const text = String(blueprint || '');
   const pick = (letter: string) => {
     const m = text.match(new RegExp(`section\\s*${letter}[^\\d]*(\\d+)`, 'i'));
     return m ? Math.max(0, Number(m[1])) : 0;
   };
-  const a = pick('a');
-  const b = pick('b');
-  const c = pick('c');
-  const d = pick('d');
-  const e = pick('e');
-  if (a + b + c + d + e > 0) return { a, b, c, d, e };
-  return { a: 4, b: 3, c: 3, d: 2, e: 1 };
+  const parsed = { a: pick('a'), b: pick('b'), c: pick('c'), d: pick('d'), e: pick('e') };
+  if (parsed.a + parsed.b + parsed.c + parsed.d + parsed.e === 0) return defaults;
+  return {
+    a: parsed.a || defaults.a,
+    b: parsed.b || defaults.b,
+    c: parsed.c || defaults.c,
+    d: parsed.d || defaults.d,
+    e: parsed.e || defaults.e,
+  };
 }
 
 function sanitizeBlueprintText(value: unknown): string {
