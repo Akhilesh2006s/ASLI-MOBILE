@@ -34,7 +34,8 @@ import {
   fetchGeneratorBoardOptions,
   fetchGeneratorRecord,
   fetchGeneratorRecords,
-  generateAiContent,
+  generateAiBatch,
+  releaseAiGeneratorLock,
   recordListPreviewText,
   toDisplayPlainText,
   toolRequiresTopic,
@@ -46,6 +47,23 @@ import {
   isStoryPassageLanguageSubject,
 } from '../../../src/lib/student-ai-tools';
 import { extractMcqQuestionsFromRecord, isMcqTool } from '../../../src/lib/mcq-record-utils';
+import {
+  computeGeminiCostFromTokenUsage,
+  emptyTokenTotals,
+  formatCostInr,
+  formatTokenCount,
+  perRecordShareFromCost,
+  type GeminiCostEstimate,
+  type TokenTotals,
+} from '../../../src/lib/gemini-token-cost';
+import {
+  GENERATION_RECORD_COUNT_MIN,
+  GENERATION_RECORD_COUNT_MAX,
+  generationRecordCountButtonLabel,
+  isValidGenerationRecordCount,
+  parseGenerationRecordCount,
+  sanitizeGenerationRecordCountInput,
+} from '../../../src/lib/generation-record-count';
 
 type PickerProps = {
   visible: boolean;
@@ -402,6 +420,17 @@ export default function AiGeneratorView() {
   const [questionCount, setQuestionCount] = useState('10');
   const [difficulty, setDifficulty] = useState('medium');
   const [duration, setDuration] = useState('30');
+  const [generationRecordCount, setGenerationRecordCount] = useState('10');
+  const [forceGenerateNew, setForceGenerateNew] = useState(false);
+  const [generationLocked, setGenerationLocked] = useState(false);
+  const [lastBatchSummary, setLastBatchSummary] = useState<{
+    successCount: number;
+    failedCount: number;
+    batchSize: number;
+    tokenUsage: TokenTotals;
+    cost: GeminiCostEstimate;
+    perRecordCost: { usd: number; inr: number };
+  } | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [recordsTree, setRecordsTree] = useState<GroupedTool[]>([]);
   const [recordsTotal, setRecordsTotal] = useState(0);
@@ -524,7 +553,22 @@ export default function AiGeneratorView() {
     }
   };
 
-  const generate = async () => {
+  const buildGenerationPayload = (forceUnlock = false) => ({
+    toolSlug: selectedTool as ToolId,
+    toolName: currentTool?.name || selectedTool,
+    board,
+    className: classNumber,
+    subjectName: subject,
+    topicName: topic,
+    subtopicName: subTopic,
+    batchSize: parseGenerationRecordCount(generationRecordCount) || 10,
+    forceGenerate: forceGenerateNew,
+    forceGenerateNew,
+    extraParams: buildExtraParams(selectedTool, questionType, questionCount, difficulty, duration),
+    ...(forceUnlock ? { forceUnlock: true } : {}),
+  });
+
+  const generate = async (opts?: { forceUnlock?: boolean }) => {
     if (!selectedTool || !board || !classNumber || !subject || !subTopic) {
       Alert.alert('Missing fields', 'Tool, board, class, subject and sub topic are required.');
       return;
@@ -537,24 +581,56 @@ export default function AiGeneratorView() {
       Alert.alert('English or Hindi only', 'This tool works only with English or Hindi subjects.');
       return;
     }
+    if (!isValidGenerationRecordCount(generationRecordCount)) {
+      Alert.alert(
+        'Invalid record count',
+        `Enter a whole number from ${GENERATION_RECORD_COUNT_MIN} to ${GENERATION_RECORD_COUNT_MAX}.`,
+      );
+      return;
+    }
     setIsGenerating(true);
+    setGenerationLocked(false);
+    if (!opts?.forceUnlock) setLastBatchSummary(null);
     try {
-      await generateAiContent({
-        toolSlug: selectedTool,
-        toolName: currentTool?.name || selectedTool,
-        board,
-        className: classNumber,
-        subjectName: subject,
-        topicName: topic,
-        subtopicName: subTopic,
-        extraParams: buildExtraParams(selectedTool, questionType, questionCount, difficulty, duration),
+      const result = await generateAiBatch(buildGenerationPayload(opts?.forceUnlock));
+      const usage = result.tokenUsage;
+      const tokenUsage = usage?.totals ? { ...emptyTokenTotals(), ...usage.totals } : emptyTokenTotals();
+      const tokenCalls = Array.isArray(usage?.calls) ? usage.calls : [];
+      const exchangeRateInr = Number(result.cost?.exchangeRateInr) || 95.11;
+      const cost =
+        result.cost && Number(result.cost.inr) >= 0
+          ? (result.cost as GeminiCostEstimate)
+          : computeGeminiCostFromTokenUsage({ totals: tokenUsage, calls: tokenCalls }, exchangeRateInr);
+      const savedCount = Number(result.savedCount) || 0;
+      const perRecord = perRecordShareFromCost(cost, savedCount || 1);
+      setLastBatchSummary({
+        successCount: savedCount,
+        failedCount: Number(result.failedCount) || 0,
+        batchSize: Number(result.batchSize) || parseGenerationRecordCount(generationRecordCount) || 10,
+        tokenUsage,
+        cost,
+        perRecordCost: perRecord,
       });
-      Alert.alert('Generated', 'Content generated and saved in AI Generator records.');
+      Alert.alert(
+        savedCount > 0 ? 'Batch saved' : 'Batch failed',
+        `${savedCount}/${result.batchSize || generationRecordCount} saved · ${formatTokenCount(tokenUsage.totalTokens)} tokens · ${formatCostInr(cost.inr)}`,
+      );
       await loadRecords();
     } catch (err: any) {
+      if (err?.locked) setGenerationLocked(true);
       Alert.alert('Generation failed', err?.friendlyMessage || err?.message || 'Could not generate.');
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const releaseLockAndRetry = async () => {
+    try {
+      await releaseAiGeneratorLock(buildGenerationPayload());
+      setGenerationLocked(false);
+      await generate({ forceUnlock: true });
+    } catch (err: any) {
+      Alert.alert('Could not clear lock', err?.message || 'Failed to clear lock.');
     }
   };
 
@@ -790,6 +866,13 @@ export default function AiGeneratorView() {
               <Text style={styles.selectText}>{questionType}</Text>
               <Ionicons name="chevron-down" size={16} color="#64748b" />
             </Pressable>
+            <Text style={styles.fieldLabel}>Questions per worksheet</Text>
+            <TextInput
+              style={styles.input}
+              value={questionCount}
+              onChangeText={setQuestionCount}
+              keyboardType="number-pad"
+            />
           </>
         ) : null}
 
@@ -819,17 +902,52 @@ export default function AiGeneratorView() {
           </>
         )}
 
+        <Text style={styles.fieldLabel}>Records to generate ({GENERATION_RECORD_COUNT_MIN}–{GENERATION_RECORD_COUNT_MAX})</Text>
+        <TextInput
+          style={styles.input}
+          value={generationRecordCount}
+          keyboardType="number-pad"
+          onChangeText={(v) => {
+            const next = sanitizeGenerationRecordCountInput(v);
+            if (next !== null) setGenerationRecordCount(next);
+          }}
+        />
+        <Pressable style={styles.forceRow} onPress={() => setForceGenerateNew((v) => !v)}>
+          <Ionicons name={forceGenerateNew ? 'checkbox' : 'square-outline'} size={20} color="#2563eb" />
+          <Text style={styles.forceText}>Force generate new (even when topic has 1000+ records)</Text>
+        </Pressable>
+
         <Pressable
           style={[styles.generateBtn, (isGenerating || !selectedTool) && styles.generateBtnDisabled]}
-          onPress={generate}
+          onPress={() => void generate()}
           disabled={isGenerating || !selectedTool}
         >
           {isGenerating ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.generateBtnText}>Generate with Gemini</Text>
+            <Text style={styles.generateBtnText}>
+              {generationRecordCountButtonLabel(generationRecordCount, isGenerating)}
+            </Text>
           )}
         </Pressable>
+        {generationLocked ? (
+          <Pressable style={styles.lockBtn} onPress={() => void releaseLockAndRetry()}>
+            <Text style={styles.lockBtnText}>Clear lock & retry</Text>
+          </Pressable>
+        ) : null}
+        {lastBatchSummary ? (
+          <View style={styles.batchSummary}>
+            <Text style={styles.batchSummaryTitle}>
+              Last batch: {lastBatchSummary.successCount}/{lastBatchSummary.batchSize} saved
+            </Text>
+            <Text style={styles.batchSummaryLine}>
+              {formatTokenCount(lastBatchSummary.tokenUsage.totalTokens)} tokens · Batch {formatCostInr(lastBatchSummary.cost.inr)}
+              {lastBatchSummary.successCount > 0
+                ? ` · ~${formatCostInr(lastBatchSummary.perRecordCost.inr)}/record`
+                : ''}
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       <View style={styles.section}>
@@ -1098,6 +1216,28 @@ const styles = StyleSheet.create({
   },
   generateBtnDisabled: { opacity: 0.55 },
   generateBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  forceRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
+  forceText: { flex: 1, fontSize: 12, color: '#475569' },
+  lockBtn: {
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#f59e0b',
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  lockBtnText: { color: '#b45309', fontWeight: '700' },
+  batchSummary: {
+    marginTop: 10,
+    backgroundColor: '#ecfdf5',
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+    gap: 4,
+  },
+  batchSummaryTitle: { fontWeight: '800', color: '#065f46', fontSize: 13 },
+  batchSummaryLine: { color: '#047857', fontSize: 12 },
   recordsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   deleteAllBtn: {
     flexDirection: 'row',

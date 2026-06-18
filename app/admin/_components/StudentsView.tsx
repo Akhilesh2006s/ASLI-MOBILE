@@ -26,7 +26,10 @@ import {
   AdminFilterChips,
   AdminScalePressable,
   useAdminTheme,
+  AdminStatsRow,
+  useAdminResponsiveLayout,
 } from '../_ui';
+import StudentRiskAnalysisModal from './StudentRiskAnalysisModal';
 
 interface Student {
   id: string;
@@ -115,6 +118,7 @@ const sortByClassLabel = (a: string, b: string) => {
 
 export default function StudentsView() {
   const { colors, spacing } = useAdminTheme();
+  const { isPhone } = useAdminResponsiveLayout();
   const [refreshing, setRefreshing] = useState(false);
   const [students, setStudents] = useState<Student[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -135,6 +139,8 @@ export default function StudentsView() {
   const [availableClasses, setAvailableClasses] = useState<any[]>([]);
   const [isAssignClassModalVisible, setIsAssignClassModalVisible] = useState(false);
   const [selectedStudentForClass, setSelectedStudentForClass] = useState<Student | null>(null);
+  const [isRiskAnalysisModalVisible, setIsRiskAnalysisModalVisible] = useState(false);
+  const [selectedStudentForRisk, setSelectedStudentForRisk] = useState<Student | null>(null);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [selectedStudentForEdit, setSelectedStudentForEdit] = useState<Student | null>(null);
   const [editStudent, setEditStudent] = useState({
@@ -548,7 +554,9 @@ export default function StudentsView() {
               </Text>
             </View>
             <View style={[styles.classBadge, { backgroundColor: colors.primaryMuted, borderColor: colors.surfaceBorder }]}>
-              <Text style={[styles.classBadgeText, { color: colors.primary }]}>{student.classNumber || 'N/A'}</Text>
+              <Text style={[styles.classBadgeText, { color: colors.primary }]} numberOfLines={1}>
+                {student.classNumber || 'N/A'}
+              </Text>
             </View>
           </View>
 
@@ -568,21 +576,39 @@ export default function StudentsView() {
             </View>
           </View>
 
-          <View style={styles.studentActions}>
+          <View style={[styles.studentActions, isPhone ? styles.studentActionsStacked : styles.studentActionsRow]}>
+            <View style={styles.studentActionIcons}>
+              <AdminScalePressable
+                style={[styles.iconActionBtn, { backgroundColor: colors.primaryMuted }]}
+                onPress={() => handleEditStudent(student)}
+                accessibilityLabel="Edit student"
+              >
+                <Ionicons name="create-outline" size={18} color={colors.primary} />
+              </AdminScalePressable>
+              <AdminScalePressable
+                style={[styles.iconActionBtn, { backgroundColor: colors.dangerMuted }]}
+                onPress={() => handleDeleteStudent(student.id, student.name)}
+                accessibilityLabel="Delete student"
+              >
+                <Ionicons name="trash-outline" size={18} color={colors.danger} />
+              </AdminScalePressable>
+              <AdminScalePressable
+                style={[styles.iconActionBtn, styles.riskActionBtn]}
+                onPress={() => {
+                  setSelectedStudentForRisk(student);
+                  setIsRiskAnalysisModalVisible(true);
+                }}
+                accessibilityLabel="AI risk analysis"
+              >
+                <Ionicons name="sparkles-outline" size={18} color="#EA580C" />
+              </AdminScalePressable>
+            </View>
             <AdminScalePressable
-              style={[styles.iconActionBtn, { backgroundColor: colors.primaryMuted }]}
-              onPress={() => handleEditStudent(student)}
-            >
-              <Ionicons name="create-outline" size={18} color={colors.primary} />
-            </AdminScalePressable>
-            <AdminScalePressable
-              style={[styles.iconActionBtn, { backgroundColor: colors.dangerMuted }]}
-              onPress={() => handleDeleteStudent(student.id, student.name)}
-            >
-              <Ionicons name="trash-outline" size={18} color={colors.danger} />
-            </AdminScalePressable>
-            <AdminScalePressable
-              style={[styles.assignClassBtn, { borderColor: colors.surfaceBorder, backgroundColor: colors.primaryMuted }]}
+              style={[
+                styles.assignClassBtn,
+                { borderColor: colors.surfaceBorder, backgroundColor: colors.primaryMuted },
+                isPhone && styles.assignClassBtnFull,
+              ]}
               onPress={() => {
                 setSelectedStudentForClass(student);
                 setIsAssignClassModalVisible(true);
@@ -595,7 +621,7 @@ export default function StudentsView() {
         </View>
       </AdminGlassCard>
     ),
-    [colors]
+    [colors, isPhone, handleEditStudent, handleDeleteStudent]
   );
 
   const renderPickerModal = (
@@ -815,12 +841,14 @@ export default function StudentsView() {
         icon="people-outline"
       />
 
-      <View style={styles.statsRow}>
-        <AdminStatCard label="Total" value={stats.total} icon="people" gradientIndex={0} delay={0} />
-        <AdminStatCard label="Active" value={stats.active} icon="checkmark-circle" gradientIndex={2} delay={50} />
-        <AdminStatCard label="Classes" value={stats.classes} icon="school-outline" gradientIndex={4} delay={100} />
-        <AdminStatCard label="New" value={stats.newThisMonth} icon="person-add-outline" gradientIndex={1} delay={150} />
-      </View>
+      <AdminStatsRow
+        items={[
+          { label: 'Total', value: stats.total, icon: 'people', gradientIndex: 0 },
+          { label: 'Active', value: stats.active, icon: 'checkmark-circle', gradientIndex: 2 },
+          { label: 'Classes', value: stats.classes, icon: 'school-outline', gradientIndex: 4 },
+          { label: 'New', value: stats.newThisMonth, icon: 'person-add-outline', gradientIndex: 1 },
+        ]}
+      />
 
       <AdminGlassCard delay={80} style={{ marginBottom: spacing.md, padding: spacing.md, gap: spacing.sm }}>
         <View style={styles.filterRow}>
@@ -1343,19 +1371,22 @@ export default function StudentsView() {
           </View>
         </View>
       </Modal>
+
+      <StudentRiskAnalysisModal
+        visible={isRiskAnalysisModalVisible}
+        studentId={selectedStudentForRisk?.id || ''}
+        studentName={selectedStudentForRisk?.name}
+        onClose={() => {
+          setIsRiskAnalysisModalVisible(false);
+          setSelectedStudentForRisk(null);
+        }}
+      />
     </AdminScreenShell>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  statsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    paddingTop: 4,
-    paddingBottom: 8,
-  },
   summaryTile: {
     flex: 1,
     minWidth: 0,
@@ -1692,6 +1723,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
+    minWidth: 0,
   },
   studentAvatarContainer: {
     position: 'relative',
@@ -1747,6 +1779,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 4,
+    flexShrink: 0,
+    maxWidth: 88,
   },
   classBadgeText: {
     fontSize: 11,
@@ -1768,33 +1802,56 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   studentActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: 'rgba(79, 70, 229, 0.12)',
+    gap: 10,
+    width: '100%',
+    minWidth: 0,
+  },
+  studentActionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  studentActionsStacked: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+  },
+  studentActionIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 0,
   },
   iconActionBtn: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#F1F5F9',
   },
+  riskActionBtn: {
+    backgroundColor: '#FFF7ED',
+  },
   assignClassBtn: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     backgroundColor: '#F1F5F9',
+    flexShrink: 0,
+  },
+  assignClassBtnFull: {
+    alignSelf: 'stretch',
   },
   assignClassBtnText: {
     fontSize: 12,

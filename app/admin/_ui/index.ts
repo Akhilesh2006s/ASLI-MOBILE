@@ -16,5 +16,8 @@ export { default as AdminGridBackground } from './AdminGridBackground';
 export { useAdminTheme } from './useAdminTheme';
 export { useAdminTabletLayout, useAdminGridLayout } from './useAdminTabletLayout';
 export { useAdminListLayout, ADMIN_LIST_GRID_COLUMNS, ADMIN_LIST_GRID_GAP } from './useAdminListLayout';
+export { useAdminResponsiveLayout, getAdminLayoutTier, getAdminGridColumns } from './useAdminResponsiveLayout';
+export { default as AdminStatsRow } from './AdminStatsRow';
+export type { AdminStatItem } from './AdminStatsRow';
 export { default as AdminGridList } from './AdminGridList';
 export { default as AdminCardScrollBox } from './AdminCardScrollBox';

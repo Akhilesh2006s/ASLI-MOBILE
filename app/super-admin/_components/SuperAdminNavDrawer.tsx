@@ -40,6 +40,8 @@ export type SuperAdminView =
   | 'ai-tool-generations'
   | 'ai-tool-topics'
   | 'ai-generator'
+  | 'book-knowledge-base'
+  | 'book-based-generator'
   | 'ai-content-engine'
   | 'analytics'
   | 'ai-analytics'
@@ -72,7 +74,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { id: 'subjects-and-content', label: 'Subject & Content', icon: 'list-outline' },
       { id: 'exams', label: 'Exam Management', icon: 'document-text-outline' },
-      { id: 'iq-rank-boost', label: 'IQ/Rank Boost', icon: 'trophy-outline' },
+      { id: 'iq-rank-boost', label: 'IQ/Rank Boost Activities', icon: 'trophy-outline' },
       { id: 'calendar', label: 'School Calendar', icon: 'calendar-outline' },
     ],
   },
@@ -83,7 +85,8 @@ const NAV_SECTIONS: NavSection[] = [
       { id: 'ai-tool-generations', label: 'AI Tool Data', icon: 'albums-outline' },
       { id: 'ai-tool-topics', label: 'AI Tool Topics', icon: 'radio-button-on-outline' },
       { id: 'ai-generator', label: 'AI Generator', icon: 'flash-outline' },
-      { id: 'ai-content-engine', label: 'AI PDF', icon: 'cloud-upload-outline' },
+      { id: 'book-knowledge-base', label: 'Book Knowledge Base', icon: 'library-outline' },
+      { id: 'book-based-generator', label: 'Book-Based Generator', icon: 'book-outline' },
     ],
   },
   {

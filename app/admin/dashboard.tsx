@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
-import { useIsTablet } from '../../src/hooks/useIsTablet';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -27,14 +26,14 @@ import SchoolManagementView from './_components/SchoolManagementView';
 import VidyaAIView from './_components/VidyaAIView';
 import VidyaAIFloatingAssistant from '../../src/components/vidya/VidyaAIFloatingAssistant';
 import AdminNavDrawer, { adminNavLabel, type AdminNavView } from './_components/AdminNavDrawer';
-import AdminSidebar from './_components/AdminSidebar';
 import { AdminHeader, AdminTabBar, useAdminTheme } from './_ui';
+import { useAdminResponsiveLayout } from './_ui/useAdminResponsiveLayout';
 
 export default function AdminDashboard() {
   const { signOut, user: authUser } = useAuth();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
   const { colors, spacing } = useAdminTheme();
-  const isTablet = useIsTablet();
+  const { shellPaddingBottom, showBottomTabBar } = useAdminResponsiveLayout();
   const [currentView, setCurrentView] = useState<AdminNavView>('overview');
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -198,14 +197,13 @@ export default function AdminDashboard() {
         schoolUser={schoolUser ?? undefined}
         showSchoolBrand={isDashboard}
         subtitle={isDashboard ? 'Dashboard' : adminNavLabel(currentView)}
-        onMenu={isTablet ? undefined : () => setMenuOpen(true)}
+        onMenu={() => setMenuOpen(true)}
       />
 
       <View
         style={[
           styles.contentWrap,
-          { backgroundColor: colors.bg },
-          isTablet && styles.contentWrapTablet,
+          { backgroundColor: colors.bg, paddingBottom: shellPaddingBottom },
         ]}
       >
         <Animated.View key={currentView} entering={FadeIn.duration(200)} style={styles.content}>
@@ -218,29 +216,19 @@ export default function AdminDashboard() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]} edges={['bottom']}>
       <View style={styles.shell}>
-        {isTablet ? (
-          <AdminSidebar
-            activeView={currentView}
-            userName={userName}
-            onSelect={onSelectView}
-            onLogout={handleLogout}
-          />
-        ) : null}
         {mainColumn}
       </View>
 
-      {!isTablet ? <AdminTabBar activeView={currentView} onTabChange={setCurrentView} /> : null}
+      {showBottomTabBar ? <AdminTabBar activeView={currentView} onTabChange={setCurrentView} /> : null}
 
-      {!isTablet ? (
-        <AdminNavDrawer
-          visible={menuOpen}
-          activeView={currentView}
-          userName={userName}
-          onClose={() => setMenuOpen(false)}
-          onSelect={onSelectView}
-          onLogout={handleLogout}
-        />
-      ) : null}
+      <AdminNavDrawer
+        visible={menuOpen}
+        activeView={currentView}
+        userName={userName}
+        onClose={() => setMenuOpen(false)}
+        onSelect={onSelectView}
+        onLogout={handleLogout}
+      />
 
       <VidyaAIFloatingAssistant
         role="admin"
@@ -268,10 +256,6 @@ const styles = StyleSheet.create({
     minHeight: 0,
     position: 'relative',
     overflow: 'hidden',
-    paddingBottom: 100,
-  },
-  contentWrapTablet: {
-    paddingBottom: 24,
   },
   content: {
     flex: 1,

@@ -8,7 +8,6 @@ import {
   RefreshControl,
   useWindowDimensions,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ShimmerCard } from '../../../src/components/student/StudentShimmer';
 import { STUDENT, STUDENT_RADIUS, STUDENT_SPACING, STUDENT_TYPO } from '../../../src/theme/student';
 import { router } from 'expo-router';
@@ -28,6 +27,7 @@ import {
 } from '../../../src/lib/subject-names';
 import { useEduOTTFilters } from '../../../src/contexts/edu-ott-filter-context';
 import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
+import { eduOttListScrollBottomPad, isTabletLayout } from '../../../src/lib/responsive-layout';
 
 export type EduOTTRole = 'student' | 'teacher' | 'admin';
 
@@ -194,7 +194,6 @@ function mapAndDedupeVideos(list: unknown[]): VideoItem[] {
 }
 
 const EDUOTT_GRID_MAX_WIDTH = 1080;
-const TAB_BAR_CLEARANCE = 120;
 
 function useEduOTTGridLayout() {
   const { width: screenWidth } = useWindowDimensions();
@@ -211,12 +210,12 @@ function useEduOTTGridLayout() {
 
 export default function EduOTTView({ username = 'Student', role = 'student' }: EduOTTViewProps) {
   const { numColumns, isGrid, gridCardWidth } = useEduOTTGridLayout();
-  const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+  const isTablet = isTabletLayout(width, height);
   const { isAsliPrepExclusive, loading: programLoading } = useSchoolProgram();
   const useClientSideFilters = role !== 'student';
   const dashboardLabel = DASHBOARD_LABELS[role];
-  const bottomClearance =
-    role === 'student' ? 0 : TAB_BAR_CLEARANCE + Math.max(insets.bottom, 10);
+  const listScrollBottomPad = eduOttListScrollBottomPad(role, isTablet, STUDENT_SPACING.xl);
   const {
     selectedClass,
     selectedSubject,
@@ -760,7 +759,11 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         onEndReached={onEndReached}
         onEndReachedThreshold={0.35}
-        contentContainerStyle={[styles.listContainer, isGrid && styles.listContainerGrid]}
+        contentContainerStyle={[
+          styles.listContainer,
+          { paddingBottom: listScrollBottomPad },
+          isGrid && styles.listContainerGrid,
+        ]}
         maxToRenderPerBatch={8}
         initialNumToRender={8}
         windowSize={9}
@@ -810,14 +813,14 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
           </View>
         }
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={[styles.listContainer, { paddingBottom: listScrollBottomPad }]}
         showsVerticalScrollIndicator={false}
       />
     );
   };
 
   return (
-    <View style={[styles.container, bottomClearance > 0 && { paddingBottom: bottomClearance }]}>
+    <View style={styles.container}>
       {activeTab === 'videos' ? renderVideoContent() : renderLiveContent()}
     </View>
   );

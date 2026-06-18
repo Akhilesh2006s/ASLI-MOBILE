@@ -1,29 +1,15 @@
-import { useWindowDimensions } from 'react-native';
-import { ADMIN_SIDEBAR_WIDTH, useIsTablet } from '../../../src/hooks/useIsTablet';
+import { useAdminResponsiveLayout } from './useAdminResponsiveLayout';
 
 export const ADMIN_LIST_GRID_COLUMNS = 3;
-export const ADMIN_LIST_GRID_GAP = 12;
-/** Matches AdminScreenShell horizontal padding (spacing.md × 2). */
-const SHELL_HORIZONTAL_PADDING = 32;
+export { ADMIN_GRID_GAP as ADMIN_LIST_GRID_GAP } from './useAdminResponsiveLayout';
 
-/** Tablet-only list grid; mobile keeps single-column layout. */
+/** Tablet list/card grid — delegates to useAdminResponsiveLayout. */
 export function useAdminListLayout() {
-  const { width } = useWindowDimensions();
-  const isTablet = useIsTablet();
-  const contentWidth = width - (isTablet ? ADMIN_SIDEBAR_WIDTH : 0);
-  const modalMaxWidth = isTablet ? Math.min(560, contentWidth - 48) : undefined;
-  const gridGap = ADMIN_LIST_GRID_GAP;
-  const gridColumns = ADMIN_LIST_GRID_COLUMNS;
-  const listWidth = Math.max(0, contentWidth - SHELL_HORIZONTAL_PADDING);
-  const gridCellWidth = isTablet
-    ? (listWidth - gridGap * (gridColumns - 1)) / gridColumns
-    : listWidth;
-
+  const layout = useAdminResponsiveLayout();
   return {
-    isTablet,
-    modalMaxWidth,
-    gridColumns,
-    gridGap,
-    gridCellWidth,
+    isTablet: layout.isTablet,
+    modalMaxWidth: layout.modalMaxWidth,
+    gridColumns: layout.gridColumns,
+    gridGap: layout.gridGap,
   };
 }

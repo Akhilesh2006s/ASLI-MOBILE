@@ -6,7 +6,7 @@ type Props<T> = {
   data: T[];
   columns: number;
   gap?: number;
-  /** Fixed cell width on tablet so card footers stay inside the column. */
+  /** @deprecated Cells use flex so the row fills the container width on tablet. */
   gridCellWidth?: number;
   keyExtractor: (item: T, index: number) => string;
   renderItem: (item: T, index: number) => ReactNode;
@@ -17,40 +17,35 @@ export default function AdminGridList<T>({
   data,
   columns,
   gap = ADMIN_LIST_GRID_GAP,
-  gridCellWidth,
   keyExtractor,
   renderItem,
 }: Props<T>) {
+  const safeColumns = Math.max(1, columns || 1);
   const rows = useMemo(() => {
     const result: T[][] = [];
-    for (let i = 0; i < data.length; i += columns) {
-      result.push(data.slice(i, i + columns));
+    for (let i = 0; i < data.length; i += safeColumns) {
+      result.push(data.slice(i, i + safeColumns));
     }
     return result;
-  }, [data, columns]);
+  }, [data, safeColumns]);
 
   return (
     <View style={[styles.list, { gap }]}>
       {rows.map((row, rowIndex) => (
         <View key={`grid-row-${rowIndex}`} style={[styles.row, { gap }]}>
           {row.map((item, colIndex) => {
-            const index = rowIndex * columns + colIndex;
+            const index = rowIndex * safeColumns + colIndex;
             return (
-              <View
-                key={keyExtractor(item, index)}
-                style={[
-                  styles.cell,
-                  gridCellWidth != null && {
-                    width: gridCellWidth,
-                    maxWidth: gridCellWidth,
-                    flex: 0,
-                  },
-                ]}
-              >
+              <View key={keyExtractor(item, index)} style={styles.cell}>
                 {renderItem(item, index)}
               </View>
             );
           })}
+          {row.length < safeColumns
+            ? Array.from({ length: safeColumns - row.length }).map((_, padIndex) => (
+                <View key={`grid-pad-${rowIndex}-${padIndex}`} style={styles.cellPad} />
+              ))
+            : null}
         </View>
       ))}
     </View>
@@ -64,12 +59,16 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'stretch',
     width: '100%',
   },
   cell: {
     flex: 1,
     minWidth: 0,
-    overflow: 'hidden',
+    alignSelf: 'stretch',
+  },
+  cellPad: {
+    flex: 1,
+    minWidth: 0,
   },
 });

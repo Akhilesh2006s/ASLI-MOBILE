@@ -19,7 +19,6 @@ import {
   AdminScreenShell,
   AdminSectionHeader,
   AdminSearchBar,
-  AdminStatCard,
   AdminGlassCard,
   AdminEmptyState,
   AdminSkeletonList,
@@ -29,6 +28,7 @@ import {
   ADMIN_LIST_GRID_GAP,
   AdminGridList,
   AdminCardScrollBox,
+  AdminStatsRow,
 } from '../_ui';
 
 type ClassTab = 'classes' | 'assign-subjects' | 'promote-class';
@@ -94,7 +94,7 @@ const GRID_GAP = ADMIN_LIST_GRID_GAP;
 
 export default function ClassesView() {
   const { colors, spacing } = useAdminTheme();
-  const { isTablet, gridColumns, modalMaxWidth, gridCellWidth } = useAdminListLayout();
+  const { isTablet, gridColumns, modalMaxWidth } = useAdminListLayout();
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<ClassTab>('classes');
   const [classes, setClasses] = useState<ClassItem[]>([]);
@@ -549,6 +549,7 @@ export default function ClassesView() {
 
   const renderClassCard = (cls: ClassItem, index: number) => {
     const isExpanded = expandedClassId === cls.id;
+    const showStudentsList = isExpanded || (isTablet && (cls.students?.length ?? 0) > 0);
     const teacherCount = cls.teachers?.length ?? 0;
 
     return (
@@ -651,10 +652,12 @@ export default function ClassesView() {
               onPress={() => setExpandedClassId(isExpanded ? null : cls.id)}
             >
               <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={14} color={colors.primary} />
-              <Text style={[styles.viewToggleText, { color: colors.primary }]}>{isExpanded ? 'Hide' : 'View'}</Text>
+              <Text style={[styles.viewToggleText, { color: colors.primary }]}>
+                {showStudentsList ? 'Hide' : 'View'}
+              </Text>
             </TouchableOpacity>
           </View>
-          {isExpanded && (
+          {showStudentsList && (
             <AdminCardScrollBox style={styles.studentsScroll}>
               {cls.students && cls.students.length > 0 ? (
                 cls.students.map((student) => (
@@ -795,12 +798,14 @@ export default function ClassesView() {
         </View>
       </View>
 
-      <View style={[styles.statsRow, isTablet && styles.statsRowTablet]}>
-        <AdminStatCard label="Classes" value={classes.length} icon="school" gradientIndex={0} delay={0} />
-        <AdminStatCard label="Students" value={totalStudents} icon="people" gradientIndex={1} delay={50} />
-        <AdminStatCard label="Avg size" value={avgClassSize} icon="stats-chart" gradientIndex={2} delay={100} />
-        <AdminStatCard label="Subjects" value={classSubjects.length} icon="book-outline" gradientIndex={3} delay={150} />
-      </View>
+      <AdminStatsRow
+        items={[
+          { label: 'Classes', value: classes.length, icon: 'school', gradientIndex: 0 },
+          { label: 'Students', value: totalStudents, icon: 'people', gradientIndex: 1 },
+          { label: 'Avg size', value: avgClassSize, icon: 'stats-chart', gradientIndex: 2 },
+          { label: 'Subjects', value: classSubjects.length, icon: 'book-outline', gradientIndex: 3 },
+        ]}
+      />
 
       {activeTab === 'classes' && (
         <View style={styles.classesTabContent}>
@@ -858,7 +863,6 @@ export default function ClassesView() {
             <AdminGridList
               data={filteredClasses}
               columns={gridColumns}
-              gridCellWidth={gridCellWidth}
               keyExtractor={(item) => String(item.id)}
               renderItem={(item, index) => renderClassCard(item, index)}
             />
@@ -1263,17 +1267,6 @@ const styles = StyleSheet.create({
     width: '100%',
     flexDirection: 'column',
   },
-  statsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 12,
-    width: '100%',
-  },
-  statsRowTablet: {
-    flexWrap: 'nowrap',
-    gap: 12,
-  },
   listContent: {
     gap: GRID_GAP,
     paddingBottom: 8,
@@ -1402,7 +1395,6 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
     alignSelf: 'stretch',
     flexDirection: 'column',
-    overflow: 'hidden',
   },
   classHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 12 },
   classIconWrap: {

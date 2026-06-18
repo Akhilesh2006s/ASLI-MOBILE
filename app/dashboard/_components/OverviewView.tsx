@@ -755,24 +755,17 @@ const OverviewView = memo(function OverviewView({
         onLogout={onLogout}
       />
 
-      {/* Summary Statistics + calendar (tablet uses aligned left/right columns) */}
+      {/* Summary Statistics + calendar (tablet: stats row, then aligned calendar | events) */}
       {isTablet ? (
-        <View style={styles.tabletMasterRow}>
-          <View style={styles.tabletMasterCol}>
-            <View style={styles.tabletStatsCol}>
-              {renderStatCard('today', todayStatBody)}
-              {renderStatCard('week', weekStatBody)}
-            </View>
-            <StudyCalendarSection {...calendarSectionProps} layout="calendar-only" />
+        <>
+          <View style={styles.tabletStatsGrid}>
+            {renderStatCard('today', todayStatBody)}
+            {renderStatCard('study', studyStatBody)}
+            {renderStatCard('week', weekStatBody)}
+            {renderStatCard('efficiency', efficiencyStatBody)}
           </View>
-          <View style={styles.tabletMasterCol}>
-            <View style={styles.tabletStatsCol}>
-              {renderStatCard('study', studyStatBody)}
-              {renderStatCard('efficiency', efficiencyStatBody)}
-            </View>
-            <StudyCalendarSection {...calendarSectionProps} layout="events-only" />
-          </View>
-        </View>
+          <StudyCalendarSection {...calendarSectionProps} />
+        </>
       ) : (
         <>
           <View style={styles.statsGrid}>
@@ -876,20 +869,12 @@ const styles = StyleSheet.create({
   containerTablet: {
     width: '100%',
   },
-  tabletMasterRow: {
+  tabletStatsGrid: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 16,
-    width: '100%',
-  },
-  tabletMasterCol: {
-    flex: 1,
-    minWidth: 0,
-    gap: 12,
-  },
-  tabletStatsCol: {
+    flexWrap: 'wrap',
     gap: 12,
     width: '100%',
+    alignItems: 'stretch',
   },
   quickStatsScroll: {
     gap: 10,
@@ -996,11 +981,11 @@ const styles = StyleSheet.create({
     ...STUDENT.shadow.sm,
   },
   statCardTablet: {
-    flexGrow: 0,
-    flexShrink: 0,
-    flexBasis: 'auto',
-    maxWidth: '100%',
-    width: '100%',
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '47%',
+    maxWidth: '48.5%',
+    minHeight: 152,
   },
   statCardContent: {
     flex: 1,

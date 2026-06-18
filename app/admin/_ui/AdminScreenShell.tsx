@@ -8,6 +8,7 @@ import {
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import AdminGridBackground from './AdminGridBackground';
 import { useAdminTheme } from './useAdminTheme';
+import { useAdminResponsiveLayout } from './useAdminResponsiveLayout';
 
 type Props = ScrollViewProps & {
   children: ReactNode;
@@ -28,6 +29,8 @@ export default function AdminScreenShell({
   ...rest
 }: Props) {
   const { colors, spacing } = useAdminTheme();
+  const { shellPaddingBottom, isPhone } = useAdminResponsiveLayout();
+  const defaultBottomPad = isPhone ? spacing.xxl + 56 : spacing.lg + 16;
 
   return (
     <Animated.View entering={FadeInDown.duration(350).springify()} style={styles.flex}>
@@ -36,7 +39,10 @@ export default function AdminScreenShell({
         {...rest}
         style={[styles.flex, styles.transparent, style]}
         contentContainerStyle={[
-          !noPadding && { padding: spacing.md, paddingBottom: spacing.xxl + 56 },
+          !noPadding && {
+            padding: spacing.md,
+            paddingBottom: Math.max(shellPaddingBottom, defaultBottomPad),
+          },
           contentContainerStyle,
         ]}
         showsVerticalScrollIndicator={false}

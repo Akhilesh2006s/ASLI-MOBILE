@@ -31,6 +31,7 @@ import {
   ADMIN_LIST_GRID_GAP,
   AdminGridList,
   AdminCardScrollBox,
+  AdminStatsRow,
 } from '../_ui';
 
 interface Teacher {
@@ -107,7 +108,7 @@ const GRID_GAP = ADMIN_LIST_GRID_GAP;
 
 export default function TeachersView() {
   const { colors, spacing } = useAdminTheme();
-  const { isTablet, gridColumns, modalMaxWidth, gridCellWidth } = useAdminListLayout();
+  const { isTablet, gridColumns, modalMaxWidth } = useAdminListLayout();
   const [refreshing, setRefreshing] = useState(false);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -624,12 +625,14 @@ export default function TeachersView() {
         icon="people-outline"
       />
 
-      <View style={[styles.statsRow, isTablet && styles.statsRowTablet]}>
-        <AdminStatCard label="Total" value={totalTeachers} icon="people" gradientIndex={0} delay={0} />
-        <AdminStatCard label="Active" value={activeTeachers} icon="checkmark-circle" gradientIndex={2} delay={50} />
-        <AdminStatCard label="Depts" value={departments.length} icon="business" gradientIndex={3} delay={100} />
-        <AdminStatCard label="Subjects" value={totalSubjects} icon="book" gradientIndex={1} delay={150} />
-      </View>
+      <AdminStatsRow
+        items={[
+          { label: 'Total', value: totalTeachers, icon: 'people', gradientIndex: 0 },
+          { label: 'Active', value: activeTeachers, icon: 'checkmark-circle', gradientIndex: 2 },
+          { label: 'Depts', value: departments.length, icon: 'business', gradientIndex: 3 },
+          { label: 'Subjects', value: totalSubjects, icon: 'book', gradientIndex: 1 },
+        ]}
+      />
 
       <AdminGlassCard delay={80} style={{ marginBottom: spacing.md, padding: spacing.md }}>
         <AdminSearchBar
@@ -651,7 +654,6 @@ export default function TeachersView() {
         <AdminGridList
           data={filteredTeachers}
           columns={gridColumns}
-          gridCellWidth={gridCellWidth}
           keyExtractor={(item, index) => String(item.id || item.email || `teacher-${index}`)}
           renderItem={(item, index) => renderTeacherCard(item, index)}
         />
@@ -1074,17 +1076,6 @@ const styles = StyleSheet.create({
   innerShell: {
     width: '100%',
     flexDirection: 'column',
-  },
-  statsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 12,
-    width: '100%',
-  },
-  statsRowTablet: {
-    flexWrap: 'nowrap',
-    gap: 12,
   },
   listContent: {
     gap: GRID_GAP,

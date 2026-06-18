@@ -37,7 +37,6 @@ type CalendarEntry = {
 
 const CALENDAR_CELL_MAX_TABLET = 42;
 const CALENDAR_TABLET_COLUMN_WIDTH = 328;
-const CALENDAR_EXAM_CARD_MAX_WIDTH = 420;
 
 const EXAM_MARKER_COLORS = {
   start: '#059669',
@@ -225,7 +224,7 @@ function StudyCalendarSectionComponent({
         colors={[...STUDENT.heroGradient]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.calGradientShell}
+        style={[styles.calGradientShell, isTablet && styles.calGradientShellTablet]}
       >
         <StudentCardDecor variant="calendar" />
         <View style={styles.calHeader}>
@@ -253,7 +252,7 @@ function StudyCalendarSectionComponent({
           </View>
         </View>
         <View
-          style={styles.calInnerBody}
+          style={[styles.calInnerBody, isTablet && styles.calInnerBodyTablet]}
           onLayout={(event) => {
             const nextWidth = Math.floor(event.nativeEvent.layout.width);
             if (nextWidth > 0 && nextWidth !== calendarGridWidth) {
@@ -385,7 +384,11 @@ function StudyCalendarSectionComponent({
   );
 
   const renderEventsCard = () => (
-      <GlassCard variant="default" padding={14} style={styles.cardFill}>
+      <GlassCard
+        variant="default"
+        padding={14}
+        style={isTablet ? styles.cardFillTablet : styles.cardFill}
+      >
         <Text style={styles.eventsTitle}>Study & exams</Text>
         {showMobileDateNav ? (
           <View style={styles.mobileDateNav}>
@@ -422,7 +425,8 @@ function StudyCalendarSectionComponent({
             </Text>
           </View>
         ) : (
-          selectedDateEntries.map((entry, entryIndex) => {
+          <View style={isTablet ? styles.eventsListTablet : undefined}>
+            {selectedDateEntries.map((entry, entryIndex) => {
             if (entry.type === 'exam') {
               const examEntry = entry as ExamCalendarEntry;
               const examId = String(examEntry.id || examEntry.source?._id || examEntry.source?.id || '');
@@ -438,7 +442,7 @@ function StudyCalendarSectionComponent({
                   colorIndex={entryIndex}
                   style={
                     isTablet
-                      ? { width: '100%', maxWidth: CALENDAR_EXAM_CARD_MAX_WIDTH, alignSelf: 'flex-start' as const }
+                      ? { width: '100%', maxWidth: '100%', alignSelf: 'stretch' as const }
                       : undefined
                   }
                   onViewInExams={() => onOpenExam(examId)}
@@ -492,7 +496,8 @@ function StudyCalendarSectionComponent({
                 </Text>
               </TouchableOpacity>
             );
-          })
+          })}
+          </View>
         )}
       </GlassCard>
   );
@@ -509,8 +514,12 @@ function StudyCalendarSectionComponent({
     <View style={[styles.wrap, isTablet && styles.wrapTablet]}>
       {isTablet ? (
         <>
-          <View style={[styles.tabletCol, styles.tabletColCalendar]}>{renderCalendarCard()}</View>
-          <View style={[styles.tabletCol, styles.tabletColEvents]}>{renderEventsCard()}</View>
+          <View style={[styles.tabletCol, styles.tabletColCalendar]}>
+            <View style={styles.tabletPanel}>{renderCalendarCard()}</View>
+          </View>
+          <View style={[styles.tabletCol, styles.tabletColEvents]}>
+            <View style={styles.tabletPanel}>{renderEventsCard()}</View>
+          </View>
         </>
       ) : (
         <>
@@ -524,22 +533,39 @@ function StudyCalendarSectionComponent({
 
 const styles = StyleSheet.create({
   wrap: { gap: 12, width: '100%' },
-  wrapTablet: { flexDirection: 'row', alignItems: 'flex-start', gap: 16, width: '100%' },
-  tabletCol: { minWidth: 0, alignSelf: 'stretch' },
+  wrapTablet: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 16,
+    width: '100%',
+  },
+  tabletCol: {
+    minWidth: 0,
+    alignSelf: 'stretch',
+  },
+  tabletPanel: {
+    flex: 1,
+    width: '100%',
+    alignSelf: 'stretch',
+  },
   tabletColCalendar: {
-    width: CALENDAR_TABLET_COLUMN_WIDTH,
-    maxWidth: '38%',
-    flexShrink: 0,
+    flex: 1,
+    minWidth: 0,
   },
   tabletColEvents: {
     flex: 1,
-    minWidth: 260,
+    minWidth: 0,
   },
   calendarMatrix: {
     alignSelf: 'center',
     gap: 4,
   },
   cardFill: { width: '100%', alignSelf: 'stretch' },
+  cardFillTablet: {
+    flex: 1,
+    height: '100%',
+    alignSelf: 'stretch',
+  },
   calGradientShell: {
     width: '100%',
     alignSelf: 'stretch',
@@ -548,11 +574,18 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...STUDENT.shadow.md,
   },
+  calGradientShellTablet: {
+    flex: 1,
+    height: '100%',
+  },
   calInnerBody: {
     backgroundColor: '#ffffff',
     borderRadius: 20,
     padding: 12,
     marginTop: 4,
+  },
+  calInnerBodyTablet: {
+    flex: 1,
   },
   calHeader: { gap: 10, marginBottom: 10, zIndex: 1 },
   calTitle: { fontSize: 18, fontWeight: '800', color: STUDENT.primary },
@@ -652,6 +685,11 @@ const styles = StyleSheet.create({
   legendDot: { width: 8, height: 8, borderRadius: 4 },
   legendText: { fontSize: 11, color: STUDENT.textMuted, fontWeight: '600' },
   eventsTitle: { fontSize: 16, fontWeight: '800', color: STUDENT.text },
+  eventsListTablet: {
+    flex: 1,
+    width: '100%',
+    gap: 8,
+  },
   mobileDateNav: {
     flexDirection: 'row',
     alignItems: 'center',

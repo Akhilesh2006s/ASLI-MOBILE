@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
   wrap: {
     position: 'absolute',
     bottom: 24,
-    right: 20,
+    left: 20,
     zIndex: 50,
   },
   btn: {

@@ -17,7 +17,6 @@ import {
   AdminScreenShell,
   AdminSectionHeader,
   AdminSearchBar,
-  AdminStatCard,
   AdminGlassCard,
   AdminEmptyState,
   AdminSkeletonList,
@@ -28,6 +27,7 @@ import {
   ADMIN_LIST_GRID_GAP,
   AdminGridList,
   AdminCardScrollBox,
+  AdminStatsRow,
 } from '../_ui';
 import {
   SvgCheckbox,
@@ -94,7 +94,7 @@ const formatClassLabels = (subject: Subject) => {
 
 export default function SubjectsView() {
   const { colors, spacing, radius } = useAdminTheme();
-  const { isTablet, gridColumns, gridCellWidth } = useAdminListLayout();
+  const { isTablet, gridColumns } = useAdminListLayout();
   const [refreshing, setRefreshing] = useState(false);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [classes, setClasses] = useState<ClassOption[]>([]);
@@ -499,17 +499,13 @@ export default function SubjectsView() {
         icon="book-outline"
       />
 
-      <View style={[styles.statsRow, isTablet && styles.statsRowTablet]}>
-        <View style={isTablet ? styles.statSlotTablet : styles.statSlot}>
-          <AdminStatCard label="Total" value={totalSubjects} icon="book" gradientIndex={0} delay={0} grid={false} />
-        </View>
-        <View style={isTablet ? styles.statSlotTablet : styles.statSlot}>
-          <AdminStatCard label="Active" value={activeSubjects} icon="checkmark-circle" gradientIndex={2} delay={50} grid={false} />
-        </View>
-        <View style={isTablet ? styles.statSlotTablet : styles.statSlot}>
-          <AdminStatCard label="Assigned" value={assignedSubjects} icon="people" gradientIndex={1} delay={100} grid={false} />
-        </View>
-      </View>
+      <AdminStatsRow
+        items={[
+          { label: 'Total', value: totalSubjects, icon: 'book', gradientIndex: 0 },
+          { label: 'Active', value: activeSubjects, icon: 'checkmark-circle', gradientIndex: 2 },
+          { label: 'Assigned', value: assignedSubjects, icon: 'people', gradientIndex: 1 },
+        ]}
+      />
 
       <AdminGlassCard delay={80} style={{ marginBottom: spacing.md, padding: spacing.md, gap: spacing.sm }}>
         <AdminSearchBar
@@ -531,7 +527,6 @@ export default function SubjectsView() {
         <AdminGridList
           data={filteredSubjects}
           columns={gridColumns}
-          gridCellWidth={gridCellWidth}
           keyExtractor={(item) => String(item.id)}
           renderItem={(item, index) => renderSubjectCard(item, index)}
         />
@@ -726,30 +721,6 @@ const styles = StyleSheet.create({
   innerShell: {
     width: '100%',
     flexDirection: 'column',
-  },
-  statsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'flex-start',
-    gap: 8,
-    marginBottom: 12,
-    width: '100%',
-  },
-  statsRowTablet: {
-    flexWrap: 'nowrap',
-    alignItems: 'stretch',
-    gap: 12,
-  },
-  statSlot: {
-    width: '47%',
-    flexGrow: 0,
-    flexShrink: 0,
-  },
-  statSlotTablet: {
-    flex: 1,
-    minWidth: 0,
-    flexGrow: 1,
-    flexShrink: 1,
   },
   listContent: {
     gap: GRID_GAP,

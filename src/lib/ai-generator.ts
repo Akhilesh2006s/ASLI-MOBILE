@@ -227,6 +227,60 @@ export type GeneratePayload = {
   extraParams: Record<string, unknown>;
 };
 
+export type GenerateBatchPayload = GeneratePayload & {
+  batchSize: number;
+  forceGenerate?: boolean;
+  forceGenerateNew?: boolean;
+  forceUnlock?: boolean;
+};
+
+export type GenerateBatchResult = {
+  savedCount: number;
+  failedCount: number;
+  batchSize: number;
+  failures?: string[];
+  tokenUsage?: {
+    totals?: Partial<{ promptTokens: number; completionTokens: number; totalTokens: number; callCount: number }>;
+    calls?: Array<{ model?: string; promptTokens?: number; completionTokens?: number }>;
+  };
+  cost?: {
+    usd: number;
+    inr: number;
+    exchangeRateInr?: number;
+    model?: string;
+    pricingNote?: string;
+    perRecordUsd?: number;
+    perRecordInr?: number;
+  };
+  locked?: boolean;
+};
+
+export async function generateAiBatch(payload: GenerateBatchPayload) {
+  const response = await api.post<{ success: boolean; data?: GenerateBatchResult; message?: string }>(
+    '/api/ai-generator/generate-batch',
+    payload,
+  );
+  const data = response.data?.data;
+  if (response.status === 409 || data?.locked) {
+    const err = new Error(response.data?.message || 'Generation locked');
+    (err as Error & { locked?: boolean }).locked = true;
+    throw err;
+  }
+  if (!response.data?.success && !data?.savedCount) {
+    throw new Error(response.data?.message || 'Batch generation failed');
+  }
+  return { ...(data || {}), success: Boolean(response.data?.success), message: response.data?.message };
+}
+
+export async function releaseAiGeneratorLock(payload: Partial<GenerateBatchPayload>) {
+  const response = await api.post<{ success: boolean; message?: string; data?: { released?: number } }>(
+    '/api/ai-generator/release-lock',
+    payload,
+  );
+  if (!response.data?.success) throw new Error(response.data?.message || 'Failed to release lock');
+  return response.data;
+}
+
 export async function generateAiContent(payload: GeneratePayload) {
   const response = await api.post<{ success: boolean; message?: string }>(
     '/api/ai-generator/generate',

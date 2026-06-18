@@ -23,6 +23,8 @@ import SubscriptionManagementView from './_components/SubscriptionManagementView
 import SettingsView from './_components/SettingsView';
 import AiGeneratorView from './_components/AiGeneratorView';
 import AiPdfView from './_components/AiPdfView';
+import BookKnowledgeBaseView from './_components/BookKnowledgeBaseView';
+import BookBasedGeneratorView from './_components/BookBasedGeneratorView';
 import AiToolTopicsView from './_components/AiToolTopicsView';
 import AiToolGenerationsView from './_components/AiToolGenerationsView';
 import SuperAdminOverviewView from './_components/SuperAdminOverviewView';
@@ -231,6 +233,14 @@ export default function SuperAdminDashboard() {
         return <AiToolTopicsView />;
       case 'ai-content-engine':
         return <AiPdfView />;
+      case 'book-knowledge-base':
+        return (
+          <BookKnowledgeBaseView onOpenBookBasedGenerator={() => handleViewChange('book-based-generator')} />
+        );
+      case 'book-based-generator':
+        return (
+          <BookBasedGeneratorView onOpenBookKnowledge={() => handleViewChange('book-knowledge-base')} />
+        );
       case 'ai-generator':
         return <AiGeneratorView />;
       case 'subscriptions':

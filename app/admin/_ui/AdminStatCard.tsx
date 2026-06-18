@@ -97,8 +97,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   wrapGrid: {
-    flex: 1,
-    minWidth: '46%',
+    width: '47%',
+    flexGrow: 0,
+    flexShrink: 0,
   },
   wrapCompact: {
     minWidth: 0,
