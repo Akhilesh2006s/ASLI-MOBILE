@@ -52,6 +52,12 @@ const TEACHER_TOOL_CONFIGS: Record<string, Omit<TeacherToolConfig, 'icon' | 'col
     description: 'Design custom worksheets and MCQs with various question types',
     fields: cascadeFields([
       {
+        name: 'questionCount',
+        label: 'Number of Questions',
+        type: 'number',
+        placeholder: '10',
+      },
+      {
         name: 'questionType',
         label: 'Question Type',
         type: 'select',

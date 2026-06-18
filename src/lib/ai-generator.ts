@@ -153,6 +153,7 @@ export function buildExtraParams(
   const payload: Record<string, unknown> = {};
   if (selectedTool === 'worksheet-mcq-generator') {
     payload.questionType = questionType;
+    payload.questionCount = Number(questionCount) || 10;
   }
   if (selectedTool === 'smart-qa-practice-generator') {
     payload.questionType = questionType;
