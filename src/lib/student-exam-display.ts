@@ -1,5 +1,35 @@
+import { STUDENT } from '../theme/student';
 import { getExamClassLabelsForStudent } from './exam-classes';
 import type { ExamDayRole } from './exam-calendar-entries';
+
+export type ExamCardGradientScheme = {
+  gradient: readonly [string, string];
+  typeBadgeBg: string;
+  typeBadgeText: string;
+};
+
+/** Rotating gradient schemes — matches web student-exams cards. */
+export const EXAM_CARD_GRADIENT_SCHEMES: ExamCardGradientScheme[] = [
+  {
+    gradient: [STUDENT.statGradients.today[0], STUDENT.statGradients.today[1]],
+    typeBadgeBg: 'rgba(249,115,22,0.25)',
+    typeBadgeText: '#fff7ed',
+  },
+  {
+    gradient: [STUDENT.accent, STUDENT.statGradients.study[1]],
+    typeBadgeBg: 'rgba(14,165,233,0.25)',
+    typeBadgeText: '#f0f9ff',
+  },
+  {
+    gradient: [STUDENT.primaryLight, STUDENT.primary],
+    typeBadgeBg: 'rgba(20,184,166,0.25)',
+    typeBadgeText: '#f0fdfa',
+  },
+];
+
+export function getExamCardGradientScheme(index: number): ExamCardGradientScheme {
+  return EXAM_CARD_GRADIENT_SCHEMES[index % EXAM_CARD_GRADIENT_SCHEMES.length];
+}
 
 export type StudentExamLike = {
   _id?: string;

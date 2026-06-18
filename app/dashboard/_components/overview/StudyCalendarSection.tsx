@@ -35,6 +35,10 @@ type CalendarEntry = {
   windowEnd?: Date;
 };
 
+const CALENDAR_CELL_MAX_TABLET = 42;
+const CALENDAR_TABLET_COLUMN_WIDTH = 328;
+const CALENDAR_EXAM_CARD_MAX_WIDTH = 420;
+
 const EXAM_MARKER_COLORS = {
   start: '#059669',
   end: '#e11d48',
@@ -66,9 +70,21 @@ function StudyCalendarSectionComponent({
 }: Props) {
   const { width: screenWidth } = useWindowDimensions();
   const isTablet = screenWidth >= 768;
-  const dayCellSize = isTablet
-    ? Math.min(48, Math.floor((screenWidth - 80) / 7))
-    : undefined;
+  const [calendarGridWidth, setCalendarGridWidth] = useState(0);
+
+  const dayCellSize = useMemo(() => {
+    const sourceWidth =
+      calendarGridWidth > 0
+        ? calendarGridWidth
+        : isTablet
+          ? CALENDAR_TABLET_COLUMN_WIDTH - 24
+          : Math.max(screenWidth - 64, 280);
+    const raw = Math.floor(sourceWidth / 7);
+    if (isTablet) return Math.min(CALENDAR_CELL_MAX_TABLET, Math.max(30, raw));
+    return Math.max(30, raw);
+  }, [calendarGridWidth, isTablet, screenWidth]);
+
+  const calendarMatrixWidth = dayCellSize * 7;
 
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const now = new Date();
@@ -236,7 +252,15 @@ function StudyCalendarSectionComponent({
             </TouchableOpacity>
           </View>
         </View>
-        <View style={styles.calInnerBody}>
+        <View
+          style={styles.calInnerBody}
+          onLayout={(event) => {
+            const nextWidth = Math.floor(event.nativeEvent.layout.width);
+            if (nextWidth > 0 && nextWidth !== calendarGridWidth) {
+              setCalendarGridWidth(nextWidth);
+            }
+          }}
+        >
         <View style={styles.jumpRow}>
           <TextInput
             style={styles.dateInput}
@@ -249,97 +273,93 @@ function StudyCalendarSectionComponent({
             <Text style={styles.goBtnText}>Go</Text>
           </TouchableOpacity>
         </View>
-        <View style={[styles.weekHead, isTablet && styles.gridTablet]}>
+        <View style={[styles.calendarMatrix, { width: calendarMatrixWidth }]}>
+        <View style={styles.weekHead}>
           {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
-            <Text
-              key={d}
-              style={[
-                styles.weekHeadText,
-                isTablet && dayCellSize ? { width: dayCellSize, flex: 0 } : null,
-              ]}
-            >
-              {d}
-            </Text>
+            <View key={d} style={[styles.weekHeadCell, { width: dayCellSize }]}>
+              <Text style={styles.weekHeadText}>{d}</Text>
+            </View>
           ))}
         </View>
-        <View style={[styles.grid, isTablet && styles.gridTablet]}>
-          {calendarDays.map((day, idx) => {
-            if (!day) {
-              return (
-                <View
-                  key={`e-${idx}`}
-                  style={[styles.dayCell, isTablet && dayCellSize ? { width: dayCellSize, height: dayCellSize } : null]}
-                />
-              );
-            }
-            const dayKey = formatCalendarDateKey(day);
-            const dayMarkers = dayMarkersByDate[dayKey];
-            const count = dayMarkers?.totalCount ?? 0;
-            const isSelected = formatCalendarDateKey(selectedDate) === dayKey;
-            const isToday = formatCalendarDateKey(new Date()) === dayKey;
-            const hasExamStart = (dayMarkers?.examStartCount ?? 0) > 0;
-            const hasExamEnd = (dayMarkers?.examEndCount ?? 0) > 0;
-            const hasExamSingle = (dayMarkers?.examSingleCount ?? 0) > 0;
-            const hasExamMiddle = (dayMarkers?.examMiddleCount ?? 0) > 0;
-            const examDots: { key: string; color: string }[] = [];
-            if (dayMarkers) {
-              for (let i = 0; i < dayMarkers.examStartCount; i += 1) {
-                examDots.push({ key: `start-${i}`, color: EXAM_MARKER_COLORS.start });
-              }
-              for (let i = 0; i < dayMarkers.examEndCount; i += 1) {
-                examDots.push({ key: `end-${i}`, color: EXAM_MARKER_COLORS.end });
-              }
-              for (let i = 0; i < dayMarkers.examMiddleCount; i += 1) {
-                examDots.push({ key: `middle-${i}`, color: EXAM_MARKER_COLORS.middle });
-              }
-              for (let i = 0; i < dayMarkers.examSingleCount; i += 1) {
-                examDots.push({ key: `single-${i}`, color: EXAM_MARKER_COLORS.single });
-              }
-            }
-            return (
-              <TouchableOpacity
-                key={dayKey}
-                style={[
-                  styles.dayCell,
-                  isTablet && dayCellSize ? { width: dayCellSize, height: dayCellSize } : null,
-                  hasExamMiddle && !isSelected && !hasExamStart && !hasExamEnd ? styles.dayExamMiddle : null,
-                  hasExamSingle && !isSelected ? styles.dayExamSingle : null,
-                  hasExamStart && !isSelected && !hasExamSingle ? styles.dayExamStart : null,
-                  hasExamEnd && !isSelected && !hasExamSingle ? styles.dayExamEnd : null,
-                  isSelected && styles.daySelected,
-                  isToday && !isSelected && styles.dayToday,
-                ]}
-                onPress={() => setSelectedDate(day)}
-              >
-                <Text style={[styles.dayNum, isSelected && styles.dayNumSelected]}>{day.getDate()}</Text>
-                {isToday && !isSelected ? <View style={styles.todayDot} /> : null}
-                {examDots.length > 0 ? (
-                  <View style={styles.examMarkerRow}>
-                    {examDots.slice(0, 3).map((dot) => (
-                      <View
-                        key={dot.key}
-                        style={[
-                          styles.examMarkerDot,
-                          { backgroundColor: isSelected ? STUDENT.textOnPrimary : dot.color },
-                        ]}
-                      />
-                    ))}
-                  </View>
-                ) : null}
-                {(dayMarkers?.quizCount ?? 0) > 0 ? (
-                  <View style={[styles.badge, isSelected && styles.badgeSelected]}>
-                    <Text style={[styles.badgeText, isSelected && styles.badgeTextSelected]}>
-                      {dayMarkers?.quizCount}
-                    </Text>
-                  </View>
-                ) : count > 0 && examDots.length === 0 ? (
-                  <View style={[styles.badge, isSelected && styles.badgeSelected]}>
-                    <Text style={[styles.badgeText, isSelected && styles.badgeTextSelected]}>{count}</Text>
-                  </View>
-                ) : null}
-              </TouchableOpacity>
-            );
-          })}
+        <View style={styles.grid}>
+          {Array.from({ length: 6 }, (_, rowIndex) => (
+            <View key={`week-row-${rowIndex}`} style={styles.gridRow}>
+              {calendarDays.slice(rowIndex * 7, rowIndex * 7 + 7).map((day, colIndex) => {
+                const idx = rowIndex * 7 + colIndex;
+                const cellStyle = { width: dayCellSize, height: dayCellSize };
+                if (!day) {
+                  return <View key={`e-${idx}`} style={[styles.dayCell, cellStyle]} />;
+                }
+                const dayKey = formatCalendarDateKey(day);
+                const dayMarkers = dayMarkersByDate[dayKey];
+                const count = dayMarkers?.totalCount ?? 0;
+                const isSelected = formatCalendarDateKey(selectedDate) === dayKey;
+                const isToday = formatCalendarDateKey(new Date()) === dayKey;
+                const hasExamStart = (dayMarkers?.examStartCount ?? 0) > 0;
+                const hasExamEnd = (dayMarkers?.examEndCount ?? 0) > 0;
+                const hasExamSingle = (dayMarkers?.examSingleCount ?? 0) > 0;
+                const hasExamMiddle = (dayMarkers?.examMiddleCount ?? 0) > 0;
+                const examDots: { key: string; color: string }[] = [];
+                if (dayMarkers) {
+                  for (let i = 0; i < dayMarkers.examStartCount; i += 1) {
+                    examDots.push({ key: `start-${i}`, color: EXAM_MARKER_COLORS.start });
+                  }
+                  for (let i = 0; i < dayMarkers.examEndCount; i += 1) {
+                    examDots.push({ key: `end-${i}`, color: EXAM_MARKER_COLORS.end });
+                  }
+                  for (let i = 0; i < dayMarkers.examMiddleCount; i += 1) {
+                    examDots.push({ key: `middle-${i}`, color: EXAM_MARKER_COLORS.middle });
+                  }
+                  for (let i = 0; i < dayMarkers.examSingleCount; i += 1) {
+                    examDots.push({ key: `single-${i}`, color: EXAM_MARKER_COLORS.single });
+                  }
+                }
+                return (
+                  <TouchableOpacity
+                    key={dayKey}
+                    style={[
+                      styles.dayCell,
+                      cellStyle,
+                      hasExamMiddle && !isSelected && !hasExamStart && !hasExamEnd ? styles.dayExamMiddle : null,
+                      hasExamSingle && !isSelected ? styles.dayExamSingle : null,
+                      hasExamStart && !isSelected && !hasExamSingle ? styles.dayExamStart : null,
+                      hasExamEnd && !isSelected && !hasExamSingle ? styles.dayExamEnd : null,
+                      isSelected && styles.daySelected,
+                      isToday && !isSelected && styles.dayToday,
+                    ]}
+                    onPress={() => setSelectedDate(day)}
+                  >
+                    <Text style={[styles.dayNum, isSelected && styles.dayNumSelected]}>{day.getDate()}</Text>
+                    {isToday && !isSelected ? <View style={styles.todayDot} /> : null}
+                    {examDots.length > 0 ? (
+                      <View style={styles.examMarkerRow}>
+                        {examDots.slice(0, 3).map((dot) => (
+                          <View
+                            key={dot.key}
+                            style={[
+                              styles.examMarkerDot,
+                              { backgroundColor: isSelected ? STUDENT.textOnPrimary : dot.color },
+                            ]}
+                          />
+                        ))}
+                      </View>
+                    ) : null}
+                    {(dayMarkers?.quizCount ?? 0) > 0 ? (
+                      <View style={[styles.badge, isSelected && styles.badgeSelected]}>
+                        <Text style={[styles.badgeText, isSelected && styles.badgeTextSelected]}>
+                          {dayMarkers?.quizCount}
+                        </Text>
+                      </View>
+                    ) : count > 0 && examDots.length === 0 ? (
+                      <View style={[styles.badge, isSelected && styles.badgeSelected]}>
+                        <Text style={[styles.badgeText, isSelected && styles.badgeTextSelected]}>{count}</Text>
+                      </View>
+                    ) : null}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ))}
         </View>
         <View style={styles.legendRow}>
           <View style={styles.legendItem}>
@@ -358,6 +378,7 @@ function StudyCalendarSectionComponent({
             <View style={[styles.legendDot, { backgroundColor: EXAM_MARKER_COLORS.quiz }]} />
             <Text style={styles.legendText}>Quiz</Text>
           </View>
+        </View>
         </View>
         </View>
       </LinearGradient>
@@ -401,7 +422,7 @@ function StudyCalendarSectionComponent({
             </Text>
           </View>
         ) : (
-          selectedDateEntries.map((entry) => {
+          selectedDateEntries.map((entry, entryIndex) => {
             if (entry.type === 'exam') {
               const examEntry = entry as ExamCalendarEntry;
               const examId = String(examEntry.id || examEntry.source?._id || examEntry.source?.id || '');
@@ -414,6 +435,12 @@ function StudyCalendarSectionComponent({
                   usedAttempts={usedAttempts}
                   studentClassNumber={studentClassNumber}
                   hasAttempted={usedAttempts > 0}
+                  colorIndex={entryIndex}
+                  style={
+                    isTablet
+                      ? { width: '100%', maxWidth: CALENDAR_EXAM_CARD_MAX_WIDTH, alignSelf: 'flex-start' as const }
+                      : undefined
+                  }
                   onViewInExams={() => onOpenExam(examId)}
                   onStartPress={() => router.push(`/exam/${examId}`)}
                 />
@@ -482,8 +509,8 @@ function StudyCalendarSectionComponent({
     <View style={[styles.wrap, isTablet && styles.wrapTablet]}>
       {isTablet ? (
         <>
-          <View style={styles.tabletCol}>{renderCalendarCard()}</View>
-          <View style={styles.tabletCol}>{renderEventsCard()}</View>
+          <View style={[styles.tabletCol, styles.tabletColCalendar]}>{renderCalendarCard()}</View>
+          <View style={[styles.tabletCol, styles.tabletColEvents]}>{renderEventsCard()}</View>
         </>
       ) : (
         <>
@@ -497,8 +524,21 @@ function StudyCalendarSectionComponent({
 
 const styles = StyleSheet.create({
   wrap: { gap: 12, width: '100%' },
-  wrapTablet: { flexDirection: 'row', alignItems: 'stretch', gap: 16, width: '100%' },
-  tabletCol: { flex: 1, minWidth: 0, alignSelf: 'stretch', width: '100%' },
+  wrapTablet: { flexDirection: 'row', alignItems: 'flex-start', gap: 16, width: '100%' },
+  tabletCol: { minWidth: 0, alignSelf: 'stretch' },
+  tabletColCalendar: {
+    width: CALENDAR_TABLET_COLUMN_WIDTH,
+    maxWidth: '38%',
+    flexShrink: 0,
+  },
+  tabletColEvents: {
+    flex: 1,
+    minWidth: 260,
+  },
+  calendarMatrix: {
+    alignSelf: 'center',
+    gap: 4,
+  },
   cardFill: { width: '100%', alignSelf: 'stretch' },
   calGradientShell: {
     width: '100%',
@@ -514,7 +554,6 @@ const styles = StyleSheet.create({
     padding: 12,
     marginTop: 4,
   },
-  gridTablet: { justifyContent: 'center' },
   calHeader: { gap: 10, marginBottom: 10, zIndex: 1 },
   calTitle: { fontSize: 18, fontWeight: '800', color: STUDENT.primary },
   calTitleOnGradient: { fontSize: 18, fontWeight: '800', color: '#ffffff' },
@@ -542,16 +581,20 @@ const styles = StyleSheet.create({
   goBtn: { backgroundColor: STUDENT.primary, paddingHorizontal: 16, borderRadius: 8, justifyContent: 'center' },
   goBtnText: { color: STUDENT.textOnPrimary, fontWeight: '700', fontSize: 13 },
   weekHead: { flexDirection: 'row', marginBottom: 6 },
-  weekHeadText: { flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '700', color: STUDENT.textMuted },
-  grid: { flexDirection: 'row', flexWrap: 'wrap' },
+  weekHeadCell: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  weekHeadText: { textAlign: 'center', fontSize: 10, fontWeight: '700', color: STUDENT.textMuted },
+  grid: { gap: 4 },
+  gridRow: { flexDirection: 'row' },
   dayCell: {
-    width: `${100 / 7}%`,
-    aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    marginBottom: 4,
     position: 'relative',
+    flexShrink: 0,
+    flexGrow: 0,
   },
   daySelected: { backgroundColor: STUDENT.primary },
   dayToday: { backgroundColor: STUDENT.bgAccent, borderWidth: 1, borderColor: STUDENT.primaryLight },
@@ -567,7 +610,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: STUDENT.primaryLight,
   },
-  dayNum: { fontSize: 13, fontWeight: '600', color: STUDENT.textSecondary },
+  dayNum: { fontSize: 12, fontWeight: '600', color: STUDENT.textSecondary },
   dayNumSelected: { color: STUDENT.textOnPrimary },
   badge: {
     position: 'absolute',
@@ -598,9 +641,10 @@ const styles = StyleSheet.create({
   legendRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 10,
-    paddingTop: 10,
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 8,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: STUDENT.surfaceBorder,
   },

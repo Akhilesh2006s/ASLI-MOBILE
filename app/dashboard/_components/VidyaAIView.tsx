@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   FadeInDown,
@@ -21,6 +21,8 @@ import {
 } from '../../../src/theme/student';
 
 const LIST_GAP = STUDENT_SPACING.md;
+const TOOLS_TABLET_MIN_WIDTH = 768;
+const TOOLS_WIDE_MIN_WIDTH = 1024;
 const STUDENT_TOOLS_SUBTITLE =
   'Select A Tool To Get Started. All Tools Use Gemini AI To Generate Content Based On Your Input.';
 
@@ -56,7 +58,15 @@ function usePressScale(to = 0.98) {
   return { style, onPressIn, onPressOut };
 }
 
-function ToolCard({ tool, onPress }: { tool: StudentAiTool; onPress: () => void }) {
+function ToolCard({
+  tool,
+  onPress,
+  compact,
+}: {
+  tool: StudentAiTool;
+  onPress: () => void;
+  compact?: boolean;
+}) {
   const press = usePressScale();
   const theme = getToolTheme(tool.color);
 
@@ -65,6 +75,7 @@ function ToolCard({ tool, onPress }: { tool: StudentAiTool; onPress: () => void 
       <Animated.View
         style={[
           styles.toolCard,
+          compact && styles.toolCardCompact,
           {
             backgroundColor: theme.bg,
             borderColor: theme.border,
@@ -73,30 +84,41 @@ function ToolCard({ tool, onPress }: { tool: StudentAiTool; onPress: () => void 
           press.style,
         ]}
       >
-        <View style={[styles.toolIcon, { backgroundColor: theme.iconBg }]}>
+        <View style={[styles.toolIcon, compact && styles.toolIconCompact, { backgroundColor: theme.iconBg }]}>
           <Ionicons
             name={tool.icon as keyof typeof Ionicons.glyphMap}
-            size={22}
+            size={compact ? 20 : 22}
             color={tool.color}
           />
         </View>
 
         <View style={styles.toolBody}>
-          <Text style={styles.toolTitle} numberOfLines={2}>
+          <Text style={[styles.toolTitle, compact && styles.toolTitleCompact]} numberOfLines={2}>
             {tool.name}
           </Text>
-          <Text style={styles.toolDescription} numberOfLines={2}>
+          <Text style={[styles.toolDescription, compact && styles.toolDescriptionCompact]} numberOfLines={compact ? 3 : 2}>
             {tool.description}
           </Text>
         </View>
 
-        <Ionicons name="chevron-forward" size={18} color={tool.color} style={styles.toolChevron} />
+        {!compact ? (
+          <Ionicons name="chevron-forward" size={18} color={tool.color} style={styles.toolChevron} />
+        ) : null}
       </Animated.View>
     </Pressable>
   );
 }
 
 export default function VidyaAIView() {
+  const { width: screenWidth } = useWindowDimensions();
+  const isTablet = screenWidth >= TOOLS_TABLET_MIN_WIDTH;
+  const gridColumns = screenWidth >= TOOLS_WIDE_MIN_WIDTH ? 3 : isTablet ? 2 : 1;
+  const [toolsListWidth, setToolsListWidth] = useState(0);
+  const toolCardWidth =
+    gridColumns > 1 && toolsListWidth > 0
+      ? (toolsListWidth - LIST_GAP * (gridColumns - 1)) / gridColumns
+      : undefined;
+
   const [subjectNames, setSubjectNames] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -139,20 +161,43 @@ export default function VidyaAIView() {
       </Animated.View>
 
       {isLoading ? (
-        <View style={styles.toolsList}>
-          <ShimmerCard style={styles.shimmerRow} />
-          <ShimmerCard style={styles.shimmerRow} />
-          <ShimmerCard style={styles.shimmerRow} />
-          <ShimmerCard style={styles.shimmerRow} />
+        <View
+          style={[styles.toolsList, gridColumns > 1 && styles.toolsListGrid]}
+          onLayout={(event) => {
+            const nextWidth = Math.floor(event.nativeEvent.layout.width);
+            if (nextWidth > 0 && nextWidth !== toolsListWidth) {
+              setToolsListWidth(nextWidth);
+            }
+          }}
+        >
+          {Array.from({ length: gridColumns > 1 ? gridColumns * 2 : 4 }).map((_, index) => (
+            <ShimmerCard
+              key={`shimmer-${index}`}
+              style={toolCardWidth != null ? { width: toolCardWidth, height: 96 } : styles.shimmerRow}
+            />
+          ))}
         </View>
       ) : (
-        <View style={styles.toolsList}>
+        <View
+          style={[styles.toolsList, gridColumns > 1 && styles.toolsListGrid]}
+          onLayout={(event) => {
+            const nextWidth = Math.floor(event.nativeEvent.layout.width);
+            if (nextWidth > 0 && nextWidth !== toolsListWidth) {
+              setToolsListWidth(nextWidth);
+            }
+          }}
+        >
           {visibleTools.map((tool, index) => (
             <Animated.View
               key={tool.id}
               entering={FadeInDown.duration(STUDENT_ANIMATION.normal).delay(80 + index * 45)}
+              style={toolCardWidth != null ? { width: toolCardWidth } : styles.toolCardWrapFull}
             >
-              <ToolCard tool={tool} onPress={() => openTool(tool)} />
+              <ToolCard
+                tool={tool}
+                compact={gridColumns > 1}
+                onPress={() => openTool(tool)}
+              />
             </Animated.View>
           ))}
         </View>
@@ -179,8 +224,15 @@ const styles = StyleSheet.create({
     gap: LIST_GAP,
     paddingBottom: STUDENT_SPACING.md,
   },
-  shimmerRow: {
+  toolsListGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'stretch',
+  },
+  toolCardWrapFull: {
     width: '100%',
+  },
+  shimmerRow: {
     height: 96,
   },
   toolCard: {
@@ -199,6 +251,12 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
+  toolCardCompact: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    minHeight: 148,
+    padding: STUDENT_SPACING.md,
+  },
   toolIcon: {
     width: 48,
     height: 48,
@@ -206,6 +264,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     flexShrink: 0,
+  },
+  toolIconCompact: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
   },
   toolBody: {
     flex: 1,
@@ -218,10 +281,19 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     lineHeight: 20,
   },
+  toolTitleCompact: {
+    fontSize: 14,
+    marginBottom: 4,
+    lineHeight: 18,
+  },
   toolDescription: {
     fontSize: 13,
     color: STUDENT.textMuted,
     lineHeight: 18,
+  },
+  toolDescriptionCompact: {
+    fontSize: 12,
+    lineHeight: 16,
   },
   toolChevron: {
     opacity: 0.55,

@@ -14,7 +14,7 @@
       },
       "env": {
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
-        "EXPO_PUBLIC_API_URL": "http://192.168.200.220:5000"
+        "EXPO_PUBLIC_API_URL": "http://192.168.1.220:5000"
       }
     },
     "preview": {

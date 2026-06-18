@@ -404,11 +404,27 @@ function extractMarkdownSection(body: string, titlePattern: RegExp): string {
   return buf.join('\n').trim();
 }
 
+/** Split stored option text into letter badge + display text (matches web WorksheetMcqViewer). */
+export function formatWorksheetOptionDisplay(
+  option: string,
+  index = 0,
+): { letter: string; text: string } {
+  const raw = stripInlineMarkdown(String(option || '').trim());
+  if (!raw) return { letter: String.fromCharCode(65 + index), text: '' };
+  const labeled = raw.match(/^([A-D])\s*[\).:\-]?\s*(.+)$/i);
+  if (labeled) {
+    return { letter: labeled[1].toUpperCase(), text: labeled[2].trim() };
+  }
+  return {
+    letter: String.fromCharCode(65 + index),
+    text: raw.replace(/^[A-D][\).]\s*/i, '').trim() || raw,
+  };
+}
+
 function normalizeOptionLine(line: string, idx: number): string {
-  const t = stripInlineMarkdown(String(line || '').trim());
-  if (!t) return '';
-  if (/^[A-D][\).]/i.test(t)) return t.replace(/^([A-D])\./i, '$1)');
-  return `${String.fromCharCode(65 + idx)}) ${t}`;
+  const { letter, text } = formatWorksheetOptionDisplay(line, idx);
+  if (!text) return '';
+  return `${letter}) ${text}`;
 }
 
 function parseQuestionsFromLines(
@@ -516,6 +532,13 @@ function parseQuestionsFromLines(
     const marksMatch = line.match(/^(?:\*\*)?Marks?\s*[:\-]\s*(\d+)\b/i);
     if (marksMatch && current) {
       current.marks = Number(marksMatch[1]);
+      continue;
+    }
+
+    const labeledOpt = line.match(/^([A-D])\s*[\).:\-]?\s*(.+)$/i);
+    if (labeledOpt && current) {
+      const normalized = normalizeOptionLine(line, current.options.length);
+      if (normalized) current.options.push(normalized);
       continue;
     }
 
@@ -756,7 +779,26 @@ export function resolveWorksheetFromPayload(
       if (!worksheet || !worksheetHasVisibleContent(worksheet)) {
         worksheet = fromMd;
       } else {
-        worksheet = mergeWorksheetWithMarkdown(worksheet, fromMd);
+        const baseCount = countWorksheetQuestions(worksheet);
+        const mdCount = countWorksheetQuestions(fromMd);
+        if (baseCount >= mdCount) {
+          worksheet = {
+            ...worksheet,
+            title:
+              !worksheet.title || /^worksheet$/i.test(worksheet.title.trim())
+                ? fromMd.title || worksheet.title
+                : worksheet.title,
+            learningObjectives: worksheet.learningObjectives.length
+              ? worksheet.learningObjectives
+              : fromMd.learningObjectives,
+            instructions: worksheet.instructions || fromMd.instructions,
+            answerKey: worksheet.answerKey || fromMd.answerKey,
+            bloomLevel: worksheet.bloomLevel || fromMd.bloomLevel,
+            difficultyTag: worksheet.difficultyTag || fromMd.difficultyTag,
+          };
+        } else {
+          worksheet = mergeWorksheetWithMarkdown(worksheet, fromMd);
+        }
       }
     }
   }

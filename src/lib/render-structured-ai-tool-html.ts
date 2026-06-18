@@ -8,7 +8,7 @@ import { resolveExamPaperFromPayload } from './parse-exam-question-paper';
 import { resolveLessonsFromPayload } from './parse-lesson-planner';
 import { resolveDailyPlansFromPayload } from './parse-daily-class-plan';
 import { resolveHomeworkFromPayload } from './parse-homework-creator';
-import { resolveWorksheetFromPayload } from './parse-worksheet-mcq';
+import { resolveWorksheetFromPayload, formatWorksheetOptionDisplay } from './parse-worksheet-mcq';
 import { resolveStoryFromPayload, type ParsedStory, type StoryQuestion } from './parse-story-content';
 import { resolveConceptsFromPayload, type NormalizedConcept } from './parse-concept-mastery';
 import {
@@ -1129,12 +1129,7 @@ function homeworkPracticeQuestionsHtml(
   return questions
     .map((q, i) => {
       const num = q.questionNumber ?? i + 1;
-      const opts = (q.options || [])
-        .map(
-          (o) =>
-            `<div class="rounded border border-slate-200 bg-white px-2 py-1 text-xs mt-1">${escapeHtml(o)}</div>`,
-        )
-        .join('');
+      const opts = worksheetOptionsHtml(q.options || []);
       const meta = [q.type, q.marks != null ? `${q.marks} marks` : '']
         .filter(Boolean)
         .map((t) => `<span class="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-900 mr-1">${escapeHtml(String(t))}</span>`)
@@ -1277,6 +1272,19 @@ function renderHomeworkHtml(content: string, rawContent: unknown): string | null
   return html;
 }
 
+function worksheetOptionsHtml(options: string[]): string {
+  if (!options.length) return '';
+  return `<div class="mt-2 grid gap-2">${options
+    .map((o, i) => {
+      const { letter, text } = formatWorksheetOptionDisplay(o, i);
+      return `<div class="flex items-start gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2">
+        <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-slate-400 text-[10px] font-bold text-slate-600">${escapeHtml(letter)}</span>
+        <span class="text-xs text-slate-800 leading-snug">${escapeHtml(text)}</span>
+      </div>`;
+    })
+    .join('')}</div>`;
+}
+
 function renderWorksheetHtml(content: string, rawContent: unknown): string | null {
   const { worksheet, markdownFallback } = resolveWorksheetFromPayload(content, rawContent);
   if (markdownFallback || !worksheet) return null;
@@ -1326,12 +1334,7 @@ function renderWorksheetHtml(content: string, rawContent: unknown): string | nul
         ? qs
             .map((q, i) => {
               const num = q.questionNumber ?? i + 1;
-              const opts = (q.options || [])
-                .map(
-                  (o) =>
-                    `<div class="rounded border border-slate-200 bg-white px-2 py-1 text-xs mt-1">${escapeHtml(o)}</div>`
-                )
-                .join('');
+              const opts = worksheetOptionsHtml(q.options || []);
               const answer = q.answer
                 ? `<p class="mt-2 text-xs text-emerald-700 font-semibold">Answer: ${escapeHtml(q.answer)}</p>`
                 : '';

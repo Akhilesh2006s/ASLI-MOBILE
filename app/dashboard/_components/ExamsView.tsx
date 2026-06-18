@@ -16,9 +16,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
-import GlassCard from '../../../src/components/student/GlassCard';
 import ChipNav from '../../../src/components/student/ChipNav';
 import StudentFilterDropdown from '../../../src/components/student/StudentFilterDropdown';
+import StudentExamPreviewCard from '../../../src/components/student/StudentExamPreviewCard';
+import { EXAM_CARD_GRADIENT_SCHEMES } from '../../../src/lib/student-exam-display';
 import { ShimmerCard } from '../../../src/components/student/StudentShimmer';
 import { AnimatedStatInput, useCountUp } from '../../../src/hooks/useCountUp';
 import {
@@ -85,11 +86,11 @@ type ExamsViewProps = {
   onFocusExamHandled?: () => void;
 };
 
-const ATTEMPTED_CARD_SCHEMES = [
-  { gradient: [STUDENT.warning, STUDENT.statGradients.today[0]] as const, typeBadgeBg: 'rgba(249,115,22,0.25)', typeBadgeText: STUDENT.textOnPrimary },
-  { gradient: [STUDENT.accent, STUDENT.statGradients.study[1]] as const, typeBadgeBg: 'rgba(14,165,233,0.25)', typeBadgeText: STUDENT.textOnPrimary },
-  { gradient: [STUDENT.primaryLight, STUDENT.primary] as const, typeBadgeBg: 'rgba(20,184,166,0.25)', typeBadgeText: STUDENT.textOnPrimary },
-];
+const ATTEMPTED_CARD_SCHEMES = EXAM_CARD_GRADIENT_SCHEMES.map((scheme) => ({
+  gradient: scheme.gradient,
+  typeBadgeBg: scheme.typeBadgeBg,
+  typeBadgeText: '#ffffff',
+}));
 
 function CountUpText({
   target,
@@ -118,9 +119,30 @@ function CountUpText({
 }
 
 const EXAMS_TABLET_MIN_WIDTH = 768;
-const EXAMS_GRID_MIN_WIDTH = 1024;
-const EXAMS_CONTENT_MAX_WIDTH = 1040;
-const EXAMS_CARD_MAX_WIDTH = 680;
+const EXAMS_WIDE_MIN_WIDTH = 1024;
+const EXAMS_GRID_GAP = 12;
+/** Max width for exam cards on tablet+ — header/filters stay full width. */
+const EXAMS_CARD_MAX_WIDTH = 480;
+
+function getExamGridLayout(screenWidth: number, itemCount: number) {
+  const isTablet = screenWidth >= EXAMS_TABLET_MIN_WIDTH;
+  const maxCols =
+    screenWidth >= EXAMS_WIDE_MIN_WIDTH ? 3 : isTablet ? 2 : 1;
+  const columns = itemCount <= 1 ? 1 : Math.min(maxCols, itemCount);
+  const listWidth = screenWidth - STUDENT_SPACING.lg * 2;
+
+  if (!isTablet) {
+    return { columns: 1, cardWidth: undefined as number | undefined, isGrid: false };
+  }
+
+  const rawCardWidth =
+    columns > 1
+      ? (listWidth - EXAMS_GRID_GAP * (columns - 1)) / columns
+      : listWidth;
+  const cardWidth = Math.min(rawCardWidth, EXAMS_CARD_MAX_WIDTH);
+
+  return { columns, cardWidth, isGrid: columns > 1 };
+}
 
 export default function ExamsView({
   initialTab = 'available',
@@ -130,12 +152,6 @@ export default function ExamsView({
   const { width } = useWindowDimensions();
   const compact = width < 380;
   const isTablet = width >= EXAMS_TABLET_MIN_WIDTH;
-  const isGridLayout = width >= EXAMS_GRID_MIN_WIDTH;
-  const attemptedCardWidth = isGridLayout
-    ? (Math.min(width, EXAMS_CONTENT_MAX_WIDTH) - STUDENT_SPACING.lg * 2 - STUDENT_SPACING.md) / 2
-    : isTablet
-      ? Math.min(width - STUDENT_SPACING.lg * 2, EXAMS_CARD_MAX_WIDTH)
-      : undefined;
   const [activeTab, setActiveTab] = useState<'available' | 'attempted' | 'ranking' | 'upcoming'>(initialTab);
   const [exams, setExams] = useState<Exam[]>([]);
   const [results, setResults] = useState<any[]>([]);
@@ -410,6 +426,19 @@ export default function ExamsView({
     [subjectFilteredExams]
   );
 
+  const availableGridLayout = useMemo(
+    () => getExamGridLayout(width, availableActiveExams.length),
+    [width, availableActiveExams.length]
+  );
+  const attemptedGridLayout = useMemo(
+    () => getExamGridLayout(width, attemptedResultRows.length),
+    [width, attemptedResultRows.length]
+  );
+  const upcomingGridLayout = useMemo(
+    () => getExamGridLayout(width, upcomingExams.length),
+    [width, upcomingExams.length]
+  );
+
   const findExamForResult = (examIdStr: string, result: any): Exam => {
     const catalogExam = exams.find((e) => String(e._id) === String(examIdStr));
     if (catalogExam) return catalogExam;
@@ -425,20 +454,6 @@ export default function ExamsView({
       endDate: '',
       isActive: false,
     };
-  };
-
-  const getExamTypeColor = (type: string) => {
-    switch (type) {
-      case 'mains':
-      case 'advanced':
-        return { bg: STUDENT.accentSoft, text: STUDENT.accent };
-      case 'weekend':
-        return { bg: STUDENT.navActiveBg, text: STUDENT.success };
-      case 'practice':
-        return { bg: 'rgba(245,158,11,0.15)', text: STUDENT.warning };
-      default:
-        return { bg: STUDENT.surfaceHover, text: STUDENT.textMuted };
-    }
   };
 
   const openAttemptedExamResults = async (exam: Exam, displayResult: any) => {
@@ -710,82 +725,25 @@ export default function ExamsView({
               </Text>
             </View>
           ) : (
-            <View style={[styles.examsList, isTablet && styles.examsListTablet]}>
-              {availableActiveExams.map((exam) => {
-                const status = getExamStatus(exam);
-                const typeColor = getExamTypeColor(exam.examType);
-                const classLabels = getExamClassLabelsForStudent(exam, user?.classNumber);
+            <View style={[styles.examsList, availableGridLayout.isGrid && styles.examsListGrid]}>
+              {availableActiveExams.map((exam, index) => {
                 const usedAttempts = attemptCountByExamId.get(String(exam._id)) || 0;
-                const maxAttempts = getMaxAttemptsForExam(exam);
-                const hydratedQuestionCount = Array.isArray(exam.questions)
-                  ? exam.questions.length
-                  : Number(exam.totalQuestions || 0);
                 const isCalendarFocus = highlightedExamId === String(exam._id);
                 return (
-                  <GlassCard
+                  <StudentExamPreviewCard
                     key={exam._id}
-                    variant="elevated"
-                    padding={16}
-                    style={[styles.examCardWrap, isCalendarFocus && styles.examCardFocused]}
-                    onPress={() => handleStartExam(exam)}
-                  >
-                    <View style={styles.examHeader}>
-                      <View style={[styles.examTypeBadge, { backgroundColor: typeColor.bg }]}>
-                        <Text style={[styles.examTypeText, { color: typeColor.text }]}>
-                          {exam.examType.toUpperCase()}
-                        </Text>
-                      </View>
-                      {classLabels.map((cl) => (
-                        <View key={cl} style={styles.classPill}>
-                          <Text style={styles.classPillText}>Class {cl}</Text>
-                        </View>
-                      ))}
-                      <View style={[styles.examStatusBadge, { backgroundColor: status.bg }]}>
-                        <Text style={[styles.examStatusText, { color: status.color }]}>
-                          {status.status.toUpperCase()}
-                        </Text>
-                      </View>
-                    </View>
-                    <Text style={styles.examTitle}>{exam.title}</Text>
-                    {exam.description && (
-                      <Text style={styles.examDescription} numberOfLines={2}>
-                        {exam.description}
-                      </Text>
-                    )}
-                    <View style={styles.examStats}>
-                      <View style={styles.examStat}>
-                        <Ionicons name="time-outline" size={16} color="#6b7280" />
-                        <Text style={styles.examStatText}>{exam.duration} minutes</Text>
-                      </View>
-                      <View style={styles.examStat}>
-                        <Ionicons name="book-outline" size={16} color="#6b7280" />
-                        <Text style={styles.examStatText}>
-                          {hydratedQuestionCount} questions • {exam.totalMarks} marks
-                        </Text>
-                      </View>
-                      {exam.startDate && exam.endDate ? (
-                        <View style={styles.examStat}>
-                          <Ionicons name="calendar-outline" size={16} color="#6b7280" />
-                          <Text style={styles.examStatText}>
-                            {new Date(exam.startDate).toLocaleDateString()} -{' '}
-                            {new Date(exam.endDate).toLocaleDateString()}
-                          </Text>
-                        </View>
-                      ) : null}
-                      <View style={styles.examStat}>
-                        <Ionicons name="locate-outline" size={16} color="#6b7280" />
-                        <Text style={styles.examStatText}>
-                          Attempts: {usedAttempts} / {maxAttempts}
-                        </Text>
-                      </View>
-                    </View>
-                    <TouchableOpacity
-                      style={styles.startButton}
-                      onPress={() => handleStartExam(exam)}
-                    >
-                      <Text style={styles.startButtonText}>Start Exam</Text>
-                    </TouchableOpacity>
-                  </GlassCard>
+                    exam={exam}
+                    usedAttempts={usedAttempts}
+                    studentClassNumber={user?.classNumber}
+                    focused={isCalendarFocus}
+                    colorIndex={index}
+                    style={
+                      availableGridLayout.cardWidth != null
+                        ? { width: availableGridLayout.cardWidth, alignSelf: 'flex-start' as const }
+                        : undefined
+                    }
+                    onStartPress={() => handleStartExam(exam)}
+                  />
                 );
               })}
             </View>
@@ -812,8 +770,7 @@ export default function ExamsView({
               style={[
                 styles.examsList,
                 styles.attemptedListContent,
-                isTablet && styles.attemptedListTablet,
-                isGridLayout && styles.attemptedListGrid,
+                attemptedGridLayout.isGrid && styles.attemptedListGrid,
               ]}
             >
               {attemptedResultRows.map((result, index) => {
@@ -853,12 +810,14 @@ export default function ExamsView({
                     end={{ x: 1, y: 1 }}
                     style={[
                       styles.attemptedCard,
-                      isGridLayout ? styles.attemptedCardGridItem : isTablet && styles.attemptedCardTablet,
-                      attemptedCardWidth != null ? { width: attemptedCardWidth } : null,
+                      attemptedGridLayout.isGrid && styles.attemptedCardGridItem,
+                      attemptedGridLayout.cardWidth != null
+                        ? { width: attemptedGridLayout.cardWidth, alignSelf: 'flex-start' as const }
+                        : null,
                       isCalendarFocus && styles.examCardFocused,
                     ]}
                   >
-                    <View style={[styles.attemptedCardBody, isGridLayout && styles.attemptedCardBodyGrid]}>
+                    <View style={[styles.attemptedCardBody, attemptedGridLayout.isGrid && styles.attemptedCardBodyGrid]}>
                     <Text style={styles.attemptedCardTitle} numberOfLines={isTablet ? 3 : 2}>
                       {exam.title}
                     </Text>
@@ -893,7 +852,7 @@ export default function ExamsView({
                           <Ionicons name="chevron-down" size={18} color="#111827" />
                         </TouchableOpacity>
                       </View>
-                    ) : isGridLayout ? (
+                    ) : attemptedGridLayout.isGrid ? (
                       <View style={styles.attemptPickerPlaceholder} />
                     ) : null}
 
@@ -960,7 +919,7 @@ export default function ExamsView({
                       style={[
                         styles.attemptedCardFooter,
                         isTablet && styles.attemptedCardFooterAligned,
-                        isGridLayout && styles.attemptedCardFooterGridPin,
+                        attemptedGridLayout.isGrid && styles.attemptedCardFooterGridPin,
                       ]}
                     >
                       <View
@@ -1014,58 +973,25 @@ export default function ExamsView({
               <Text style={styles.emptyStateText}>No upcoming exams scheduled at the moment.</Text>
             </View>
           ) : (
-            <View style={[styles.examsList, isTablet && styles.examsListTablet]}>
-              {upcomingExams.map((exam) => {
-                const typeColor = getExamTypeColor(exam.examType);
-                const classLabels = getExamClassLabelsForStudent(exam, user?.classNumber);
+            <View style={[styles.examsList, upcomingGridLayout.isGrid && styles.examsListGrid]}>
+              {upcomingExams.map((exam, index) => {
+                const usedAttempts = attemptCountByExamId.get(String(exam._id)) || 0;
                 const isCalendarFocus = highlightedExamId === String(exam._id);
                 return (
-                  <GlassCard
+                  <StudentExamPreviewCard
                     key={exam._id}
-                    variant="elevated"
-                    padding={16}
-                    style={[styles.examCardWrap, isCalendarFocus && styles.examCardFocused]}
-                  >
-                    <View style={styles.examHeader}>
-                      <View style={[styles.examTypeBadge, { backgroundColor: typeColor.bg }]}>
-                        <Text style={[styles.examTypeText, { color: typeColor.text }]}>
-                          {exam.examType.toUpperCase()}
-                        </Text>
-                      </View>
-                      {classLabels.map((cl) => (
-                        <View key={cl} style={styles.classPill}>
-                          <Text style={styles.classPillText}>Class {cl}</Text>
-                        </View>
-                      ))}
-                      <View style={[styles.examStatusBadge, { backgroundColor: '#fef3c7' }]}>
-                        <Text style={[styles.examStatusText, { color: '#fbbf24' }]}>
-                          UPCOMING
-                        </Text>
-                      </View>
-                    </View>
-                    <Text style={styles.examTitle}>{exam.title}</Text>
-                    {exam.description && (
-                      <Text style={styles.examDescription} numberOfLines={2}>
-                        {exam.description}
-                      </Text>
-                    )}
-                    <View style={styles.examStats}>
-                      <View style={styles.examStat}>
-                        <Ionicons name="calendar" size={16} color="#6b7280" />
-                        <Text style={styles.examStatText}>
-                          Starts: {new Date(exam.startDate).toLocaleDateString()}
-                        </Text>
-                      </View>
-                      <View style={styles.examStat}>
-                        <Ionicons name="time" size={16} color="#6b7280" />
-                        <Text style={styles.examStatText}>{exam.duration} min</Text>
-                      </View>
-                      <View style={styles.examStat}>
-                        <Ionicons name="help-circle" size={16} color="#6b7280" />
-                        <Text style={styles.examStatText}>{exam.totalQuestions} questions</Text>
-                      </View>
-                    </View>
-                  </GlassCard>
+                    exam={exam}
+                    usedAttempts={usedAttempts}
+                    studentClassNumber={user?.classNumber}
+                    focused={isCalendarFocus}
+                    colorIndex={index}
+                    variant="upcoming"
+                    style={
+                      upcomingGridLayout.cardWidth != null
+                        ? { width: upcomingGridLayout.cardWidth, alignSelf: 'flex-start' as const }
+                        : undefined
+                    }
+                  />
                 );
               })}
             </View>
@@ -1179,8 +1105,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   scrollContentTablet: {
-    maxWidth: EXAMS_CONTENT_MAX_WIDTH,
-    alignSelf: 'center',
     width: '100%',
   },
   header: {
@@ -1248,22 +1172,20 @@ const styles = StyleSheet.create({
   },
   attemptedListContent: {
     paddingBottom: STUDENT_SPACING.xxl,
-    gap: STUDENT_SPACING.lg,
-  },
-  attemptedListTablet: {
-    alignSelf: 'center',
-    width: '100%',
   },
   attemptedListGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'stretch',
     alignContent: 'flex-start',
+    gap: EXAMS_GRID_GAP,
   },
-  examsListTablet: {
-    maxWidth: EXAMS_CARD_MAX_WIDTH,
-    alignSelf: 'center',
-    width: '100%',
+  examsListGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'stretch',
+    alignContent: 'flex-start',
+    gap: EXAMS_GRID_GAP,
   },
   examCardWrap: {
     marginBottom: STUDENT_SPACING.md,
@@ -1333,9 +1255,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 4,
-  },
-  attemptedCardTablet: {
-    alignSelf: 'center',
   },
   attemptedCardGridItem: {
     alignSelf: 'stretch',
@@ -1445,7 +1364,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   examsList: {
-    gap: 0,
+    width: '100%',
+    gap: EXAMS_GRID_GAP,
   },
   examHeader: {
     flexDirection: 'row',

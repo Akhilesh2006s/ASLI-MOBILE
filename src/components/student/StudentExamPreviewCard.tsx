@@ -1,17 +1,18 @@
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, type ViewStyle } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import type { ExamDayRole } from '../../lib/exam-calendar-entries';
 import {
   formatExamDateRange,
+  getExamCardGradientScheme,
   getExamClassLabels,
   getExamDayRoleLabelForCard,
   getExamStatus,
-  getExamTypeColor,
   getHydratedQuestionCount,
   getMaxAttemptsForExam,
   type StudentExamLike,
 } from '../../lib/student-exam-display';
-import { STUDENT, STUDENT_RADIUS } from '../../theme/student';
+import { STUDENT_RADIUS } from '../../theme/student';
 
 type Props = {
   exam: StudentExamLike;
@@ -19,8 +20,17 @@ type Props = {
   usedAttempts?: number;
   studentClassNumber?: string | number | null;
   hasAttempted?: boolean;
+  focused?: boolean;
+  colorIndex?: number;
+  variant?: 'available' | 'upcoming';
+  style?: ViewStyle;
   onViewInExams?: () => void;
   onStartPress?: () => void;
+};
+
+type StatItem = {
+  icon: keyof typeof Ionicons.glyphMap;
+  text: string;
 };
 
 export default function StudentExamPreviewCard({
@@ -29,24 +39,64 @@ export default function StudentExamPreviewCard({
   usedAttempts = 0,
   studentClassNumber,
   hasAttempted = false,
+  focused = false,
+  colorIndex = 0,
+  variant = 'available',
+  style,
   onViewInExams,
   onStartPress,
 }: Props) {
-  const status = getExamStatus(exam);
-  const typeColor = getExamTypeColor(exam.examType);
+  const status = variant === 'upcoming' ? { status: 'upcoming' as const } : getExamStatus(exam);
+  const scheme = getExamCardGradientScheme(colorIndex);
   const classLabels = getExamClassLabels(exam, studentClassNumber);
   const maxAttempts = getMaxAttemptsForExam(exam);
   const questionCount = getHydratedQuestionCount(exam);
   const dateRange = formatExamDateRange(exam);
   const dayRoleLabel = !hasAttempted ? getExamDayRoleLabelForCard(examDayRole) : null;
   const attemptsExhausted = usedAttempts >= maxAttempts;
-  const canStart = status.status === 'active' && !attemptsExhausted && onStartPress;
+  const canStart =
+    variant === 'available' && status.status === 'active' && !attemptsExhausted && onStartPress;
+  const isUpcoming = variant === 'upcoming' || status.status === 'upcoming';
+
+  const stats: StatItem[] = [];
+  if (exam.duration) {
+    stats.push({ icon: 'time-outline', text: `${exam.duration} minutes` });
+  }
+  stats.push({
+    icon: 'book-outline',
+    text: `${questionCount} questions • ${exam.totalMarks || 0} marks`,
+  });
+  if (variant === 'upcoming' && exam.startDate && exam.endDate) {
+    const start = new Date(exam.startDate);
+    const end = new Date(exam.endDate);
+    if (!Number.isNaN(start.getTime())) {
+      stats.push({ icon: 'calendar-outline', text: `Starts: ${start.toLocaleDateString()}` });
+    }
+    if (!Number.isNaN(end.getTime())) {
+      stats.push({ icon: 'calendar-outline', text: `Ends: ${end.toLocaleDateString()}` });
+    }
+  } else if (dateRange) {
+    stats.push({ icon: 'calendar-outline', text: dateRange });
+  }
+  stats.push({ icon: 'locate-outline', text: `Attempts: ${usedAttempts} / ${maxAttempts}` });
 
   return (
-    <View style={[styles.card, hasAttempted && styles.cardAttempted]}>
-      <View style={styles.header}>
-        <View style={[styles.typeBadge, { backgroundColor: typeColor.bg }]}>
-          <Text style={[styles.typeBadgeText, { color: typeColor.text }]}>
+    <LinearGradient
+      colors={scheme.gradient}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={[styles.card, focused && styles.cardFocused, style]}
+    >
+      <Text style={styles.title}>{exam.title || 'Exam'}</Text>
+      {exam.description ? (
+        <Text style={styles.description} numberOfLines={2}>
+          {exam.description}
+        </Text>
+      ) : null}
+
+      <View style={styles.badgeRow}>
+        <View style={[styles.typeBadge, { backgroundColor: scheme.typeBadgeBg }]}>
+          <Text style={[styles.typeBadgeText, { color: scheme.typeBadgeText }]}>
             {(exam.examType || 'practice').toUpperCase()}
           </Text>
         </View>
@@ -57,160 +107,142 @@ export default function StudentExamPreviewCard({
         ))}
         {hasAttempted ? (
           <View style={styles.attemptedBadge}>
-            <Ionicons name="checkmark-circle" size={12} color="#047857" />
+            <Ionicons name="checkmark-circle" size={12} color="#fff" />
             <Text style={styles.attemptedBadgeText}>
               {attemptsExhausted ? 'COMPLETED' : 'ATTEMPTED'}
             </Text>
           </View>
         ) : dayRoleLabel ? (
-          <View style={[styles.dayRoleBadge, roleBadgeStyle(examDayRole)]}>
-            <Text style={[styles.dayRoleText, roleTextStyle(examDayRole)]}>{dayRoleLabel}</Text>
+          <View style={[styles.statusPill, styles.dayRoleBadge]}>
+            <Text style={styles.statusPillText}>{dayRoleLabel}</Text>
+          </View>
+        ) : status.status === 'ended' ? (
+          <View style={[styles.statusPill, styles.statusEnded]}>
+            <Text style={styles.statusPillText}>ENDED</Text>
+          </View>
+        ) : isUpcoming ? (
+          <View style={[styles.statusPill, styles.statusUpcoming]}>
+            <Text style={styles.statusPillText}>UPCOMING</Text>
           </View>
         ) : (
-          <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
-            <Text style={[styles.statusText, { color: status.color }]}>
-              {status.status.toUpperCase()}
-            </Text>
+          <View style={[styles.statusPill, styles.statusActive]}>
+            <Text style={styles.statusPillText}>ACTIVE</Text>
           </View>
         )}
       </View>
 
-      <Text style={styles.title}>{exam.title || 'Exam'}</Text>
-      {exam.description ? (
-        <Text style={styles.description} numberOfLines={2}>
-          {exam.description}
-        </Text>
-      ) : null}
-
-      <View style={styles.stats}>
-        {exam.duration ? (
-          <View style={styles.statRow}>
-            <Ionicons name="time-outline" size={16} color={STUDENT.textMuted} />
-            <Text style={styles.statText}>{exam.duration} minutes</Text>
+      <View style={styles.statsList}>
+        {stats.map((stat, index) => (
+          <View key={`${stat.icon}-${index}`} style={styles.statRow}>
+            <Ionicons name={stat.icon} size={14} color="#fff" />
+            <Text style={styles.statText}>{stat.text}</Text>
           </View>
-        ) : null}
-        <View style={styles.statRow}>
-          <Ionicons name="book-outline" size={16} color={STUDENT.textMuted} />
-          <Text style={styles.statText}>
-            {questionCount} questions • {exam.totalMarks || 0} marks
-          </Text>
-        </View>
-        {dateRange ? (
-          <View style={styles.statRow}>
-            <Ionicons name="calendar-outline" size={16} color={STUDENT.textMuted} />
-            <Text style={styles.statText}>{dateRange}</Text>
-          </View>
-        ) : null}
-        <View style={styles.statRow}>
-          <Ionicons name="locate-outline" size={16} color={STUDENT.textMuted} />
-          <Text style={styles.statText}>
-            Attempts: {usedAttempts} / {maxAttempts}
-          </Text>
-        </View>
+        ))}
       </View>
 
       {canStart ? (
         <TouchableOpacity style={styles.startButton} onPress={onStartPress} activeOpacity={0.85}>
+          <Ionicons name="play" size={16} color="#111827" />
           <Text style={styles.startButtonText}>Start Exam</Text>
         </TouchableOpacity>
+      ) : variant === 'upcoming' ? (
+        <View style={styles.upcomingButton}>
+          <Ionicons name="calendar-outline" size={16} color="#111827" />
+          <Text style={styles.upcomingButtonText}>Not Yet Available</Text>
+        </View>
       ) : null}
       {hasAttempted && onViewInExams ? (
         <TouchableOpacity style={styles.reviewRow} onPress={onViewInExams} activeOpacity={0.85}>
-          <Ionicons name="eye-outline" size={16} color={STUDENT.primary} />
+          <Ionicons name="eye-outline" size={16} color="#fff" />
           <Text style={styles.reviewText}>View in Attempted Exams</Text>
         </TouchableOpacity>
       ) : null}
-    </View>
+    </LinearGradient>
   );
-}
-
-function roleBadgeStyle(role: ExamDayRole | undefined) {
-  switch (role) {
-    case 'start':
-      return { backgroundColor: '#d1fae5' };
-    case 'end':
-      return { backgroundColor: '#ffe4e6' };
-    case 'middle':
-      return { backgroundColor: '#ffedd5' };
-    default:
-      return { backgroundColor: '#dbeafe' };
-  }
-}
-
-function roleTextStyle(role: ExamDayRole | undefined) {
-  switch (role) {
-    case 'start':
-      return { color: '#047857' };
-    case 'end':
-      return { color: '#be123c' };
-    case 'middle':
-      return { color: '#c2410c' };
-    default:
-      return { color: '#2563eb' };
-  }
 }
 
 const styles = StyleSheet.create({
   card: {
-    borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
-    borderRadius: STUDENT_RADIUS.inner,
-    padding: 12,
+    width: '100%',
+    borderRadius: 16,
+    padding: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  cardFocused: {
+    borderWidth: 2,
+    borderColor: '#fbbf24',
+  },
+  title: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#111827',
+    lineHeight: 24,
+    marginBottom: 4,
+  },
+  description: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.9)',
     marginBottom: 8,
-    backgroundColor: STUDENT.surface,
+    lineHeight: 18,
   },
-  cardAttempted: {
-    borderColor: '#86efac',
-    backgroundColor: '#f0fdf4',
-  },
-  header: {
+  badgeRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 8,
+    gap: 8,
+    marginTop: 4,
+    marginBottom: 12,
   },
   typeBadge: {
-    borderRadius: STUDENT_RADIUS.full,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    borderRadius: STUDENT_RADIUS.md,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
   typeBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  classPill: {
-    backgroundColor: '#fff',
-    borderRadius: STUDENT_RADIUS.full,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
-  },
-  classPillText: {
     fontSize: 11,
     fontWeight: '700',
-    color: STUDENT.text,
+    letterSpacing: 0.3,
   },
-  statusBadge: {
+  classPill: {
+    backgroundColor: 'rgba(255,255,255,0.9)',
     borderRadius: STUDENT_RADIUS.full,
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    marginLeft: 'auto',
   },
-  statusText: {
-    fontSize: 10,
-    fontWeight: '800',
+  classPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  statusPill: {
+    borderRadius: STUDENT_RADIUS.md,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.5)',
+  },
+  statusPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.3,
+  },
+  statusActive: {
+    backgroundColor: '#0d9488',
+  },
+  statusEnded: {
+    backgroundColor: '#dc2626',
+  },
+  statusUpcoming: {
+    backgroundColor: '#ca8a04',
   },
   dayRoleBadge: {
-    borderRadius: STUDENT_RADIUS.full,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginLeft: 'auto',
-  },
-  dayRoleText: {
-    fontSize: 10,
-    fontWeight: '800',
+    backgroundColor: 'rgba(255,255,255,0.25)',
   },
   attemptedBadge: {
     flexDirection: 'row',
@@ -219,55 +251,56 @@ const styles = StyleSheet.create({
     borderRadius: STUDENT_RADIUS.full,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    marginLeft: 'auto',
-    backgroundColor: '#d1fae5',
+    backgroundColor: 'rgba(255,255,255,0.25)',
   },
   attemptedBadgeText: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#047857',
+    color: '#fff',
   },
-  title: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: STUDENT.text,
-  },
-  description: {
-    fontSize: 13,
-    color: STUDENT.textMuted,
-    marginTop: 4,
-  },
-  stats: {
-    gap: 6,
-    marginTop: 10,
+  statsList: {
+    gap: 8,
+    marginBottom: 14,
   },
   statRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   statText: {
     fontSize: 13,
-    color: STUDENT.textSecondary,
-    flex: 1,
+    color: '#fff',
+    fontWeight: '500',
+    flexShrink: 1,
   },
   startButton: {
-    marginTop: 12,
-    backgroundColor: STUDENT.accent,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.9)',
     borderRadius: STUDENT_RADIUS.sm,
     paddingVertical: 12,
-    alignItems: 'center',
   },
   startButtonText: {
-    color: STUDENT.textOnPrimary,
+    color: '#111827',
     fontSize: 15,
     fontWeight: '700',
   },
-  linkHint: {
-    marginTop: 10,
-    fontSize: 12,
+  upcomingButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderRadius: STUDENT_RADIUS.sm,
+    paddingVertical: 12,
+    opacity: 0.85,
+  },
+  upcomingButtonText: {
+    color: '#111827',
+    fontSize: 15,
     fontWeight: '600',
-    color: STUDENT.primary,
   },
   reviewRow: {
     marginTop: 10,
@@ -278,6 +311,6 @@ const styles = StyleSheet.create({
   reviewText: {
     fontSize: 12,
     fontWeight: '600',
-    color: STUDENT.primary,
+    color: '#fff',
   },
 });
