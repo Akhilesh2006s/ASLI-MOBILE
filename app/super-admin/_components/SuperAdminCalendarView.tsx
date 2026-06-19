@@ -345,7 +345,10 @@ export default function SuperAdminCalendarView({ onNavigateToExams }: Props) {
                 ))}
               </View>
               <View style={styles.grid}>
-                {calendarDays.map((date, index) => {
+                {Array.from({ length: 6 }, (_, rowIndex) => (
+                  <View key={`week-row-${rowIndex}`} style={styles.gridRow}>
+                    {calendarDays.slice(rowIndex * 7, rowIndex * 7 + 7).map((date, colIndex) => {
+                  const index = rowIndex * 7 + colIndex;
                   const dayEvents = eventsByDateKey[date.toDateString()] || [];
                   const inMonth = isCurrentMonth(date);
                   const today = isToday(date);
@@ -384,6 +387,8 @@ export default function SuperAdminCalendarView({ onNavigateToExams }: Props) {
                     </View>
                   );
                 })}
+                  </View>
+                ))}
               </View>
             </View>
 
@@ -700,8 +705,9 @@ const styles = StyleSheet.create({
   gridWrap: { marginBottom: 12 },
   dayHeaderRow: { flexDirection: 'row' },
   dayHeader: { flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '700', color: '#6b7280', paddingVertical: 4 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap' },
-  dayCell: { width: `${100 / 7}%`, minHeight: 72, borderWidth: 1, borderColor: '#e5e7eb', padding: 4, backgroundColor: '#fff' },
+  grid: {},
+  gridRow: { flexDirection: 'row' },
+  dayCell: { flex: 1, minHeight: 72, borderWidth: 1, borderColor: '#e5e7eb', padding: 4, backgroundColor: '#fff' },
   dayCellMuted: { backgroundColor: '#f9fafb', opacity: 0.7 },
   dayCellToday: { borderColor: '#f97316', borderWidth: 2 },
   dayCellTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

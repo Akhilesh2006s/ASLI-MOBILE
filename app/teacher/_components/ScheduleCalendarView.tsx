@@ -227,55 +227,59 @@ export default function ScheduleCalendarView() {
           </View>
 
           <View style={styles.daysGrid}>
-            {calendarDays.map((day) => {
-              const selected = isSameDay(day, selectedDate);
-              const today = isSameDay(day, new Date());
-              const inMonth = isCurrentMonth(day);
-              const hasSchedule = hasScheduleOnDate(day);
-              const examMarkers = getExamBoundaryMarkers(day, externalEvents);
+            {Array.from({ length: 6 }, (_, rowIndex) => (
+              <View key={`week-row-${rowIndex}`} style={styles.daysRow}>
+                {calendarDays.slice(rowIndex * 7, rowIndex * 7 + 7).map((day) => {
+                  const selected = isSameDay(day, selectedDate);
+                  const today = isSameDay(day, new Date());
+                  const inMonth = isCurrentMonth(day);
+                  const hasSchedule = hasScheduleOnDate(day);
+                  const examMarkers = getExamBoundaryMarkers(day, externalEvents);
 
-              return (
-                <Pressable
-                  key={day.toISOString()}
-                  style={styles.dayCellWrap}
-                  onPress={() => {
-                    setSelectedDate(day);
-                    if (!isCurrentMonth(day)) {
-                      setViewMonth(new Date(day.getFullYear(), day.getMonth(), 1));
-                    }
-                  }}
-                >
-                  <View
-                    style={[
-                      styles.dayCell,
-                      !inMonth && styles.dayCellOutside,
-                      today && !selected && styles.dayCellToday,
-                      hasSchedule && !selected && !today && styles.dayCellMarked,
-                      selected && styles.dayCellSelected,
-                    ]}
-                  >
-                    {examMarkers.isStart && examMarkers.isEnd ? (
-                      <View style={[styles.examDot, styles.examDotSingle]} />
-                    ) : examMarkers.isStart ? (
-                      <View style={[styles.examDot, styles.examDotStart]} />
-                    ) : examMarkers.isEnd ? (
-                      <View style={[styles.examDot, styles.examDotEnd]} />
-                    ) : null}
-                    <Text
-                      style={[
-                        styles.dayText,
-                        !inMonth && styles.dayTextOutside,
-                        hasSchedule && !selected && styles.dayTextMarked,
-                        today && !selected && styles.dayTextToday,
-                        selected && styles.dayTextSelected,
-                      ]}
+                  return (
+                    <Pressable
+                      key={day.toISOString()}
+                      style={styles.dayCellWrap}
+                      onPress={() => {
+                        setSelectedDate(day);
+                        if (!isCurrentMonth(day)) {
+                          setViewMonth(new Date(day.getFullYear(), day.getMonth(), 1));
+                        }
+                      }}
                     >
-                      {day.getDate()}
-                    </Text>
-                  </View>
-                </Pressable>
-              );
-            })}
+                      <View
+                        style={[
+                          styles.dayCell,
+                          !inMonth && styles.dayCellOutside,
+                          today && !selected && styles.dayCellToday,
+                          hasSchedule && !selected && !today && styles.dayCellMarked,
+                          selected && styles.dayCellSelected,
+                        ]}
+                      >
+                        {examMarkers.isStart && examMarkers.isEnd ? (
+                          <View style={[styles.examDot, styles.examDotSingle]} />
+                        ) : examMarkers.isStart ? (
+                          <View style={[styles.examDot, styles.examDotStart]} />
+                        ) : examMarkers.isEnd ? (
+                          <View style={[styles.examDot, styles.examDotEnd]} />
+                        ) : null}
+                        <Text
+                          style={[
+                            styles.dayText,
+                            !inMonth && styles.dayTextOutside,
+                            hasSchedule && !selected && styles.dayTextMarked,
+                            today && !selected && styles.dayTextToday,
+                            selected && styles.dayTextSelected,
+                          ]}
+                        >
+                          {day.getDate()}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ))}
           </View>
         </View>
 
@@ -495,11 +499,13 @@ const styles = StyleSheet.create({
     color: TEACHER.textMuted,
   },
   daysGrid: {
+    gap: 4,
+  },
+  daysRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
   },
   dayCellWrap: {
-    width: `${100 / 7}%`,
+    flex: 1,
     alignItems: 'center',
     paddingVertical: 4,
   },

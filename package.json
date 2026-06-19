@@ -13,6 +13,7 @@
     "build:preview:android": "eas build --profile preview --platform android",
     "build:preview:ios": "eas build --profile preview --platform ios",
     "build:prod:android": "eas build --profile production --platform android",
+    "play:upload-key-reset": "powershell -ExecutionPolicy Bypass -File scripts/play-upload-key-reset.ps1",
     "build:prod:ios": "eas build --profile production --platform ios",
     "generate:app-icon": "node scripts/generate-app-icon.mjs"
   },

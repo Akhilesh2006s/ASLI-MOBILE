@@ -45,6 +45,9 @@ web-build/
 .env
 .env.local
 .env.*.local
+credentials.json
+android/keystore.properties
+credentials/
 
 # TypeScript
 *.tsbuildinfo
