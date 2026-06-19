@@ -45,7 +45,7 @@ function dedupeSubjectOptions(subjects: string[]): string[] {
 
 export function normalizeGradeForCurriculum(gradeLevel: string | undefined) {
   if (!gradeLevel) return undefined;
-  if (gradeLevel === 'Class-6-IIT' || gradeLevel === 'IIT-6') return 'IIT-6';
+  if (gradeLevel === 'Class-6-IIT' || gradeLevel === 'IIT-6') return 'Class 6';
   return gradeLevel;
 }
 
@@ -118,7 +118,7 @@ export function useCurriculumCascade(
       setLoadingClasses(true);
       try {
         const token = await SecureStore.getItemAsync('authToken');
-        const qs = new URLSearchParams({ v: '3' });
+        const qs = new URLSearchParams({ v: '4' });
         if (board) qs.set('board', board);
         const data = await fetchCurriculum(`/api/curriculum/classes?${qs.toString()}`, token);
         if (cancelled) return;
@@ -240,11 +240,16 @@ export function useCurriculumCascade(
   }, [gradeLevel, gradeForApi, subject, topic, board]);
 
   const classOptions = useMemo(() => {
-    if (classRows.length > 0) {
-      return classRows.map((r) => r.name || r.label || r.id).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    if (classRows.length === 0) return [];
+    let options = classRows.map((r) => r.name || r.label || r.id).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    const boardKey = String(board || '').toUpperCase().replace(/[\s/\\-]+/g, '');
+    if (boardKey.includes('IIT') || boardKey.includes('NEET') || boardKey.includes('JEE')) {
+      options = options.map((o) => (o === 'IIT-6' || o === 'Class-6-IIT' ? 'Class 6' : o));
+      options = [...new Set(options)].filter((o) => o !== 'IIT-6' && o !== 'Class-6-IIT');
+      if (!options.includes('Class 6')) options = [...options, 'Class 6'].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
     }
-    return [];
-  }, [classRows]);
+    return options;
+  }, [classRows, board]);
 
   return {
     classOptions,

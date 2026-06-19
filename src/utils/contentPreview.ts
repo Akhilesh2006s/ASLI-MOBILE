@@ -29,7 +29,7 @@ export function extractYouTubeId(url: string): string | null {
 }
 
 /** Origin sent as Referer for YouTube embeds in WebView (must match app bundle id). */
-export const YOUTUBE_EMBED_ORIGIN = 'https://com.aslilearn.mobile';
+export const YOUTUBE_EMBED_ORIGIN = 'https://com.tech.aslilearnai';
 
 export function getYoutubeWatchUrl(videoId: string): string {
   return `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;

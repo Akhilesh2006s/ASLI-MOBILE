@@ -2,7 +2,7 @@
   "expo": {
     "name": "AsliLearn AI",
     "slug": "aslilearn-mobile",
-    "version": "1.0.9",
+    "version": "1.0.10",
     "orientation": "default",
     "icon": "./assets/app-icon.png",
     "userInterfaceStyle": "light",
@@ -17,16 +17,16 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.aslilearn.mobile",
-      "buildNumber": "9"
+      "bundleIdentifier": "com.tech.aslilearnai",
+      "buildNumber": "10"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/app-icon-foreground.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.aslilearn.mobile",
-      "versionCode": 11,
+      "package": "com.tech.aslilearnai",
+      "versionCode": 12,
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "INTERNET",
@@ -44,9 +44,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "868ced38-f1c4-48b3-9cbe-cedc2dde2858"
+        "projectId": "f65847b9-62a4-4f35-ae9d-d7adaeac2c6a"
       }
     },
-    "owner": "abhiram19052005"
+    "owner": "amenityforge"
   }
 }

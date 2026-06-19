@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,6 @@ import {
   BOOK_BASED_TOOLS,
   type BookBasedToolId,
 } from '../../../src/lib/book-based-tools';
-import { resolveBookCurriculumSelection } from '../../../src/lib/book-curriculum-resolve';
 import { fetchBookKnowledgeBooks, type BookRow } from '../../../src/lib/book-knowledge';
 import { generateBookBatch, releaseBookGeneratorLock } from '../../../src/lib/book-generator';
 import { fetchGeneratorBoardOptions } from '../../../src/lib/ai-generator';
@@ -74,8 +73,6 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
     perRecordCost: { usd: number; inr: number };
   } | null>(null);
 
-  const bookCurriculumSyncRef = useRef('');
-
   const { classOptions, subjects, topics, subtopics, loadingClasses, loadingSubjects, loadingTopics, loadingSubtopics } =
     useCurriculumCascade(classNumber || undefined, subject || undefined, topic || undefined, board || undefined);
 
@@ -85,6 +82,8 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
     () => filterSubjectsForAiTool(selectedTool || '', subjects),
     [selectedTool, subjects],
   );
+  const classOptionsForSelect = classOptions;
+  const subjectOptionsForSelect = subjectsForTool;
   const bookReady = Boolean(selectedBook?.embeddingsCreated && selectedBook?.processingStatus === 'indexed');
 
   const loadBooks = useCallback(async () => {
@@ -101,49 +100,13 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
   useEffect(() => {
     void loadBooks();
     void fetchGeneratorBoardOptions().then((boards) => {
-      if (boards.length) {
-        setBoardOptions(boards);
-        setBoard((prev) => (prev && boards.includes(prev) ? prev : boards[0]));
-      }
+      if (boards.length) setBoardOptions(boards);
     });
   }, [loadBooks]);
 
-  const applyBookToCurriculum = useCallback(
-    (book: BookRow) => {
-      bookCurriculumSyncRef.current = '';
-      setBookId(book._id);
-      const resolved = resolveBookCurriculumSelection(
-        book,
-        boardOptions,
-        classOptions,
-        filterSubjectsForAiTool(selectedTool || '', subjects),
-      );
-      if (resolved.board) setBoard(resolved.board);
-      if (resolved.classNumber) setClassNumber(resolved.classNumber);
-      if (resolved.subject) setSubject(resolved.subject);
-      setTopic(resolved.topic);
-      setSubTopic(resolved.subTopic);
-    },
-    [boardOptions, classOptions, subjects, selectedTool],
-  );
-
-  useEffect(() => {
-    if (!bookId || !selectedBook || loadingClasses || !classOptions.length) return;
-    const syncToken = `${bookId}|${classOptions.join('\u001f')}|${subjects.join('\u001f')}|${selectedTool || ''}`;
-    if (bookCurriculumSyncRef.current === syncToken) return;
-    const resolved = resolveBookCurriculumSelection(
-      selectedBook,
-      boardOptions,
-      classOptions,
-      filterSubjectsForAiTool(selectedTool || '', subjects),
-    );
-    if (resolved.board) setBoard(resolved.board);
-    if (resolved.classNumber) setClassNumber(resolved.classNumber);
-    if (!loadingSubjects && resolved.subject) setSubject(resolved.subject);
-    if (resolved.topic) setTopic(resolved.topic);
-    if (resolved.subTopic) setSubTopic(resolved.subTopic);
-    bookCurriculumSyncRef.current = syncToken;
-  }, [bookId, selectedBook, boardOptions, classOptions, subjects, selectedTool, loadingClasses, loadingSubjects]);
+  const selectBook = useCallback((book: BookRow) => {
+    setBookId(book._id);
+  }, []);
 
   const buildPayload = (forceUnlock = false) => ({
     toolSlug: selectedTool,
@@ -249,7 +212,7 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
             <Pressable
               key={book._id}
               style={[styles.bookRow, bookId === book._id && styles.bookRowActive]}
-              onPress={() => applyBookToCurriculum(book)}
+              onPress={() => selectBook(book)}
             >
               <Text style={styles.bookTitle}>{book.title}</Text>
               <Text style={styles.bookMeta}>
@@ -262,7 +225,36 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Step 2 — Curriculum</Text>
+        <Text style={styles.sectionTitle}>Step 2 — Choose Tool, Then Inputs</Text>
+        <Text style={[styles.subHeading, { marginTop: 0 }]}>1. Choose tool</Text>
+        <Text style={styles.subHeading}>Teacher tools</Text>
+        {BOOK_BASED_TEACHER_TOOLS.map((tool) => (
+          <Pressable
+            key={tool.id}
+            style={[styles.toolRow, selectedTool === tool.id && styles.toolRowActive]}
+            onPress={() => setSelectedTool(tool.id as BookBasedToolId)}
+          >
+            <Text style={styles.toolName}>{tool.name}</Text>
+            <Text style={styles.toolDesc}>{tool.description}</Text>
+          </Pressable>
+        ))}
+        <Text style={styles.subHeading}>Student tools</Text>
+        {BOOK_BASED_STUDENT_TOOLS.map((tool) => (
+          <Pressable
+            key={tool.id}
+            style={[styles.toolRow, selectedTool === tool.id && styles.toolRowActive]}
+            onPress={() => setSelectedTool(tool.id as BookBasedToolId)}
+          >
+            <Text style={styles.toolName}>{tool.name}</Text>
+            <Text style={styles.toolDesc}>{tool.description}</Text>
+          </Pressable>
+        ))}
+
+        <Text style={[styles.subHeading, { marginTop: 16 }]}>2. Curriculum inputs</Text>
+        {!selectedTool ? (
+          <Text style={styles.emptyText}>Select a tool above to unlock curriculum fields.</Text>
+        ) : null}
+        <View style={!selectedTool ? { opacity: 0.5 } : undefined} pointerEvents={selectedTool ? 'auto' : 'none'}>
         <Text style={styles.fieldLabel}>Board</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
           {boardOptions.map((b) => (
@@ -273,7 +265,7 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
         </ScrollView>
         <Text style={styles.fieldLabel}>Class</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
-          {(loadingClasses ? [] : classOptions).map((c) => (
+          {(loadingClasses ? [] : classOptionsForSelect).map((c) => (
             <Pressable key={c} style={[styles.chip, classNumber === c && styles.chipActive]} onPress={() => setClassNumber(c)}>
               <Text style={[styles.chipText, classNumber === c && styles.chipTextActive]}>{c}</Text>
             </Pressable>
@@ -281,7 +273,7 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
         </ScrollView>
         <Text style={styles.fieldLabel}>Subject</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
-          {(loadingSubjects ? [] : subjectsForTool).map((s) => (
+          {(loadingSubjects ? [] : subjectOptionsForSelect).map((s) => (
             <Pressable key={s} style={[styles.chip, subject === s && styles.chipActive]} onPress={() => setSubject(s)}>
               <Text style={[styles.chipText, subject === s && styles.chipTextActive]}>{s}</Text>
             </Pressable>
@@ -313,32 +305,7 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
             if (next !== null) setGenerationRecordCount(next);
           }}
         />
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Step 3 — Tool</Text>
-        <Text style={styles.subHeading}>Teacher tools</Text>
-        {BOOK_BASED_TEACHER_TOOLS.map((tool) => (
-          <Pressable
-            key={tool.id}
-            style={[styles.toolRow, selectedTool === tool.id && styles.toolRowActive]}
-            onPress={() => setSelectedTool(tool.id as BookBasedToolId)}
-          >
-            <Text style={styles.toolName}>{tool.name}</Text>
-            <Text style={styles.toolDesc}>{tool.description}</Text>
-          </Pressable>
-        ))}
-        <Text style={styles.subHeading}>Student tools</Text>
-        {BOOK_BASED_STUDENT_TOOLS.map((tool) => (
-          <Pressable
-            key={tool.id}
-            style={[styles.toolRow, selectedTool === tool.id && styles.toolRowActive]}
-            onPress={() => setSelectedTool(tool.id as BookBasedToolId)}
-          >
-            <Text style={styles.toolName}>{tool.name}</Text>
-            <Text style={styles.toolDesc}>{tool.description}</Text>
-          </Pressable>
-        ))}
+        </View>
         <Pressable
           style={[styles.generateBtn, (isGenerating || !selectedTool || !bookReady) && styles.generateBtnDisabled]}
           onPress={() => void generate()}

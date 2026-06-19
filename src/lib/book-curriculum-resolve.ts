@@ -25,6 +25,8 @@ export function inferClassDigitsFromText(...parts: Array<string | undefined>): s
   for (const part of parts) {
     const raw = String(part || "").trim();
     if (!raw) continue;
+    const iitMatch = raw.match(/\biit[-\s]*(\d{1,2})\b/i);
+    if (iitMatch?.[1]) return iitMatch[1];
     const ordinal = raw.match(/\b(\d{1,2})\s*(?:st|nd|rd|th)\b/i);
     if (ordinal?.[1]) return ordinal[1];
     const classWord = raw.match(/\bclass\s*[-:]?\s*(\d{1,2})\b/i);
@@ -34,9 +36,18 @@ export function inferClassDigitsFromText(...parts: Array<string | undefined>): s
   return "";
 }
 
+function normalizeIitClassLabel(raw: string): string {
+  const trimmed = String(raw || "").trim();
+  if (!trimmed) return "";
+  if (trimmed === "Class-6-IIT" || /^iit[-\s]*6$/i.test(trimmed)) return "Class 6";
+  const iitMatch = trimmed.match(/\biit[-\s]*(\d{1,2})\b/i);
+  if (iitMatch?.[1]) return `Class ${iitMatch[1]}`;
+  return trimmed;
+}
+
 export function inferSubjectFromText(...parts: Array<string | undefined>): string {
   const blob = parts.map((p) => String(p || "")).join(" ").toLowerCase();
-  if (/\bmaths?\b|\bmathematics\b/.test(blob)) return "Mathematics";
+  if (/\bmaths?\b|\bmathematics\b/.test(blob)) return "Maths";
   if (/\bphysics\b/.test(blob)) return "Physics";
   if (/\bchemistry\b/.test(blob)) return "Chemistry";
   if (/\bbiology\b/.test(blob)) return "Biology";
@@ -76,6 +87,12 @@ export function resolveBookClassForCascade(
     raw = inferClassDigitsFromText(title, rawClass) || raw;
   }
 
+  const iitLabel = normalizeIitClassLabel(raw);
+  if (iitLabel.startsWith("Class ") && normalizeBoardKey(board) === "iitneet") {
+    if (classOptions.includes(iitLabel)) return iitLabel;
+    return iitLabel;
+  }
+
   if (classOptions.length) {
     if (raw && classOptions.includes(raw)) return raw;
     const digits = inferClassDigitsFromText(raw, title);
@@ -83,8 +100,8 @@ export function resolveBookClassForCascade(
       const boardKey = normalizeBoardKey(board);
       const preferred =
         boardKey === "iitneet" && digits === "6"
-          ? ["IIT-6", "Class 6", `Class ${digits}`]
-          : [`Class ${digits}`, "IIT-6", digits];
+          ? ["Class 6", digits]
+          : [`Class ${digits}`, digits];
       for (const candidate of preferred) {
         if (classOptions.includes(candidate)) return candidate;
       }
@@ -100,7 +117,7 @@ export function resolveBookClassForCascade(
   const digits = inferClassDigitsFromText(raw, title);
   if (digits) {
     const boardKey = normalizeBoardKey(board);
-    if (boardKey === "iitneet" && digits === "6") return "IIT-6";
+    if (boardKey === "iitneet" && digits === "6") return "Class 6";
     return /^class\b/i.test(raw) ? raw : `Class ${digits}`;
   }
   return raw;

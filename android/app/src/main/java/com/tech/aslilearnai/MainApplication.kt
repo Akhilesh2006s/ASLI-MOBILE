@@ -1,4 +1,4 @@
-package com.aslilearn.mobile
+package com.tech.aslilearnai
 
 import android.app.Application
 import android.content.res.Configuration
