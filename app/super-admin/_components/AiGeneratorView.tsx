@@ -578,7 +578,7 @@ export default function AiGeneratorView() {
       return;
     }
     if (isStoryLanguageTool(selectedTool) && !isStoryPassageLanguageSubject(subject)) {
-      Alert.alert('English or Hindi only', 'This tool works only with English or Hindi subjects.');
+      Alert.alert('English, Hindi, or Telugu only', 'This tool works only with English, Hindi, or Telugu subjects.');
       return;
     }
     if (!isValidGenerationRecordCount(generationRecordCount)) {
@@ -800,7 +800,7 @@ export default function AiGeneratorView() {
           <Text style={styles.badgeText}>{currentTool?.name || 'No tool selected'}</Text>
         </View>
         {isStoryLanguageTool(selectedTool) ? (
-          <Text style={styles.infoBanner}>English and Hindi subjects only for Story & Passage Creator.</Text>
+          <Text style={styles.infoBanner}>English, Hindi, and Telugu subjects only for Story & Passage Creator.</Text>
         ) : null}
 
         <Text style={styles.fieldLabel}>Board</Text>
@@ -831,7 +831,7 @@ export default function AiGeneratorView() {
               : loadingSubjects
                 ? 'Loading subjects…'
                 : isStoryLanguageTool(selectedTool) && subjectsForTool.length === 0
-                  ? 'English or Hindi only'
+                  ? 'English, Hindi, or Telugu only'
                   : subject || 'Select subject'}
           </Text>
           <Ionicons name="chevron-down" size={16} color="#64748b" />

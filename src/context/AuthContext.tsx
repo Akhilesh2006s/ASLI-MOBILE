@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import authService from '../services/api/authService';
+import { resetSessionBaseline } from '../lib/session-time-sync';
 
 type LoginPayload = {
   email: string;
@@ -76,6 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     await authService.logout();
+    resetSessionBaseline();
     setToken(null);
     setRole(null);
     setUser(null);

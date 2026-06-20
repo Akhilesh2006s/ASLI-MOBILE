@@ -75,7 +75,6 @@ import {
 } from '../../../src/lib/school-program-ai';
 import {
   useCurriculumCascade,
-  isGradeWithScienceCurriculumDropdowns,
 } from '../../../src/hooks/useCurriculumCascade';
 import teacherService, { asArray } from '../../../src/services/api/teacherService';
 import {
@@ -312,8 +311,7 @@ export default function TeacherToolPage() {
   );
 
   const availableSubjects = useMemo(() => {
-    const gv = formParams.gradeLevel;
-    if (!gv || !isGradeWithScienceCurriculumDropdowns(gv)) return [];
+    if (!formParams.gradeLevel) return [];
     const raw = cascade.subjects;
     if (cascade.loadingSubjects && raw.length === 0) return [];
     if (raw.length === 0) return [];
@@ -597,7 +595,7 @@ export default function TeacherToolPage() {
     if (field.name === 'subject') {
       if (!formParams.gradeLevel || cascade.loadingSubjects) return 'Select class first';
       if (subjectsForTool.length === 0) {
-        return isStoryLanguageTool(toolType) ? 'English or Hindi only' : 'No subjects available';
+        return isStoryLanguageTool(toolType) ? 'English, Hindi, or Telugu only' : 'No subjects available';
       }
     }
     if (
@@ -947,7 +945,7 @@ export default function TeacherToolPage() {
               <View style={styles.infoBanner}>
                 <Ionicons name="information-circle" size={18} color={TEACHER.primaryLight} />
                 <Text style={[styles.infoBannerText, isTablet && aiToolTabletPageStyles.infoBannerText]}>
-                  English and Hindi subjects only for this tool.
+                  English, Hindi, and Telugu subjects only for this tool.
                 </Text>
               </View>
             ) : null}

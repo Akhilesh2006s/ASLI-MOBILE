@@ -136,7 +136,7 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
       return;
     }
     if (isStoryLanguageTool(selectedTool) && !isStoryPassageLanguageSubject(subject)) {
-      Alert.alert('English or Hindi only', 'This tool works only with English or Hindi subjects.');
+      Alert.alert('English, Hindi, or Telugu only', 'This tool works only with English, Hindi, or Telugu subjects.');
       return;
     }
     setIsGenerating(true);

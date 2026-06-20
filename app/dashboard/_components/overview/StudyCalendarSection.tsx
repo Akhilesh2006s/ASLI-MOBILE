@@ -41,31 +41,47 @@ const EXAM_MARKER_COLORS = {
   middle: '#d97706',
   single: '#2563eb',
   quiz: '#f59e0b',
+  event: '#7c3aed',
 } as const;
 
 const WEEKDAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] as const;
 
-function buildDayMarkerDots(
+function getPrimaryMarkerColor(
   dayMarkers: ReturnType<typeof buildDayExamMarkers> | undefined,
-  isSelected: boolean,
-): { key: string; color: string }[] {
-  if (!dayMarkers) return [];
-  const dots: { key: string; color: string }[] = [];
-  const push = (key: string, color: string, count: number) => {
-    for (let i = 0; i < count; i += 1) {
-      if (dots.length >= 3) return;
-      dots.push({ key: `${key}-${i}`, color });
-    }
-  };
-  push('start', EXAM_MARKER_COLORS.start, dayMarkers.examStartCount);
-  push('middle', EXAM_MARKER_COLORS.middle, dayMarkers.examMiddleCount);
-  push('end', EXAM_MARKER_COLORS.end, dayMarkers.examEndCount);
-  push('single', EXAM_MARKER_COLORS.single, dayMarkers.examSingleCount);
-  push('quiz', EXAM_MARKER_COLORS.quiz, dayMarkers.quizCount);
-  if (isSelected) {
-    return dots.map((dot, i) => ({ key: dot.key, color: STUDENT.textOnPrimary }));
+  entries: CalendarEntry[] | undefined
+): string | null {
+  if (!dayMarkers?.totalCount && !entries?.length) return null;
+  if (dayMarkers?.examStartCount) return EXAM_MARKER_COLORS.start;
+  if (dayMarkers?.examEndCount) return EXAM_MARKER_COLORS.end;
+  if (dayMarkers?.examMiddleCount) return EXAM_MARKER_COLORS.middle;
+  if (dayMarkers?.examSingleCount) return EXAM_MARKER_COLORS.single;
+  if (dayMarkers?.quizCount) return EXAM_MARKER_COLORS.quiz;
+  if (entries?.some((e) => e.type === 'event')) return EXAM_MARKER_COLORS.event;
+  return STUDENT.primary;
+}
+
+function dayHasExamSpan(dayKey: string, entriesByDate: Record<string, CalendarEntry[]>): boolean {
+  return (entriesByDate[dayKey] || []).some((entry) => entry.type === 'exam');
+}
+
+function getDayRangeConnectors(
+  dayKey: string,
+  rowIndex: number,
+  colIndex: number,
+  calendarDays: (Date | null)[],
+  entriesByDate: Record<string, CalendarEntry[]>
+): { connectLeft: boolean; connectRight: boolean } {
+  if (!dayHasExamSpan(dayKey, entriesByDate)) {
+    return { connectLeft: false, connectRight: false };
   }
-  return dots;
+  const prev = colIndex > 0 ? calendarDays[rowIndex * 7 + colIndex - 1] : null;
+  const next = colIndex < 6 ? calendarDays[rowIndex * 7 + colIndex + 1] : null;
+  const prevKey = prev ? formatCalendarDateKey(prev) : '';
+  const nextKey = next ? formatCalendarDateKey(next) : '';
+  return {
+    connectLeft: Boolean(prev && dayHasExamSpan(prevKey, entriesByDate)),
+    connectRight: Boolean(next && dayHasExamSpan(nextKey, entriesByDate)),
+  };
 }
 
 type StudyCalendarLayout = 'auto' | 'calendar-only' | 'events-only';
@@ -264,9 +280,18 @@ function StudyCalendarSectionComponent({
                   }
                   const dayKey = formatCalendarDateKey(day);
                   const dayMarkers = dayMarkersByDate[dayKey];
+                  const dayEntries = entriesByDate[dayKey];
                   const isSelected = formatCalendarDateKey(selectedDate) === dayKey;
                   const isToday = formatCalendarDateKey(new Date()) === dayKey;
-                  const markerDots = buildDayMarkerDots(dayMarkers, isSelected);
+                  const accentColor = getPrimaryMarkerColor(dayMarkers, dayEntries);
+                  const { connectLeft, connectRight } = getDayRangeConnectors(
+                    dayKey,
+                    rowIndex,
+                    colIndex,
+                    calendarDays,
+                    entriesByDate
+                  );
+                  const showAccent = Boolean(accentColor) && !isSelected;
 
                   return (
                     <TouchableOpacity
@@ -278,28 +303,43 @@ function StudyCalendarSectionComponent({
                       <View
                         style={[
                           styles.dayCellInner,
+                          showAccent && {
+                            backgroundColor: `${accentColor}18`,
+                          },
                           isToday && !isSelected && styles.dayCellInnerToday,
                           isSelected && styles.dayCellInnerSelected,
                         ]}
                       >
+                        {showAccent && connectLeft ? (
+                          <View
+                            style={[
+                              styles.dayRangeLine,
+                              styles.dayRangeLineLeft,
+                              { backgroundColor: accentColor! },
+                            ]}
+                          />
+                        ) : null}
+                        {showAccent && connectRight ? (
+                          <View
+                            style={[
+                              styles.dayRangeLine,
+                              styles.dayRangeLineRight,
+                              { backgroundColor: accentColor! },
+                            ]}
+                          />
+                        ) : null}
                         <Text
                           style={[
                             styles.dayNum,
                             isToday && !isSelected && styles.dayNumToday,
                             isSelected && styles.dayNumSelected,
+                            showAccent && !isToday && { color: accentColor!, fontWeight: '700' },
                           ]}
                         >
                           {day.getDate()}
                         </Text>
-                        {markerDots.length > 0 ? (
-                          <View style={styles.examMarkerRow}>
-                            {markerDots.map((dot) => (
-                              <View
-                                key={dot.key}
-                                style={[styles.examMarkerDot, { backgroundColor: dot.color }]}
-                              />
-                            ))}
-                          </View>
+                        {showAccent ? (
+                          <View style={[styles.dayAccentBar, { backgroundColor: accentColor! }]} />
                         ) : null}
                       </View>
                     </TouchableOpacity>
@@ -584,10 +624,12 @@ const styles = StyleSheet.create({
   },
   dayCellInner: {
     width: 36,
-    height: 36,
-    borderRadius: 18,
+    height: 40,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
+    overflow: 'hidden',
   },
   dayCellInnerToday: {
     borderWidth: 2,
@@ -599,17 +641,27 @@ const styles = StyleSheet.create({
   dayNum: { fontSize: 13, fontWeight: '600', color: STUDENT.textSecondary },
   dayNumToday: { color: STUDENT.primaryDark, fontWeight: '700' },
   dayNumSelected: { color: STUDENT.textOnPrimary, fontWeight: '700' },
-  examMarkerRow: {
+  dayAccentBar: {
     position: 'absolute',
-    bottom: 3,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 2,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    borderBottomLeftRadius: 10,
+    borderBottomRightRadius: 10,
   },
-  examMarkerDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
+  dayRangeLine: {
+    position: 'absolute',
+    bottom: 0,
+    height: 3,
+  },
+  dayRangeLineLeft: {
+    left: -4,
+    right: '50%',
+  },
+  dayRangeLineRight: {
+    left: '50%',
+    right: -4,
   },
   legendRow: {
     flexDirection: 'row',

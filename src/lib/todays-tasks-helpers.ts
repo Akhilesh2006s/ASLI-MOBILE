@@ -92,3 +92,60 @@ export async function collectCompletedContentIds(subjectIds: string[] = []): Pro
   scheduleIds.forEach((id) => ids.add(id));
   return ids;
 }
+
+export type ScheduleCompletionStats = {
+  totalContent: number;
+  completedContent: number;
+  totalQuizzes: number;
+  completedQuizzes: number;
+  total: number;
+  completed: number;
+  completionPercent: number;
+};
+
+export function collectSubjectIdsFromContent(allContent: any[]): string[] {
+  const ids = new Set<string>();
+  for (const item of allContent) {
+    const raw = item?.subjectId ?? item?.subject;
+    if (typeof raw === 'object' && raw?._id) ids.add(String(raw._id));
+    else if (typeof raw === 'object' && raw?.id) ids.add(String(raw.id));
+    else if (raw) ids.add(String(raw));
+  }
+  return Array.from(ids);
+}
+
+/** Overall content + quiz completion (web dashboard parity). */
+export async function buildScheduleCompletionStats(
+  allContent: any[],
+  allQuizzes: any[],
+  subjectIds: string[] = []
+): Promise<ScheduleCompletionStats> {
+  const mergedSubjectIds = [
+    ...new Set([...subjectIds, ...collectSubjectIdsFromContent(allContent)]),
+  ];
+  const completedContentIds = await collectCompletedContentIds(mergedSubjectIds);
+  const trackableContent = allContent.filter(
+    (content) => String(content.type || '').toLowerCase() !== 'homework'
+  );
+  const completedContent = trackableContent.filter((content) =>
+    completedContentIds.has(String(content._id || content.id))
+  ).length;
+  const completedQuizzes = allQuizzes.filter(
+    (quiz) => quiz.hasAttempted || quiz.completedAt
+  ).length;
+  const totalContent = trackableContent.length;
+  const totalQuizzes = allQuizzes.length;
+  const total = totalContent + totalQuizzes;
+  const completed = completedContent + completedQuizzes;
+  const completionPercent = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+  return {
+    totalContent,
+    completedContent,
+    totalQuizzes,
+    completedQuizzes,
+    total,
+    completed,
+    completionPercent,
+  };
+}

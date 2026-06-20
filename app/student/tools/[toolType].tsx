@@ -50,7 +50,6 @@ import {
 } from '../../../src/lib/school-program-ai';
 import {
   useCurriculumCascade,
-  isGradeWithScienceCurriculumDropdowns,
 } from '../../../src/hooks/useCurriculumCascade';
 import StudentScreenHeader from '../../../src/components/student/StudentScreenHeader';
 import GlassCard from '../../../src/components/student/GlassCard';
@@ -297,12 +296,10 @@ export default function StudentToolPage() {
   }, [assignedGradeLevel, cascade.classOptions]);
 
   const availableSubjects = useMemo(() => {
-    const gv = formParams.gradeLevel;
-    if (!gv || !isGradeWithScienceCurriculumDropdowns(gv)) return [];
+    if (!formParams.gradeLevel) return [];
     const raw = cascade.subjects;
     if (cascade.loadingSubjects && raw.length === 0) return [];
-    if (raw.length > 0) return raw;
-    return [];
+    return raw.length > 0 ? raw : [];
   }, [formParams.gradeLevel, cascade.subjects, cascade.loadingSubjects]);
 
   const subjectsForTool = useMemo(
@@ -534,7 +531,7 @@ export default function StudentToolPage() {
     if (field.name === 'subject') {
       if (!formParams.gradeLevel || cascade.loadingSubjects) return 'Select class first';
       if (subjectsForTool.length === 0) {
-        return isReadingPractice ? 'English or Hindi only' : 'No subjects available';
+        return isReadingPractice ? 'English, Hindi, or Telugu only' : 'No subjects available';
       }
     }
     if (
@@ -918,7 +915,7 @@ export default function StudentToolPage() {
               <View style={styles.infoBanner}>
                 <Ionicons name="information-circle" size={18} color={STUDENT.accent} />
                 <Text style={[styles.infoBannerText, isTablet && aiToolTabletPageStyles.infoBannerText]}>
-                  English and Hindi subjects only for this tool.
+                  English, Hindi, and Telugu subjects only for this tool.
                 </Text>
               </View>
             ) : null}

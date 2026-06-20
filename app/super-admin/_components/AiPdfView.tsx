@@ -540,9 +540,9 @@ export default function AiPdfView() {
       return;
     }
     if (isStoryLanguageTool(toolType) && !isStoryPassageLanguageSubject(subject)) {
-      const msg = 'Story & Passage Creator works only with English or Hindi subjects.';
+      const msg = 'Story & Passage Creator works only with English, Hindi, or Telugu subjects.';
       setUploadError(msg);
-      Alert.alert('English or Hindi only', msg);
+      Alert.alert('English, Hindi, or Telugu only', msg);
       return;
     }
     if ((pdfFile.size ?? 0) > AI_PDF_MAX_BYTES) {
@@ -772,7 +772,7 @@ export default function AiPdfView() {
           <Ionicons name="chevron-down" size={16} color="#64748b" />
         </Pressable>
         {isStoryLanguageTool(toolType) ? (
-          <Text style={styles.infoBanner}>English and Hindi subjects only for Story & Passage Creator.</Text>
+          <Text style={styles.infoBanner}>English, Hindi, and Telugu subjects only for Story & Passage Creator.</Text>
         ) : null}
 
         <Pressable

@@ -1,5 +1,6 @@
 import { activitiesPayloadIsComplete } from './parse-activity-markdown';
 import { isStoryPassageLanguageSubject } from './student-ai-tools';
+import { parseAiToolClassNumber } from './school-program';
 
 export type AiToolFieldConfig = {
   name: string;
@@ -97,7 +98,7 @@ export function validateAiToolForm({
   }
 
   if (isReadingPractice && !isStoryPassageLanguageSubject(String(formParams.subject || ''))) {
-    return 'Story & Passage Creator works only with English or Hindi subjects.';
+    return 'Story & Passage Creator works only with English, Hindi, or Telugu subjects.';
   }
 
   return null;
@@ -375,11 +376,7 @@ export function buildTeacherAiRequestBody(
 
   return {
     toolType,
-    classNumber: selectedClass
-      ? selectedClass === 'IIT-6' || selectedClass === 'Class-6-IIT'
-        ? 'IIT-6'
-        : parseInt(String(selectedClass).replace('Class ', ''), 10)
-      : undefined,
+    classNumber: parseAiToolClassNumber(selectedClass),
     subject: selectedSubject,
     topic: selectedTopic,
     subTopic: selectedSubTopic,

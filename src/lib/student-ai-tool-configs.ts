@@ -134,7 +134,7 @@ export const STUDENT_TOOL_CONFIGS: Record<string, StudentToolConfig> = {
   },
   'reading-practice-room': {
     name: 'Reading Practice Room',
-    description: 'Reading practice sets with passage, vocabulary, and recall/infer/connect questions (English & Hindi only)',
+    description: 'Reading practice sets with passage, vocabulary, and recall/infer/connect questions (English, Hindi & Telugu only)',
     icon: 'document-text',
     color: '#3b82f6',
     fields: cascadeFields(),

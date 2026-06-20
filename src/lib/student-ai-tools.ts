@@ -84,7 +84,7 @@ export const STUDENT_AI_TOOLS: StudentAiTool[] = [
   {
     id: 'reading-practice-room',
     name: 'Reading Practice Room',
-    description: 'Practice Stories And Passages (English & Hindi Only)',
+    description: 'Practice Stories And Passages (English, Hindi & Telugu only)',
     icon: 'document-outline',
     color: '#3b82f6',
   },
@@ -116,6 +116,7 @@ export function filterSubjectsForAiTool(toolType: string, subjects: string[]): s
 export function isStoryPassageLanguageSubject(subject: string | undefined | null): boolean {
   const s = String(subject || '').trim();
   if (!s) return false;
+  if (/(telugu|తెలుగు)/i.test(s)) return true;
   if (/(hindi|हिंदी|हिन्दी)/i.test(s)) return true;
   if (/english/i.test(s)) return true;
   return false;

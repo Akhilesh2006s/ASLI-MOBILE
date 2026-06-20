@@ -99,12 +99,21 @@ export function getDefaultAiToolBoard(_isAsliPrepExclusive: boolean, curriculumB
   return resolveCurriculumBoardForAiTools({ curriculumBoard });
 }
 
+/** Parse "Class 6", legacy IIT-6, etc. to a numeric class for API requests. */
+export function parseAiToolClassNumber(classLabel: string | undefined): number | undefined {
+  const gl = String(classLabel || '').trim();
+  if (!gl) return undefined;
+  if (gl === 'IIT-6' || gl === 'Class-6-IIT') return 6;
+  const n = parseInt(gl.replace(/Class\s*/i, ''), 10);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+/** Board IIT does not change the class label — Class 6 stays Class 6. */
 export function mapGradeLevelForIitBoard(
   board: string | undefined,
   gradeLevel: string | undefined
 ): string | undefined {
-  if (String(board || '').toUpperCase() !== 'IIT') return gradeLevel;
-  return 'IIT-6';
+  return gradeLevel;
 }
 
 export function resolveStudentCurriculumGradeLevel(

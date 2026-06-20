@@ -46,7 +46,7 @@ export const BOOK_BASED_TOOLS: BookBasedTool[] = [
   { id: 'my-study-decks', name: 'My Study Decks', description: 'Flashcard decks grounded in textbook content.', audience: 'student' },
   { id: 'mock-test-builder', name: 'Mock Test Builder', description: 'Exam-style mock tests from uploaded books.', audience: 'student' },
   { id: 'project-idea-lab', name: 'Project Idea Lab', description: 'Student projects inspired by textbook topics and examples.', audience: 'student' },
-  { id: 'reading-practice-room', name: 'Reading Practice Room', description: 'Reading practice from book passages (English & Hindi only).', audience: 'student' },
+  { id: 'reading-practice-room', name: 'Reading Practice Room', description: 'Reading practice from book passages (English, Hindi & Telugu only).', audience: 'student' },
   { id: 'study-schedule-maker', name: 'Study Schedule Maker', description: 'Study schedules aligned to textbook chapters.', audience: 'student' },
   { id: 'activity-project-generator', name: 'Activity / Project Generator', description: 'Teacher activity kits grounded in textbook content.', audience: 'teacher' },
   { id: 'worksheet-mcq-generator', name: 'Worksheet & MCQ Generator', description: 'Worksheets and MCQs grounded in book content.', audience: 'teacher' },
@@ -55,7 +55,7 @@ export const BOOK_BASED_TOOLS: BookBasedTool[] = [
   { id: 'exam-question-paper-generator', name: 'Exam Question Paper Generator', description: 'Full exam papers using book terminology.', audience: 'teacher' },
   { id: 'daily-class-plan-maker', name: 'Daily Class Plan', description: 'Day-wise classroom plans from textbook chapters.', audience: 'teacher' },
   { id: 'homework-creator', name: 'Homework Creator', description: 'Homework tasks grounded in textbook material.', audience: 'teacher' },
-  { id: 'story-passage-creator', name: 'Story and Passage Creator', description: 'Story and passage sets from book content (English & Hindi only).', audience: 'teacher' },
+  { id: 'story-passage-creator', name: 'Story and Passage Creator', description: 'Story and passage sets from book content (English, Hindi & Telugu only).', audience: 'teacher' },
   { id: 'short-notes-summaries-maker', name: 'Short Notes & Summaries', description: 'Concise revision notes from book passages.', audience: 'teacher' },
   { id: 'flashcard-generator', name: 'Flash Card Generator', description: 'Teacher flashcard decks from textbook content.', audience: 'teacher' },
 ];

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../lib/api-config';
-import { sortChapterWiseLabels } from '../lib/curriculum-chapter-sort';
+import { mergePreservingPrimaryOrder } from '../lib/curriculum-chapter-sort';
 
 type CurriculumRow = { id: string; name: string; label: string };
 
@@ -12,6 +12,16 @@ function cacheGet<T>(key: string): T | undefined {
 }
 
 function cacheSet(key: string, val: unknown) {
+  const payload = val as { success?: boolean; data?: unknown[] | { subjects?: unknown[]; topics?: unknown[]; subTopics?: unknown[] } };
+  const data = payload?.data;
+  const hasRows = Array.isArray(data)
+    ? data.length > 0
+    : Boolean(
+        (data as { subjects?: unknown[] })?.subjects?.length ||
+          (data as { topics?: unknown[] })?.topics?.length ||
+          (data as { subTopics?: unknown[] })?.subTopics?.length
+      );
+  if (payload?.success === false || !hasRows) return;
   if (responseCache.size >= 80) {
     const first = responseCache.keys().next().value;
     if (first) responseCache.delete(first);
@@ -73,23 +83,44 @@ async function fetchManagedTopicTaxonomy(
   token: string | null,
   params: { board?: string; classLabel?: string; subject?: string; topicName?: string }
 ) {
-  const qs = new URLSearchParams();
-  if (params.board) qs.set('board', params.board);
-  if (params.classLabel) qs.set('classLabel', params.classLabel);
-  if (params.subject) qs.set('subject', params.subject);
-  if (params.topicName) qs.set('topicName', params.topicName);
-  const path = `/api/ai-generator/topic-taxonomy?${qs.toString()}`;
-  if (responseCache.has(path)) {
-    return cacheGet<{ data?: { topics?: string[]; subTopics?: string[] } }>(path)!;
+  const buildPath = (includeBoard: boolean) => {
+    const qs = new URLSearchParams();
+    if (includeBoard && params.board) qs.set('board', params.board);
+    if (params.classLabel) qs.set('classLabel', params.classLabel);
+    if (params.subject) qs.set('subject', params.subject);
+    if (params.topicName) qs.set('topicName', params.topicName);
+    return `/api/ai-generator/topic-taxonomy?${qs.toString()}`;
+  };
+
+  const load = async (includeBoard: boolean) => {
+    const path = buildPath(includeBoard);
+    if (responseCache.has(path)) {
+      return cacheGet<{
+        success?: boolean;
+        data?: { subjects?: string[]; topics?: string[]; subTopics?: string[] };
+      }>(path)!;
+    }
+    const res = await fetch(`${API_BASE_URL}${path}`, {
+      headers: {
+        Authorization: token ? `Bearer ${token}` : '',
+        'Content-Type': 'application/json',
+      },
+    });
+    const json = await res.json();
+    if (res.ok && json?.success !== false) {
+      cacheSet(path, json);
+    }
+    return json;
+  };
+
+  let json = await load(true);
+  const data = (json as { data?: { subjects?: string[]; topics?: string[]; subTopics?: string[] } })?.data;
+  const hasRows = Boolean(
+    data?.subjects?.length || data?.topics?.length || data?.subTopics?.length
+  );
+  if (!hasRows && params.board) {
+    json = await load(false);
   }
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      Authorization: token ? `Bearer ${token}` : '',
-      'Content-Type': 'application/json',
-    },
-  });
-  const json = await res.json();
-  cacheSet(path, json);
   return json;
 }
 
@@ -148,9 +179,16 @@ export function useCurriculumCascade(
         const token = await SecureStore.getItemAsync('authToken');
         const qs = new URLSearchParams({ classId: gradeForApi, syllabus: 'curriculum-v3' });
         if (board) qs.set('board', board);
-        const data = await fetchCurriculum(`/api/curriculum/subjects?${qs.toString()}`, token);
+        const [data, managed] = await Promise.all([
+          fetchCurriculum(`/api/curriculum/subjects?${qs.toString()}`, token),
+          fetchManagedTopicTaxonomy(token, { board, classLabel: gradeForApi }),
+        ]);
         if (cancelled) return;
-        setSubjects(dedupeSubjectOptions(rowsToNames((data as { data?: CurriculumRow[] }).data)));
+        const curriculumSubjects = dedupeSubjectOptions(
+          rowsToNames((data as { data?: CurriculumRow[] }).data)
+        );
+        const managedSubjects = (managed as { data?: { subjects?: string[] } })?.data?.subjects || [];
+        setSubjects(dedupeSubjectOptions([...curriculumSubjects, ...managedSubjects]));
       } catch {
         if (!cancelled) setSubjects([]);
       } finally {
@@ -186,9 +224,7 @@ export function useCurriculumCascade(
         if (cancelled) return;
         const curriculumTopics = rowsToNames((data as { data?: CurriculumRow[] }).data);
         const managedTopics = (managed as { data?: { topics?: string[] } })?.data?.topics || [];
-        const allTopics = [...curriculumTopics, ...managedTopics].filter(Boolean);
-        const unique = allTopics.filter((t, i) => allTopics.indexOf(t) === i);
-        setTopics(sortChapterWiseLabels(unique));
+        setTopics(mergePreservingPrimaryOrder(managedTopics, curriculumTopics));
       } catch {
         if (!cancelled) setTopics([]);
       } finally {
@@ -225,9 +261,7 @@ export function useCurriculumCascade(
         if (cancelled) return;
         const curriculumSubtopics = rowsToNames((data as { data?: CurriculumRow[] }).data);
         const managedSubtopics = (managed as { data?: { subTopics?: string[] } })?.data?.subTopics || [];
-        const allSubtopics = [...curriculumSubtopics, ...managedSubtopics].filter(Boolean);
-        const unique = allSubtopics.filter((s, i) => allSubtopics.indexOf(s) === i);
-        setSubtopics(sortChapterWiseLabels(unique));
+        setSubtopics(mergePreservingPrimaryOrder(managedSubtopics, curriculumSubtopics));
       } catch {
         if (!cancelled) setSubtopics([]);
       } finally {

@@ -70,7 +70,7 @@ export const TEACHER_AI_TOOLS: TeacherAiTool[] = [
   {
     id: 'story-passage-creator',
     title: 'Story & Passage Creator',
-    description: 'Generate stories and reading passages (English & Hindi only).',
+    description: 'Generate stories and reading passages (English, Hindi & Telugu only).',
     icon: 'book-outline',
     color: '#d97706',
     route: '/teacher/tools/story-passage-creator',

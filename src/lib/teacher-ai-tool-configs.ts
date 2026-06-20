@@ -85,7 +85,7 @@ const TEACHER_TOOL_CONFIGS: Record<string, Omit<TeacherToolConfig, 'icon' | 'col
   },
   'story-passage-creator': {
     name: 'Story & Passage Creator',
-    description: 'Generate engaging stories and reading passages (English & Hindi only)',
+    description: 'Generate engaging stories and reading passages (English, Hindi & Telugu only)',
     fields: cascadeFields([
       { name: 'length', label: 'Length', type: 'select', options: ['short', 'medium', 'long'] },
     ]),

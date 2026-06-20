@@ -30,3 +30,22 @@ export function compareChapterWiseLabels(a: string, b: string): number {
 export function sortChapterWiseLabels(labels: string[]): string[] {
   return [...labels].sort(compareChapterWiseLabels);
 }
+
+/** Keep admin/API order first; append extras without reordering the primary list. */
+export function mergePreservingPrimaryOrder(primary: string[], secondary: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of primary) {
+    const label = String(value || '').trim();
+    if (!label || seen.has(label)) continue;
+    seen.add(label);
+    result.push(label);
+  }
+  for (const value of secondary) {
+    const label = String(value || '').trim();
+    if (!label || seen.has(label)) continue;
+    seen.add(label);
+    result.push(label);
+  }
+  return result;
+}

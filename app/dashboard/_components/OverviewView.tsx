@@ -27,6 +27,8 @@ import {
   collectCompletedContentIds,
   loadCompletedScheduleIds,
   saveCompletedScheduleIds,
+  buildScheduleCompletionStats,
+  type ScheduleCompletionStats,
 } from '../../../src/lib/todays-tasks-helpers';
 import { StudentHomeHeader } from '../../../src/components/student';
 import StudentCardDecor from '../../../src/components/student/StudentCardDecor';
@@ -96,8 +98,19 @@ const OverviewView = memo(function OverviewView({
   const [weeklyStudyData, setWeeklyStudyData] = useState<{ [key: string]: number }>({});
   const [incompleteContent, setIncompleteContent] = useState<any[]>([]);
   const [incompleteQuizzes, setIncompleteQuizzes] = useState<any[]>([]);
+  const [allQuizzes, setAllQuizzes] = useState<any[]>([]);
+  const [scheduleCompletionStats, setScheduleCompletionStats] = useState<ScheduleCompletionStats>({
+    totalContent: 0,
+    completedContent: 0,
+    totalQuizzes: 0,
+    completedQuizzes: 0,
+    total: 0,
+    completed: 0,
+    completionPercent: 0,
+  });
   const [homeworkSubmissions, setHomeworkSubmissions] = useState<any[]>([]);
   const [completedScheduleIds, setCompletedScheduleIds] = useState<Set<string>>(new Set());
+  const [trackedCompletedContentIds, setTrackedCompletedContentIds] = useState<Set<string>>(new Set());
   const [scheduleAllContent, setScheduleAllContent] = useState<any[]>([]);
   const [videoChapterProgressBySubject, setVideoChapterProgressBySubject] = useState<
     Record<string, ChapterCompletedDates>
@@ -381,14 +394,19 @@ const OverviewView = memo(function OverviewView({
       }
       setVideoChapterProgressBySubject(chapterProgressBySubject);
 
+      let fetchedAllContent: any[] = [];
+      let fetchedAllQuizzes: any[] = [];
+
       if (contentRes.ok) {
         const contentData = await contentRes.json();
         const allContent = prepareLibraryContents(
           contentData.data || contentData || [],
           isAsliPrepExclusive
         );
+        fetchedAllContent = allContent;
         setScheduleAllContent(allContent);
         const completedContentIds = await collectCompletedContentIds(subjectIds);
+        setTrackedCompletedContentIds(new Set(completedContentIds));
         const slicedContent = buildTodaysTasksContentList(
           allContent,
           completedContentIds,
@@ -400,8 +418,10 @@ const OverviewView = memo(function OverviewView({
 
       if (quizzesRes.ok) {
         const quizzesData = await quizzesRes.json();
-        const allQuizzes = quizzesData.data || [];
-        const incompleteQuiz = allQuizzes.filter((quiz: any) => {
+        const allQuizzesList = quizzesData.data || [];
+        fetchedAllQuizzes = allQuizzesList;
+        setAllQuizzes(allQuizzesList);
+        const incompleteQuiz = allQuizzesList.filter((quiz: any) => {
           return !quiz.hasAttempted || !quiz.completedAt;
         });
         incompleteQuiz.sort((a: any, b: any) => {
@@ -410,6 +430,15 @@ const OverviewView = memo(function OverviewView({
           return dateB - dateA;
         });
         setIncompleteQuizzes(incompleteQuiz.slice(0, 10));
+      }
+
+      if (fetchedAllContent.length > 0 || fetchedAllQuizzes.length > 0) {
+        const completionStats = await buildScheduleCompletionStats(
+          fetchedAllContent,
+          fetchedAllQuizzes,
+          subjectIds
+        );
+        setScheduleCompletionStats(completionStats);
       }
       setIsLoadingSubmissions(true);
       if (homeworkRes.ok) {
@@ -521,6 +550,7 @@ const OverviewView = memo(function OverviewView({
         .filter(Boolean);
       const mergedCompleted = await collectCompletedContentIds([...new Set(subjectIds)]);
       newCompleted.forEach((id) => mergedCompleted.add(id));
+      setTrackedCompletedContentIds(new Set(mergedCompleted));
 
       let chapterProgressForRebuild = videoChapterProgressBySubject;
       if (!isQuiz && isVideoContentType(item.type) && subjectId && scheduleAllContent.length > 0 && !isCurrentlyCompleted) {
@@ -561,8 +591,20 @@ const OverviewView = memo(function OverviewView({
           )
         );
       }
+
+      if (scheduleAllContent.length > 0 || allQuizzes.length > 0) {
+        const subjectIds = scheduleAllContent
+          .map((c) => getContentSubjectId(c))
+          .filter(Boolean);
+        const completionStats = await buildScheduleCompletionStats(
+          scheduleAllContent,
+          allQuizzes,
+          subjectIds
+        );
+        setScheduleCompletionStats(completionStats);
+      }
     },
-    [completedScheduleIds, scheduleAllContent, videoChapterProgressBySubject]
+    [completedScheduleIds, scheduleAllContent, videoChapterProgressBySubject, allQuizzes]
   );
 
   const handleOpenScheduleItem = useCallback((item: any, isQuiz: boolean) => {
@@ -600,16 +642,49 @@ const OverviewView = memo(function OverviewView({
     [incompleteQuizzes, incompleteContent]
   );
 
-  const { totalTodos, completedTodos, todayProgress, efficiency } = useMemo(() => {
+  const isDailyTaskCompleted = useCallback(
+    (item: any, isQuiz: boolean, completedIds: Set<string>, contentDoneIds: Set<string>) => {
+      const itemId = String(item._id || item.id);
+      if (completedIds.has(itemId)) return true;
+      if (isQuiz) return Boolean(item.hasAttempted || item.completedAt);
+      return contentDoneIds.has(itemId);
+    },
+    []
+  );
+
+  const { totalTodos, completedTodos, todayProgress, efficiency, efficiencySubtext } = useMemo(() => {
     const { quizzes, content } = dailyTasks;
     const total = content.length + quizzes.length;
     const completed =
-      content.filter((c: any) => completedScheduleIds.has(String(c._id || c.id))).length +
-      quizzes.filter((q: any) => completedScheduleIds.has(String(q._id || q.id))).length;
+      content.filter((c: any) =>
+        isDailyTaskCompleted(c, false, completedScheduleIds, trackedCompletedContentIds)
+      ).length +
+      quizzes.filter((q: any) =>
+        isDailyTaskCompleted(q, true, completedScheduleIds, trackedCompletedContentIds)
+      ).length;
     const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
-    const eff = total > 0 ? Math.round((completed / total) * 100) : 0;
-    return { totalTodos: total, completedTodos: completed, todayProgress: progress, efficiency: eff };
-  }, [dailyTasks, completedScheduleIds]);
+
+    let eff = 0;
+    let subtext = 'Content & quizzes';
+    if (total > 0) {
+      eff = progress;
+      subtext = `${completed}/${total} tasks done`;
+    } else if (scheduleCompletionStats.total > 0) {
+      eff = scheduleCompletionStats.completionPercent;
+      subtext = `${scheduleCompletionStats.completed}/${scheduleCompletionStats.total} items done`;
+    } else if (overallProgress > 0) {
+      eff = Math.round(overallProgress);
+      subtext = 'Overall learning progress';
+    }
+
+    return {
+      totalTodos: total,
+      completedTodos: completed,
+      todayProgress: progress,
+      efficiency: eff,
+      efficiencySubtext: subtext,
+    };
+  }, [dailyTasks, completedScheduleIds, trackedCompletedContentIds, scheduleCompletionStats, overallProgress, isDailyTaskCompleted]);
 
   const { studyTodayProgress, studyWeekProgress } = useMemo(() => {
     const dailyGoalMins = 8 * 60;
@@ -690,7 +765,7 @@ const OverviewView = memo(function OverviewView({
           ]}
         />
       </View>
-      <Text style={styles.statSubtext}>Logged In Today</Text>
+      <Text style={styles.statSubtext}>Study time today</Text>
     </>
   );
 
@@ -715,7 +790,7 @@ const OverviewView = memo(function OverviewView({
           ]}
         />
       </View>
-      <Text style={styles.statSubtext}>Logged This Week</Text>
+      <Text style={styles.statSubtext}>Study time this week</Text>
     </>
   );
 
@@ -738,7 +813,7 @@ const OverviewView = memo(function OverviewView({
           ]}
         />
       </View>
-      <Text style={styles.statSubtext}>Completion Rate</Text>
+      <Text style={styles.statSubtext}>{efficiencySubtext}</Text>
     </>
   );
 
