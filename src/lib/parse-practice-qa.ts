@@ -525,13 +525,28 @@ export function resolvePracticeQaFromPayload(
         const next = materializePracticeQa(j.structuredContent as Record<string, unknown>);
         practice = practice ? mergePracticeQa(practice, next) : next;
       }
+      if (j.raw && typeof j.raw === 'object' && !Array.isArray(j.raw)) {
+        const next = materializePracticeQa(j.raw as Record<string, unknown>);
+        practice = practice ? mergePracticeQa(practice, next) : next;
+      }
     }
   } catch {
     /* ignore */
   }
 
+  const markdownText = (() => {
+    const t = String(content || '').trim();
+    if (!t.startsWith('{')) return t;
+    try {
+      const j = JSON.parse(t) as { formatted?: string; markdown?: string };
+      return String(j.formatted || j.markdown || '').trim() || t;
+    } catch {
+      return t;
+    }
+  })();
+
   const structuredCount = practice ? countPracticeQaQuestions(practice) : 0;
-  const fromMd = fromMarkdown(content);
+  const fromMd = fromMarkdown(markdownText);
   if (practice) {
     if (structuredCount === 0) {
       practice = mergePracticeQa(practice, fromMd);

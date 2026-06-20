@@ -1,7 +1,7 @@
 import { resolveConceptBreakdownFromPayload } from './parse-concept-breakdown';
 import { resolveChapterSummaryFromPayload } from './parse-chapter-summary';
 import { resolveKeyPointsFromPayload } from './parse-key-points';
-import { resolvePracticeQaFromPayload } from './parse-practice-qa';
+import { resolvePracticeQaFromPayload, countPracticeQaQuestions, type PracticeQaQuestion } from './parse-practice-qa';
 import { resolveQuickAssignmentFromPayload } from './parse-quick-assignment';
 import { resolveMockTestFromPayload } from './parse-mock-test';
 import { resolveExamPaperFromPayload } from './parse-exam-question-paper';
@@ -30,6 +30,7 @@ import {
 import {
   contentHasNumberedTemplateSections,
   resolveRichDisplayContent,
+  coalesceAiToolRawContent,
 } from './ai-tool-display-content';
 import { stripAiToolGenerationLabel } from './strip-ai-tool-generation-label';
 import {
@@ -102,6 +103,39 @@ function renderConceptBreakdownHtml(content: string, rawContent: unknown): strin
           iconSvg: '<span>🏷</span>',
           borderColor: 'border-violet-200/90',
           body: termGridHtml(concept.importantTerms),
+        });
+      }
+      if (concept.conceptCheckQuestions.length) {
+        html += sectionCardHtml({
+          sectionNum: 'Section 6',
+          title: 'Concept Check Questions',
+          stripe: 'border-cyan-300',
+          iconWrap: 'bg-cyan-100 text-cyan-800',
+          iconSvg: '<span>❓</span>',
+          borderColor: 'border-violet-200/90',
+          body: bulletListHtml(concept.conceptCheckQuestions, 'text-cyan-600'),
+        });
+      }
+      if (concept.applicationThinkingQuestion) {
+        html += sectionCardHtml({
+          sectionNum: 'Section 7',
+          title: 'Application-based Thinking Question',
+          stripe: 'border-orange-300',
+          iconWrap: 'bg-orange-100 text-orange-800',
+          iconSvg: '<span>💭</span>',
+          borderColor: 'border-violet-200/90',
+          body: `<div class="rounded-lg border border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50/80 px-2.5 py-2">${richTextHtml(concept.applicationThinkingQuestion)}</div>`,
+        });
+      }
+      if (concept.higherOrderThinkingPrompt) {
+        html += sectionCardHtml({
+          sectionNum: 'Section 8',
+          title: 'Higher-order Thinking Prompt',
+          stripe: 'border-fuchsia-300',
+          iconWrap: 'bg-fuchsia-100 text-fuchsia-800',
+          iconSvg: '<span>⚡</span>',
+          borderColor: 'border-violet-200/90',
+          body: `<div class="rounded-lg border border-fuchsia-200 bg-gradient-to-br from-fuchsia-50 to-violet-50/80 px-2.5 py-2">${richTextHtml(concept.higherOrderThinkingPrompt)}</div>`,
         });
       }
       if (concept.quickRevisionSummary) {
@@ -226,45 +260,136 @@ function renderKeyPointsHtml(content: string, rawContent: unknown): string | nul
   return html;
 }
 
+function renderPracticeQaQuestionCard(q: PracticeQaQuestion, index: number): string {
+  const num = q.questionNumber ?? index + 1;
+  const isMcq = q.options.length >= 2;
+  const opts =
+    isMcq
+      ? `<div class="mt-2 grid gap-1.5 sm:grid-cols-2">${q.options
+          .map((opt) => {
+            const label = opt.match(/^([A-D])\)/i)?.[1]?.toUpperCase() || '';
+            const text = opt.replace(/^[A-D]\)\s*/i, '').trim();
+            return `<div class="flex gap-2 rounded-md border border-slate-200/80 bg-white px-2.5 py-1.5 text-sm text-slate-700">
+              ${label ? `<span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-800">${label}</span>` : ''}
+              <span class="min-w-0 flex-1 pt-0.5">${escapeHtml(text || opt)}</span>
+            </div>`;
+          })
+          .join('')}</div>`
+      : '';
+  const meta = [
+    q.type ? `<span class="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700">${escapeHtml(q.type)}</span>` : '',
+    q.marks != null ? `<span class="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900">${q.marks} mark${q.marks === 1 ? '' : 's'}</span>` : '',
+    q.bloomLevel ? `<span class="inline-flex rounded-full border border-violet-200 px-2 py-0.5 text-[10px] text-violet-700">${escapeHtml(q.bloomLevel)}</span>` : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+  const ans = q.answer
+    ? `<p class="mt-2 rounded-md bg-emerald-50 px-2 py-1 text-xs text-emerald-800"><span class="font-semibold">Answer:</span> ${escapeHtml(q.answer)}</p>`
+    : '';
+  const expl = q.explanation
+    ? `<p class="mt-1.5 rounded-md border border-slate-100 bg-slate-50 px-2 py-1.5 text-xs text-slate-600"><span class="font-semibold text-slate-700">Explanation:</span> ${escapeHtml(q.explanation)}</p>`
+    : '';
+  return `<article class="rounded-lg border border-emerald-100 bg-gradient-to-br from-white to-emerald-50/30 p-3 mb-2">
+    <div class="mb-2 flex flex-wrap items-center gap-2">
+      <span class="inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-md bg-emerald-600 px-1.5 text-[10px] font-bold text-white">Q${num}</span>
+      ${meta}
+    </div>
+    <p class="text-sm font-medium leading-snug text-slate-900">${escapeHtml(q.question || '')}</p>
+    ${opts}${ans}${expl}
+  </article>`;
+}
+
 function renderPracticeQaHtml(content: string, rawContent: unknown): string | null {
-  const { practice, markdownFallback } = resolvePracticeQaFromPayload(content, rawContent);
-  if (markdownFallback || !practice) return null;
+  const mergedRaw = coalesceAiToolRawContent(content, rawContent);
+  const markdown = resolveRichDisplayContent(content, mergedRaw);
+  const { practice } = resolvePracticeQaFromPayload(markdown, mergedRaw);
+  if (!practice) return null;
+
   let html = heroTitleCardHtml({
-    eyebrow: 'Practice Q&A',
+    eyebrow: 'Smart Q&A Practice',
     title: practice.title || 'Smart Q&A Practice',
-    theme: 'orange',
-    badge: `${practice.sections.length} sections`,
+    theme: 'emerald',
+    badge: `${countPracticeQaQuestions(practice)} questions`,
     toolType: 'smart-qa-practice-generator',
   });
-  for (const sec of practice.sections) {
-    const questions = sec.questions || [];
-    if (!questions.length) continue;
-    const body = questions
-      .map((q, i) => {
-        const opts =
-          q.options && q.options.length
-            ? `<div class="mt-2 space-y-1">${q.options
-                .map((o) => `<div class="rounded border border-slate-200 bg-white px-2 py-1 text-xs">${escapeHtml(o)}</div>`)
-                .join('')}</div>`
-            : '';
-        const ans = q.answer ? `<p class="mt-2 text-xs text-emerald-700 font-semibold">Answer: ${escapeHtml(q.answer)}</p>` : '';
-        return `<div class="rounded-lg border border-orange-100 bg-orange-50/40 px-3 py-2 mb-2">
-          <p class="text-xs font-bold text-orange-800">Q${i + 1}</p>
-          <p class="text-sm text-slate-800 mt-1">${escapeHtml(q.question || '')}</p>
-          ${opts}${ans}
-        </div>`;
-      })
-      .join('');
+
+  if (practice.learningObjectives.length) {
     html += sectionCardHtml({
-      sectionNum: sec.displayLabel || sec.label || 'Section',
-      title: sec.label || 'Questions',
+      sectionNum: 'Section 2',
+      title: 'Learning Objectives',
+      stripe: 'border-teal-300',
+      iconWrap: 'bg-teal-100 text-teal-800',
+      iconSvg: '<span>🎯</span>',
+      borderColor: 'border-emerald-200/90',
+      body: bulletListHtml(practice.learningObjectives, 'text-teal-600'),
+    });
+  }
+
+  if (practice.instructions) {
+    html += sectionCardHtml({
+      sectionNum: 'Section 3',
+      title: 'Instructions to Students',
+      stripe: 'border-green-300',
+      iconWrap: 'bg-green-100 text-green-800',
+      iconSvg: '<span>📋</span>',
+      borderColor: 'border-emerald-200/90',
+      body: richTextHtml(practice.instructions),
+    });
+  }
+
+  for (const sec of practice.sections) {
+    const sectionNumMatch = sec.displayLabel.match(/^(\d+)\./);
+    const sectionNum = sectionNumMatch ? `Section ${sectionNumMatch[1]}` : 'Section';
+    const shortTitle = sec.label.replace(/^Section [A-G]:\s*/i, '');
+    const body = sec.questions.length
+      ? sec.questions.map((q, i) => renderPracticeQaQuestionCard(q, i)).join('')
+      : emptySectionPlaceholderHtml('No questions in this section yet.');
+
+    html += sectionCardHtml({
+      sectionNum,
+      title: shortTitle,
       stripe: 'border-emerald-300',
       iconWrap: 'bg-emerald-100 text-emerald-800',
       iconSvg: '<span>❓</span>',
+      borderColor: 'border-emerald-200/90',
       body,
     });
   }
+
+  if (practice.realLifeQuestions.length) {
+    html += sectionCardHtml({
+      sectionNum: 'Section 10',
+      title: 'Real-life Problem-solving Questions',
+      stripe: 'border-green-400',
+      iconWrap: 'bg-green-100 text-green-900',
+      iconSvg: '<span>💡</span>',
+      borderColor: 'border-emerald-200/90',
+      body: practice.realLifeQuestions.map((q, i) => renderPracticeQaQuestionCard(q, i)).join(''),
+    });
+  }
+
+  if (practice.answerKey) {
+    html += sectionCardHtml({
+      sectionNum: 'Section 11',
+      title: 'Answer Key with Explanations',
+      stripe: 'border-emerald-400',
+      iconWrap: 'bg-emerald-100 text-emerald-900',
+      iconSvg: '<span>🔑</span>',
+      borderColor: 'border-emerald-200/90',
+      body: `<div class="rounded-lg border border-emerald-100 bg-emerald-50/50 px-2.5 py-2">${richTextHtml(practice.answerKey)}</div>`,
+    });
+  }
+
   return html;
+}
+
+/** Full Practice Q&A HTML from markdown + rawData (same inputs as web PracticeQaViewer). */
+export function renderSmartPracticeQaOutputHtml(content: string, rawContent?: unknown): string | null {
+  try {
+    return renderPracticeQaHtml(content, rawContent ?? null);
+  } catch {
+    return null;
+  }
 }
 
 function renderQuickAssignmentHtml(content: string, rawContent: unknown): string | null {
@@ -1837,16 +1962,33 @@ const FULL_STRUCTURED_MARKDOWN_TOOLS = new Set([
   'my-study-decks',
 ]);
 
+/** Student tools whose question blocks live in rawData — must not skip structured render when markdown has sections 2/3/11 only. */
+const STRUCTURED_HYBRID_STUDENT_TOOLS = new Set([
+  'smart-qa-practice-generator',
+  'concept-breakdown-explainer',
+  'chapter-summary-creator',
+  'key-points-formula-extractor',
+  'quick-assignment-builder',
+  'mock-test-builder',
+  'smart-study-guide-generator',
+]);
+
+function coalesceToolRawContent(content: string, rawContent?: unknown): unknown {
+  return coalesceAiToolRawContent(content, rawContent);
+}
+
 export function tryRenderStructuredAiToolHtml(
   toolType: string,
   content: string,
   rawContent?: unknown,
   variant: Variant = 'student'
 ): string | null {
-  const display = resolveRichDisplayContent(content, rawContent);
+  const mergedRaw = coalesceToolRawContent(content, rawContent);
+  const display = resolveRichDisplayContent(content, mergedRaw);
   if (
     contentHasNumberedTemplateSections(display) &&
-    !FULL_STRUCTURED_MARKDOWN_TOOLS.has(toolType)
+    !FULL_STRUCTURED_MARKDOWN_TOOLS.has(toolType) &&
+    !STRUCTURED_HYBRID_STUDENT_TOOLS.has(toolType)
   ) {
     return null;
   }
@@ -1854,7 +1996,7 @@ export function tryRenderStructuredAiToolHtml(
   const renderer = STRUCTURED_RENDERERS[toolType];
   if (!renderer) return null;
   try {
-    const body = renderer(display, rawContent ?? null, variant);
+    const body = renderer(content, mergedRaw ?? null, variant);
     if (!body?.trim()) return null;
     return body;
   } catch {

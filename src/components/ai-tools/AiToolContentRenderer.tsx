@@ -1,21 +1,13 @@
 import { useMemo } from 'react';
-import SmartStudyGuideViewer from './SmartStudyGuideViewer';
 import ActivityProjectViewer from './ActivityProjectViewer';
 import FlashcardViewer from './FlashcardViewer';
 import AiToolWebView from './AiToolWebView';
 import { stripStructuredAiToolMetadata } from '../../lib/strip-ai-tool-metadata';
-import {
-  resolveStudyGuideFromPayload,
-  studyGuideViewerPayloadFromRecord,
-  studyGuideHasVisibleBody,
-} from '../../lib/parse-smart-study-guide';
-import {
-  activitiesPayloadIsComplete,
-  resolveActivitiesFromPayload,
-} from '../../lib/parse-activity-markdown';
+import { activitiesPayloadIsComplete } from '../../lib/parse-activity-markdown';
 import {
   contentHasNumberedTemplateSections,
   resolveRichDisplayContent,
+  coalesceAiToolRawContent,
 } from '../../lib/ai-tool-display-content';
 import {
   flashcardsHaveVisibleBody,
@@ -71,28 +63,18 @@ export default function AiToolContentRenderer({
   variant = 'student',
 }: Props) {
   const cleaned = useMemo(() => stripStructuredAiToolMetadata(content), [content]);
-  const displayMarkdown = useMemo(
-    () => resolveRichDisplayContent(cleaned, rawContent),
+  const mergedRaw = useMemo(
+    () => coalesceAiToolRawContent(cleaned, rawContent),
     [cleaned, rawContent]
+  );
+  const displayMarkdown = useMemo(
+    () => resolveRichDisplayContent(cleaned, mergedRaw),
+    [cleaned, mergedRaw]
   );
   const hasFullTemplateMarkdown = useMemo(
     () => contentHasNumberedTemplateSections(displayMarkdown),
     [displayMarkdown]
   );
-
-  const useNativeStudyGuide = useMemo(() => {
-    if (toolType !== 'smart-study-guide-generator') return false;
-    const payload =
-      rawContent != null
-        ? { content: cleaned, rawContent }
-        : studyGuideViewerPayloadFromRecord({ generatedContent: cleaned });
-    const { guide, markdownFallback } = resolveStudyGuideFromPayload(
-      payload.content,
-      payload.rawContent
-    );
-    // Native viewer shows Section 1 title card + all parsed sections (merged from markdown + rawData).
-    return !markdownFallback && studyGuideHasVisibleBody(guide);
-  }, [toolType, cleaned, rawContent]);
 
   const useNativeActivity = useMemo(() => {
     if (toolType !== 'activity-project-generator' && toolType !== 'project-idea-lab') return false;
@@ -100,24 +82,31 @@ export default function AiToolContentRenderer({
     // Teacher activity uses the colored WebView renderer (same section tints as student tools).
     if (toolType === 'activity-project-generator' && variant === 'teacher') return false;
     const mode = toolType === 'project-idea-lab' ? 'student' : variant;
-    return activitiesPayloadIsComplete(activitiesFromRaw(rawContent), cleaned, mode);
-  }, [toolType, cleaned, rawContent, hasFullTemplateMarkdown, variant]);
+    return activitiesPayloadIsComplete(activitiesFromRaw(mergedRaw), cleaned, mode);
+  }, [toolType, cleaned, mergedRaw, hasFullTemplateMarkdown, variant]);
 
   const useNativeFlashcard = useMemo(() => {
     if (toolType !== 'my-study-decks' && toolType !== 'flashcard-generator') return false;
-    const { cards } = resolveFlashcardsFromPayload(cleaned, rawContent);
+    const { cards } = resolveFlashcardsFromPayload(cleaned, mergedRaw);
     return flashcardsHaveVisibleBody(cards);
-  }, [toolType, cleaned, rawContent]);
+  }, [toolType, cleaned, mergedRaw]);
 
-  if (useNativeStudyGuide) {
-    return <SmartStudyGuideViewer content={cleaned} rawContent={rawContent} toolType={toolType} />;
+  if (toolType === 'smart-qa-practice-generator') {
+    return (
+      <AiToolWebView
+        toolType={toolType}
+        content={cleaned}
+        rawContent={mergedRaw}
+        variant={variant}
+      />
+    );
   }
 
   if (useNativeActivity) {
     return (
       <ActivityProjectViewer
         content={cleaned}
-        rawContent={rawContent}
+        rawContent={mergedRaw}
         variant={toolType === 'project-idea-lab' ? 'student' : variant}
         toolType={toolType}
       />
@@ -128,7 +117,7 @@ export default function AiToolContentRenderer({
     return (
       <FlashcardViewer
         content={cleaned}
-        rawContent={rawContent}
+        rawContent={mergedRaw}
         variant={variant}
         toolType={toolType}
       />

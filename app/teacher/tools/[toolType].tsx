@@ -1081,6 +1081,7 @@ export default function TeacherToolPage() {
               contentContainerStyle={aiToolTabletStyles.tabletPaneContent}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled
             >
               {outputPanel}
             </ScrollView>
@@ -1096,6 +1097,7 @@ export default function TeacherToolPage() {
           ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          nestedScrollEnabled
           onScroll={scrollHandler}
           scrollEventThrottle={16}
         >

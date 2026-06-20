@@ -3,12 +3,13 @@ import {
   contentHasNumberedTemplateSections,
   countNumberedTemplateSections,
   resolveRichDisplayContent,
+  coalesceAiToolRawContent,
 } from './ai-tool-display-content';
 import { stripStructuredAiToolMetadata } from './strip-ai-tool-metadata';
 import { escapeHtml } from './ai-tool-html-primitives';
 import { AI_TOOL_OUTPUT_STYLES } from './ai-tool-output-styles';
 import { renderNumberedTemplateAsCards } from './render-numbered-template-cards';
-import { tryRenderStructuredAiToolHtml } from './render-structured-ai-tool-html';
+import { tryRenderStructuredAiToolHtml, renderSmartPracticeQaOutputHtml } from './render-structured-ai-tool-html';
 import { wrapAiToolOutputSectionGrid } from './themed-markdown-sections';
 
 export {
@@ -23,6 +24,12 @@ import { renderChapterSummaryMarkdown } from './render-chapter-summary-markdown'
 import { renderKeyPointsMarkdown } from './render-key-points-markdown';
 import { renderQuickAssignmentMarkdown } from './render-quick-assignment-markdown';
 import { renderMockTestMarkdown } from './render-mock-test-markdown';
+import { resolvePracticeQaFromPayload } from './parse-practice-qa';
+import { resolveConceptBreakdownFromPayload } from './parse-concept-breakdown';
+import { resolveChapterSummaryFromPayload } from './parse-chapter-summary';
+import { resolveKeyPointsFromPayload } from './parse-key-points';
+import { resolveQuickAssignmentFromPayload } from './parse-quick-assignment';
+import { resolveMockTestFromPayload } from './parse-mock-test';
 
 type ToolShell = {
   label: string;
@@ -247,14 +254,74 @@ export function getToolOutputPanelBorder(toolType: string): string | undefined {
   return borders[toolType];
 }
 
-export function renderAiToolOutputHtml(
+function shouldUseStructuredStudentOutput(
+  toolType: string,
+  display: string,
+  rawContent?: unknown,
+): boolean {
+  switch (toolType) {
+    case 'smart-qa-practice-generator': {
+      const { practice, markdownFallback } = resolvePracticeQaFromPayload(display, rawContent);
+      return Boolean(practice && !markdownFallback);
+    }
+    case 'concept-breakdown-explainer': {
+      const { concepts, markdownFallback } = resolveConceptBreakdownFromPayload(display, rawContent);
+      return concepts.length > 0 && !markdownFallback;
+    }
+    case 'chapter-summary-creator': {
+      const { summary, markdownFallback } = resolveChapterSummaryFromPayload(display, rawContent);
+      return Boolean(summary && !markdownFallback);
+    }
+    case 'key-points-formula-extractor': {
+      const { keyPoints, markdownFallback } = resolveKeyPointsFromPayload(display, rawContent);
+      return Boolean(keyPoints && !markdownFallback);
+    }
+    case 'quick-assignment-builder': {
+      const { assignment, markdownFallback } = resolveQuickAssignmentFromPayload(display, rawContent);
+      return Boolean(assignment && !markdownFallback);
+    }
+    case 'mock-test-builder': {
+      const resolved = resolveMockTestFromPayload(display, rawContent);
+      return Boolean(resolved.paper && !resolved.markdownFallback);
+    }
+    default:
+      return false;
+  }
+}
+
+function wrapAiToolHtmlDocument(body: string): string {
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <style>${AI_TOOL_OUTPUT_STYLES}</style>
+</head>
+<body>${body}</body>
+</html>`;
+}
+
+function renderAiToolOutputHtmlInner(
   toolType: string,
   content: string,
-  rawContent?: unknown,
-  variant: 'student' | 'teacher' = 'student'
+  rawContent: unknown,
+  variant: 'student' | 'teacher',
 ): string {
-  const display = resolveRichDisplayContent(content, rawContent);
-  const structured = tryRenderStructuredAiToolHtml(toolType, display, rawContent, variant);
+  const mergedRaw = coalesceAiToolRawContent(content, rawContent);
+
+  const display = resolveRichDisplayContent(content, mergedRaw);
+
+  // Match web PracticeQaViewer: always merge content + rawData for Practice Q&A (sections A–G live in rawData).
+  if (variant === 'student' && toolType === 'smart-qa-practice-generator') {
+    const practiceHtml = renderSmartPracticeQaOutputHtml(content, mergedRaw);
+    if (practiceHtml?.trim()) {
+      const inner = wrapAiToolOutputSectionGrid(practiceHtml);
+      const body = TOOL_SHELLS[toolType] ? wrapWithShell(toolType, inner) : inner;
+      return wrapAiToolHtmlDocument(body);
+    }
+  }
+
+  const structured = tryRenderStructuredAiToolHtml(toolType, content, mergedRaw, variant);
   const themedMarkdown = TOOL_RENDERERS[toolType];
   const numberedTemplate = contentHasNumberedTemplateSections(display);
 
@@ -291,31 +358,49 @@ export function renderAiToolOutputHtml(
     }
   } else if (structured && structuredFullTools.has(toolType)) {
     inner = structured;
+  } else if (structured && shouldUseStructuredStudentOutput(toolType, display, mergedRaw)) {
+    // Hybrid tools (e.g. Practice Q&A sections A–G) store questions in rawContent, not numbered markdown.
+    inner = structured;
+  } else if (themedMarkdown) {
+    // Prefer full themed markdown (all numbered sections) over partial structured HTML parsers.
+    inner = resolveStudentNumberedOutput(toolType, display, themedMarkdown);
+    if (!bodyHasVisibleOutput(inner) && structured) {
+      inner = structured;
+    }
   } else if (numberedTemplate || studentHasSections) {
     inner = resolveStudentNumberedOutput(toolType, display, themedMarkdown);
   } else if (structured) {
     inner = structured;
-  } else if (themedMarkdown) {
-    inner = themedMarkdown(display);
   } else {
     inner = renderMarkdown(display);
   }
 
   if (!bodyHasVisibleOutput(inner)) {
-    inner = renderAiToolFallbackBody(content, rawContent);
+    inner = renderAiToolFallbackBody(content, mergedRaw);
   }
 
   inner = wrapAiToolOutputSectionGrid(inner);
 
   const body = TOOL_SHELLS[toolType] ? wrapWithShell(toolType, inner) : inner;
 
-  return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-  <style>${AI_TOOL_OUTPUT_STYLES}</style>
-</head>
-<body>${body}</body>
-</html>`;
+  return wrapAiToolHtmlDocument(body);
+}
+
+export function renderAiToolOutputHtml(
+  toolType: string,
+  content: string,
+  rawContent?: unknown,
+  variant: 'student' | 'teacher' = 'student',
+): string {
+  try {
+    return renderAiToolOutputHtmlInner(toolType, content, rawContent, variant);
+  } catch {
+    const mergedRaw = coalesceAiToolRawContent(content, rawContent);
+    const display = resolveRichDisplayContent(content, mergedRaw);
+    const fallbackInner = renderAiToolFallbackBody(content, mergedRaw) || renderMarkdown(display);
+    const body = TOOL_SHELLS[toolType]
+      ? wrapWithShell(toolType, fallbackInner)
+      : fallbackInner;
+    return wrapAiToolHtmlDocument(body);
+  }
 }

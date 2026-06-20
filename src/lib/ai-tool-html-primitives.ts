@@ -49,7 +49,7 @@ export function lightDocHeaderHtml(opts: {
   titleTag?: 'h1' | 'h3';
   extraClass?: string;
 }): string {
-  const t = LIGHT_HEADER_THEMES[opts.theme];
+  const t = LIGHT_HEADER_THEMES[opts.theme] ?? LIGHT_HEADER_THEMES.indigo;
   const tag = opts.titleTag ?? 'h3';
   const titleSize = tag === 'h1' ? 'text-xl' : 'text-lg';
   const extra = opts.extraClass ? ` ${opts.extraClass}` : '';
@@ -233,7 +233,7 @@ export function conceptGridHtml(items: { name: string; explanation?: string }[])
 export function heroTitleCardHtml(opts: {
   eyebrow: string;
   title: string;
-  theme: 'indigo' | 'orange' | 'violet' | 'blue' | 'amber';
+  theme: 'indigo' | 'orange' | 'violet' | 'blue' | 'amber' | 'emerald';
   badge?: string;
   progressPct?: number;
   toolType?: string;
@@ -290,8 +290,19 @@ export function heroTitleCardHtml(opts: {
       barBg: 'bg-amber-100',
       barFill: 'from-amber-200 to-orange-200',
     },
+    emerald: {
+      border: 'border-emerald-200',
+      shadow: 'shadow-emerald-100/50',
+      gradient: 'radial-gradient(circle_at_0%_0%,rgba(16,185,129,0.08),transparent_55%)',
+      icon: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
+      eyebrow: 'text-emerald-600',
+      badge: 'border-emerald-200 text-emerald-700',
+      barBg: 'bg-emerald-100',
+      barFill: 'from-emerald-200 to-teal-200',
+    },
   };
-  const t = themes[opts.theme];
+  const t =
+    themes[opts.theme as keyof typeof themes] ?? themes.indigo ?? themes.orange;
   const displayTitle = stripAiToolGenerationLabel(opts.title, opts.eyebrow);
   const iconChar =
     opts.iconEmoji ?? (opts.toolType ? getAiToolHeroEmoji(opts.toolType) : '✨');

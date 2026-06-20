@@ -282,6 +282,7 @@ export default function SmartStudyGuideViewer({
         <AiToolWebView
           toolType="smart-study-guide-generator"
           content={markdownFallback}
+          rawContent={rawContent}
           variant="student"
         />
       </View>
@@ -291,7 +292,19 @@ export default function SmartStudyGuideViewer({
   const bodySections = buildBodySections(guide, isTablet, isDigitalBoard);
   const missingSections = getMissingStudyGuideSections(guide);
   const complete = isStudyGuideComplete(guide);
-  const mcqCount = guide.practiceQuestions.filter((q) => q.type === 'objective' && q.options.length >= 2).length;
+
+  if (!complete) {
+    return (
+      <View style={styles.markdownWrap}>
+        <AiToolWebView
+          toolType="smart-study-guide-generator"
+          content={content}
+          rawContent={rawContent}
+          variant="student"
+        />
+      </View>
+    );
+  }
 
   if (!bodySections.length && !studyGuideHasVisibleBody(guide)) {
     return (
@@ -305,17 +318,10 @@ export default function SmartStudyGuideViewer({
     );
   }
 
+  const mcqCount = guide.practiceQuestions.filter((q) => q.type === 'objective' && q.options.length >= 2).length;
+
   return (
     <View style={styles.root}>
-      {!complete && missingSections.length > 0 ? (
-        <View style={styles.warningBox}>
-          <Text style={styles.warningTitle}>Some sections are incomplete</Text>
-          <Text style={styles.warningText}>
-            Showing available content below. Missing: {missingSections.join(', ')}.
-          </Text>
-        </View>
-      ) : null}
-
       <View style={styles.guideShell}>
         <LinearGuideHeader
           title={stripAiToolGenerationLabel(guide.title, 'Study Guide')}

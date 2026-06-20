@@ -64,12 +64,10 @@ import {
 } from '../../../src/components/ai-tools/useAiToolOutputScroll';
 import {
   validateAiToolForm,
-  executeAiToolGenerate,
-  buildStudentAiRequestBody,
+  executeStudentAiToolGenerateWithFallback,
   storeAiToolSuccessPayload,
   validateActivityToolDisplay,
-  fetchAiToolGeneratedContentFallback,
-  isAiToolClientValidationError,
+  validateStudyGuideToolDisplay,
   type AiToolGenerationMeta,
 } from '../../../src/lib/ai-tool-generate';
 import {
@@ -593,7 +591,7 @@ export default function StudentToolPage() {
 
     const validationError = validateAiToolForm({
       config,
-      formParams,
+      formParams: { ...formParams, board: selectedBoard },
       isReadingPractice,
       requireBoard: true,
     });
@@ -617,17 +615,14 @@ export default function StudentToolPage() {
         return;
       }
 
-      const requestBody = buildStudentAiRequestBody(
+      const result = await executeStudentAiToolGenerateWithFallback({
+        apiBaseUrl: API_BASE_URL,
+        token,
         apiToolType,
         formParams,
         selectedBoard,
-        mapGradeLevelForIitBoard
-      );
-
-      const result = await executeAiToolGenerate({
-        endpoint: `${API_BASE_URL}/api/student/ai/tool`,
-        token,
-        requestBody,
+        curriculumBoard: schoolBoardName,
+        mapGradeLevel: mapGradeLevelForIitBoard,
       });
 
       if (!result.ok) {
@@ -642,8 +637,14 @@ export default function StudentToolPage() {
         stored.rawGeneratedContent,
         'student',
       );
-      if (activityDisplayError) {
-        showInlineOutputMessage(activityDisplayError);
+      const studyGuideDisplayError = validateStudyGuideToolDisplay(
+        toolType || '',
+        stored.generatedContent,
+        stored.rawGeneratedContent,
+      );
+      const displayError = activityDisplayError || studyGuideDisplayError;
+      if (displayError) {
+        showInlineOutputMessage(displayError);
         return;
       }
 
@@ -654,68 +655,7 @@ export default function StudentToolPage() {
       setRawGeneratedContent(stored.rawGeneratedContent);
     } catch (error: any) {
       console.error('Generation error:', error);
-      const errMsg = String(error?.message || 'Network error. Please try again.');
-      if (isAiToolClientValidationError(errMsg) || /AI_TOOL_DATA_NOT_FOUND/i.test(errMsg)) {
-        showInlineOutputMessage(errMsg);
-        return;
-      }
-
-      try {
-        const selectedClass = formParams.gradeLevel;
-        const selectedSubject = formParams.subject || formParams.subjects;
-        if (!selectedClass || !selectedSubject) {
-          throw new Error('Missing class or subject for fallback');
-        }
-        const mappedTopic =
-          formParams.topic ||
-          formParams.concept ||
-          formParams.chapter ||
-          formParams.projectTopic ||
-          '';
-        const token = await SecureStore.getItemAsync('authToken');
-        if (!token) throw new Error('Please sign in again.');
-
-        const fallbackResult = await fetchAiToolGeneratedContentFallback({
-          apiBaseUrl: API_BASE_URL,
-          token,
-          classLabel: String(selectedClass),
-          subject: String(selectedSubject),
-          topic: String(mappedTopic),
-          subTopic: String(formParams.subTopic || ''),
-          toolType: String(apiToolType || ''),
-        });
-
-        if (!fallbackResult.ok) {
-          showInlineOutputMessage(`${errMsg} ${fallbackResult.fallbackMessage}`.trim());
-          return;
-        }
-
-        const stored = storeAiToolSuccessPayload(
-          toolType || '',
-          fallbackResult.content,
-          fallbackResult.rawContent,
-          'student'
-        );
-        const activityDisplayError = validateActivityToolDisplay(
-          toolType || '',
-          stored.generatedContent,
-          stored.rawGeneratedContent,
-          'student',
-        );
-        if (activityDisplayError) {
-          showInlineOutputMessage(activityDisplayError);
-          return;
-        }
-
-        setResponseMeta(fallbackResult.metadata);
-        setFromAiFailure(false);
-        setParamsExpanded(false);
-        setGeneratedContent(stored.generatedContent);
-        setRawGeneratedContent(stored.rawGeneratedContent);
-      } catch (fallbackError: any) {
-        const fe = String(fallbackError?.message || 'Fallback lookup failed');
-        showInlineOutputMessage(`${errMsg} ${fe}`.trim());
-      }
+      showInlineOutputMessage(String(error?.message || 'Network error. Please try again.'));
     } finally {
       setIsGenerating(false);
     }
@@ -1058,6 +998,7 @@ export default function StudentToolPage() {
               contentContainerStyle={aiToolTabletStyles.tabletPaneContent}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled
             >
               {outputPanel}
             </ScrollView>
@@ -1073,6 +1014,7 @@ export default function StudentToolPage() {
           ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          nestedScrollEnabled
           onScroll={scrollHandler}
           scrollEventThrottle={16}
         >

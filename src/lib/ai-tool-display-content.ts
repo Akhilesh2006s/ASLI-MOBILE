@@ -7,6 +7,19 @@ function cleanDisplayText(text: string): string {
   return stripStructuredAiToolMetadata(String(text || '')).trim();
 }
 
+/** Prefer explicit rawContent; otherwise unwrap `{ formatted, raw }` JSON payloads from mobile storage. */
+export function coalesceAiToolRawContent(content: string, rawContent?: unknown): unknown {
+  if (rawContent != null) return rawContent;
+  const raw = String(content || '').trim();
+  if (!raw.startsWith('{')) return rawContent ?? null;
+  try {
+    const parsed = JSON.parse(raw) as { raw?: unknown; structuredContent?: unknown };
+    return parsed.raw ?? parsed.structuredContent ?? null;
+  } catch {
+    return rawContent ?? null;
+  }
+}
+
 export function extractDisplayContent(content: string): string {
   const raw = cleanDisplayText(content);
   if (!raw.startsWith('{')) return raw;
