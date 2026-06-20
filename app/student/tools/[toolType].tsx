@@ -7,7 +7,6 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   Modal,
   Pressable,
   KeyboardAvoidingView,
@@ -68,7 +67,6 @@ import {
   executeAiToolGenerate,
   buildStudentAiRequestBody,
   storeAiToolSuccessPayload,
-  shouldShowAiToolErrorAlert,
   validateActivityToolDisplay,
   fetchAiToolGeneratedContentFallback,
   isAiToolClientValidationError,
@@ -240,7 +238,13 @@ export default function StudentToolPage() {
   const showCollapsedParams = !!generatedContent && !isGenerating;
   const showParameterForms = !showCollapsedParams || paramsExpanded;
 
-  useQueueAiToolScrollOnGenerate(generatedContent, isGenerating, isTablet, queueScrollToOutput);
+  useQueueAiToolScrollOnGenerate(
+    generatedContent,
+    isGenerating,
+    isTablet,
+    queueScrollToOutput,
+    fallbackEmptyMessage,
+  );
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
@@ -571,6 +575,19 @@ export default function StudentToolPage() {
     setActiveDropdown({ fieldName, title, options, value, disabled });
   };
 
+  const showInlineOutputMessage = useCallback(
+    (message: string) => {
+      resetOutputScroll();
+      setGeneratedContent('');
+      setRawGeneratedContent(null);
+      setResponseMeta(null);
+      setFromAiFailure(false);
+      setFallbackEmptyMessage(message);
+      queueScrollToOutput();
+    },
+    [resetOutputScroll, queueScrollToOutput],
+  );
+
   const handleGenerate = async () => {
     if (!config) return;
 
@@ -581,7 +598,7 @@ export default function StudentToolPage() {
       requireBoard: true,
     });
     if (validationError) {
-      Alert.alert('Validation Error', validationError);
+      showInlineOutputMessage(validationError);
       return;
     }
 
@@ -596,7 +613,7 @@ export default function StudentToolPage() {
     try {
       const token = await SecureStore.getItemAsync('authToken');
       if (!token) {
-        Alert.alert('Error', 'Please sign in again.');
+        showInlineOutputMessage('Please sign in again.');
         return;
       }
 
@@ -614,13 +631,7 @@ export default function StudentToolPage() {
       });
 
       if (!result.ok) {
-        setGeneratedContent('');
-        setRawGeneratedContent(null);
-        setResponseMeta(null);
-        setFallbackEmptyMessage(result.fallbackMessage);
-        if (shouldShowAiToolErrorAlert(result.code)) {
-          Alert.alert(result.title, result.message);
-        }
+        showInlineOutputMessage(result.fallbackMessage);
         return;
       }
 
@@ -632,10 +643,7 @@ export default function StudentToolPage() {
         'student',
       );
       if (activityDisplayError) {
-        setGeneratedContent('');
-        setRawGeneratedContent(null);
-        setResponseMeta(null);
-        setFallbackEmptyMessage(activityDisplayError);
+        showInlineOutputMessage(activityDisplayError);
         return;
       }
 
@@ -644,16 +652,11 @@ export default function StudentToolPage() {
       setParamsExpanded(false);
       setGeneratedContent(stored.generatedContent);
       setRawGeneratedContent(stored.rawGeneratedContent);
-
-      if (result.fromAiFailure) {
-        Alert.alert('Stored content (AI unavailable)', 'Showing stored content.');
-      }
     } catch (error: any) {
       console.error('Generation error:', error);
       const errMsg = String(error?.message || 'Network error. Please try again.');
       if (isAiToolClientValidationError(errMsg) || /AI_TOOL_DATA_NOT_FOUND/i.test(errMsg)) {
-        setFallbackEmptyMessage(errMsg);
-        Alert.alert('Error', errMsg);
+        showInlineOutputMessage(errMsg);
         return;
       }
 
@@ -683,13 +686,7 @@ export default function StudentToolPage() {
         });
 
         if (!fallbackResult.ok) {
-          setGeneratedContent('');
-          setRawGeneratedContent(null);
-          setResponseMeta(null);
-          setFallbackEmptyMessage(`${errMsg} ${fallbackResult.fallbackMessage}`.trim());
-          if (shouldShowAiToolErrorAlert(fallbackResult.code)) {
-            Alert.alert(fallbackResult.title, fallbackResult.message);
-          }
+          showInlineOutputMessage(`${errMsg} ${fallbackResult.fallbackMessage}`.trim());
           return;
         }
 
@@ -699,6 +696,17 @@ export default function StudentToolPage() {
           fallbackResult.rawContent,
           'student'
         );
+        const activityDisplayError = validateActivityToolDisplay(
+          toolType || '',
+          stored.generatedContent,
+          stored.rawGeneratedContent,
+          'student',
+        );
+        if (activityDisplayError) {
+          showInlineOutputMessage(activityDisplayError);
+          return;
+        }
+
         setResponseMeta(fallbackResult.metadata);
         setFromAiFailure(false);
         setParamsExpanded(false);
@@ -706,8 +714,7 @@ export default function StudentToolPage() {
         setRawGeneratedContent(stored.rawGeneratedContent);
       } catch (fallbackError: any) {
         const fe = String(fallbackError?.message || 'Fallback lookup failed');
-        setFallbackEmptyMessage(`${errMsg} ${fe}`.trim());
-        Alert.alert('Error', `${errMsg} ${fe}`.trim());
+        showInlineOutputMessage(`${errMsg} ${fe}`.trim());
       }
     } finally {
       setIsGenerating(false);
@@ -946,7 +953,9 @@ export default function StudentToolPage() {
     <View
       style={styles.outputSection}
       collapsable={false}
-      onLayout={generatedContent && !isGenerating ? onOutputLayout : undefined}
+      onLayout={
+        !isGenerating && (generatedContent || fallbackEmptyMessage) ? onOutputLayout : undefined
+      }
     >
       {isGenerating ? (
         <View style={styles.generatingBox}>
@@ -968,12 +977,26 @@ export default function StudentToolPage() {
       ) : (
         <View style={styles.emptyResult}>
           <View style={styles.emptyResultIcon}>
-            <Ionicons name="sparkles" size={28} color={STUDENT.navInactive} />
+            <Ionicons
+              name={fallbackEmptyMessage ? 'alert-circle-outline' : 'sparkles'}
+              size={28}
+              color={fallbackEmptyMessage ? '#dc2626' : STUDENT.navInactive}
+            />
           </View>
-          <Text style={[styles.emptyResultTitle, isTablet && aiToolTabletPageStyles.emptyResultTitle]}>
+          <Text
+            style={[
+              styles.emptyResultTitle,
+              isTablet && aiToolTabletPageStyles.emptyResultTitle,
+              fallbackEmptyMessage ? styles.emptyResultTitleError : null,
+            ]}
+          >
             {fallbackEmptyMessage || 'Generated content will appear here'}
           </Text>
-          <Text style={[styles.emptyResultText, isTablet && aiToolTabletPageStyles.emptyResultText]}>Choose tool parameters and tap Generate.</Text>
+          {!fallbackEmptyMessage ? (
+            <Text style={[styles.emptyResultText, isTablet && aiToolTabletPageStyles.emptyResultText]}>
+              Choose tool parameters and tap Generate.
+            </Text>
+          ) : null}
         </View>
       )}
     </View>
@@ -1305,7 +1328,14 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
-  emptyResultTitle: { marginTop: STUDENT_SPACING.md, ...STUDENT_TYPO.body, fontWeight: '700', color: STUDENT.textMuted },
+  emptyResultTitle: {
+    marginTop: STUDENT_SPACING.md,
+    ...STUDENT_TYPO.body,
+    fontWeight: '700',
+    color: STUDENT.textMuted,
+    textAlign: 'center',
+  },
+  emptyResultTitleError: { color: '#b91c1c' },
   emptyResultText: { marginTop: 4, ...STUDENT_TYPO.caption, color: STUDENT.navInactive, textAlign: 'center' },
   footer: {
     paddingHorizontal: STUDENT_SPACING.lg,

@@ -44,16 +44,6 @@ export type AiToolGenerateFailure = {
 
 export type AiToolGenerateResult = AiToolGenerateSuccess | AiToolGenerateFailure;
 
-const INLINE_ONLY_ERROR_CODES = new Set([
-  'AI_TOOL_CONTENT_INCOMPLETE',
-  'AI_TOOL_WRONG_TYPE',
-  'AI_TOOL_DATA_NOT_FOUND',
-]);
-
-export function shouldShowAiToolErrorAlert(code?: string): boolean {
-  return !code || !INLINE_ONLY_ERROR_CODES.has(code);
-}
-
 function activitiesFromRaw(rawContent: unknown) {
   if (!rawContent || typeof rawContent !== 'object') return undefined;
   const rc = rawContent as Record<string, unknown>;

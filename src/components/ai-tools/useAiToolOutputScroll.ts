@@ -41,16 +41,18 @@ export function useAiToolOutputScroll(isTablet: boolean) {
   return { scrollRef, onOutputLayout, queueScrollToOutput, resetOutputScroll };
 }
 
-/** Queue scroll after generate finishes and params panel has collapsed. */
+/** Queue scroll after generate finishes or an inline output message is shown. */
 export function useQueueAiToolScrollOnGenerate(
   generatedContent: string,
   isGenerating: boolean,
   isTablet: boolean,
   queueScrollToOutput: () => void,
+  fallbackEmptyMessage = '',
 ) {
   useEffect(() => {
-    if (!generatedContent || isGenerating || isTablet) return;
+    if (isGenerating || isTablet) return;
+    if (!generatedContent && !fallbackEmptyMessage) return;
     const timer = setTimeout(queueScrollToOutput, 120);
     return () => clearTimeout(timer);
-  }, [generatedContent, isGenerating, isTablet, queueScrollToOutput]);
+  }, [generatedContent, fallbackEmptyMessage, isGenerating, isTablet, queueScrollToOutput]);
 }
