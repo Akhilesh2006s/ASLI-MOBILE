@@ -58,6 +58,7 @@ function renderConceptBreakdownHtml(content: string, rawContent: unknown): strin
         eyebrow: 'Concept Title',
         title: concept.conceptTitle,
         theme: 'violet',
+        toolType: 'concept-breakdown-explainer',
       });
       if (concept.simpleDefinition) {
         html += sectionCardHtml({
@@ -126,6 +127,7 @@ function renderChapterSummaryHtml(content: string, rawContent: unknown): string 
     eyebrow: 'Section 1 · Chapter Summary',
     title: summary.title || 'Chapter Summary',
     theme: 'blue',
+    toolType: 'chapter-summary-creator',
   });
   if (summary.chapterOverview) {
     html += sectionCardHtml({
@@ -181,6 +183,7 @@ function renderKeyPointsHtml(content: string, rawContent: unknown): string | nul
     eyebrow: 'Section 1 · Key Points Sheet',
     title: keyPoints.title || 'Key Points & Formulas',
     theme: 'amber',
+    toolType: 'key-points-formula-extractor',
   });
   if (keyPoints.importantConcepts.length) {
     html += sectionCardHtml({
@@ -231,6 +234,7 @@ function renderPracticeQaHtml(content: string, rawContent: unknown): string | nu
     title: practice.title || 'Smart Q&A Practice',
     theme: 'orange',
     badge: `${practice.sections.length} sections`,
+    toolType: 'smart-qa-practice-generator',
   });
   for (const sec of practice.sections) {
     const questions = sec.questions || [];
@@ -270,6 +274,7 @@ function renderQuickAssignmentHtml(content: string, rawContent: unknown): string
     eyebrow: 'Quick Assignment',
     title: assignment.title || 'Assignment',
     theme: 'orange',
+    toolType: 'quick-assignment-builder',
   });
   if (assignment.instructions) {
     html += sectionCardHtml({
@@ -316,6 +321,7 @@ function renderMockTestHtml(content: string, rawContent: unknown): string | null
     eyebrow: 'Mock Test',
     title: paper.paperTitle || 'Mock Test',
     theme: 'violet',
+    toolType: 'mock-test-builder',
   });
   for (const section of paper.sections || []) {
     const qs = section.questions || [];
@@ -348,6 +354,7 @@ function renderExamPaperHtml(content: string, rawContent: unknown): string | nul
     eyebrow: 'Exam Question Paper',
     title: paper.paperTitle || 'Question Paper',
     theme: 'blue',
+    toolType: 'exam-question-paper-generator',
   });
   for (const section of paper.sections || []) {
     const qs = section.questions || [];
@@ -664,6 +671,7 @@ function renderActivityProjectHtml(
         eyebrow,
         title: activity.title,
         theme: heroTheme,
+        toolType: mode === 'teacher' ? 'activity-project-generator' : 'project-idea-lab',
       });
       html += appendActivitySectionCards(activity, mode).html;
       return html;
@@ -765,6 +773,7 @@ function renderFlashcardHtml(content: string, rawContent: unknown, variant: Vari
       title,
       theme: 'violet',
       badge: `${cards.length} cards`,
+      toolType: 'flashcard-generator',
     });
 
     html += appendThemedSectionCards([
@@ -857,6 +866,7 @@ function renderFlashcardHtml(content: string, rawContent: unknown, variant: Vari
     title: meta.title || 'Study deck',
     theme: 'violet',
     badge: `${cards.length} flashcards`,
+    toolType: 'my-study-decks',
   });
 
   html += appendThemedSectionCards([
@@ -944,6 +954,7 @@ function renderLessonPlannerHtml(content: string, rawContent: unknown): string |
         title: lesson.lessonName || 'Lesson',
         theme: 'amber',
         badge: lesson.durationLabel || lesson.subjectArea || undefined,
+        toolType: 'lesson-planner',
       });
 
       html += appendThemedSectionCards([
@@ -1056,6 +1067,7 @@ function renderDailyClassPlanHtml(content: string, rawContent: unknown): string 
         title: plan.title || 'Class Plan',
         theme: 'indigo',
         badge: plan.dayPeriodBreakup || undefined,
+        toolType: 'daily-class-plan-maker',
       });
 
       html += appendThemedSectionCards([
@@ -1158,6 +1170,7 @@ function renderHomeworkHtml(content: string, rawContent: unknown): string | null
     title: homework.title || 'Homework Assignment',
     theme: 'orange',
     badge: 'Homework Title',
+    toolType: 'homework-creator',
   });
 
   const sections: Array<{
@@ -1294,6 +1307,7 @@ function renderWorksheetHtml(content: string, rawContent: unknown): string | nul
     title: worksheet.title || 'Worksheet',
     theme: 'indigo',
     badge: 'Teacher worksheet pack',
+    toolType: 'worksheet-mcq-generator',
   });
 
   html += sectionCardHtml({
@@ -1607,6 +1621,7 @@ function renderStoryHtml(content: string, rawContent: unknown): string | null {
           title: story.title || 'Reading Passage',
           theme: 'blue',
           badge: 'Story / Passage Title',
+          toolType: 'story-passage-creator',
         });
         html += renderTeacherStoryPassageSections(story);
         return html;
@@ -1618,6 +1633,7 @@ function renderStoryHtml(content: string, rawContent: unknown): string | null {
     eyebrow: 'Reading Practice',
     title: bundle.title || 'Passages',
     theme: 'blue',
+    toolType: 'reading-practice-room',
   });
   for (const p of bundle.passages || []) {
     html += sectionCardHtml({
@@ -1773,6 +1789,7 @@ function renderConceptMasteryHtml(content: string, rawContent: unknown): string 
         title: concept.conceptName || 'Concept',
         theme: 'violet',
         badge: concept.difficulty || undefined,
+        toolType: 'concept-mastery-helper',
       });
       html += renderConceptMasterySections(concept);
       return html;

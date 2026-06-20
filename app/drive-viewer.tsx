@@ -115,6 +115,7 @@ export default function DriveViewer() {
 
     return (
       <MediaPreviewPanel
+        key={`${previewUrl}|${contentType}|${previewTitle}`}
         fileUrl={previewUrl}
         title={previewTitle}
         contentType={contentType || file?.fileType}

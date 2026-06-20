@@ -8,9 +8,7 @@
     "userInterfaceStyle": "light",
     "jsEngine": "hermes",
     "splash": {
-      "image": "./assets/app-icon-splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#2563eb"
+      "backgroundColor": "#f0fdf4"
     },
     "assetBundlePatterns": [
       "**/*"

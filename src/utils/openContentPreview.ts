@@ -1,6 +1,6 @@
 import { Alert } from 'react-native';
 import type { Router } from 'expo-router';
-import { getPreviewKind, isYouTubeUrl, resolveContentUrl } from './contentPreview';
+import { getPreviewKind, resolveContentUrl } from './contentPreview';
 
 type ContentLike = {
   _id?: string;
@@ -33,15 +33,14 @@ export function openContentPreview(
     '';
   const contentId = item._id || item.id;
   const returnParams = options?.returnTo ? { returnTo: options.returnTo } : {};
+  const kind = getPreviewKind(rawUrl, item.type, item.youtubeUrl);
 
-  const isVideoType =
-    item.type === 'Video' ||
-    isYouTubeUrl(item.youtubeUrl || '') ||
-    isYouTubeUrl(rawUrl) ||
-    getPreviewKind(rawUrl, item.type, item.youtubeUrl) === 'video' ||
-    getPreviewKind(rawUrl, item.type, item.youtubeUrl) === 'youtube';
+  /** Use native video player only for real streams — not PDFs/audio mis-tagged as Video. */
+  const useVideoPlayer =
+    kind === 'youtube' ||
+    (kind === 'video' && (item.type === 'Video' || item.type === 'video'));
 
-  if (isVideoType) {
+  if (useVideoPlayer && (rawUrl || item.youtubeUrl)) {
     const contentPayload = {
       _id: contentId || 'preview',
       title: item.title || item.topic || 'Video',

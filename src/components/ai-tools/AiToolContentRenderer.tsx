@@ -105,14 +105,12 @@ export default function AiToolContentRenderer({
 
   const useNativeFlashcard = useMemo(() => {
     if (toolType !== 'my-study-decks' && toolType !== 'flashcard-generator') return false;
-    // Teacher flashcards use the colored WebView renderer (tinted section cards).
-    if (toolType === 'flashcard-generator' && variant === 'teacher') return false;
     const { cards } = resolveFlashcardsFromPayload(cleaned, rawContent);
     return flashcardsHaveVisibleBody(cards);
-  }, [toolType, cleaned, rawContent, variant]);
+  }, [toolType, cleaned, rawContent]);
 
   if (useNativeStudyGuide) {
-    return <SmartStudyGuideViewer content={cleaned} rawContent={rawContent} />;
+    return <SmartStudyGuideViewer content={cleaned} rawContent={rawContent} toolType={toolType} />;
   }
 
   if (useNativeActivity) {
@@ -121,6 +119,7 @@ export default function AiToolContentRenderer({
         content={cleaned}
         rawContent={rawContent}
         variant={toolType === 'project-idea-lab' ? 'student' : variant}
+        toolType={toolType}
       />
     );
   }
@@ -130,7 +129,8 @@ export default function AiToolContentRenderer({
       <FlashcardViewer
         content={cleaned}
         rawContent={rawContent}
-        variant={toolType === 'flashcard-generator' ? 'teacher' : 'student'}
+        variant={variant}
+        toolType={toolType}
       />
     );
   }

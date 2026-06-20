@@ -21,9 +21,12 @@ import {
   createTopic,
   deleteTopic,
   emptyTopicForm,
+  fetchTopicBoards,
+  fetchTopicHierarchy,
   fetchTopicOptions,
   fetchTopicRows,
   filterVisibleRows,
+  type TopicHierarchyTree,
   normalizeClassLabel,
   sortNatural,
   topicFormFromRow,
@@ -125,10 +128,8 @@ export default function AiToolTopicsView() {
   const [selectedTopic, setSelectedTopic] = useState('');
   const [selectedSubTopic, setSelectedSubTopic] = useState('');
   const [availableBoards, setAvailableBoards] = useState<string[]>([]);
-  const [hierarchyClasses, setHierarchyClasses] = useState<string[]>([]);
-  const [hierarchySubjects, setHierarchySubjects] = useState<string[]>([]);
-  const [hierarchyTopics, setHierarchyTopics] = useState<string[]>([]);
-  const [hierarchySubTopics, setHierarchySubTopics] = useState<string[]>([]);
+  const [hierarchyTree, setHierarchyTree] = useState<TopicHierarchyTree | null>(null);
+  const [loadingHierarchy, setLoadingHierarchy] = useState(false);
   const [isLoadingRows, setIsLoadingRows] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
@@ -179,53 +180,50 @@ export default function AiToolTopicsView() {
     }
   }, [search, selectedBoard, selectedClass, selectedSubject, selectedTopic, selectedSubTopic]);
 
-  const fetchHierarchyOptions = useCallback(async () => {
+  const loadBoards = useCallback(async () => {
     try {
-      const boardsData = await fetchTopicOptions();
-      setAvailableBoards(sortNatural(boardsData.boards || []));
-
-      if (!selectedBoard) {
-        setHierarchyClasses([]);
-        setHierarchySubjects([]);
-        setHierarchyTopics([]);
-        setHierarchySubTopics([]);
-        return;
-      }
-
-      const [classesData, subjectsData, topicsData, subTopicsData] = await Promise.all([
-        fetchTopicOptions({ board: selectedBoard }),
-        selectedClass
-          ? fetchTopicOptions({ board: selectedBoard, classLabel: selectedClass })
-          : Promise.resolve(EMPTY_TOPIC_OPTIONS),
-        selectedClass && selectedSubject
-          ? fetchTopicOptions({
-              board: selectedBoard,
-              classLabel: selectedClass,
-              subject: selectedSubject,
-            })
-          : Promise.resolve(EMPTY_TOPIC_OPTIONS),
-        selectedClass && selectedSubject && selectedTopic
-          ? fetchTopicOptions({
-              board: selectedBoard,
-              classLabel: selectedClass,
-              subject: selectedSubject,
-              topicName: selectedTopic,
-            })
-          : Promise.resolve(EMPTY_TOPIC_OPTIONS),
-      ]);
-
-      setHierarchyClasses(sortNatural(classesData.classes || []));
-      setHierarchySubjects(sortNatural(subjectsData.subjects || []));
-      setHierarchyTopics(sortNatural(topicsData.topics || []));
-      setHierarchySubTopics(sortNatural(subTopicsData.subTopics || []));
+      const boards = await fetchTopicBoards();
+      setAvailableBoards(sortNatural(boards));
     } catch {
       setAvailableBoards([]);
-      setHierarchyClasses([]);
-      setHierarchySubjects([]);
-      setHierarchyTopics([]);
-      setHierarchySubTopics([]);
     }
-  }, [selectedBoard, selectedClass, selectedSubject, selectedTopic]);
+  }, []);
+
+  const loadBoardHierarchy = useCallback(async (board: string) => {
+    if (!board) {
+      setHierarchyTree(null);
+      return;
+    }
+    setLoadingHierarchy(true);
+    try {
+      const tree = await fetchTopicHierarchy(board);
+      setHierarchyTree(tree);
+    } catch {
+      setHierarchyTree(null);
+    } finally {
+      setLoadingHierarchy(false);
+    }
+  }, []);
+
+  const hierarchyClasses = useMemo(
+    () => (hierarchyTree ? sortNatural(Object.keys(hierarchyTree)) : []),
+    [hierarchyTree],
+  );
+
+  const hierarchySubjects = useMemo(() => {
+    if (!hierarchyTree || !selectedClass) return [];
+    return sortNatural(Object.keys(hierarchyTree[selectedClass] || {}));
+  }, [hierarchyTree, selectedClass]);
+
+  const hierarchyTopics = useMemo(() => {
+    if (!hierarchyTree || !selectedClass || !selectedSubject) return [];
+    return Object.keys(hierarchyTree[selectedClass]?.[selectedSubject] || {});
+  }, [hierarchyTree, selectedClass, selectedSubject]);
+
+  const hierarchySubTopics = useMemo(() => {
+    if (!hierarchyTree || !selectedClass || !selectedSubject || !selectedTopic) return [];
+    return hierarchyTree[selectedClass]?.[selectedSubject]?.[selectedTopic] || [];
+  }, [hierarchyTree, selectedClass, selectedSubject, selectedTopic]);
 
   const fetchDialogOptions = useCallback(async (boardValue: string, classLabelValue: string) => {
     try {
@@ -248,8 +246,12 @@ export default function AiToolTopicsView() {
   }, [fetchRows]);
 
   useEffect(() => {
-    fetchHierarchyOptions();
-  }, [fetchHierarchyOptions]);
+    loadBoards();
+  }, [loadBoards]);
+
+  useEffect(() => {
+    loadBoardHierarchy(selectedBoard);
+  }, [selectedBoard, loadBoardHierarchy]);
 
   useEffect(() => {
     if (!isDialogOpen) return;
@@ -258,9 +260,13 @@ export default function AiToolTopicsView() {
 
   const visibleRows = useMemo(() => filterVisibleRows(rows, selectedTopic), [rows, selectedTopic]);
 
+  const refreshHierarchy = useCallback(async () => {
+    await Promise.all([loadBoards(), loadBoardHierarchy(selectedBoard)]);
+  }, [loadBoards, loadBoardHierarchy, selectedBoard]);
+
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchRows(), fetchHierarchyOptions()]);
+    await Promise.all([fetchRows(), refreshHierarchy()]);
     setRefreshing(false);
   };
 
@@ -303,7 +309,7 @@ export default function AiToolTopicsView() {
       setForm(emptyTopicForm());
       resetCustomFields();
       setEditingId(null);
-      await Promise.all([fetchRows(), fetchHierarchyOptions()]);
+      await Promise.all([fetchRows(), refreshHierarchy()]);
     } catch (err: any) {
       Alert.alert('Error', err?.friendlyMessage || err?.response?.data?.message || 'Failed to save topic.');
     } finally {
@@ -320,7 +326,7 @@ export default function AiToolTopicsView() {
         onPress: async () => {
           try {
             await deleteTopic(id);
-            await Promise.all([fetchRows(), fetchHierarchyOptions()]);
+            await Promise.all([fetchRows(), refreshHierarchy()]);
           } catch (err: any) {
             Alert.alert('Error', err?.friendlyMessage || 'Failed to delete topic.');
           }
@@ -369,7 +375,7 @@ export default function AiToolTopicsView() {
             Alert.alert('Deleted', `Deleted ${count} topic mappings.`);
             setSelectedTopic('');
             setSelectedSubTopic('');
-            await Promise.all([fetchRows(), fetchHierarchyOptions()]);
+            await Promise.all([fetchRows(), refreshHierarchy()]);
           } catch (err: any) {
             Alert.alert('Error', err?.message || err?.friendlyMessage || 'Failed to bulk delete.');
           } finally {
@@ -446,6 +452,12 @@ export default function AiToolTopicsView() {
       </View>
 
       <View style={styles.hierarchyPanel}>
+        {loadingHierarchy ? (
+          <View style={styles.hierarchyLoading}>
+            <ActivityIndicator size="small" color="#f97316" />
+            <Text style={styles.hierarchyLoadingText}>Loading hierarchy…</Text>
+          </View>
+        ) : null}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.boardTabs}>
           {availableBoards.map((board) => {
             const isActive = selectedBoard === board;
@@ -783,6 +795,13 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 12,
   },
+  hierarchyLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingBottom: 10,
+  },
+  hierarchyLoadingText: { fontSize: 13, color: '#64748b' },
   boardTabs: { flexDirection: 'row', gap: 8, paddingBottom: 12, marginBottom: 4 },
   boardTab: {
     borderWidth: 1,

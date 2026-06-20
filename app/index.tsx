@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
 import { Redirect } from 'expo-router';
+import { View, StyleSheet } from 'react-native';
 import { useAuth } from '../src/context/AuthContext';
-import { AppSplash, SPLASH_DURATION_MS, SPLASH_EXIT_DURATION_MS } from '../src/components/AppSplash';
 
 function getDashboardByRole(role: string | null) {
   if (role === 'super-admin') return '/super-admin-dashboard';
@@ -12,27 +11,9 @@ function getDashboardByRole(role: string | null) {
 
 export default function Index() {
   const { isLoading, isAuthenticated, role } = useAuth();
-  const [splashExiting, setSplashExiting] = useState(false);
-  const [splashDone, setSplashDone] = useState(false);
-
-  useEffect(() => {
-    const exitTimer = setTimeout(() => setSplashExiting(true), SPLASH_DURATION_MS - SPLASH_EXIT_DURATION_MS);
-    const doneTimer = setTimeout(() => setSplashDone(true), SPLASH_DURATION_MS);
-    return () => {
-      clearTimeout(exitTimer);
-      clearTimeout(doneTimer);
-    };
-  }, []);
-
-  if (!splashDone) {
-    return <AppSplash exiting={splashExiting} />;
-  }
 
   if (isLoading) {
-    if (isAuthenticated) {
-      return <Redirect href={getDashboardByRole(role)} />;
-    }
-    return <AppSplash exiting />;
+    return <View style={styles.boot} />;
   }
 
   if (!isAuthenticated) {
@@ -41,3 +22,10 @@ export default function Index() {
 
   return <Redirect href={getDashboardByRole(role)} />;
 }
+
+const styles = StyleSheet.create({
+  boot: {
+    flex: 1,
+    backgroundColor: '#f0fdf4',
+  },
+});

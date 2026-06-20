@@ -23,11 +23,13 @@ import {
   type StudentDeckMeta,
   type TeacherDeckMeta,
 } from '../../lib/parse-flashcards';
+import { getAiToolIonicon } from '../../lib/ai-tool-icons';
 
 type Props = {
   content: string;
   rawContent?: unknown;
   variant?: 'student' | 'teacher';
+  toolType?: string;
 };
 
 type SectionDef = {
@@ -111,9 +113,7 @@ function Chip({ label, value, color }: { label: string; value: string; color: st
   return (
     <View style={[styles.chip, { backgroundColor: color }]}>
       <Text style={styles.chipLabel}>{label}</Text>
-      <Text style={styles.chipValue} numberOfLines={2}>
-        {value}
-      </Text>
+      <Text style={styles.chipValue}>{value}</Text>
     </View>
   );
 }
@@ -178,61 +178,66 @@ function FlipCardSession({ cards }: { cards: Flashcard[] }) {
 
       <View style={styles.flipContainer}>
         <Animated.View style={[styles.flipFace, styles.flipFront, frontStyle]}>
-          <Pressable style={styles.flipPressable} onPress={() => toggleFlip()}>
+          <View style={styles.flipCardInner}>
             <View style={styles.faceHeader}>
               <Text style={styles.faceHeaderFront}>Question</Text>
             </View>
-            <View style={styles.faceBody}>
-              <Text style={styles.faceText}>{current.front}</Text>
-            </View>
+            <ScrollView
+              style={styles.faceBodyScroll}
+              contentContainerStyle={styles.faceBodyContent}
+              showsVerticalScrollIndicator={false}
+              nestedScrollEnabled
+            >
+              <Pressable onPress={() => toggleFlip()}>
+                <Text style={styles.faceText}>{current.front}</Text>
+              </Pressable>
+            </ScrollView>
             <Pressable
               style={styles.showAnswerBtn}
-              onPress={(e) => {
-                e.stopPropagation?.();
-                toggleFlip(true);
-              }}
+              onPress={() => toggleFlip(true)}
             >
               <Ionicons name="book-outline" size={14} color="#fff" />
               <Text style={styles.showAnswerText}>Show answer</Text>
             </Pressable>
-          </Pressable>
+          </View>
         </Animated.View>
 
         <Animated.View style={[styles.flipFace, styles.flipBack, backStyle]}>
-          <Pressable style={styles.flipPressable} onPress={() => toggleFlip(false)}>
+          <View style={styles.flipCardInner}>
             <View style={[styles.faceHeader, styles.faceHeaderBack]}>
               <Text style={styles.faceHeaderBackText}>Answer</Text>
             </View>
-            <View style={styles.faceBody}>
-              <Text style={styles.faceText}>{current.back}</Text>
-              {extras.length > 0 ? (
-                <View style={styles.extrasRow}>
-                  {extras.map((chip) => (
-                    <View key={chip.label} style={[styles.extraChip, { backgroundColor: chip.color }]}>
-                      <Text style={styles.extraChipLabel}>{chip.label}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : null}
-            </View>
-            <Pressable
-              style={styles.backBtn}
-              onPress={(e) => {
-                e.stopPropagation?.();
-                toggleFlip(false);
-              }}
+            <ScrollView
+              style={styles.faceBodyScroll}
+              contentContainerStyle={styles.faceBodyContent}
+              showsVerticalScrollIndicator={false}
+              nestedScrollEnabled
             >
+              <Pressable onPress={() => toggleFlip(false)}>
+                <Text style={styles.faceText}>{current.back}</Text>
+                {extras.length > 0 ? (
+                  <View style={styles.extrasRow}>
+                    {extras.map((chip) => (
+                      <View key={chip.label} style={[styles.extraChip, { backgroundColor: chip.color }]}>
+                        <Text style={styles.extraChipLabel}>{chip.label}</Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+              </Pressable>
+            </ScrollView>
+            <Pressable style={styles.backBtn} onPress={() => toggleFlip(false)}>
               <Ionicons name="refresh-outline" size={14} color="#4338ca" />
               <Text style={styles.backBtnText}>Back</Text>
             </Pressable>
-          </Pressable>
+          </View>
         </Animated.View>
       </View>
 
       {extras.length > 0 ? (
         <View style={styles.studyBoosters}>
           <Text style={styles.studyBoostersTitle}>Study boosters</Text>
-          <View style={styles.chipGrid}>
+          <View style={styles.studyBoosterList}>
             {extras.map((chip) => (
               <Chip key={chip.label} label={chip.label} value={chip.value} color={chip.color} />
             ))}
@@ -442,9 +447,11 @@ function StudentDeckView({ meta, cards }: { meta: StudentDeckMeta; cards: Flashc
 function TeacherDeckView({
   meta,
   cards,
+  heroIcon,
 }: {
   meta: TeacherDeckMeta;
   cards: Flashcard[];
+  heroIcon: keyof typeof Ionicons.glyphMap;
 }) {
   const topicLabel =
     meta.topic ||
@@ -470,7 +477,7 @@ function TeacherDeckView({
       icon: 'information-circle-outline',
       stripe: '#a5b4fc',
       body: (
-        <View style={styles.chipGrid}>
+        <View style={styles.chipList}>
           {contextChips.map((chip) => (
             <Chip key={chip.label} label={chip.label} value={chip.value} color="#eef2ff" />
           ))}
@@ -493,7 +500,7 @@ function TeacherDeckView({
           ) : null}
           {meta.learningObjectives.length > 0 ? (
             <>
-              <Text style={styles.boldLabel}>Learning objectives</Text>
+              <Text style={styles.boldLabelBlock}>Learning objectives</Text>
               <BulletList items={meta.learningObjectives} />
             </>
           ) : null}
@@ -533,7 +540,7 @@ function TeacherDeckView({
           ) : null}
           {meta.commonMistakesToAvoid.length > 0 ? (
             <>
-              <Text style={styles.boldLabel}>Common mistakes to avoid</Text>
+              <Text style={styles.boldLabelBlock}>Common mistakes to avoid</Text>
               <BulletList items={meta.commonMistakesToAvoid} />
             </>
           ) : null}
@@ -589,7 +596,7 @@ function TeacherDeckView({
       <View style={styles.deckShell}>
         <View style={[styles.hero, styles.heroLight]}>
           <View style={styles.heroIcon}>
-            <Ionicons name="albums-outline" size={22} color="#6d28d9" />
+            <Ionicons name={heroIcon} size={22} color="#6d28d9" />
           </View>
           <View style={styles.heroText}>
             <Text style={styles.heroEyebrow}>Flash Card Generator</Text>
@@ -618,8 +625,15 @@ function TeacherDeckView({
   );
 }
 
-export default function FlashcardViewer({ content, rawContent, variant = 'student' }: Props) {
+export default function FlashcardViewer({
+  content,
+  rawContent,
+  variant = 'student',
+  toolType,
+}: Props) {
   const cleaned = useMemo(() => stripStructuredAiToolMetadata(content), [content]);
+  const iconToolType = toolType ?? (variant === 'teacher' ? 'flashcard-generator' : 'my-study-decks');
+  const heroIcon = getAiToolIonicon(iconToolType);
   const { cards } = useMemo(
     () => resolveFlashcardsFromPayload(cleaned, rawContent),
     [cleaned, rawContent]
@@ -667,6 +681,7 @@ export default function FlashcardViewer({ content, rawContent, variant = 'studen
           }
         }
         cards={cards}
+        heroIcon={heroIcon}
       />
     );
   }
@@ -758,11 +773,11 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 8,
     borderLeftWidth: 4,
     paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingVertical: 10,
     backgroundColor: '#fafafa',
   },
   sectionIcon: {
@@ -780,10 +795,11 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: '#a78bfa',
   },
-  sectionTitle: { fontSize: 12, fontWeight: '800', color: '#0f172a' },
-  sectionBody: { paddingHorizontal: 10, paddingBottom: 10, paddingTop: 4 },
+  sectionTitle: { fontSize: 12, fontWeight: '800', color: '#0f172a', lineHeight: 18 },
+  sectionBody: { paddingHorizontal: 12, paddingBottom: 12, paddingTop: 8 },
   bodyText: { fontSize: 14, lineHeight: 22, color: '#334155' },
   boldLabel: { fontWeight: '800', color: '#312e81' },
+  boldLabelBlock: { fontWeight: '800', color: '#312e81', marginBottom: 6 },
   mb8: { marginBottom: 8 },
   gap8: { gap: 8 },
   bulletList: { gap: 6 },
@@ -797,8 +813,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ede9fe',
     backgroundColor: '#f5f3ff',
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 4,
   },
   perCardLabel: {
     fontSize: 9,
@@ -806,8 +823,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     textTransform: 'uppercase',
     color: '#7c3aed',
+    marginBottom: 2,
   },
-  perCardText: { fontSize: 13, lineHeight: 20, color: '#334155', marginTop: 2 },
+  perCardText: { fontSize: 13, lineHeight: 20, color: '#334155' },
   flipSession: { gap: 10 },
   flipMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cardCountBadge: {
@@ -818,8 +836,9 @@ const styles = StyleSheet.create({
   },
   cardCountText: { fontSize: 11, fontWeight: '700', color: '#5b21b6' },
   tapHint: { fontSize: 11, color: '#94a3b8' },
-  flipContainer: { height: 220, position: 'relative' },
-  flipFace: flipFaceBase,
+  flipContainer: { minHeight: 340, height: 340, position: 'relative' },
+  flipFace: { ...flipFaceBase, height: '100%' },
+  flipCardInner: { flex: 1, flexDirection: 'column', minHeight: 0 },
   flipFront: {
     borderRadius: 14,
     borderWidth: 1,
@@ -841,11 +860,15 @@ const styles = StyleSheet.create({
   },
   flipPressable: { flex: 1 },
   faceHeader: {
+    flexShrink: 0,
+    minHeight: 36,
     borderBottomWidth: 1,
     borderBottomColor: '#ede9fe',
     backgroundColor: '#f5f3ff',
-    paddingVertical: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   faceHeaderFront: {
     fontSize: 10,
@@ -862,21 +885,22 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: '#4338ca',
   },
-  faceBody: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+  faceBodyScroll: { flex: 1, minHeight: 0 },
+  faceBodyContent: {
+    flexGrow: 1,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingTop: 14,
+    paddingBottom: 12,
   },
   faceText: {
     fontSize: 14,
     fontWeight: '600',
-    lineHeight: 20,
+    lineHeight: 22,
     color: '#0f172a',
-    textAlign: 'center',
+    textAlign: 'left',
   },
   showAnswerBtn: {
+    flexShrink: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -889,6 +913,7 @@ const styles = StyleSheet.create({
   },
   showAnswerText: { fontSize: 12, fontWeight: '700', color: '#fff' },
   backBtn: {
+    flexShrink: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -905,19 +930,28 @@ const styles = StyleSheet.create({
   extrasRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6, marginTop: 8 },
   extraChip: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
   extraChipLabel: { fontSize: 9, fontWeight: '800', color: '#78350f' },
-  studyBoosters: { gap: 6 },
+  studyBoosters: { gap: 8, marginTop: 4 },
   studyBoostersTitle: {
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
     color: '#7c3aed',
-    textAlign: 'center',
   },
+  chipList: { gap: 8 },
+  studyBoosterList: { gap: 8 },
   chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { flex: 1, minWidth: '45%', borderRadius: 10, padding: 8, borderWidth: 1, borderColor: '#e2e8f0' },
+  chip: {
+    width: '100%',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    gap: 4,
+  },
   chipLabel: { fontSize: 9, fontWeight: '800', textTransform: 'uppercase', color: '#64748b' },
-  chipValue: { fontSize: 12, lineHeight: 18, color: '#334155', marginTop: 2 },
+  chipValue: { fontSize: 13, lineHeight: 20, color: '#334155' },
   navRow: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -269,6 +269,7 @@ function StudyCalendarSectionComponent({
               </View>
             ))}
           </View>
+          <View style={styles.weekHeadDivider} />
 
           <View style={styles.grid}>
             {Array.from({ length: 6 }, (_, rowIndex) => (
@@ -606,15 +607,26 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: STUDENT.textOnPrimary,
   },
-  weekHead: { flexDirection: 'row', marginBottom: 4 },
+  weekHead: {
+    flexDirection: 'row',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    backgroundColor: STUDENT.bgAccent,
+    borderTopLeftRadius: STUDENT_RADIUS.inner,
+    borderTopRightRadius: STUDENT_RADIUS.inner,
+  },
   weekHeadCell: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
   },
   weekHeadText: { textAlign: 'center', fontSize: 11, fontWeight: '700', color: STUDENT.textMuted },
-  grid: { gap: 2 },
+  weekHeadDivider: {
+    height: 1,
+    backgroundColor: STUDENT.surfaceBorder,
+    marginBottom: 8,
+  },
+  grid: { gap: 2, paddingTop: 2 },
   gridRow: { flexDirection: 'row' },
   dayCell: {
     flex: 1,

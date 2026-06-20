@@ -602,6 +602,144 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
     }
   }, [visibleCount, filteredVideos.length]);
 
+  const clearAllFilters = useCallback(() => {
+    setSelectedClass(null);
+    setSelectedSubject(null);
+    setSearchTerm('');
+    setSessionSearchTerm('');
+  }, [setSelectedClass, setSelectedSubject]);
+
+  const hasVideoFilters = Boolean(selectedClass || selectedSubject || searchTerm.trim());
+  const hasSessionFilters = Boolean(selectedClass || selectedSubject || sessionSearchTerm.trim());
+
+  const videoEmptyContent = useMemo(() => {
+    if (!isAsliPrepExclusive) {
+      return {
+        icon: 'school-outline' as const,
+        title: 'Videos not available',
+        subtitle:
+          'On-demand videos are included with Asli Prep schools. You can still join live classes from the Live tab.',
+        actionLabel: 'View live sessions',
+        onAction: () => setActiveTab('live-sessions'),
+      };
+    }
+    if (searchTerm.trim() && classSubjectFilteredVideos.length > 0) {
+      return {
+        icon: 'search-outline' as const,
+        title: 'No matching videos',
+        subtitle: `Nothing matched “${searchTerm.trim()}”. Try a different keyword or clear your search.`,
+        actionLabel: 'Clear search',
+        onAction: () => setSearchTerm(''),
+      };
+    }
+    if (hasVideoFilters && videoCatalog.length > 0) {
+      const parts: string[] = [];
+      if (selectedClass) parts.push(`Class ${selectedClass}`);
+      if (selectedSubject) parts.push(selectedSubject);
+      return {
+        icon: 'filter-outline' as const,
+        title: 'No videos for these filters',
+        subtitle:
+          parts.length > 0
+            ? `No videos found for ${parts.join(' · ')}. Try another class or subject, or clear filters to browse all videos.`
+            : 'No videos match your current filters. Clear filters to see everything available.',
+        actionLabel: 'Clear filters',
+        onAction: clearAllFilters,
+      };
+    }
+    if (videoCatalog.length === 0) {
+      return {
+        icon: 'videocam-outline' as const,
+        title: 'No videos yet',
+        subtitle: 'Your school has not published any videos yet. Pull down to refresh, or check live sessions for upcoming classes.',
+        actionLabel: 'Refresh',
+        onAction: () => void onRefresh(),
+      };
+    }
+    return {
+      icon: 'videocam-outline' as const,
+      title: 'No videos found',
+      subtitle: 'Try another class, subject, or search term—or clear filters to see all available videos.',
+      actionLabel: hasVideoFilters ? 'Clear filters' : undefined,
+      onAction: hasVideoFilters ? clearAllFilters : undefined,
+    };
+  }, [
+    isAsliPrepExclusive,
+    searchTerm,
+    classSubjectFilteredVideos.length,
+    hasVideoFilters,
+    videoCatalog.length,
+    selectedClass,
+    selectedSubject,
+    clearAllFilters,
+    onRefresh,
+  ]);
+
+  const sessionEmptyContent = useMemo(() => {
+    if (sessionSearchTerm.trim() && classSubjectFilteredSessions.length > 0) {
+      return {
+        icon: 'search-outline' as const,
+        title: 'No matching sessions',
+        subtitle: `Nothing matched “${sessionSearchTerm.trim()}”. Try another keyword or clear your search.`,
+        actionLabel: 'Clear search',
+        onAction: () => setSessionSearchTerm(''),
+      };
+    }
+    if (hasSessionFilters && sessionCatalog.length > 0) {
+      return {
+        icon: 'filter-outline' as const,
+        title: 'No sessions for these filters',
+        subtitle: 'Try another class or subject, or clear filters to see all scheduled live classes.',
+        actionLabel: 'Clear filters',
+        onAction: clearAllFilters,
+      };
+    }
+    if (sessionCatalog.length === 0) {
+      return {
+        icon: 'radio-outline' as const,
+        title: 'No live sessions right now',
+        subtitle: 'When your teachers schedule a class, it will show up here. Pull down to refresh.',
+        actionLabel: 'Refresh',
+        onAction: () => void onRefresh(),
+      };
+    }
+    return {
+      icon: 'radio-outline' as const,
+      title: 'No sessions match filters',
+      subtitle: 'Try another search or clear filters to browse all live sessions.',
+      actionLabel: hasSessionFilters ? 'Clear filters' : undefined,
+      onAction: hasSessionFilters ? clearAllFilters : undefined,
+    };
+  }, [
+    sessionSearchTerm,
+    classSubjectFilteredSessions.length,
+    hasSessionFilters,
+    sessionCatalog.length,
+    clearAllFilters,
+    onRefresh,
+  ]);
+
+  const renderEmptyStateCard = (content: {
+    icon: keyof typeof Ionicons.glyphMap;
+    title: string;
+    subtitle: string;
+    actionLabel?: string;
+    onAction?: () => void;
+  }) => (
+    <View style={styles.emptyCard}>
+      <View style={styles.emptyIconWrap}>
+        <Ionicons name={content.icon} size={32} color={STUDENT.primaryDark} />
+      </View>
+      <Text style={styles.emptyTitle}>{content.title}</Text>
+      <Text style={styles.emptyText}>{content.subtitle}</Text>
+      {content.actionLabel && content.onAction ? (
+        <TouchableOpacity style={styles.emptyActionBtn} activeOpacity={0.85} onPress={content.onAction}>
+          <Text style={styles.emptyActionText}>{content.actionLabel}</Text>
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  );
+
   const renderVideoItem = useCallback(({ item: video }: { item: VideoItem }) => (
     <EduOTTVideoCard
       variant="student"
@@ -726,17 +864,11 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
   );
 
   const renderVideoContent = () => {
-    if (loading) return renderSkeletons();
-    if (filteredVideos.length === 0) {
+    if (loading) {
       return (
-        <View style={styles.emptyState}>
-          <Ionicons name="videocam-outline" size={52} color="#94a3b8" />
-          <Text style={styles.emptyTitle}>No videos found</Text>
-          <Text style={styles.emptyText}>
-            {!isAsliPrepExclusive
-              ? 'Videos are available for Asli Prep schools only.'
-              : 'No content available for the selected filters, or try another keyword. Clear filters to see all items.'}
-          </Text>
+        <View style={styles.loadingWrap}>
+          {listHeader}
+          {renderSkeletons()}
         </View>
       );
     }
@@ -753,9 +885,14 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
           <>
             {listHeader}
             <SearchBar value={searchTerm} onChangeText={setSearchTerm} />
-            <Text style={styles.resultsCount}>Showing {visibleVideos.length} of {filteredVideos.length}</Text>
+            {filteredVideos.length > 0 ? (
+              <Text style={styles.resultsCount}>
+                Showing {visibleVideos.length} of {filteredVideos.length}
+              </Text>
+            ) : null}
           </>
         }
+        ListEmptyComponent={renderEmptyStateCard(videoEmptyContent)}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         onEndReached={onEndReached}
         onEndReachedThreshold={0.35}
@@ -763,6 +900,7 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
           styles.listContainer,
           { paddingBottom: listScrollBottomPad },
           isGrid && styles.listContainerGrid,
+          filteredVideos.length === 0 && styles.listContainerEmpty,
         ]}
         maxToRenderPerBatch={8}
         initialNumToRender={8}
@@ -799,21 +937,13 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
             />
           </>
         }
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Ionicons name="radio-outline" size={52} color="#94a3b8" />
-            <Text style={styles.emptyTitle}>
-              {liveSessions.length === 0 ? 'No live sessions right now' : 'No sessions match filters'}
-            </Text>
-            <Text style={styles.emptyText}>
-              {liveSessions.length === 0
-                ? 'Upcoming classes will appear here.'
-                : 'Try another search or class/subject filter.'}
-            </Text>
-          </View>
-        }
+        ListEmptyComponent={renderEmptyStateCard(sessionEmptyContent)}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        contentContainerStyle={[styles.listContainer, { paddingBottom: listScrollBottomPad }]}
+        contentContainerStyle={[
+          styles.listContainer,
+          { paddingBottom: listScrollBottomPad },
+          filteredSessions.length === 0 && styles.listContainerEmpty,
+        ]}
         showsVerticalScrollIndicator={false}
       />
     );
@@ -835,6 +965,12 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     paddingBottom: STUDENT_SPACING.xl,
+  },
+  listContainerEmpty: {
+    flexGrow: 1,
+  },
+  loadingWrap: {
+    flex: 1,
   },
   listContainerGrid: {
     maxWidth: EDUOTT_GRID_MAX_WIDTH,
@@ -912,22 +1048,53 @@ const styles = StyleSheet.create({
     color: STUDENT.textMuted,
     marginBottom: STUDENT_SPACING.sm,
   },
-  emptyState: {
+  emptyCard: {
     alignItems: 'center',
-    padding: 30,
-    marginTop: 30,
+    marginTop: STUDENT_SPACING.lg,
+    marginBottom: STUDENT_SPACING.xl,
+    paddingVertical: STUDENT_SPACING.xxl,
+    paddingHorizontal: STUDENT_SPACING.lg,
+    backgroundColor: STUDENT.surface,
+    borderRadius: STUDENT_RADIUS.card,
+    borderWidth: 1,
+    borderColor: STUDENT.surfaceBorder,
+    ...STUDENT.shadow.sm,
+  },
+  emptyIconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: STUDENT.navActiveBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: STUDENT_SPACING.md,
   },
   emptyTitle: {
-    marginTop: 10,
-    fontSize: 16,
-    fontWeight: '700',
-    color: STUDENT.textSecondary,
+    fontSize: 18,
+    fontWeight: '800',
+    color: STUDENT.text,
+    textAlign: 'center',
   },
   emptyText: {
-    marginTop: 6,
-    fontSize: 13,
+    marginTop: STUDENT_SPACING.sm,
+    fontSize: 14,
+    lineHeight: 21,
     color: STUDENT.textMuted,
     textAlign: 'center',
+    maxWidth: 300,
+  },
+  emptyActionBtn: {
+    marginTop: STUDENT_SPACING.lg,
+    paddingVertical: 12,
+    paddingHorizontal: 22,
+    borderRadius: STUDENT_RADIUS.full,
+    backgroundColor: STUDENT.primary,
+    ...STUDENT.shadow.sm,
+  },
+  emptyActionText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: STUDENT.textOnPrimary,
   },
   sessionCard: {
     backgroundColor: STUDENT.surface,

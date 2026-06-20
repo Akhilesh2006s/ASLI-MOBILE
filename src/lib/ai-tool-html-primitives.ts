@@ -1,6 +1,7 @@
 import { renderMarkdown } from './render-teacher-markdown';
 import { stripMarkdownSyntax } from './strip-markdown-syntax';
 import { stripAiToolGenerationLabel } from './strip-ai-tool-generation-label';
+import { getAiToolHeroEmoji } from './ai-tool-icons';
 
 type LightHeaderTheme = 'blue' | 'amber' | 'indigo' | 'emerald' | 'violet' | 'slate';
 
@@ -235,6 +236,8 @@ export function heroTitleCardHtml(opts: {
   theme: 'indigo' | 'orange' | 'violet' | 'blue' | 'amber';
   badge?: string;
   progressPct?: number;
+  toolType?: string;
+  iconEmoji?: string;
 }): string {
   const themes = {
     indigo: {
@@ -290,6 +293,8 @@ export function heroTitleCardHtml(opts: {
   };
   const t = themes[opts.theme];
   const displayTitle = stripAiToolGenerationLabel(opts.title, opts.eyebrow);
+  const iconChar =
+    opts.iconEmoji ?? (opts.toolType ? getAiToolHeroEmoji(opts.toolType) : '✨');
   const progress =
     opts.progressPct != null
       ? `<div class="mt-4">
@@ -308,7 +313,7 @@ export function heroTitleCardHtml(opts: {
   <div class="absolute inset-0" style="background:${t.gradient}"></div>
   <div class="relative flex flex-col gap-4 p-5">
     <div class="flex items-start gap-4">
-      <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${t.icon} text-2xl">⚗</div>
+      <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${t.icon} text-2xl">${iconChar}</div>
       <div class="min-w-0 flex-1">
         ${opts.badge ? `<span class="inline-flex items-center rounded-md border ${t.badge} text-[10px] font-semibold px-2 py-0.5 mb-2">${escapeHtml(opts.badge)}</span>` : ''}
         <p class="text-[10px] font-bold uppercase tracking-wider ${t.eyebrow} mb-1">${escapeHtml(opts.eyebrow)}</p>

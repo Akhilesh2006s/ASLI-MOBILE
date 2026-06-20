@@ -118,6 +118,7 @@ export function renderNumberedTemplateAsCards(toolType: string, text: string): s
     eyebrow: meta.eyebrow,
     title: heroTitle,
     theme: meta.theme,
+    toolType,
   });
 
   const sorted = fillCanonicalSections(

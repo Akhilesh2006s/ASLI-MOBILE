@@ -29,7 +29,7 @@ function pickParam(v: string | string[] | undefined): string {
 
 export default function SubjectContent() {
   const router = useRouter();
-  const { isAsliPrepExclusive } = useSchoolProgram();
+  const { isAsliPrepExclusive, loading: programLoading } = useSchoolProgram();
   const { id: idRaw, returnTo: returnToRaw } = useLocalSearchParams<{
     id?: string | string[];
     returnTo?: string | string[];
@@ -69,17 +69,16 @@ export default function SubjectContent() {
   }, [id, isAsliPrepExclusive]);
 
   useEffect(() => {
-    if (id) {
-      fetchSubjectData();
-    }
-  }, [id, fetchSubjectData]);
+    if (!id || programLoading) return;
+    void fetchSubjectData();
+  }, [id, programLoading, fetchSubjectData]);
 
   const openContentItem = (item: LearningPathContentItem) => {
     const previewOpts = returnTo === 'learning' ? { returnTo: 'learning' as const } : undefined;
     openContentPreview(router, item, previewOpts);
   };
 
-  if (isLoading) {
+  if (isLoading || programLoading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>

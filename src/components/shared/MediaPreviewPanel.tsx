@@ -32,12 +32,19 @@ export default function MediaPreviewPanel({
   const ytSource = youtubeUrl || resolvedUrl;
   const kind = getPreviewKind(resolvedUrl, contentType, youtubeUrl);
 
-  const [loading, setLoading] = useState(kind === 'drive');
+  const [loading, setLoading] = useState(
+    kind === 'drive' || kind === 'image' || kind === 'video' || kind === 'audio',
+  );
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [webHeaders, setWebHeaders] = useState<Record<string, string> | undefined>();
   const [videoHeaders, setVideoHeaders] = useState<Record<string, string> | undefined>();
 
   useEffect(() => {
+    setPreviewUri(null);
+    setWebHeaders(undefined);
+    setVideoHeaders(undefined);
+    setLoading(kind === 'drive' || kind === 'image' || kind === 'video' || kind === 'audio');
+
     let cancelled = false;
 
     (async () => {
@@ -179,7 +186,11 @@ export default function MediaPreviewPanel({
 
   return (
     <View style={styles.centered}>
-      <Text style={styles.unavailableText}>Preview is not available for this file type.</Text>
+      <Text style={styles.unavailableText}>
+        {contentType
+          ? `Preview is not available for ${contentType} files on this device.`
+          : 'Preview is not available for this file type.'}
+      </Text>
     </View>
   );
 }

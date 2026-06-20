@@ -96,6 +96,23 @@ export async function fetchTopicRows(filters: TopicListFilters) {
   };
 }
 
+export type TopicHierarchyTree = Record<string, Record<string, Record<string, string[]>>>;
+
+export async function fetchTopicBoards() {
+  const response = await api.get<{ data?: { boards?: string[] } }>(
+    '/api/super-admin/ai-tool-topics/hierarchy',
+  );
+  return response.data?.data?.boards || [];
+}
+
+export async function fetchTopicHierarchy(board: string) {
+  const response = await api.get<{ data?: { tree?: TopicHierarchyTree } }>(
+    '/api/super-admin/ai-tool-topics/hierarchy',
+    { params: { board } },
+  );
+  return response.data?.data?.tree || {};
+}
+
 export async function fetchTopicOptions(params: Record<string, string> = {}) {
   const response = await api.get<{
     data?: {

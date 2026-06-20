@@ -14,7 +14,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-export const SPLASH_DURATION_MS = 3500;
+export const SPLASH_DURATION_MS = 1200;
 const EXIT_DURATION_MS = 450;
 /** Max scale from breathe + exit animations — size budget must include this. */
 const MAX_LOGO_SCALE = 1.08;

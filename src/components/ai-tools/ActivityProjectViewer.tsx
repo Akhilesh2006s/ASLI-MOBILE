@@ -12,6 +12,7 @@ import {
 } from '../../lib/parse-activity-markdown';
 import { stripStructuredAiToolMetadata } from '../../lib/strip-ai-tool-metadata';
 import { stripAiToolGenerationLabel } from '../../lib/strip-ai-tool-generation-label';
+import { getAiToolIonicon } from '../../lib/ai-tool-icons';
 import {
   aiToolViewerTabletStyles,
   useAiToolTabletLayout,
@@ -61,6 +62,7 @@ type Props = {
   content: string;
   rawContent?: unknown;
   variant?: 'student' | 'teacher';
+  toolType?: string;
 };
 
 function stripOrderedPrefix(line: string): string {
@@ -399,7 +401,13 @@ const STUDENT_SECTIONS: SectionDef[] = [
   },
 ];
 
-function StudentActivityCard({ activity }: { activity: NormalizedActivity }) {
+function StudentActivityCard({
+  activity,
+  heroIcon,
+}: {
+  activity: NormalizedActivity;
+  heroIcon: keyof typeof Ionicons.glyphMap;
+}) {
   const { isTablet, isDigitalBoard } = useViewerTablet();
   const vt = (key: keyof typeof aiToolViewerTabletStyles) => viewerTabletStyle(isTablet, key, isDigitalBoard);
   return (
@@ -407,7 +415,7 @@ function StudentActivityCard({ activity }: { activity: NormalizedActivity }) {
       <View style={[styles.heroCard, styles.heroCardStudent, vt('heroCard')]}>
         <View style={styles.heroRow}>
           <View style={[styles.heroIconWrap, styles.heroIconWrapStudent]}>
-            <Ionicons name="flask-outline" size={isTablet ? 32 : 28} color="#ea580c" />
+            <Ionicons name={heroIcon} size={isTablet ? 32 : 28} color="#ea580c" />
           </View>
           <View style={styles.heroContent}>
             <Text style={[styles.heroEyebrow, styles.heroEyebrowStudent, vt('heroEyebrow')]}>
@@ -422,7 +430,13 @@ function StudentActivityCard({ activity }: { activity: NormalizedActivity }) {
   );
 }
 
-function TeacherActivityCard({ activity }: { activity: NormalizedActivity }) {
+function TeacherActivityCard({
+  activity,
+  heroIcon,
+}: {
+  activity: NormalizedActivity;
+  heroIcon: keyof typeof Ionicons.glyphMap;
+}) {
   const { isTablet, isDigitalBoard } = useViewerTablet();
   const vt = (key: keyof typeof aiToolViewerTabletStyles) => viewerTabletStyle(isTablet, key, isDigitalBoard);
   return (
@@ -430,7 +444,7 @@ function TeacherActivityCard({ activity }: { activity: NormalizedActivity }) {
       <View style={[styles.heroCard, vt('heroCard')]}>
         <View style={styles.heroRow}>
           <View style={styles.heroIconWrap}>
-            <Ionicons name="flask-outline" size={isTablet ? 32 : 28} color="#4f46e5" />
+            <Ionicons name={heroIcon} size={isTablet ? 32 : 28} color="#4f46e5" />
           </View>
           <View style={styles.heroContent}>
             <Text style={[styles.heroEyebrow, vt('heroEyebrow')]}>Title of activity / project</Text>
@@ -451,8 +465,14 @@ function activitiesFromRaw(rawContent: unknown): ParsedActivity[] | undefined {
   return undefined;
 }
 
-export default function ActivityProjectViewer({ content, rawContent, variant = 'teacher' }: Props) {
+export default function ActivityProjectViewer({
+  content,
+  rawContent,
+  variant = 'teacher',
+  toolType = 'activity-project-generator',
+}: Props) {
   const { isTablet, isDigitalBoard } = useAiToolTabletLayout();
+  const heroIcon = getAiToolIonicon(toolType);
   const parsedContent = useMemo(() => stripStructuredAiToolMetadata(String(content || '')), [content]);
   const mode = variant === 'student' ? 'student' : 'teacher';
 
@@ -470,7 +490,7 @@ export default function ActivityProjectViewer({ content, rawContent, variant = '
   if (!resolved.length) {
     return (
       <View style={styles.emptyWrap}>
-        <Ionicons name="flask-outline" size={40} color="#cbd5e1" />
+        <Ionicons name={heroIcon} size={40} color="#cbd5e1" />
         <Text style={styles.emptyTitle}>Complete activity content is not available</Text>
         <Text style={styles.emptyHint}>
           All template sections must be filled. Try generating again or ask Super Admin to add full content.
@@ -493,7 +513,7 @@ export default function ActivityProjectViewer({ content, rawContent, variant = '
         ]}
       >
         <View style={styles.shellHeaderIcon}>
-          <Ionicons name="flask-outline" size={isTablet ? 22 : 20} color="#fff" />
+          <Ionicons name={heroIcon} size={isTablet ? 22 : 20} color="#fff" />
         </View>
         <View>
           <Text style={[styles.shellEyebrow, vt('shellEyebrow')]}>
@@ -526,7 +546,11 @@ export default function ActivityProjectViewer({ content, rawContent, variant = '
         nestedScrollEnabled
         showsVerticalScrollIndicator={false}
       >
-        {isTeacher ? <TeacherActivityCard activity={current} /> : <StudentActivityCard activity={current} />}
+        {isTeacher ? (
+          <TeacherActivityCard activity={current} heroIcon={heroIcon} />
+        ) : (
+          <StudentActivityCard activity={current} heroIcon={heroIcon} />
+        )}
       </ScrollView>
     </View>
     </ViewerTabletContext.Provider>

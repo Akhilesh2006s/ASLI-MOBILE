@@ -20,10 +20,12 @@ import {
   type StudyGuideContent,
   type StudyGuidePracticeQuestion,
 } from '../../lib/parse-smart-study-guide';
+import { getAiToolIonicon } from '../../lib/ai-tool-icons';
 
 type Props = {
   content: string;
   rawContent?: unknown;
+  toolType?: string;
 };
 
 function BulletList({
@@ -258,7 +260,11 @@ function buildBodySections(guide: StudyGuideContent, tabletUi = false, boardUi =
   return sections;
 }
 
-export default function SmartStudyGuideViewer({ content, rawContent }: Props) {
+export default function SmartStudyGuideViewer({
+  content,
+  rawContent,
+  toolType = 'smart-study-guide-generator',
+}: Props) {
   const { isTablet, isDigitalBoard } = useAiToolTabletLayout();
   const payload = useMemo(() => {
     if (rawContent != null) return { content: String(content || '').trim(), rawContent };
@@ -318,6 +324,7 @@ export default function SmartStudyGuideViewer({ content, rawContent }: Props) {
           mcqCount={mcqCount}
           tabletUi={isTablet}
           boardUi={isDigitalBoard}
+          toolType={toolType}
         />
 
         <TabletSectionsLayout sections={bodySections} isTablet={isTablet} style={styles.guideBody} />
@@ -333,6 +340,7 @@ function LinearGuideHeader({
   mcqCount,
   tabletUi,
   boardUi,
+  toolType = 'smart-study-guide-generator',
 }: {
   title: string;
   conceptCount: number;
@@ -340,11 +348,13 @@ function LinearGuideHeader({
   mcqCount: number;
   tabletUi?: boolean;
   boardUi?: boolean;
+  toolType?: string;
 }) {
+  const heroIcon = getAiToolIonicon(toolType);
   return (
     <View style={styles.heroHeader}>
       <View style={styles.heroIcon}>
-        <Ionicons name="bookmark" size={tabletUi ? 22 : 20} color="#6366f1" />
+        <Ionicons name={heroIcon} size={tabletUi ? 22 : 20} color="#6366f1" />
       </View>
       <View style={styles.heroText}>
         <Text style={[styles.heroEyebrow, viewerTabletStyle(!!tabletUi, 'heroEyebrow', !!boardUi)]}>Smart Study Guide</Text>

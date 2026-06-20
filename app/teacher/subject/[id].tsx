@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   Modal,
   Pressable,
@@ -27,6 +27,9 @@ type ContentItem = {
   type: string;
   fileUrl?: string;
   fileUrls?: string[];
+  videoUrl?: string;
+  youtubeUrl?: string;
+  driveLink?: string;
   date?: string;
   deadline?: string;
   classNumber?: string;
@@ -54,7 +57,7 @@ export default function TeacherSubjectContentScreen() {
   const { id, returnTo: returnToRaw } = useLocalSearchParams<{ id: string; returnTo?: string }>();
   const returnTo = typeof returnToRaw === 'string' ? returnToRaw : Array.isArray(returnToRaw) ? returnToRaw[0] : '';
   const goBack = useContentViewerBack(returnTo || undefined);
-  const { isAsliPrepExclusive } = useSchoolProgram();
+  const { isAsliPrepExclusive, loading: programLoading } = useSchoolProgram();
   const [subject, setSubject] = useState<any>(null);
   const [contents, setContents] = useState<ContentItem[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
@@ -64,15 +67,7 @@ export default function TeacherSubjectContentScreen() {
   const [preview, setPreview] = useState<ContentItem | null>(null);
   const [expandedTypes, setExpandedTypes] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    if (id) load(String(id));
-  }, [id, isAsliPrepExclusive]);
-
-  useEffect(() => {
-    setTypeFilter(null);
-  }, [classFilter]);
-
-  const load = async (subjectId: string) => {
+  const load = useCallback(async (subjectId: string, asliPrep: boolean) => {
     setLoading(true);
     try {
       const [subRes, contentRes, classRes] = await Promise.all([
@@ -83,15 +78,25 @@ export default function TeacherSubjectContentScreen() {
       const subData = subRes.data?.subject ?? subRes.data;
       setSubject(subData || { _id: subjectId, name: 'Subject' });
       const raw = Array.isArray(contentRes.data) ? contentRes.data : [];
-      setContents(prepareLibraryContents(raw, isAsliPrepExclusive));
+      setContents(prepareLibraryContents(raw, asliPrep));
       setClasses(Array.isArray(classRes.data) ? classRes.data : []);
+      setExpandedTypes({});
     } catch {
       setSubject({ _id: subjectId, name: 'Subject' });
       setContents([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!id || programLoading) return;
+    void load(String(id), isAsliPrepExclusive);
+  }, [id, isAsliPrepExclusive, programLoading, load]);
+
+  useEffect(() => {
+    setTypeFilter(null);
+  }, [classFilter]);
 
   const classOptions = useMemo(() => {
     const set = new Set<string>();
@@ -131,8 +136,14 @@ export default function TeacherSubjectContentScreen() {
   const isSectionOpen = (type: string) => expandedTypes[type] ?? true;
 
   const openContent = (item: ContentItem) => {
-    const url = item.fileUrls?.[0] || item.fileUrl;
-    if (url) {
+    const hasPreview = Boolean(
+      item.fileUrls?.[0] ||
+        item.fileUrl ||
+        item.videoUrl ||
+        item.youtubeUrl ||
+        item.driveLink
+    );
+    if (hasPreview) {
       openContentPreview(
         router,
         item,
@@ -143,7 +154,7 @@ export default function TeacherSubjectContentScreen() {
     }
   };
 
-  if (loading) {
+  if (loading || programLoading) {
     return (
       <SafeAreaView style={styles.screen}>
         <TeacherShimmer variant="list" count={4} />
