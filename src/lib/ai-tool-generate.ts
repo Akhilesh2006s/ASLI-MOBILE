@@ -63,6 +63,9 @@ export function validateActivityToolDisplay(
   variant: 'student' | 'teacher',
 ): string | null {
   if (toolType !== 'activity-project-generator' && toolType !== 'project-idea-lab') return null;
+  const display = resolveRichDisplayContent(content, rawContent);
+  // Super Admin stores full numbered markdown — same source teacher/student should render.
+  if (countNumberedTemplateSections(display) >= 3) return null;
   const mode = toolType === 'project-idea-lab' ? 'student' : variant;
   if (activitiesPayloadIsComplete(activitiesFromRaw(rawContent), content, mode)) return null;
   return 'Complete activity content is not available for this selection. All template sections must be filled.';
@@ -341,42 +344,15 @@ export async function executeAiToolGenerate({
   };
 }
 
-const STUDENT_JSON_PAYLOAD_TOOLS = new Set([
-  'short-notes-summaries-maker',
-  'concept-mastery-helper',
-  'study-schedule-maker',
-  'lesson-planner',
-  'my-study-decks',
-  'flashcard-generator',
-]);
-
-const TEACHER_JSON_PAYLOAD_TOOLS = new Set([
-  'short-notes-summaries-maker',
-  'concept-mastery-helper',
-  'lesson-planner',
-  'flashcard-generator',
-  'worksheet-mcq-generator',
-  'homework-creator',
-  'daily-class-plan-maker',
-]);
-
+/** Keep API markdown as-is (same string Super Admin stores in `content`). */
 export function storeAiToolSuccessPayload(
   toolType: string,
   content: string,
   rawContent: unknown,
-  role: 'student' | 'teacher'
+  _role: 'student' | 'teacher'
 ): { generatedContent: string; rawGeneratedContent: unknown } {
-  const jsonTools = role === 'teacher' ? TEACHER_JSON_PAYLOAD_TOOLS : STUDENT_JSON_PAYLOAD_TOOLS;
-
-  if (rawContent && jsonTools.has(toolType)) {
-    return {
-      generatedContent: JSON.stringify({ formatted: content, raw: rawContent }),
-      rawGeneratedContent: rawContent,
-    };
-  }
-
   return {
-    generatedContent: content,
+    generatedContent: String(content || ''),
     rawGeneratedContent: rawContent ?? null,
   };
 }

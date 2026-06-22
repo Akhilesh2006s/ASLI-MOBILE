@@ -28,20 +28,20 @@ export default function AdminStatCard({
   loading,
   delay = 0,
   compact = false,
-  grid = true,
+  grid = !compact,
 }: Props) {
   const { colors, radius, typo } = useAdminTheme();
   const gradient = colors.statGradients[gradientIndex % colors.statGradients.length];
 
   const displayValue = loading ? '—' : value;
+  const horizontal = compact || grid;
 
   return (
     <Animated.View
       entering={FadeInUp.delay(delay).duration(450).springify()}
       style={[
         styles.wrap,
-        !compact && grid && styles.wrapGrid,
-        compact && styles.wrapCompact,
+        horizontal && styles.wrapCompact,
         { borderRadius: radius.lg },
       ]}
     >
@@ -51,41 +51,37 @@ export default function AdminStatCard({
         end={{ x: 1, y: 1 }}
         style={[
           styles.gradient,
-          compact && styles.gradientCompact,
+          horizontal && styles.gradientHorizontal,
           { borderRadius: radius.lg },
         ]}
       >
-        {compact ? (
-          <View style={styles.compactInner}>
-            <View style={styles.iconWrapCompact}>
-              <Ionicons name={icon} size={20} color="#fff" />
-            </View>
-            <View style={styles.textBlock}>
-              <Text style={styles.label} numberOfLines={1}>
-                {label}
-              </Text>
-              <Text style={[typo.stat, styles.value, styles.valueCompact]} numberOfLines={1}>
-                {displayValue}
-              </Text>
-              {subtext ? <Text style={styles.subtext}>{subtext}</Text> : null}
-            </View>
+        <View style={styles.compactInner}>
+          <View style={styles.iconWrapCompact}>
+            <Ionicons name={icon} size={20} color="#fff" />
           </View>
-        ) : (
-          <>
-            <View style={styles.iconWrap}>
-              <Ionicons name={icon} size={22} color="#fff" />
-            </View>
-            <View style={styles.textBlock}>
-              <Text style={styles.label} numberOfLines={1}>
-                {label}
+          <View style={styles.textBlock}>
+            <Text style={styles.label} numberOfLines={2}>
+              {label}
+            </Text>
+            <Text
+              style={[
+                typo.stat,
+                styles.value,
+                horizontal ? styles.valueHorizontal : null,
+              ]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.72}
+            >
+              {displayValue}
+            </Text>
+            {subtext ? (
+              <Text style={styles.subtext} numberOfLines={1}>
+                {subtext}
               </Text>
-              <Text style={[typo.stat, styles.value]} numberOfLines={1}>
-                {displayValue}
-              </Text>
-              {subtext ? <Text style={styles.subtext}>{subtext}</Text> : null}
-            </View>
-          </>
-        )}
+            ) : null}
+          </View>
+        </View>
       </LinearGradient>
     </Animated.View>
   );
@@ -96,11 +92,6 @@ const styles = StyleSheet.create({
     width: '100%',
     overflow: 'hidden',
   },
-  wrapGrid: {
-    width: '47%',
-    flexGrow: 0,
-    flexShrink: 0,
-  },
   wrapCompact: {
     minWidth: 0,
     width: '100%',
@@ -108,13 +99,12 @@ const styles = StyleSheet.create({
   },
   gradient: {
     padding: 14,
-    minHeight: 104,
-    justifyContent: 'flex-start',
+    minHeight: 96,
+    justifyContent: 'center',
   },
-  gradientCompact: {
-    minHeight: 88,
-    height: 88,
-    paddingHorizontal: 14,
+  gradientHorizontal: {
+    minHeight: 92,
+    paddingHorizontal: 12,
     paddingVertical: 12,
     justifyContent: 'center',
   },
@@ -122,15 +112,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-  },
-  iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
   },
   iconWrapCompact: {
     width: 36,
@@ -155,8 +136,9 @@ const styles = StyleSheet.create({
   value: {
     color: '#fff',
   },
-  valueCompact: {
-    fontSize: 22,
+  valueHorizontal: {
+    fontSize: 24,
+    lineHeight: 28,
   },
   subtext: {
     fontSize: 10,

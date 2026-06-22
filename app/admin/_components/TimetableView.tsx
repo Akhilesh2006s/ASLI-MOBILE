@@ -646,18 +646,27 @@ export default function TimetableView() {
 
           <AdminGlassCard noAnimation>
             <View style={[styles.viewBar, { borderBottomColor: 'rgba(251, 146, 60, 0.2)' }]}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.viewTabs}>
-                {VIEW_MODES.map((mode) => (
-                  <ViewTab
-                    key={mode.id}
-                    label={mode.label}
-                    active={viewMode === mode.id}
-                    onPress={() => setViewMode(mode.id)}
-                  />
-                ))}
-              </ScrollView>
+              <View style={styles.viewTabsWrap}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  nestedScrollEnabled
+                  contentContainerStyle={styles.viewTabs}
+                >
+                  {VIEW_MODES.map((mode) => (
+                    <ViewTab
+                      key={mode.id}
+                      label={mode.label}
+                      active={viewMode === mode.id}
+                      onPress={() => setViewMode(mode.id)}
+                    />
+                  ))}
+                </ScrollView>
+              </View>
               {viewMode === 'week' ? (
-                <Text style={styles.weekPattern}>Weekly pattern · Monday – Saturday</Text>
+                <Text style={styles.weekPattern} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+                  Weekly pattern · Monday – Saturday
+                </Text>
               ) : (
                 <View style={styles.weekNavRow}>
                   <AdminScalePressable
@@ -1019,8 +1028,21 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: 1,
     marginBottom: 12,
+    alignItems: 'center',
+    width: '100%',
   },
-  viewTabs: { flexDirection: 'row', gap: 8, paddingVertical: 2 },
+  viewTabsWrap: {
+    width: '100%',
+  },
+  viewTabs: {
+    flexGrow: 1,
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 2,
+    paddingHorizontal: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   viewTab: {
     borderWidth: 1,
     borderRadius: 12,
@@ -1038,13 +1060,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#9A3412',
-    alignSelf: 'flex-end',
+    textAlign: 'center',
+    width: '100%',
+    paddingHorizontal: 8,
   },
   weekNavRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
     gap: 8,
+    width: '100%',
+    paddingHorizontal: 4,
   },
   weekNavBtn: {
     width: 32,
@@ -1054,8 +1080,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  weekRangeText: { fontSize: 12, fontWeight: '700' },
-  scheduleBody: { minHeight: 120 },
+  weekRangeText: { fontSize: 12, fontWeight: '700', flexShrink: 1, textAlign: 'center' },
+  scheduleBody: { minHeight: 120, width: '100%' },
   pickerOverlay: { flex: 1, justifyContent: 'flex-end' },
   pickerSheet: { padding: 20, paddingBottom: 28, maxHeight: '70%' },
   pickerTitle: { fontSize: 16, fontWeight: '800', marginBottom: 12 },

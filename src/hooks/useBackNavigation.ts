@@ -4,6 +4,41 @@ import { useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 
+function useInterceptedDashboardBack(navigate: () => void) {
+  const navigation = useNavigation();
+  const handlingBack = useRef(false);
+
+  const goBack = useCallback(() => {
+    if (handlingBack.current) return;
+    handlingBack.current = true;
+    navigate();
+    setTimeout(() => {
+      handlingBack.current = false;
+    }, 350);
+  }, [navigate]);
+
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      goBack();
+      return true;
+    });
+    return () => backHandler.remove();
+  }, [goBack]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      const actionType = e.data.action.type;
+      if (actionType !== 'GO_BACK' && actionType !== 'POP') return;
+      if (handlingBack.current) return;
+      e.preventDefault();
+      goBack();
+    });
+    return unsubscribe;
+  }, [navigation, goBack]);
+
+  return goBack;
+}
+
 /**
  * Hook to handle back button navigation for authenticated users
  * - Prevents going back to login/home from dashboard
@@ -45,6 +80,37 @@ export function useBackNavigation(dashboardPath: string, preventBack: boolean = 
 
 export type ContentReturnTarget = 'eduott' | 'learning';
 
+export type StudentDashboardTab = 'home' | 'learning' | 'eduott' | 'exams' | 'vidya' | 'settings';
+
+const STUDENT_DASHBOARD_TABS: StudentDashboardTab[] = [
+  'home',
+  'learning',
+  'eduott',
+  'exams',
+  'vidya',
+  'settings',
+];
+
+export function parseStudentDashboardTab(value?: string): StudentDashboardTab {
+  if (value && STUDENT_DASHBOARD_TABS.includes(value as StudentDashboardTab)) {
+    return value as StudentDashboardTab;
+  }
+  return 'vidya';
+}
+
+/** Back from student AI tool screens → dashboard Vidya / AI Tools tab. */
+export function useStudentDashboardBack(returnTab: StudentDashboardTab = 'vidya') {
+  const router = useRouter();
+  const navigate = useCallback(() => {
+    router.navigate({
+      pathname: '/dashboard',
+      params: { tab: returnTab },
+    });
+  }, [returnTab, router]);
+
+  return useInterceptedDashboardBack(navigate);
+}
+
 export type TeacherDashboardTab =
   | 'dashboard'
   | 'students'
@@ -70,23 +136,14 @@ export function parseTeacherDashboardTab(value?: string): TeacherDashboardTab {
 /** Back from teacher tool screens → dashboard tab (default Vidya AI tools list). */
 export function useTeacherDashboardBack(returnTab: TeacherDashboardTab = 'vidya-ai') {
   const router = useRouter();
-
-  const goBack = useCallback(() => {
+  const navigate = useCallback(() => {
     router.navigate({
       pathname: '/teacher/dashboard',
       params: { tab: returnTab },
     });
   }, [returnTab, router]);
 
-  useEffect(() => {
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      goBack();
-      return true;
-    });
-    return () => backHandler.remove();
-  }, [goBack]);
-
-  return goBack;
+  return useInterceptedDashboardBack(navigate);
 }
 
 function dashboardPathForRole(role: string | null): string {

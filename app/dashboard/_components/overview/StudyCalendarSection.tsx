@@ -46,6 +46,14 @@ const EXAM_MARKER_COLORS = {
 
 const WEEKDAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] as const;
 
+function isSameCalendarDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
 function getPrimaryMarkerColor(
   dayMarkers: ReturnType<typeof buildDayExamMarkers> | undefined,
   entries: CalendarEntry[] | undefined
@@ -190,6 +198,8 @@ function StudyCalendarSectionComponent({
     return (entriesByDate[key] || []).sort((a, b) => a.date.getTime() - b.date.getTime());
   }, [selectedDate, entriesByDate]);
 
+  const today = useMemo(() => new Date(), []);
+
   const calendarDays = useMemo(() => {
     const year = calendarMonth.getFullYear();
     const month = calendarMonth.getMonth();
@@ -282,8 +292,8 @@ function StudyCalendarSectionComponent({
                   const dayKey = formatCalendarDateKey(day);
                   const dayMarkers = dayMarkersByDate[dayKey];
                   const dayEntries = entriesByDate[dayKey];
-                  const isSelected = formatCalendarDateKey(selectedDate) === dayKey;
-                  const isToday = formatCalendarDateKey(new Date()) === dayKey;
+                  const isSelected = isSameCalendarDay(selectedDate, day);
+                  const isToday = isSameCalendarDay(today, day);
                   const accentColor = getPrimaryMarkerColor(dayMarkers, dayEntries);
                   const { connectLeft, connectRight } = getDayRangeConnectors(
                     dayKey,
@@ -308,7 +318,8 @@ function StudyCalendarSectionComponent({
                             backgroundColor: `${accentColor}18`,
                           },
                           isToday && !isSelected && styles.dayCellInnerToday,
-                          isSelected && styles.dayCellInnerSelected,
+                          isSelected && !isToday && styles.dayCellInnerSelected,
+                          isToday && isSelected && styles.dayCellInnerTodaySelected,
                         ]}
                       >
                         {showAccent && connectLeft ? (
@@ -333,8 +344,9 @@ function StudyCalendarSectionComponent({
                           style={[
                             styles.dayNum,
                             isToday && !isSelected && styles.dayNumToday,
-                            isSelected && styles.dayNumSelected,
-                            showAccent && !isToday && { color: accentColor!, fontWeight: '700' },
+                            isSelected && !isToday && styles.dayNumSelected,
+                            isToday && isSelected && styles.dayNumTodaySelected,
+                            showAccent && !isToday && !isSelected && { color: accentColor!, fontWeight: '700' },
                           ]}
                         >
                           {day.getDate()}
@@ -636,12 +648,11 @@ const styles = StyleSheet.create({
   },
   dayCellInner: {
     width: 36,
-    height: 40,
+    height: 42,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    overflow: 'hidden',
   },
   dayCellInnerToday: {
     borderWidth: 2,
@@ -650,9 +661,26 @@ const styles = StyleSheet.create({
   dayCellInnerSelected: {
     backgroundColor: STUDENT.primary,
   },
-  dayNum: { fontSize: 13, fontWeight: '600', color: STUDENT.textSecondary },
+  dayCellInnerTodaySelected: {
+    backgroundColor: STUDENT.primaryDark,
+    borderWidth: 2,
+    borderColor: '#ffffff',
+  },
+  dayNum: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: STUDENT.textSecondary,
+    lineHeight: 16,
+    zIndex: 2,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+  },
   dayNumToday: { color: STUDENT.primaryDark, fontWeight: '700' },
   dayNumSelected: { color: STUDENT.textOnPrimary, fontWeight: '700' },
+  dayNumTodaySelected: {
+    color: '#ffffff',
+    fontWeight: '800',
+  },
   dayAccentBar: {
     position: 'absolute',
     bottom: 0,
@@ -661,11 +689,13 @@ const styles = StyleSheet.create({
     height: 3,
     borderBottomLeftRadius: 10,
     borderBottomRightRadius: 10,
+    zIndex: 1,
   },
   dayRangeLine: {
     position: 'absolute',
     bottom: 0,
     height: 3,
+    zIndex: 1,
   },
   dayRangeLineLeft: {
     left: -4,

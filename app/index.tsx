@@ -26,6 +26,6 @@ export default function Index() {
 const styles = StyleSheet.create({
   boot: {
     flex: 1,
-    backgroundColor: '#f0fdf4',
+    backgroundColor: '#ffffff',
   },
 });

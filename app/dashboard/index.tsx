@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, RefreshControl, ScrollView, StatusBar, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { Easing, SlideInRight, SlideOutLeft } from 'react-native-reanimated';
 import { router, useLocalSearchParams } from 'expo-router';
 import authService from '../../src/services/api/authService';
 import { useAuth } from '../../src/context/AuthContext';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
+import { useVisitedTabs } from '../../src/hooks/useVisitedTabs';
 import { StudentTabBar, StudentTab } from '../../src/components/student';
-import { LoadingState } from '../../src/components/ui';
-import { STUDENT, STUDENT_ANIMATION } from '../../src/theme/student';
+import { LoadingState, VisitedTabPane } from '../../src/components/ui';
+import { STUDENT } from '../../src/theme/student';
 import OverviewView from './_components/OverviewView';
 import LearningPathsView from './_components/LearningPathsView';
 import EduOTTView from './_components/EduOTTView';
@@ -34,7 +34,8 @@ const ALL_TABS: StudentTab[] = [
 export default function StudentDashboard() {
   const { signOut } = useAuth();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
-  const [activeTab, setActiveTab] = useState<TabId>('home');
+  const { active: activeTab, visited: visitedTabs, select: selectTab, setActive: setActiveTab } =
+    useVisitedTabs<TabId>('home');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
@@ -147,87 +148,11 @@ export default function StudentDashboard() {
       tabScrollRefs[next]?.current?.scrollTo({ y: 0, animated: true });
       return;
     }
-    setActiveTab(next);
+    selectTab(next);
   };
 
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'home':
-        return (
-          <ScrollView
-            ref={homeScrollRef}
-            style={styles.scroll}
-            contentContainerStyle={homePad}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={STUDENT.primary} />
-            }
-            showsVerticalScrollIndicator={false}
-          >
-            <OverviewView
-              user={user}
-              onGoExams={() => setActiveTab('exams')}
-              onOpenExam={(examId) => {
-                setCalendarFocusExamId(examId);
-                setActiveTab('exams');
-              }}
-              onGoProfile={() => setActiveTab('settings')}
-              onLogout={handleLogout}
-            />
-          </ScrollView>
-        );
-      case 'learning':
-        return (
-          <ScrollView
-            ref={learningScrollRef}
-            style={styles.scroll}
-            contentContainerStyle={pad}
-            showsVerticalScrollIndicator={false}
-          >
-            <LearningPathsView />
-          </ScrollView>
-        );
-      case 'eduott':
-        return (
-          <View style={[styles.scroll, styles.eduottPane]}>
-            <EduOTTFilterProvider>
-              <EduOTTView username={firstName} />
-            </EduOTTFilterProvider>
-          </View>
-        );
-      case 'exams':
-        return (
-          <View style={[styles.scroll, styles.examsPane, { paddingHorizontal: pad.paddingHorizontal, paddingTop: pad.paddingTop }]}>
-            <ExamsTabView
-              focusExamId={calendarFocusExamId}
-              onFocusExamHandled={() => setCalendarFocusExamId(null)}
-            />
-          </View>
-        );
-      case 'vidya':
-        return (
-          <ScrollView
-            ref={vidyaScrollRef}
-            style={styles.scroll}
-            contentContainerStyle={pad}
-            showsVerticalScrollIndicator={false}
-          >
-            <AITabView chatEnabled={vidyaChatEnabled} />
-          </ScrollView>
-        );
-      case 'settings':
-        return (
-          <ScrollView
-            ref={settingsScrollRef}
-            style={styles.scroll}
-            contentContainerStyle={pad}
-            showsVerticalScrollIndicator={false}
-          >
-            <ProfileTabView user={user} onLogout={() => router.replace('/auth/login')} />
-          </ScrollView>
-        );
-      default:
-        return null;
-    }
+  const goToTab = (next: TabId) => {
+    selectTab(next);
   };
 
   if (isLoading) {
@@ -244,14 +169,98 @@ export default function StudentDashboard() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="dark-content" translucent={false} backgroundColor={STUDENT.bg} />
-      <Animated.View
-        key={activeTab}
-        entering={SlideInRight.duration(220).easing(Easing.inOut(Easing.ease))}
-        exiting={SlideOutLeft.duration(220).easing(Easing.inOut(Easing.ease))}
-        style={styles.tabContent}
-      >
-        {renderTabContent()}
-      </Animated.View>
+      <View style={styles.tabContent}>
+        {visitedTabs.has('home') ? (
+          <VisitedTabPane visible={activeTab === 'home'}>
+            <ScrollView
+              ref={homeScrollRef}
+              style={styles.scroll}
+              contentContainerStyle={homePad}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={STUDENT.primary} />
+              }
+              showsVerticalScrollIndicator={false}
+            >
+              <OverviewView
+                user={user}
+                onGoExams={() => goToTab('exams')}
+                onOpenExam={(examId) => {
+                  setCalendarFocusExamId(examId);
+                  goToTab('exams');
+                }}
+                onGoProfile={() => goToTab('settings')}
+                onLogout={handleLogout}
+              />
+            </ScrollView>
+          </VisitedTabPane>
+        ) : null}
+
+        {visitedTabs.has('learning') ? (
+          <VisitedTabPane visible={activeTab === 'learning'}>
+            <ScrollView
+              ref={learningScrollRef}
+              style={styles.scroll}
+              contentContainerStyle={pad}
+              showsVerticalScrollIndicator={false}
+            >
+              <LearningPathsView />
+            </ScrollView>
+          </VisitedTabPane>
+        ) : null}
+
+        {visitedTabs.has('eduott') ? (
+          <VisitedTabPane visible={activeTab === 'eduott'}>
+            <View style={[styles.scroll, styles.eduottPane]}>
+              <EduOTTFilterProvider>
+                <EduOTTView username={firstName} />
+              </EduOTTFilterProvider>
+            </View>
+          </VisitedTabPane>
+        ) : null}
+
+        {visitedTabs.has('exams') ? (
+          <VisitedTabPane visible={activeTab === 'exams'}>
+            <View
+              style={[
+                styles.scroll,
+                styles.examsPane,
+                { paddingHorizontal: pad.paddingHorizontal, paddingTop: pad.paddingTop },
+              ]}
+            >
+              <ExamsTabView
+                focusExamId={calendarFocusExamId}
+                onFocusExamHandled={() => setCalendarFocusExamId(null)}
+              />
+            </View>
+          </VisitedTabPane>
+        ) : null}
+
+        {visitedTabs.has('vidya') ? (
+          <VisitedTabPane visible={activeTab === 'vidya'}>
+            <ScrollView
+              ref={vidyaScrollRef}
+              style={styles.scroll}
+              contentContainerStyle={pad}
+              showsVerticalScrollIndicator={false}
+            >
+              <AITabView chatEnabled={vidyaChatEnabled} />
+            </ScrollView>
+          </VisitedTabPane>
+        ) : null}
+
+        {visitedTabs.has('settings') ? (
+          <VisitedTabPane visible={activeTab === 'settings'}>
+            <ScrollView
+              ref={settingsScrollRef}
+              style={styles.scroll}
+              contentContainerStyle={pad}
+              showsVerticalScrollIndicator={false}
+            >
+              <ProfileTabView user={user} onLogout={() => router.replace('/auth/login')} />
+            </ScrollView>
+          </VisitedTabPane>
+        ) : null}
+      </View>
 
       <StudentTabBar tabs={studentTabs} activeTab={activeTab} onTabChange={handleTabChange} />
 

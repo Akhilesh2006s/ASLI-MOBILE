@@ -14,7 +14,9 @@ import {
   fetchPdfPreviewLoadInfo,
   PDF_JS_VIEWER_SHELL_HTML,
   resolvePdfUrlTarget,
+  shouldInjectPdfAsBase64,
   YOUTUBE_EMBED_ORIGIN,
+  type PdfPreviewLoadInfo,
   type PdfUrlLoadTarget,
 } from '../../utils/contentPreview';
 
@@ -30,20 +32,24 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
   const webReadyRef = useRef(false);
   const [webReady, setWebReady] = useState(false);
   const [urlTarget, setUrlTarget] = useState<PdfUrlLoadTarget | null>(null);
-  const [resolving, setResolving] = useState(true);
+  const [base64Payload, setBase64Payload] = useState<string | null>(null);
   const [rendering, setRendering] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const injectedRef = useRef(false);
   const mountedRef = useRef(true);
   const fallbackTriedRef = useRef(false);
+  const prefetchedRef = useRef<PdfPreviewLoadInfo | null>(null);
+  const prefetchPendingRef = useRef(true);
+  const base64PayloadRef = useRef<string | null>(null);
   const fileUrlRef = useRef(fileUrl);
   const titleRef = useRef(title);
 
   fileUrlRef.current = fileUrl;
   titleRef.current = title;
+  base64PayloadRef.current = base64Payload;
 
-  const busy = resolving || rendering;
+  const busy = rendering;
 
   useEffect(() => {
     onBusyChange?.(busy);
@@ -62,7 +68,7 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
         webRef.current.injectJavaScript(script);
         return;
       }
-      setTimeout(run, 40);
+      setTimeout(run, 20);
     };
     run();
   }, []);
@@ -75,19 +81,19 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
     }
     fallbackTriedRef.current = true;
     injectedRef.current = false;
-    setResolving(true);
     setRendering(true);
     setError(null);
 
-    const loaded = await fetchPdfPreviewLoadInfo(fileUrlRef.current, titleRef.current);
+    const loaded =
+      prefetchedRef.current ?? (await fetchPdfPreviewLoadInfo(fileUrlRef.current, titleRef.current));
     if (!mountedRef.current) return;
 
-    setResolving(false);
     if (!loaded) {
       setRendering(false);
       setError('Could not load this PDF. Check your connection and try again.');
       return;
     }
+    prefetchedRef.current = loaded;
     injectWhenReady(buildPdfInjectScript(loaded.base64));
   }, [injectWhenReady]);
 
@@ -96,39 +102,80 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
     fallbackTriedRef.current = false;
     injectedRef.current = false;
     webReadyRef.current = false;
+    prefetchedRef.current = null;
+    prefetchPendingRef.current = true;
+    base64PayloadRef.current = null;
     setWebReady(false);
-    setResolving(true);
     setRendering(true);
     setError(null);
     setUrlTarget(null);
+    setBase64Payload(null);
 
-    void (async () => {
-      const target = await resolvePdfUrlTarget(fileUrlRef.current, titleRef.current);
-      if (!mountedRef.current) return;
-      if (!target?.url) {
-        setResolving(false);
-        await loadBase64Fallback();
-        return;
-      }
+    void resolvePdfUrlTarget(fileUrlRef.current, titleRef.current).then((target) => {
+      if (!mountedRef.current || !target?.url) return;
       setUrlTarget(target);
-      setResolving(false);
-    })();
+    });
+
+    void fetchPdfPreviewLoadInfo(fileUrlRef.current, titleRef.current).then((info) => {
+      prefetchPendingRef.current = false;
+      if (!mountedRef.current) return;
+      if (!info) return;
+      prefetchedRef.current = info;
+      if (shouldInjectPdfAsBase64(info)) {
+        base64PayloadRef.current = info.base64;
+        setBase64Payload(info.base64);
+      }
+    });
 
     return () => {
       mountedRef.current = false;
       onBusyChange?.(false);
       webRef.current?.stopLoading();
     };
-  }, [fileUrl, title, reloadKey, onBusyChange, loadBase64Fallback]);
+  }, [fileUrl, title, reloadKey, onBusyChange]);
 
   useEffect(() => {
-    if (!webReady || !urlTarget || injectedRef.current) return;
-    injectWhenReady(buildPdfUrlInjectScript(urlTarget.url, urlTarget.headers));
-  }, [webReady, urlTarget, injectWhenReady]);
+    if (!webReady || injectedRef.current) return;
+
+    if (base64Payload) {
+      injectWhenReady(buildPdfInjectScript(base64Payload));
+      return;
+    }
+
+    if (!urlTarget) return;
+
+    let cancelled = false;
+    const deadline = Date.now() + 180;
+
+    const tryInjectUrl = () => {
+      if (cancelled || injectedRef.current || !mountedRef.current) return;
+      if (base64PayloadRef.current) return;
+      injectWhenReady(buildPdfUrlInjectScript(urlTarget.url, urlTarget.headers));
+    };
+
+    const waitForPrefetch = () => {
+      if (cancelled || injectedRef.current) return;
+      if (base64PayloadRef.current) return;
+      if (!prefetchPendingRef.current || Date.now() >= deadline) {
+        tryInjectUrl();
+        return;
+      }
+      setTimeout(waitForPrefetch, 25);
+    };
+
+    waitForPrefetch();
+    return () => {
+      cancelled = true;
+    };
+  }, [webReady, base64Payload, urlTarget, injectWhenReady]);
 
   const onWebMessage = useCallback(
     (event: WebViewMessageEvent) => {
       const data = event.nativeEvent.data;
+      if (data === 'viewer-ready') {
+        setWebReady(true);
+        return;
+      }
       if (data === 'pdf-ready') {
         setRendering(false);
         return;
@@ -141,12 +188,12 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
   );
 
   useEffect(() => {
-    if (!rendering || resolving) return;
+    if (!rendering) return;
     const timer = setTimeout(() => {
       if (mountedRef.current) setRendering(false);
     }, 45000);
     return () => clearTimeout(timer);
-  }, [rendering, resolving]);
+  }, [rendering]);
 
   if (error) {
     return (
@@ -158,8 +205,6 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
       </View>
     );
   }
-
-  const loadingLabel = 'Starting preview…';
 
   return (
     <View style={[styles.wrap, style]} collapsable={false}>
@@ -177,13 +222,12 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
         setSupportMultipleWindows={false}
         cacheEnabled
         cacheMode="LOAD_CACHE_ELSE_NETWORK"
-        onLoadEnd={() => setWebReady(true)}
         onMessage={onWebMessage}
       />
       {busy && (
         <View style={styles.overlay} pointerEvents="auto">
           <ActivityIndicator size="large" color="#6366F1" />
-          <Text style={styles.loadingText}>{loadingLabel}</Text>
+          <Text style={styles.loadingText}>Opening preview…</Text>
         </View>
       )}
     </View>

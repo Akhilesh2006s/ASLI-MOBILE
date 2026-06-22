@@ -73,7 +73,7 @@ export default function TimetableMatrixGrid({ entries, rowMode, weekDates, onEnt
 
   return (
     <View style={styles.shell}>
-      <ScrollView horizontal showsHorizontalScrollIndicator bounces={false}>
+      <ScrollView horizontal showsHorizontalScrollIndicator nestedScrollEnabled bounces={false}>
         <View style={{ minWidth: ROW_COL + weekDates.length * DAY_COL }}>
           <View style={styles.headerRow}>
             <View style={[styles.cornerCell, { width: ROW_COL }]}>

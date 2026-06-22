@@ -10,7 +10,7 @@ import { resolveDailyPlansFromPayload } from './parse-daily-class-plan';
 import { resolveHomeworkFromPayload } from './parse-homework-creator';
 import { resolveWorksheetFromPayload, formatWorksheetOptionDisplay } from './parse-worksheet-mcq';
 import { resolveStoryFromPayload, type ParsedStory, type StoryQuestion } from './parse-story-content';
-import { resolveConceptsFromPayload, type NormalizedConcept } from './parse-concept-mastery';
+import { resolveConceptsFromPayload, fillConceptGapsFromMarkdown, parseSingleConceptDocument, conceptHasVisibleContent, type NormalizedConcept } from './parse-concept-mastery';
 import {
   cleanReflectionProse,
   dedupeStringLines,
@@ -47,107 +47,128 @@ import {
   sectionNumberIconSvg,
   termGridHtml,
 } from './ai-tool-html-primitives';
+import { resolveStudentSectionMeta, sectionIconSvg } from './student-section-icons';
 
 type Variant = 'student' | 'teacher';
+
+function studentSectionCard(
+  toolType: string,
+  sectionNum: number,
+  fallbackTitle: string,
+  body: string,
+  borderColor?: string,
+): string {
+  const meta = resolveStudentSectionMeta(toolType, sectionNum, fallbackTitle)!;
+  return sectionCardHtml({
+    sectionNum: `Section ${sectionNum}`,
+    title: meta.title,
+    stripe: meta.stripe,
+    iconWrap: meta.iconWrap,
+    iconSvg: sectionIconSvg(meta.icon),
+    borderColor,
+    body,
+  });
+}
+
+function studentHeroCard(
+  toolType: string,
+  eyebrow: string,
+  title: string,
+  theme: 'indigo' | 'orange' | 'violet' | 'blue' | 'amber' | 'emerald',
+  badge?: string,
+): string {
+  return heroTitleCardHtml({
+    eyebrow,
+    title,
+    theme,
+    toolType,
+    badge,
+    premium: true,
+  });
+}
 
 function renderConceptBreakdownHtml(content: string, rawContent: unknown): string | null {
   const { concepts, markdownFallback } = resolveConceptBreakdownFromPayload(content, rawContent);
   if (markdownFallback || !concepts.length) return null;
   return concepts
     .map((concept, idx) => {
-      let html = heroTitleCardHtml({
-        eyebrow: 'Concept Title',
-        title: concept.conceptTitle,
-        theme: 'violet',
-        toolType: 'concept-breakdown-explainer',
-      });
+      let html = studentHeroCard(
+        'concept-breakdown-explainer',
+        'Concept Title',
+        concept.conceptTitle,
+        'violet',
+      );
       if (concept.simpleDefinition) {
-        html += sectionCardHtml({
-          sectionNum: 'Section 2',
-          title: 'Simple Definition',
-          stripe: 'border-violet-300',
-          iconWrap: 'bg-violet-100 text-violet-800',
-          iconSvg: '<span>🧠</span>',
-          borderColor: 'border-violet-200/90',
-          body: richTextHtml(concept.simpleDefinition),
-        });
+        html += studentSectionCard(
+          'concept-breakdown-explainer',
+          2,
+          'Simple Definition',
+          richTextHtml(concept.simpleDefinition),
+          'border-violet-200/90',
+        );
       }
       if (concept.breakdownSteps.length) {
-        html += sectionCardHtml({
-          sectionNum: 'Section 3',
-          title: 'Step-by-Step Breakdown',
-          stripe: 'border-indigo-300',
-          iconWrap: 'bg-indigo-100 text-indigo-800',
-          iconSvg: '<span>📋</span>',
-          borderColor: 'border-violet-200/90',
-          body: numberedStepsHtml(concept.breakdownSteps, 'bg-indigo-100 text-indigo-800'),
-        });
+        html += studentSectionCard(
+          'concept-breakdown-explainer',
+          3,
+          'Step-by-step Concept Breakdown',
+          numberedStepsHtml(concept.breakdownSteps, 'bg-indigo-100 text-indigo-800'),
+          'border-violet-200/90',
+        );
       }
       if (concept.realLifeExamples.length) {
-        html += sectionCardHtml({
-          sectionNum: 'Section 4',
-          title: 'Real-life and Indian Context Examples',
-          stripe: 'border-emerald-300',
-          iconWrap: 'bg-emerald-100 text-emerald-800',
-          iconSvg: '<span>💡</span>',
-          borderColor: 'border-violet-200/90',
-          body: bulletListHtml(concept.realLifeExamples, 'text-emerald-600'),
-        });
+        html += studentSectionCard(
+          'concept-breakdown-explainer',
+          4,
+          'Real-life and Indian Context Examples',
+          bulletListHtml(concept.realLifeExamples, 'text-emerald-600'),
+          'border-violet-200/90',
+        );
       }
       if (concept.importantTerms.length) {
-        html += sectionCardHtml({
-          sectionNum: 'Section 5',
-          title: 'Important Terms and Keywords',
-          stripe: 'border-amber-300',
-          iconWrap: 'bg-amber-100 text-amber-900',
-          iconSvg: '<span>🏷</span>',
-          borderColor: 'border-violet-200/90',
-          body: termGridHtml(concept.importantTerms),
-        });
+        html += studentSectionCard(
+          'concept-breakdown-explainer',
+          5,
+          'Important Terms and Keywords',
+          termGridHtml(concept.importantTerms),
+          'border-violet-200/90',
+        );
       }
       if (concept.conceptCheckQuestions.length) {
-        html += sectionCardHtml({
-          sectionNum: 'Section 6',
-          title: 'Concept Check Questions',
-          stripe: 'border-cyan-300',
-          iconWrap: 'bg-cyan-100 text-cyan-800',
-          iconSvg: '<span>❓</span>',
-          borderColor: 'border-violet-200/90',
-          body: bulletListHtml(concept.conceptCheckQuestions, 'text-cyan-600'),
-        });
+        html += studentSectionCard(
+          'concept-breakdown-explainer',
+          6,
+          'Concept Check Questions',
+          bulletListHtml(concept.conceptCheckQuestions, 'text-cyan-600'),
+          'border-violet-200/90',
+        );
       }
       if (concept.applicationThinkingQuestion) {
-        html += sectionCardHtml({
-          sectionNum: 'Section 7',
-          title: 'Application-based Thinking Question',
-          stripe: 'border-orange-300',
-          iconWrap: 'bg-orange-100 text-orange-800',
-          iconSvg: '<span>💭</span>',
-          borderColor: 'border-violet-200/90',
-          body: `<div class="rounded-lg border border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50/80 px-2.5 py-2">${richTextHtml(concept.applicationThinkingQuestion)}</div>`,
-        });
+        html += studentSectionCard(
+          'concept-breakdown-explainer',
+          7,
+          'Application-based Thinking Question',
+          `<div class="rounded-lg border border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50/80 px-2.5 py-2">${richTextHtml(concept.applicationThinkingQuestion)}</div>`,
+          'border-violet-200/90',
+        );
       }
       if (concept.higherOrderThinkingPrompt) {
-        html += sectionCardHtml({
-          sectionNum: 'Section 8',
-          title: 'Higher-order Thinking Prompt',
-          stripe: 'border-fuchsia-300',
-          iconWrap: 'bg-fuchsia-100 text-fuchsia-800',
-          iconSvg: '<span>⚡</span>',
-          borderColor: 'border-violet-200/90',
-          body: `<div class="rounded-lg border border-fuchsia-200 bg-gradient-to-br from-fuchsia-50 to-violet-50/80 px-2.5 py-2">${richTextHtml(concept.higherOrderThinkingPrompt)}</div>`,
-        });
+        html += studentSectionCard(
+          'concept-breakdown-explainer',
+          8,
+          'Higher-order Thinking Prompt',
+          `<div class="rounded-lg border border-fuchsia-200 bg-gradient-to-br from-fuchsia-50 to-violet-50/80 px-2.5 py-2">${richTextHtml(concept.higherOrderThinkingPrompt)}</div>`,
+          'border-violet-200/90',
+        );
       }
       if (concept.quickRevisionSummary) {
-        html += sectionCardHtml({
-          sectionNum: 'Section 9',
-          title: 'Quick Revision Summary',
-          stripe: 'border-violet-300',
-          iconWrap: 'bg-violet-100 text-violet-900',
-          iconSvg: '<span>✨</span>',
-          borderColor: 'border-violet-200/90',
-          body: `<div class="rounded-lg border border-violet-200 bg-violet-50/60 px-2.5 py-2">${richTextHtml(concept.quickRevisionSummary)}</div>`,
-        });
+        html += studentSectionCard(
+          'concept-breakdown-explainer',
+          9,
+          'Quick Revision Summary',
+          `<div class="rounded-lg border border-violet-200 bg-violet-50/60 px-2.5 py-2">${richTextHtml(concept.quickRevisionSummary)}</div>`,
+          'border-violet-200/90',
+        );
       }
       return html;
     })
@@ -157,55 +178,47 @@ function renderConceptBreakdownHtml(content: string, rawContent: unknown): strin
 function renderChapterSummaryHtml(content: string, rawContent: unknown): string | null {
   const { summary, markdownFallback } = resolveChapterSummaryFromPayload(content, rawContent);
   if (markdownFallback || !summary) return null;
-  let html = heroTitleCardHtml({
-    eyebrow: 'Section 1 · Chapter Summary',
-    title: summary.title || 'Chapter Summary',
-    theme: 'blue',
-    toolType: 'chapter-summary-creator',
-  });
+  let html = studentHeroCard(
+    'chapter-summary-creator',
+    'Section 1 · Chapter Summary',
+    summary.title || 'Chapter Summary',
+    'blue',
+  );
   if (summary.chapterOverview) {
-    html += sectionCardHtml({
-      sectionNum: 'Section 2',
-      title: 'Overview of the Chapter',
-      stripe: 'border-sky-300',
-      iconWrap: 'bg-sky-100 text-sky-800',
-      iconSvg: '<span>📖</span>',
-      borderColor: 'border-blue-200/90',
-      body: richTextHtml(summary.chapterOverview),
-    });
+    html += studentSectionCard(
+      'chapter-summary-creator',
+      2,
+      'Overview of the Chapter',
+      richTextHtml(summary.chapterOverview),
+      'border-blue-200/90',
+    );
   }
   if (summary.learningObjectives.length) {
-    html += sectionCardHtml({
-      sectionNum: 'Section 3',
-      title: 'Learning Objectives',
-      stripe: 'border-indigo-300',
-      iconWrap: 'bg-indigo-100 text-indigo-800',
-      iconSvg: '<span>🎯</span>',
-      borderColor: 'border-blue-200/90',
-      body: bulletListHtml(summary.learningObjectives, 'text-indigo-500'),
-    });
+    html += studentSectionCard(
+      'chapter-summary-creator',
+      3,
+      'Learning Objectives',
+      bulletListHtml(summary.learningObjectives, 'text-indigo-500'),
+      'border-blue-200/90',
+    );
   }
   if (summary.importantConcepts.length) {
-    html += sectionCardHtml({
-      sectionNum: 'Section 4',
-      title: 'Important Concepts and Explanations',
-      stripe: 'border-violet-300',
-      iconWrap: 'bg-violet-100 text-violet-800',
-      iconSvg: '<span>✨</span>',
-      borderColor: 'border-blue-200/90',
-      body: conceptGridHtml(summary.importantConcepts),
-    });
+    html += studentSectionCard(
+      'chapter-summary-creator',
+      4,
+      'Important Concepts and Explanations',
+      conceptGridHtml(summary.importantConcepts),
+      'border-blue-200/90',
+    );
   }
   if (summary.quickRevisionNotes.length) {
-    html += sectionCardHtml({
-      sectionNum: 'Section 9',
-      title: 'Quick Revision Notes',
-      stripe: 'border-violet-300',
-      iconWrap: 'bg-violet-100 text-violet-800',
-      iconSvg: '<span>📝</span>',
-      borderColor: 'border-blue-200/90',
-      body: bulletListHtml(summary.quickRevisionNotes),
-    });
+    html += studentSectionCard(
+      'chapter-summary-creator',
+      9,
+      'Quick Revision Notes',
+      bulletListHtml(summary.quickRevisionNotes),
+      'border-blue-200/90',
+    );
   }
   return html;
 }
@@ -213,49 +226,43 @@ function renderChapterSummaryHtml(content: string, rawContent: unknown): string 
 function renderKeyPointsHtml(content: string, rawContent: unknown): string | null {
   const { keyPoints, markdownFallback } = resolveKeyPointsFromPayload(content, rawContent);
   if (markdownFallback || !keyPoints) return null;
-  let html = heroTitleCardHtml({
-    eyebrow: 'Section 1 · Key Points Sheet',
-    title: keyPoints.title || 'Key Points & Formulas',
-    theme: 'amber',
-    toolType: 'key-points-formula-extractor',
-  });
+  let html = studentHeroCard(
+    'key-points-formula-extractor',
+    'Section 1 · Key Points Sheet',
+    keyPoints.title || 'Key Points & Formulas',
+    'amber',
+  );
   if (keyPoints.importantConcepts.length) {
-    html += sectionCardHtml({
-      sectionNum: 'Section 2',
-      title: 'Important Concepts',
-      stripe: 'border-amber-300',
-      iconWrap: 'bg-amber-100 text-amber-900',
-      iconSvg: '<span>⭐</span>',
-      borderColor: 'border-amber-200/90',
-      body: conceptGridHtml(keyPoints.importantConcepts),
-    });
+    html += studentSectionCard(
+      'key-points-formula-extractor',
+      2,
+      'Most Important Concepts',
+      conceptGridHtml(keyPoints.importantConcepts),
+      'border-amber-200/90',
+    );
   }
   if (keyPoints.formulae.length) {
-    html += sectionCardHtml({
-      sectionNum: 'Section 4',
-      title: 'Formulae',
-      stripe: 'border-violet-300',
-      iconWrap: 'bg-violet-100 text-violet-800',
-      iconSvg: '<span>∑</span>',
-      borderColor: 'border-amber-200/90',
-      body: termGridHtml(
+    html += studentSectionCard(
+      'key-points-formula-extractor',
+      4,
+      'Important Formulae / Rules',
+      termGridHtml(
         keyPoints.formulae.map((f) => ({
           term: f.name || f.formula,
           definition: f.note,
-        }))
+        })),
       ),
-    });
+      'border-amber-200/90',
+    );
   }
   if (keyPoints.oneMinuteSummary) {
-    html += sectionCardHtml({
-      sectionNum: 'Section 10',
-      title: 'One-Minute Summary',
-      stripe: 'border-emerald-300',
-      iconWrap: 'bg-emerald-100 text-emerald-800',
-      iconSvg: '<span>⏱</span>',
-      borderColor: 'border-amber-200/90',
-      body: richTextHtml(keyPoints.oneMinuteSummary),
-    });
+    html += studentSectionCard(
+      'key-points-formula-extractor',
+      10,
+      'One-minute Summary',
+      richTextHtml(keyPoints.oneMinuteSummary),
+      'border-amber-200/90',
+    );
   }
   return html;
 }
@@ -1896,7 +1903,7 @@ function renderConceptMasterySections(concept: NormalizedConcept): string {
         title: sec.title,
         stripe: sec.stripe,
         iconWrap: sec.iconWrap,
-        iconSvg: sectionNumberIconSvg(sec.num),
+        iconSvg: sectionNumberIconSvg(sec.num, 'concept-mastery-helper'),
         borderColor: 'border-fuchsia-200/80',
         body: sec.body,
       })
@@ -1904,9 +1911,28 @@ function renderConceptMasterySections(concept: NormalizedConcept): string {
     .join('');
 }
 
-function renderConceptMasteryHtml(content: string, rawContent: unknown): string | null {
-  const { concepts, markdownFallback } = resolveConceptsFromPayload(content, rawContent);
-  if (markdownFallback || !concepts.length) return null;
+function resolveEnrichedConceptMasteryConcepts(
+  content: string,
+  rawContent: unknown,
+): NormalizedConcept[] {
+  const mergedRaw = coalesceAiToolRawContent(content, rawContent);
+  const display = resolveRichDisplayContent(content, mergedRaw);
+  if (!display.trim()) return [];
+
+  const { concepts } = resolveConceptsFromPayload(content, mergedRaw);
+  let list: NormalizedConcept[] = [];
+
+  if (concepts.length) {
+    list = concepts.map((c) => fillConceptGapsFromMarkdown(c, display));
+  } else {
+    const doc = parseSingleConceptDocument(display);
+    if (doc) list = [fillConceptGapsFromMarkdown(doc, display)];
+  }
+
+  return list.filter(conceptHasVisibleContent);
+}
+
+function renderConceptMasteryConceptsHtml(concepts: NormalizedConcept[]): string {
   return concepts
     .map((concept) => {
       let html = heroTitleCardHtml({
@@ -1920,6 +1946,25 @@ function renderConceptMasteryHtml(content: string, rawContent: unknown): string 
       return html;
     })
     .join('<div class="h-4"></div>');
+}
+
+/** Full Concept Mastery HTML — merges API markdown with structured rawData (all 12 sections). */
+export function renderConceptMasteryOutputHtml(
+  content: string,
+  rawContent?: unknown,
+): string | null {
+  const concepts = resolveEnrichedConceptMasteryConcepts(content, rawContent ?? null);
+  if (!concepts.length) return null;
+  return (
+    `<div class="concept-mastery-markdown space-y-2 rounded-3xl border border-fuchsia-200/80 p-2 sm:p-3" ` +
+    `style="background-color:#fdf4ff;background-image:radial-gradient(circle,rgba(217,70,239,0.08) 1px,transparent 1px);background-size:22px 22px">` +
+    renderConceptMasteryConceptsHtml(concepts) +
+    `</div>`
+  );
+}
+
+function renderConceptMasteryHtml(content: string, rawContent: unknown): string | null {
+  return renderConceptMasteryOutputHtml(content, rawContent);
 }
 
 const STRUCTURED_RENDERERS: Record<

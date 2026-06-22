@@ -50,6 +50,7 @@ import {
   isStoryPassageLanguageSubject,
 } from '../../../src/lib/student-ai-tools';
 import { extractMcqQuestionsFromRecord, isMcqTool } from '../../../src/lib/mcq-record-utils';
+import AiToolRecordPreview from '../../../src/components/ai-tools/AiToolRecordPreview';
 
 type PickerFile = { uri: string; name: string; mimeType?: string | null; size?: number | null };
 
@@ -919,9 +920,11 @@ export default function AiPdfView() {
                 </View>
               ))
             ) : (
-              <Text style={styles.fullText}>
-                {toDisplayPlainText(String(activeRecord?.generatedContent || ''))}
-              </Text>
+              <AiToolRecordPreview
+                toolType={String(activeRecord?.toolType || activeRecord?.toolName || '')}
+                content={String(activeRecord?.generatedContent || '')}
+                metadata={activeRecord?.metadata as Record<string, unknown> | undefined}
+              />
             )}
           </ScrollView>
         </View>

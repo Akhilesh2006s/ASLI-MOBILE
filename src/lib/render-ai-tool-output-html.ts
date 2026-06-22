@@ -24,6 +24,13 @@ import { renderChapterSummaryMarkdown } from './render-chapter-summary-markdown'
 import { renderKeyPointsMarkdown } from './render-key-points-markdown';
 import { renderQuickAssignmentMarkdown } from './render-quick-assignment-markdown';
 import { renderMockTestMarkdown } from './render-mock-test-markdown';
+import { renderConceptMasteryMarkdown } from './render-concept-mastery-markdown';
+import {
+  apiMarkdownShouldDriveDisplay,
+  buildAiToolSectionAudit,
+  logAiToolSectionAudit,
+  shouldPreferMarkdownOverStructured,
+} from './ai-tool-section-audit';
 import { resolvePracticeQaFromPayload } from './parse-practice-qa';
 import { resolveConceptBreakdownFromPayload } from './parse-concept-breakdown';
 import { resolveChapterSummaryFromPayload } from './parse-chapter-summary';
@@ -126,7 +133,10 @@ const TEACHER_STRUCTURED_TOOLS = new Set([
   'flashcard-generator',
 ]);
 
-const TOOL_RENDERERS: Record<string, (text: string) => string> = {
+const TOOL_RENDERERS: Record<
+  string,
+  (text: string, opts?: { premium?: boolean }) => string
+> = {
   'smart-study-guide-generator': renderSmartStudyGuideMarkdown,
   'concept-breakdown-explainer': renderConceptBreakdownMarkdown,
   'smart-qa-practice-generator': renderPracticeQaMarkdown,
@@ -135,6 +145,7 @@ const TOOL_RENDERERS: Record<string, (text: string) => string> = {
   'quick-assignment-builder': renderQuickAssignmentMarkdown,
   'mock-test-builder': renderMockTestMarkdown,
   'exam-question-paper-generator': renderMockTestMarkdown,
+  'concept-mastery-helper': renderConceptMasteryMarkdown,
 };
 
 function wrapWithShell(toolType: string, innerHtml: string): string {
@@ -214,11 +225,12 @@ function themedHtmlHasSectionCards(html: string): boolean {
 function resolveStudentNumberedOutput(
   toolType: string,
   display: string,
-  themedMarkdown?: (text: string) => string
+  themedMarkdown?: (text: string, opts?: { premium?: boolean }) => string,
+  premium = false,
 ): string {
-  const cards = renderNumberedTemplateAsCards(toolType, display);
+  const cards = renderNumberedTemplateAsCards(toolType, display, { premium });
   if (themedMarkdown) {
-    const themed = themedMarkdown(display);
+    const themed = themedMarkdown(display, { premium });
     if (themedHtmlHasSectionCards(themed)) return themed;
     if (bodyHasVisibleOutput(cards)) return cards;
     return themed;
@@ -324,64 +336,108 @@ function renderAiToolOutputHtmlInner(
   const structured = tryRenderStructuredAiToolHtml(toolType, content, mergedRaw, variant);
   const themedMarkdown = TOOL_RENDERERS[toolType];
   const numberedTemplate = contentHasNumberedTemplateSections(display);
-
-  const structuredFullTools = new Set([
-    'worksheet-mcq-generator',
-    'concept-mastery-helper',
-    'homework-creator',
-    'story-passage-creator',
-    'reading-practice-room',
-    'activity-project-generator',
-    'project-idea-lab',
-    'lesson-planner',
-    'daily-class-plan-maker',
-    'exam-question-paper-generator',
-    'flashcard-generator',
-    'short-notes-summaries-maker',
-  ]);
+  const studentPremium = variant === 'student';
+  const preferMarkdown = shouldPreferMarkdownOverStructured(display, structured);
+  const markdownDriven = apiMarkdownShouldDriveDisplay(toolType, display);
 
   const teacherHasSections = countNumberedTemplateSections(display) >= 1;
   const studentHasSections = countNumberedTemplateSections(display) >= 1;
 
   let inner: string;
-  if (variant === 'teacher') {
-    if (structured && TEACHER_STRUCTURED_TOOLS.has(toolType)) {
+  let renderedPath = 'plain-markdown';
+
+  // Super Admin saves numbered markdown in `content`. When present, render that — not partial structured JSON.
+  if (markdownDriven) {
+    if (themedMarkdown) {
+      inner =
+        variant === 'student'
+          ? resolveStudentNumberedOutput(toolType, display, themedMarkdown, studentPremium)
+          : themedMarkdown(display, { premium: false });
+      renderedPath = 'themed-markdown';
+    } else {
+      inner = renderNumberedTemplateAsCards(toolType, display, {
+        premium: variant === 'student',
+      });
+      renderedPath = 'numbered-cards';
+    }
+  } else if (variant === 'teacher') {
+    if (structured && TEACHER_STRUCTURED_TOOLS.has(toolType) && !preferMarkdown) {
       inner = structured;
+      renderedPath = 'structured';
+    } else if (themedMarkdown && (numberedTemplate || teacherHasSections)) {
+      inner = themedMarkdown(display, { premium: false });
+      renderedPath = 'themed-markdown';
     } else if (numberedTemplate || teacherHasSections) {
       inner = renderNumberedTemplateAsCards(toolType, display);
-    } else if (themedMarkdown) {
-      inner = themedMarkdown(display);
+      renderedPath = 'numbered-cards';
     } else if (structured) {
       inner = structured;
+      renderedPath = 'structured-fallback';
     } else {
       inner = renderMarkdown(display);
+      renderedPath = 'plain-markdown';
     }
-  } else if (structured && structuredFullTools.has(toolType)) {
+  } else if (structured && shouldUseStructuredStudentOutput(toolType, display, mergedRaw) && !preferMarkdown) {
     inner = structured;
-  } else if (structured && shouldUseStructuredStudentOutput(toolType, display, mergedRaw)) {
-    // Hybrid tools (e.g. Practice Q&A sections A–G) store questions in rawContent, not numbered markdown.
-    inner = structured;
+    renderedPath = 'structured-hybrid';
   } else if (themedMarkdown) {
-    // Prefer full themed markdown (all numbered sections) over partial structured HTML parsers.
-    inner = resolveStudentNumberedOutput(toolType, display, themedMarkdown);
+    inner = resolveStudentNumberedOutput(toolType, display, themedMarkdown, studentPremium);
+    renderedPath = 'themed-markdown';
     if (!bodyHasVisibleOutput(inner) && structured) {
       inner = structured;
+      renderedPath = 'structured-fallback';
     }
   } else if (numberedTemplate || studentHasSections) {
-    inner = resolveStudentNumberedOutput(toolType, display, themedMarkdown);
+    inner = resolveStudentNumberedOutput(toolType, display, themedMarkdown, studentPremium);
+    renderedPath = 'numbered-cards';
   } else if (structured) {
     inner = structured;
+    renderedPath = 'structured-fallback';
   } else {
     inner = renderMarkdown(display);
+    renderedPath = 'plain-markdown';
   }
 
   if (!bodyHasVisibleOutput(inner)) {
     inner = renderAiToolFallbackBody(content, mergedRaw);
+    renderedPath = 'fallback-body';
+  }
+
+  let audit = buildAiToolSectionAudit({
+    toolType,
+    variant,
+    display,
+    structuredHtml: structured,
+    renderedPath,
+    renderedHtml: inner,
+    preferMarkdown: preferMarkdown || markdownDriven,
+  });
+  if (audit.missingFromRender.length > 0 && display.trim()) {
+    const markdownFallback =
+      renderNumberedTemplateAsCards(toolType, display, { premium: variant === 'student' }) ||
+      renderMarkdown(display);
+    if (bodyHasVisibleOutput(markdownFallback)) {
+      inner = markdownFallback;
+      renderedPath = 'numbered-cards-recovery';
+      audit = buildAiToolSectionAudit({
+        toolType,
+        variant,
+        display,
+        structuredHtml: structured,
+        renderedPath,
+        renderedHtml: inner,
+        preferMarkdown: true,
+      });
+    }
   }
 
   inner = wrapAiToolOutputSectionGrid(inner);
 
   const body = TOOL_SHELLS[toolType] ? wrapWithShell(toolType, inner) : inner;
+
+  if (__DEV__) {
+    logAiToolSectionAudit(audit);
+  }
 
   return wrapAiToolHtmlDocument(body);
 }

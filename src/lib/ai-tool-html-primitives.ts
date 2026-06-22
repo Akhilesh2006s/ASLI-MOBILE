@@ -2,6 +2,7 @@ import { renderMarkdown } from './render-teacher-markdown';
 import { stripMarkdownSyntax } from './strip-markdown-syntax';
 import { stripAiToolGenerationLabel } from './strip-ai-tool-generation-label';
 import { getAiToolHeroEmoji } from './ai-tool-icons';
+import { premiumToolHeroIconHtml } from './student-section-icons';
 
 type LightHeaderTheme = 'blue' | 'amber' | 'indigo' | 'emerald' | 'violet' | 'slate';
 
@@ -95,11 +96,7 @@ export function richTextHtml(text: string): string {
   return `<p class="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">${escapeHtml(raw)}</p>`;
 }
 
-/** Section badge icon — shows the section number instead of a generic § symbol. */
-export function sectionNumberIconSvg(num: number): string {
-  const label = num > 0 ? String(num) : '•';
-  return `<span class="text-sm font-bold tabular-nums leading-none">${escapeHtml(label)}</span>`;
-}
+export { sectionNumberIconSvg, sectionIconSvg, premiumToolHeroIconHtml } from './student-section-icons';
 
 function themeFromStripe(stripe: string) {
   const match = stripe.match(/border-([a-z]+)-(\d+)/);
@@ -238,6 +235,7 @@ export function heroTitleCardHtml(opts: {
   progressPct?: number;
   toolType?: string;
   iconEmoji?: string;
+  premium?: boolean;
 }): string {
   const themes = {
     indigo: {
@@ -306,6 +304,9 @@ export function heroTitleCardHtml(opts: {
   const displayTitle = stripAiToolGenerationLabel(opts.title, opts.eyebrow);
   const iconChar =
     opts.iconEmoji ?? (opts.toolType ? getAiToolHeroEmoji(opts.toolType) : '✨');
+  const iconHtml = opts.premium && opts.toolType
+    ? premiumToolHeroIconHtml(opts.toolType, t.icon)
+    : `<div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${t.icon} text-2xl">${iconChar}</div>`;
   const progress =
     opts.progressPct != null
       ? `<div class="mt-4">
@@ -324,7 +325,7 @@ export function heroTitleCardHtml(opts: {
   <div class="absolute inset-0" style="background:${t.gradient}"></div>
   <div class="relative flex flex-col gap-4 p-5">
     <div class="flex items-start gap-4">
-      <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${t.icon} text-2xl">${iconChar}</div>
+      ${iconHtml}
       <div class="min-w-0 flex-1">
         ${opts.badge ? `<span class="inline-flex items-center rounded-md border ${t.badge} text-[10px] font-semibold px-2 py-0.5 mb-2">${escapeHtml(opts.badge)}</span>` : ''}
         <p class="text-[10px] font-bold uppercase tracking-wider ${t.eyebrow} mb-1">${escapeHtml(opts.eyebrow)}</p>

@@ -1,5 +1,5 @@
 import { formatInlineMarkdown, renderMarkdown } from './render-teacher-markdown';
-import { lightDocHeaderHtml } from './ai-tool-html-primitives';
+import { emptySectionPlaceholderHtml, lightDocHeaderHtml } from './ai-tool-html-primitives';
 import {
   parseMarkdownDocTitle,
   parseMarkdownSectionHeading,
@@ -9,7 +9,11 @@ import {
   type SectionHtmlEntry,
   themedNumberedSectionCardHtml,
   themedSection1TitleCardHtml,
+  themedSection1TitleCardHtmlPremium,
+  type MarkdownRenderOpts,
 } from './themed-markdown-sections';
+
+const TOOL_TYPE = 'concept-breakdown-explainer';
 
 const SECTION_STYLES: Record<number, { border: string; bg: string; title: string }> = {
   1: { border: 'border-violet-300', bg: 'bg-violet-50/80', title: 'text-violet-900' },
@@ -46,7 +50,7 @@ function bodyLinesToHtml(lines: string[]): string {
 }
 
 /** Violet-themed HTML for Concept Breakdown markdown sections. */
-export function renderConceptBreakdownMarkdown(text: string): string {
+export function renderConceptBreakdownMarkdown(text: string, opts?: MarkdownRenderOpts): string {
   if (!text?.trim()) return '';
 
   let processed = text;
@@ -77,14 +81,24 @@ export function renderConceptBreakdownMarkdown(text: string): string {
       if (titleText) {
         sectionEntries.push({
           num: 1,
-          html: themedSection1TitleCardHtml({
-            title: titleText,
-            badge: 'Concept Title',
-            border: 'border-violet-300',
-            bg: 'bg-gradient-to-br from-violet-50/90 via-white to-indigo-50/40',
-            labelClass: 'text-violet-700',
-            badgeClass: 'bg-violet-100 text-violet-900',
-          }),
+          html: opts?.premium
+            ? themedSection1TitleCardHtmlPremium({
+                title: titleText,
+                badge: 'Concept Title',
+                border: 'border-violet-300',
+                bg: 'bg-gradient-to-br from-violet-50/90 via-white to-indigo-50/40',
+                labelClass: 'text-violet-700',
+                badgeClass: 'bg-violet-100 text-violet-900',
+                toolType: TOOL_TYPE,
+              })
+            : themedSection1TitleCardHtml({
+                title: titleText,
+                badge: 'Concept Title',
+                border: 'border-violet-300',
+                bg: 'bg-gradient-to-br from-violet-50/90 via-white to-indigo-50/40',
+                labelClass: 'text-violet-700',
+                badgeClass: 'bg-violet-100 text-violet-900',
+              }),
         });
         renderedSection1 = true;
       }
@@ -94,21 +108,24 @@ export function renderConceptBreakdownMarkdown(text: string): string {
       return;
     }
     const style = sectionStyle(currentSection);
-    const bodyHtml = bodyLinesToHtml(bodyLines);
-    if (bodyHtml.trim()) {
-      sectionEntries.push({
-        num: currentSection,
-        html: themedNumberedSectionCardHtml({
-          sectionNum: currentSection,
-          sectionTitle: currentTitle,
-          bodyHtml,
-          border: style.border,
-          bg: style.bg,
-          titleClass: style.title,
-          labelClass: 'text-violet-600',
-        }),
-      });
+    let bodyHtml = bodyLinesToHtml(bodyLines);
+    if (!bodyHtml.trim()) {
+      bodyHtml = emptySectionPlaceholderHtml();
     }
+    sectionEntries.push({
+      num: currentSection,
+      html: themedNumberedSectionCardHtml({
+        sectionNum: currentSection,
+        sectionTitle: currentTitle,
+        bodyHtml,
+        border: style.border,
+        bg: style.bg,
+        titleClass: style.title,
+        labelClass: 'text-violet-600',
+        premium: opts?.premium,
+        toolType: TOOL_TYPE,
+      }),
+    });
     bodyLines = [];
     currentSection = 0;
     currentTitle = '';
@@ -145,14 +162,24 @@ export function renderConceptBreakdownMarkdown(text: string): string {
   if (!renderedSection1 && docTitle) {
     sectionEntries.unshift({
       num: 1,
-      html: themedSection1TitleCardHtml({
-        title: docTitle,
-        badge: 'Concept Title',
-        border: 'border-violet-300',
-        bg: 'bg-gradient-to-br from-violet-50/90 via-white to-indigo-50/40',
-        labelClass: 'text-violet-700',
-        badgeClass: 'bg-violet-100 text-violet-900',
-      }),
+      html: opts?.premium
+        ? themedSection1TitleCardHtmlPremium({
+            title: docTitle,
+            badge: 'Concept Title',
+            border: 'border-violet-300',
+            bg: 'bg-gradient-to-br from-violet-50/90 via-white to-indigo-50/40',
+            labelClass: 'text-violet-700',
+            badgeClass: 'bg-violet-100 text-violet-900',
+            toolType: TOOL_TYPE,
+          })
+        : themedSection1TitleCardHtml({
+            title: docTitle,
+            badge: 'Concept Title',
+            border: 'border-violet-300',
+            bg: 'bg-gradient-to-br from-violet-50/90 via-white to-indigo-50/40',
+            labelClass: 'text-violet-700',
+            badgeClass: 'bg-violet-100 text-violet-900',
+          }),
     });
   }
 

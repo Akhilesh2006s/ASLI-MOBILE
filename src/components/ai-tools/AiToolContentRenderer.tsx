@@ -75,21 +75,26 @@ export default function AiToolContentRenderer({
     () => contentHasNumberedTemplateSections(displayMarkdown),
     [displayMarkdown]
   );
+  const hasApiMarkdownSections = useMemo(
+    () => displayMarkdown.trim().length > 0 && /^\s*(?:#{1,4}\s*)?\d{1,2}\.\s+\S/m.test(displayMarkdown),
+    [displayMarkdown],
+  );
 
   const useNativeActivity = useMemo(() => {
     if (toolType !== 'activity-project-generator' && toolType !== 'project-idea-lab') return false;
-    if (hasFullTemplateMarkdown) return false;
+    if (hasFullTemplateMarkdown || hasApiMarkdownSections) return false;
     // Teacher activity uses the colored WebView renderer (same section tints as student tools).
     if (toolType === 'activity-project-generator' && variant === 'teacher') return false;
     const mode = toolType === 'project-idea-lab' ? 'student' : variant;
     return activitiesPayloadIsComplete(activitiesFromRaw(mergedRaw), cleaned, mode);
-  }, [toolType, cleaned, mergedRaw, hasFullTemplateMarkdown, variant]);
+  }, [toolType, cleaned, mergedRaw, hasFullTemplateMarkdown, hasApiMarkdownSections, variant]);
 
   const useNativeFlashcard = useMemo(() => {
     if (toolType !== 'my-study-decks' && toolType !== 'flashcard-generator') return false;
+    if (hasFullTemplateMarkdown || hasApiMarkdownSections) return false;
     const { cards } = resolveFlashcardsFromPayload(cleaned, mergedRaw);
     return flashcardsHaveVisibleBody(cards);
-  }, [toolType, cleaned, mergedRaw]);
+  }, [toolType, cleaned, mergedRaw, hasFullTemplateMarkdown, hasApiMarkdownSections]);
 
   if (toolType === 'smart-qa-practice-generator') {
     return (
@@ -128,7 +133,7 @@ export default function AiToolContentRenderer({
     <AiToolWebView
       toolType={toolType}
       content={cleaned}
-      rawContent={rawContent}
+      rawContent={mergedRaw}
       variant={variant}
     />
   );

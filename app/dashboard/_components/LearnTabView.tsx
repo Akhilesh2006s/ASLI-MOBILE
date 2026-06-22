@@ -92,7 +92,12 @@ export default function LearnTabView({ username }: { username: string }) {
             <Pressable
               key={t.id}
               style={styles.toolRow}
-              onPress={() => router.push(`/student/tools/${t.id}` as any)}
+              onPress={() =>
+                router.push({
+                  pathname: `/student/tools/${t.id}` as any,
+                  params: { returnTab: 'vidya' },
+                })
+              }
             >
               <Ionicons name={t.icon} size={22} color={STUDENT.primary} />
               <Text style={styles.toolName} numberOfLines={1}>

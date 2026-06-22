@@ -8,7 +8,9 @@
     "userInterfaceStyle": "light",
     "jsEngine": "hermes",
     "splash": {
-      "backgroundColor": "#f0fdf4"
+      "image": "./assets/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -33,6 +35,14 @@
       ]
     },
     "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/logo.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ],
       "expo-router",
       "expo-secure-store",
       "expo-web-browser",

@@ -1,5 +1,5 @@
 import { Stack } from 'expo-router';
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -8,6 +8,9 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { usePathname, useRouter } from 'expo-router';
 import { queryClient } from '../src/lib/queryClient';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
+import { AppSplash, SPLASH_DURATION_MS, SPLASH_EXIT_DURATION_MS } from '../src/components/AppSplash';
+
+void SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function getDashboardByRole(role: string | null) {
   if (role === 'super-admin') return '/super-admin-dashboard';
@@ -165,16 +168,48 @@ function AuthGate() {
   );
 }
 
-export default function RootLayout() {
+function SplashOverlay() {
+  const { isLoading } = useAuth();
+  const [minTimeDone, setMinTimeDone] = useState(false);
+  const [exiting, setExiting] = useState(false);
+  const [hidden, setHidden] = useState(false);
+
   useEffect(() => {
+    const timer = setTimeout(() => setMinTimeDone(true), SPLASH_DURATION_MS);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (isLoading || !minTimeDone || exiting) return;
+    setExiting(true);
+  }, [exiting, isLoading, minTimeDone]);
+
+  useEffect(() => {
+    if (!exiting) return;
+    const timer = setTimeout(() => setHidden(true), SPLASH_EXIT_DURATION_MS);
+    return () => clearTimeout(timer);
+  }, [exiting]);
+
+  const onSplashLayout = useCallback(() => {
     void SplashScreen.hideAsync();
   }, []);
 
+  if (hidden) return null;
+
+  return (
+    <View style={styles.splashOverlay} onLayout={onSplashLayout} pointerEvents="box-none">
+      <AppSplash exiting={exiting} />
+    </View>
+  );
+}
+
+export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <AuthGate />
+          <SplashOverlay />
         </AuthProvider>
       </QueryClientProvider>
     </SafeAreaProvider>
@@ -186,7 +221,12 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#ffffff',
+  },
+  splashOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 999,
+    elevation: 999,
   },
 });
 

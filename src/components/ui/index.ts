@@ -22,4 +22,5 @@ export { default as BarChart } from './charts/BarChart';
 export { default as LineChart } from './charts/LineChart';
 export { default as DonutChart } from './charts/DonutChart';
 export { default as ProgressBar } from './charts/ProgressBar';
+export { VisitedTabPane } from './VisitedTabPane';
 export { default as SchoolBrandRow } from './SchoolBrandRow';

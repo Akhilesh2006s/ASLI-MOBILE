@@ -92,6 +92,23 @@ export function countNumberedTemplateSections(text: string): number {
 
 export type ParsedTemplateSection = { num: number; title: string; body: string };
 
+/** Super Admin templates may use up to ~25 numbered sections (e.g. Story & Passage = 19). */
+export const MAX_TEMPLATE_SECTION_NUM = 25;
+
+const TEMPLATE_SECTION_TITLE =
+  /^(Section\s+[A-G]|Learning|Instructions|Objectives|Chapter|Topic|Simple|Why|Prior|Step|Diagram|Real|Common|Concept|Key|Exam|Higher|Quick|Worksheet|Mock|Answer|Bloom|NCF|Materials|Procedure|Teacher|Student|Differentiation|Assessment|Expected|Reflection|Subtopic|Study|Practice|Safety|Observation|Creative|Activity|Homework|Story|Passage|Important|Overview|Revision|Tips|Title|Definition|Formula|Application|Thinking|Challenge|Support|Parent|Clear|Rubric|Blueprint|Marking|Internal|Vocabulary|Warm|Recall|Infer|Connect|Grammar|Response|Suggested|Mistake|Wrap|Context|Foundation|Deck|Card|Passage|Foundations|Alignment|Schedule|Break|Self|Checkpoint|Extension|Outcome|Ticket|Observation|Creative|Competency|Application|HOTS|Match|Fill|Blank|Subjective|Objective|Paper|Question|Instructions|Observation|Warm-up|Pre-reading|Post-reading|Read|Think|Apply|Grammar|Differentiated|Teaching|Aids|Follow|Exit|Period|Slot|Goal|Readiness|Plan)/i;
+
+/** Plain `N. Title` lines — avoid treating in-body numbered steps as section headers. */
+export function looksLikeTemplateSectionTitle(title: string, num: number): boolean {
+  const t = title.trim();
+  if (t.length < 4) return false;
+  if (TEMPLATE_SECTION_TITLE.test(t)) return true;
+  if (num >= 1 && num <= MAX_TEMPLATE_SECTION_NUM) {
+    if (t.length <= 120 && /^[A-Z(\[]/.test(t)) return true;
+  }
+  return false;
+}
+
 /** Merge duplicate section numbers — Super Admin content often repeats headers (`### 6.` then `6.`). */
 export function dedupeParsedTemplateSections(sections: ParsedTemplateSection[]): ParsedTemplateSection[] {
   const byNum = new Map<number, ParsedTemplateSection>();
@@ -204,12 +221,7 @@ export function parseNumberedTemplateSections(text: string): {
     if (plainNumbered) {
       const num = Number(plainNumbered[1]);
       const title = plainNumbered[2].trim();
-      const looksLikeTemplateHeader =
-        title.length >= 4 &&
-        (/^(Section\s+[A-G]|Learning|Instructions|Objectives|Chapter|Topic|Simple|Why|Prior|Step|Diagram|Real|Common|Concept|Key|Exam|Higher|Quick|Worksheet|Mock|Answer|Bloom|NCF|Materials|Procedure|Teacher|Student|Differentiation|Assessment|Expected|Reflection|Subtopic|Study|Practice|Safety|Observation|Creative|Activity|Homework|Story|Passage|Important|Overview|Revision|Tips|Title|Definition|Formula|Application|Thinking|Challenge|Support|Parent|Clear)/i.test(
-          title,
-        ) ||
-          (num >= 1 && num <= 11));
+      const looksLikeTemplateHeader = looksLikeTemplateSectionTitle(title, num);
       if (looksLikeTemplateHeader) {
         tryStartSection(num, title);
         continue;

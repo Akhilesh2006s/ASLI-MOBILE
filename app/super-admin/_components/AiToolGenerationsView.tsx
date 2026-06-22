@@ -34,6 +34,7 @@ import {
   updateDocument,
 } from '../../../src/lib/ai-tool-generations';
 import { extractMcqQuestionsFromRecord, isMcqTool } from '../../../src/lib/mcq-record-utils';
+import AiToolRecordPreview from '../../../src/components/ai-tools/AiToolRecordPreview';
 
 type BoardPickerProps = {
   visible: boolean;
@@ -381,7 +382,11 @@ function RecordsSection({ parents }: { parents: Record<string, string> }) {
                 </View>
               ))
             ) : (
-              <Text style={styles.fullText}>{fullText}</Text>
+              <AiToolRecordPreview
+                toolType={String(viewRow?.toolName || parents.toolName || '')}
+                content={fullText}
+                metadata={viewRow?.metadata as Record<string, unknown> | undefined}
+              />
             )}
           </ScrollView>
         </View>

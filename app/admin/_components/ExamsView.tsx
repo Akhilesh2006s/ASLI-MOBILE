@@ -43,7 +43,7 @@ import {
   AdminEmptyState,
   AdminSkeletonList,
   AdminScalePressable,
-  AdminStatCard,
+  AdminStatsRow,
   AdminFilterChips,
   AdminModalShell,
   useAdminTheme,
@@ -101,6 +101,14 @@ const EMPTY_ANALYTICS: AnalyticsData = {
   averageScore: '0.00',
   topPerformers: [],
 };
+
+function formatAverageScore(score?: string): string {
+  if (!score) return '—';
+  const parsed = Number.parseFloat(score);
+  if (!Number.isFinite(parsed)) return '—';
+  const rounded = Math.round(parsed * 10) / 10;
+  return `${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)}%`;
+}
 
 const LIST_CLASS_CHIPS = [
   { id: 'all', label: 'All classes' },
@@ -259,7 +267,7 @@ const marksToneColors = {
 
 export default function ExamsView() {
   const { colors, spacing, radius, typo } = useAdminTheme();
-  const { isTablet, cardWidth, statWidth, onShellLayout } = useAdminTabletLayout(spacing.md);
+  const { isTablet, cardWidth, onShellLayout } = useAdminTabletLayout(spacing.md);
   const [exams, setExams] = useState<Exam[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [listClassFilter, setListClassFilter] = useState('all');
@@ -557,68 +565,34 @@ export default function ExamsView() {
           </View>
         ) : (
           <>
-            <View style={[styles.statsRow, isTablet && styles.statsRowTablet]}>
-              <View
-                style={[
-                  styles.statSlot,
-                  isTablet && styles.statSlotTablet,
-                  isTablet && statWidth != null && { width: statWidth },
-                ]}
-              >
-                <AdminStatCard
-                  label="Total students"
-                  value={analytics?.totalStudents ?? 0}
-                  icon="people"
-                  gradientIndex={0}
-                  compact={isTablet}
-                />
-              </View>
-              <View
-                style={[
-                  styles.statSlot,
-                  isTablet && styles.statSlotTablet,
-                  isTablet && statWidth != null && { width: statWidth },
-                ]}
-              >
-                <AdminStatCard
-                  label="Attempted"
-                  value={analytics?.attemptedCount ?? 0}
-                  icon="checkmark-circle"
-                  gradientIndex={1}
-                  compact={isTablet}
-                />
-              </View>
-              <View
-                style={[
-                  styles.statSlot,
-                  isTablet && styles.statSlotTablet,
-                  isTablet && statWidth != null && { width: statWidth },
-                ]}
-              >
-                <AdminStatCard
-                  label="Not attempted"
-                  value={analytics?.notAttemptedCount ?? 0}
-                  icon="close-circle"
-                  gradientIndex={2}
-                  compact={isTablet}
-                />
-              </View>
-              <View
-                style={[
-                  styles.statSlot,
-                  isTablet && styles.statSlotTablet,
-                  isTablet && statWidth != null && { width: statWidth },
-                ]}
-              >
-                <AdminStatCard
-                  label="Avg score"
-                  value={`${analytics?.averageScore ?? '—'}%`}
-                  icon="stats-chart"
-                  gradientIndex={3}
-                  compact={isTablet}
-                />
-              </View>
-            </View>
+            <AdminStatsRow
+              items={[
+                {
+                  label: 'Total students',
+                  value: analytics?.totalStudents ?? 0,
+                  icon: 'people',
+                  gradientIndex: 0,
+                },
+                {
+                  label: 'Attempted',
+                  value: analytics?.attemptedCount ?? 0,
+                  icon: 'checkmark-circle',
+                  gradientIndex: 1,
+                },
+                {
+                  label: 'Not attempted',
+                  value: analytics?.notAttemptedCount ?? 0,
+                  icon: 'close-circle',
+                  gradientIndex: 2,
+                },
+                {
+                  label: 'Avg score',
+                  value: formatAverageScore(analytics?.averageScore),
+                  icon: 'stats-chart',
+                  gradientIndex: 3,
+                },
+              ]}
+            />
 
             {analytics?.topPerformers && analytics.topPerformers.length > 0 ? (
               <AdminGlassCard style={{ marginBottom: spacing.sm }}>
@@ -1121,28 +1095,6 @@ const styles = StyleSheet.create({
   innerShell: {
     width: '100%',
     flexDirection: 'column',
-  },
-  statsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 12,
-    width: '100%',
-  },
-  statsRowTablet: {
-    flexWrap: 'nowrap',
-    alignItems: 'stretch',
-    gap: 12,
-  },
-  statSlot: {
-    flex: 1,
-    minWidth: '46%',
-  },
-  statSlotTablet: {
-    flex: 0,
-    flexGrow: 0,
-    flexShrink: 0,
-    minWidth: 0,
   },
   listContent: {
     gap: 12,

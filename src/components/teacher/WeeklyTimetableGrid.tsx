@@ -236,7 +236,7 @@ export default function WeeklyTimetableGrid({
 
   return (
     <View style={[styles.shell, shellStyle]}>
-      <ScrollView horizontal showsHorizontalScrollIndicator bounces={false}>
+      <ScrollView horizontal showsHorizontalScrollIndicator nestedScrollEnabled bounces={false}>
         <View style={{ minWidth }}>
           <LinearGradient
             colors={[...theme.headerGradient]}

@@ -150,7 +150,10 @@ export default function VidyaAIView() {
   const visibleTools = useMemo(() => filterVisibleStudentTools(subjectNames), [subjectNames]);
 
   const openTool = (tool: StudentAiTool) => {
-    router.push(`/student/tools/${tool.id}` as any);
+    router.push({
+      pathname: `/student/tools/${tool.id}` as any,
+      params: { returnTab: 'vidya' },
+    });
   };
 
   return (

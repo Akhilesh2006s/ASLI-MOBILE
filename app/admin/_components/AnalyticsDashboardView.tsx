@@ -5,7 +5,7 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 import adminService from '../../../src/services/api/adminService';
 import {
   AdminScreenShell,
-  AdminStatCard,
+  AdminStatsRow,
   AdminSectionHeader,
   AdminGlassCard,
   AdminAnimatedProgress,
@@ -138,12 +138,14 @@ export default function AnalyticsDashboardView() {
         }
       />
 
-      <View style={styles.statsGrid}>
-        <AdminStatCard label="Total Students" value={analytics.totalStudents} icon="people" gradientIndex={0} />
-        <AdminStatCard label="Active Students" value={analytics.activeStudents} icon="pulse" gradientIndex={1} />
-        <AdminStatCard label="Average Score" value={`${analytics.averageScore}%`} icon="trophy" gradientIndex={2} />
-        <AdminStatCard label="Completion Rate" value={`${analytics.completionRate}%`} icon="checkmark-done" gradientIndex={3} />
-      </View>
+      <AdminStatsRow
+        items={[
+          { label: 'Total Students', value: analytics.totalStudents, icon: 'people', gradientIndex: 0 },
+          { label: 'Active Students', value: analytics.activeStudents, icon: 'pulse', gradientIndex: 1 },
+          { label: 'Average Score', value: `${analytics.averageScore}%`, icon: 'trophy', gradientIndex: 2 },
+          { label: 'Completion Rate', value: `${analytics.completionRate}%`, icon: 'checkmark-done', gradientIndex: 3 },
+        ]}
+      />
 
       <AdminGlassCard delay={100} style={{ marginTop: spacing.md, padding: spacing.md }}>
         <AdminSectionHeader title="Class Performance" icon="school-outline" />
@@ -210,7 +212,6 @@ export default function AnalyticsDashboardView() {
 }
 
 const styles = StyleSheet.create({
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   refreshBtn: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -79,6 +79,17 @@ function coalesceText(v: unknown): string {
   return String(v ?? '').trim();
 }
 
+/** Remove backend merge marker and duplicate PDF answer-key tails from display. */
+function sanitizeWorksheetAnswerKey(text: string): string {
+  const raw = String(text || '').trim();
+  if (!raw) return '';
+  const parts = raw
+    .split(/\n*---\s*PDF Answer Key\s*---\s*\n?/gi)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return parts[0] || raw;
+}
+
 function stripInlineMarkdown(text: string): string {
   let t = String(text || '');
   if (!t.trim()) return '';
@@ -133,6 +144,7 @@ function renumberWorksheetSectionQuestions(sections: WorksheetSection[]): Worksh
 function finalizeNormalizedWorksheet(worksheet: NormalizedWorksheet): NormalizedWorksheet {
   return {
     ...worksheet,
+    answerKey: sanitizeWorksheetAnswerKey(worksheet.answerKey),
     sections: renumberWorksheetSectionQuestions(worksheet.sections),
   };
 }

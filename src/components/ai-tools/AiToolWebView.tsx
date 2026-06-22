@@ -4,6 +4,11 @@ import { WebView } from 'react-native-webview';
 import { renderAiToolOutputHtml } from '../../lib/render-ai-tool-output-html';
 import { resolveRichDisplayContent, coalesceAiToolRawContent } from '../../lib/ai-tool-display-content';
 import { simpleContentFingerprint } from '../../lib/ai-tool-rotation-label';
+import {
+  buildAiToolSectionAudit,
+  logAiToolSectionAudit,
+  summarizeApiSections,
+} from '../../lib/ai-tool-section-audit';
 
 type Props = {
   toolType: string;
@@ -89,6 +94,33 @@ export default function AiToolWebView({ toolType, content, rawContent, variant =
   const webViewRef = useRef<WebView>(null);
   const [height, setHeight] = useState(estimatedHeight);
   const heightDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!__DEV__) return;
+    const display = resolveRichDisplayContent(content, mergedRaw);
+    const api = summarizeApiSections(display);
+    console.log(
+      `[AiToolSections] API received ${toolType} (${variant}): ` +
+        `${api.sections.length} parsed sections, ${api.count} numbered headers — ` +
+        api.sections.map((s) => `${s.num}${s.hasBody ? '' : '(empty)'}`).join(', '),
+    );
+  }, [toolType, content, mergedRaw, variant]);
+
+  useEffect(() => {
+    if (!__DEV__ || !html) return;
+    const display = resolveRichDisplayContent(content, mergedRaw);
+    logAiToolSectionAudit(
+      buildAiToolSectionAudit({
+        toolType,
+        variant,
+        display,
+        structuredHtml: null,
+        renderedPath: 'webview',
+        renderedHtml: html,
+        preferMarkdown: false,
+      }),
+    );
+  }, [toolType, content, mergedRaw, variant, html]);
 
   useEffect(() => {
     setHeight(estimatedHeight);

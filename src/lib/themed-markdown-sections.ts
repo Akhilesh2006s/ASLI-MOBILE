@@ -1,5 +1,10 @@
 import { formatInlineMarkdown } from './render-teacher-markdown';
 import { stripAiToolGenerationLabel } from './strip-ai-tool-generation-label';
+import { sectionCardHtml } from './ai-tool-html-primitives';
+import { resolveStudentSectionMeta, sectionIconSvg } from './student-section-icons';
+import { looksLikeTemplateSectionTitle } from './ai-tool-display-content';
+
+export type MarkdownRenderOpts = { premium?: boolean; toolType?: string };
 
 /** `# Title` or `## Title` (without `N.` prefix) — common Super Admin doc headers. */
 export function parseMarkdownDocTitle(line: string): string | null {
@@ -41,16 +46,60 @@ export function themedNumberedSectionCardHtml(opts: {
   bg: string;
   titleClass: string;
   labelClass: string;
+  toolType?: string;
+  premium?: boolean;
 }): string {
   const label = opts.sectionTitle.trim() || `Section ${opts.sectionNum}`;
+  const fullWidth =
+    opts.sectionNum === 5 || opts.sectionNum === 6 || opts.sectionNum === 10 ? ' ai-tool-section-full' : '';
+
+  if (opts.premium && opts.toolType) {
+    const meta = resolveStudentSectionMeta(opts.toolType, opts.sectionNum, label);
+    if (meta) {
+      return sectionCardHtml({
+        sectionNum: `Section ${opts.sectionNum}`,
+        title: meta.title,
+        stripe: meta.stripe,
+        iconWrap: meta.iconWrap,
+        iconSvg: sectionIconSvg(meta.icon),
+        borderColor: opts.border,
+        bg: opts.bg,
+        labelClass: opts.labelClass,
+        titleClass: opts.titleClass,
+        body: opts.bodyHtml,
+      }).replace('ai-tool-section-card', `ai-tool-section-card${fullWidth}`);
+    }
+  }
+
   return (
-    `<section class="mb-3 overflow-hidden rounded-xl border ${opts.border} ${opts.bg} shadow-sm ai-tool-section-card${opts.sectionNum === 5 || opts.sectionNum === 6 || opts.sectionNum === 10 ? ' ai-tool-section-full' : ''}">` +
+    `<section class="mb-3 overflow-hidden rounded-xl border ${opts.border} ${opts.bg} shadow-sm ai-tool-section-card${fullWidth}">` +
     `<header class="border-b border-slate-100/80 bg-white/60 px-3 py-2">` +
     `<p class="text-[9px] font-bold uppercase tracking-wider ${opts.labelClass}">Section ${opts.sectionNum}</p>` +
     `<h3 class="text-sm font-bold ${opts.titleClass}">${formatInlineMarkdown(label)}</h3>` +
     `</header>` +
     `<div class="px-3 py-2">${opts.bodyHtml}</div>` +
     `</section>`
+  );
+}
+
+export function themedSection1TitleCardHtmlPremium(opts: {
+  title: string;
+  badge: string;
+  border: string;
+  bg: string;
+  labelClass: string;
+  badgeClass: string;
+  toolType: string;
+}): string {
+  const safeTitle = stripAiToolGenerationLabel(opts.title, 'Untitled');
+  return (
+    `<section class="relative mb-2 overflow-hidden rounded-xl border border-indigo-200 bg-white shadow-sm ai-tool-section-card ai-tool-section-full">` +
+    `<div class="absolute inset-0 bg-gradient-to-br from-indigo-50/90 via-white to-cyan-50/40"></div>` +
+    `<div class="relative px-3 py-3 sm:px-4 sm:py-3.5">` +
+    `<p class="mb-0.5 text-[9px] font-bold uppercase tracking-wider ${opts.labelClass}">Section 1</p>` +
+    `<span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${opts.badgeClass}">${opts.badge}</span>` +
+    `<h3 class="text-lg font-bold leading-snug text-slate-900 mt-2 sm:text-xl">${formatInlineMarkdown(safeTitle)}</h3>` +
+    `</div></section>`
   );
 }
 
@@ -94,16 +143,6 @@ export function shouldRenderDocHeader(docTitle: string, entries: SectionHtmlEntr
   return !hasSection1Entry(entries);
 }
 
-const TEMPLATE_SECTION_TITLE =
-  /^(Section\s+[A-G]|Learning|Instructions|Objectives|Chapter|Topic|Simple|Why|Prior|Step|Diagram|Real|Common|Concept|Key|Exam|Higher|Quick|Worksheet|Mock|Answer|Bloom|NCF|Materials|Procedure|Teacher|Student|Differentiation|Assessment|Expected|Reflection|Subtopic|Study|Practice|Safety|Observation|Creative|Activity|Homework|Story|Passage|Important|Overview|Revision|Tips|Title|Definition|Formula|Application|Thinking|Challenge|Support|Parent|Clear)/i;
-
-function looksLikeTemplateSectionTitle(title: string, num: number): boolean {
-  const t = title.trim();
-  if (t.length < 4) return false;
-  if (TEMPLATE_SECTION_TITLE.test(t)) return true;
-  // Super Admin templates use sections 1–11 with titled headers.
-  return num >= 1 && num <= 11;
-}
 
 /** Template sections: `### 2. Title`, `## 1. Title`, plain `1. Title`, or `Section 2: Title`. */
 export function parseMarkdownSectionHeading(line: string): { num: number; title: string } | null {

@@ -26,7 +26,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import * as SecureStore from 'expo-secure-store';
-import { useBackNavigation, getDashboardPath } from '../../../src/hooks/useBackNavigation';
+import {
+  parseStudentDashboardTab,
+  useStudentDashboardBack,
+} from '../../../src/hooks/useBackNavigation';
 import {
   resolveStudentAiApiToolType,
   resolveStudentToolConfigKey,
@@ -53,6 +56,10 @@ import {
 import StudentScreenHeader from '../../../src/components/student/StudentScreenHeader';
 import GlassCard from '../../../src/components/student/GlassCard';
 import AiToolContentRenderer from '../../../src/components/ai-tools/AiToolContentRenderer';
+import AiToolFieldIcon from '../../../src/components/ai-tools/AiToolFieldIcon';
+import AiToolPremiumIcon from '../../../src/components/ai-tools/AiToolPremiumIcon';
+import AiGenerateIcon from '../../../src/components/ai-tools/AiGenerateIcon';
+import { getAiToolIonicon } from '../../../src/lib/ai-tool-icons';
 import {
   aiToolTabletPageStyles,
   aiToolTabletStyles,
@@ -108,8 +115,8 @@ function ParametersSummaryBar({
       style={[styles.paramsSummary, tabletUi && aiToolTabletPageStyles.paramsSummary]}
       onPress={onToggle}
     >
-      <View style={[styles.paramsSummaryIcon, { backgroundColor: `${accent}22` }]}>
-        <Ionicons name="options-outline" size={tabletUi ? 20 : 18} color={accent} />
+      <View style={[styles.paramsSummaryIcon, { backgroundColor: `${accent}18` }]}>
+        <AiToolFieldIcon name="options-outline" accent={accent} size={36} />
       </View>
       <View style={styles.paramsSummaryText}>
         <Text style={[styles.paramsSummaryTitle, tabletUi && aiToolTabletPageStyles.paramsSummaryTitle]}>
@@ -185,7 +192,10 @@ function FormSection({
 }
 
 export default function StudentToolPage() {
-  const { toolType } = useLocalSearchParams<{ toolType: string }>();
+  const { toolType, returnTab: returnTabRaw } = useLocalSearchParams<{
+    toolType: string;
+    returnTab?: string;
+  }>();
   const [formParams, setFormParams] = useState<Record<string, any>>({});
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedContent, setGeneratedContent] = useState('');
@@ -194,7 +204,6 @@ export default function StudentToolPage() {
   const [fallbackEmptyMessage, setFallbackEmptyMessage] = useState('');
   const [fromAiFailure, setFromAiFailure] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [dashboardPath, setDashboardPath] = useState<string>('/dashboard');
   const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [availableNCERTTopics, setAvailableNCERTTopics] = useState<string[]>([]);
   const [schoolBoardName, setSchoolBoardName] = useState('CBSE');
@@ -326,14 +335,14 @@ export default function StudentToolPage() {
     return { curriculumFields: curriculum, topicFields: topic, extraFields: extra };
   }, [config]);
 
+  const returnTab = parseStudentDashboardTab(
+    typeof returnTabRaw === 'string' ? returnTabRaw : Array.isArray(returnTabRaw) ? returnTabRaw[0] : undefined,
+  );
+  const goBack = useStudentDashboardBack(returnTab);
+
   useEffect(() => {
-    getDashboardPath().then((path) => {
-      if (path) setDashboardPath(path);
-    });
     fetchUser();
   }, []);
-
-  useBackNavigation(dashboardPath, false);
 
   useEffect(() => {
     if (isLoadingUser || !formParams.board) return;
@@ -679,7 +688,7 @@ export default function StudentToolPage() {
       <View style={styles.fieldBlock}>
         <View style={styles.labelRow}>
           <View style={[styles.fieldIconWrap, { backgroundColor: `${accent}18` }]}>
-            <Ionicons name={icon} size={16} color={accent} />
+            <AiToolFieldIcon name={icon} accent={accent} />
           </View>
           <Text style={[styles.fieldLabel, isTablet && aiToolTabletPageStyles.fieldLabel]}>
             {label.replace(' *', '')}
@@ -714,7 +723,7 @@ export default function StudentToolPage() {
         <View key={field.name} style={styles.fieldBlock}>
           <View style={styles.labelRow}>
             <View style={[styles.fieldIconWrap, { backgroundColor: `${accent}18` }]}>
-              <Ionicons name="layers-outline" size={16} color={accent} />
+              <AiToolFieldIcon name="layers-outline" accent={accent} />
             </View>
             <Text style={[styles.fieldLabel, isTablet && aiToolTabletPageStyles.fieldLabel]}>Class</Text>
           </View>
@@ -761,7 +770,7 @@ export default function StudentToolPage() {
         <View key={field.name} style={styles.fieldBlock}>
           <View style={styles.labelRow}>
             <View style={[styles.fieldIconWrap, { backgroundColor: `${accent}18` }]}>
-              <Ionicons name={FIELD_ICONS[field.name] || 'create-outline'} size={16} color={accent} />
+              <AiToolFieldIcon name={FIELD_ICONS[field.name] || 'create-outline'} accent={accent} />
             </View>
             <Text style={[styles.fieldLabel, isTablet && aiToolTabletPageStyles.fieldLabel]}>
               {field.label.replace(' *', '')}
@@ -786,8 +795,8 @@ export default function StudentToolPage() {
       <View key={field.name} style={styles.fieldBlock}>
         <View style={styles.labelRow}>
           <View style={[styles.fieldIconWrap, { backgroundColor: `${accent}18` }]}>
-            <Ionicons name={FIELD_ICONS[field.name] || 'options-outline'} size={16} color={accent} />
-        </View>
+            <AiToolFieldIcon name={FIELD_ICONS[field.name] || 'options-outline'} accent={accent} />
+          </View>
           <Text style={[styles.fieldLabel, isTablet && aiToolTabletPageStyles.fieldLabel]}>
             {field.label.replace(' *', '')}
             {field.required ? <Text style={styles.required}> *</Text> : null}
@@ -809,14 +818,14 @@ export default function StudentToolPage() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
         <StatusBar style="dark" />
-        <StudentScreenHeader title="Tool not found" onBack={() => router.back()} />
+        <StudentScreenHeader title="Tool not found" onBack={goBack} />
         <View style={styles.errorContainer}>
           <View style={styles.errorIconWrap}>
             <Ionicons name="alert-circle-outline" size={48} color={STUDENT.danger} />
           </View>
           <Text style={styles.errorTitle}>Tool not found</Text>
           <Text style={styles.errorSubtitle}>This AI tool is not available on mobile yet.</Text>
-          <TouchableOpacity style={styles.errorButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.errorButton} onPress={goBack}>
             <Text style={styles.errorButtonText}>Go back</Text>
           </TouchableOpacity>
         </View>
@@ -916,13 +925,16 @@ export default function StudentToolPage() {
         </View>
       ) : (
         <View style={styles.emptyResult}>
-          <View style={styles.emptyResultIcon}>
-            <Ionicons
-              name={fallbackEmptyMessage ? 'alert-circle-outline' : 'sparkles'}
-              size={28}
-              color={fallbackEmptyMessage ? '#dc2626' : STUDENT.navInactive}
-            />
-          </View>
+          <AiToolPremiumIcon
+            name={
+              fallbackEmptyMessage
+                ? 'alert-circle'
+                : getAiToolIonicon(toolType || '')
+            }
+            color={fallbackEmptyMessage ? STUDENT.danger : accent}
+            size={64}
+            iconSize={28}
+          />
           <Text
             style={[
               styles.emptyResultTitle,
@@ -950,7 +962,7 @@ export default function StudentToolPage() {
         <StudentScreenHeader
           title={config.name}
           subtitle={config.description}
-          onBack={() => router.back()}
+          onBack={goBack}
           tabletUi={isTablet}
         />
       </Animated.View>
@@ -965,7 +977,7 @@ export default function StudentToolPage() {
         <View style={styles.compactHeaderRow}>
           <Pressable
             style={styles.compactBackBtn}
-            onPress={() => router.back()}
+            onPress={goBack}
             accessibilityLabel="Go back"
             accessibilityRole="button"
           >
@@ -1047,7 +1059,7 @@ export default function StudentToolPage() {
                 </>
             ) : (
               <>
-                <Ionicons name="sparkles" size={isTablet ? 22 : 20} color={STUDENT.textOnPrimary} />
+                <AiGenerateIcon size={isTablet ? 22 : 20} color={STUDENT.textOnPrimary} />
                   <Text style={[styles.generateBtnText, isTablet && aiToolTabletPageStyles.generateBtnText]}>Generate with AI</Text>
               </>
             )}
@@ -1154,7 +1166,6 @@ const styles = StyleSheet.create({
   paramsSummaryIcon: {
     width: 36,
     height: 36,
-    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1185,7 +1196,6 @@ const styles = StyleSheet.create({
   fieldIconWrap: {
     width: 28,
     height: 28,
-    borderRadius: STUDENT_RADIUS.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1287,7 +1297,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: STUDENT.surfaceBorder,
   },
-  generateBtn: { borderRadius: STUDENT_RADIUS.lg, overflow: 'hidden' },
+  generateBtn: { borderRadius: STUDENT_RADIUS.xl, overflow: 'hidden', ...STUDENT.shadow.md },
   generateBtnDisabled: { opacity: 0.7 },
   generateBtnGradient: {
     flexDirection: 'row',

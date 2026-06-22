@@ -9,7 +9,11 @@ import {
   type SectionHtmlEntry,
   themedNumberedSectionCardHtml,
   themedSection1TitleCardHtml,
+  themedSection1TitleCardHtmlPremium,
+  type MarkdownRenderOpts,
 } from './themed-markdown-sections';
+
+const TOOL_TYPE = 'key-points-formula-extractor';
 
 const SECTION_STYLES: Record<number, { border: string; bg: string; title: string }> = {
   1: { border: 'border-amber-300', bg: 'bg-amber-50/80', title: 'text-amber-950' },
@@ -28,6 +32,20 @@ function sectionStyle(num: number) {
   return SECTION_STYLES[num] || SECTION_STYLES[1];
 }
 
+function section1Card(title: string, premium?: boolean) {
+  const base = {
+    title,
+    badge: 'Key Points Sheet Title',
+    border: 'border-amber-300',
+    bg: 'bg-gradient-to-br from-amber-50/90 via-white to-orange-50/40',
+    labelClass: 'text-amber-700',
+    badgeClass: 'bg-amber-100 text-amber-900',
+  };
+  return premium
+    ? themedSection1TitleCardHtmlPremium({ ...base, toolType: TOOL_TYPE })
+    : themedSection1TitleCardHtml(base);
+}
+
 function bodyLinesToHtml(lines: string[]): string {
   const chunk = lines.join('\n').trim();
   if (!chunk) return '';
@@ -41,7 +59,7 @@ function bodyLinesToHtml(lines: string[]): string {
     .join('');
 }
 
-export function renderKeyPointsMarkdown(text: string): string {
+export function renderKeyPointsMarkdown(text: string, opts?: MarkdownRenderOpts): string {
   if (!text?.trim()) return '';
 
   const lines = text.split('\n');
@@ -59,17 +77,7 @@ export function renderKeyPointsMarkdown(text: string): string {
     if (currentSection === 1) {
       const titleText = resolveSection1Title(bodyLines, currentTitle, docTitle);
       if (titleText) {
-        sectionEntries.push({
-          num: 1,
-          html: themedSection1TitleCardHtml({
-            title: titleText,
-            badge: 'Key Points Sheet Title',
-            border: 'border-amber-300',
-            bg: 'bg-gradient-to-br from-amber-50/90 via-white to-orange-50/40',
-            labelClass: 'text-amber-700',
-            badgeClass: 'bg-amber-100 text-amber-900',
-          }),
-        });
+        sectionEntries.push({ num: 1, html: section1Card(titleText, opts?.premium) });
       }
       bodyLines = [];
       currentSection = 0;
@@ -87,6 +95,8 @@ export function renderKeyPointsMarkdown(text: string): string {
         bg: style.bg,
         titleClass: style.title,
         labelClass: 'text-amber-600',
+        premium: opts?.premium,
+        toolType: TOOL_TYPE,
       }),
     });
     bodyLines = [];
@@ -120,17 +130,7 @@ export function renderKeyPointsMarkdown(text: string): string {
   flushSection();
 
   if (!sectionEntries.some((e) => e.num === 1) && docTitle) {
-    sectionEntries.push({
-      num: 1,
-      html: themedSection1TitleCardHtml({
-        title: docTitle,
-        badge: 'Key Points Sheet Title',
-        border: 'border-amber-300',
-        bg: 'bg-gradient-to-br from-amber-50/90 via-white to-orange-50/40',
-        labelClass: 'text-amber-700',
-        badgeClass: 'bg-amber-100 text-amber-900',
-      }),
-    });
+    sectionEntries.push({ num: 1, html: section1Card(docTitle, opts?.premium) });
   }
 
   const parts = sortSectionHtmlEntries(sectionEntries);

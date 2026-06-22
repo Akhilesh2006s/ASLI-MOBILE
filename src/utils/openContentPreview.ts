@@ -1,6 +1,6 @@
 import { Alert } from 'react-native';
 import type { Router } from 'expo-router';
-import { getPreviewKind, resolveContentUrl } from './contentPreview';
+import { getPreviewKind, prefetchPdfPreview, resolveContentUrl } from './contentPreview';
 
 type ContentLike = {
   _id?: string;
@@ -68,6 +68,10 @@ export function openContentPreview(
   if (!link) {
     Alert.alert('Content', item.title || 'No preview available for this item.');
     return;
+  }
+
+  if (kind === 'pdf') {
+    prefetchPdfPreview(link, item.title || item.topic);
   }
 
   router.push({

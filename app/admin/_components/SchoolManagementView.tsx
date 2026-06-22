@@ -299,8 +299,12 @@ export default function SchoolManagementView() {
         />
 
         <View style={styles.statsRow}>
-          <AdminStatCard label="Total Schools" value={admins.length} icon="business" gradientIndex={0} />
-          <AdminStatCard label="Total Students" value={totalStudents} icon="people" gradientIndex={1} />
+          <View style={styles.statSlot}>
+            <AdminStatCard label="Total Schools" value={admins.length} icon="business" gradientIndex={0} />
+          </View>
+          <View style={styles.statSlot}>
+            <AdminStatCard label="Total Students" value={totalStudents} icon="people" gradientIndex={1} />
+          </View>
         </View>
         <View style={{ marginBottom: spacing.md }}>
           <AdminStatCard label="Total Teachers" value={totalTeachers} icon="person" gradientIndex={2} />
@@ -435,6 +439,7 @@ export default function SchoolManagementView() {
 
 const styles = StyleSheet.create({
   statsRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  statSlot: { flex: 1, minWidth: 0 },
   schoolHeader: { flexDirection: 'row', gap: 8 },
   schoolName: { fontSize: 16, fontWeight: '800' },
   schoolMeta: { fontSize: 12, marginTop: 2 },

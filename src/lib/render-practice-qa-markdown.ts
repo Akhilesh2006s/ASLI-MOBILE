@@ -8,7 +8,12 @@ import {
   sortSectionHtmlEntries,
   type SectionHtmlEntry,
   themedNumberedSectionCardHtml,
+  themedSection1TitleCardHtml,
+  themedSection1TitleCardHtmlPremium,
+  type MarkdownRenderOpts,
 } from './themed-markdown-sections';
+
+const TOOL_TYPE = 'smart-qa-practice-generator';
 
 const SECTION_STYLES: Record<number, { border: string; bg: string; title: string }> = {
   1: { border: 'border-emerald-300', bg: 'bg-emerald-50/80', title: 'text-emerald-900' },
@@ -28,15 +33,18 @@ function sectionStyle(num: number) {
   return SECTION_STYLES[num] || SECTION_STYLES[1];
 }
 
-function section1Card(title: string): string {
-  return themedSection1TitleCardHtml({
+function section1Card(title: string, premium?: boolean): string {
+  const base = {
     title,
     badge: 'Practice Set Title',
     border: 'border-emerald-300',
     bg: 'bg-gradient-to-br from-emerald-50/90 via-white to-teal-50/40',
     labelClass: 'text-emerald-700',
     badgeClass: 'bg-emerald-100 text-emerald-900',
-  });
+  };
+  return premium
+    ? themedSection1TitleCardHtmlPremium({ ...base, toolType: TOOL_TYPE })
+    : themedSection1TitleCardHtml(base);
 }
 
 function bodyLinesToHtml(lines: string[]): string {
@@ -64,7 +72,7 @@ function bodyLinesToHtml(lines: string[]): string {
 }
 
 /** Emerald-themed HTML for Smart Q&A Practice markdown sections. */
-export function renderPracticeQaMarkdown(text: string): string {
+export function renderPracticeQaMarkdown(text: string, opts?: MarkdownRenderOpts): string {
   if (!text?.trim()) return '';
 
   let processed = text;
@@ -92,7 +100,7 @@ export function renderPracticeQaMarkdown(text: string): string {
     if (currentSection === 1) {
       const titleText = resolveSection1Title(bodyLines, currentTitle, docTitle);
       if (titleText) {
-        sectionEntries.push({ num: 1, html: section1Card(titleText) });
+        sectionEntries.push({ num: 1, html: section1Card(titleText, opts?.premium) });
       }
       bodyLines = [];
       currentSection = 0;
@@ -110,6 +118,8 @@ export function renderPracticeQaMarkdown(text: string): string {
         bg: style.bg,
         titleClass: style.title,
         labelClass: 'text-emerald-600',
+        premium: opts?.premium,
+        toolType: TOOL_TYPE,
       }),
     });
     bodyLines = [];
@@ -144,7 +154,7 @@ export function renderPracticeQaMarkdown(text: string): string {
 
   const hasSection1 = sectionEntries.some((e) => e.num === 1);
   if (!hasSection1 && docTitle) {
-    sectionEntries.push({ num: 1, html: section1Card(docTitle) });
+    sectionEntries.push({ num: 1, html: section1Card(docTitle, opts?.premium) });
   }
 
   const parts = sortSectionHtmlEntries(sectionEntries);

@@ -26,7 +26,6 @@ function HeaderComponent({ username, dashboardLabel = 'Student Dashboard' }: Hea
           <View>
             <Text style={styles.smallText}>{dashboardLabel}</Text>
             <Text style={styles.title}>EduOTT</Text>
-            <Text style={styles.subtitle}>Welcome Back, {username}</Text>
           </View>
         </View>
       </View>
@@ -78,11 +77,6 @@ const styles = StyleSheet.create({
     ...STUDENT_TYPO.section,
     color: STUDENT.textOnPrimary,
     lineHeight: 28,
-  },
-  subtitle: {
-    color: 'rgba(255,255,255,0.92)',
-    fontSize: 13,
-    marginTop: 2,
   },
 });
 

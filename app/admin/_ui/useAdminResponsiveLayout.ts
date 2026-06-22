@@ -62,7 +62,7 @@ export function useAdminResponsiveLayout() {
   const statSlotStyle = useMemo(
     () =>
       isPhone
-        ? { width: '47%' as const, flexGrow: 0, flexShrink: 0 }
+        ? { width: '48.5%' as const, flexGrow: 0, flexShrink: 0 }
         : { flex: 1, minWidth: 0, flexGrow: 1, flexShrink: 1 },
     [isPhone],
   );

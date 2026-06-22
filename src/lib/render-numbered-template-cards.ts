@@ -3,7 +3,7 @@ import {
   heroTitleCardHtml,
   sectionNumberIconSvg,
 } from './ai-tool-html-primitives';
-import { themedNumberedSectionCardHtml } from './themed-markdown-sections';
+import { themedNumberedSectionCardHtml, type MarkdownRenderOpts } from './themed-markdown-sections';
 import { parseNumberedTemplateSections } from './ai-tool-display-content';
 import { sectionTitlesMatch, joinSectionCardsInGrid } from './themed-markdown-sections';
 import { renderMarkdown } from './render-teacher-markdown';
@@ -103,7 +103,11 @@ function sectionBodyHtml(body: string): string {
 }
 
 /** Card-based layout for Super Admin numbered templates (teacher tools + fallbacks). */
-export function renderNumberedTemplateAsCards(toolType: string, text: string): string {
+export function renderNumberedTemplateAsCards(
+  toolType: string,
+  text: string,
+  opts?: MarkdownRenderOpts,
+): string {
   if (!text?.trim()) return '';
 
   const meta = TOOL_META[toolType] || { eyebrow: 'Generated Content', theme: 'indigo' as ThemeName };
@@ -119,6 +123,7 @@ export function renderNumberedTemplateAsCards(toolType: string, text: string): s
     title: heroTitle,
     theme: meta.theme,
     toolType,
+    premium: opts?.premium,
   });
 
   const sorted = fillCanonicalSections(
@@ -146,6 +151,8 @@ export function renderNumberedTemplateAsCards(toolType: string, text: string): s
       bg: theme.bg,
       titleClass: theme.title,
       labelClass: theme.label,
+      premium: opts?.premium,
+      toolType,
     }),
     );
   });

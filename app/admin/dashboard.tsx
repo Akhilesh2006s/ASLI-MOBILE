@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeIn } from 'react-native-reanimated';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
+import { useVisitedTabs } from '../../src/hooks/useVisitedTabs';
 import { useAuth } from '../../src/context/AuthContext';
 import authService from '../../src/services/api/authService';
-import { LoadingState } from '../../src/components/ui';
+import { LoadingState, VisitedTabPane } from '../../src/components/ui';
 import OverviewView from './_components/OverviewView';
 import AnalyticsDashboardView from './_components/AnalyticsDashboardView';
 import StudentsView from './_components/StudentsView';
@@ -34,7 +34,8 @@ export default function AdminDashboard() {
   const { tab } = useLocalSearchParams<{ tab?: string }>();
   const { colors, spacing } = useAdminTheme();
   const { shellPaddingBottom, showBottomTabBar } = useAdminResponsiveLayout();
-  const [currentView, setCurrentView] = useState<AdminNavView>('overview');
+  const { active: currentView, visited: visitedViews, select: selectView, setActive: setCurrentView } =
+    useVisitedTabs<AdminNavView>('overview');
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -128,51 +129,8 @@ export default function AdminDashboard() {
   };
 
   const onSelectView = (view: AdminNavView) => {
-    setCurrentView(view);
+    selectView(view);
     setMenuOpen(false);
-  };
-
-  const renderContent = () => {
-    switch (currentView) {
-      case 'overview':
-        return <OverviewView onNavigate={onSelectView} />;
-      case 'analytics':
-        return <AnalyticsDashboardView />;
-      case 'students':
-        return <StudentsView />;
-      case 'classes':
-        return <ClassesView />;
-      case 'teachers':
-        return <TeachersView />;
-      case 'subjects':
-        return <SubjectsView />;
-      case 'exams':
-        return <ExamsView />;
-      case 'assessments':
-        return <AssessmentsView />;
-      case 'quizzes':
-        return <QuizzesView />;
-      case 'learning-paths':
-        return <LearningPathsView />;
-      case 'eduott':
-        return (
-          <EduOTTFilterProvider>
-            <EduOTTView username={userName} />
-          </EduOTTFilterProvider>
-        );
-      case 'videos':
-        return <VideosView />;
-      case 'timetable':
-        return <TimetableView />;
-      case 'calendar':
-        return <CalendarView />;
-      case 'school-management':
-        return <SchoolManagementView />;
-      case 'vidya-ai':
-        return <VidyaAIView />;
-      default:
-        return <OverviewView onNavigate={onSelectView} />;
-    }
   };
 
   if (isLoading) {
@@ -206,9 +164,90 @@ export default function AdminDashboard() {
           { backgroundColor: colors.bg, paddingBottom: shellPaddingBottom },
         ]}
       >
-        <Animated.View key={currentView} entering={FadeIn.duration(200)} style={styles.content}>
-          {renderContent()}
-        </Animated.View>
+        <View style={styles.content}>
+          {visitedViews.has('overview') ? (
+            <VisitedTabPane visible={currentView === 'overview'}>
+              <OverviewView onNavigate={onSelectView} />
+            </VisitedTabPane>
+          ) : null}
+          {visitedViews.has('analytics') ? (
+            <VisitedTabPane visible={currentView === 'analytics'}>
+              <AnalyticsDashboardView />
+            </VisitedTabPane>
+          ) : null}
+          {visitedViews.has('students') ? (
+            <VisitedTabPane visible={currentView === 'students'}>
+              <StudentsView />
+            </VisitedTabPane>
+          ) : null}
+          {visitedViews.has('classes') ? (
+            <VisitedTabPane visible={currentView === 'classes'}>
+              <ClassesView />
+            </VisitedTabPane>
+          ) : null}
+          {visitedViews.has('teachers') ? (
+            <VisitedTabPane visible={currentView === 'teachers'}>
+              <TeachersView />
+            </VisitedTabPane>
+          ) : null}
+          {visitedViews.has('subjects') ? (
+            <VisitedTabPane visible={currentView === 'subjects'}>
+              <SubjectsView />
+            </VisitedTabPane>
+          ) : null}
+          {visitedViews.has('exams') ? (
+            <VisitedTabPane visible={currentView === 'exams'}>
+              <ExamsView />
+            </VisitedTabPane>
+          ) : null}
+          {visitedViews.has('assessments') ? (
+            <VisitedTabPane visible={currentView === 'assessments'}>
+              <AssessmentsView />
+            </VisitedTabPane>
+          ) : null}
+          {visitedViews.has('quizzes') ? (
+            <VisitedTabPane visible={currentView === 'quizzes'}>
+              <QuizzesView />
+            </VisitedTabPane>
+          ) : null}
+          {visitedViews.has('learning-paths') ? (
+            <VisitedTabPane visible={currentView === 'learning-paths'}>
+              <LearningPathsView />
+            </VisitedTabPane>
+          ) : null}
+          {visitedViews.has('eduott') ? (
+            <VisitedTabPane visible={currentView === 'eduott'}>
+              <EduOTTFilterProvider>
+                <EduOTTView username={userName} />
+              </EduOTTFilterProvider>
+            </VisitedTabPane>
+          ) : null}
+          {visitedViews.has('videos') ? (
+            <VisitedTabPane visible={currentView === 'videos'}>
+              <VideosView />
+            </VisitedTabPane>
+          ) : null}
+          {visitedViews.has('timetable') ? (
+            <VisitedTabPane visible={currentView === 'timetable'}>
+              <TimetableView />
+            </VisitedTabPane>
+          ) : null}
+          {visitedViews.has('calendar') ? (
+            <VisitedTabPane visible={currentView === 'calendar'}>
+              <CalendarView />
+            </VisitedTabPane>
+          ) : null}
+          {visitedViews.has('school-management') ? (
+            <VisitedTabPane visible={currentView === 'school-management'}>
+              <SchoolManagementView />
+            </VisitedTabPane>
+          ) : null}
+          {visitedViews.has('vidya-ai') ? (
+            <VisitedTabPane visible={currentView === 'vidya-ai'}>
+              <VidyaAIView />
+            </VisitedTabPane>
+          ) : null}
+        </View>
       </View>
     </KeyboardAvoidingView>
   );

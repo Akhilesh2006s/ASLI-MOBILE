@@ -37,7 +37,6 @@ import {
   generateAiBatch,
   releaseAiGeneratorLock,
   recordListPreviewText,
-  toDisplayPlainText,
   toolRequiresTopic,
   updateGeneratorRecord,
 } from '../../../src/lib/ai-generator';
@@ -46,6 +45,7 @@ import {
   isStoryLanguageTool,
   isStoryPassageLanguageSubject,
 } from '../../../src/lib/student-ai-tools';
+import AiToolRecordPreview from '../../../src/components/ai-tools/AiToolRecordPreview';
 import { extractMcqQuestionsFromRecord, isMcqTool } from '../../../src/lib/mcq-record-utils';
 import {
   computeGeminiCostFromTokenUsage,
@@ -1025,9 +1025,11 @@ export default function AiGeneratorView() {
                 </View>
               ))
             ) : (
-              <Text style={styles.fullText}>
-                {toDisplayPlainText(String(activeRecord?.generatedContent || ''))}
-              </Text>
+              <AiToolRecordPreview
+                toolType={String(activeRecord?.toolSlug || activeRecord?.toolName || '')}
+                content={String(activeRecord?.generatedContent || '')}
+                metadata={activeRecord?.metadata as Record<string, unknown> | undefined}
+              />
             )}
           </ScrollView>
         </View>

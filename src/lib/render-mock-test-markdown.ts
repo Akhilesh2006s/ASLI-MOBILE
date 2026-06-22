@@ -1,5 +1,11 @@
 import { formatInlineMarkdown, renderMarkdown } from './render-teacher-markdown';
 import { lightDocHeaderHtml } from './ai-tool-html-primitives';
+import {
+  themedNumberedSectionCardHtml,
+  type MarkdownRenderOpts,
+} from './themed-markdown-sections';
+
+const TOOL_TYPE = 'mock-test-builder';
 
 const SECTION_STYLES: Record<number, { border: string; bg: string; title: string }> = {
   1: { border: 'border-indigo-300', bg: 'bg-indigo-50/80', title: 'text-indigo-900' },
@@ -77,7 +83,7 @@ function bodyLinesToHtml(lines: string[]): string {
 }
 
 /** Rose-themed HTML for Mock Test formatted markdown (## 1. … ## 12. sections). */
-export function renderMockTestMarkdown(text: string): string {
+export function renderMockTestMarkdown(text: string, opts?: MarkdownRenderOpts): string {
   if (!text?.trim()) return '';
 
   let processed = text;
@@ -103,16 +109,19 @@ export function renderMockTestMarkdown(text: string): string {
       return;
     }
     const style = sectionStyle(currentSection || 1);
-    const label = currentTitle || `Section ${currentSection}`;
     const bodyHtml = bodyLinesToHtml(bodyLines);
     parts.push(
-      `<section class="mb-3 overflow-hidden rounded-xl border ${style.border} ${style.bg} shadow-sm">` +
-        `<header class="border-b border-indigo-100/80 bg-white/60 px-3 py-2">` +
-        `<p class="text-[9px] font-bold uppercase tracking-wider text-indigo-500">Section ${currentSection || '—'}</p>` +
-        `<h3 class="text-sm font-bold ${style.title}">${formatInlineMarkdown(label)}</h3>` +
-        `</header>` +
-        `<div class="px-3 py-2">${bodyHtml}</div>` +
-        `</section>`,
+      themedNumberedSectionCardHtml({
+        sectionNum: currentSection,
+        sectionTitle: currentTitle,
+        bodyHtml,
+        border: style.border,
+        bg: style.bg,
+        titleClass: style.title,
+        labelClass: 'text-indigo-500',
+        premium: opts?.premium,
+        toolType: TOOL_TYPE,
+      }),
     );
     bodyLines = [];
     currentSection = 0;

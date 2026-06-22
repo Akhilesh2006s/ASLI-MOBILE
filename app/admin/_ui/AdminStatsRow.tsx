@@ -17,7 +17,7 @@ export default function AdminStatsRow({ items }: Props) {
     <View style={statsRowStyle}>
       {items.map((item, index) => (
         <View key={`${item.label}-${index}`} style={statSlotStyle}>
-          <AdminStatCard {...item} grid={false} compact={compactStats} />
+          <AdminStatCard {...item} grid={!compactStats} compact={compactStats} />
         </View>
       ))}
     </View>

@@ -1,6 +1,25 @@
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../lib/api-config';
 
+let cachedAuthToken: string | null = null;
+let authTokenLoadedAt = 0;
+const AUTH_TOKEN_CACHE_MS = 5 * 60 * 1000;
+
+async function getAuthToken(): Promise<string> {
+  if (cachedAuthToken !== null && Date.now() - authTokenLoadedAt < AUTH_TOKEN_CACHE_MS) {
+    return cachedAuthToken;
+  }
+  cachedAuthToken = (await SecureStore.getItemAsync('authToken')) || '';
+  authTokenLoadedAt = Date.now();
+  return cachedAuthToken;
+}
+
+/** Warm auth token + PDF bytes before navigating to the viewer. */
+export function prefetchPdfPreview(fileUrl: string, title?: string): void {
+  void getAuthToken();
+  void fetchPdfPreviewLoadInfo(fileUrl, title);
+}
+
 const STREAMABLE_MEDIA_EXT =
   /\.(mp4|webm|ogg|mov|avi|mkv|mp3|wav|m4a|aac|flac|jpg|jpeg|png|gif|webp|svg|bmp)(\?|#|$)/i;
 
@@ -99,7 +118,7 @@ export async function getPdfJsFetchUrl(fileUrl: string, title?: string): Promise
   if (!absolute) return '';
   if (shouldFetchDirectly(absolute)) return absolute;
 
-  const token = (await SecureStore.getItemAsync('authToken')) || '';
+  const token = await getAuthToken();
   return (
     `${API_BASE_URL}/api/student/content-preview` +
     `?url=${encodeURIComponent(absolute)}` +
@@ -176,10 +195,14 @@ export type PdfPreviewSource = 'cache' | 'direct' | 'proxy' | 'external';
 
 export type PdfPreviewLoadInfo = {
   base64: string;
+  byteLength: number;
   source: PdfPreviewSource;
   /** Human-readable origin (no auth token). */
   displaySource: string;
 };
+
+/** Prefer injecting PDF bytes when under this size (faster than WebView fetch). */
+const PDF_BASE64_INJECT_MAX_BYTES = 4 * 1024 * 1024;
 
 function formatPdfDisplaySource(url: string): string {
   try {
@@ -241,12 +264,13 @@ export async function fetchPdfPreviewLoadInfo(
   if (cached && Date.now() - cached.at < PDF_CACHE_TTL_MS) {
     return {
       base64: uint8ArrayToBase64(cached.bytes),
+      byteLength: cached.bytes.length,
       source: 'cache',
       displaySource: formatPdfDisplaySource(absolute),
     };
   }
 
-  const token = (await SecureStore.getItemAsync('authToken')) || '';
+  const token = await getAuthToken();
   const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
   const isOurBackend =
     absolute.includes(API_BASE_URL) || absolute.includes('/uploads/');
@@ -299,9 +323,14 @@ export async function fetchPdfPreviewLoadInfo(
   cachePdfBytes(cacheKey, winner.bytes);
   return {
     base64: uint8ArrayToBase64(winner.bytes),
+    byteLength: winner.bytes.length,
     source: winner.source,
     displaySource: formatPdfDisplaySource(winner.fetchUrl || absolute),
   };
+}
+
+export function shouldInjectPdfAsBase64(info: Pick<PdfPreviewLoadInfo, 'source' | 'byteLength'>): boolean {
+  return info.source === 'cache' || info.byteLength <= PDF_BASE64_INJECT_MAX_BYTES;
 }
 
 export async function fetchPdfPreviewBase64(
@@ -329,6 +358,13 @@ export async function resolvePdfUrlTarget(
     return { url: absolute };
   }
 
+  const isOurBackend =
+    absolute.includes(API_BASE_URL) || absolute.includes('/uploads/');
+  if (isOurBackend) {
+    const headers = await getAuthHeaders(absolute);
+    return { url: absolute, headers };
+  }
+
   const proxyUrl = await getPdfJsFetchUrl(fileUrl, title);
   return { url: proxyUrl || absolute };
 }
@@ -339,9 +375,9 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
-  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.min.js"><\/script>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"><\/script>
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; background: #525659; min-height: 100%; }
@@ -484,6 +520,23 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
         for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
         return openPdf({ data: bytes, disableWorker: true });
       };
+
+      function signalViewerReady() {
+        if (window.ReactNativeWebView) {
+          window.ReactNativeWebView.postMessage('viewer-ready');
+        }
+      }
+
+      if (typeof pdfjsLib !== 'undefined') {
+        signalViewerReady();
+      } else {
+        var viewerReadyPoll = setInterval(function () {
+          if (typeof pdfjsLib !== 'undefined') {
+            clearInterval(viewerReadyPoll);
+            signalViewerReady();
+          }
+        }, 20);
+      }
     })();
   <\/script>
 </body>
@@ -602,6 +655,6 @@ export async function getPdfPreviewUrl(fileUrl: string, title?: string): Promise
 export async function getAuthHeaders(url: string): Promise<Record<string, string> | undefined> {
   if (url.includes('content-preview') && url.includes('token=')) return undefined;
   if (!url.includes(API_BASE_URL) && !url.includes('/uploads/')) return undefined;
-  const token = await SecureStore.getItemAsync('authToken');
+  const token = await getAuthToken();
   return token ? { Authorization: `Bearer ${token}` } : undefined;
 }
