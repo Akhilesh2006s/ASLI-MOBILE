@@ -174,12 +174,14 @@ function buildBodySections(guide: StudyGuideContent, tabletUi = false, boardUi =
       </GuideSectionCard>,
     );
   }
-  if (guide.keyConcepts.length > 0) {
+  if (guide.keyConcepts.some((c) => c.name.trim() && c.explanation.trim())) {
     push(
       '5',
       <GuideSectionCard sectionNum="Section 5" title="Key Concepts Explained" icon="bulb-outline" stripe="#a5b4fc" tabletUi={tabletUi} boardUi={boardUi}>
         <View style={styles.conceptList}>
-          {guide.keyConcepts.map((c, i) => (
+          {guide.keyConcepts
+            .filter((c) => c.name.trim() && c.explanation.trim())
+            .map((c, i) => (
             <View key={`${c.name}-${i}`} style={styles.conceptCard}>
               <Text style={[styles.conceptName, viewerTabletStyle(tabletUi, 'conceptName', boardUi)]}>{c.name}</Text>
               <Text style={[styles.conceptExplanation, viewerTabletStyle(tabletUi, 'conceptExplanation', boardUi)]}>{c.explanation}</Text>
@@ -266,10 +268,14 @@ export default function SmartStudyGuideViewer({
   toolType = 'smart-study-guide-generator',
 }: Props) {
   const { isTablet, isDigitalBoard } = useAiToolTabletLayout();
-  const payload = useMemo(() => {
-    if (rawContent != null) return { content: String(content || '').trim(), rawContent };
-    return studyGuideViewerPayloadFromRecord({ generatedContent: content });
-  }, [content, rawContent]);
+  const payload = useMemo(
+    () =>
+      studyGuideViewerPayloadFromRecord({
+        generatedContent: content,
+        structuredContent: rawContent ?? undefined,
+      }),
+    [content, rawContent],
+  );
 
   const { guide, markdownFallback } = useMemo(() => {
     const text = stripStructuredAiToolMetadata(payload.content);
@@ -281,8 +287,8 @@ export default function SmartStudyGuideViewer({
       <View style={styles.markdownWrap}>
         <AiToolWebView
           toolType="smart-study-guide-generator"
-          content={markdownFallback}
-          rawContent={rawContent}
+          content={payload.content}
+          rawContent={payload.rawContent}
           variant="student"
         />
       </View>
@@ -292,19 +298,6 @@ export default function SmartStudyGuideViewer({
   const bodySections = buildBodySections(guide, isTablet, isDigitalBoard);
   const missingSections = getMissingStudyGuideSections(guide);
   const complete = isStudyGuideComplete(guide);
-
-  if (!complete) {
-    return (
-      <View style={styles.markdownWrap}>
-        <AiToolWebView
-          toolType="smart-study-guide-generator"
-          content={content}
-          rawContent={rawContent}
-          variant="student"
-        />
-      </View>
-    );
-  }
 
   if (!bodySections.length && !studyGuideHasVisibleBody(guide)) {
     return (
@@ -322,6 +315,15 @@ export default function SmartStudyGuideViewer({
 
   return (
     <View style={styles.root}>
+      {!complete && missingSections.length > 0 ? (
+        <View style={styles.incompleteBanner}>
+          <Text style={styles.incompleteBannerTitle}>Some sections are incomplete</Text>
+          <Text style={styles.incompleteBannerText}>
+            Showing available content below. Missing: {missingSections.join(', ')}. Regenerate with all 11
+            sections filled for the student dashboard.
+          </Text>
+        </View>
+      ) : null}
       <View style={styles.guideShell}>
         <LinearGuideHeader
           title={stripAiToolGenerationLabel(guide.title, 'Study Guide')}
@@ -391,6 +393,15 @@ const styles = StyleSheet.create({
   },
   warningTitle: { fontSize: 14, fontWeight: '800', color: '#92400e' },
   warningText: { marginTop: 4, fontSize: 13, lineHeight: 20, color: '#b45309' },
+  incompleteBanner: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#fcd34d',
+    backgroundColor: '#fffbeb',
+    padding: 12,
+  },
+  incompleteBannerTitle: { fontSize: 14, fontWeight: '800', color: '#92400e' },
+  incompleteBannerText: { marginTop: 4, fontSize: 13, lineHeight: 20, color: '#b45309' },
   guideShell: {
     borderRadius: 22,
     borderWidth: 1,

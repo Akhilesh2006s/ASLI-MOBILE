@@ -1,5 +1,5 @@
 import { formatInlineMarkdown, renderMarkdown } from './render-teacher-markdown';
-import { emptySectionPlaceholderHtml, lightDocHeaderHtml } from './ai-tool-html-primitives';
+import { lightDocHeaderHtml } from './ai-tool-html-primitives';
 import { sanitizeStudyGuideTitle } from './parse-smart-study-guide';
 import {
   parseMarkdownDocTitle,
@@ -163,7 +163,10 @@ export function renderSmartStudyGuideMarkdown(text: string, opts?: MarkdownRende
       bodyHtml = `<div class="practice-list-tablet">${bodyHtml}</div>`;
     }
     if (!bodyHtml.trim()) {
-      bodyHtml = emptySectionPlaceholderHtml();
+      bodyLines = [];
+      currentSection = 0;
+      currentTitle = '';
+      return;
     }
     sectionEntries.push({
       num: currentSection,

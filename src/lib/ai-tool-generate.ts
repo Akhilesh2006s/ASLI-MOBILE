@@ -1,6 +1,6 @@
 import { activitiesPayloadIsComplete } from './parse-activity-markdown';
 import { isStudyGuideComplete, resolveStudyGuideFromPayload } from './parse-smart-study-guide';
-import { isStoryPassageLanguageSubject } from './student-ai-tools';
+import { isStoryPassageLanguageSubject, resolveStudentAiApiToolType } from './student-ai-tools';
 import { parseAiToolClassNumber } from './school-program';
 import {
   countNumberedTemplateSections,
@@ -206,6 +206,54 @@ export function isAiToolClientValidationError(message: string): boolean {
   return CLIENT_VALIDATION_ERROR.test(message);
 }
 
+export function resolveAiToolApiInlineMessage(
+  data: { message?: string; code?: string },
+  toolName?: string,
+): string {
+  const message = data.message || '';
+  if (message) return message;
+
+  if (data.code === 'AI_TOOL_WRONG_TYPE') {
+    return 'Saved content belongs to a different AI tool. Super Admin must generate using this tool name only.';
+  }
+  if (data.code === 'AI_TOOL_CONTENT_INCOMPLETE') {
+    return 'Saved content is incomplete or not in the correct tool format. Ask Super Admin to complete all sections.';
+  }
+  if (data.code === 'AI_TOOL_DATA_NOT_FOUND') {
+    return `No ${toolName || 'tool'} content found for this selection. Ask Super Admin to add it in AI Tool Generations.`;
+  }
+  if (data.code === 'AI_UNAVAILABLE_NO_FALLBACK') {
+    return 'AI service is unavailable and no previously generated content was found for this selection.';
+  }
+
+  return 'No complete content is available for this class, subject, topic, and sub-topic.';
+}
+
+export function isAiToolInlineOnlyError(code?: string): boolean {
+  return (
+    code === 'AI_TOOL_CONTENT_INCOMPLETE' ||
+    code === 'AI_TOOL_WRONG_TYPE' ||
+    code === 'AI_TOOL_DATA_NOT_FOUND' ||
+    code === 'AI_UNAVAILABLE_NO_FALLBACK'
+  );
+}
+
+const STRUCTURED_AI_TOOL_SLUGS = new Set([
+  'short-notes-summaries-maker',
+  'concept-mastery-helper',
+  'study-schedule-maker',
+  'lesson-planner',
+  'my-study-decks',
+  'flashcard-generator',
+  'worksheet-mcq-generator',
+  'homework-creator',
+  'daily-class-plan-maker',
+]);
+
+export function shouldWrapAiToolStructuredPayload(toolType: string): boolean {
+  return STRUCTURED_AI_TOOL_SLUGS.has(String(toolType || '').trim());
+}
+
 export async function fetchAiToolGeneratedContentFallback({
   apiBaseUrl,
   token,
@@ -344,13 +392,30 @@ export async function executeAiToolGenerate({
   };
 }
 
-/** Keep API markdown as-is (same string Super Admin stores in `content`). */
+/** Match web: wrap structured tools as `{ formatted, raw }` when rawData is present. */
+export function resolveAiToolDisplayType(
+  toolType: string,
+  role: 'student' | 'teacher',
+): string {
+  if (role === 'student') {
+    return resolveStudentAiApiToolType(toolType);
+  }
+  return String(toolType || '').trim();
+}
+
 export function storeAiToolSuccessPayload(
   toolType: string,
   content: string,
   rawContent: unknown,
-  _role: 'student' | 'teacher'
+  role: 'student' | 'teacher'
 ): { generatedContent: string; rawGeneratedContent: unknown } {
+  const displayType = resolveAiToolDisplayType(toolType, role);
+  if (rawContent != null && shouldWrapAiToolStructuredPayload(displayType)) {
+    return {
+      generatedContent: JSON.stringify({ formatted: content, raw: rawContent }),
+      rawGeneratedContent: rawContent,
+    };
+  }
   return {
     generatedContent: String(content || ''),
     rawGeneratedContent: rawContent ?? null,
@@ -406,40 +471,23 @@ export function buildStudentAiRequestBody(
     typeof formParams.gradeLevel === 'string' ? formParams.gradeLevel : undefined
   );
 
-  const subTopic = String(formParams.subTopic || formParams.subtopic || '').trim();
-
   return {
-    ...formParams,
     toolType: apiToolType,
+    ...formParams,
     board: selectedBoard,
     gradeLevel,
-    classNumber: parseAiToolClassNumber(gradeLevel),
     subject: formParams.subject || formParams.subjects,
     topic: mappedTopic,
-    subTopic,
   };
 }
 
-function uniqueBoards(boards: Array<string | undefined | null>): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const board of boards) {
-    const value = String(board || '').trim();
-    if (!value || seen.has(value)) continue;
-    seen.add(value);
-    out.push(value);
-  }
-  return out;
-}
-
-/** Student generate: POST with board retry, then GET fallback (matches web resilience). */
-export async function executeStudentAiToolGenerateWithFallback({
+/** Student generate: single POST (matches web — fallback only on network errors in the page). */
+export async function executeStudentAiToolGenerate({
   apiBaseUrl,
   token,
   apiToolType,
   formParams,
   selectedBoard,
-  curriculumBoard,
   mapGradeLevel,
 }: {
   apiBaseUrl: string;
@@ -447,79 +495,12 @@ export async function executeStudentAiToolGenerateWithFallback({
   apiToolType: string;
   formParams: Record<string, unknown>;
   selectedBoard: string;
-  curriculumBoard: string;
   mapGradeLevel: (board: string | undefined, gradeLevel: string | undefined) => string | undefined;
 }): Promise<AiToolGenerateResult> {
-  const boardsToTry = uniqueBoards([selectedBoard, curriculumBoard]);
-  let lastResult: AiToolGenerateResult | null = null;
-
-  for (const board of boardsToTry) {
-    const requestBody = buildStudentAiRequestBody(apiToolType, formParams, board, mapGradeLevel);
-    const result = await executeAiToolGenerate({
-      endpoint: `${apiBaseUrl}/api/student/ai/tool`,
-      token,
-      requestBody,
-    });
-    if (result.ok) return result;
-    lastResult = result;
-    if (result.code !== 'AI_TOOL_DATA_NOT_FOUND') return result;
-  }
-
-  const gradeLevel = mapGradeLevel(
-    selectedBoard,
-    typeof formParams.gradeLevel === 'string' ? formParams.gradeLevel : undefined
-  );
-  const classLabel = String(gradeLevel || formParams.gradeLevel || '').trim();
-  const subject = String(formParams.subject || formParams.subjects || '').trim();
-  const topic = String(
-    formParams.topic ||
-      formParams.concept ||
-      formParams.chapter ||
-      formParams.projectTopic ||
-      ''
-  ).trim();
-  const subTopic = String(formParams.subTopic || formParams.subtopic || '').trim();
-
-  if (!classLabel || !subject) {
-    return (
-      lastResult || {
-        ok: false,
-        title: 'Error',
-        message: 'Missing class or subject for fallback',
-        fallbackMessage: 'Missing class or subject for fallback',
-      }
-    );
-  }
-
-  for (const board of uniqueBoards([selectedBoard, curriculumBoard, ''])) {
-    const fallbackResult = await fetchAiToolGeneratedContentFallback({
-      apiBaseUrl,
-      token,
-      classLabel,
-      subject,
-      topic,
-      subTopic,
-      toolType: apiToolType,
-      board: board || undefined,
-    });
-    if (fallbackResult.ok) return fallbackResult;
-    lastResult = fallbackResult;
-    if (
-      fallbackResult.code !== 'AI_TOOL_DATA_NOT_FOUND' &&
-      fallbackResult.code !== 'AI_TOOL_CONTENT_INCOMPLETE'
-    ) {
-      return fallbackResult;
-    }
-  }
-
-  return (
-    lastResult || {
-      ok: false,
-      title: 'No content found',
-      message: 'No complete content is available for this selection.',
-      code: 'AI_TOOL_DATA_NOT_FOUND',
-      fallbackMessage:
-        'No matching AI Tool Data found for the selected class, subject, topic, and sub topic. Please ask Super Admin to add this mapping in AI Tool Generations.',
-    }
-  );
+  const requestBody = buildStudentAiRequestBody(apiToolType, formParams, selectedBoard, mapGradeLevel);
+  return executeAiToolGenerate({
+    endpoint: `${apiBaseUrl}/api/student/ai/tool`,
+    token,
+    requestBody,
+  });
 }

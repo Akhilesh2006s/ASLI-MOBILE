@@ -69,5 +69,7 @@ export async function fetchBookGeneratorRecords(boardFilter?: string) {
   return {
     grouped: Array.isArray(res.data.data?.grouped) ? res.data.data.grouped : [],
     total: Number(res.data.data?.total || 0),
+    loadedCount: Number(res.data.data?.loadedCount || 0),
+    truncated: Boolean(res.data.data?.truncated),
   };
 }

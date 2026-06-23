@@ -10,6 +10,7 @@ import { escapeHtml } from './ai-tool-html-primitives';
 import { AI_TOOL_OUTPUT_STYLES } from './ai-tool-output-styles';
 import { renderNumberedTemplateAsCards } from './render-numbered-template-cards';
 import { tryRenderStructuredAiToolHtml, renderSmartPracticeQaOutputHtml } from './render-structured-ai-tool-html';
+import { resolveAiToolDisplayType } from './ai-tool-generate';
 import { wrapAiToolOutputSectionGrid } from './themed-markdown-sections';
 
 export {
@@ -319,26 +320,27 @@ function renderAiToolOutputHtmlInner(
   rawContent: unknown,
   variant: 'student' | 'teacher',
 ): string {
+  const resolvedToolType = resolveAiToolDisplayType(toolType, variant);
   const mergedRaw = coalesceAiToolRawContent(content, rawContent);
 
   const display = resolveRichDisplayContent(content, mergedRaw);
 
   // Match web PracticeQaViewer: always merge content + rawData for Practice Q&A (sections A–G live in rawData).
-  if (variant === 'student' && toolType === 'smart-qa-practice-generator') {
+  if (variant === 'student' && resolvedToolType === 'smart-qa-practice-generator') {
     const practiceHtml = renderSmartPracticeQaOutputHtml(content, mergedRaw);
     if (practiceHtml?.trim()) {
       const inner = wrapAiToolOutputSectionGrid(practiceHtml);
-      const body = TOOL_SHELLS[toolType] ? wrapWithShell(toolType, inner) : inner;
+      const body = TOOL_SHELLS[resolvedToolType] ? wrapWithShell(resolvedToolType, inner) : inner;
       return wrapAiToolHtmlDocument(body);
     }
   }
 
-  const structured = tryRenderStructuredAiToolHtml(toolType, content, mergedRaw, variant);
-  const themedMarkdown = TOOL_RENDERERS[toolType];
+  const structured = tryRenderStructuredAiToolHtml(resolvedToolType, content, mergedRaw, variant);
+  const themedMarkdown = TOOL_RENDERERS[resolvedToolType];
   const numberedTemplate = contentHasNumberedTemplateSections(display);
   const studentPremium = variant === 'student';
   const preferMarkdown = shouldPreferMarkdownOverStructured(display, structured);
-  const markdownDriven = apiMarkdownShouldDriveDisplay(toolType, display);
+  const markdownDriven = apiMarkdownShouldDriveDisplay(resolvedToolType, display);
 
   const teacherHasSections = countNumberedTemplateSections(display) >= 1;
   const studentHasSections = countNumberedTemplateSections(display) >= 1;
@@ -351,24 +353,24 @@ function renderAiToolOutputHtmlInner(
     if (themedMarkdown) {
       inner =
         variant === 'student'
-          ? resolveStudentNumberedOutput(toolType, display, themedMarkdown, studentPremium)
+          ? resolveStudentNumberedOutput(resolvedToolType, display, themedMarkdown, studentPremium)
           : themedMarkdown(display, { premium: false });
       renderedPath = 'themed-markdown';
     } else {
-      inner = renderNumberedTemplateAsCards(toolType, display, {
+      inner = renderNumberedTemplateAsCards(resolvedToolType, display, {
         premium: variant === 'student',
       });
       renderedPath = 'numbered-cards';
     }
   } else if (variant === 'teacher') {
-    if (structured && TEACHER_STRUCTURED_TOOLS.has(toolType) && !preferMarkdown) {
+    if (structured && TEACHER_STRUCTURED_TOOLS.has(resolvedToolType) && !preferMarkdown) {
       inner = structured;
       renderedPath = 'structured';
     } else if (themedMarkdown && (numberedTemplate || teacherHasSections)) {
       inner = themedMarkdown(display, { premium: false });
       renderedPath = 'themed-markdown';
     } else if (numberedTemplate || teacherHasSections) {
-      inner = renderNumberedTemplateAsCards(toolType, display);
+      inner = renderNumberedTemplateAsCards(resolvedToolType, display);
       renderedPath = 'numbered-cards';
     } else if (structured) {
       inner = structured;
@@ -377,18 +379,18 @@ function renderAiToolOutputHtmlInner(
       inner = renderMarkdown(display);
       renderedPath = 'plain-markdown';
     }
-  } else if (structured && shouldUseStructuredStudentOutput(toolType, display, mergedRaw) && !preferMarkdown) {
+  } else if (structured && shouldUseStructuredStudentOutput(resolvedToolType, display, mergedRaw) && !preferMarkdown) {
     inner = structured;
     renderedPath = 'structured-hybrid';
   } else if (themedMarkdown) {
-    inner = resolveStudentNumberedOutput(toolType, display, themedMarkdown, studentPremium);
+    inner = resolveStudentNumberedOutput(resolvedToolType, display, themedMarkdown, studentPremium);
     renderedPath = 'themed-markdown';
     if (!bodyHasVisibleOutput(inner) && structured) {
       inner = structured;
       renderedPath = 'structured-fallback';
     }
   } else if (numberedTemplate || studentHasSections) {
-    inner = resolveStudentNumberedOutput(toolType, display, themedMarkdown, studentPremium);
+    inner = resolveStudentNumberedOutput(resolvedToolType, display, themedMarkdown, studentPremium);
     renderedPath = 'numbered-cards';
   } else if (structured) {
     inner = structured;
@@ -404,7 +406,7 @@ function renderAiToolOutputHtmlInner(
   }
 
   let audit = buildAiToolSectionAudit({
-    toolType,
+    toolType: resolvedToolType,
     variant,
     display,
     structuredHtml: structured,
@@ -414,13 +416,13 @@ function renderAiToolOutputHtmlInner(
   });
   if (audit.missingFromRender.length > 0 && display.trim()) {
     const markdownFallback =
-      renderNumberedTemplateAsCards(toolType, display, { premium: variant === 'student' }) ||
+      renderNumberedTemplateAsCards(resolvedToolType, display, { premium: variant === 'student' }) ||
       renderMarkdown(display);
     if (bodyHasVisibleOutput(markdownFallback)) {
       inner = markdownFallback;
       renderedPath = 'numbered-cards-recovery';
       audit = buildAiToolSectionAudit({
-        toolType,
+        toolType: resolvedToolType,
         variant,
         display,
         structuredHtml: structured,
@@ -433,7 +435,7 @@ function renderAiToolOutputHtmlInner(
 
   inner = wrapAiToolOutputSectionGrid(inner);
 
-  const body = TOOL_SHELLS[toolType] ? wrapWithShell(toolType, inner) : inner;
+  const body = TOOL_SHELLS[resolvedToolType] ? wrapWithShell(resolvedToolType, inner) : inner;
 
   if (__DEV__) {
     logAiToolSectionAudit(audit);
@@ -448,14 +450,16 @@ export function renderAiToolOutputHtml(
   rawContent?: unknown,
   variant: 'student' | 'teacher' = 'student',
 ): string {
+  const resolvedToolType = resolveAiToolDisplayType(toolType, variant);
   try {
     return renderAiToolOutputHtmlInner(toolType, content, rawContent, variant);
   } catch {
     const mergedRaw = coalesceAiToolRawContent(content, rawContent);
     const display = resolveRichDisplayContent(content, mergedRaw);
-    const fallbackInner = renderAiToolFallbackBody(content, mergedRaw) || renderMarkdown(display);
-    const body = TOOL_SHELLS[toolType]
-      ? wrapWithShell(toolType, fallbackInner)
+    let fallbackInner = renderAiToolFallbackBody(content, mergedRaw) || renderMarkdown(display);
+    fallbackInner = wrapAiToolOutputSectionGrid(fallbackInner);
+    const body = TOOL_SHELLS[resolvedToolType]
+      ? wrapWithShell(resolvedToolType, fallbackInner)
       : fallbackInner;
     return wrapAiToolHtmlDocument(body);
   }

@@ -3,6 +3,8 @@ import { View, StyleSheet, Platform } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { renderAiToolOutputHtml } from '../../lib/render-ai-tool-output-html';
 import { resolveRichDisplayContent, coalesceAiToolRawContent } from '../../lib/ai-tool-display-content';
+import { AI_TOOL_OUTPUT_STYLES } from '../../lib/ai-tool-output-styles';
+import { renderMarkdown } from '../../lib/render-teacher-markdown';
 import { simpleContentFingerprint } from '../../lib/ai-tool-rotation-label';
 import {
   buildAiToolSectionAudit,
@@ -77,7 +79,8 @@ export default function AiToolWebView({ toolType, content, rawContent, variant =
       return renderAiToolOutputHtml(toolType, content, mergedRaw, variant);
     } catch {
       const display = resolveRichDisplayContent(content, mergedRaw);
-      return `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/></head><body><p style="font-family:sans-serif;padding:16px;color:#64748b">Content could not be displayed. Please try generating again.</p><pre style="white-space:pre-wrap;font-size:12px;padding:16px">${display.slice(0, 4000).replace(/</g, '&lt;')}</pre></body></html>`;
+      const body = renderMarkdown(display.slice(0, 80000));
+      return `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><style>${AI_TOOL_OUTPUT_STYLES}</style></head><body>${body}</body></html>`;
     }
   }, [toolType, content, mergedRaw, variant]);
 

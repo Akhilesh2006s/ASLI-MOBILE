@@ -7,4 +7,6 @@ export {
   mapGradeLevelForIitBoard,
   resolveStudentCurriculumGradeLevel,
   resolveIitBoardGradeLevel,
+  usesIitTrackSubjects,
+  resolveSubjectForAiToolApi,
 } from './school-program';

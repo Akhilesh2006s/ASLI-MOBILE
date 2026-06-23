@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { STUDENT, STUDENT_RADIUS, STUDENT_TYPO } from '../../../../src/theme/student';
+import { STUDENT, STUDENT_RADIUS, STUDENT_SPACING, STUDENT_TYPO } from '../../../../src/theme/student';
 
 interface HeaderProps {
   username: string;
@@ -26,6 +26,7 @@ function HeaderComponent({ username, dashboardLabel = 'Student Dashboard' }: Hea
           <View>
             <Text style={styles.smallText}>{dashboardLabel}</Text>
             <Text style={styles.title}>EduOTT</Text>
+            <Text style={styles.welcomeText}>Welcome Back, {username}</Text>
           </View>
         </View>
       </View>
@@ -36,7 +37,7 @@ function HeaderComponent({ username, dashboardLabel = 'Student Dashboard' }: Hea
 const styles = StyleSheet.create({
   container: {
     borderRadius: STUDENT_RADIUS.xxl,
-    paddingHorizontal: 16,
+    paddingHorizontal: STUDENT_SPACING.md,
     paddingVertical: 14,
     marginBottom: 12,
     ...STUDENT.shadow.md,
@@ -77,6 +78,12 @@ const styles = StyleSheet.create({
     ...STUDENT_TYPO.section,
     color: STUDENT.textOnPrimary,
     lineHeight: 28,
+  },
+  welcomeText: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 13,
+    marginTop: 4,
+    fontWeight: '600',
   },
 });
 

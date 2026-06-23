@@ -116,6 +116,51 @@ export function mapGradeLevelForIitBoard(
   return gradeLevel;
 }
 
+export function usesIitTrackSubjects(board: string | undefined): boolean {
+  const compact = String(board || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[\s/\\-]+/g, '');
+  return compact.includes('IIT') || compact.includes('NEET') || compact.includes('JEE');
+}
+
+function isScienceBranchSubject(subject: string): boolean {
+  const compact = String(subject || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+  return (
+    compact.startsWith('physics') ||
+    compact.startsWith('chemistry') ||
+    compact.startsWith('biology')
+  );
+}
+
+/** Map curriculum dropdown labels to API subject keys (matches backend validation). */
+export function resolveSubjectForAiToolApi(
+  subject: unknown,
+  board: string | undefined
+): string {
+  const raw = String(subject || '').trim();
+  if (!raw) return raw;
+
+  const key = raw.toLowerCase().replace(/\s+/g, ' ');
+  const aliases: Record<string, string> = {
+    mathematics: 'Maths',
+    math: 'Maths',
+    maths: 'Maths',
+    'social studies': 'Social Science',
+    sst: 'Social Science',
+  };
+  let mapped = aliases[key] ?? raw;
+
+  if (!usesIitTrackSubjects(board) && isScienceBranchSubject(mapped)) {
+    mapped = 'Science';
+  }
+
+  return mapped;
+}
+
 export function resolveStudentCurriculumGradeLevel(
   user?: {
     assignedClass?: { classNumber?: string };

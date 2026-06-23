@@ -32,6 +32,7 @@ import {
   resolveRichDisplayContent,
   coalesceAiToolRawContent,
 } from './ai-tool-display-content';
+import { resolveAiToolDisplayType } from './ai-tool-generate';
 import { stripAiToolGenerationLabel } from './strip-ai-tool-generation-label';
 import {
   bulletListHtml,
@@ -2001,6 +2002,7 @@ const FULL_STRUCTURED_MARKDOWN_TOOLS = new Set([
   'activity-project-generator',
   'project-idea-lab',
   'lesson-planner',
+  'study-schedule-maker',
   'daily-class-plan-maker',
   'exam-question-paper-generator',
   'flashcard-generator',
@@ -2028,17 +2030,18 @@ export function tryRenderStructuredAiToolHtml(
   rawContent?: unknown,
   variant: Variant = 'student'
 ): string | null {
+  const resolvedToolType = resolveAiToolDisplayType(toolType, variant);
   const mergedRaw = coalesceToolRawContent(content, rawContent);
   const display = resolveRichDisplayContent(content, mergedRaw);
   if (
     contentHasNumberedTemplateSections(display) &&
-    !FULL_STRUCTURED_MARKDOWN_TOOLS.has(toolType) &&
-    !STRUCTURED_HYBRID_STUDENT_TOOLS.has(toolType)
+    !FULL_STRUCTURED_MARKDOWN_TOOLS.has(resolvedToolType) &&
+    !STRUCTURED_HYBRID_STUDENT_TOOLS.has(resolvedToolType)
   ) {
     return null;
   }
 
-  const renderer = STRUCTURED_RENDERERS[toolType];
+  const renderer = STRUCTURED_RENDERERS[resolvedToolType];
   if (!renderer) return null;
   try {
     const body = renderer(content, mergedRaw ?? null, variant);

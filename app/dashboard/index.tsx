@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, RefreshControl, ScrollView, StatusBar, StyleSheet, View, useWindowDimensions } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import authService from '../../src/services/api/authService';
 import { useAuth } from '../../src/context/AuthContext';
@@ -19,6 +19,7 @@ import ProfileTabView from './_components/ProfileTabView';
 import VidyaAIFloatingAssistant from '../../src/components/vidya/VidyaAIFloatingAssistant';
 import { useVidyaChatAccess } from '../../src/hooks/useVidyaChatAccess';
 import { resolveStudentFirstName } from '../../src/lib/student-text';
+import { studentFloatingTabBarReserve } from '../../src/lib/responsive-layout';
 
 type TabId = 'home' | 'learning' | 'eduott' | 'exams' | 'vidya' | 'settings';
 
@@ -137,9 +138,11 @@ export default function StudentDashboard() {
     ]);
   };
 
-  const pad = { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 140 };
   const { width: windowWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const isTablet = windowWidth >= 768;
+  const eduottTabBarGap = studentFloatingTabBarReserve(insets.bottom);
+  const pad = { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 140 };
   const homePad = isTablet ? { ...pad, paddingHorizontal: 20 } : pad;
 
   const handleTabChange = (id: string) => {
@@ -210,7 +213,7 @@ export default function StudentDashboard() {
 
         {visitedTabs.has('eduott') ? (
           <VisitedTabPane visible={activeTab === 'eduott'}>
-            <View style={[styles.scroll, styles.eduottPane]}>
+            <View style={[styles.scroll, styles.eduottPane, { marginBottom: eduottTabBarGap }]}>
               <EduOTTFilterProvider>
                 <EduOTTView username={firstName} />
               </EduOTTFilterProvider>
@@ -291,7 +294,6 @@ const styles = StyleSheet.create({
   },
   eduottPane: {
     flex: 1,
-    paddingBottom: 140,
   },
   examsPane: {
     flex: 1,

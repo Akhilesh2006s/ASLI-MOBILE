@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import ActivityProjectViewer from './ActivityProjectViewer';
 import FlashcardViewer from './FlashcardViewer';
+import SmartStudyGuideViewer from './SmartStudyGuideViewer';
 import AiToolWebView from './AiToolWebView';
 import { stripStructuredAiToolMetadata } from '../../lib/strip-ai-tool-metadata';
 import { activitiesPayloadIsComplete } from '../../lib/parse-activity-markdown';
@@ -13,6 +14,7 @@ import {
   flashcardsHaveVisibleBody,
   resolveFlashcardsFromPayload,
 } from '../../lib/parse-flashcards';
+import { resolveAiToolDisplayType } from '../../lib/ai-tool-generate';
 
 type Props = {
   toolType: string;
@@ -29,7 +31,8 @@ function activitiesFromRaw(rawContent: unknown) {
   return undefined;
 }
 
-export function getAiToolResultTitle(toolType: string): string {
+export function getAiToolResultTitle(toolType: string, variant: 'student' | 'teacher' = 'student'): string {
+  const displayType = resolveAiToolDisplayType(toolType, variant);
   const titles: Record<string, string> = {
     'smart-study-guide-generator': 'Your smart study guide',
     'concept-breakdown-explainer': 'Your concept breakdown',
@@ -38,7 +41,6 @@ export function getAiToolResultTitle(toolType: string): string {
     'key-points-formula-extractor': 'Your key points sheet',
     'quick-assignment-builder': 'Your assignment',
     'my-study-decks': 'Your study deck',
-    'flashcard-generator': 'Your study deck',
     'mock-test-builder': 'Your mock test',
     'project-idea-lab': 'Your project idea lab',
     'reading-practice-room': 'Your reading studio',
@@ -52,8 +54,9 @@ export function getAiToolResultTitle(toolType: string): string {
     'homework-creator': 'Your homework',
     'story-passage-creator': 'Your story & passage',
     'short-notes-summaries-maker': 'Your short notes',
+    'flashcard-generator': 'Your flashcard deck',
   };
-  return titles[toolType] || 'Generated content';
+  return titles[displayType] || 'Generated content';
 }
 
 export default function AiToolContentRenderer({
@@ -62,6 +65,11 @@ export default function AiToolContentRenderer({
   rawContent,
   variant = 'student',
 }: Props) {
+  const displayToolType = useMemo(
+    () => resolveAiToolDisplayType(toolType, variant),
+    [toolType, variant],
+  );
+
   const cleaned = useMemo(() => stripStructuredAiToolMetadata(content), [content]);
   const mergedRaw = useMemo(
     () => coalesceAiToolRawContent(cleaned, rawContent),
@@ -80,29 +88,51 @@ export default function AiToolContentRenderer({
     [displayMarkdown],
   );
 
+  const isStudentStudyDecks = variant === 'student' && displayToolType === 'my-study-decks';
+  const isTeacherFlashcards = variant === 'teacher' && displayToolType === 'flashcard-generator';
+
   const useNativeActivity = useMemo(() => {
-    if (toolType !== 'activity-project-generator' && toolType !== 'project-idea-lab') return false;
+    if (displayToolType !== 'activity-project-generator' && displayToolType !== 'project-idea-lab') {
+      return false;
+    }
     if (hasFullTemplateMarkdown || hasApiMarkdownSections) return false;
-    // Teacher activity uses the colored WebView renderer (same section tints as student tools).
-    if (toolType === 'activity-project-generator' && variant === 'teacher') return false;
-    const mode = toolType === 'project-idea-lab' ? 'student' : variant;
+    if (displayToolType === 'activity-project-generator' && variant === 'teacher') return false;
+    const mode = displayToolType === 'project-idea-lab' ? 'student' : variant;
     return activitiesPayloadIsComplete(activitiesFromRaw(mergedRaw), cleaned, mode);
-  }, [toolType, cleaned, mergedRaw, hasFullTemplateMarkdown, hasApiMarkdownSections, variant]);
+  }, [displayToolType, cleaned, mergedRaw, hasFullTemplateMarkdown, hasApiMarkdownSections, variant]);
 
   const useNativeFlashcard = useMemo(() => {
-    if (toolType !== 'my-study-decks' && toolType !== 'flashcard-generator') return false;
+    if (!isStudentStudyDecks && !isTeacherFlashcards) return false;
+    // Full Super Admin markdown → WebView (12-section student deck or 5-block teacher deck).
     if (hasFullTemplateMarkdown || hasApiMarkdownSections) return false;
     const { cards } = resolveFlashcardsFromPayload(cleaned, mergedRaw);
     return flashcardsHaveVisibleBody(cards);
-  }, [toolType, cleaned, mergedRaw, hasFullTemplateMarkdown, hasApiMarkdownSections]);
+  }, [
+    isStudentStudyDecks,
+    isTeacherFlashcards,
+    cleaned,
+    mergedRaw,
+    hasFullTemplateMarkdown,
+    hasApiMarkdownSections,
+  ]);
 
-  if (toolType === 'smart-qa-practice-generator') {
+  if (displayToolType === 'smart-qa-practice-generator') {
     return (
       <AiToolWebView
-        toolType={toolType}
+        toolType={displayToolType}
         content={cleaned}
         rawContent={mergedRaw}
         variant={variant}
+      />
+    );
+  }
+
+  if (variant === 'student' && displayToolType === 'smart-study-guide-generator') {
+    return (
+      <SmartStudyGuideViewer
+        content={cleaned}
+        rawContent={mergedRaw}
+        toolType={displayToolType}
       />
     );
   }
@@ -112,8 +142,8 @@ export default function AiToolContentRenderer({
       <ActivityProjectViewer
         content={cleaned}
         rawContent={mergedRaw}
-        variant={toolType === 'project-idea-lab' ? 'student' : variant}
-        toolType={toolType}
+        variant={displayToolType === 'project-idea-lab' ? 'student' : variant}
+        toolType={displayToolType}
       />
     );
   }
@@ -123,15 +153,15 @@ export default function AiToolContentRenderer({
       <FlashcardViewer
         content={cleaned}
         rawContent={mergedRaw}
-        variant={variant}
-        toolType={toolType}
+        variant={isTeacherFlashcards ? 'teacher' : 'student'}
+        toolType={displayToolType}
       />
     );
   }
 
   return (
     <AiToolWebView
-      toolType={toolType}
+      toolType={displayToolType}
       content={cleaned}
       rawContent={mergedRaw}
       variant={variant}

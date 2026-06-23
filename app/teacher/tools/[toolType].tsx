@@ -48,6 +48,8 @@ import {
   validateActivityToolDisplay,
   fetchAiToolGeneratedContentFallback,
   isAiToolClientValidationError,
+  isAiToolInlineOnlyError,
+  resolveAiToolApiInlineMessage,
   type AiToolGenerationMeta,
 } from '../../../src/lib/ai-tool-generate';
 import {
@@ -652,12 +654,22 @@ export default function TeacherToolPage() {
     [resetOutputScroll, queueScrollToOutput],
   );
 
+  useEffect(() => {
+    setFallbackEmptyMessage('');
+  }, [
+    formParams.board,
+    formParams.gradeLevel,
+    formParams.subject,
+    formParams.topic,
+    formParams.subTopic,
+  ]);
+
   const handleGenerate = async () => {
     if (!config || !toolType) return;
 
     const validationError = validateAiToolForm({
       config,
-      formParams,
+      formParams: { ...formParams, board: selectedBoard },
       isReadingPractice: isStoryLanguageTool(toolType),
       requireBoard: true,
     });
@@ -695,8 +707,13 @@ export default function TeacherToolPage() {
       });
 
       if (!result.ok) {
-        showInlineOutputMessage(result.fallbackMessage);
-        return;
+        if (isAiToolInlineOnlyError(result.code)) {
+          showInlineOutputMessage(
+            resolveAiToolApiInlineMessage({ message: result.message, code: result.code }, config?.name),
+          );
+          return;
+        }
+        throw new Error(result.message || 'AI generation failed');
       }
 
       const stored = storeAiToolSuccessPayload(toolType, result.content, result.rawContent, 'teacher');
@@ -744,6 +761,10 @@ export default function TeacherToolPage() {
         });
 
         if (!fallbackResult.ok) {
+          if (isAiToolInlineOnlyError(fallbackResult.code)) {
+            showInlineOutputMessage(fallbackResult.fallbackMessage);
+            return;
+          }
           showInlineOutputMessage(`${errMsg} ${fallbackResult.fallbackMessage}`.trim());
           return;
         }

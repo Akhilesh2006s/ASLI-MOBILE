@@ -136,6 +136,11 @@ export function filterVisibleStudentTools(subjectNames: string[]): StudentAiTool
   });
 }
 
+/** Canonical backend + display tool id for student routes (legacy aliases → real student tool). */
+export function resolveStudentAiToolDisplayType(toolType: string): string {
+  return resolveStudentAiApiToolType(toolType);
+}
+
 /** Map route/legacy ids to backend toolType (same as web student/tools). */
 export function resolveStudentAiApiToolType(toolType: string): string {
   switch (toolType) {

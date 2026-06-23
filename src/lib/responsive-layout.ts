@@ -12,6 +12,12 @@ export const ADMIN_GRID_GAP = 12;
 export const ADMIN_FLOATING_TAB_BAR_PAD = 100;
 export const ADMIN_SHELL_PAD_COMPACT = 24;
 export const EDUOTT_TAB_BAR_SCROLL_PAD = 88;
+/** Student dashboard floating tab bar — keep list above the pill. */
+export const STUDENT_FLOATING_TAB_BAR_RESERVE = 72;
+
+export function studentFloatingTabBarReserve(bottomInset: number): number {
+  return STUDENT_FLOATING_TAB_BAR_RESERVE + Math.max(bottomInset, 10);
+}
 
 export type ScreenTier = 'phone' | 'tablet' | 'wide';
 
@@ -43,8 +49,12 @@ export function eduOttListScrollBottomPad(
   role: 'student' | 'teacher' | 'admin',
   tablet: boolean,
   basePad: number,
+  bottomInset = 0,
 ): number {
-  if (role === 'student' || role === 'admin' || tablet) return basePad;
+  if (role === 'student') {
+    return basePad + studentFloatingTabBarReserve(bottomInset);
+  }
+  if (role === 'admin' || tablet) return basePad;
   return basePad + EDUOTT_TAB_BAR_SCROLL_PAD;
 }
 

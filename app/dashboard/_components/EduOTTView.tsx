@@ -27,6 +27,7 @@ import {
 } from '../../../src/lib/subject-names';
 import { useEduOTTFilters } from '../../../src/contexts/edu-ott-filter-context';
 import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { eduOttListScrollBottomPad, isTabletLayout } from '../../../src/lib/responsive-layout';
 
 export type EduOTTRole = 'student' | 'teacher' | 'admin';
@@ -193,14 +194,14 @@ function mapAndDedupeVideos(list: unknown[]): VideoItem[] {
   return dedupeLibraryContents(Array.isArray(list) ? list : []).map(mapContentToVideoItem);
 }
 
-const EDUOTT_GRID_MAX_WIDTH = 1080;
+const EDUOTT_EDGE_PAD = STUDENT_SPACING.sm;
 
 function useEduOTTGridLayout() {
   const { width: screenWidth } = useWindowDimensions();
   const numColumns = screenWidth >= 1024 ? 3 : screenWidth >= 768 ? 2 : 1;
   const isGrid = numColumns > 1;
   const columnGap = STUDENT_SPACING.md;
-  const listContentWidth = Math.min(screenWidth, EDUOTT_GRID_MAX_WIDTH) - STUDENT_SPACING.lg * 2;
+  const listContentWidth = screenWidth - EDUOTT_EDGE_PAD * 2;
   const gridCardWidth = isGrid
     ? (listContentWidth - columnGap * (numColumns - 1)) / numColumns
     : undefined;
@@ -211,11 +212,17 @@ function useEduOTTGridLayout() {
 export default function EduOTTView({ username = 'Student', role = 'student' }: EduOTTViewProps) {
   const { numColumns, isGrid, gridCardWidth } = useEduOTTGridLayout();
   const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const isTablet = isTabletLayout(width, height);
   const { isAsliPrepExclusive, loading: programLoading } = useSchoolProgram();
   const useClientSideFilters = role !== 'student';
   const dashboardLabel = DASHBOARD_LABELS[role];
-  const listScrollBottomPad = eduOttListScrollBottomPad(role, isTablet, STUDENT_SPACING.xl);
+  const listScrollBottomPad = eduOttListScrollBottomPad(
+    role,
+    isTablet,
+    STUDENT_SPACING.md,
+    insets.bottom,
+  );
   const {
     selectedClass,
     selectedSubject,
@@ -960,10 +967,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: STUDENT.bg,
-    paddingHorizontal: STUDENT_SPACING.lg,
     paddingTop: STUDENT_SPACING.sm,
   },
   listContainer: {
+    paddingHorizontal: EDUOTT_EDGE_PAD,
     paddingBottom: STUDENT_SPACING.xl,
   },
   listContainerEmpty: {
@@ -971,10 +978,9 @@ const styles = StyleSheet.create({
   },
   loadingWrap: {
     flex: 1,
+    paddingHorizontal: EDUOTT_EDGE_PAD,
   },
   listContainerGrid: {
-    maxWidth: EDUOTT_GRID_MAX_WIDTH,
-    alignSelf: 'center',
     width: '100%',
   },
   columnWrapper: {

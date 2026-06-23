@@ -103,7 +103,7 @@ export default function ClassesView() {
   const [selectedSubject, setSelectedSubject] = useState('all');
   const [subjectPickerOpen, setSubjectPickerOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [expandedClassId, setExpandedClassId] = useState<string | null>(null);
+  const [classCardTabById, setClassCardTabById] = useState<Record<string, 'teachers' | 'students'>>({});
   const [isAddClassModalVisible, setIsAddClassModalVisible] = useState(false);
   const [isDeleteAllModalVisible, setIsDeleteAllModalVisible] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
@@ -548,9 +548,64 @@ export default function ClassesView() {
   );
 
   const renderClassCard = (cls: ClassItem, index: number) => {
-    const isExpanded = expandedClassId === cls.id;
-    const showStudentsList = isExpanded || (isTablet && (cls.students?.length ?? 0) > 0);
     const teacherCount = cls.teachers?.length ?? 0;
+    const studentCount = cls.students?.length ?? 0;
+    const detailTab = classCardTabById[cls.id] ?? 'teachers';
+
+    const renderTeacherRows = () =>
+      teacherCount > 0 ? (
+        cls.teachers!.map((teacher) => (
+          <View
+            key={teacher.id}
+            style={[styles.teacherItem, { backgroundColor: colors.primaryMuted, borderColor: colors.surfaceBorder }]}
+          >
+            <View style={[styles.teacherAvatar, { backgroundColor: colors.primary }]}>
+              <Text style={styles.teacherAvatarText}>
+                {(teacher.name || 'T').charAt(0).toUpperCase()}
+              </Text>
+            </View>
+            <View style={styles.teacherInfo}>
+              <Text style={styles.teacherName} numberOfLines={1}>
+                {teacher.name}
+              </Text>
+              <Text style={styles.teacherEmail} numberOfLines={1}>
+                {teacher.email}
+              </Text>
+            </View>
+            <View style={styles.teacherBadge}>
+              <Text style={styles.teacherBadgeText}>Teacher</Text>
+            </View>
+          </View>
+        ))
+      ) : (
+        <Text style={styles.listEmptyText}>No teachers assigned</Text>
+      );
+
+    const renderStudentRows = () =>
+      studentCount > 0 ? (
+        cls.students!.map((student) => (
+          <View key={student.id} style={styles.studentItem}>
+            <View style={styles.studentInfo}>
+              <Text style={styles.studentName} numberOfLines={1}>
+                {student.name}
+              </Text>
+              <Text style={styles.studentEmail} numberOfLines={1}>
+                {student.email}
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.studentStatusBadge,
+                student.status === 'active' ? styles.studentStatusActive : styles.studentStatusInactive,
+              ]}
+            >
+              <Text style={styles.studentStatusText}>{student.status || 'active'}</Text>
+            </View>
+          </View>
+        ))
+      ) : (
+        <Text style={styles.noStudentsText}>No students assigned to this class</Text>
+      );
 
     return (
       <AdminGlassCard
@@ -615,88 +670,82 @@ export default function ClassesView() {
           ) : null}
         </View>
 
-        <View style={styles.cardFooter}>
-        {teacherCount > 0 && (
-          <View style={styles.teachersBlock}>
-            <Text style={styles.blockTitle}>Assigned Teachers:</Text>
-            <AdminCardScrollBox style={styles.teachersScroll}>
-              {cls.teachers!.map((teacher) => (
-                <View key={teacher.id} style={[styles.teacherItem, { backgroundColor: colors.primaryMuted, borderColor: colors.surfaceBorder }]}>
-                  <View style={[styles.teacherAvatar, { backgroundColor: colors.primary }]}>
-                    <Text style={styles.teacherAvatarText}>
-                      {(teacher.name || 'T').charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                  <View style={styles.teacherInfo}>
-                    <Text style={styles.teacherName} numberOfLines={1}>
-                      {teacher.name}
-                    </Text>
-                    <Text style={styles.teacherEmail} numberOfLines={1}>
-                      {teacher.email}
-                    </Text>
-                  </View>
-                  <View style={styles.teacherBadge}>
-                    <Text style={styles.teacherBadgeText}>Teacher</Text>
-                  </View>
+        <View style={[styles.cardFooter, isTablet && styles.cardFooterTablet]}>
+          {isTablet ? (
+            <>
+              <View style={styles.cardDetailTabs}>
+                <TouchableOpacity
+                  style={[
+                    styles.cardDetailTab,
+                    detailTab === 'teachers' && [
+                      styles.cardDetailTabActive,
+                      { backgroundColor: colors.primaryMuted, borderColor: colors.primary },
+                    ],
+                  ]}
+                  onPress={() => setClassCardTabById((prev) => ({ ...prev, [cls.id]: 'teachers' }))}
+                  activeOpacity={0.85}
+                >
+                  <Text
+                    style={[
+                      styles.cardDetailTabText,
+                      detailTab === 'teachers' && { color: colors.primary },
+                    ]}
+                  >
+                    Teachers ({teacherCount})
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.cardDetailTab,
+                    detailTab === 'students' && [
+                      styles.cardDetailTabActive,
+                      { backgroundColor: colors.primaryMuted, borderColor: colors.primary },
+                    ],
+                  ]}
+                  onPress={() => setClassCardTabById((prev) => ({ ...prev, [cls.id]: 'students' }))}
+                  activeOpacity={0.85}
+                >
+                  <Text
+                    style={[
+                      styles.cardDetailTabText,
+                      detailTab === 'students' && { color: colors.primary },
+                    ]}
+                  >
+                    Students ({studentCount})
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <AdminCardScrollBox style={styles.cardDetailScrollTablet}>
+                {detailTab === 'teachers' ? renderTeacherRows() : renderStudentRows()}
+              </AdminCardScrollBox>
+            </>
+          ) : (
+            <>
+              {teacherCount > 0 && (
+                <View style={styles.teachersBlock}>
+                  <Text style={styles.blockTitle}>Assigned Teachers:</Text>
+                  <AdminCardScrollBox style={styles.teachersScroll}>{renderTeacherRows()}</AdminCardScrollBox>
                 </View>
-              ))}
-            </AdminCardScrollBox>
-          </View>
-        )}
-
-        <View style={styles.studentsBlock}>
-          <View style={styles.studentsBlockHeader}>
-            <Text style={styles.blockTitle}>Students List:</Text>
-            <TouchableOpacity
-              style={styles.viewToggleBtn}
-              onPress={() => setExpandedClassId(isExpanded ? null : cls.id)}
-            >
-              <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={14} color={colors.primary} />
-              <Text style={[styles.viewToggleText, { color: colors.primary }]}>
-                {showStudentsList ? 'Hide' : 'View'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-          {showStudentsList && (
-            <AdminCardScrollBox style={styles.studentsScroll}>
-              {cls.students && cls.students.length > 0 ? (
-                cls.students.map((student) => (
-                  <View key={student.id} style={styles.studentItem}>
-                    <View style={styles.studentInfo}>
-                      <Text style={styles.studentName} numberOfLines={1}>
-                        {student.name}
-                      </Text>
-                      <Text style={styles.studentEmail} numberOfLines={1}>
-                        {student.email}
-                      </Text>
-                    </View>
-                    <View
-                      style={[
-                        styles.studentStatusBadge,
-                        student.status === 'active'
-                          ? styles.studentStatusActive
-                          : styles.studentStatusInactive,
-                      ]}
-                    >
-                      <Text style={styles.studentStatusText}>{student.status || 'active'}</Text>
-                    </View>
-                  </View>
-                ))
-              ) : (
-                <Text style={styles.noStudentsText}>No students assigned to this class</Text>
               )}
-            </AdminCardScrollBox>
+              <View style={styles.studentsBlock}>
+                <Text style={[styles.blockTitle, styles.studentsBlockTitlePhone]}>Students List:</Text>
+                <AdminCardScrollBox style={styles.studentsScroll}>{renderStudentRows()}</AdminCardScrollBox>
+              </View>
+            </>
           )}
         </View>
 
         <TouchableOpacity
-          style={[styles.deleteClassBtn, { borderColor: colors.dangerMuted, backgroundColor: colors.dangerMuted }]}
+          style={[
+            styles.deleteClassBtn,
+            isTablet && styles.deleteClassBtnTablet,
+            { borderColor: colors.dangerMuted, backgroundColor: colors.dangerMuted },
+          ]}
           onPress={() => handleDeleteClass(cls.id)}
         >
           <Ionicons name="trash-outline" size={16} color={colors.danger} />
           <Text style={[styles.deleteClassBtnText, { color: colors.danger }]}>Delete</Text>
         </TouchableOpacity>
-        </View>
       </AdminGlassCard>
     );
   };
@@ -1389,12 +1438,21 @@ const styles = StyleSheet.create({
   },
   addClassBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   classCard: { padding: 14, marginBottom: 0 },
-  classCardTablet: { width: '100%' },
+  classCardTablet: {
+    width: '100%',
+    minHeight: 468,
+    flexDirection: 'column',
+  },
   cardFooter: {
     width: '100%',
     maxWidth: '100%',
     alignSelf: 'stretch',
     flexDirection: 'column',
+  },
+  cardFooterTablet: {
+    flex: 1,
+    minHeight: 0,
+    marginBottom: 10,
   },
   classHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 12 },
   classIconWrap: {
@@ -1438,6 +1496,37 @@ const styles = StyleSheet.create({
   blockTitle: { fontSize: 13, fontWeight: '800', color: '#0c4a6e', marginBottom: 8 },
   teachersBlock: { marginBottom: 12 },
   teachersScroll: { width: '100%', maxWidth: '100%', alignSelf: 'stretch', maxHeight: 160 },
+  cardDetailTabs: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10,
+    width: '100%',
+  },
+  cardDetailTab: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
+  },
+  cardDetailTabActive: {
+    borderWidth: 1,
+  },
+  cardDetailTabText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748b',
+    textAlign: 'center',
+  },
+  cardDetailScrollTablet: {
+    width: '100%',
+    height: 196,
+    maxHeight: 196,
+  },
   teacherItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1471,25 +1560,9 @@ const styles = StyleSheet.create({
   },
   teacherBadgeText: { fontSize: 10, fontWeight: '700', color: '#0369a1' },
   studentsBlock: { marginBottom: 12 },
-  studentsBlockHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  viewToggleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#bae6fd',
-    backgroundColor: '#f0f9ff',
-  },
-  viewToggleText: { fontSize: 12, fontWeight: '700', color: '#0284c7' },
+  studentsBlockTitlePhone: { marginBottom: 8 },
   studentsScroll: { width: '100%', maxWidth: '100%', alignSelf: 'stretch', maxHeight: 200 },
+  listEmptyText: { fontSize: 12, color: '#64748b', textAlign: 'center', paddingVertical: 8 },
   studentItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1520,6 +1593,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#fef2f2',
     marginTop: 4,
     width: '100%',
+  },
+  deleteClassBtnTablet: {
+    flexShrink: 0,
+    marginTop: 0,
   },
   deleteClassBtnText: { fontSize: 13, fontWeight: '700', color: '#dc2626' },
   panelCard: { marginBottom: 16, padding: 16 },

@@ -29,7 +29,8 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
     alignSelf: 'stretch',
     flexGrow: 0,
-    flexShrink: 1,
+    flexShrink: 0,
+    overflow: 'hidden',
   },
   content: {
     width: '100%',
