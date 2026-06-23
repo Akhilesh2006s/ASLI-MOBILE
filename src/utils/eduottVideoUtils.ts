@@ -89,3 +89,13 @@ export function formatEduOTTDurationLabel(totalSeconds: number): string {
   }
   return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
+
+export type LiveSessionLike = {
+  _id?: string;
+  status?: 'scheduled' | 'live' | 'ended' | 'cancelled' | string;
+};
+
+export function canJoinLiveSession(session: LiveSessionLike): boolean {
+  const status = session.status || 'live';
+  return ['live', 'scheduled'].includes(status);
+}

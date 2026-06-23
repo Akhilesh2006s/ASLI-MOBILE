@@ -28,6 +28,7 @@ import BookBasedGeneratorView from './_components/BookBasedGeneratorView';
 import AiToolTopicsView from './_components/AiToolTopicsView';
 import AiToolGenerationsView from './_components/AiToolGenerationsView';
 import SuperAdminOverviewView from './_components/SuperAdminOverviewView';
+import LiveSessionsView from './_components/LiveSessionsView';
 import SuperAdminNavDrawer, {
   superAdminNavLabel,
   type SuperAdminView,
@@ -206,6 +207,8 @@ export default function SuperAdminDashboard() {
       case 'content':
       case 'subjects':
         return <SubjectContentManagementView />;
+      case 'edu-ott-live':
+        return <LiveSessionsView />;
       case 'exams':
         return <ExamManagementView />;
       case 'iq-rank-boost':

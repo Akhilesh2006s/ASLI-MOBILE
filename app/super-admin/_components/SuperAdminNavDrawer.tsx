@@ -43,6 +43,7 @@ export type SuperAdminView =
   | 'book-knowledge-base'
   | 'book-based-generator'
   | 'ai-content-engine'
+  | 'edu-ott-live'
   | 'analytics'
   | 'ai-analytics'
   | 'board-comparison'
@@ -73,6 +74,7 @@ const NAV_SECTIONS: NavSection[] = [
     title: 'Content & Exams',
     items: [
       { id: 'subjects-and-content', label: 'Subject & Content', icon: 'list-outline' },
+      { id: 'edu-ott-live', label: 'Edu OTT Live', icon: 'radio-outline' },
       { id: 'exams', label: 'Exam Management', icon: 'document-text-outline' },
       { id: 'iq-rank-boost', label: 'IQ/Rank Boost Activities', icon: 'trophy-outline' },
       { id: 'calendar', label: 'School Calendar', icon: 'calendar-outline' },

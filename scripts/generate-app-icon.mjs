@@ -11,26 +11,30 @@ const outSplash = path.join(root, 'assets', 'app-icon-splash.png');
 
 const SIZE = 1024;
 // Android/iOS masks clip outer edges — keep emblem well inside the safe zone.
-const ICON_EMBLEM_SCALE = 0.5;
-const ADAPTIVE_EMBLEM_SCALE = 0.4;
-const SPLASH_EMBLEM_SCALE = 0.45;
-// Extra transparent/white margin around extracted graphic so orbital rings are not clipped.
-const EMBLEM_PAD_RATIO = 0.14;
+const ICON_EMBLEM_SCALE = 0.46;
+const ADAPTIVE_EMBLEM_SCALE = 0.36;
+const SPLASH_EMBLEM_SCALE = 0.42;
+// Asymmetric padding — extra bottom margin so the book base is not clipped by icon masks.
+const EMBLEM_PAD = { top: 0.12, bottom: 0.22, left: 0.14, right: 0.14 };
+// Nudge emblem upward on the canvas (launcher masks often clip the bottom edge).
+const EMBLEM_OFFSET_Y_RATIO = -0.025;
 
-// Emblem bounds in logo.png — graphic only; must not include wordmark below
-const EMBLEM = { left: 152, top: 40, width: 720, height: 590 };
+// Emblem bounds in logo.png — graphic only; height must include full book base (was too short).
+const EMBLEM = { left: 152, top: 40, width: 720, height: 645 };
 
 async function extractEmblem(padBackground) {
   const extracted = await sharp(source).extract(EMBLEM).png().toBuffer();
   const meta = await sharp(extracted).metadata();
-  const padX = Math.round(meta.width * EMBLEM_PAD_RATIO);
-  const padY = Math.round(meta.height * EMBLEM_PAD_RATIO);
+  const padTop = Math.round(meta.height * EMBLEM_PAD.top);
+  const padBottom = Math.round(meta.height * EMBLEM_PAD.bottom);
+  const padLeft = Math.round(meta.width * EMBLEM_PAD.left);
+  const padRight = Math.round(meta.width * EMBLEM_PAD.right);
   return sharp(extracted)
     .extend({
-      top: padY,
-      bottom: padY,
-      left: padX,
-      right: padX,
+      top: padTop,
+      bottom: padBottom,
+      left: padLeft,
+      right: padRight,
       background: padBackground,
     })
     .png()
@@ -39,7 +43,8 @@ async function extractEmblem(padBackground) {
 
 async function buildIcon({ background, outPath, emblemScale = ICON_EMBLEM_SCALE }) {
   const emblemSize = Math.round(SIZE * emblemScale);
-  const offset = Math.round((SIZE - emblemSize) / 2);
+  const offsetX = Math.round((SIZE - emblemSize) / 2);
+  const offsetY = Math.round((SIZE - emblemSize) / 2 + SIZE * EMBLEM_OFFSET_Y_RATIO);
 
   const emblem = await extractEmblem(background)
     .then((buf) =>
@@ -57,7 +62,7 @@ async function buildIcon({ background, outPath, emblemScale = ICON_EMBLEM_SCALE 
       background,
     },
   })
-    .composite([{ input: emblem, left: offset, top: offset }])
+    .composite([{ input: emblem, left: offsetX, top: offsetY }])
     .png()
     .toFile(outPath);
 }
@@ -65,7 +70,8 @@ async function buildIcon({ background, outPath, emblemScale = ICON_EMBLEM_SCALE 
 async function buildForeground() {
   const transparent = { r: 0, g: 0, b: 0, alpha: 0 };
   const emblemSize = Math.round(SIZE * ADAPTIVE_EMBLEM_SCALE);
-  const offset = Math.round((SIZE - emblemSize) / 2);
+  const offsetX = Math.round((SIZE - emblemSize) / 2);
+  const offsetY = Math.round((SIZE - emblemSize) / 2 + SIZE * EMBLEM_OFFSET_Y_RATIO);
 
   const emblem = await extractEmblem(transparent)
     .then((buf) =>
@@ -83,7 +89,7 @@ async function buildForeground() {
       background: { r: 0, g: 0, b: 0, alpha: 0 },
     },
   })
-    .composite([{ input: emblem, left: offset, top: offset }])
+    .composite([{ input: emblem, left: offsetX, top: offsetY }])
     .png()
     .toFile(outForeground);
 }

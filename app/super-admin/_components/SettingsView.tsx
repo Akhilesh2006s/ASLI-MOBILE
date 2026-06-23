@@ -30,6 +30,7 @@ const QUICK_LINKS: { view: SuperAdminView; label: string; icon: keyof typeof Ion
   { view: 'exams', label: 'Exam Management', icon: 'document-text-outline' },
   { view: 'admins', label: 'School Management', icon: 'shield-outline' },
   { view: 'subjects-and-content', label: 'Subject & Content', icon: 'list-outline' },
+  { view: 'edu-ott-live', label: 'Edu OTT Live', icon: 'radio-outline' },
   { view: 'analytics', label: 'Analytics', icon: 'stats-chart-outline' },
   { view: 'subscriptions', label: 'Subscriptions', icon: 'card-outline' },
 ];

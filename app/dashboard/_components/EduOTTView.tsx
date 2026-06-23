@@ -18,7 +18,7 @@ import Header from './eduott/Header';
 import SearchBar from './eduott/SearchBar';
 import StudentFilterDropdown from '../../../src/components/student/StudentFilterDropdown';
 import EduOTTVideoCard from '../../../src/components/eduott/EduOTTVideoCard';
-import { resolveContentDurationSeconds } from '../../../src/utils/eduottVideoUtils';
+import { resolveContentDurationSeconds, canJoinLiveSession } from '../../../src/utils/eduottVideoUtils';
 import { dedupeLibraryContents } from '../../../src/lib/dedupe-library-content';
 import { getVideoDisplayTitle } from '../../../src/lib/video-chapter-schedule';
 import {
@@ -128,10 +128,15 @@ interface LiveSession {
   description?: string;
   status: 'scheduled' | 'live' | 'ended' | 'cancelled';
   streamUrl?: string;
+  playbackUrl?: string;
+  youtubeUrl?: string;
+  youtubeEmbedUrl?: string;
   scheduledTime?: string;
+  scheduledStartTime?: string;
   subject?: { _id: string; name: string };
   classNumber?: string;
   viewerCount?: number;
+  visibility?: 'teacher' | 'student' | 'both';
 }
 
 interface EduOTTViewProps {
@@ -770,8 +775,9 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
 
   const renderSessionItem = useCallback(({ item }: { item: LiveSession }) => {
     const statusColor = getStatusColor(item.status);
+    const joinable = canJoinLiveSession(item);
     return (
-      <TouchableOpacity style={styles.sessionCard} activeOpacity={0.9} onPress={() => handleJoinLive(item)}>
+      <View style={styles.sessionCard}>
         <View style={styles.sessionTopRow}>
           <Text style={styles.sessionTitle} numberOfLines={2}>
             {item.title}
@@ -786,7 +792,7 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
         <View style={styles.sessionMeta}>
           <Text style={styles.sessionMetaText}>
             {(() => {
-              const plain = extractPlainSubjectName(item.subject?.name || 'General');
+              const plain = extractPlainSubjectName(item.subject?.name || 'Live Session');
               const cl = getSubjectClassLabel({
                 name: item.subject?.name,
                 classNumber: item.classNumber,
@@ -794,10 +800,18 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
               return cl ? `${plain} · Class ${cl}` : plain;
             })()}
           </Text>
-          <Text style={styles.sessionMetaText}>•</Text>
-          <Text style={styles.sessionMetaText}>{item.viewerCount || 0} watching</Text>
         </View>
-      </TouchableOpacity>
+        {joinable ? (
+          <TouchableOpacity
+            style={styles.joinSessionButton}
+            activeOpacity={0.9}
+            onPress={() => handleJoinLive(item)}
+          >
+            <Ionicons name="play" size={18} color="#fff" />
+            <Text style={styles.joinSessionButtonText}>Join Session</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
     );
   }, [handleJoinLive]);
 
@@ -1147,6 +1161,26 @@ const styles = StyleSheet.create({
   sessionMetaText: {
     fontSize: 12,
     color: STUDENT.textMuted,
+  },
+  joinSessionLabel: {
+    color: '#dc2626',
+    fontWeight: '700',
+  },
+  joinSessionButton: {
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#dc2626',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  joinSessionButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
   },
   skeletonWrap: {
     marginTop: STUDENT_SPACING.md,
