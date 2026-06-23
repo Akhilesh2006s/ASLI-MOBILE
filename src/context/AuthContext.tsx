@@ -62,6 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async (payload: LoginPayload) => {
+    resetSessionBaseline();
     const data = await authService.login(payload);
     setToken(data?.token || null);
     setRole(data?.user?.role || null);

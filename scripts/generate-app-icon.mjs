@@ -12,23 +12,25 @@ const outSplash = path.join(root, 'assets', 'app-icon-splash.png');
 const SIZE = 1024;
 // Android/iOS masks clip outer edges — keep emblem well inside the safe zone.
 const ICON_EMBLEM_SCALE = 0.46;
-const ADAPTIVE_EMBLEM_SCALE = 0.36;
+const ADAPTIVE_EMBLEM_SCALE = 0.30;
 const SPLASH_EMBLEM_SCALE = 0.42;
 // Asymmetric padding — extra bottom margin so the book base is not clipped by icon masks.
-const EMBLEM_PAD = { top: 0.12, bottom: 0.22, left: 0.14, right: 0.14 };
+const ICON_EMBLEM_PAD = { top: 0.12, bottom: 0.22, left: 0.14, right: 0.14 };
+const ADAPTIVE_EMBLEM_PAD = { top: 0.18, bottom: 0.34, left: 0.16, right: 0.16 };
 // Nudge emblem upward on the canvas (launcher masks often clip the bottom edge).
-const EMBLEM_OFFSET_Y_RATIO = -0.025;
+const ICON_EMBLEM_OFFSET_Y_RATIO = -0.04;
+const ADAPTIVE_EMBLEM_OFFSET_Y_RATIO = -0.10;
 
 // Emblem bounds in logo.png — graphic only; height must include full book base (was too short).
 const EMBLEM = { left: 152, top: 40, width: 720, height: 645 };
 
-async function extractEmblem(padBackground) {
+async function extractEmblem(padBackground, emblemPad = ICON_EMBLEM_PAD) {
   const extracted = await sharp(source).extract(EMBLEM).png().toBuffer();
   const meta = await sharp(extracted).metadata();
-  const padTop = Math.round(meta.height * EMBLEM_PAD.top);
-  const padBottom = Math.round(meta.height * EMBLEM_PAD.bottom);
-  const padLeft = Math.round(meta.width * EMBLEM_PAD.left);
-  const padRight = Math.round(meta.width * EMBLEM_PAD.right);
+  const padTop = Math.round(meta.height * emblemPad.top);
+  const padBottom = Math.round(meta.height * emblemPad.bottom);
+  const padLeft = Math.round(meta.width * emblemPad.left);
+  const padRight = Math.round(meta.width * emblemPad.right);
   return sharp(extracted)
     .extend({
       top: padTop,
@@ -41,12 +43,18 @@ async function extractEmblem(padBackground) {
     .toBuffer();
 }
 
-async function buildIcon({ background, outPath, emblemScale = ICON_EMBLEM_SCALE }) {
+async function buildIcon({
+  background,
+  outPath,
+  emblemScale = ICON_EMBLEM_SCALE,
+  emblemPad = ICON_EMBLEM_PAD,
+  emblemOffsetYRatio = ICON_EMBLEM_OFFSET_Y_RATIO,
+}) {
   const emblemSize = Math.round(SIZE * emblemScale);
   const offsetX = Math.round((SIZE - emblemSize) / 2);
-  const offsetY = Math.round((SIZE - emblemSize) / 2 + SIZE * EMBLEM_OFFSET_Y_RATIO);
+  const offsetY = Math.round((SIZE - emblemSize) / 2 + SIZE * emblemOffsetYRatio);
 
-  const emblem = await extractEmblem(background)
+  const emblem = await extractEmblem(background, emblemPad)
     .then((buf) =>
       sharp(buf)
         .resize(emblemSize, emblemSize, { fit: 'contain', background })
@@ -71,9 +79,9 @@ async function buildForeground() {
   const transparent = { r: 0, g: 0, b: 0, alpha: 0 };
   const emblemSize = Math.round(SIZE * ADAPTIVE_EMBLEM_SCALE);
   const offsetX = Math.round((SIZE - emblemSize) / 2);
-  const offsetY = Math.round((SIZE - emblemSize) / 2 + SIZE * EMBLEM_OFFSET_Y_RATIO);
+  const offsetY = Math.round((SIZE - emblemSize) / 2 + SIZE * ADAPTIVE_EMBLEM_OFFSET_Y_RATIO);
 
-  const emblem = await extractEmblem(transparent)
+  const emblem = await extractEmblem(transparent, ADAPTIVE_EMBLEM_PAD)
     .then((buf) =>
       sharp(buf)
         .resize(emblemSize, emblemSize, { fit: 'contain', background: transparent })

@@ -1,17 +1,48 @@
-import { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Dimensions } from 'react-native';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  Dimensions,
+  Platform,
+  StatusBar,
+  BackHandler,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { Video, ResizeMode } from 'expo-av';
 import * as SecureStore from 'expo-secure-store';
+import * as ScreenOrientation from 'expo-screen-orientation';
 import { API_BASE_URL } from '../src/lib/api-config';
-import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
+import { useContentViewerBack } from '../src/hooks/useBackNavigation';
 import YouTubeEmbedWebView from '../src/components/shared/YouTubeEmbedWebView';
 import { extractYouTubeId } from '../src/utils/contentPreview';
+import { resolveLiveSessionEmbedUrl } from '../src/utils/liveSessionPlayback';
 
 const { height } = Dimensions.get('window');
+const isNativeMobile = Platform.OS === 'ios' || Platform.OS === 'android';
+
+async function lockLandscapeOrientation(): Promise<void> {
+  if (!isNativeMobile) return;
+  try {
+    await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+  } catch (error) {
+    console.warn('Failed to lock landscape orientation:', error);
+  }
+}
+
+async function unlockScreenOrientation(): Promise<void> {
+  if (!isNativeMobile) return;
+  try {
+    await ScreenOrientation.unlockAsync();
+  } catch (error) {
+    console.warn('Failed to unlock screen orientation:', error);
+  }
+}
 
 interface LiveSession {
   _id: string;
@@ -27,32 +58,53 @@ interface LiveSession {
   scheduledStartTime?: string;
 }
 
-function resolveYoutubeWatchUrl(session: LiveSession): string | null {
-  if (session.youtubeUrl?.trim()) return session.youtubeUrl.trim();
-  if (session.youtubeEmbedUrl?.trim()) return session.youtubeEmbedUrl.trim();
-  const playback = session.playbackUrl || session.hlsUrl || '';
-  if (playback.includes('youtube') || playback.includes('youtu')) return playback;
-  return null;
-}
-
 export default function LiveStream() {
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
   const [session, setSession] = useState<LiveSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isImmersive, setIsImmersive] = useState(false);
-  const [dashboardPath, setDashboardPath] = useState<string>('/dashboard');
   const joinedRef = useRef(false);
+  const goBack = useContentViewerBack('eduott');
+
+  const enterImmersive = useCallback(async () => {
+    setIsImmersive(true);
+    await lockLandscapeOrientation();
+    if (isNativeMobile) {
+      StatusBar.setHidden(true, 'fade');
+    }
+  }, []);
+
+  const exitImmersive = useCallback(async () => {
+    setIsImmersive(false);
+    await unlockScreenOrientation();
+    if (isNativeMobile) {
+      StatusBar.setHidden(false, 'fade');
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      void unlockScreenOrientation();
+      if (isNativeMobile) {
+        StatusBar.setHidden(false, 'fade');
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isImmersive) return undefined;
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      void exitImmersive();
+      return true;
+    });
+    return () => backHandler.remove();
+  }, [isImmersive, exitImmersive]);
 
   useEffect(() => {
     if (sessionId) {
       fetchSession();
     }
-    getDashboardPath().then((path) => {
-      if (path) setDashboardPath(path);
-    });
   }, [sessionId]);
-
-  useBackNavigation(false, dashboardPath);
 
   const logJoin = async (id: string) => {
     if (joinedRef.current) return;
@@ -91,6 +143,8 @@ export default function LiveStream() {
           title: stream.title || stream.name || 'Live Session',
           hlsUrl: stream.hlsUrl || stream.playbackUrl,
           playbackUrl: stream.playbackUrl || stream.streamUrl,
+          youtubeEmbedUrl: stream.youtubeEmbedUrl,
+          youtubeUrl: stream.youtubeUrl,
         };
         setSession(normalized);
         if (['live', 'scheduled'].includes(normalized.status)) {
@@ -121,22 +175,19 @@ export default function LiveStream() {
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle" size={64} color="#ef4444" />
           <Text style={styles.errorText}>Stream not found</Text>
-          <TouchableOpacity
-            style={styles.errorBackButton}
-            onPress={() => router.replace(dashboardPath)}
-          >
-            <Text style={styles.errorBackButtonText}>Go Back</Text>
+          <TouchableOpacity style={styles.errorBackButton} onPress={goBack}>
+            <Text style={styles.errorBackButtonText}>Back to Edu OTT</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
   }
 
-  const youtubeUrl = resolveYoutubeWatchUrl(session);
-  const youtubeId = youtubeUrl ? extractYouTubeId(youtubeUrl) : null;
+  const embedUrl = resolveLiveSessionEmbedUrl(session);
+  const youtubeId = embedUrl ? extractYouTubeId(embedUrl) : null;
   const streamUrl = session.hlsUrl || session.playbackUrl;
   const isLive = session.status === 'live' || session.status === 'scheduled';
-  const canPlayYoutube = isLive && !!youtubeId;
+  const canPlayYoutube = isLive && !!youtubeId && !!embedUrl;
   const canPlayNative = isLive && !!streamUrl && !youtubeId;
 
   return (
@@ -144,7 +195,7 @@ export default function LiveStream() {
       {!isImmersive ? (
         <LinearGradient colors={['#ef4444', '#dc2626']} style={styles.header}>
           <View style={styles.headerContent}>
-            <TouchableOpacity onPress={() => router.replace(dashboardPath)} style={styles.headerBackButton}>
+            <TouchableOpacity onPress={goBack} style={styles.headerBackButton}>
               <Ionicons name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
             <View style={styles.headerText}>
@@ -165,7 +216,7 @@ export default function LiveStream() {
             </View>
             {(canPlayYoutube || canPlayNative) ? (
               <TouchableOpacity
-                onPress={() => setIsImmersive(true)}
+                onPress={() => void enterImmersive()}
                 style={styles.headerFullscreenButton}
                 accessibilityLabel="Enter fullscreen"
               >
@@ -178,8 +229,8 @@ export default function LiveStream() {
 
       <View style={[styles.content, isImmersive && styles.contentImmersive]}>
         <View style={[styles.videoContainer, isImmersive && styles.videoContainerImmersive]}>
-          {canPlayYoutube && youtubeUrl ? (
-            <YouTubeEmbedWebView videoUrl={youtubeUrl} style={styles.video} />
+          {canPlayYoutube && embedUrl ? (
+            <YouTubeEmbedWebView videoUrl={embedUrl} style={styles.video} autoplay />
           ) : canPlayNative ? (
             <Video
               source={{ uri: streamUrl }}
@@ -198,14 +249,14 @@ export default function LiveStream() {
                         ? new Date(session.scheduledTime || session.scheduledStartTime || '').toLocaleString()
                         : 'TBD'
                     }`
-                  : 'Stream not available'}
+                  : 'Stream not available. Make sure the YouTube broadcast is live.'}
               </Text>
             </View>
           )}
           {isImmersive ? (
             <View style={styles.immersiveControls}>
               <TouchableOpacity
-                onPress={() => setIsImmersive(false)}
+                onPress={() => void exitImmersive()}
                 style={styles.immersiveExitButton}
                 accessibilityLabel="Exit fullscreen"
               >

@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '../lib/api-config';
+import { extractYouTubeId } from './contentPreview';
 
 export type EduOTTVideoLike = {
   thumbnailUrl?: string;
@@ -8,17 +9,7 @@ export type EduOTTVideoLike = {
   isYouTubeVideo?: boolean;
 };
 
-export function extractYouTubeId(url: string): string | null {
-  if (!url) return null;
-  const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-  const match = url.match(regExp);
-  if (match && match[2].length === 11) return match[2];
-  const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
-  if (shortMatch) return shortMatch[1];
-  const partialMatch = url.match(/watch\?v=([a-zA-Z0-9_-]{11})/);
-  if (partialMatch) return partialMatch[1];
-  return null;
-}
+export { extractYouTubeId };
 
 export function resolveYouTubeUrl(video: EduOTTVideoLike): string | null {
   const candidates = [video.youtubeUrl, video.videoUrl, video.fileUrl].filter(

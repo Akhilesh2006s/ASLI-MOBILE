@@ -31,6 +31,12 @@ let sessionBaseline: SessionBaseline = {
 let baselineInitialized = false;
 let baselineUserKey = '';
 
+type StudyTimeListener = (times: { today: number; thisWeek: number }) => void;
+
+let syncCleanup: (() => void) | null = null;
+let syncSubscriberCount = 0;
+const studyTimeListeners = new Set<StudyTimeListener>();
+
 function capStudyMinutes(minutes: number, max: number): number {
   return Math.min(max, Math.max(0, Math.round(minutes)));
 }
@@ -47,15 +53,14 @@ export function mergeDisplayedStudyTime(
     };
   }
 
-  // Only add new local minutes since baseline load — avoids inflating with stale local totals.
   const deltaToday = Math.max(0, localTimes.today - baseline.localTodayAtLoad);
   const mergedToday = capStudyMinutes(
-    baseline.backendToday + deltaToday,
+    Math.max(baseline.backendToday + deltaToday, localTimes.today),
     MAX_STUDY_MINUTES_PER_DAY
   );
   const weekWithoutToday = Math.max(0, baseline.backendWeek - baseline.backendToday);
   const thisWeek = capStudyMinutes(
-    weekWithoutToday + mergedToday,
+    Math.max(weekWithoutToday + mergedToday, localTimes.thisWeek),
     MAX_STUDY_MINUTES_PER_WEEK
   );
 
@@ -141,6 +146,7 @@ async function initSessionBaseline(token: string, force = false): Promise<void> 
     return;
   }
 
+  await endSession();
   const localAtLoad = await updateStudyTime();
   const backend = await fetchSessionTimeFromBackend(token);
 
@@ -191,9 +197,28 @@ export async function getMergedStudyTime(forceRefresh = false): Promise<{ today:
   return mergeDisplayedStudyTime(sessionBaseline, localTimes);
 }
 
-export function setupSessionTimeSync(
-  onUpdate: (times: { today: number; thisWeek: number }) => void
-): () => void {
+function notifyStudyTimeListeners(times: { today: number; thisWeek: number }): void {
+  studyTimeListeners.forEach((listener) => {
+    try {
+      listener(times);
+    } catch (error) {
+      console.error('Study time listener failed:', error);
+    }
+  });
+}
+
+function ensureSessionTimeSyncRunning(): () => void {
+  if (syncCleanup) {
+    syncSubscriberCount += 1;
+    return () => {
+      syncSubscriberCount = Math.max(0, syncSubscriberCount - 1);
+      if (syncSubscriberCount === 0 && syncCleanup) {
+        syncCleanup();
+        syncCleanup = null;
+      }
+    };
+  }
+
   let saveInterval: ReturnType<typeof setInterval> | null = null;
   let displayInterval: ReturnType<typeof setInterval> | null = null;
   let cancelled = false;
@@ -201,7 +226,7 @@ export function setupSessionTimeSync(
 
   const refresh = async () => {
     const localTimes = await updateStudyTime();
-    onUpdate(mergeDisplayedStudyTime(sessionBaseline, localTimes));
+    notifyStudyTimeListeners(mergeDisplayedStudyTime(sessionBaseline, localTimes));
   };
 
   const startTracking = async () => {
@@ -214,7 +239,7 @@ export function setupSessionTimeSync(
   const bootstrap = async () => {
     const token = await SecureStore.getItemAsync('authToken');
     if (token) {
-      await initSessionBaseline(token);
+      await initSessionBaseline(token, true);
     } else {
       const localAtLoad = await updateStudyTime();
       sessionBaseline = {
@@ -232,18 +257,11 @@ export function setupSessionTimeSync(
   displayInterval = setInterval(() => void refresh(), 60_000);
   saveInterval = setInterval(async () => {
     const localTimes = await updateStudyTime();
-    const { today, thisWeek } = mergeDisplayedStudyTime(sessionBaseline, localTimes);
+    const { today } = mergeDisplayedStudyTime(sessionBaseline, localTimes);
     await saveSessionTimeToBackend(today);
-    if (sessionBaseline.useBackend) {
-      const previousToday = sessionBaseline.backendToday;
-      sessionBaseline.backendToday = today;
-      const weekWithoutToday = Math.max(0, sessionBaseline.backendWeek - previousToday);
-      sessionBaseline.backendWeek = thisWeek || weekWithoutToday + today;
-      sessionBaseline.localTodayAtLoad = localTimes.today;
-    }
   }, 5 * 60 * 1000);
 
-  return () => {
+  syncCleanup = () => {
     cancelled = true;
     if (displayInterval) clearInterval(displayInterval);
     if (saveInterval) clearInterval(saveInterval);
@@ -252,5 +270,29 @@ export function setupSessionTimeSync(
       const { today } = mergeDisplayedStudyTime(sessionBaseline, localTimes);
       await saveSessionTimeToBackend(today);
     });
+  };
+
+  syncSubscriberCount = 1;
+  return () => {
+    syncSubscriberCount = Math.max(0, syncSubscriberCount - 1);
+    if (syncSubscriberCount === 0 && syncCleanup) {
+      syncCleanup();
+      syncCleanup = null;
+    }
+  };
+}
+
+/** One global foreground timer; safe to call from multiple screens. */
+export function setupSessionTimeSync(
+  onUpdate: (times: { today: number; thisWeek: number }) => void
+): () => void {
+  studyTimeListeners.add(onUpdate);
+  const release = ensureSessionTimeSyncRunning();
+
+  void getMergedStudyTime(true).then(onUpdate).catch(() => null);
+
+  return () => {
+    studyTimeListeners.delete(onUpdate);
+    release();
   };
 }

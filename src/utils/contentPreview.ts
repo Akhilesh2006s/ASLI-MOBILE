@@ -36,14 +36,24 @@ export function resolveContentUrl(url?: string): string {
 export function extractYouTubeId(url: string): string | null {
   const trimmed = url.trim();
   if (!trimmed) return null;
-  const short = trimmed.match(/youtu\.be\/([a-zA-Z0-9_-]{6,})/i);
-  if (short) return short[1];
-  const watch = trimmed.match(/[?&]v=([a-zA-Z0-9_-]{6,})/i);
-  if (watch) return watch[1];
-  const embed = trimmed.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{6,})/i);
-  if (embed) return embed[1];
-  const shorts = trimmed.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{6,})/i);
-  if (shorts) return shorts[1];
+
+  const patterns = [
+    /youtu\.be\/([a-zA-Z0-9_-]{11})/i,
+    /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/i,
+    /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/i,
+    /youtube\.com\/live\/([a-zA-Z0-9_-]{11})/i,
+    /[?&]v=([a-zA-Z0-9_-]{11})/i,
+    /\/v\/([a-zA-Z0-9_-]{11})/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = trimmed.match(pattern);
+    if (match?.[1]) return match[1];
+  }
+
+  const legacy = trimmed.match(/^.*(?:youtu\.be\/|v\/|embed\/|watch\?v=|&v=)([^#&?]{11})/i);
+  if (legacy?.[1]) return legacy[1];
+
   return null;
 }
 
@@ -54,11 +64,21 @@ export function getYoutubeWatchUrl(videoId: string): string {
   return `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
 }
 
-export function buildYouTubeEmbedHtml(videoId: string): string {
-  const origin = encodeURIComponent(YOUTUBE_EMBED_ORIGIN);
+export function buildYouTubeEmbedHtml(videoId: string, options?: { autoplay?: boolean }): string {
+  const params = new URLSearchParams({
+    playsinline: '1',
+    rel: '0',
+    modestbranding: '1',
+    iv_load_policy: '3',
+    fs: '1',
+    enablejsapi: '1',
+    origin: YOUTUBE_EMBED_ORIGIN,
+  });
+  if (options?.autoplay) {
+    params.set('autoplay', '1');
+  }
   const embedSrc =
-    `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}` +
-    `?playsinline=1&rel=0&modestbranding=1&iv_load_policy=3&fs=1&enablejsapi=1&origin=${origin}`;
+    `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?${params.toString()}`;
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -82,20 +102,34 @@ export function buildYouTubeEmbedHtml(videoId: string): string {
 </html>`;
 }
 
-export function getYoutubeEmbedWebViewSource(url: string): { html: string; baseUrl: string } | null {
+export function getYoutubeEmbedWebViewSource(
+  url: string,
+  options?: { autoplay?: boolean }
+): { html: string; baseUrl: string } | null {
   const id = extractYouTubeId(url);
   if (!id) return null;
   return {
-    html: buildYouTubeEmbedHtml(id),
+    html: buildYouTubeEmbedHtml(id, options),
     baseUrl: YOUTUBE_EMBED_ORIGIN,
   };
 }
 
-export function getYoutubeEmbedUrl(url: string): string | null {
+export function getYoutubeEmbedUrl(url: string, options?: { autoplay?: boolean }): string | null {
   const id = extractYouTubeId(url);
   if (!id) return null;
-  const origin = encodeURIComponent(YOUTUBE_EMBED_ORIGIN);
-  return `https://www.youtube-nocookie.com/embed/${id}?playsinline=1&rel=0&modestbranding=1&iv_load_policy=3&fs=1&enablejsapi=1&origin=${origin}`;
+  const params = new URLSearchParams({
+    playsinline: '1',
+    rel: '0',
+    modestbranding: '1',
+    iv_load_policy: '3',
+    fs: '1',
+    enablejsapi: '1',
+    origin: YOUTUBE_EMBED_ORIGIN,
+  });
+  if (options?.autoplay) {
+    params.set('autoplay', '1');
+  }
+  return `https://www.youtube-nocookie.com/embed/${id}?${params.toString()}`;
 }
 
 export function isYouTubeUrl(url: string): boolean {

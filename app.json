@@ -2,7 +2,7 @@
   "expo": {
     "name": "AsliLearn AI",
     "slug": "aslilearn-mobile",
-    "version": "1.0.13",
+    "version": "1.0.17",
     "orientation": "default",
     "icon": "./assets/app-icon.png",
     "userInterfaceStyle": "light",
@@ -18,7 +18,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.tech.aslilearnai",
-      "buildNumber": "13"
+      "buildNumber": "17"
     },
     "android": {
       "adaptiveIcon": {
@@ -26,7 +26,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.tech.aslilearnai",
-      "versionCode": 17,
+      "versionCode": 21,
       "softwareKeyboardLayoutMode": "resize",
       "navigationBar": {
         "backgroundColor": "#f0fdf4"
