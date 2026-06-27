@@ -102,13 +102,36 @@ const STORY_LANGUAGE_TOOL_IDS = new Set([
   READING_PRACTICE_TOOL_ID,
 ]);
 
+/** Tools that must not be used with English, Hindi, or Telugu subjects. */
+export const LANGUAGE_EXCLUDED_TOOL_IDS = [
+  'worksheet-mcq-generator',
+  'short-notes-summaries-maker',
+  'concept-mastery-helper',
+  'daily-class-plan-maker',
+  'concept-breakdown-explainer',
+  'chapter-summary-creator',
+  'key-points-formula-extractor',
+] as const;
+
+const LANGUAGE_EXCLUDED_TOOL_ID_SET = new Set<string>(LANGUAGE_EXCLUDED_TOOL_IDS);
+
+export const LANGUAGE_EXCLUDED_TOOL_ERROR =
+  'This tool is not available for English, Hindi, or Telugu subjects.';
+
 export function isStoryLanguageTool(toolType: string): boolean {
   return STORY_LANGUAGE_TOOL_IDS.has(String(toolType || '').trim());
+}
+
+export function isLanguageExcludedTool(toolType: string): boolean {
+  return LANGUAGE_EXCLUDED_TOOL_ID_SET.has(String(toolType || '').trim());
 }
 
 export function filterSubjectsForAiTool(toolType: string, subjects: string[]): string[] {
   if (isStoryLanguageTool(toolType)) {
     return subjects.filter(isStoryPassageLanguageSubject);
+  }
+  if (isLanguageExcludedTool(toolType)) {
+    return subjects.filter((s) => !isStoryPassageLanguageSubject(s));
   }
   return subjects;
 }
@@ -126,15 +149,33 @@ export function hasStoryPassageLanguageSubject(subjects: string[]): boolean {
   return subjects.some(isStoryPassageLanguageSubject);
 }
 
+export function hasNonLanguageSubject(subjects: string[]): boolean {
+  return subjects.some((s) => !isStoryPassageLanguageSubject(s));
+}
+
 export function filterVisibleStudentTools(subjectNames: string[]): StudentAiTool[] {
   return STUDENT_AI_TOOLS.filter((tool) => {
-    // Chat has a dedicated card on the Vidya tab — not listed under Available Tools.
     if (tool.id === 'ai-chat') return false;
-    if (tool.id !== READING_PRACTICE_TOOL_ID) return true;
-    if (subjectNames.length === 0) return true;
-    return hasStoryPassageLanguageSubject(subjectNames);
+    return isAiToolVisibleForSubjects(tool.id, subjectNames);
   });
 }
+
+/** Whether a tool card should appear on Vidya dashboard for the user's assigned subjects. */
+export function isAiToolVisibleForSubjects(toolId: string, subjectNames: string[]): boolean {
+  const id = String(toolId || '').trim();
+  if (isStoryLanguageTool(id)) {
+    if (subjectNames.length === 0) return true;
+    return hasStoryPassageLanguageSubject(subjectNames);
+  }
+  if (isLanguageExcludedTool(id)) {
+    if (subjectNames.length === 0) return true;
+    return hasNonLanguageSubject(subjectNames);
+  }
+  return true;
+}
+
+/** @deprecated Use isAiToolVisibleForSubjects */
+export const isStudentToolVisibleForSubjects = isAiToolVisibleForSubjects;
 
 /** Canonical backend + display tool id for student routes (legacy aliases → real student tool). */
 export function resolveStudentAiToolDisplayType(toolType: string): string {

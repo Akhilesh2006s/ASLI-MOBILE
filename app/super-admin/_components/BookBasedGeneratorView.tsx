@@ -38,7 +38,7 @@ import {
   parseGenerationRecordCount,
   sanitizeGenerationRecordCountInput,
 } from '../../../src/lib/generation-record-count';
-import { filterSubjectsForAiTool, isStoryLanguageTool, isStoryPassageLanguageSubject } from '../../../src/lib/student-ai-tools';
+import { filterSubjectsForAiTool, isLanguageExcludedTool, isStoryLanguageTool, isStoryPassageLanguageSubject, LANGUAGE_EXCLUDED_TOOL_ERROR } from '../../../src/lib/student-ai-tools';
 
 type Props = {
   onOpenBookKnowledge?: () => void;
@@ -137,6 +137,10 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
     }
     if (isStoryLanguageTool(selectedTool) && !isStoryPassageLanguageSubject(subject)) {
       Alert.alert('English, Hindi, or Telugu only', 'This tool works only with English, Hindi, or Telugu subjects.');
+      return;
+    }
+    if (isLanguageExcludedTool(selectedTool) && isStoryPassageLanguageSubject(subject)) {
+      Alert.alert('Language subjects not supported', LANGUAGE_EXCLUDED_TOOL_ERROR);
       return;
     }
     setIsGenerating(true);

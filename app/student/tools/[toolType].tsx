@@ -34,6 +34,7 @@ import {
   resolveStudentAiApiToolType,
   resolveStudentToolConfigKey,
   filterSubjectsForAiTool,
+  isLanguageExcludedTool,
   isStoryPassageLanguageSubject,
   READING_PRACTICE_TOOL_ID,
 } from '../../../src/lib/student-ai-tools';
@@ -371,9 +372,13 @@ export default function StudentToolPage() {
   }, [formParams.gradeLevel, formParams.subject, cascade.topics, cascade.loadingTopics]);
 
   useEffect(() => {
-    if (!isReadingPractice) return;
     const sub = formParams.subject;
-    if (!sub || isStoryPassageLanguageSubject(sub)) return;
+    if (!sub) return;
+    const subStr = String(sub);
+    const shouldClear =
+      (isReadingPractice && !isStoryPassageLanguageSubject(subStr)) ||
+      (isLanguageExcludedTool(apiToolType) && isStoryPassageLanguageSubject(subStr));
+    if (!shouldClear) return;
     setFormParams((prev) => {
       const next = { ...prev };
       delete next.subject;
@@ -381,7 +386,7 @@ export default function StudentToolPage() {
       delete next.subTopic;
       return next;
     });
-  }, [isReadingPractice, formParams.subject]);
+  }, [isReadingPractice, apiToolType, formParams.subject]);
 
   useEffect(() => {
     if (!assignedGradeLevel) return;
@@ -546,7 +551,9 @@ export default function StudentToolPage() {
     if (field.name === 'subject') {
       if (!formParams.gradeLevel || cascade.loadingSubjects) return 'Select class first';
       if (subjectsForTool.length === 0) {
-        return isReadingPractice ? 'English, Hindi, or Telugu only' : 'No subjects available';
+        if (isReadingPractice) return 'English, Hindi, or Telugu only';
+        if (isLanguageExcludedTool(apiToolType)) return 'Not available for English, Hindi, or Telugu';
+        return 'No subjects available';
       }
     }
     if (
@@ -615,6 +622,7 @@ export default function StudentToolPage() {
     const validationError = validateAiToolForm({
       config,
       formParams: { ...formParams, board: selectedBoard },
+      toolType: apiToolType,
       isReadingPractice,
       requireBoard: true,
     });
@@ -956,6 +964,14 @@ export default function StudentToolPage() {
                 <Ionicons name="information-circle" size={18} color={STUDENT.accent} />
                 <Text style={[styles.infoBannerText, isTablet && aiToolTabletPageStyles.infoBannerText]}>
                   English, Hindi, and Telugu subjects only for this tool.
+                </Text>
+              </View>
+            ) : null}
+            {isLanguageExcludedTool(apiToolType) ? (
+              <View style={[styles.infoBanner, styles.infoBannerWarning]}>
+                <Ionicons name="alert-circle" size={18} color="#b45309" />
+                <Text style={[styles.infoBannerText, styles.infoBannerWarningText, isTablet && aiToolTabletPageStyles.infoBannerText]}>
+                  Not available for English, Hindi, or Telugu subjects.
                 </Text>
               </View>
             ) : null}
@@ -1345,6 +1361,11 @@ const styles = StyleSheet.create({
     borderColor: STUDENT.surfaceBorder,
   },
   infoBannerText: { flex: 1, ...STUDENT_TYPO.caption, color: STUDENT.accent, lineHeight: 18 },
+  infoBannerWarning: {
+    backgroundColor: '#fffbeb',
+    borderColor: '#fcd34d',
+  },
+  infoBannerWarningText: { color: '#92400e' },
   emptyResult: {
     alignItems: 'center',
     justifyContent: 'center',

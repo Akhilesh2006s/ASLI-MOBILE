@@ -46,8 +46,10 @@ import {
 } from '../../../src/lib/ai-pdf';
 import {
   filterSubjectsForAiTool,
+  isLanguageExcludedTool,
   isStoryLanguageTool,
   isStoryPassageLanguageSubject,
+  LANGUAGE_EXCLUDED_TOOL_ERROR,
 } from '../../../src/lib/student-ai-tools';
 import { extractMcqQuestionsFromRecord, isMcqTool } from '../../../src/lib/mcq-record-utils';
 import AiToolRecordPreview from '../../../src/components/ai-tools/AiToolRecordPreview';
@@ -495,6 +497,14 @@ export default function AiPdfView() {
     setSubTopic('');
   }, [toolType, subject]);
 
+  useEffect(() => {
+    if (!isLanguageExcludedTool(toolType)) return;
+    if (!subject || !isStoryPassageLanguageSubject(subject)) return;
+    setSubject('');
+    setTopic('');
+    setSubTopic('');
+  }, [toolType, subject]);
+
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchList();
@@ -544,6 +554,11 @@ export default function AiPdfView() {
       const msg = 'Story & Passage Creator works only with English, Hindi, or Telugu subjects.';
       setUploadError(msg);
       Alert.alert('English, Hindi, or Telugu only', msg);
+      return;
+    }
+    if (isLanguageExcludedTool(toolType) && isStoryPassageLanguageSubject(subject)) {
+      setUploadError(LANGUAGE_EXCLUDED_TOOL_ERROR);
+      Alert.alert('Language subjects not supported', LANGUAGE_EXCLUDED_TOOL_ERROR);
       return;
     }
     if ((pdfFile.size ?? 0) > AI_PDF_MAX_BYTES) {
@@ -774,6 +789,11 @@ export default function AiPdfView() {
         </Pressable>
         {isStoryLanguageTool(toolType) ? (
           <Text style={styles.infoBanner}>English, Hindi, and Telugu subjects only for Story & Passage Creator.</Text>
+        ) : null}
+        {isLanguageExcludedTool(toolType) ? (
+          <Text style={[styles.infoBanner, styles.infoBannerWarning]}>
+            Not available for English, Hindi, or Telugu subjects.
+          </Text>
         ) : null}
 
         <Pressable
@@ -1063,6 +1083,11 @@ const styles = StyleSheet.create({
     borderColor: '#bfdbfe',
     borderRadius: 8,
     padding: 10,
+  },
+  infoBannerWarning: {
+    color: '#92400e',
+    backgroundColor: '#fffbeb',
+    borderColor: '#fcd34d',
   },
   generateBtn: {
     marginTop: 16,

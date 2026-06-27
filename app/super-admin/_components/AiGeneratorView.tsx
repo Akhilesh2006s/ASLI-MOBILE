@@ -42,8 +42,10 @@ import {
 } from '../../../src/lib/ai-generator';
 import {
   filterSubjectsForAiTool,
+  isLanguageExcludedTool,
   isStoryLanguageTool,
   isStoryPassageLanguageSubject,
+  LANGUAGE_EXCLUDED_TOOL_ERROR,
 } from '../../../src/lib/student-ai-tools';
 import AiToolRecordPreview from '../../../src/components/ai-tools/AiToolRecordPreview';
 import { extractMcqQuestionsFromRecord, isMcqTool } from '../../../src/lib/mcq-record-utils';
@@ -512,6 +514,14 @@ export default function AiGeneratorView() {
     setSubTopic('');
   }, [selectedTool, subject]);
 
+  useEffect(() => {
+    if (!isLanguageExcludedTool(selectedTool)) return;
+    if (!subject || !isStoryPassageLanguageSubject(subject)) return;
+    setSubject('');
+    setTopic('');
+    setSubTopic('');
+  }, [selectedTool, subject]);
+
   const onRefresh = async () => {
     setRefreshing(true);
     await loadRecords();
@@ -551,6 +561,11 @@ export default function AiGeneratorView() {
       setTopic('');
       setSubTopic('');
     }
+    if (isLanguageExcludedTool(toolId) && subject && isStoryPassageLanguageSubject(subject)) {
+      setSubject('');
+      setTopic('');
+      setSubTopic('');
+    }
   };
 
   const buildGenerationPayload = (forceUnlock = false) => ({
@@ -579,6 +594,10 @@ export default function AiGeneratorView() {
     }
     if (isStoryLanguageTool(selectedTool) && !isStoryPassageLanguageSubject(subject)) {
       Alert.alert('English, Hindi, or Telugu only', 'This tool works only with English, Hindi, or Telugu subjects.');
+      return;
+    }
+    if (isLanguageExcludedTool(selectedTool) && isStoryPassageLanguageSubject(subject)) {
+      Alert.alert('Language subjects not supported', LANGUAGE_EXCLUDED_TOOL_ERROR);
       return;
     }
     if (!isValidGenerationRecordCount(generationRecordCount)) {
@@ -802,6 +821,11 @@ export default function AiGeneratorView() {
         {isStoryLanguageTool(selectedTool) ? (
           <Text style={styles.infoBanner}>English, Hindi, and Telugu subjects only for Story & Passage Creator.</Text>
         ) : null}
+        {isLanguageExcludedTool(selectedTool) ? (
+          <Text style={[styles.infoBanner, styles.infoBannerWarning]}>
+            Not available for English, Hindi, or Telugu subjects.
+          </Text>
+        ) : null}
 
         <Text style={styles.fieldLabel}>Board</Text>
         <Pressable style={styles.selectField} onPress={() => setBoardPickerOpen(true)}>
@@ -832,7 +856,9 @@ export default function AiGeneratorView() {
                 ? 'Loading subjects…'
                 : isStoryLanguageTool(selectedTool) && subjectsForTool.length === 0
                   ? 'English, Hindi, or Telugu only'
-                  : subject || 'Select subject'}
+                  : isLanguageExcludedTool(selectedTool) && subjectsForTool.length === 0
+                    ? 'Not available for English, Hindi, or Telugu'
+                    : subject || 'Select subject'}
           </Text>
           <Ionicons name="chevron-down" size={16} color="#64748b" />
         </Pressable>
@@ -1185,6 +1211,11 @@ const styles = StyleSheet.create({
     borderColor: '#bfdbfe',
     borderRadius: 8,
     padding: 10,
+  },
+  infoBannerWarning: {
+    color: '#92400e',
+    backgroundColor: '#fffbeb',
+    borderColor: '#fcd34d',
   },
   selectField: {
     flexDirection: 'row',

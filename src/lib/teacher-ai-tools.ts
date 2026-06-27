@@ -1,5 +1,7 @@
 /** Teacher Vidya AI tools — aligned with asli-frontend teacher dashboard Available Tools */
 
+import { isAiToolVisibleForSubjects } from './student-ai-tools';
+
 export type TeacherAiTool = {
   id: string;
   title: string;
@@ -95,3 +97,7 @@ export const TEACHER_AI_TOOLS: TeacherAiTool[] = [
 
 export const TEACHER_AI_TOOLS_SUBTITLE =
   'Select a tool to get started. All tools use Gemini AI to generate content based on your input.';
+
+export function filterVisibleTeacherTools(subjectNames: string[]): TeacherAiTool[] {
+  return TEACHER_AI_TOOLS.filter((tool) => isAiToolVisibleForSubjects(tool.id, subjectNames));
+}

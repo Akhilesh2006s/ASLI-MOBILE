@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from 'react';
 import { Text, StyleSheet, ScrollView, Pressable, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
@@ -6,7 +7,13 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { router } from 'expo-router';
-import { TEACHER_AI_TOOLS, TEACHER_AI_TOOLS_SUBTITLE } from '../../../src/lib/teacher-ai-tools';
+import * as SecureStore from 'expo-secure-store';
+import { API_BASE_URL } from '../../../src/lib/api-config';
+import {
+  filterVisibleTeacherTools,
+  TEACHER_AI_TOOLS,
+  TEACHER_AI_TOOLS_SUBTITLE,
+} from '../../../src/lib/teacher-ai-tools';
 import VidyaAvatar from '../../../src/components/vidya/VidyaAvatar';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
 
@@ -115,6 +122,33 @@ export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: bool
   const chatPress = usePressScale();
   const { isGrid, shellWidth, cardWidth } = useVidyaAILayout();
   const scrollBottomPad = TAB_BAR_CLEARANCE + TEACHER_SPACING.lg;
+  const [subjectNames, setSubjectNames] = useState<string[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const token = await SecureStore.getItemAsync('authToken');
+        if (!token) return;
+        const res = await fetch(`${API_BASE_URL}/api/teacher/subjects`, {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const rows = Array.isArray(data?.data) ? data.data : [];
+        const names = rows
+          .map((subj: any) => String(subj?.name || subj?.displayName || '').trim())
+          .filter(Boolean);
+        setSubjectNames(names);
+      } catch {
+        /* optional */
+      }
+    })();
+  }, []);
+
+  const visibleTools = useMemo(
+    () => filterVisibleTeacherTools(subjectNames),
+    [subjectNames],
+  );
 
   return (
     <ScrollView
@@ -148,7 +182,7 @@ export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: bool
           <Text style={styles.sectionSubtitle}>{TEACHER_AI_TOOLS_SUBTITLE}</Text>
 
           <View style={[styles.toolsGrid, isGrid && styles.toolsGridMulti]}>
-            {TEACHER_AI_TOOLS.map((tool) => (
+            {visibleTools.map((tool) => (
               <ToolCard
                 key={tool.id}
                 tool={tool}

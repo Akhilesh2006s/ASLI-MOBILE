@@ -1,6 +1,11 @@
 import { activitiesPayloadIsComplete } from './parse-activity-markdown';
 import { isStudyGuideComplete, resolveStudyGuideFromPayload } from './parse-smart-study-guide';
-import { isStoryPassageLanguageSubject, resolveStudentAiApiToolType } from './student-ai-tools';
+import {
+  isLanguageExcludedTool,
+  isStoryPassageLanguageSubject,
+  LANGUAGE_EXCLUDED_TOOL_ERROR,
+  resolveStudentAiApiToolType,
+} from './student-ai-tools';
 import { parseAiToolClassNumber } from './school-program';
 import {
   countNumberedTemplateSections,
@@ -96,6 +101,7 @@ export function validateStudyGuideToolDisplay(
 type ValidateOptions = {
   config: { fields: AiToolFieldConfig[] };
   formParams: Record<string, unknown>;
+  toolType?: string;
   isReadingPractice?: boolean;
   requireBoard?: boolean;
 };
@@ -103,6 +109,7 @@ type ValidateOptions = {
 export function validateAiToolForm({
   config,
   formParams,
+  toolType = '',
   isReadingPractice = false,
   requireBoard = true,
 }: ValidateOptions): string | null {
@@ -117,8 +124,14 @@ export function validateAiToolForm({
     return 'Please select a board.';
   }
 
-  if (isReadingPractice && !isStoryPassageLanguageSubject(String(formParams.subject || ''))) {
+  const subject = String(formParams.subject || formParams.subjects || '');
+
+  if (isReadingPractice && !isStoryPassageLanguageSubject(subject)) {
     return 'Story & Passage Creator works only with English, Hindi, or Telugu subjects.';
+  }
+
+  if (isLanguageExcludedTool(toolType) && isStoryPassageLanguageSubject(subject)) {
+    return LANGUAGE_EXCLUDED_TOOL_ERROR;
   }
 
   return null;
@@ -200,7 +213,7 @@ function resolveApiError(data: ReturnType<typeof parseResponseBody>, response: R
 }
 
 const CLIENT_VALIDATION_ERROR =
-  /invalid subject|topic is required|sub topic is required|class number and subject are required|only available for english and hindi|incomplete for|missing sections|not in the correct tool format/i;
+  /invalid subject|topic is required|sub topic is required|class number and subject are required|only available for english and hindi|not available for english, hindi, or telugu|incomplete for|missing sections|not in the correct tool format/i;
 
 export function isAiToolClientValidationError(message: string): boolean {
   return CLIENT_VALIDATION_ERROR.test(message);
