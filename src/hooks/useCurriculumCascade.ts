@@ -114,13 +114,6 @@ async function fetchManagedTopicTaxonomy(
   };
 
   let json = await load(true);
-  const data = (json as { data?: { subjects?: string[]; topics?: string[]; subTopics?: string[] } })?.data;
-  const hasRows = Boolean(
-    data?.subjects?.length || data?.topics?.length || data?.subTopics?.length
-  );
-  if (!hasRows && params.board) {
-    json = await load(false);
-  }
   return json;
 }
 

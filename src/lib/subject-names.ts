@@ -1,3 +1,5 @@
+import { normalizeBoardKey } from './board-label';
+
 /** Parse Super Admin style subject keys, e.g. Chemistry_10 → class "10", plain "Chemistry". */
 
 export function extractClassNumberFromSubjectName(name: string): string | null {
@@ -72,4 +74,29 @@ export function getLearningPathClassLabel(subject: {
   const fromSubject = getSubjectClassLabel(subject);
   if (fromSubject) return fromSubject;
   return inferClassNumberFromPrepContent(subject.asliPrepContent);
+}
+
+/** Board track for a learning-path row (CBSE vs IIT/NEET must not merge). */
+export function getLearningPathBoardLabel(subject: {
+  board?: string;
+  asliPrepContent?: Array<{
+    board?: string;
+    subject?: { board?: string } | string;
+  }>;
+}): string {
+  if (subject.board != null && String(subject.board).trim() !== '') {
+    return normalizeBoardKey(String(subject.board));
+  }
+  if (!Array.isArray(subject.asliPrepContent)) return '';
+  for (const item of subject.asliPrepContent) {
+    const fromItem = item?.board;
+    if (fromItem != null && String(fromItem).trim() !== '') {
+      return normalizeBoardKey(String(fromItem));
+    }
+    const subj = item?.subject;
+    if (subj != null && typeof subj === 'object' && subj.board) {
+      return normalizeBoardKey(String(subj.board));
+    }
+  }
+  return '';
 }

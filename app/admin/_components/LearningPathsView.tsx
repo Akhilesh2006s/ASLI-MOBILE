@@ -12,7 +12,7 @@ import {
   loadLearningPathCatalog,
   type SubjectWithPathContent,
 } from '../../../src/lib/learningPathCatalog';
-import { groupLearningPathsByClass } from '../../../src/lib/learning-path-admin';
+import { groupLearningPathsByClass, formatClassGroupTitle } from '../../../src/lib/learning-path-admin';
 import { displaySubjectName } from '../../../src/lib/subject-names';
 import {
   AdminScreenShell,
@@ -114,8 +114,7 @@ export default function LearningPathsView() {
             (sum, s) => sum + (s.totalContent || 0),
             0
           );
-          const classTitle =
-            group.classKey === 'Unassigned' ? 'Unassigned' : `Class ${group.classKey}`;
+          const classTitle = formatClassGroupTitle(group);
           const isClassExpanded = expandedClassKey === group.classKey;
 
           return (

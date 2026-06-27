@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import api from '../../../src/services/api/api';
+import { parseClassBoardLabel } from '../../../src/lib/board-label';
 import {
   getCurriculumClassLabels,
   saveCurriculumClass,
@@ -31,9 +31,11 @@ import {
   type ContentType,
   type SubjectItem,
   type SyllabusBoard,
+  buildClassBoardOptions,
   buildSubjectsForClass,
   contentFormFromItem,
   contentIconName,
+  contentMatchesClassBoard,
   emptyContentForm,
   filterContentForSubject,
   getVideoContentDisplayTitle,
@@ -210,33 +212,20 @@ export default function SubjectContentManagementView() {
     setRefreshing(false);
   };
 
-  const classOptions = useMemo(() => {
-    const classSet = new Set<string>();
-    const addClassNum = (num: string | null | undefined) => {
-      if (!isValidGradeClassNumber(num)) return;
-      classSet.add(`Class ${normalizeClassNumber(num)}`);
-    };
-    subjects.forEach((subj) => {
-      if (subj.classNumber) addClassNum(subj.classNumber);
-      else addClassNum(extractClassNumberFromSubjectName(subj.name));
-    });
-    contents.forEach((item) => {
-      const cn = item.classNumber || item.subject?.classNumber;
-      addClassNum(cn);
-    });
-    return Array.from(classSet).sort((a, b) => {
-      const aNum = parseInt(a.replace('Class ', ''), 10);
-      const bNum = parseInt(b.replace('Class ', ''), 10);
-      return aNum - bNum;
-    });
-  }, [subjects, contents]);
+  const classOptions = useMemo(
+    () => buildClassBoardOptions(subjects, contents),
+    [subjects, contents]
+  );
 
   const displayClassOptions = useMemo(() => {
     const merged = new Set([...classOptions, ...manualClassLabels]);
     return Array.from(merged).sort((a, b) => {
-      const aNum = parseInt(a.replace('Class ', ''), 10);
-      const bNum = parseInt(b.replace('Class ', ''), 10);
-      return aNum - bNum;
+      const pa = parseClassBoardLabel(a);
+      const pb = parseClassBoardLabel(b);
+      const na = parseInt(pa.classNum, 10);
+      const nb = parseInt(pb.classNum, 10);
+      if (!Number.isNaN(na) && !Number.isNaN(nb) && na !== nb) return na - nb;
+      return a.localeCompare(b);
     });
   }, [classOptions, manualClassLabels]);
 
@@ -246,13 +235,18 @@ export default function SubjectContentManagementView() {
     }
   }, [displayClassOptions, selectedClassLabel]);
 
-  const selectedClassNumber = selectedClassLabel?.startsWith('Class ')
-    ? normalizeClassNumber(selectedClassLabel.replace('Class ', ''))
+  const selectedClassParsed = useMemo(
+    () => parseClassBoardLabel(selectedClassLabel || ''),
+    [selectedClassLabel]
+  );
+  const selectedClassNumber = selectedClassParsed.classNum
+    ? normalizeClassNumber(selectedClassParsed.classNum)
     : '';
+  const selectedBoard = selectedClassParsed.board;
 
   const subjectsForClass = useMemo(
-    () => buildSubjectsForClass(subjects, contents, selectedClassNumber),
-    [subjects, contents, selectedClassNumber]
+    () => buildSubjectsForClass(subjects, contents, selectedClassNumber, selectedBoard),
+    [subjects, contents, selectedClassNumber, selectedBoard]
   );
 
   useEffect(() => {
@@ -279,9 +273,10 @@ export default function SubjectContentManagementView() {
       subjects,
       selectedSubjectId,
       selectedClassNumber,
-      subjectsForClass
+      subjectsForClass,
+      selectedBoard
     );
-  }, [contents, subjects, selectedSubjectId, selectedClassNumber, subjectsForClass]);
+  }, [contents, subjects, selectedSubjectId, selectedClassNumber, selectedBoard, subjectsForClass]);
 
   const contentSections = useMemo(() => {
     const known = new Set(CONTENT_TYPE_SECTIONS.flatMap((s) => s.types));
@@ -296,13 +291,10 @@ export default function SubjectContentManagementView() {
 
   const contentCountForClass = useMemo(() => {
     if (!selectedClassNumber) return 0;
-    return contents.filter(
-      (item) =>
-        normalizeClassNumber(
-          item.classNumber || item.subject?.classNumber || ''
-        ) === selectedClassNumber
+    return contents.filter((item) =>
+      contentMatchesClassBoard(item, subjects, selectedClassNumber, selectedBoard)
     ).length;
-  }, [contents, selectedClassNumber]);
+  }, [contents, subjects, selectedClassNumber, selectedBoard]);
 
   const handleSaveClass = async () => {
     const num = newClassNumber.trim().replace(/^class\s*/i, '');

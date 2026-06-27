@@ -1,6 +1,12 @@
 import { API_BASE_URL } from './api-config';
 import { getVideoDisplayTitle } from './video-chapter-schedule';
 import {
+  boardsMatch,
+  formatClassBoardLabel,
+  normalizeBoardKey,
+  parseClassBoardLabel,
+} from './board-label';
+import {
   displaySubjectName,
   extractClassNumberFromSubjectName,
   extractPlainSubjectName,
@@ -148,8 +154,55 @@ export function isCatalogSubjectId(id: string | null, catalog: SubjectItem[]): b
   return catalog.some((s) => String(s._id) === String(id));
 }
 
-export function subjectSidebarKey(name: string, classNum: string): string {
-  return `${normalizeSubjectDisplayKey(name)}|${classNum}`;
+export function subjectSidebarKey(name: string, classNum: string, board = ''): string {
+  return `${normalizeSubjectDisplayKey(name)}|${classNum}|${normalizeBoardKey(board)}`;
+}
+
+export function buildClassBoardOptions(
+  subjects: SubjectItem[],
+  contents: ContentItem[]
+): string[] {
+  const labels = new Set<string>();
+  const add = (classNum: string | null | undefined, board?: string) => {
+    if (!isValidGradeClassNumber(classNum)) return;
+    labels.add(formatClassBoardLabel(normalizeClassNumber(classNum!), board));
+  };
+
+  subjects.forEach((subj) => {
+    const cn = subj.classNumber
+      ? normalizeClassNumber(subj.classNumber)
+      : normalizeClassNumber(extractClassNumberFromSubjectName(subj.name) || '');
+    if (cn) add(cn, subj.board);
+  });
+
+  contents.forEach((item) => {
+    const cn = effectiveContentClass(item, subjects);
+    const board = item.board || BOARD_CODE;
+    if (cn) add(cn, board);
+  });
+
+  return Array.from(labels).sort((a, b) => {
+    const pa = parseClassBoardLabel(a);
+    const pb = parseClassBoardLabel(b);
+    const na = parseInt(pa.classNum, 10);
+    const nb = parseInt(pb.classNum, 10);
+    if (!Number.isNaN(na) && !Number.isNaN(nb) && na !== nb) return na - nb;
+    return a.localeCompare(b);
+  });
+}
+
+export function contentMatchesClassBoard(
+  item: ContentItem,
+  subjects: SubjectItem[],
+  classNum: string,
+  board: string
+): boolean {
+  if (item.isActive === false) return false;
+  const effClass = effectiveContentClass(item, subjects);
+  if (normalizeClassNumber(effClass || '') !== normalizeClassNumber(classNum)) return false;
+  if (!board) return true;
+  const itemBoard = normalizeBoardKey(item.board || '');
+  return boardsMatch(itemBoard, board);
 }
 
 export function inferSubjectLabelFromContent(item: ContentItem): string {
@@ -253,10 +306,12 @@ export function mapSubjectFromApi(raw: SubjectItem & { id?: string }): SubjectIt
 export function buildSubjectsForClass(
   subjects: SubjectItem[],
   contents: ContentItem[],
-  selectedClassNumber: string
+  selectedClassNumber: string,
+  selectedBoard = ''
 ): SubjectItem[] {
   if (!selectedClassNumber) return [];
   const normClass = normalizeClassNumber(selectedClassNumber);
+  const normBoard = normalizeBoardKey(selectedBoard);
   const map = new Map<string, SubjectItem>();
 
   subjects.forEach((subj) => {
@@ -264,17 +319,16 @@ export function buildSubjectsForClass(
     const subjClass = subj.classNumber
       ? normalizeClassNumber(subj.classNumber)
       : normalizeClassNumber(extractClassNumberFromSubjectName(subj.name) || '');
+    const subjBoard = normalizeBoardKey(subj.board || '');
+    if (normBoard && subjBoard && !boardsMatch(subjBoard, normBoard)) return;
     const linkedViaContent = contents.some((item) => {
-      if (item.isActive === false) return false;
-      if (normalizeClassNumber(effectiveContentClass(item, subjects) || '') !== normClass) {
-        return false;
-      }
+      if (!contentMatchesClassBoard(item, subjects, normClass, normBoard)) return false;
       const sid = getContentSubjectId(item);
       return sid != null && String(sid) === String(subj._id);
     });
     if (subjClass === normClass || linkedViaContent) {
       const rowClass = subjClass || normClass;
-      const groupKey = subjectSidebarKey(subj.name, rowClass);
+      const groupKey = subjectSidebarKey(subj.name, rowClass, normBoard || subjBoard);
       const existing = map.get(groupKey);
       const preferThis =
         !existing || (isInferredSubjectId(existing._id) && isMongoObjectId(subj._id));
@@ -283,14 +337,14 @@ export function buildSubjectsForClass(
           ...subj,
           name: displaySubjectName(subj.name),
           classNumber: rowClass || subj.classNumber,
+          board: normBoard || subjBoard || subj.board,
         });
       }
     }
   });
 
   contents.forEach((item) => {
-    if (item.isActive === false) return;
-    if (normalizeClassNumber(effectiveContentClass(item, subjects) || '') !== normClass) return;
+    if (!contentMatchesClassBoard(item, subjects, normClass, normBoard)) return;
     const sid = getContentSubjectId(item);
     if (sid) {
       const linked = subjects.find((s) => String(s._id) === String(sid));
@@ -300,7 +354,7 @@ export function buildSubjectsForClass(
       ? displaySubjectName(item.subject.name)
       : inferSubjectLabelFromContent(item);
     const board = item.board || BOARD_CODE;
-    const groupKey = subjectSidebarKey(label, normClass);
+    const groupKey = subjectSidebarKey(label, normClass, normBoard || board);
     const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     const idKey =
       sid && isMongoObjectId(sid) && !isInferredSubjectId(sid) ? String(sid) : `inferred-${slug}`;
@@ -311,7 +365,7 @@ export function buildSubjectsForClass(
       map.set(groupKey, {
         _id: fromCatalog ? String(fromCatalog._id) : idKey,
         name: label,
-        board,
+        board: normBoard || board,
         classNumber: normClass,
         isActive: item.isActive,
       });
@@ -335,17 +389,17 @@ export function filterContentForSubject(
   subjects: SubjectItem[],
   selectedSubjectId: string,
   selectedClassNumber: string,
-  subjectsForClass: SubjectItem[]
+  subjectsForClass: SubjectItem[],
+  selectedBoard = ''
 ): ContentItem[] {
   const selectedRow = subjectsForClass.find((s) => String(s._id) === String(selectedSubjectId));
   const selectedPlain = selectedRow
     ? extractPlainSubjectName(selectedRow.name).toLowerCase()
     : '';
+  const normBoard = normalizeBoardKey(selectedBoard || selectedRow?.board || '');
 
   return contents.filter((item) => {
-    if (item.isActive === false) return false;
-    const effClass = effectiveContentClass(item, subjects);
-    if (normalizeClassNumber(effClass || '') !== selectedClassNumber) return false;
+    if (!contentMatchesClassBoard(item, subjects, selectedClassNumber, normBoard)) return false;
     const sid = getContentSubjectId(item);
     if (sid && String(sid) === String(selectedSubjectId)) return true;
     if (String(item.subject?._id) === String(selectedSubjectId)) return true;

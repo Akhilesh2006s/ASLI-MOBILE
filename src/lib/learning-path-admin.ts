@@ -1,5 +1,12 @@
 import {
+  classBoardFilterKey,
+  formatClassBoardFilterLabel,
+  normalizeBoardKey,
+  parseClassBoardFilterKey,
+} from './board-label';
+import {
   extractPlainSubjectName,
+  getLearningPathBoardLabel,
   getLearningPathClassLabel,
   isActiveCatalogSubject,
   isSoftDeletedSubjectName,
@@ -38,10 +45,11 @@ function groupKeyForSubjectRow(row: SubjectWithPathContent): string {
     getLearningPathClassLabel(row) ||
     String(row.classNumber || '').trim() ||
     'none';
-  return `${classLabel}::${normalizeSubjectNameForMerge(row.name || '')}`;
+  const board = getLearningPathBoardLabel(row) || 'none';
+  return `${board}::${classLabel}::${normalizeSubjectNameForMerge(row.name || '')}`;
 }
 
-/** Collapse duplicate subject rows (e.g. BIO vs Biology) for the same class. */
+/** Collapse duplicate subject rows (e.g. BIO vs Biology) for the same class + board. */
 export function consolidateLearningPathSubjects(
   rows: SubjectWithPathContent[]
 ): SubjectWithPathContent[] {
@@ -74,6 +82,9 @@ export function consolidateLearningPathSubjects(
 
     if ((row.classNumber != null && String(row.classNumber).trim() !== '') && !agg.classNumber) {
       agg.classNumber = row.classNumber;
+    }
+    if (row.board && !agg.board) {
+      agg.board = row.board;
     }
   }
 
@@ -111,6 +122,10 @@ export function consolidateLearningPathSubjects(
         ? String(agg.classNumber).trim()
         : null) || getLearningPathClassLabel({ ...agg, asliPrepContent: contents });
 
+    const inferredBoard =
+      getLearningPathBoardLabel({ ...agg, asliPrepContent: contents }) ||
+      normalizeBoardKey(agg.board);
+
     const plainName = extractPlainSubjectName(agg.name || '');
 
     return {
@@ -120,11 +135,14 @@ export function consolidateLearningPathSubjects(
       name: plainName,
       description:
         agg.description?.trim() ||
-        `Structured content for ${plainName}${inferredClass ? ` · Class ${inferredClass}` : ''}`,
+        `Structured content for ${plainName}${inferredClass ? ` · Class ${inferredClass}` : ''}${
+          inferredBoard ? ` (${normalizeBoardKey(inferredBoard) === 'IIT/NEET' ? 'IIT' : inferredBoard})` : ''
+        }`,
       mergedSubjectIds: ids,
       asliPrepContent: contents,
       totalContent: contents.length,
       ...(inferredClass ? { classNumber: inferredClass } : {}),
+      ...(inferredBoard ? { board: inferredBoard } : {}),
     };
   });
 }
@@ -134,8 +152,14 @@ export function subjectMatchesClassFilter(
   classFilter: string
 ): boolean {
   if (classFilter === 'all') return true;
+  const parsed = parseClassBoardFilterKey(classFilter);
+  if (!parsed) return false;
   const label = getLearningPathClassLabel(row);
-  return label === classFilter;
+  const board = getLearningPathBoardLabel(row);
+  const classMatches = String(label || '').trim() === parsed.classNum;
+  if (!classMatches) return false;
+  if (!parsed.board) return true;
+  return normalizeBoardKey(board) === parsed.board;
 }
 
 export function subjectMatchesSubjectFilter(
@@ -148,24 +172,34 @@ export function subjectMatchesSubjectFilter(
   );
 }
 
-export function sortClassLabels(labels: string[]): string[] {
-  return [...labels].sort((a, b) => {
-    if (a === 'Unassigned') return 1;
-    if (b === 'Unassigned') return -1;
-    const na = parseInt(a, 10);
-    const nb = parseInt(b, 10);
-    if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
+export function sortClassBoardFilterKeys(keys: string[]): string[] {
+  return [...keys].sort((a, b) => {
+    const pa = parseClassBoardFilterKey(a);
+    const pb = parseClassBoardFilterKey(b);
+    if (!pa || !pb) return a.localeCompare(b);
+    const na = parseInt(pa.classNum, 10);
+    const nb = parseInt(pb.classNum, 10);
+    if (!Number.isNaN(na) && !Number.isNaN(nb) && na !== nb) return na - nb;
+    const boardCmp = pa.board.localeCompare(pb.board);
+    if (boardCmp !== 0) return boardCmp;
     return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
   });
 }
 
 export function buildClassFilterOptions(rows: SubjectWithPathContent[]): string[] {
-  const classSet = new Set<string>();
+  const keys = new Set<string>();
   for (const row of rows) {
     const label = getLearningPathClassLabel(row);
-    if (label) classSet.add(label);
+    if (!label) continue;
+    keys.add(classBoardFilterKey(label, getLearningPathBoardLabel(row)));
   }
-  return sortClassLabels(Array.from(classSet));
+  return sortClassBoardFilterKeys(Array.from(keys));
+}
+
+export function formatClassFilterOptionLabel(filterKey: string): string {
+  const parsed = parseClassBoardFilterKey(filterKey);
+  if (!parsed) return filterKey;
+  return formatClassBoardFilterLabel(parsed.classNum, parsed.board);
 }
 
 export function buildSubjectFilterOptions(
@@ -195,6 +229,8 @@ export function filterLearningPathSubjects(
 
 export type ClassSubjectGroup = {
   classKey: string;
+  classLabel: string;
+  board: string;
   subjects: SubjectWithPathContent[];
 };
 
@@ -205,20 +241,35 @@ export function groupLearningPathsByClass(
 
   for (const row of rows) {
     const classLabel = getLearningPathClassLabel(row) || 'Unassigned';
-    if (!grouped.has(classLabel)) grouped.set(classLabel, []);
-    grouped.get(classLabel)!.push(row);
+    const board = getLearningPathBoardLabel(row);
+    const classKey =
+      classLabel === 'Unassigned'
+        ? 'Unassigned'
+        : classBoardFilterKey(classLabel, board);
+    if (!grouped.has(classKey)) grouped.set(classKey, []);
+    grouped.get(classKey)!.push(row);
   }
 
-  return sortClassLabels(Array.from(grouped.keys())).map((classKey) => ({
-    classKey,
-    subjects: (grouped.get(classKey) || [])
-      .slice()
-      .sort((a, b) =>
-        extractPlainSubjectName(a.name || '').localeCompare(
-          extractPlainSubjectName(b.name || ''),
-          undefined,
-          { sensitivity: 'base' }
-        )
-      ),
-  }));
+  return sortClassBoardFilterKeys(Array.from(grouped.keys())).map((classKey) => {
+    const parsed = parseClassBoardFilterKey(classKey);
+    return {
+      classKey,
+      classLabel: parsed?.classNum || 'Unassigned',
+      board: parsed?.board || '',
+      subjects: (grouped.get(classKey) || [])
+        .slice()
+        .sort((a, b) =>
+          extractPlainSubjectName(a.name || '').localeCompare(
+            extractPlainSubjectName(b.name || ''),
+            undefined,
+            { sensitivity: 'base' }
+          )
+        ),
+    };
+  });
+}
+
+export function formatClassGroupTitle(group: ClassSubjectGroup): string {
+  if (group.classKey === 'Unassigned') return 'Unassigned';
+  return formatClassBoardFilterLabel(group.classLabel, group.board);
 }

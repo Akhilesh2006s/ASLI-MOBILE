@@ -391,7 +391,7 @@ function ToolRecordsBlock({
           <Text style={styles.classesHint}>Classes in this tool</Text>
           {node.classes.map((c) => (
             <ClassBlock
-              key={`${node.toolSlug}-${c.className}`}
+              key={`${node.toolSlug}-${c.className}-${c.boardName || ''}`}
               node={c}
               toolSlug={node.toolSlug}
               deletingId={deletingId}
