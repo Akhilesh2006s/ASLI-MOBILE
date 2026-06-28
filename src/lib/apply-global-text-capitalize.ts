@@ -1,27 +1,15 @@
 import React from 'react';
-import * as ReactNative from 'react-native';
-import { StyleSheet, type TextProps } from 'react-native';
+import { Text as RNText, StyleSheet, type TextProps } from 'react-native';
 
-const PATCH_KEY = '__asliTextCapitalizePatched';
-
-const OriginalText = ReactNative.Text;
-
-const PatchedText = React.forwardRef<React.ComponentRef<typeof OriginalText>, TextProps>(
-  function PatchedText(props, ref) {
+/**
+ * Optional Text wrapper with capitalize styling.
+ * Global ReactNative.Text patching was removed — RN 0.81+ exposes Text as read-only.
+ */
+export const CapitalizedText = React.forwardRef<React.ComponentRef<typeof RNText>, TextProps>(
+  function CapitalizedText(props, ref) {
     const style = StyleSheet.flatten([{ textTransform: 'capitalize' }, props.style]);
-    return React.createElement(OriginalText, { ...props, ref, style });
+    return React.createElement(RNText, { ...props, ref, style });
   },
 );
 
-PatchedText.displayName = 'Text';
-
-type ReactNativeModule = typeof ReactNative & { [PATCH_KEY]?: boolean };
-
-export function applyGlobalTextCapitalize(): void {
-  const moduleRef = ReactNative as ReactNativeModule;
-  if (moduleRef[PATCH_KEY]) return;
-  moduleRef[PATCH_KEY] = true;
-  moduleRef.Text = PatchedText;
-}
-
-applyGlobalTextCapitalize();
+CapitalizedText.displayName = 'CapitalizedText';
