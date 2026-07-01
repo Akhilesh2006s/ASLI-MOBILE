@@ -24,7 +24,30 @@ export function normalizeSubjectDisplayKey(name: string): string {
   if (plain === 'math' || plain === 'maths' || plain === 'mat' || plain === 'mathematics') {
     return 'math';
   }
+  if (plain === 'phy' || plain === 'physics') return 'physics';
+  if (plain === 'chem' || plain === 'chemistry') return 'chemistry';
+  if (plain === 'sci' || plain === 'science' || plain === 'evs') return 'science';
+  if (
+    plain === 'sst' ||
+    plain === 'social' ||
+    plain === 'social science' ||
+    plain === 'history' ||
+    plain === 'geography' ||
+    plain === 'civics' ||
+    plain === 'economics'
+  ) {
+    return 'social';
+  }
+  if (plain === 'computer' || plain === 'computers' || plain === 'cs' || plain === 'it') {
+    return 'computer';
+  }
+  if (plain === 'eng' || plain === 'english') return 'english';
   return plain;
+}
+
+/** Canonical bucket for teacher learning-path cards (one card per subject name). */
+export function subjectCatalogGroupKey(name: string): string {
+  return normalizeSubjectDisplayKey(name || '');
 }
 
 export function isActiveCatalogSubject(subject: {

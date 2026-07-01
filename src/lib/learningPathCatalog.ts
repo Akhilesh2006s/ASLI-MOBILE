@@ -1,7 +1,17 @@
 import api from '../services/api/api';
 import { apiFetch } from './api-config';
-import { consolidateLearningPathSubjects } from './learning-path-admin';
-import { isActiveCatalogSubject, isSoftDeletedSubjectName } from './subject-names';
+import {
+  consolidateLearningPathSubjects,
+  dedupeTeacherLearningPathRows,
+  groupTeacherSubjectsForCatalog,
+  type TeacherCatalogSubject,
+} from './learning-path-admin';
+import {
+  displaySubjectName,
+  isActiveCatalogSubject,
+  isSoftDeletedSubjectName,
+  subjectCatalogGroupKey,
+} from './subject-names';
 import { prepareLibraryContents } from './dedupe-library-content';
 
 export type LearningPathRole = 'admin' | 'teacher' | 'student';
@@ -83,45 +93,87 @@ function sortContentNewestFirst(items: any[]): any[] {
 }
 
 /**
- * Teacher cards must match /teacher/subject/:id — fetch per assigned subject so sibling
- * subject IDs are resolved server-side (same as the subject content screen).
+ * Teacher cards: one bulk content fetch, bucketed by canonical subject name.
+ * Avoids duplicate cards when multiple subject IDs resolve to the same sibling content.
  */
 async function loadTeacherLearningPathCatalog(
   isAsliPrepExclusive: boolean
 ): Promise<SubjectWithPathContent[]> {
   const subjects = await fetchSubjects('teacher');
-  const rows: Array<SubjectWithPathContent | null> = await Promise.all(
-    subjects.map(async (subject): Promise<SubjectWithPathContent | null> => {
-      const subjectId = String(subject._id || subject.id || '');
-      if (!subjectId) return null;
+  const groups = groupTeacherSubjectsForCatalog(subjects);
 
-      try {
-        const data = await fetchTeacherPayload<unknown>(
-          `/api/teacher/asli-prep-content?subject=${encodeURIComponent(subjectId)}`
-        );
-        const asliPrepContent = sortContentNewestFirst(
-          prepareLibraryContents(parseContentPayload(data), isAsliPrepExclusive)
-        );
-        if (asliPrepContent.length === 0) return null;
+  const assignedGroupKeys = new Set<string>();
+  const groupMeta = new Map<
+    string,
+    { representative: TeacherCatalogSubject; subjectIds: string[]; displayName: string }
+  >();
+  const subjectIdToGroupKey = new Map<string, string>();
 
-        return {
-          _id: subjectId,
-          id: subjectId,
-          name: subject.name || 'Unknown Subject',
-          description: subject.description || `Content for ${subject.name || 'Subject'}`,
-          board: subject.board || '',
-          classNumber: subject.classNumber,
-          asliPrepContent,
-          totalContent: asliPrepContent.length,
-        } satisfies SubjectWithPathContent;
-      } catch {
-        return null;
-      }
-    })
+  for (const { representative, subjectIds } of groups) {
+    const key = subjectCatalogGroupKey(representative.name || '');
+    assignedGroupKeys.add(key);
+    groupMeta.set(key, {
+      representative,
+      subjectIds,
+      displayName: displaySubjectName(representative.name || '') || 'Unknown Subject',
+    });
+    for (const sid of subjectIds) {
+      subjectIdToGroupKey.set(sid, key);
+    }
+  }
+
+  const allContentRaw = await fetchAllPrepContent('teacher');
+  const allContent = sortContentNewestFirst(
+    prepareLibraryContents(parseContentPayload(allContentRaw), isAsliPrepExclusive)
   );
 
-  return rows
-    .filter((row): row is SubjectWithPathContent => row !== null)
+  const contentByKey = new Map<string, any[]>();
+  const seenByKey = new Map<string, Set<string>>();
+
+  for (const item of allContent) {
+    let key: string | null = null;
+    const sid = getContentSubjectId(item);
+    if (sid && subjectIdToGroupKey.has(sid)) {
+      key = subjectIdToGroupKey.get(sid)!;
+    } else {
+      const subj = item?.subject;
+      const name =
+        typeof subj === 'object' && subj?.name
+          ? String(subj.name)
+          : typeof subj === 'string'
+            ? subj
+            : '';
+      if (name.trim()) key = subjectCatalogGroupKey(name);
+    }
+    if (!key || !assignedGroupKeys.has(key)) continue;
+
+    if (!contentByKey.has(key)) contentByKey.set(key, []);
+    if (!seenByKey.has(key)) seenByKey.set(key, new Set());
+    const cid = String(item._id || '');
+    if (!cid || seenByKey.get(key)!.has(cid)) continue;
+    seenByKey.get(key)!.add(cid);
+    contentByKey.get(key)!.push(item);
+  }
+
+  const rows: SubjectWithPathContent[] = [];
+  for (const [key, meta] of Array.from(groupMeta.entries())) {
+    const asliPrepContent = contentByKey.get(key) || [];
+    if (asliPrepContent.length === 0) continue;
+    const subjectId = meta.subjectIds[0];
+    rows.push({
+      _id: subjectId,
+      id: subjectId,
+      name: meta.displayName,
+      description: meta.representative.description || `Content for ${meta.displayName}`,
+      board: meta.representative.board || '',
+      classNumber: meta.representative.classNumber,
+      asliPrepContent,
+      totalContent: asliPrepContent.length,
+      mergedSubjectIds: meta.subjectIds,
+    });
+  }
+
+  return dedupeTeacherLearningPathRows(rows)
     .filter((row) => isActiveCatalogSubject(row) && row.totalContent > 0)
     .sort((a, b) =>
       (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base', numeric: true })

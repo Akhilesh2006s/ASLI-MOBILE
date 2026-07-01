@@ -161,7 +161,11 @@ export default function LearningPathsView({ refreshKey = 0 }: Props) {
       <Text style={styles.headerSub}>{subtitle}</Text>
       <View style={[styles.grid, isGrid && styles.gridMulti]}>
         {subjects.map((subject) => (
-          <SubjectPathCard key={subject.id} subject={subject} width={cardWidth} />
+          <SubjectPathCard
+            key={subject.mergedSubjectIds?.join(':') || subject.id}
+            subject={subject}
+            width={cardWidth}
+          />
         ))}
       </View>
     </ScrollView>
