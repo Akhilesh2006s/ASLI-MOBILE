@@ -2,7 +2,13 @@
  * Parse Story & Passage Creator output (JSON, markdown sections, legacy passages bundle).
  */
 
+import { parseNumberedTemplateSections } from './ai-tool-display-content';
 import { stripAiToolGenerationLabel } from './strip-ai-tool-generation-label';
+
+export type ResolveStoryOptions = {
+  /** Force 19-section teacher vs 13-section reading layout when parsing markdown. */
+  format?: 'teacher' | 'reading';
+};
 
 export type StoryQuestion = {
   question: string;
@@ -78,7 +84,17 @@ function coerceArrayItemToText(x: unknown): string {
   if (typeof x === 'number' || typeof x === 'boolean') return String(x).trim();
   if (typeof x === 'object') {
     const o = x as Record<string, unknown>;
-    return str(o.question || o.text || o.prompt || o.statement || o.content || o.label || o.value);
+    return str(
+      o.question ||
+        o.question_text ||
+        o.questionText ||
+        o.text ||
+        o.prompt ||
+        o.statement ||
+        o.content ||
+        o.label ||
+        o.value,
+    );
   }
   return '';
 }
@@ -102,8 +118,10 @@ function toQuestions(v: unknown): StoryQuestion[] {
       if (q && typeof q === 'object') {
         const o = q as Record<string, unknown>;
         return {
-          question: str(o.question || o.text || o.prompt),
-          answer: str(o.answer || o.hint),
+          question: str(
+            o.question || o.question_text || o.questionText || o.text || o.prompt || o.statement,
+          ),
+          answer: str(o.answer || o.hint || o.correctAnswer),
         };
       }
       return null;
@@ -154,10 +172,27 @@ function normalizeStoryFromObject(raw: Record<string, unknown>, fallbackTitle?: 
     vocabulary: strArr(raw.vocabulary_warmup || raw.vocabulary_support || raw.vocabulary),
     vocabularyPractice: strArr(raw.vocabulary_practice || raw.vocabularyPractice),
     readRecallQuestions: toQuestions(
-      raw.read_and_recall_questions || raw.read_recall_questions || raw.comprehension_questions || raw.questions,
+      raw.read_and_recall_questions ||
+        raw.read_recall_questions ||
+        raw.recall_questions ||
+        raw.readAndRecallQuestions ||
+        raw.comprehension_questions ||
+        (!raw.think_and_infer_questions &&
+        !raw.thinkAndInferQuestions &&
+        !raw.apply_and_connect_questions &&
+        !raw.applyAndConnectQuestions
+          ? raw.questions
+          : undefined),
     ),
-    thinkInferQuestions: toQuestions(raw.think_and_infer_questions || raw.think_infer_questions),
-    applyConnectQuestions: toQuestions(raw.apply_and_connect_questions || raw.apply_connect_questions),
+    thinkInferQuestions: toQuestions(
+      raw.think_and_infer_questions || raw.think_infer_questions || raw.infer_questions || raw.thinkAndInferQuestions,
+    ),
+    applyConnectQuestions: toQuestions(
+      raw.apply_and_connect_questions ||
+        raw.apply_connect_questions ||
+        raw.connect_questions ||
+        raw.applyAndConnectQuestions,
+    ),
     questions: toQuestions(raw.questions || raw.comprehension_questions),
     vocabularyGrammarPractice: str(raw.vocabulary_grammar_practice || raw.vocabularyGrammarPractice) || undefined,
     creativeResponseActivity: str(raw.creative_response_activity || raw.creativeResponseActivity) || undefined,
@@ -645,21 +680,8 @@ function emptyStory(title = 'Reading Practice'): ParsedStory {
   };
 }
 
-function absorbStoryRawRecords(raw: unknown): Record<string, unknown>[] {
-  if (!raw) return [];
-  if (Array.isArray(raw)) {
-    return raw.filter((x) => x && typeof x === 'object') as Record<string, unknown>[];
-  }
-  if (typeof raw !== 'object') return [];
-  const o = raw as Record<string, unknown>;
-  const meta = o.metadata as Record<string, unknown> | undefined;
-  if (meta?.structuredContent && typeof meta.structuredContent === 'object') {
-    return absorbStoryRawRecords(meta.structuredContent);
-  }
-  if (o.structuredContent && typeof o.structuredContent === 'object') {
-    return absorbStoryRawRecords(o.structuredContent);
-  }
-  if (
+function hasDirectStoryPayload(o: Record<string, unknown>): boolean {
+  return !!(
     o.title ||
     o.passage ||
     o.content ||
@@ -667,20 +689,90 @@ function absorbStoryRawRecords(raw: unknown): Record<string, unknown>[] {
     o.alignment_block ||
     o.learning_objectives ||
     o.read_and_recall_questions ||
+    o.readAndRecallQuestions ||
     o.think_and_infer_questions ||
-    o.apply_and_connect_questions
-  ) {
-    return [o];
+    o.thinkAndInferQuestions ||
+    o.apply_and_connect_questions ||
+    o.applyAndConnectQuestions ||
+    o.recall_questions ||
+    o.infer_questions ||
+    o.connect_questions
+  );
+}
+
+function absorbStoryRawRecords(raw: unknown): Record<string, unknown>[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) {
+    return raw.flatMap((x) => absorbStoryRawRecords(x));
   }
+  if (typeof raw !== 'object') return [];
+  const o = raw as Record<string, unknown>;
+  const meta = o.metadata as Record<string, unknown> | undefined;
+  const records: Record<string, unknown>[] = [];
+
+  if (meta?.structuredContent && typeof meta.structuredContent === 'object') {
+    records.push(...absorbStoryRawRecords(meta.structuredContent));
+  }
+  if (meta?.renderContent && typeof meta.renderContent === 'object') {
+    records.push(...absorbStoryRawRecords(meta.renderContent));
+  }
+  if (o.structuredContent && typeof o.structuredContent === 'object') {
+    records.push(...absorbStoryRawRecords(o.structuredContent));
+  }
+  if (o.renderContent && typeof o.renderContent === 'object') {
+    records.push(...absorbStoryRawRecords(o.renderContent));
+  }
+  if (hasDirectStoryPayload(o)) {
+    records.push(o);
+  }
+  if (records.length) return records;
   if (o.raw && typeof o.raw === 'object') return absorbStoryRawRecords(o.raw);
   return [];
 }
 
-function parseStoryFromMarkdown(text: string): ParsedStory | null {
+function enrichStoryQuestionsFromTemplateMarkdown(
+  story: ParsedStory,
+  markdown: string,
+  format: 'teacher' | 'reading',
+): void {
+  const needsRecall = !story.readRecallQuestions.length;
+  const needsThink = !story.thinkInferQuestions.length;
+  const needsApply = !story.applyConnectQuestions.length;
+  if (!needsRecall && !needsThink && !needsApply) return;
+
+  const { sections } = parseNumberedTemplateSections(markdown);
+  const hintMap =
+    format === 'teacher' ? TEACHER_STORY_PASSAGE_SECTION_HINT : READING_PRACTICE_SECTION_HINT;
+
+  for (const sec of sections) {
+    if (!sec.body?.trim()) continue;
+    const key = hintMap[sec.num];
+    if (!key) continue;
+    if (key === 'readRecallQuestions' && needsRecall) {
+      applyStorySectionBody(story, key, sec.body);
+    }
+    if (key === 'thinkInferQuestions' && needsThink) {
+      applyStorySectionBody(story, key, sec.body);
+    }
+    if (key === 'applyConnectQuestions' && needsApply) {
+      applyStorySectionBody(story, key, sec.body);
+    }
+  }
+}
+
+function applyStoryFormatToStories(stories: ParsedStory[], markdown: string, format?: 'teacher' | 'reading') {
+  if (!markdown.trim() || !stories.length) return;
+  const resolvedFormat = format ?? detectStoryPassageFormat(markdown);
+  for (const story of stories) {
+    enrichStoryQuestionsFromTemplateMarkdown(story, markdown, resolvedFormat);
+  }
+}
+
+function parseStoryFromMarkdown(text: string, forcedFormat?: 'teacher' | 'reading'): ParsedStory | null {
   const trimmed = text.replace(/\r\n/g, '\n').trim();
   if (!trimmed) return null;
 
-  const format = detectStoryPassageFormat(trimmed);
+  const format = forcedFormat ?? detectStoryPassageFormat(trimmed);
   const sectionHintMap =
     format === 'teacher' ? TEACHER_STORY_PASSAGE_SECTION_HINT : READING_PRACTICE_SECTION_HINT;
 
@@ -797,7 +889,7 @@ function parseStoryFromMarkdown(text: string): ParsedStory | null {
   return story;
 }
 
-function parseAllStoriesFromMarkdown(text: string): ParsedStory[] {
+function parseAllStoriesFromMarkdown(text: string, forcedFormat?: 'teacher' | 'reading'): ParsedStory[] {
   const trimmed = text.replace(/\r\n/g, '\n').trim();
   if (!trimmed) return [];
 
@@ -807,12 +899,12 @@ function parseAllStoriesFromMarkdown(text: string): ParsedStory[] {
   }
 
   const parsed = blocks
-    .map((b) => parseStoryFromMarkdown(b))
+    .map((b) => parseStoryFromMarkdown(b, forcedFormat))
     .filter((s): s is ParsedStory => !!s);
 
   if (parsed.length) return parsed;
 
-  const single = parseStoryFromMarkdown(trimmed);
+  const single = parseStoryFromMarkdown(trimmed, forcedFormat);
   return single ? [single] : [];
 }
 
@@ -858,7 +950,7 @@ function parseFromUnknown(parsed: unknown): ResolvedStoryContent {
   return { mode: 'empty' };
 }
 
-function storiesFromText(text: string): ParsedStory[] {
+function storiesFromText(text: string, forcedFormat?: 'teacher' | 'reading'): ParsedStory[] {
   const trimmed = text.trim();
   if (!trimmed) return [];
 
@@ -883,10 +975,15 @@ function storiesFromText(text: string): ParsedStory[] {
     /* markdown */
   }
 
-  return parseAllStoriesFromMarkdown(trimmed);
+  return parseAllStoriesFromMarkdown(trimmed, forcedFormat);
 }
 
-export function resolveStoryFromPayload(content?: string, rawContent?: unknown): ResolvedStoryContent {
+export function resolveStoryFromPayload(
+  content?: string,
+  rawContent?: unknown,
+  options?: ResolveStoryOptions,
+): ResolvedStoryContent {
+  const forcedFormat = options?.format;
   let formattedText = String(content || '').trim();
   const rawRecords: Record<string, unknown>[] = [];
 
@@ -902,7 +999,7 @@ export function resolveStoryFromPayload(content?: string, rawContent?: unknown):
 
   rawRecords.push(...absorbStoryRawRecords(rawContent));
 
-  const fromMd = formattedText ? storiesFromText(formattedText) : [];
+  const fromMd = formattedText ? storiesFromText(formattedText, forcedFormat) : [];
   const fromRecords = rawRecords
     .map((r) => normalizeStoryFromObject(r))
     .filter((s) => storyHasContent(s));
@@ -912,18 +1009,31 @@ export function resolveStoryFromPayload(content?: string, rawContent?: unknown):
     const stories = Array.from({ length: n }, (_, i) =>
       mergeStory(fromRecords[i] ?? fromRecords[fromRecords.length - 1], fromMd[i] ?? fromMd[fromMd.length - 1]),
     );
+    applyStoryFormatToStories(stories, formattedText, forcedFormat);
     return { mode: 'stories', stories };
   }
-  if (fromRecords.length) return { mode: 'stories', stories: fromRecords };
-  if (fromMd.length) return { mode: 'stories', stories: fromMd };
+  if (fromRecords.length) {
+    const stories = fromRecords;
+    applyStoryFormatToStories(stories, formattedText, forcedFormat);
+    return { mode: 'stories', stories };
+  }
+  if (fromMd.length) {
+    applyStoryFormatToStories(fromMd, formattedText, forcedFormat);
+    return { mode: 'stories', stories: fromMd };
+  }
 
-  return resolveStoryContent(formattedText, rawContent);
+  return resolveStoryContent(formattedText, rawContent, options);
 }
 
-export function resolveStoryContent(content?: string, rawData?: unknown): ResolvedStoryContent {
+export function resolveStoryContent(
+  content?: string,
+  rawData?: unknown,
+  options?: ResolveStoryOptions,
+): ResolvedStoryContent {
+  const forcedFormat = options?.format;
   const text = String(content || '').trim();
   const fromRaw = rawData ? parseFromUnknown(rawData) : { mode: 'empty' as const };
-  const fromMd = text ? storiesFromText(text) : [];
+  const fromMd = text ? storiesFromText(text, forcedFormat) : [];
 
   if (fromRaw.mode === 'passages') {
     if (!fromMd.length) return fromRaw;
@@ -937,12 +1047,21 @@ export function resolveStoryContent(content?: string, rawData?: unknown): Resolv
         fromMd[i] ?? fromMd[fromMd.length - 1] ?? emptyStory(),
       ),
     );
+    applyStoryFormatToStories(stories, text, forcedFormat);
     return { mode: 'stories', stories };
   }
 
-  if (fromMd.length) return { mode: 'stories', stories: fromMd };
+  if (fromMd.length) {
+    applyStoryFormatToStories(fromMd, text, forcedFormat);
+    return { mode: 'stories', stories: fromMd };
+  }
 
-  if (fromRaw.mode !== 'empty') return fromRaw;
+  if (fromRaw.mode !== 'empty') {
+    if (fromRaw.mode === 'stories') {
+      applyStoryFormatToStories(fromRaw.stories, text, forcedFormat);
+    }
+    return fromRaw;
+  }
 
   if (text.length > 80) {
     return {

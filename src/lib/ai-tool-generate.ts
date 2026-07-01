@@ -399,7 +399,12 @@ export async function executeAiToolGenerate({
   return {
     ok: true,
     content: String(content),
-    rawContent: data.data?.rawData ?? null,
+    rawContent:
+      data.data?.rawData ??
+      data.data?.structuredContent ??
+      data.data?.metadata?.structuredContent ??
+      data.data?.metadata?.renderContent ??
+      null,
     metadata: data.data?.metadata ?? null,
     fromAiFailure,
   };

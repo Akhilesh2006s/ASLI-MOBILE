@@ -1,5 +1,7 @@
 /** Student Vidya AI tools — aligned with asli-frontend/src/pages/ai-tutor.tsx */
 
+import { extractPlainSubjectName } from './subject-names';
+
 export type StudentAiTool = {
   id: string;
   name: string;
@@ -136,12 +138,18 @@ export function filterSubjectsForAiTool(toolType: string, subjects: string[]): s
   return subjects;
 }
 
+const STORY_LANGUAGE_PLAIN_KEYS = new Set(['eng', 'english', 'hin', 'hindi', 'tel', 'telugu']);
+
 export function isStoryPassageLanguageSubject(subject: string | undefined | null): boolean {
-  const s = String(subject || '').trim();
-  if (!s) return false;
-  if (/(telugu|తెలుగు)/i.test(s)) return true;
-  if (/(hindi|हिंदी|हिन्दी)/i.test(s)) return true;
-  if (/english/i.test(s)) return true;
+  const raw = String(subject || '').trim();
+  if (!raw) return false;
+  if (/(telugu|తెలుగు)/i.test(raw)) return true;
+  if (/(hindi|हिंदी|हिन्दी)/i.test(raw)) return true;
+  if (/english/i.test(raw)) return true;
+
+  const plain = extractPlainSubjectName(raw).toLowerCase().trim();
+  if (STORY_LANGUAGE_PLAIN_KEYS.has(plain)) return true;
+  if (plain.includes('english') || plain.includes('hindi') || plain.includes('telugu')) return true;
   return false;
 }
 

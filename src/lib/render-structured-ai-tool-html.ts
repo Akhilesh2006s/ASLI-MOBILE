@@ -1743,8 +1743,13 @@ function renderTeacherStoryPassageSections(story: ParsedStory): string {
     .join('');
 }
 
-function renderStoryHtml(content: string, rawContent: unknown): string | null {
-  const resolved = resolveStoryFromPayload(content, rawContent);
+function renderStoryHtml(
+  content: string,
+  rawContent: unknown,
+  storyFormat: 'teacher' | 'reading' = 'teacher',
+): string | null {
+  const display = resolveRichDisplayContent(content, rawContent);
+  const resolved = resolveStoryFromPayload(display, rawContent, { format: storyFormat });
   if (resolved.mode === 'empty') return null;
   if (resolved.mode === 'stories') {
     return resolved.stories
@@ -1984,8 +1989,8 @@ const STRUCTURED_RENDERERS: Record<
   'daily-class-plan-maker': (c, r) => renderDailyClassPlanHtml(c, r),
   'homework-creator': (c, r) => renderHomeworkHtml(c, r),
   'worksheet-mcq-generator': (c, r) => renderWorksheetHtml(c, r),
-  'story-passage-creator': (c, r) => renderStoryHtml(c, r),
-  'reading-practice-room': (c, r) => renderStoryHtml(c, r),
+  'story-passage-creator': (c, r) => renderStoryHtml(c, r, 'teacher'),
+  'reading-practice-room': (c, r) => renderStoryHtml(c, r, 'reading'),
   'concept-mastery-helper': (c, r) => renderConceptMasteryHtml(c, r),
   'activity-project-generator': renderActivityProjectHtml,
   'project-idea-lab': renderActivityProjectHtml,

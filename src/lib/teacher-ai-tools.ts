@@ -99,5 +99,8 @@ export const TEACHER_AI_TOOLS_SUBTITLE =
   'Select a tool to get started. All tools use Gemini AI to generate content based on your input.';
 
 export function filterVisibleTeacherTools(subjectNames: string[]): TeacherAiTool[] {
-  return TEACHER_AI_TOOLS.filter((tool) => isAiToolVisibleForSubjects(tool.id, subjectNames));
+  return TEACHER_AI_TOOLS.filter(
+    (tool) =>
+      tool.id === 'story-passage-creator' || isAiToolVisibleForSubjects(tool.id, subjectNames),
+  );
 }
