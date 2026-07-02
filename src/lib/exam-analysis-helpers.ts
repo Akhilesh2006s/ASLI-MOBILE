@@ -540,41 +540,80 @@ export function getQuestionInsightByIndex(
   return insights.find((x) => Number(x.index) === questionIndex + 1 || Number(x.index) === questionIndex);
 }
 
-export function getQuestionAnalysisBlocks(
-  questionIndex: number,
-  question: any,
-  aiAnalysis?: AiExamAnalysis | null
-): string[] {
-  const item = getQuestionInsightByIndex(questionIndex, question, aiAnalysis);
-  const blocks: string[] = [];
-  const gap = String(item?.conceptGap || '').trim();
-  const fix = String(item?.fixStrategy || '').trim();
-  const insight = String(item?.insight || '').trim();
-  const practice = String(item?.practiceTask || '').trim();
-  if (gap) blocks.push(gap);
-  if (fix) blocks.push(fix);
-  if (insight && insight !== gap && insight !== fix) blocks.push(insight);
-  if (practice) blocks.push(`Practice: ${practice}`);
-  const solution = String(question?.explanation || item?.geminiExplanation || '').trim();
-  if (solution) blocks.push(`Solution: ${getOptionText(solution, question?.subject)}`);
-  return blocks;
-}
-
 export function resolveQuestionAnalysisStatus(
   questionIndex: number,
   question: any,
   answers: Record<string, unknown> | undefined,
   aiAnalysis?: AiExamAnalysis | null
 ): 'correct' | 'wrong' | 'unattempted' {
+  if (question) {
+    const ua = getUserAnswerForQuestion(question, questionIndex, answers);
+    const attempted = ua !== undefined && ua !== null && ua !== '';
+    if (!attempted) return 'unattempted';
+    return compareAnswers(question, ua, question.correctAnswer) ? 'correct' : 'wrong';
+  }
+
   const item = getQuestionInsightByIndex(questionIndex, question, aiAnalysis);
   const fromInsight = String(item?.status || '').toLowerCase();
   if (fromInsight === 'correct' || fromInsight === 'wrong' || fromInsight === 'unattempted') {
     return fromInsight;
   }
-  const ua = getUserAnswerForQuestion(question, questionIndex, answers);
-  const attempted = ua !== undefined && ua !== null && ua !== '';
-  if (!attempted) return 'unattempted';
-  return compareAnswers(question, ua, question.correctAnswer) ? 'correct' : 'wrong';
+  return 'unattempted';
+}
+
+function insightMatchesActualStatus(
+  insightStatus: string,
+  actualStatus: 'correct' | 'wrong' | 'unattempted'
+): boolean {
+  if (!insightStatus) return false;
+  if (actualStatus === 'unattempted') return insightStatus === 'unattempted';
+  return insightStatus === actualStatus;
+}
+
+export function getQuestionAnalysisBlocks(
+  questionIndex: number,
+  question: any,
+  aiAnalysis?: AiExamAnalysis | null,
+  answers?: Record<string, unknown>
+): string[] {
+  const actualStatus = resolveQuestionAnalysisStatus(questionIndex, question, answers, aiAnalysis);
+  const item = getQuestionInsightByIndex(questionIndex, question, aiAnalysis);
+  const insightStatus = String(item?.status || '').toLowerCase();
+  const blocks: string[] = [];
+  const gap = String(item?.conceptGap || '').trim();
+  const fix = String(item?.fixStrategy || '').trim();
+  const insight = String(item?.insight || '').trim();
+  const practice = String(item?.practiceTask || '').trim();
+  const alignedInsight = insightMatchesActualStatus(insightStatus, actualStatus);
+
+  if (actualStatus === 'correct') {
+    if (alignedInsight) {
+      if (gap) blocks.push(gap);
+      if (fix) blocks.push(fix);
+      if (insight && insight !== gap && insight !== fix) blocks.push(insight);
+      if (practice) blocks.push(`Practice: ${practice}`);
+    } else {
+      blocks.push('You answered this question correctly.');
+    }
+  } else if (actualStatus === 'wrong') {
+    if (gap) blocks.push(gap);
+    if (fix) blocks.push(fix);
+    if (insight && insight !== gap && insight !== fix) blocks.push(insight);
+    if (practice) blocks.push(`Practice: ${practice}`);
+  } else {
+    if (alignedInsight || !item) {
+      if (gap) blocks.push(gap);
+      if (fix) blocks.push(fix);
+      if (insight && insight !== gap && insight !== fix) blocks.push(insight);
+      if (practice) blocks.push(`Practice: ${practice}`);
+    } else {
+      blocks.push('This question was not attempted.');
+    }
+  }
+
+  const solution = String(question?.explanation || item?.geminiExplanation || '').trim();
+  if (solution) blocks.push(`Solution: ${getOptionText(solution, question?.subject)}`);
+  return blocks;
 }
 
 export function compareAnswers(question: any, userAnswer: unknown, correctAnswer: unknown): boolean {

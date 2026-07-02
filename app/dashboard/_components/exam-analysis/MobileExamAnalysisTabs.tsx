@@ -449,7 +449,7 @@ function QuestionAnalysisSection({
   aiLoading: boolean;
 }) {
   const item = getQuestionInsightByIndex(questionIndex, question, aiAnalysis);
-  const blocks = getQuestionAnalysisBlocks(questionIndex, question, aiAnalysis);
+  const blocks = getQuestionAnalysisBlocks(questionIndex, question, aiAnalysis, result.answers);
   const status = resolveQuestionAnalysisStatus(questionIndex, question, result.answers, aiAnalysis);
   const isCorrect = status === 'correct';
   const isWrong = status === 'wrong';
@@ -707,20 +707,31 @@ export function QuestionsTabMobile({
                     {options.map((opt: { text: string; index: number; letter: string }) => {
                       const isUser = userAnswerTexts.includes(opt.text);
                       const isRight = correctAnswerTexts.includes(opt.text);
+                      const isCorrectSelection = isUser && isRight;
                       return (
                         <View
                           key={opt.index}
                           style={[
                             panelStyles.optionRowDetailed,
-                            isRight && panelStyles.optionCorrect,
-                            isUser && !isRight && panelStyles.optionWrong,
+                            isCorrectSelection
+                              ? panelStyles.optionCorrectSelected
+                              : isRight
+                                ? panelStyles.optionCorrect
+                                : isUser
+                                  ? panelStyles.optionWrong
+                                  : null,
                           ]}
                         >
                           <Text style={panelStyles.optionLetter}>{opt.letter}.</Text>
                           <View style={{ flex: 1 }}>
                             <MathRenderer formula={opt.text} style={panelStyles.optionText} />
                           </View>
-                          {isRight ? <Ionicons name="checkmark-circle" size={20} color="#16a34a" /> : null}
+                          {isCorrectSelection ? (
+                            <Text style={panelStyles.optionYourAnswerBadge}>Your answer</Text>
+                          ) : null}
+                          {isRight || isCorrectSelection ? (
+                            <Ionicons name="checkmark-circle" size={20} color="#16a34a" />
+                          ) : null}
                           {isUser && !isRight ? <Ionicons name="close-circle" size={20} color="#dc2626" /> : null}
                         </View>
                       );
@@ -1355,7 +1366,19 @@ const panelStyles = StyleSheet.create({
   modalQText: { fontSize: 16, color: '#111827', lineHeight: 24, marginBottom: 16 },
   optionRow: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, padding: 12, marginBottom: 8 },
   optionCorrect: { backgroundColor: '#ecfdf5', borderColor: '#10b981' },
+  optionCorrectSelected: { backgroundColor: '#ecfdf5', borderColor: '#10b981', borderWidth: 2 },
   optionWrong: { backgroundColor: '#fef2f2', borderColor: '#ef4444' },
+  optionYourAnswerBadge: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#6d28d9',
+    backgroundColor: '#ede9fe',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+    textTransform: 'uppercase',
+    overflow: 'hidden',
+  },
   optionText: { fontSize: 14, color: '#111827' },
   modalBadgeRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   subjectBadge: { backgroundColor: '#f3f4f6', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
