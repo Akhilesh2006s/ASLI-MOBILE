@@ -31,6 +31,7 @@ import {
   useTeacherDashboardBack,
 } from '../../../src/hooks/useBackNavigation';
 import AiToolContentRenderer from '../../../src/components/ai-tools/AiToolContentRenderer';
+import AiToolDownloadBar from '../../../src/components/ai-tools/AiToolDownloadBar';
 import {
   aiToolTabletPageStyles,
   aiToolTabletStyles,
@@ -1032,6 +1033,13 @@ export default function TeacherToolPage() {
         </View>
       ) : generatedContent ? (
         <View style={styles.outputWrap} collapsable={false}>
+          <AiToolDownloadBar
+            toolType={toolType}
+            toolLabel={config.name}
+            content={generatedContent}
+            rawContent={rawGeneratedContent}
+            accent={accent}
+          />
           <AiToolContentRenderer
             key={contentRenderKey}
             toolType={toolType}
