@@ -74,6 +74,22 @@ function titleCaseStatus(value: string): string {
   return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
 }
 
+const AVATAR_TINTS = [
+  { bg: '#EEF2FF', text: '#4338CA' },
+  { bg: '#ECFDF5', text: '#047857' },
+  { bg: '#FFF7ED', text: '#C2410C' },
+  { bg: '#FDF2F8', text: '#BE185D' },
+  { bg: '#EFF6FF', text: '#1D4ED8' },
+  { bg: '#F5F3FF', text: '#6D28D9' },
+] as const;
+
+function studentInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
 export default function TeacherClassCard({
   name,
   subject,
@@ -137,37 +153,45 @@ export default function TeacherClassCard({
       {expanded && students.length > 0 ? (
         <View style={styles.rosterSection}>
           <Text style={styles.rosterTitle}>Students</Text>
-          <ScrollView style={styles.rosterScroll} nestedScrollEnabled>
-            {students.map((student) => {
-              const isActive = (student.status || 'active').toLowerCase() === 'active';
-              return (
-                <View key={student.id} style={styles.studentRow}>
-                  <View style={styles.studentInfo}>
-                    <Text style={styles.studentName} numberOfLines={1}>
-                      {formatPersonName(student.name)}
-                    </Text>
-                    <Text style={styles.studentEmail} numberOfLines={1}>{student.email}</Text>
-                  </View>
-                  <View style={styles.studentActions}>
-                    {onViewStudentAnalysis ? (
-                      <Pressable
-                        style={styles.analysisBtn}
-                        onPress={() => onViewStudentAnalysis(student.id)}
-                      >
-                        <Ionicons name="bar-chart-outline" size={14} color={TEACHER.primaryLight} />
-                        <Text style={styles.analysisBtnText}>Analysis</Text>
-                      </Pressable>
-                    ) : null}
-                    <View style={[styles.statusBadge, isActive ? styles.statusActive : styles.statusInactive]}>
-                      <Text style={[styles.statusBadgeText, isActive ? styles.statusActiveText : styles.statusInactiveText]}>
-                        {titleCaseStatus(student.status || 'Active')}
+          <View style={styles.rosterPanel}>
+            <ScrollView style={styles.rosterScroll} nestedScrollEnabled>
+              {students.map((student, index) => {
+                const isActive = (student.status || 'active').toLowerCase() === 'active';
+                const displayName = formatPersonName(student.name);
+                const initials = studentInitials(displayName);
+                const avatarTint = AVATAR_TINTS[index % AVATAR_TINTS.length];
+                return (
+                  <View key={student.id} style={styles.studentRow}>
+                    <View style={[styles.avatar, { backgroundColor: avatarTint.bg }]}>
+                      <Text style={[styles.avatarText, { color: avatarTint.text }]}>{initials}</Text>
+                    </View>
+                    <View style={styles.studentInfo}>
+                      <Text style={styles.studentName} numberOfLines={1}>
+                        {displayName}
                       </Text>
+                      <Text style={styles.studentEmail} numberOfLines={1}>{student.email}</Text>
+                    </View>
+                    <View style={styles.studentActions}>
+                      {onViewStudentAnalysis ? (
+                        <Pressable
+                          style={styles.analysisBtn}
+                          onPress={() => onViewStudentAnalysis(student.id)}
+                        >
+                          <Ionicons name="bar-chart-outline" size={14} color={TEACHER.primaryDark} />
+                          <Text style={styles.analysisBtnText}>Analysis</Text>
+                        </Pressable>
+                      ) : null}
+                      <View style={[styles.statusBadge, isActive ? styles.statusActive : styles.statusInactive]}>
+                        <Text style={[styles.statusBadgeText, isActive ? styles.statusActiveText : styles.statusInactiveText]}>
+                          {titleCaseStatus(student.status || 'Active')}
+                        </Text>
+                      </View>
                     </View>
                   </View>
-                </View>
-              );
-            })}
-          </ScrollView>
+                );
+              })}
+            </ScrollView>
+          </View>
         </View>
       ) : null}
 
@@ -304,55 +328,88 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.06)',
+    borderTopColor: TEACHER.surfaceBorder,
   },
   rosterTitle: {
     fontSize: 11,
     fontWeight: '700',
     color: TEACHER.textMuted,
     letterSpacing: 0.8,
-    marginBottom: 8,
+    textTransform: 'uppercase',
+    marginBottom: 10,
   },
-  rosterScroll: { maxHeight: 220 },
+  rosterPanel: {
+    backgroundColor: TEACHER.surface,
+    borderRadius: TEACHER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
+    padding: 10,
+  },
+  rosterScroll: { maxHeight: 240 },
   studentRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: TEACHER.surfaceElevated,
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0E7FF',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    marginBottom: 10,
+    gap: 10,
+    ...TEACHER.shadow.sm,
   },
-  studentInfo: { flex: 1, minWidth: 0, marginRight: 8 },
-  studentName: { fontSize: 14, fontWeight: '600', color: TEACHER.text },
-  studentEmail: { fontSize: 11, color: TEACHER.textMuted, marginTop: 2 },
-  studentActions: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 0 },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  avatarText: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  studentInfo: { flex: 1, minWidth: 0 },
+  studentName: { fontSize: 13, fontWeight: '700', color: TEACHER.text },
+  studentEmail: { fontSize: 11, color: TEACHER.textMuted, marginTop: 3 },
+  studentActions: {
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: 6,
+    flexShrink: 0,
+  },
   analysisBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: TEACHER.surfaceHover,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
   },
-  analysisBtnText: { fontSize: 11, fontWeight: '700', color: TEACHER.primaryLight },
+  analysisBtnText: { fontSize: 11, fontWeight: '700', color: TEACHER.primaryDark },
   statusBadge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 9,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 999,
     borderWidth: 1,
   },
   statusActive: {
-    borderColor: 'rgba(0,214,143,0.35)',
-    backgroundColor: 'rgba(0,214,143,0.12)',
+    borderColor: 'rgba(16,185,129,0.35)',
+    backgroundColor: 'rgba(16,185,129,0.12)',
   },
   statusInactive: {
-    borderColor: 'rgba(255,77,106,0.35)',
-    backgroundColor: 'rgba(255,77,106,0.12)',
+    borderColor: 'rgba(239,68,68,0.35)',
+    backgroundColor: 'rgba(239,68,68,0.12)',
   },
   statusBadgeText: {
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: '700',
     textTransform: 'capitalize',
   },
   statusActiveText: { color: TEACHER.success },
