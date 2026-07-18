@@ -17,6 +17,7 @@ import {
 } from '../../lib/teacher-text';
 import { TEACHER, TEACHER_SPACING, teacherSubjectBadgePalette } from '../../theme/teacher';
 import SchoolBrandRow from '../ui/SchoolBrandRow';
+import GlassSurface from '../ui/GlassSurface';
 import type { BackendStatus } from '../../services/api/teacherService';
 
 type Props = {
@@ -24,6 +25,8 @@ type Props = {
   variant?: 'home' | 'compact';
   /** Shown in compact mode (e.g. Students, Learning Paths). */
   title?: string;
+  /** Compact mode only: render as a frosted-glass bar over a colourful backdrop instead of a solid one. */
+  glass?: boolean;
   /** Teacher full name shown on the line below the greeting. */
   displayName?: string;
   /** User profile — used to show school logo + name for the member's school. */
@@ -45,6 +48,7 @@ const screenWidth = Dimensions.get('window').width;
 export default function TeacherHeader({
   variant = 'home',
   title,
+  glass,
   displayName,
   user,
   userName,
@@ -93,9 +97,11 @@ export default function TeacherHeader({
       <View
         style={[
           styles.compactWrap,
+          glass && styles.compactWrapGlass,
           { paddingTop: Math.max(insets.top, TEACHER_SPACING.sm) + TEACHER_SPACING.xs },
         ]}
       >
+        {glass ? <GlassSurface intensity={50} /> : null}
         <View style={styles.compactMain}>
           <Text style={styles.compactTitle} numberOfLines={1}>
             {title || ' '}
@@ -202,6 +208,12 @@ const styles = StyleSheet.create({
     backgroundColor: TEACHER.bg,
     borderBottomWidth: 1,
     borderBottomColor: TEACHER.surfaceBorder,
+  },
+  compactWrapGlass: {
+    backgroundColor: 'transparent',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.5)',
+    overflow: 'hidden',
   },
   compactMain: {
     flex: 1,

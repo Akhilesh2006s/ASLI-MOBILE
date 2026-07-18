@@ -34,6 +34,7 @@ import {
 } from '../../../src/hooks/useBackNavigation';
 import AiToolContentRenderer from '../../../src/components/ai-tools/AiToolContentRenderer';
 import AiToolDownloadBar from '../../../src/components/ai-tools/AiToolDownloadBar';
+import AiToolParamsGrid from '../../../src/components/ai-tools/AiToolParamsGrid';
 import AiToolResultShell from '../../../src/components/ai-tools/AiToolResultShell';
 import {
   aiToolTabletPageStyles,
@@ -184,45 +185,6 @@ function FormSection({
   );
 }
 
-function ParametersSummaryBar({
-  summary,
-  accent,
-  expanded,
-  onToggle,
-  tabletUi,
-}: {
-  summary: string;
-  accent: string;
-  expanded: boolean;
-  onToggle: () => void;
-  tabletUi?: boolean;
-}) {
-  return (
-    <Pressable
-      style={[styles.paramsSummary, tabletUi && aiToolTabletPageStyles.paramsSummary]}
-      onPress={onToggle}
-    >
-      <View style={[styles.paramsSummaryIcon, { backgroundColor: `${accent}22` }]}>
-        <Ionicons name="options-outline" size={tabletUi ? 20 : 18} color={accent} />
-      </View>
-      <View style={styles.paramsSummaryText}>
-        <Text style={[styles.paramsSummaryTitle, tabletUi && aiToolTabletPageStyles.paramsSummaryTitle]}>
-          {expanded ? 'Hide parameters' : 'Show parameters'}
-        </Text>
-        {!expanded && summary ? (
-          <Text
-            style={[styles.paramsSummaryMeta, tabletUi && aiToolTabletPageStyles.paramsSummaryMeta]}
-            numberOfLines={tabletUi ? 2 : 1}
-          >
-            {summary}
-          </Text>
-        ) : null}
-      </View>
-      <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={tabletUi ? 20 : 18} color={TEACHER.textMuted} />
-    </Pressable>
-  );
-}
-
 function TeacherToolHeader({
   title,
   subtitle,
@@ -280,9 +242,8 @@ export default function TeacherToolPage() {
   const [fallbackEmptyMessage, setFallbackEmptyMessage] = useState('');
   const [fromAiFailure, setFromAiFailure] = useState(false);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
-  const [paramsExpanded, setParamsExpanded] = useState(true);
   const scrollY = useSharedValue(0);
-  const { isTablet, useSplitLayout } = useAiToolTabletLayout();
+  const { isTablet, useSplitLayout, outputBleedStyle } = useAiToolTabletLayout();
   const { scrollRef, onOutputLayout, queueScrollToOutput, resetOutputScroll } =
     useAiToolOutputScroll(isTablet);
   const [assignedSubjectNames, setAssignedSubjectNames] = useState<string[]>([]);
@@ -342,20 +303,19 @@ export default function TeacherToolPage() {
     [toolType, availableSubjects]
   );
 
-  const paramsSummary = useMemo(() => {
-    return [
-      selectedBoard,
-      formParams.gradeLevel,
-      formParams.subject,
-      formParams.topic || formParams.chapter,
-      formParams.subTopic,
-    ]
-      .filter((v) => typeof v === 'string' && v.trim())
-      .join(' · ');
-  }, [selectedBoard, formParams]);
+  const paramItems = useMemo(
+    () => [
+      { icon: 'school-outline' as const, label: 'Board', value: String(selectedBoard || '') },
+      { icon: 'people-outline' as const, label: 'Class', value: String(formParams.gradeLevel || '') },
+      { icon: 'book-outline' as const, label: 'Subject', value: String(formParams.subject || '') },
+      { icon: 'document-text-outline' as const, label: 'Chapter', value: String(formParams.topic || formParams.chapter || '') },
+      { icon: 'list-outline' as const, label: 'Subtopic', value: String(formParams.subTopic || '') },
+    ],
+    [selectedBoard, formParams]
+  );
 
   const showCollapsedParams = !!generatedContent && !isGenerating;
-  const showParameterForms = !showCollapsedParams || paramsExpanded;
+  const showParameterForms = !showCollapsedParams;
 
   useQueueAiToolScrollOnGenerate(
     generatedContent,
@@ -751,7 +711,6 @@ export default function TeacherToolPage() {
 
       setResponseMeta(result.metadata);
       setFromAiFailure(result.fromAiFailure);
-      setParamsExpanded(false);
       setGeneratedContent(stored.generatedContent);
       setRawGeneratedContent(stored.rawGeneratedContent);
     } catch (error: any) {
@@ -809,7 +768,6 @@ export default function TeacherToolPage() {
 
         setResponseMeta(fallbackResult.metadata);
         setFromAiFailure(false);
-        setParamsExpanded(false);
         setGeneratedContent(stored.generatedContent);
         setRawGeneratedContent(stored.rawGeneratedContent);
       } catch (fallbackError: any) {
@@ -967,13 +925,7 @@ export default function TeacherToolPage() {
   const formPanel = (
     <>
       {showCollapsedParams ? (
-        <ParametersSummaryBar
-          summary={paramsSummary}
-          accent={accent}
-          expanded={paramsExpanded}
-          onToggle={() => setParamsExpanded((prev) => !prev)}
-          tabletUi={isTablet}
-        />
+        <AiToolParamsGrid items={paramItems} accent={accent} tabletUi={isTablet} />
       ) : null}
 
       {showParameterForms ? (
@@ -1031,7 +983,7 @@ export default function TeacherToolPage() {
 
   const outputPanel = (
     <View
-      style={styles.outputSection}
+      style={[styles.outputSection, outputBleedStyle]}
       collapsable={false}
       onLayout={
         !isGenerating && (generatedContent || fallbackEmptyMessage) ? onOutputLayout : undefined
@@ -1280,7 +1232,7 @@ export default function TeacherToolPage() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: AI.canvas },
   flex: { flex: 1 },
-  outputSection: { width: '100%' },
+  outputSection: { alignSelf: 'stretch' },
   outputWrap: { width: '100%', minHeight: 240 },
   resultActionStack: { width: '100%', gap: AI_SPACING.sm },
   resultActions: { flexDirection: 'row', flexWrap: 'wrap', gap: AI_SPACING.sm },
@@ -1347,35 +1299,6 @@ const styles = StyleSheet.create({
     ...TEACHER_TYPO.body,
     fontWeight: '800',
     color: AI.text,
-  },
-  paramsSummary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: TEACHER_SPACING.md,
-    backgroundColor: AI.surface,
-    borderRadius: AI_RADIUS.lg,
-    borderWidth: 1,
-    borderColor: AI.primaryBorder,
-    paddingHorizontal: TEACHER_SPACING.lg,
-    paddingVertical: 14,
-  },
-  paramsSummaryIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  paramsSummaryText: { flex: 1, minWidth: 0 },
-  paramsSummaryTitle: {
-    ...AI_TYPE.body,
-    fontWeight: '800',
-    color: AI.text,
-  },
-  paramsSummaryMeta: {
-    ...AI_TYPE.caption,
-    color: AI.textMuted,
-    marginTop: 2,
   },
   scroll: { flex: 1 },
   scrollContent: { padding: AI_SPACING.lg, gap: AI_SPACING.md },

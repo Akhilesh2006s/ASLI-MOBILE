@@ -153,7 +153,7 @@ export default function AiToolResultShell({
 const styles = StyleSheet.create({
   outer: {
     borderRadius: AI_RADIUS.lg,
-    padding: 4,
+    padding: 2,
     borderWidth: 1,
     borderColor: AI.primaryBorder,
     ...AI_SHADOW,
@@ -255,7 +255,8 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   contentArea: {
-    padding: AI_SPACING.lg,
+    paddingVertical: AI_SPACING.md,
+    paddingHorizontal: 0,
   },
   resultBodyPlain: {
     width: '100%',
@@ -263,7 +264,7 @@ const styles = StyleSheet.create({
   resultBody: {
     borderRadius: 16,
     backgroundColor: AI.surfaceMuted,
-    padding: AI_SPACING.xs,
+    padding: 0,
   },
   loadingBox: {
     alignItems: 'center',

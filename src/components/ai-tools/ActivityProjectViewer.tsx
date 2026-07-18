@@ -595,7 +595,7 @@ const styles = StyleSheet.create({
   tabText: { fontSize: M.tab, fontWeight: '700', color: '#4f46e5', maxWidth: 140 },
   tabTextActive: { color: '#312e81' },
   scrollBody: { maxHeight: 720 },
-  activityBody: { padding: 10, gap: 10 },
+  activityBody: { padding: 2, gap: 10 },
   sectionsWrap: { gap: 10 },
   heroCard: {
     borderRadius: 16,

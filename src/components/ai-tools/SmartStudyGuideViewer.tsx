@@ -445,7 +445,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     overflow: 'hidden',
   },
-  guideBody: { padding: 10, gap: 8 },
+  guideBody: { padding: 2, gap: 8 },
   titleSection: {
     borderRadius: 14,
     borderWidth: 1,

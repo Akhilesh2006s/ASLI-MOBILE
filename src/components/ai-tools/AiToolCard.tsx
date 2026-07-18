@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native'
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { AI, AI_RADIUS, AI_SHADOW, AI_SPACING, AI_TYPE } from '../../theme/ai';
 import { formatAiToolText } from '../../lib/title-case';
+import GlassSurface from '../ui/GlassSurface';
 
 type Props = {
   title: string;
@@ -11,6 +12,8 @@ type Props = {
   accent?: string;
   badge?: string;
   compact?: boolean;
+  /** Frosted-glass card: translucent + blurred instead of a solid white surface. */
+  glass?: boolean;
   onPress: () => void;
   style?: ViewStyle;
 };
@@ -22,6 +25,7 @@ export default function AiToolCard({
   accent = AI.primary,
   badge,
   compact,
+  glass,
   onPress,
   style,
 }: Props) {
@@ -41,9 +45,23 @@ export default function AiToolCard({
       accessibilityLabel={`${title}. ${description}`}
       accessibilityHint="Opens this AI tool"
     >
-      <Animated.View style={[styles.card, compact && styles.cardCompact, style, animatedStyle]}>
+      <Animated.View
+        style={[
+          styles.card,
+          compact && styles.cardCompact,
+          glass && styles.cardGlassShell,
+          style,
+          animatedStyle,
+        ]}
+      >
+        {glass ? <GlassSurface intensity={55} /> : null}
         <View style={[styles.accent, { backgroundColor: accent }]} />
-        <View style={[styles.iconBox, { backgroundColor: `${accent}14`, borderColor: `${accent}28` }]}>
+        <View
+          style={[
+            styles.iconBox,
+            { backgroundColor: `${accent}${glass ? '26' : '14'}`, borderColor: `${accent}${glass ? '40' : '28'}` },
+          ]}
+        >
           <Ionicons name={icon} size={compact ? 24 : 26} color={accent} />
         </View>
         <View style={styles.content}>
@@ -88,6 +106,15 @@ const styles = StyleSheet.create({
   cardCompact: {
     minHeight: 194,
     flexDirection: 'column',
+  },
+  cardGlassShell: {
+    backgroundColor: 'transparent',
+    borderColor: 'rgba(255,255,255,0.5)',
+    shadowColor: '#475569',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+    elevation: 5,
   },
   accent: {
     position: 'absolute',

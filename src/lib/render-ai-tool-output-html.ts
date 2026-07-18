@@ -223,7 +223,7 @@ function themedHtmlHasSectionCards(html: string): boolean {
   );
 }
 
-function resolveStudentNumberedOutput(
+function resolveNumberedOutput(
   toolType: string,
   display: string,
   themedMarkdown?: (text: string, opts?: { premium?: boolean }) => string,
@@ -338,7 +338,9 @@ function renderAiToolOutputHtmlInner(
   const structured = tryRenderStructuredAiToolHtml(resolvedToolType, content, mergedRaw, variant);
   const themedMarkdown = TOOL_RENDERERS[resolvedToolType];
   const numberedTemplate = contentHasNumberedTemplateSections(display);
-  const studentPremium = variant === 'student';
+  // Teachers get the same richly-styled section cards (icon + colour accent) as students —
+  // there's no product reason for teacher output to look plainer than student output.
+  const premium = true;
   const preferMarkdown = shouldPreferMarkdownOverStructured(display, structured);
   const markdownDriven = apiMarkdownShouldDriveDisplay(resolvedToolType, display);
 
@@ -351,15 +353,10 @@ function renderAiToolOutputHtmlInner(
   // Super Admin saves numbered markdown in `content`. When present, render that — not partial structured JSON.
   if (markdownDriven) {
     if (themedMarkdown) {
-      inner =
-        variant === 'student'
-          ? resolveStudentNumberedOutput(resolvedToolType, display, themedMarkdown, studentPremium)
-          : themedMarkdown(display, { premium: false });
+      inner = resolveNumberedOutput(resolvedToolType, display, themedMarkdown, premium);
       renderedPath = 'themed-markdown';
     } else {
-      inner = renderNumberedTemplateAsCards(resolvedToolType, display, {
-        premium: variant === 'student',
-      });
+      inner = renderNumberedTemplateAsCards(resolvedToolType, display, { premium });
       renderedPath = 'numbered-cards';
     }
   } else if (variant === 'teacher') {
@@ -367,10 +364,10 @@ function renderAiToolOutputHtmlInner(
       inner = structured;
       renderedPath = 'structured';
     } else if (themedMarkdown && (numberedTemplate || teacherHasSections)) {
-      inner = themedMarkdown(display, { premium: false });
+      inner = resolveNumberedOutput(resolvedToolType, display, themedMarkdown, premium);
       renderedPath = 'themed-markdown';
     } else if (numberedTemplate || teacherHasSections) {
-      inner = renderNumberedTemplateAsCards(resolvedToolType, display);
+      inner = renderNumberedTemplateAsCards(resolvedToolType, display, { premium });
       renderedPath = 'numbered-cards';
     } else if (structured) {
       inner = structured;
@@ -383,14 +380,14 @@ function renderAiToolOutputHtmlInner(
     inner = structured;
     renderedPath = 'structured-hybrid';
   } else if (themedMarkdown) {
-    inner = resolveStudentNumberedOutput(resolvedToolType, display, themedMarkdown, studentPremium);
+    inner = resolveNumberedOutput(resolvedToolType, display, themedMarkdown, premium);
     renderedPath = 'themed-markdown';
     if (!bodyHasVisibleOutput(inner) && structured) {
       inner = structured;
       renderedPath = 'structured-fallback';
     }
   } else if (numberedTemplate || studentHasSections) {
-    inner = resolveStudentNumberedOutput(resolvedToolType, display, themedMarkdown, studentPremium);
+    inner = resolveNumberedOutput(resolvedToolType, display, themedMarkdown, premium);
     renderedPath = 'numbered-cards';
   } else if (structured) {
     inner = structured;

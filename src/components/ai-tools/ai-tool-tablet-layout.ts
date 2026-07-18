@@ -1,5 +1,6 @@
 import { StyleSheet, useWindowDimensions } from 'react-native';
 import { useIsTablet } from '../../hooks/useIsTablet';
+import { AI_SPACING } from '../../theme/ai';
 
 export const AI_TOOL_TABLET_MIN = 768;
 export const AI_TOOL_SPLIT_MAX_WIDTH = 1200;
@@ -7,6 +8,8 @@ export const AI_TOOL_DIGITAL_BOARD_MIN_WIDTH = 1024;
 export const AI_TOOL_TABLET_FONT_SCALE = 1.28;
 export const AI_TOOL_OUTPUT_TABLET_SCALE = 1.18;
 export const AI_TOOL_OUTPUT_BOARD_SCALE = 1.35;
+export const AI_TOOL_PAGE_PAD_MOBILE = AI_SPACING.lg;
+export const AI_TOOL_PAGE_PAD_TABLET = 28;
 
 /** Native / WebView output — mobile baseline (px). */
 export const AI_TOOL_OUTPUT_MOBILE = {
@@ -52,7 +55,16 @@ export function useAiToolTabletLayout() {
   const splitMaxWidth = Math.min(width, AI_TOOL_SPLIT_MAX_WIDTH);
   // Stacked form → output on tablet; split panes stay off for readability on boards.
   const useSplitLayout = false;
-  return { isTablet, isDigitalBoard, useSplitLayout, splitMaxWidth };
+  /** Full-bleed output: % width + negative margins only shifts left and leaves a right gutter. */
+  const pagePad = isTablet ? AI_TOOL_PAGE_PAD_TABLET : AI_TOOL_PAGE_PAD_MOBILE;
+  const outputBleedStyle = {
+    marginLeft: -pagePad,
+    marginRight: 0,
+    width,
+    maxWidth: width,
+    alignSelf: 'flex-start' as const,
+  };
+  return { isTablet, isDigitalBoard, useSplitLayout, splitMaxWidth, pagePad, outputBleedStyle };
 }
 
 export const aiToolTabletStyles = StyleSheet.create({
@@ -180,22 +192,22 @@ export const aiToolTabletPageStyles = StyleSheet.create({
 /** Native AI tool viewers — tablet output typography. */
 export const aiToolViewerTabletStyles = StyleSheet.create({
   shellHeader: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     paddingVertical: 16,
   },
   shellEyebrow: outputType(tablet(M.shellEyebrow)),
   shellTitle: outputType(tablet(M.shellTitle), tablet(26)),
   tabText: { ...outputType(tablet(M.tab)), maxWidth: 200 },
   scrollBody: { maxHeight: 960 },
-  activityBody: { padding: 14, gap: 12 },
-  heroCard: { padding: 18 },
+  activityBody: { padding: 8, gap: 12 },
+  heroCard: { padding: 14 },
   heroTitle: outputType(tablet(M.heroTitle), tablet(30)),
   heroEyebrow: outputType(tablet(M.heroEyebrow)),
   sectionsBadgeText: outputType(tablet(M.badge)),
   sectionNum: outputType(tablet(M.sectionNum)),
   sectionTitle: outputType(tablet(M.sectionTitle), tablet(20)),
-  sectionHeader: { paddingHorizontal: 14, paddingVertical: 12 },
-  sectionBody: { paddingHorizontal: 14, paddingBottom: 14 },
+  sectionHeader: { paddingHorizontal: 12, paddingVertical: 12 },
+  sectionBody: { paddingHorizontal: 12, paddingBottom: 12 },
   preWrap: outputType(tablet(M.body), tablet(M.bodyLh)),
   checkText: outputType(tablet(M.body), tablet(M.bodyLh)),
   bulletText: outputType(tablet(M.body), tablet(M.bodyLh)),

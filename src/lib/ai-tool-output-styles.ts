@@ -154,7 +154,7 @@ const GRADIENT_RULES = `
 const BASE_RULES = `
 *,*::before,*::after{box-sizing:border-box}
 html,body{margin:0;padding:0;background:#fff;-webkit-text-size-adjust:100%}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#334155;line-height:1.6;font-size:17px;padding:18px 18px 22px;background:linear-gradient(160deg,#f8faff 0%,#fff 52%,#fff7ed 140%)}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#334155;line-height:1.6;font-size:17px;padding:10px 0 16px;background:linear-gradient(160deg,#f8faff 0%,#fff 52%,#fff7ed 140%)}
 .ai-tool-fallback-pre{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px;font-size:15px;line-height:1.6;color:#334155;overflow-x:auto}
 .ai-tool-empty-message{color:#64748b;font-size:15px;text-align:center;padding:24px 12px}
 img{max-width:100%;height:auto}
@@ -212,7 +212,7 @@ pre{white-space:pre-wrap;word-break:break-word}
 .space-y-1\\.5>:not([hidden])~:not([hidden]){margin-top:.375rem}
 .space-y-2>:not([hidden])~:not([hidden]){margin-top:.5rem}
 .space-y-2\\.5>:not([hidden])~:not([hidden]){margin-top:.625rem}
-.prose{color:#334155;max-width:65ch}.prose-sm{font-size:1rem;line-height:1.55}
+.prose{color:#334155;max-width:none}.prose-sm{font-size:1rem;line-height:1.55}
 .prose h1,.prose h2,.prose h3,.prose h4{color:#111827;font-weight:700}
 .prose p{margin:.5rem 0}.prose strong{font-weight:600;color:#111827}
 .prose code{background:#f3f4f6;padding:.1rem .3rem;border-radius:.25rem;font-size:.85em}
@@ -228,7 +228,7 @@ pre{white-space:pre-wrap;word-break:break-word}
 /** Tablet — larger type, full-width prose, two-column sections. */
 const TABLET_RULES = `
 @media (min-width:768px){
-body{font-size:19px;line-height:1.6;padding:14px 20px 18px}
+body{font-size:19px;line-height:1.6;padding:10px 0 14px}
 .prose{max-width:none;font-size:1.125rem;line-height:1.65}
 .prose-sm{font-size:1.125rem;line-height:1.65}
 .prose h1,.prose h2,.prose h3,.prose h4{font-size:1.25em}
@@ -261,7 +261,7 @@ section.rounded-xl>div.px-3,section.rounded-xl>header.px-3{padding-inline:1rem}
 /** Digital board — largest readable type for classroom displays. */
 const BOARD_RULES = `
 @media (min-width:1024px){
-body{font-size:21px;line-height:1.65;padding:16px 24px 20px}
+body{font-size:21px;line-height:1.65;padding:12px 0 16px}
 .prose{font-size:1.25rem;line-height:1.7}
 .prose-sm{font-size:1.25rem;line-height:1.7}
 .prose h1,.prose h2,.prose h3,.prose h4{font-size:1.3em}

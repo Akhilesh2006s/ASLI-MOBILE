@@ -133,7 +133,43 @@ const HERO_ICON_BY_TOOL: Record<string, string> = {
   'project-idea-lab': 'sparkles',
   'reading-practice-room': 'bookOpen',
   'study-schedule-maker': 'bookmark',
+  'activity-project-generator': 'flask',
+  'worksheet-mcq-generator': 'listChecks',
+  'concept-mastery-helper': 'brain',
+  'lesson-planner': 'clipboardList',
+  'exam-question-paper-generator': 'fileQuestion',
+  'daily-class-plan-maker': 'checkCircle',
+  'homework-creator': 'rocket',
+  'story-passage-creator': 'bookOpen',
+  'short-notes-summaries-maker': 'bookText',
 };
+
+/** Topic keyword → icon/colour, used when a tool has no curated per-section map. */
+const SECTION_KEYWORD_META: Array<{ test: RegExp; icon: string; stripe: string; iconWrap: string }> = [
+  { test: /objective|goal|aim|purpose/i, icon: 'target', stripe: 'border-rose-500', iconWrap: 'bg-rose-100 text-rose-800' },
+  { test: /material|equipment|resource|apparatus|requirement/i, icon: 'flask', stripe: 'border-amber-500', iconWrap: 'bg-amber-100 text-amber-900' },
+  { test: /step|procedure|instruction|method|process/i, icon: 'listOrdered', stripe: 'border-indigo-500', iconWrap: 'bg-indigo-100 text-indigo-800' },
+  { test: /safety|caution|care/i, icon: 'alertTriangle', stripe: 'border-red-500', iconWrap: 'bg-red-100 text-red-800' },
+  { test: /assess|rubric|evaluat|criteria|marking|grading/i, icon: 'scale', stripe: 'border-violet-500', iconWrap: 'bg-violet-100 text-violet-800' },
+  { test: /outcome|result|expected/i, icon: 'flag', stripe: 'border-emerald-600', iconWrap: 'bg-emerald-100 text-emerald-900' },
+  { test: /concept|definition|term|vocabulary|keyword/i, icon: 'brain', stripe: 'border-purple-500', iconWrap: 'bg-purple-100 text-purple-800' },
+  { test: /example|real.?life|application|context|connection/i, icon: 'lightbulb', stripe: 'border-lime-600', iconWrap: 'bg-lime-100 text-lime-900' },
+  { test: /practice|question|quiz|test|mcq|worksheet/i, icon: 'fileQuestion', stripe: 'border-cyan-500', iconWrap: 'bg-cyan-100 text-cyan-800' },
+  { test: /answer|solution|key\b/i, icon: 'checkCircle', stripe: 'border-teal-500', iconWrap: 'bg-teal-100 text-teal-800' },
+  { test: /summary|revision|recap|tip|takeaway|note/i, icon: 'bookText', stripe: 'border-orange-500', iconWrap: 'bg-orange-100 text-orange-800' },
+  { test: /reflection|feedback|discussion|exit/i, icon: 'messageCircle', stripe: 'border-fuchsia-500', iconWrap: 'bg-fuchsia-100 text-fuchsia-800' },
+  { test: /differentiat|support|extension|struggling|advanced/i, icon: 'users', stripe: 'border-sky-500', iconWrap: 'bg-sky-100 text-sky-800' },
+  { test: /observation|creative|output/i, icon: 'star', stripe: 'border-yellow-500', iconWrap: 'bg-yellow-100 text-yellow-900' },
+  { test: /overview|introduction|background|title/i, icon: 'bookOpen', stripe: 'border-blue-500', iconWrap: 'bg-blue-100 text-blue-800' },
+  { test: /schedule|plan|timeline|duration|time/i, icon: 'clock', stripe: 'border-slate-500', iconWrap: 'bg-slate-100 text-slate-800' },
+  { test: /submission|homework|assignment/i, icon: 'send', stripe: 'border-green-500', iconWrap: 'bg-green-100 text-green-800' },
+];
+
+function inferSectionIconMeta(title: string): { icon: string; stripe: string; iconWrap: string } {
+  const match = SECTION_KEYWORD_META.find((entry) => entry.test.test(title));
+  if (match) return match;
+  return { icon: 'sparkles', stripe: 'border-indigo-500', iconWrap: 'bg-indigo-100 text-indigo-800' };
+}
 
 export function sectionIconSvg(iconKey: string): string {
   const paths = ICON_PATHS[iconKey] || ICON_PATHS.sparkles;
@@ -155,9 +191,7 @@ export function resolveStudentSectionMeta(toolType: string, sectionNum: number, 
   if (!fallbackTitle.trim()) return null;
   return {
     title: fallbackTitle.trim(),
-    stripe: 'border-indigo-500',
-    iconWrap: 'bg-indigo-100 text-indigo-800',
-    icon: 'sparkles',
+    ...inferSectionIconMeta(fallbackTitle),
   };
 }
 

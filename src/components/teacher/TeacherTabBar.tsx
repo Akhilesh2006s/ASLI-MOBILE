@@ -10,6 +10,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../theme/teacher';
+import GlassSurface from '../ui/GlassSurface';
 
 export type TeacherTab = {
   id: string;
@@ -22,6 +23,8 @@ type Props = {
   tabs: TeacherTab[];
   activeTab: string;
   onTabChange: (id: string) => void;
+  /** Render as a frosted-glass pill over a colourful backdrop instead of a solid one. */
+  glass?: boolean;
 };
 
 const SPRING = { damping: 16, stiffness: 280 };
@@ -74,7 +77,7 @@ function TabButton({
   );
 }
 
-export default function TeacherTabBar({ tabs, activeTab, onTabChange }: Props) {
+export default function TeacherTabBar({ tabs, activeTab, onTabChange, glass }: Props) {
   const insets = useSafeAreaInsets();
   const [barWidth, setBarWidth] = useState(0);
   const activeIndex = Math.max(0, tabs.findIndex((t) => t.id === activeTab));
@@ -91,14 +94,15 @@ export default function TeacherTabBar({ tabs, activeTab, onTabChange }: Props) {
   }));
 
   return (
-    <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+    <View style={[styles.wrap, glass && styles.wrapGlass, { paddingBottom: Math.max(insets.bottom, 10) }]}>
       <LinearGradient
         colors={['transparent', TEACHER.primary + '60', 'transparent']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={styles.topGlow}
       />
-      <View style={styles.bar} onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}>
+      <View style={[styles.bar, glass && styles.barGlass]} onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}>
+        {glass ? <GlassSurface intensity={50} /> : null}
         {tabWidth > 0 ? (
           <Animated.View style={[styles.indicator, slideStyle, { left: 3 }]}>
             <LinearGradient
@@ -130,6 +134,13 @@ const styles = StyleSheet.create({
     bottom: 0,
     zIndex: 50,
   },
+  wrapGlass: {
+    shadowColor: '#475569',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 6,
+  },
   topGlow: {
     height: 1,
     marginHorizontal: 20,
@@ -144,6 +155,13 @@ const styles = StyleSheet.create({
     borderColor: TEACHER.tabBarBorder,
     paddingVertical: TEACHER_SPACING.sm,
     ...TEACHER.shadow.lg,
+  },
+  barGlass: {
+    backgroundColor: 'transparent',
+    borderColor: 'rgba(255,255,255,0.55)',
+    overflow: 'hidden',
+    shadowOpacity: 0,
+    elevation: 0,
   },
   indicator: {
     position: 'absolute',

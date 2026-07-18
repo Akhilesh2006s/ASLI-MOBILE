@@ -15,7 +15,7 @@ import teacherService, { type BackendStatus } from '../../src/services/api/teach
 import { useTeacherBackendStatus } from '../../src/hooks/useTeacherBackendStatus';
 import { useAuth } from '../../src/context/AuthContext';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
-import { TeacherTabBar, TeacherHeader, TeacherShimmer } from '../../src/components/teacher';
+import { TeacherTabBar, TeacherHeader, TeacherShimmer, VidyaGlassBackdrop } from '../../src/components/teacher';
 import { BottomSheet } from '../../src/components/ui';
 import type { TeacherTab } from '../../src/components/teacher';
 import { formatSubjectLabel, resolveTeacherDisplayName } from '../../src/lib/teacher-text';
@@ -360,6 +360,7 @@ export default function TeacherDashboard() {
     !!overlay;
 
   const showHomeHeader = activeTab === 'dashboard' && !overlay;
+  const vidyaGlass = activeTab === 'vidya-ai' && !overlay;
   const headerTitle =
     overlay === 'content'
       ? 'Content Manager'
@@ -373,9 +374,11 @@ export default function TeacherDashboard() {
         barStyle="dark-content"
         backgroundColor={showHomeHeader ? '#7DD3FC' : TEACHER.bg}
       />
+      {vidyaGlass ? <VidyaGlassBackdrop /> : null}
       <TeacherHeader
         variant={showHomeHeader ? 'home' : 'compact'}
         title={headerTitle}
+        glass={vidyaGlass}
         displayName={resolveTeacherDisplayName(user)}
         user={user}
         subjects={showHomeHeader ? subjects : []}
@@ -444,6 +447,7 @@ export default function TeacherDashboard() {
         <TeacherTabBar
           tabs={teacherTabs}
           activeTab={activeTab}
+          glass={vidyaGlass}
           onTabChange={(id) => {
             if (id === activeTab && !['students', 'vidya-ai', 'eduott', 'learning-paths'].includes(id)) {
               scrollRef.current?.scrollTo({ y: 0, animated: true });

@@ -15,8 +15,9 @@ import {
 } from '../../../src/lib/teacher-ai-tools';
 import VidyaAvatar from '../../../src/components/vidya/VidyaAvatar';
 import AiToolCard from '../../../src/components/ai-tools/AiToolCard';
+import GlassSurface from '../../../src/components/ui/GlassSurface';
 import { TEACHER_SPACING } from '../../../src/theme/teacher';
-import { AI, AI_RADIUS, AI_SHADOW, AI_SPACING, AI_TYPE } from '../../../src/theme/ai';
+import { AI, AI_RADIUS, AI_SPACING, AI_TYPE } from '../../../src/theme/ai';
 
 const CONTENT_MAX = 1080;
 const GRID_GAP = TEACHER_SPACING.md;
@@ -90,6 +91,7 @@ export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: bool
           accessibilityHint="Ask Vidya for classroom and teaching help"
         >
           <Animated.View style={[styles.chatCard, chatPress.style]}>
+            <GlassSurface intensity={60} />
             <VidyaAvatar size={48} borderColor="#93c5fd" />
             <View style={styles.chatCardBody}>
               <Text style={styles.chatCardTitle}>Vidya AI Chat</Text>
@@ -119,6 +121,7 @@ export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: bool
                   accent={tool.color || AI.primary}
                   badge="Teacher"
                   compact={isGrid}
+                  glass
                   onPress={() =>
                     router.push({
                       pathname: tool.route as any,
@@ -138,7 +141,7 @@ export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: bool
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: AI.canvas,
+    backgroundColor: 'transparent',
   },
   scrollContent: {
     alignItems: 'center',
@@ -156,9 +159,14 @@ const styles = StyleSheet.create({
     padding: AI_SPACING.lg,
     borderRadius: AI_RADIUS.lg,
     borderWidth: 1,
-    borderColor: AI.skyBorder,
-    backgroundColor: AI.surface,
-    ...AI_SHADOW,
+    borderColor: 'rgba(255,255,255,0.5)',
+    backgroundColor: 'transparent',
+    overflow: 'hidden',
+    shadowColor: '#475569',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+    elevation: 5,
   },
   chatCardBody: {
     flex: 1,

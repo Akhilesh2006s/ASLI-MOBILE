@@ -59,6 +59,7 @@ import {
 import StudentScreenHeader from '../../../src/components/student/StudentScreenHeader';
 import AiToolContentRenderer from '../../../src/components/ai-tools/AiToolContentRenderer';
 import AiToolFieldIcon from '../../../src/components/ai-tools/AiToolFieldIcon';
+import AiToolParamsGrid from '../../../src/components/ai-tools/AiToolParamsGrid';
 import AiToolPremiumIcon from '../../../src/components/ai-tools/AiToolPremiumIcon';
 import AiToolResultShell from '../../../src/components/ai-tools/AiToolResultShell';
 import AiGenerateIcon from '../../../src/components/ai-tools/AiGenerateIcon';
@@ -105,45 +106,6 @@ function mergeSelectedIntoOptions(options: string[], selected: unknown): string[
 
 const HEADER_COLLAPSE_DISTANCE = 72;
 const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
-
-function ParametersSummaryBar({
-  summary,
-  accent,
-  expanded,
-  onToggle,
-  tabletUi,
-}: {
-  summary: string;
-  accent: string;
-  expanded: boolean;
-  onToggle: () => void;
-  tabletUi?: boolean;
-}) {
-  return (
-    <Pressable
-      style={[styles.paramsSummary, tabletUi && aiToolTabletPageStyles.paramsSummary]}
-      onPress={onToggle}
-    >
-      <View style={[styles.paramsSummaryIcon, { backgroundColor: `${accent}18` }]}>
-        <AiToolFieldIcon name="options-outline" accent={accent} size={36} />
-      </View>
-      <View style={styles.paramsSummaryText}>
-        <Text style={[styles.paramsSummaryTitle, tabletUi && aiToolTabletPageStyles.paramsSummaryTitle]}>
-          {expanded ? 'Hide parameters' : 'Show parameters'}
-        </Text>
-        {!expanded && summary ? (
-          <Text
-            style={[styles.paramsSummaryMeta, tabletUi && aiToolTabletPageStyles.paramsSummaryMeta]}
-            numberOfLines={tabletUi ? 2 : 1}
-          >
-            {summary}
-          </Text>
-        ) : null}
-      </View>
-      <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={tabletUi ? 20 : 18} color={STUDENT.textMuted} />
-    </Pressable>
-  );
-}
 
 const FIELD_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   board: 'school-outline',
@@ -220,10 +182,9 @@ export default function StudentToolPage() {
   const [schoolBoardName, setSchoolBoardName] = useState('CBSE');
   const [isAsliPrepExclusive, setIsAsliPrepExclusive] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<DropdownState | null>(null);
-  const [paramsExpanded, setParamsExpanded] = useState(true);
   const [copied, setCopied] = useState(false);
   const scrollY = useSharedValue(0);
-  const { isTablet, useSplitLayout } = useAiToolTabletLayout();
+  const { isTablet, useSplitLayout, outputBleedStyle } = useAiToolTabletLayout();
   const { scrollRef, onOutputLayout, queueScrollToOutput, resetOutputScroll } =
     useAiToolOutputScroll(isTablet);
 
@@ -241,20 +202,19 @@ export default function StudentToolPage() {
   const boardOptions = getAiToolBoardOptions(isAsliPrepExclusive, schoolBoardName);
   const selectedBoard = formParams.board || getDefaultAiToolBoard(isAsliPrepExclusive, schoolBoardName);
 
-  const paramsSummary = useMemo(() => {
-    return [
-      selectedBoard,
-      formParams.gradeLevel,
-      formParams.subject,
-      formParams.topic || formParams.chapter,
-      formParams.subTopic,
-    ]
-      .filter((v) => typeof v === 'string' && v.trim())
-      .join(' · ');
-  }, [selectedBoard, formParams]);
+  const paramItems = useMemo(
+    () => [
+      { icon: 'school-outline' as const, label: 'Board', value: String(selectedBoard || '') },
+      { icon: 'people-outline' as const, label: 'Class', value: String(formParams.gradeLevel || '') },
+      { icon: 'book-outline' as const, label: 'Subject', value: String(formParams.subject || '') },
+      { icon: 'document-text-outline' as const, label: 'Chapter', value: String(formParams.topic || formParams.chapter || '') },
+      { icon: 'list-outline' as const, label: 'Subtopic', value: String(formParams.subTopic || '') },
+    ],
+    [selectedBoard, formParams]
+  );
 
   const showCollapsedParams = !!generatedContent && !isGenerating;
-  const showParameterForms = !showCollapsedParams || paramsExpanded;
+  const showParameterForms = !showCollapsedParams;
 
   useQueueAiToolScrollOnGenerate(
     generatedContent,
@@ -691,7 +651,6 @@ export default function StudentToolPage() {
 
       setResponseMeta(result.metadata);
       setFromAiFailure(result.fromAiFailure);
-      setParamsExpanded(false);
       setGeneratedContent(stored.generatedContent);
       setRawGeneratedContent(stored.rawGeneratedContent);
     } catch (error: any) {
@@ -756,7 +715,6 @@ export default function StudentToolPage() {
 
         setResponseMeta(fallbackResult.metadata);
         setFromAiFailure(false);
-        setParamsExpanded(false);
         setGeneratedContent(stored.generatedContent);
         setRawGeneratedContent(stored.rawGeneratedContent);
       } catch (fallbackError: any) {
@@ -937,13 +895,7 @@ export default function StudentToolPage() {
   const formPanel = (
     <>
       {showCollapsedParams ? (
-        <ParametersSummaryBar
-          summary={paramsSummary}
-          accent={accent}
-          expanded={paramsExpanded}
-          onToggle={() => setParamsExpanded((prev) => !prev)}
-          tabletUi={isTablet}
-        />
+        <AiToolParamsGrid items={paramItems} accent={accent} tabletUi={isTablet} />
       ) : null}
 
       {showParameterForms ? (
@@ -1006,7 +958,7 @@ export default function StudentToolPage() {
 
   const outputPanel = (
     <View
-      style={styles.outputSection}
+      style={[styles.outputSection, outputBleedStyle]}
       collapsable={false}
       onLayout={
         !isGenerating && (generatedContent || fallbackEmptyMessage) ? onOutputLayout : undefined
@@ -1285,7 +1237,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: AI.canvas },
   containerPremium: { flex: 1, backgroundColor: AI.canvas },
   flex: { flex: 1 },
-  outputSection: { width: '100%' },
+  outputSection: { alignSelf: 'stretch' },
   outputWrap: { width: '100%', minHeight: 240 },
   resultActions: {
     flexDirection: 'row',
@@ -1380,34 +1332,6 @@ const styles = StyleSheet.create({
     color: AI.text,
   },
   compactHeaderSpacer: { width: 40 },
-  paramsSummary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: STUDENT_SPACING.md,
-    backgroundColor: AI.surface,
-    borderRadius: AI_RADIUS.lg,
-    borderWidth: 1,
-    borderColor: AI.primaryBorder,
-    paddingHorizontal: AI_SPACING.lg,
-    paddingVertical: 14,
-  },
-  paramsSummaryIcon: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  paramsSummaryText: { flex: 1, minWidth: 0 },
-  paramsSummaryTitle: {
-    ...AI_TYPE.body,
-    fontWeight: '800',
-    color: AI.text,
-  },
-  paramsSummaryMeta: {
-    ...AI_TYPE.caption,
-    color: AI.textMuted,
-    marginTop: 2,
-  },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'stretch',

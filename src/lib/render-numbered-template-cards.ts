@@ -9,9 +9,15 @@ import { sectionTitlesMatch, joinSectionCardsInGrid } from './themed-markdown-se
 import { renderMarkdown } from './render-teacher-markdown';
 import { stripAiToolGenerationLabel } from './strip-ai-tool-generation-label';
 
-type ThemeName = 'indigo' | 'orange' | 'violet' | 'blue' | 'amber';
+type ThemeName = 'indigo' | 'orange' | 'violet' | 'blue' | 'amber' | 'emerald';
 
 const TOOL_META: Record<string, { eyebrow: string; theme: ThemeName }> = {
+  'smart-study-guide-generator': { eyebrow: 'Smart Study Guide', theme: 'indigo' },
+  'concept-breakdown-explainer': { eyebrow: 'Concept Breakdown', theme: 'violet' },
+  'chapter-summary-creator': { eyebrow: 'Chapter Summary', theme: 'blue' },
+  'key-points-formula-extractor': { eyebrow: 'Key Points & Formulae', theme: 'emerald' },
+  'quick-assignment-builder': { eyebrow: 'Quick Assignment', theme: 'orange' },
+  'smart-qa-practice-generator': { eyebrow: 'Practice Q&A', theme: 'orange' },
   'lesson-planner': { eyebrow: 'Lesson Planner', theme: 'amber' },
   'study-schedule-maker': { eyebrow: 'Study Schedule', theme: 'violet' },
   'daily-class-plan-maker': { eyebrow: 'Daily Class Plan', theme: 'indigo' },
@@ -122,24 +128,30 @@ export function renderNumberedTemplateAsCards(
     meta.eyebrow,
   );
 
+  const sorted = fillCanonicalSections(
+    toolType,
+    [...sections].filter((s) => s.num > 0).sort((a, b) => a.num - b.num),
+  );
+  const completedCount = sorted.filter((sec) => sec.body.trim()).length;
+  const progressPct = sorted.length ? Math.round((completedCount / sorted.length) * 100) : undefined;
+
   let html = heroTitleCardHtml({
     eyebrow: meta.eyebrow,
     title: heroTitle,
     theme: meta.theme,
     toolType,
     premium: opts?.premium,
+    badge: sorted.length ? `${sorted.length} sections` : undefined,
+    progressPct,
   });
 
-  const sorted = fillCanonicalSections(
-    toolType,
-    [...sections].filter((s) => s.num > 0).sort((a, b) => a.num - b.num),
-  );
   const visibleSections = sorted.filter((sec) => {
     if (sec.num !== 1) return true;
     // Hero card already represents Section 1 (title). Skip empty duplicate Section 1 cards.
     if (!sec.body.trim()) return false;
     if (title && sectionTitlesMatch(title, sec.title)) return false;
     if (sectionTitlesMatch(heroTitle, sec.title)) return false;
+    if (sectionTitlesMatch(heroTitle, sec.body.trim())) return false;
     return true;
   });
 
