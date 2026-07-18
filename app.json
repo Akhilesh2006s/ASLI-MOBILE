@@ -1,0 +1,63 @@
+{
+  "expo": {
+    "name": "AsliLearn AI",
+    "slug": "aslilearn-mobile",
+    "version": "1.0.20",
+    "orientation": "default",
+    "icon": "./assets/app-icon.png",
+    "userInterfaceStyle": "light",
+    "jsEngine": "hermes",
+    "splash": {
+      "image": "./assets/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tech.aslilearnai",
+      "buildNumber": "20"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/app-icon-foreground.png",
+        "backgroundColor": "#e6f7fe"
+      },
+      "package": "com.tech.aslilearnai",
+      "versionCode": 24,
+      "softwareKeyboardLayoutMode": "resize",
+      "navigationBar": {
+        "backgroundColor": "#f0fdf4"
+      },
+      "permissions": [
+        "INTERNET",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/logo.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ],
+      "expo-router",
+      "expo-secure-store",
+      "expo-web-browser",
+      "@react-native-community/datetimepicker"
+    ],
+    "scheme": "aslilearn",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f65847b9-62a4-4f35-ae9d-d7adaeac2c6a"
+      }
+    },
+    "owner": "amenityforge"
+  }
+}
