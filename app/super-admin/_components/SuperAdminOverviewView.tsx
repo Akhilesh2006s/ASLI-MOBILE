@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSuperAdminTheme } from '../_ui';
+import { GlassPanel } from '../../../src/components/ui';
 import VidyaAvatar from '../../../src/components/vidya/VidyaAvatar';
 import VidyaAnalyticsCard from './VidyaAnalyticsCard';
 import type { SuperAdminView } from './SuperAdminNavDrawer';
@@ -146,24 +147,29 @@ export default function SuperAdminOverviewView({
           </View>
 
           <View style={styles.statsRow}>
-            <View style={styles.statsWidget}>
-              <Text style={styles.statsWidgetLabel}>Total Students</Text>
-              <Text style={styles.statsWidgetValue}>
-                {(stats.totalStudents || 0).toLocaleString()}
-              </Text>
-            </View>
-            <View style={styles.statsWidget}>
-              <Text style={styles.statsWidgetValue}>{`${(stats.passRate || 0).toFixed(0)}%`}</Text>
-              <Text style={styles.statsWidgetLabel}>Pass rate data</Text>
-            </View>
+            <GlassPanel style={styles.statsWidget} radius={10} tone="medium">
+              <View style={styles.statsWidgetInner}>
+                <Text style={styles.statsWidgetLabel}>Total Students</Text>
+                <Text style={styles.statsWidgetValue}>
+                  {(stats.totalStudents || 0).toLocaleString()}
+                </Text>
+              </View>
+            </GlassPanel>
+            <GlassPanel style={styles.statsWidget} radius={10} tone="medium">
+              <View style={styles.statsWidgetInner}>
+                <Text style={styles.statsWidgetValue}>{`${(stats.passRate || 0).toFixed(0)}%`}</Text>
+                <Text style={styles.statsWidgetLabel}>Pass rate data</Text>
+              </View>
+            </GlassPanel>
           </View>
 
-          <TouchableOpacity
-            style={styles.vidyaCard}
-            onPress={() => onNavigate('vidya-ai')}
-            activeOpacity={0.9}
-          >
-            <View style={styles.vidyaCardOverlay} />
+          {/* The old solid-white wash overlay is gone — the frosted panel now
+              supplies the card surface, with the orange tint layered on top. */}
+          <GlassPanel style={styles.vidyaCard} radius={10} tone="medium">
+            <TouchableOpacity
+              onPress={() => onNavigate('vidya-ai')}
+              activeOpacity={0.9}
+            >
             <View style={styles.vidyaCardTint} />
             <View style={styles.vidyaCardContent}>
               <View style={styles.vidyaCardText}>
@@ -175,13 +181,15 @@ export default function SuperAdminOverviewView({
                 <VidyaAvatar size={72} borderColor="#fff" />
               </View>
             </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          </GlassPanel>
 
-          <TouchableOpacity
-            style={styles.studentAnalyticsCard}
-            onPress={() => onNavigate('analytics')}
-            activeOpacity={0.9}
-          >
+          <GlassPanel style={styles.studentAnalyticsCard} radius={10} tone="strong">
+            <TouchableOpacity
+              style={styles.studentAnalyticsCardInner}
+              onPress={() => onNavigate('analytics')}
+              activeOpacity={0.9}
+            >
             <View style={styles.studentAnalyticsHeader}>
               <Text style={styles.studentAnalyticsTitle}>Student Analytics</Text>
               <Text style={styles.studentAnalyticsLink}>View Details →</Text>
@@ -218,7 +226,8 @@ export default function SuperAdminOverviewView({
                 />
               </View>
             </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          </GlassPanel>
 
           <VidyaAnalyticsCard />
 
@@ -227,13 +236,15 @@ export default function SuperAdminOverviewView({
               <Ionicons name="locate-outline" size={20} color="#FB923C" />
               <Text style={styles.sectionTitle}>AI-Powered Recommendations</Text>
             </View>
-            <View style={styles.placeholderCard}>
-              <Ionicons name="locate-outline" size={40} color="#9CA3AF" />
+            <GlassPanel style={styles.placeholderCard} radius={10} tone="medium">
+              <View style={styles.placeholderCardInner}>
+              <Ionicons name="locate-outline" size={40} color="#5B6779" />
               <Text style={styles.placeholderTitle}>AI Recommendations</Text>
               <Text style={styles.placeholderSub}>
                 AI-powered insights and recommendations will appear here
               </Text>
-            </View>
+              </View>
+            </GlassPanel>
           </View>
 
           <View style={styles.realtimeSection}>
@@ -253,10 +264,12 @@ export default function SuperAdminOverviewView({
             </View>
 
             {isLoadingAnalytics ? (
-              <View style={styles.realtimeLoading}>
-                <ActivityIndicator size="small" color="#14B8A6" />
-                <Text style={styles.realtimeLoadingText}>Loading real-time analytics...</Text>
-              </View>
+              <GlassPanel style={styles.realtimeLoading} radius={10} tone="medium">
+                <View style={styles.realtimeLoadingInner}>
+                  <ActivityIndicator size="small" color="#14B8A6" />
+                  <Text style={styles.realtimeLoadingText}>Loading real-time analytics...</Text>
+                </View>
+              </GlassPanel>
             ) : realtimeAnalytics ? (
               <>
                 <View style={styles.realtimeGrid}>
@@ -289,7 +302,8 @@ export default function SuperAdminOverviewView({
                 {(realtimeAnalytics.topScorersByExam || []).slice(0, 3).map((exam, examIdx) => {
                   const gradient = EXAM_GRADIENTS[examIdx % EXAM_GRADIENTS.length];
                   return (
-                    <View key={`${exam.examTitle || 'exam'}-${examIdx}`} style={styles.topScorersWrap}>
+                    // `strong` — this panel carries a dense scorer table.
+                    <GlassPanel key={`${exam.examTitle || 'exam'}-${examIdx}`} style={styles.topScorersWrap} radius={10} tone="strong">
                       <LinearGradient colors={[...gradient]} style={styles.topScorersHeader}>
                         <Text style={styles.topScorersTitle}>{exam.examTitle || 'Exam'}</Text>
                       </LinearGradient>
@@ -313,7 +327,7 @@ export default function SuperAdminOverviewView({
                           </View>
                         </View>
                       ))}
-                    </View>
+                    </GlassPanel>
                   );
                 })}
 
@@ -365,10 +379,12 @@ export default function SuperAdminOverviewView({
                 ) : null}
               </>
             ) : (
-              <View style={styles.placeholderCard}>
-                <Ionicons name="stats-chart" size={40} color="#9CA3AF" />
-                <Text style={styles.placeholderSub}>No analytics data available</Text>
-              </View>
+              <GlassPanel style={styles.placeholderCard} radius={10} tone="medium">
+                <View style={styles.placeholderCardInner}>
+                  <Ionicons name="stats-chart" size={40} color="#5B6779" />
+                  <Text style={styles.placeholderSub}>No analytics data available</Text>
+                </View>
+              </GlassPanel>
             )}
           </View>
 
@@ -528,14 +544,16 @@ const styles = StyleSheet.create({
   },
   statsWidget: {
     flex: 1,
-    backgroundColor: '#fff',
     borderRadius: 10,
-    padding: 16,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
+  },
+  // Padding moves to the inner view so it sits inside the frosted panel.
+  statsWidgetInner: {
+    padding: 16,
   },
   statsWidgetLabel: {
     fontSize: 12,
@@ -554,11 +572,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#93C5FD',
     overflow: 'hidden',
-    backgroundColor: '#fff',
-  },
-  vidyaCardOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255,255,255,0.85)',
   },
   vidyaCardTint: {
     ...StyleSheet.absoluteFillObject,
@@ -594,11 +607,13 @@ const styles = StyleSheet.create({
   studentAnalyticsCard: {
     marginHorizontal: 16,
     marginBottom: 12,
-    backgroundColor: '#fff',
     borderRadius: 10,
-    padding: 16,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+  },
+  // Padding moves to the inner pressable so it sits inside the frosted panel.
+  studentAnalyticsCardInner: {
+    padding: 16,
   },
   studentAnalyticsHeader: {
     flexDirection: 'row',
@@ -648,12 +663,14 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   placeholderCard: {
-    backgroundColor: '#fff',
     borderRadius: 10,
-    padding: 24,
-    alignItems: 'center',
     borderWidth: 1,
     borderColor: '#E5E7EB',
+  },
+  // Padding and child alignment move inside the frosted panel.
+  placeholderCardInner: {
+    padding: 24,
+    alignItems: 'center',
   },
   placeholderTitle: {
     fontSize: 16,
@@ -697,7 +714,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#D1D5DB',
     borderRadius: 8,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
   },
   realtimeRefreshText: {
     fontSize: 12,
@@ -705,12 +722,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   realtimeLoading: {
+    borderRadius: 10,
+  },
+  // Row layout and padding move inside the frosted panel.
+  realtimeLoadingInner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#fff',
     padding: 20,
-    borderRadius: 10,
     justifyContent: 'center',
   },
   realtimeLoadingText: {
@@ -751,7 +770,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderRadius: 10,
     overflow: 'hidden',
-    backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
@@ -819,7 +837,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     padding: 12,
     borderRadius: 8,
     borderWidth: 1,

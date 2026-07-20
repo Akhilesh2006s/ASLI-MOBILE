@@ -36,7 +36,7 @@ function MyHomeworkSectionComponent({ allContent, homeworkSubmissions, isLoading
   }, [homeworkSubmissions]);
 
   return (
-    <GlassCard variant="elevated" padding={14}>
+    <GlassCard variant="glass" padding={14}>
       <View style={styles.header}>
         <LinearGradient colors={[STUDENT.warning, `${STUDENT.warning}cc`]} style={styles.icon}>
           <Ionicons name="document-text" size={20} color={STUDENT.textOnPrimary} />
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: STUDENT.surfaceBorder,
     borderLeftWidth: 3,
-    backgroundColor: STUDENT.surface,
+    backgroundColor: 'rgba(255,255,255,0.42)',
     padding: 10,
     marginBottom: 8,
   },

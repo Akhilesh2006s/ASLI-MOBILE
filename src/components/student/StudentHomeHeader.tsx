@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
@@ -14,6 +13,8 @@ import { getSchoolBranding } from '../../lib/school-branding';
 import { resolveStudentFirstName } from '../../lib/student-text';
 import StudentCardDecor from './StudentCardDecor';
 import { STUDENT, STUDENT_RADIUS, studentGreeting } from '../../theme/student';
+import { GLASS_ROW, GLASS_VIOLET } from '../../theme/glass';
+import GlassPanel from '../ui/GlassPanel';
 
 type Props = {
   user: any;
@@ -37,10 +38,7 @@ export default function StudentHomeHeader({ user, streak = 0, onAvatarPress, onL
 
   useEffect(() => {
     streakScale.value = withRepeat(
-      withSequence(
-        withTiming(1.06, { duration: 900 }),
-        withTiming(1, { duration: 900 })
-      ),
+      withSequence(withTiming(1.06, { duration: 900 }), withTiming(1, { duration: 900 })),
       -1
     );
   }, [streakScale]);
@@ -53,11 +51,13 @@ export default function StudentHomeHeader({ user, streak = 0, onAvatarPress, onL
 
   return (
     <Animated.View entering={FadeInDown.duration(240)}>
-      <LinearGradient
-        colors={[...STUDENT.heroGradient]}
+      <GlassPanel
+        tone="strong"
+        colors={[...GLASS_VIOLET]}
+        elevated
+        radius={32}
         style={styles.wrap}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        contentStyle={styles.content}
       >
         <StudentCardDecor variant="hero" />
 
@@ -76,10 +76,15 @@ export default function StudentHomeHeader({ user, streak = 0, onAvatarPress, onL
                 accessibilityLabel="Logout"
                 accessibilityRole="button"
               >
-                <Ionicons name="log-out-outline" size={20} color={STUDENT.textOnPrimary} />
+                <Ionicons name="log-out-outline" size={20} color={STUDENT.primaryDark} />
               </Pressable>
             ) : null}
-            <Pressable style={styles.avatar} onPress={onAvatarPress}>
+            <Pressable
+              style={styles.avatar}
+              onPress={onAvatarPress}
+              accessibilityRole="button"
+              accessibilityLabel="Open your profile"
+            >
               <Text style={styles.avatarText}>{initials}</Text>
             </Pressable>
           </View>
@@ -107,9 +112,9 @@ export default function StudentHomeHeader({ user, streak = 0, onAvatarPress, onL
 
         {classLabel ? (
           <View style={styles.badges}>
-            <View style={[styles.badge, styles.badgeAccent]}>
-              <Ionicons name="layers-outline" size={12} color={STUDENT.textOnPrimary} />
-              <Text style={styles.badgeTextAccent}>
+            <View style={styles.badge}>
+              <Ionicons name="layers-outline" size={12} color={STUDENT.primaryDark} />
+              <Text style={styles.badgeText}>
                 Class {classLabel}
                 {section ? ` · ${section}` : ''}
               </Text>
@@ -123,18 +128,17 @@ export default function StudentHomeHeader({ user, streak = 0, onAvatarPress, onL
             <Text style={styles.streakText}>{streak}-Day Study Streak</Text>
           </Animated.View>
         ) : null}
-      </LinearGradient>
+      </GlassPanel>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: {
-    borderRadius: 32,
-    padding: 20,
     marginBottom: 16,
-    overflow: 'hidden',
-    ...STUDENT.shadow.md,
+  },
+  content: {
+    padding: 20,
   },
   topRow: {
     flexDirection: 'row',
@@ -143,14 +147,14 @@ const styles = StyleSheet.create({
   },
   greetBlock: { flex: 1, marginRight: 12 },
   greeting: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '800',
-    color: STUDENT.textOnPrimary,
+    color: STUDENT.text,
     letterSpacing: -0.5,
   },
   date: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.82)',
+    color: STUDENT.textSecondary,
     marginTop: 6,
     fontWeight: '500',
   },
@@ -159,21 +163,21 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: GLASS_ROW.fill,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: GLASS_ROW.border,
   },
   avatar: {
     width: 48,
     height: 48,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: STUDENT.primary,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: STUDENT.textOnPrimary,
+    borderColor: 'rgba(255,255,255,0.85)',
   },
   avatarText: { color: STUDENT.textOnPrimary, fontWeight: '800', fontSize: 16 },
   schoolRow: {
@@ -182,24 +186,20 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 16,
     width: '100%',
-    backgroundColor: '#ffffff',
+    backgroundColor: GLASS_ROW.fillStrong,
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderRadius: STUDENT_RADIUS.lg,
-    borderWidth: 0,
-    shadowColor: '#064e3b',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.14,
-    shadowRadius: 8,
-    elevation: 4,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: GLASS_ROW.border,
   },
   schoolLogoWrap: {
     width: 64,
     height: 64,
     borderRadius: 14,
-    backgroundColor: '#ffffff',
+    backgroundColor: GLASS_ROW.fill,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: STUDENT.primaryLight,
+    borderColor: GLASS_ROW.border,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -223,25 +223,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: GLASS_ROW.fill,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: STUDENT_RADIUS.full,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: GLASS_ROW.border,
   },
-  badgeAccent: { backgroundColor: 'rgba(255,255,255,0.18)' },
-  badgeTextAccent: { fontSize: 11, fontWeight: '700', color: STUDENT.textOnPrimary },
+  badgeText: { fontSize: 11, fontWeight: '700', color: STUDENT.primaryDark },
   streak: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     marginTop: 14,
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(0,0,0,0.15)',
+    backgroundColor: 'rgba(245,158,11,0.16)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: STUDENT_RADIUS.full,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(245,158,11,0.35)',
   },
-  streakText: { fontSize: 12, fontWeight: '700', color: STUDENT.warning },
+  streakText: { fontSize: 12, fontWeight: '700', color: '#b45309' },
 });

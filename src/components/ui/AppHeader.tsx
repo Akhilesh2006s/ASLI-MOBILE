@@ -1,6 +1,8 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { GLASS_RIM, GLASS_ROW } from '../../theme/glass';
+import GlassSurface from './GlassSurface';
 import { uiTheme } from './theme';
 
 type Props = {
@@ -13,7 +15,18 @@ type Props = {
 export default function AppHeader({ title, onBack, rightActionIcon, onRightAction }: Props) {
   return (
     <View style={styles.header}>
-      <TouchableOpacity style={styles.iconButton} onPress={onBack} disabled={!onBack}>
+      <GlassSurface intensity={50} tone="medium" />
+      <TouchableOpacity
+        style={styles.iconButton}
+        onPress={onBack}
+        disabled={!onBack}
+        hitSlop={5}
+        accessibilityRole="button"
+        accessibilityLabel="Go back"
+        accessibilityElementsHidden={!onBack}
+        importantForAccessibility={onBack ? 'yes' : 'no-hide-descendants'}
+        accessibilityState={{ disabled: !onBack }}
+      >
         {onBack ? <Ionicons name="arrow-back" size={20} color={uiTheme.colors.text} /> : null}
       </TouchableOpacity>
 
@@ -21,7 +34,17 @@ export default function AppHeader({ title, onBack, rightActionIcon, onRightActio
         {title}
       </Text>
 
-      <TouchableOpacity style={styles.iconButton} onPress={onRightAction} disabled={!onRightAction}>
+      <TouchableOpacity
+        style={styles.iconButton}
+        onPress={onRightAction}
+        disabled={!onRightAction}
+        hitSlop={5}
+        accessibilityRole="button"
+        accessibilityLabel={`${title} actions`}
+        accessibilityElementsHidden={!onRightAction}
+        importantForAccessibility={onRightAction ? 'yes' : 'no-hide-descendants'}
+        accessibilityState={{ disabled: !onRightAction }}
+      >
         {rightActionIcon && onRightAction ? (
           <Ionicons name={rightActionIcon} size={20} color={uiTheme.colors.text} />
         ) : null}
@@ -37,9 +60,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: uiTheme.spacing.md,
     paddingVertical: 12,
-    backgroundColor: uiTheme.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: uiTheme.colors.border,
+    backgroundColor: 'transparent',
+    overflow: 'hidden',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: GLASS_RIM.border,
   },
   iconButton: {
     width: 34,
@@ -47,6 +71,8 @@ const styles = StyleSheet.create({
     borderRadius: uiTheme.radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: GLASS_ROW.fillSoft,
+    zIndex: 1,
   },
   title: {
     flex: 1,
@@ -54,5 +80,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '800',
     color: uiTheme.colors.text,
+    zIndex: 1,
   },
 });

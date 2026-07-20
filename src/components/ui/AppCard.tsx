@@ -1,27 +1,32 @@
 import React, { ReactNode } from 'react';
-import { StyleSheet, View, ViewStyle } from 'react-native';
+import { StyleSheet, ViewStyle } from 'react-native';
+import GlassPanel from './GlassPanel';
+import { GLASS_RADIUS } from '../../theme/glass';
 import { uiTheme } from './theme';
 
 type Props = {
   children: ReactNode;
   style?: ViewStyle;
+  tone?: 'light' | 'medium' | 'strong';
 };
 
-export default function AppCard({ children, style }: Props) {
-  return <View style={[styles.card, style]}>{children}</View>;
+/** App-wide card — liquid glass over the page artwork. */
+export default function AppCard({ children, style, tone = 'medium' }: Props) {
+  return (
+    <GlassPanel
+      tone={tone}
+      elevated
+      radius={GLASS_RADIUS.card}
+      style={style}
+      contentStyle={styles.content}
+    >
+      {children}
+    </GlassPanel>
+  );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: uiTheme.colors.surface,
-    borderRadius: uiTheme.radius.lg,
-    borderWidth: 1,
-    borderColor: uiTheme.colors.border,
+  content: {
     padding: uiTheme.spacing.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
   },
 });

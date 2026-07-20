@@ -19,6 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../../src/services/api/api';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { AdminGridList, useAdminListLayout } from '../../admin/_ui';
+import { GlassPanel } from '../../../src/components/ui';
 import {
   type SchoolAdmin,
   type SchoolFormState,
@@ -409,7 +410,9 @@ export default function SchoolManagementView() {
       normalizeCurriculumBoard(admin.curriculumBoard || admin.board)
     );
     return (
-      <View style={[styles.card, isTablet && styles.cardTablet]}>
+      // `strong` — school cards carry dense contact/board detail text.
+      <GlassPanel style={[styles.card, isTablet && styles.cardTablet]} radius={16} tone="strong">
+        <View style={styles.cardInner}>
         <View style={styles.cardTop}>
           <View style={styles.logoWrap}>
             {logo ? (
@@ -477,7 +480,8 @@ export default function SchoolManagementView() {
             </Pressable>
           </View>
         </View>
-      </View>
+        </View>
+      </GlassPanel>
     );
   };
 
@@ -492,11 +496,13 @@ export default function SchoolManagementView() {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>School Management</Text>
           <Text style={styles.headerSubtitle}>Manage schools and their associated data</Text>
-          <Pressable style={styles.addRow} onPress={() => { setForm(emptySchoolForm()); setShowAdd(true); }}>
-            <Ionicons name="business-outline" size={18} color="#ea580c" />
-            <Text style={styles.addRowText}>Add new school</Text>
-            <Ionicons name="chevron-forward" size={18} color="#f97316" />
-          </Pressable>
+          <GlassPanel style={styles.addRow} radius={14} tone="medium">
+            <Pressable style={styles.addRowInner} onPress={() => { setForm(emptySchoolForm()); setShowAdd(true); }}>
+              <Ionicons name="business-outline" size={18} color="#ea580c" />
+              <Text style={styles.addRowText}>Add new school</Text>
+              <Ionicons name="chevron-forward" size={18} color="#f97316" />
+            </Pressable>
+          </GlassPanel>
         </View>
 
         <View style={[styles.summaryRow, isTablet && styles.summaryRowTablet]}>
@@ -523,21 +529,23 @@ export default function SchoolManagementView() {
           </View>
         </View>
 
-        <View style={styles.searchWrap}>
-          <Ionicons name="search" size={18} color="#94a3b8" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search by school, contact, email, state, board…"
-            placeholderTextColor="#94a3b8"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery ? (
-            <Pressable onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color="#94a3b8" />
-            </Pressable>
-          ) : null}
-        </View>
+        <GlassPanel style={styles.searchWrap} radius={14} tone="strong">
+          <View style={styles.searchWrapInner}>
+            <Ionicons name="search" size={18} color="#5B6779" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search by school, contact, email, state, board…"
+              placeholderTextColor="#5B6779"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery ? (
+              <Pressable onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={20} color="#5B6779" />
+              </Pressable>
+            ) : null}
+          </View>
+        </GlassPanel>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
@@ -545,7 +553,7 @@ export default function SchoolManagementView() {
           <ActivityIndicator size="large" color="#f97316" style={{ marginTop: 40 }} />
         ) : filteredAdmins.length === 0 ? (
           <View style={styles.empty}>
-            <Ionicons name="school-outline" size={56} color="#d1d5db" />
+            <Ionicons name="school-outline" size={56} color="#5B6779" />
             <Text style={styles.emptyText}>{searchQuery ? 'No schools match your search' : 'No schools yet'}</Text>
           </View>
         ) : isTablet ? (
@@ -596,13 +604,15 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 26, fontWeight: '800', color: '#0f172a', letterSpacing: -0.5 },
   headerSubtitle: { fontSize: 14, color: '#64748b', marginTop: 4, marginBottom: 14 },
   addRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: '#fff',
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#e2e8f0',
+  },
+  // Row layout and padding move inside the frosted panel.
+  addRowInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     padding: 14,
   },
   addRowText: { flex: 1, fontSize: 15, fontWeight: '700', color: '#0f172a' },
@@ -614,29 +624,29 @@ const styles = StyleSheet.create({
   summaryLabel: { fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.9)', marginTop: 6 },
   summaryValue: { fontSize: 22, fontWeight: '800', color: '#fff' },
   searchWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
     marginHorizontal: 20,
     marginBottom: 16,
-    backgroundColor: '#fff',
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#e2e8f0',
+  },
+  // Row layout and padding move inside the frosted panel.
+  searchWrapInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     paddingHorizontal: 14,
     paddingVertical: 4,
   },
   searchInput: { flex: 1, fontSize: 15, paddingVertical: 10, color: '#0f172a' },
   errorText: { color: '#dc2626', paddingHorizontal: 20, marginBottom: 8 },
   empty: { alignItems: 'center', padding: 40 },
-  emptyText: { marginTop: 12, color: '#9ca3af', textAlign: 'center' },
+  emptyText: { marginTop: 12, color: '#5B6779', textAlign: 'center' },
   listWrap: { paddingHorizontal: 20 },
   card: {
     marginHorizontal: 20,
     marginBottom: 14,
-    backgroundColor: '#fff',
     borderRadius: 16,
-    padding: 14,
     borderWidth: 1,
     borderColor: '#e2e8f0',
     shadowColor: '#000',
@@ -644,6 +654,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
+  },
+  // Padding moves inside the frosted panel.
+  cardInner: {
+    padding: 14,
   },
   cardTablet: {
     marginHorizontal: 0,
@@ -659,7 +673,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#fed7aa',
-    backgroundColor: '#fff7ed',
+    backgroundColor: 'rgba(255,247,237,0.55)',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -692,10 +706,10 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: '100%',
   },
-  dateText: { fontSize: 11, color: '#94a3b8' },
+  dateText: { fontSize: 11, color: '#5B6779' },
   actions: { flexDirection: 'row', gap: 4 },
   iconBtn: { padding: 8 },
-  formModalWrap: { flex: 1, backgroundColor: '#fff' },
+  formModalWrap: { flex: 1, backgroundColor: 'rgba(255,255,255,0.48)' },
   formModalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#e2e8f0', paddingTop: 48 },
   formModalTitle: { fontSize: 20, fontWeight: '800', color: '#0f172a' },
   formScroll: { flex: 1, paddingHorizontal: 16 },
@@ -739,7 +753,7 @@ const styles = StyleSheet.create({
   saveBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#f97316', alignItems: 'center' },
   saveBtnText: { fontWeight: '700', color: '#fff' },
   pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  pickerSheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, maxHeight: '70%' },
+  pickerSheet: { backgroundColor: 'rgba(255,255,255,0.48)', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, maxHeight: '70%' },
   pickerTitle: { fontSize: 18, fontWeight: '800', marginBottom: 12, color: '#0f172a' },
   pickerItem: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   pickerItemText: { fontSize: 15, color: '#0f172a' },

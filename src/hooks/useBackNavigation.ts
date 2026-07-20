@@ -34,35 +34,47 @@ function useInterceptedDashboardBack(navigate: () => void) {
  */
 export function useBackNavigation(dashboardPath: string, preventBack: boolean = false) {
   const router = useRouter();
+  const authRef = useRef<{ ready: boolean; authed: boolean }>({ ready: false, authed: false });
 
   useEffect(() => {
-    const backAction = async () => {
-      // Check if user is authenticated
-      const token = await SecureStore.getItemAsync('authToken');
-      const userRole = await SecureStore.getItemAsync('userRole');
+    let cancelled = false;
+    authRef.current = { ready: false, authed: false };
+    void (async () => {
+      try {
+        const token = await SecureStore.getItemAsync('authToken');
+        const userRole = await SecureStore.getItemAsync('userRole');
+        if (!cancelled) {
+          authRef.current = { ready: true, authed: !!(token && userRole) };
+        }
+      } catch {
+        if (!cancelled) {
+          authRef.current = { ready: true, authed: false };
+        }
+      }
+    })();
 
-      if (!token || !userRole) {
-        // Not authenticated, allow default back behavior
+    // Must return a boolean synchronously — an async handler returns a Promise,
+    // which RN treats as truthy and always swallows the back press.
+    const backAction = () => {
+      const { ready, authed } = authRef.current;
+      if (!ready || !authed) {
         return false;
       }
-
-      // If preventBack is true (for dashboard screens), prevent back navigation
       if (preventBack) {
-        return true; // Prevent default back behavior
+        return true;
       }
-
-      // For other pages, navigate to dashboard instead of going back
       if (dashboardPath) {
         router.replace(dashboardPath);
-        return true; // Prevent default back behavior
+        return true;
       }
-
-      return false; // Allow default back behavior
+      return false;
     };
 
     const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
-
-    return () => backHandler.remove();
+    return () => {
+      cancelled = true;
+      backHandler.remove();
+    };
   }, [dashboardPath, preventBack, router]);
 }
 

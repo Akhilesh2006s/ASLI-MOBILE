@@ -15,8 +15,8 @@ import teacherService, { type BackendStatus } from '../../src/services/api/teach
 import { useTeacherBackendStatus } from '../../src/hooks/useTeacherBackendStatus';
 import { useAuth } from '../../src/context/AuthContext';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
-import { TeacherTabBar, TeacherHeader, TeacherShimmer, VidyaGlassBackdrop } from '../../src/components/teacher';
-import { BottomSheet } from '../../src/components/ui';
+import { TeacherTabBar, TeacherHeader, TeacherShimmer } from '../../src/components/teacher';
+import { BottomSheet, GlassPanel } from '../../src/components/ui';
 import type { TeacherTab } from '../../src/components/teacher';
 import { formatSubjectLabel, resolveTeacherDisplayName } from '../../src/lib/teacher-text';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../src/theme/teacher';
@@ -360,7 +360,9 @@ export default function TeacherDashboard() {
     !!overlay;
 
   const showHomeHeader = activeTab === 'dashboard' && !overlay;
-  const vidyaGlass = activeTab === 'vidya-ai' && !overlay;
+  // Every tab now sits on the shared pastel artwork, so the header and tab bar
+  // always have real colour to blur — glass is no longer Vidya-AI-only.
+  const vidyaGlass = true;
   const headerTitle =
     overlay === 'content'
       ? 'Content Manager'
@@ -370,11 +372,7 @@ export default function TeacherDashboard() {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <StatusBar
-        barStyle="dark-content"
-        backgroundColor={showHomeHeader ? '#7DD3FC' : TEACHER.bg}
-      />
-      {vidyaGlass ? <VidyaGlassBackdrop /> : null}
+      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       <TeacherHeader
         variant={showHomeHeader ? 'home' : 'compact'}
         title={headerTitle}
@@ -394,9 +392,13 @@ export default function TeacherDashboard() {
       ) : null}
 
       {overlay ? (
-        <Pressable style={styles.overlayBar} onPress={() => setOverlay(null)}>
-          <Ionicons name="arrow-back" size={18} color={TEACHER.primaryLight} />
-          <Text style={styles.overlayText}>{overlay === 'content' ? 'Content Manager' : 'Profile & More'}</Text>
+        <Pressable onPress={() => setOverlay(null)}>
+          <GlassPanel style={styles.overlayBar} radius={TEACHER_RADIUS.md} tone="medium">
+            <View style={styles.overlayBarRow}>
+              <Ionicons name="arrow-back" size={18} color={TEACHER.primaryLight} />
+              <Text style={styles.overlayText}>{overlay === 'content' ? 'Content Manager' : 'Profile & More'}</Text>
+            </View>
+          </GlassPanel>
         </Pressable>
       ) : null}
 
@@ -509,7 +511,8 @@ export default function TeacherDashboard() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: TEACHER.bg },
+  // Transparent so AppBackground's artwork shows through.
+  container: { flex: 1, backgroundColor: 'transparent' },
   content: { flex: 1, minHeight: 0 },
   contentFull: { paddingBottom: 80 },
   fullTabPane: { flex: 1, minHeight: 0 },
@@ -521,18 +524,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: 4,
   },
+  // Box styles live on the GlassPanel; the row layout moved to overlayBarRow
+  // because GlassPanel wraps its children in an extra view.
   overlayBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
     marginHorizontal: TEACHER_SPACING.lg,
     marginVertical: TEACHER_SPACING.sm,
     paddingHorizontal: TEACHER_SPACING.lg,
     paddingVertical: TEACHER_SPACING.md,
-    backgroundColor: TEACHER.surface,
-    borderWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
     borderRadius: TEACHER_RADIUS.md,
+  },
+  overlayBarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   overlayText: { color: TEACHER.text, fontWeight: '800', fontSize: 16 },
   offlineBanner: {

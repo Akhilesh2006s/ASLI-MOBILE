@@ -23,16 +23,18 @@ export interface TeacherToolConfig {
   fields: TeacherToolFieldConfig[];
 }
 
-const cascadeFields = (extra: TeacherToolFieldConfig[] = []): TeacherToolFieldConfig[] => [
+const cascadeFields = (extra: TeacherToolFieldConfig[] = [], opts?: { optionalSubtopic?: boolean }): TeacherToolFieldConfig[] => [
   { name: 'gradeLevel', label: 'Class *', type: 'select', required: true, options: CLASS_OPTIONS },
   { name: 'subject', label: 'Subject *', type: 'select', required: true, dependsOn: 'gradeLevel' },
   { name: 'topic', label: 'Topic *', type: 'select', required: true, placeholder: 'Select topic', isNCERT: true },
   {
     name: 'subTopic',
-    label: 'Sub Topic *',
+    label: opts?.optionalSubtopic
+      ? 'Sub Topic (optional — leave empty for whole chapter)'
+      : 'Sub Topic *',
     type: 'select',
-    required: true,
-    placeholder: 'Select subtopic',
+    required: !opts?.optionalSubtopic,
+    placeholder: opts?.optionalSubtopic ? 'Whole chapter' : 'Select subtopic',
     isCascadeSubtopic: true,
   },
   ...extra,
@@ -50,21 +52,7 @@ const TEACHER_TOOL_CONFIGS: Record<string, Omit<TeacherToolConfig, 'icon' | 'col
   'worksheet-mcq-generator': {
     name: 'Worksheet & MCQ Generator',
     description: 'Design custom worksheets and MCQs with various question types',
-    fields: cascadeFields([
-      {
-        name: 'questionCount',
-        label: 'Number of Questions',
-        type: 'number',
-        placeholder: '10',
-      },
-      {
-        name: 'questionType',
-        label: 'Question Type',
-        type: 'select',
-        options: ['Single Option', 'Multiple Option', 'Integer Type', 'All Types'],
-        placeholder: 'All Types (optional)',
-      },
-    ]),
+    fields: cascadeFields([], { optionalSubtopic: true }),
   },
   'concept-mastery-helper': {
     name: 'Concept Mastery Helper',
@@ -79,16 +67,12 @@ const TEACHER_TOOL_CONFIGS: Record<string, Omit<TeacherToolConfig, 'icon' | 'col
   'homework-creator': {
     name: 'Homework Creator',
     description: 'Generate meaningful homework assignments',
-    fields: cascadeFields([
-      { name: 'duration', label: 'Expected Duration (minutes)', type: 'number', placeholder: '30' },
-    ]),
+    fields: cascadeFields(),
   },
   'story-passage-creator': {
     name: 'Story & Passage Creator',
     description: 'Generate engaging stories and reading passages (English, Hindi & Telugu only)',
-    fields: cascadeFields([
-      { name: 'length', label: 'Length', type: 'select', options: ['short', 'medium', 'long'] },
-    ]),
+    fields: cascadeFields(),
   },
   'short-notes-summaries-maker': {
     name: 'Short Notes & Summaries Maker',
@@ -112,7 +96,7 @@ const TEACHER_TOOL_CONFIGS: Record<string, Omit<TeacherToolConfig, 'icon' | 'col
   'exam-question-paper-generator': {
     name: 'Exam Question Paper Generator',
     description: 'Create comprehensive exam papers with varying difficulty',
-    fields: cascadeFields(),
+    fields: cascadeFields([], { optionalSubtopic: true }),
   },
 };
 

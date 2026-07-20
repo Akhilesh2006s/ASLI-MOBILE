@@ -83,7 +83,7 @@ export default function TodayScheduleSection() {
     return (
       <View style={styles.wrap}>
         {header}
-        <GlassCard>
+        <GlassCard variant="glass">
           <Text style={styles.empty}>No classes scheduled today</Text>
         </GlassCard>
       </View>
@@ -100,6 +100,7 @@ export default function TodayScheduleSection() {
           return (
             <GlassCard
               key={`${slot.subject}-${i}`}
+              variant="glass"
               style={StyleSheet.flatten([styles.card, { borderLeftColor: color, borderLeftWidth: 3 }])}
             >
               {live ? (

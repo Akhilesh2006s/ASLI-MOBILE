@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
   metaChip: {
     flexGrow: 1,
     minWidth: '46%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#E2E8F0',

@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import teacherService, { asArray } from '../../../src/services/api/teacherService';
+import { GlassPanel } from '../../../src/components/ui';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
 
 interface Remark {
@@ -122,7 +123,8 @@ export default function TeacherRemarksView() {
   return (
     <View style={styles.container}>
       {/* Filters */}
-      <View style={styles.filtersContainer}>
+      <GlassPanel style={styles.filtersContainer} radius={TEACHER_RADIUS.lg} tone="light">
+        <View style={styles.filtersRow}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
           <TouchableOpacity
             style={[styles.filterChip, filterStudent === 'all' && styles.filterChipActive]}
@@ -166,7 +168,8 @@ export default function TeacherRemarksView() {
             </TouchableOpacity>
           ))}
         </ScrollView>
-      </View>
+        </View>
+      </GlassPanel>
 
       {/* Add Button */}
       <TouchableOpacity style={styles.addButton} onPress={() => setIsCreateModalOpen(true)} activeOpacity={0.85}>
@@ -186,7 +189,8 @@ export default function TeacherRemarksView() {
           </View>
         ) : (
           filteredRemarks.map((remark, index) => (
-            <Animated.View key={remark._id} entering={FadeInDown.duration(350).delay(Math.min(index * 60, 480))} style={styles.remarkCard}>
+            <Animated.View key={remark._id} entering={FadeInDown.duration(350).delay(Math.min(index * 60, 480))}>
+              <GlassPanel style={styles.remarkCard} radius={TEACHER_RADIUS.lg} tone="strong">
               <View style={styles.remarkHeader}>
                 <View style={styles.studentInfo}>
                   <View style={[styles.remarkIcon, remark.isPositive ? styles.remarkIconPositive : styles.remarkIconNegative]}>
@@ -223,6 +227,7 @@ export default function TeacherRemarksView() {
                   {new Date(remark.createdAt).toLocaleDateString()}
                 </Text>
               </View>
+              </GlassPanel>
             </Animated.View>
           ))
         )}
@@ -366,13 +371,14 @@ export default function TeacherRemarksView() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: TEACHER.bg,
+    // Transparent so AppBackground's artwork shows through.
+    backgroundColor: 'transparent',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: TEACHER.bg,
+    backgroundColor: 'transparent',
   },
   loadingText: {
     marginTop: 12,
@@ -381,10 +387,15 @@ const styles = StyleSheet.create({
   },
   filtersContainer: {
     ...glassCard,
+    // GlassPanel supplies the frosted fill.
+    backgroundColor: 'transparent',
     borderRadius: TEACHER_RADIUS.lg,
     padding: TEACHER_SPACING.lg,
     margin: TEACHER_SPACING.lg,
     marginBottom: 0,
+  },
+  // Child layout, kept inside GlassPanel's content wrapper.
+  filtersRow: {
     gap: 12,
   },
   filterScroll: {
@@ -455,6 +466,7 @@ const styles = StyleSheet.create({
   },
   remarkCard: {
     ...glassCard,
+    backgroundColor: 'transparent',
     borderRadius: TEACHER_RADIUS.lg,
     padding: TEACHER_SPACING.lg,
     marginBottom: TEACHER_SPACING.md,

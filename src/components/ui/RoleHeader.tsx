@@ -44,7 +44,12 @@ export default function RoleHeader({
       style={[styles.wrap, compact && styles.wrapCompact]}
     >
       <View style={styles.topRow}>
-        <Pressable style={styles.userBlock} onPress={onProfile}>
+        <Pressable
+          style={styles.userBlock}
+          onPress={onProfile}
+          accessibilityRole="button"
+          accessibilityLabel={`Open profile for ${userName}`}
+        >
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{initials}</Text>
           </View>
@@ -58,7 +63,13 @@ export default function RoleHeader({
         </Pressable>
         <View style={styles.actions}>
           {onMenu ? (
-            <Pressable style={styles.iconBtn} onPress={onMenu}>
+            <Pressable
+              style={styles.iconBtn}
+              onPress={onMenu}
+              hitSlop={2}
+              accessibilityRole="button"
+              accessibilityLabel="Open menu"
+            >
               <Ionicons name="menu" size={22} color={COLORS.textInverse} />
             </Pressable>
           ) : null}

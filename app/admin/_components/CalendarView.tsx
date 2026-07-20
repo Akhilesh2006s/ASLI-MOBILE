@@ -372,6 +372,8 @@ export default function CalendarView() {
             onPress={() =>
               setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))
             }
+            accessibilityRole="button"
+            accessibilityLabel="Previous month"
           >
             <Ionicons name="chevron-back" size={24} color={colors.text} />
           </AdminScalePressable>
@@ -382,6 +384,8 @@ export default function CalendarView() {
             onPress={() =>
               setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))
             }
+            accessibilityRole="button"
+            accessibilityLabel="Next month"
           >
             <Ionicons name="chevron-forward" size={24} color={colors.text} />
           </AdminScalePressable>

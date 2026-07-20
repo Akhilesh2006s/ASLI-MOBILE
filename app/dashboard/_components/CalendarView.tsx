@@ -7,6 +7,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { openContentPreview } from '../../../src/utils/openContentPreview';
 import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
 import { prepareLibraryContents } from '../../../src/lib/dedupe-library-content';
+import { GlassPanel } from '../../../src/components/ui';
 
 interface ContentItem {
   _id: string;
@@ -270,7 +271,7 @@ export default function CalendarView({ contents: propContents, onMarkAsDone, com
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {weeks.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="calendar-outline" size={64} color="#9ca3af" />
+          <Ionicons name="calendar-outline" size={64} color="#5B6779" />
           <Text style={styles.emptyText}>No scheduled content</Text>
           <Text style={styles.emptySubtext}>Content will appear here when scheduled</Text>
         </View>
@@ -280,7 +281,7 @@ export default function CalendarView({ contents: propContents, onMarkAsDone, com
           const isExpanded = expandedWeeks.has(weekKey);
 
           return (
-            <View key={weekKey} style={styles.weekCard}>
+            <GlassPanel key={weekKey} style={styles.weekCard} radius={12}>
               <TouchableOpacity
                 style={styles.weekHeader}
                 onPress={() => toggleWeek(weekKey)}
@@ -342,7 +343,7 @@ export default function CalendarView({ contents: propContents, onMarkAsDone, com
                           <Ionicons
                             name={isDone ? 'checkmark-circle' : 'ellipse-outline'}
                             size={24}
-                            color={isDone ? '#10b981' : '#9ca3af'}
+                            color={isDone ? '#10b981' : '#5B6779'}
                           />
                         </TouchableOpacity>
                       </TouchableOpacity>
@@ -350,7 +351,7 @@ export default function CalendarView({ contents: propContents, onMarkAsDone, com
                   })}
                 </View>
               )}
-            </View>
+            </GlassPanel>
           );
         })
       )}
@@ -461,7 +462,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   weekCard: {
-    backgroundColor: '#fff',
+    // Fill comes from GlassPanel's blur + tint, not a solid colour.
     borderRadius: 12,
     marginBottom: 12,
     shadowColor: '#000',
@@ -551,7 +552,7 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -611,7 +612,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   submitButton: {
-    backgroundColor: '#10b981',
+    backgroundColor: '#6d5bd0',
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',

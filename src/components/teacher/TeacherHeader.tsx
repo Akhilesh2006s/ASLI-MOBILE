@@ -127,18 +127,25 @@ export default function TeacherHeader({
     <View
       style={[
         styles.wrap,
+        glass && styles.wrapGlass,
         { paddingTop: Math.max(insets.top, TEACHER_SPACING.md) + TEACHER_SPACING.lg },
       ]}
     >
-      <LinearGradient
-        colors={[...TEACHER.headerGradient]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={styles.orbTop} />
-      <View style={styles.orbBottom} />
-      <Animated.View style={[styles.shimmerSweep, shimmerStyle]} />
+      {/* On glass the page artwork already supplies the colour and the orbs —
+          painting the gradient over it would hide the background entirely. */}
+      {glass ? null : (
+        <>
+          <LinearGradient
+            colors={[...TEACHER.headerGradient]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={styles.orbTop} />
+          <View style={styles.orbBottom} />
+          <Animated.View style={[styles.shimmerSweep, shimmerStyle]} />
+        </>
+      )}
 
       <View style={styles.row}>
         <View style={styles.textBlock}>
@@ -242,6 +249,13 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 24,
     borderBottomWidth: 1,
     borderBottomColor: '#38BDF8',
+  },
+  wrapGlass: {
+    // No card edge — the greeting should read as sitting directly on the page
+    // artwork, the way the compact bar's glass does.
+    borderBottomWidth: 0,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
   },
   orbTop: {
     position: 'absolute',

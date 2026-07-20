@@ -5,6 +5,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import teacherService from '../../../src/services/api/teacherService';
 import { TeacherShimmer } from '../../../src/components/teacher';
+import { GlassPanel } from '../../../src/components/ui';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, glassCard } from '../../../src/theme/teacher';
 
 export default function HomeworkCreatorView() {
@@ -102,7 +103,7 @@ export default function HomeworkCreatorView() {
       </Pressable>
 
       {showForm ? (
-        <View style={styles.form}>
+        <GlassPanel style={styles.form} radius={TEACHER_RADIUS.lg} tone="strong">
           <Text style={styles.label}>Title</Text>
           <TextInput style={styles.input} value={form.title} onChangeText={(t) => setForm((f) => ({ ...f, title: t }))} placeholderTextColor={TEACHER.textMuted} placeholder="Assignment title" />
           <Text style={styles.label}>Class</Text>
@@ -139,19 +140,21 @@ export default function HomeworkCreatorView() {
           <Pressable style={styles.saveBtn} onPress={submit}>
             <Text style={styles.saveBtnText}>Create Assignment</Text>
           </Pressable>
-        </View>
+        </GlassPanel>
       ) : null}
 
       {homework.map((hw, index) => (
-        <Animated.View key={hw.id} entering={FadeInDown.duration(350).delay(Math.min(index * 60, 480))} style={styles.card}>
-          <Text style={styles.cardTitle}>{hw.title}</Text>
-          <Text style={styles.cardMeta}>{hw.subject || 'General'} · Due {hw.dueDate || '—'}</Text>
-          <View style={styles.progressRow}>
-            <Ionicons name="people-outline" size={16} color={TEACHER.primaryLight} />
-            <Text style={styles.progressText}>
-              {hw.submitted}/{hw.total} submitted
-            </Text>
-          </View>
+        <Animated.View key={hw.id} entering={FadeInDown.duration(350).delay(Math.min(index * 60, 480))}>
+          <GlassPanel style={styles.card} radius={TEACHER_RADIUS.lg} tone="medium">
+            <Text style={styles.cardTitle}>{hw.title}</Text>
+            <Text style={styles.cardMeta}>{hw.subject || 'General'} · Due {hw.dueDate || '—'}</Text>
+            <View style={styles.progressRow}>
+              <Ionicons name="people-outline" size={16} color={TEACHER.primaryLight} />
+              <Text style={styles.progressText}>
+                {hw.submitted}/{hw.total} submitted
+              </Text>
+            </View>
+          </GlassPanel>
         </Animated.View>
       ))}
 
@@ -166,14 +169,15 @@ export default function HomeworkCreatorView() {
 }
 
 const styles = StyleSheet.create({
-  wrap: { paddingHorizontal: TEACHER_SPACING.lg, paddingBottom: 120, backgroundColor: TEACHER.bg },
+  // Transparent so AppBackground's artwork shows through.
+  wrap: { paddingHorizontal: TEACHER_SPACING.lg, paddingBottom: 120, backgroundColor: 'transparent' },
   addBtn: { borderRadius: TEACHER_RADIUS.md, overflow: 'hidden', marginBottom: TEACHER_SPACING.lg },
   addBtnGrad: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 14,
   },
   addBtnText: { color: TEACHER.textOnPrimary, fontWeight: '700' },
   form: {
-    ...glassCard, padding: TEACHER_SPACING.lg, marginBottom: TEACHER_SPACING.lg,
+    ...glassCard, backgroundColor: 'transparent', padding: TEACHER_SPACING.lg, marginBottom: TEACHER_SPACING.lg,
   },
   label: { fontSize: 12, fontWeight: '700', color: TEACHER.textMuted, marginBottom: 6, marginTop: 8 },
   input: {
@@ -206,7 +210,7 @@ const styles = StyleSheet.create({
   },
   saveBtnText: { color: TEACHER.textOnPrimary, fontWeight: '700' },
   card: {
-    ...glassCard, borderRadius: TEACHER_RADIUS.lg, padding: TEACHER_SPACING.lg, marginBottom: TEACHER_SPACING.sm,
+    ...glassCard, backgroundColor: 'transparent', borderRadius: TEACHER_RADIUS.lg, padding: TEACHER_SPACING.lg, marginBottom: TEACHER_SPACING.sm,
   },
   cardTitle: { fontSize: 16, fontWeight: '800', color: TEACHER.text },
   cardMeta: { fontSize: 12, color: TEACHER.textMuted, marginTop: 4 },

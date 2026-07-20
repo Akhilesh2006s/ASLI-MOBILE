@@ -1,5 +1,4 @@
 import { View, Text, StyleSheet, TouchableOpacity, type ViewStyle } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import type { ExamDayRole } from '../../lib/exam-calendar-entries';
 import {
@@ -12,7 +11,9 @@ import {
   getMaxAttemptsForExam,
   type StudentExamLike,
 } from '../../lib/student-exam-display';
-import { STUDENT_RADIUS } from '../../theme/student';
+import { STUDENT, STUDENT_RADIUS } from '../../theme/student';
+import { GLASS_ROW } from '../../theme/glass';
+import GlassPanel from '../ui/GlassPanel';
 
 type Props = {
   exam: StudentExamLike;
@@ -48,6 +49,7 @@ export default function StudentExamPreviewCard({
 }: Props) {
   const status = variant === 'upcoming' ? { status: 'upcoming' as const } : getExamStatus(exam);
   const scheme = getExamCardGradientScheme(colorIndex);
+  const accent = scheme.gradient[0] || STUDENT.primary;
   const classLabels = getExamClassLabels(exam, studentClassNumber);
   const maxAttempts = getMaxAttemptsForExam(exam);
   const questionCount = getHydratedQuestionCount(exam);
@@ -64,29 +66,31 @@ export default function StudentExamPreviewCard({
   }
   stats.push({
     icon: 'book-outline',
-    text: `${questionCount} questions • ${exam.totalMarks || 0} marks`,
+    text: `${questionCount} questions · ${exam.totalMarks || 0} marks`,
   });
   if (variant === 'upcoming' && exam.startDate && exam.endDate) {
     const start = new Date(exam.startDate);
     const end = new Date(exam.endDate);
     if (!Number.isNaN(start.getTime())) {
-      stats.push({ icon: 'calendar-outline', text: `Starts: ${start.toLocaleDateString()}` });
+      stats.push({ icon: 'calendar-outline', text: `Starts ${start.toLocaleDateString()}` });
     }
     if (!Number.isNaN(end.getTime())) {
-      stats.push({ icon: 'calendar-outline', text: `Ends: ${end.toLocaleDateString()}` });
+      stats.push({ icon: 'calendar-outline', text: `Ends ${end.toLocaleDateString()}` });
     }
   } else if (dateRange) {
     stats.push({ icon: 'calendar-outline', text: dateRange });
   }
-  stats.push({ icon: 'locate-outline', text: `Attempts: ${usedAttempts} / ${maxAttempts}` });
+  stats.push({ icon: 'locate-outline', text: `Attempts ${usedAttempts} / ${maxAttempts}` });
 
   return (
-    <LinearGradient
-      colors={scheme.gradient}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
+    <GlassPanel
+      tone="strong"
+      elevated
+      radius={18}
       style={[styles.card, focused && styles.cardFocused, style]}
+      contentStyle={styles.cardInner}
     >
+      <View style={[styles.accentBar, { backgroundColor: accent }]} />
       <Text style={styles.title}>{exam.title || 'Exam'}</Text>
       {exam.description ? (
         <Text style={styles.description} numberOfLines={2}>
@@ -95,8 +99,8 @@ export default function StudentExamPreviewCard({
       ) : null}
 
       <View style={styles.badgeRow}>
-        <View style={[styles.typeBadge, { backgroundColor: scheme.typeBadgeBg }]}>
-          <Text style={[styles.typeBadgeText, { color: scheme.typeBadgeText }]}>
+        <View style={[styles.typeBadge, { backgroundColor: `${accent}22`, borderColor: `${accent}44` }]}>
+          <Text style={[styles.typeBadgeText, { color: accent }]}>
             {(exam.examType || 'practice').toUpperCase()}
           </Text>
         </View>
@@ -107,26 +111,26 @@ export default function StudentExamPreviewCard({
         ))}
         {hasAttempted ? (
           <View style={styles.attemptedBadge}>
-            <Ionicons name="checkmark-circle" size={12} color="#fff" />
+            <Ionicons name="checkmark-circle" size={12} color={STUDENT.success} />
             <Text style={styles.attemptedBadgeText}>
-              {attemptsExhausted ? 'COMPLETED' : 'ATTEMPTED'}
+              {attemptsExhausted ? 'Completed' : 'Attempted'}
             </Text>
           </View>
         ) : dayRoleLabel ? (
-          <View style={[styles.statusPill, styles.dayRoleBadge]}>
+          <View style={styles.statusPill}>
             <Text style={styles.statusPillText}>{dayRoleLabel}</Text>
           </View>
         ) : status.status === 'ended' ? (
           <View style={[styles.statusPill, styles.statusEnded]}>
-            <Text style={styles.statusPillText}>ENDED</Text>
+            <Text style={[styles.statusPillText, { color: '#fff' }]}>Ended</Text>
           </View>
         ) : isUpcoming ? (
           <View style={[styles.statusPill, styles.statusUpcoming]}>
-            <Text style={styles.statusPillText}>UPCOMING</Text>
+            <Text style={[styles.statusPillText, { color: '#fff' }]}>Upcoming</Text>
           </View>
         ) : (
           <View style={[styles.statusPill, styles.statusActive]}>
-            <Text style={styles.statusPillText}>ACTIVE</Text>
+            <Text style={[styles.statusPillText, { color: '#fff' }]}>Active</Text>
           </View>
         )}
       </View>
@@ -134,59 +138,75 @@ export default function StudentExamPreviewCard({
       <View style={styles.statsList}>
         {stats.map((stat, index) => (
           <View key={`${stat.icon}-${index}`} style={styles.statRow}>
-            <Ionicons name={stat.icon} size={14} color="#fff" />
+            <Ionicons name={stat.icon} size={14} color={STUDENT.textMuted} />
             <Text style={styles.statText}>{stat.text}</Text>
           </View>
         ))}
       </View>
 
       {canStart ? (
-        <TouchableOpacity style={styles.startButton} onPress={onStartPress} activeOpacity={0.85}>
-          <Ionicons name="play" size={16} color="#111827" />
-          <Text style={styles.startButtonText}>Start Exam</Text>
+        <TouchableOpacity
+          style={[styles.startButton, { backgroundColor: accent }]}
+          onPress={onStartPress}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel="Start exam"
+        >
+          <Ionicons name="play" size={16} color="#fff" />
+          <Text style={styles.startButtonText}>Start exam</Text>
         </TouchableOpacity>
       ) : variant === 'upcoming' ? (
         <View style={styles.upcomingButton}>
-          <Ionicons name="calendar-outline" size={16} color="#111827" />
-          <Text style={styles.upcomingButtonText}>Not Yet Available</Text>
+          <Ionicons name="calendar-outline" size={16} color={STUDENT.textMuted} />
+          <Text style={styles.upcomingButtonText}>Not yet available</Text>
         </View>
       ) : null}
       {hasAttempted && onViewInExams ? (
-        <TouchableOpacity style={styles.reviewRow} onPress={onViewInExams} activeOpacity={0.85}>
-          <Ionicons name="eye-outline" size={16} color="#fff" />
+        <TouchableOpacity
+          style={styles.reviewRow}
+          onPress={onViewInExams}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel="View in attempted exams"
+        >
+          <Ionicons name="eye-outline" size={16} color={STUDENT.primaryDark} />
           <Text style={styles.reviewText}>View in Attempted Exams</Text>
         </TouchableOpacity>
       ) : null}
-    </LinearGradient>
+    </GlassPanel>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
     width: '100%',
-    borderRadius: 16,
-    padding: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 4,
+  },
+  cardInner: {
+    padding: 16,
+    paddingLeft: 18,
   },
   cardFocused: {
     borderWidth: 2,
     borderColor: '#fbbf24',
   },
+  accentBar: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+  },
   title: {
     fontSize: 17,
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: '800',
+    color: STUDENT.text,
     lineHeight: 24,
     marginBottom: 4,
   },
   description: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.9)',
+    color: STUDENT.textSecondary,
     marginBottom: 8,
     lineHeight: 18,
   },
@@ -202,35 +222,37 @@ const styles = StyleSheet.create({
     borderRadius: STUDENT_RADIUS.md,
     paddingHorizontal: 10,
     paddingVertical: 5,
+    borderWidth: 1,
   },
   typeBadgeText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: 0.3,
   },
   classPill: {
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    backgroundColor: GLASS_ROW.fillStrong,
     borderRadius: STUDENT_RADIUS.full,
     paddingHorizontal: 10,
     paddingVertical: 4,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: GLASS_ROW.border,
   },
   classPillText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: '700',
+    color: STUDENT.text,
   },
   statusPill: {
     borderRadius: STUDENT_RADIUS.md,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.5)',
+    backgroundColor: GLASS_ROW.fill,
   },
   statusPillText: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: 0.3,
+    fontWeight: '800',
+    color: STUDENT.textSecondary,
+    letterSpacing: 0.2,
   },
   statusActive: {
     backgroundColor: '#0d9488',
@@ -241,9 +263,6 @@ const styles = StyleSheet.create({
   statusUpcoming: {
     backgroundColor: '#ca8a04',
   },
-  dayRoleBadge: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
-  },
   attemptedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -251,12 +270,12 @@ const styles = StyleSheet.create({
     borderRadius: STUDENT_RADIUS.full,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    backgroundColor: 'rgba(255,255,255,0.25)',
+    backgroundColor: 'rgba(5,150,105,0.14)',
   },
   attemptedBadgeText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '800',
-    color: '#fff',
+    color: STUDENT.success,
   },
   statsList: {
     gap: 8,
@@ -269,8 +288,8 @@ const styles = StyleSheet.create({
   },
   statText: {
     fontSize: 13,
-    color: '#fff',
-    fontWeight: '500',
+    color: STUDENT.textSecondary,
+    fontWeight: '600',
     flexShrink: 1,
   },
   startButton: {
@@ -278,29 +297,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderRadius: STUDENT_RADIUS.sm,
+    borderRadius: STUDENT_RADIUS.md,
     paddingVertical: 12,
   },
   startButtonText: {
-    color: '#111827',
+    color: '#fff',
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   upcomingButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderRadius: STUDENT_RADIUS.sm,
+    backgroundColor: GLASS_ROW.fill,
+    borderRadius: STUDENT_RADIUS.md,
     paddingVertical: 12,
-    opacity: 0.85,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: GLASS_ROW.border,
   },
   upcomingButtonText: {
-    color: '#111827',
+    color: STUDENT.textMuted,
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   reviewRow: {
     marginTop: 10,
@@ -310,7 +329,7 @@ const styles = StyleSheet.create({
   },
   reviewText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
+    fontWeight: '700',
+    color: STUDENT.primaryDark,
   },
 });

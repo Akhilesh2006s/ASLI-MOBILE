@@ -71,7 +71,12 @@ export default function VidyaAICornerButton({ onPress }: VidyaAICornerButtonProp
       </Animated.View>
 
       <Animated.View style={btnStyle}>
-        <AdminScalePressable onPress={onPress} scaleTo={0.9}>
+        <AdminScalePressable
+          onPress={onPress}
+          scaleTo={0.9}
+          accessibilityRole="button"
+          accessibilityLabel="Open Vidya AI assistant"
+        >
           <LinearGradient
             colors={[...colors.fabGradient]}
             style={[styles.imageButton, { borderRadius: radius.full }]}

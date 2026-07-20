@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useAnimatedProps } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -28,6 +27,8 @@ import {
   STUDENT_SPACING,
   STUDENT_TYPO,
 } from '../../../src/theme/student';
+import { GLASS_ROW, GLASS_VIOLET } from '../../../src/theme/glass';
+import GlassPanel from '../../../src/components/ui/GlassPanel';
 import {
   examMatchesStudentAssignedClass,
   getExamClassLabelsForStudent,
@@ -87,9 +88,9 @@ type ExamsViewProps = {
 };
 
 const ATTEMPTED_CARD_SCHEMES = EXAM_CARD_GRADIENT_SCHEMES.map((scheme) => ({
-  gradient: scheme.gradient,
-  typeBadgeBg: scheme.typeBadgeBg,
-  typeBadgeText: '#ffffff',
+  accent: scheme.gradient[0],
+  typeBadgeBg: `${scheme.gradient[0]}22`,
+  typeBadgeText: scheme.gradient[0],
 }));
 
 function CountUpText({
@@ -675,9 +676,23 @@ export default function ExamsView({
       nestedScrollEnabled
       keyboardShouldPersistTaps="handled"
     >
-      <View style={[styles.header, compact && { marginBottom: 14 }]}>
-        <Text style={[styles.headerTitle, compact && { fontSize: 26 }]}>Exams</Text>
-        <Text style={styles.headerSubtitle}>Take practice exams and track your progress</Text>
+      <GlassPanel
+        tone="strong"
+        elevated
+        colors={[...GLASS_VIOLET]}
+        radius={STUDENT_RADIUS.xxl}
+        style={[styles.header, compact && { marginBottom: 14 }]}
+        contentStyle={styles.headerInner}
+      >
+        <View style={styles.headerTop}>
+          <View style={styles.headerIcon}>
+            <Ionicons name="document-text-outline" size={22} color={STUDENT.primaryDark} />
+          </View>
+          <View style={styles.headerTextWrap}>
+            <Text style={[styles.headerTitle, compact && { fontSize: 24 }]}>Exams</Text>
+            <Text style={styles.headerSubtitle}>Practice papers, results, and rankings in one place.</Text>
+          </View>
+        </View>
         <View style={styles.filtersRow}>
           {studentClassNumber ? (
             <View style={styles.filterGroup}>
@@ -695,7 +710,7 @@ export default function ExamsView({
             onChange={setExamSubjectFilter}
           />
         </View>
-      </View>
+      </GlassPanel>
 
       <View style={styles.tabsContainer}>
         <ChipNav
@@ -718,11 +733,13 @@ export default function ExamsView({
             </View>
           ) : availableActiveExams.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons name="document-text-outline" size={64} color="#d1d5db" />
-              <Text style={styles.emptyStateTitle}>No Available Exams</Text>
-              <Text style={styles.emptyStateText}>
-                No active exams are available right now. Check Upcoming for scheduled exams.
-              </Text>
+              <GlassPanel tone="medium" radius={STUDENT_RADIUS.card} contentStyle={styles.emptyInner}>
+                <Ionicons name="document-text-outline" size={40} color={STUDENT.primary} />
+                <Text style={styles.emptyStateTitle}>No available exams</Text>
+                <Text style={styles.emptyStateText}>
+                  No active exams right now. Check Upcoming for scheduled papers.
+                </Text>
+              </GlassPanel>
             </View>
           ) : (
             <View style={[styles.examsList, availableGridLayout.isGrid && styles.examsListGrid]}>
@@ -761,9 +778,13 @@ export default function ExamsView({
             </View>
           ) : attemptedResultRows.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons name="checkmark-circle-outline" size={64} color="#d1d5db" />
-              <Text style={styles.emptyStateTitle}>No Attempted Exams</Text>
-              <Text style={styles.emptyStateText}>You haven't attempted any exams yet.</Text>
+              <GlassPanel tone="medium" radius={STUDENT_RADIUS.card} contentStyle={styles.emptyInner}>
+                <Ionicons name="checkmark-circle-outline" size={40} color={STUDENT.success} />
+                <Text style={styles.emptyStateTitle}>No attempted exams</Text>
+                <Text style={styles.emptyStateText}>
+                  Finish an available paper and your results will show up here.
+                </Text>
+              </GlassPanel>
             </View>
           ) : (
             <View
@@ -803,11 +824,11 @@ export default function ExamsView({
 
                 const isCalendarFocus = highlightedExamId === examIdStr;
                 return (
-                  <LinearGradient
+                  <GlassPanel
                     key={examIdStr}
-                    colors={scheme.gradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
+                    tone="strong"
+                    elevated
+                    radius={18}
                     style={[
                       styles.attemptedCard,
                       attemptedGridLayout.isGrid && styles.attemptedCardGridItem,
@@ -816,7 +837,9 @@ export default function ExamsView({
                         : null,
                       isCalendarFocus && styles.examCardFocused,
                     ]}
+                    contentStyle={styles.attemptedCardInner}
                   >
+                    <View style={[styles.attemptedAccentBar, { backgroundColor: scheme.accent }]} />
                     <View style={[styles.attemptedCardBody, attemptedGridLayout.isGrid && styles.attemptedCardBodyGrid]}>
                     <Text style={styles.attemptedCardTitle} numberOfLines={isTablet ? 3 : 2}>
                       {exam.title}
@@ -827,7 +850,15 @@ export default function ExamsView({
                       </Text>
                     ) : null}
                     <View style={styles.attemptedBadgeRow}>
-                      <View style={[styles.attemptedTypeBadge, { backgroundColor: scheme.typeBadgeBg }]}>
+                      <View
+                        style={[
+                          styles.attemptedTypeBadge,
+                          {
+                            backgroundColor: scheme.typeBadgeBg,
+                            borderColor: `${scheme.accent}44`,
+                          },
+                        ]}
+                      >
                         <Text style={[styles.attemptedTypeBadgeText, { color: scheme.typeBadgeText }]}>
                           {exam.examType.toUpperCase()}
                         </Text>
@@ -849,7 +880,7 @@ export default function ExamsView({
                           <Text style={styles.attemptPickerValue} numberOfLines={1}>
                             {formatAttemptHistoryLabel(displayResult, totalMarksDisplay)}
                           </Text>
-                          <Ionicons name="chevron-down" size={18} color="#111827" />
+                          <Ionicons name="chevron-down" size={18} color={STUDENT.textMuted} />
                         </TouchableOpacity>
                       </View>
                     ) : attemptedGridLayout.isGrid ? (
@@ -942,13 +973,13 @@ export default function ExamsView({
                         disabled={loadingExamResults}
                         onPress={() => void openAttemptedExamResults(exam, displayResult)}
                       >
-                        <Ionicons name="eye-outline" size={18} color="#111827" />
+                        <Ionicons name="eye-outline" size={18} color={STUDENT.primaryDark} />
                         <Text style={styles.attemptedDetailsButtonText} numberOfLines={1}>
                           View Details
                         </Text>
                       </TouchableOpacity>
                     </View>
-                  </LinearGradient>
+                  </GlassPanel>
                 );
               })}
             </View>
@@ -968,9 +999,13 @@ export default function ExamsView({
         <View style={styles.content}>
           {upcomingExams.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons name="calendar-outline" size={64} color="#d1d5db" />
-              <Text style={styles.emptyStateTitle}>No Upcoming Exams</Text>
-              <Text style={styles.emptyStateText}>No upcoming exams scheduled at the moment.</Text>
+              <GlassPanel tone="medium" radius={STUDENT_RADIUS.card} contentStyle={styles.emptyInner}>
+                <Ionicons name="calendar-outline" size={40} color={STUDENT.primary} />
+                <Text style={styles.emptyStateTitle}>No upcoming exams</Text>
+                <Text style={styles.emptyStateText}>
+                  Nothing scheduled yet — check Available when a paper goes live.
+                </Text>
+              </GlassPanel>
             </View>
           ) : (
             <View style={[styles.examsList, upcomingGridLayout.isGrid && styles.examsListGrid]}>
@@ -1098,7 +1133,8 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: STUDENT.bg,
+    // Transparent so the app background artwork shows through.
+    backgroundColor: 'transparent',
   },
   scrollContent: {
     paddingBottom: 110,
@@ -1110,14 +1146,39 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: STUDENT_SPACING.xl,
   },
+  headerInner: {
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+    gap: 4,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  headerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: GLASS_ROW.fillStrong,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: GLASS_ROW.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTextWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
   headerTitle: {
-    ...STUDENT_TYPO.hero,
-    fontSize: 30,
-    color: STUDENT.warning,
-    marginBottom: 4,
+    ...STUDENT_TYPO.section,
+    fontSize: 26,
+    color: STUDENT.text,
+    marginBottom: 2,
   },
   headerSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
+    lineHeight: 18,
     color: STUDENT.textSecondary,
   },
   filtersRow: {
@@ -1137,9 +1198,9 @@ const styles = StyleSheet.create({
   },
   classBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: STUDENT.accentSoft,
+    backgroundColor: GLASS_ROW.fillStrong,
     borderWidth: 1,
-    borderColor: '#c7d2fe',
+    borderColor: GLASS_ROW.border,
     borderRadius: STUDENT_RADIUS.full,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -1203,7 +1264,7 @@ const styles = StyleSheet.create({
   },
   calendarFocusUpcoming: {
     borderColor: '#fcd34d',
-    backgroundColor: '#fffbeb',
+    backgroundColor: 'rgba(255,251,235,0.55)',
   },
   calendarFocusLive: {
     borderColor: '#86efac',
@@ -1237,7 +1298,7 @@ const styles = StyleSheet.create({
     borderRadius: STUDENT_RADIUS.md,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
   },
   calendarFocusDismissText: {
     fontSize: 12,
@@ -1245,21 +1306,24 @@ const styles = StyleSheet.create({
     color: STUDENT.textSecondary,
   },
   attemptedCard: {
-    borderRadius: 16,
-    padding: 16,
-    gap: 14,
-    flexDirection: 'column',
+    width: '100%',
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 4,
+  },
+  attemptedCardInner: {
+    padding: 16,
+    paddingLeft: 18,
+    gap: 14,
+  },
+  attemptedAccentBar: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
   },
   attemptedCardGridItem: {
     alignSelf: 'stretch',
     flexGrow: 1,
-    justifyContent: 'space-between',
   },
   attemptedCardBody: {
     gap: 14,
@@ -1317,7 +1381,7 @@ const styles = StyleSheet.create({
   },
   attemptedCardDesc: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.92)',
+    color: STUDENT.textSecondary,
     lineHeight: 18,
   },
   attemptedBadgeRow: {
@@ -1329,6 +1393,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 5,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   attemptedTypeBadgeText: {
     fontSize: 11,
@@ -1336,7 +1401,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   attemptedClassBadge: {
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    backgroundColor: GLASS_ROW.fillStrong,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: GLASS_ROW.border,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -1347,21 +1414,26 @@ const styles = StyleSheet.create({
     color: STUDENT.text,
   },
   emptyState: {
+    marginTop: 12,
+  },
+  emptyInner: {
     alignItems: 'center',
-    padding: 40,
-    marginTop: 40,
+    paddingVertical: 36,
+    paddingHorizontal: 24,
+    gap: 8,
   },
   emptyStateTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: STUDENT.textMuted,
-    marginTop: 16,
-    marginBottom: 8,
+    fontSize: 17,
+    fontWeight: '800',
+    color: STUDENT.text,
+    marginTop: 8,
+    marginBottom: 4,
   },
   emptyStateText: {
     fontSize: 14,
-    color: STUDENT.navInactive,
+    color: STUDENT.textMuted,
     textAlign: 'center',
+    lineHeight: 20,
   },
   examsList: {
     width: '100%',
@@ -1463,7 +1535,9 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   attemptedScoreBox: {
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    backgroundColor: GLASS_ROW.fillStrong,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: GLASS_ROW.border,
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 14,
@@ -1544,7 +1618,9 @@ const styles = StyleSheet.create({
   },
   attemptedStatsRowTablet: {
     width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: GLASS_ROW.fill,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: GLASS_ROW.border,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -1555,7 +1631,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexShrink: 1,
     fontSize: 12,
-    color: '#fff',
+    color: STUDENT.textSecondary,
     fontWeight: '500',
     lineHeight: 16,
   },
@@ -1564,7 +1640,7 @@ const styles = StyleSheet.create({
     width: 64,
     fontSize: 14,
     fontWeight: '700',
-    color: '#fff',
+    color: STUDENT.text,
     textAlign: 'right',
     lineHeight: 18,
   },
@@ -1573,8 +1649,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 7,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.45)',
     flexShrink: 0,
   },
   attemptedGradeText: {
@@ -1587,7 +1661,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    backgroundColor: GLASS_ROW.fillStrong,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: GLASS_ROW.border,
     borderRadius: 10,
     paddingVertical: 12,
     paddingHorizontal: 12,
@@ -1621,17 +1697,17 @@ const styles = StyleSheet.create({
   attemptPickerLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#fff',
+    color: STUDENT.textSecondary,
   },
   attemptPickerTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 8,
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    backgroundColor: GLASS_ROW.fillStrong,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.5)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: GLASS_ROW.border,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
@@ -1647,7 +1723,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   attemptPickerSheet: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     paddingHorizontal: 16,
@@ -1671,7 +1747,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   attemptPickerOptionActive: {
-    backgroundColor: '#fff7ed',
+    backgroundColor: 'rgba(255,247,237,0.55)',
   },
   attemptPickerOptionText: {
     flex: 1,

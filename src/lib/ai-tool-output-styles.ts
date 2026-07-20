@@ -8,20 +8,20 @@ const PALETTE: Record<string, Partial<Record<number | string, string>>> = {
   gray: { 50: '#f9fafb', 100: '#f3f4f6', 200: '#e5e7eb', 300: '#d1d5db', 700: '#374151', 800: '#1f2937', 900: '#111827' },
   stone: { 200: '#e7e5e4', 400: '#a8a29e', 500: '#78716c', 700: '#44403c', 900: '#1c1917' },
   rose: {
-    50: '#eef2ff',
-    100: '#e0e7ff',
-    200: '#c7d2fe',
-    300: '#a5b4fc',
-    400: '#818cf8',
-    500: '#6366f1',
-    600: '#4f46e5',
-    700: '#4338ca',
-    800: '#3730a3',
-    900: '#312e81',
-    950: '#1e1b4b',
+    50: '#fff1f2',
+    100: '#ffe4e6',
+    200: '#fecdd3',
+    300: '#fda4af',
+    400: '#fb7185',
+    500: '#f43f5e',
+    600: '#e11d48',
+    700: '#be123c',
+    800: '#9f1239',
+    900: '#881337',
+    950: '#4c0519',
   },
-  red: { 600: '#4f46e5' },
   orange: { 50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 500: '#f97316', 600: '#ea580c', 800: '#9a3412', 900: '#7c2d12' },
+  red: { 50: '#fef2f2', 100: '#fee2e2', 200: '#fecaca', 500: '#ef4444', 600: '#dc2626', 800: '#991b1b', 900: '#7f1d1d' },
   amber: {
     50: '#fffbeb',
     100: '#fef3c7',
@@ -134,7 +134,11 @@ const GRADIENT_RULES = `
 .bg-gradient-to-br.from-white.to-rose-50\\/40{background:linear-gradient(to bottom right,#fff,rgba(238,242,255,.4))}
 .bg-gradient-to-r.from-rose-700.via-red-600.to-rose-800{background:linear-gradient(to right,#eef2ff,#fff,#e0e7ff)}
 .bg-gradient-to-r.from-blue-700.via-sky-600.to-indigo-600{background:linear-gradient(to right,#eff6ff,#fff,#eef2ff)}
-.bg-gradient-to-r.from-emerald-700.via-green-600.to-teal-600{background:linear-gradient(to right,#ecfdf5,#fff,#f0fdfa)}
+.bg-gradient-to-r.from-emerald-700.via-green-600.to-teal-600{background:linear-gradient(to right,#f5f3ff,#fff,#ecfeff)}
+.bg-gradient-to-br.from-white.to-emerald-50\\/30{background:linear-gradient(to bottom right,#fff,rgba(245,243,255,.35))}
+.ai-tool-section-card{backdrop-filter:saturate(1.2);-webkit-backdrop-filter:saturate(1.2)}
+.ai-tool-section-card>header{background:linear-gradient(90deg,rgba(255,255,255,.72),rgba(255,255,255,.38))}
+.ai-tool-q-card{transition:transform .15s ease}
 .bg-gradient-to-r.from-violet-700.via-purple-600.to-indigo-600{background:linear-gradient(to right,#f5f3ff,#fff,#eef2ff)}
 .bg-gradient-to-r.from-amber-700.via-orange-600.to-amber-600{background:linear-gradient(to right,#fffbeb,#fff,#fff7ed)}
 .bg-gradient-to-r.from-indigo-700.via-violet-600.to-cyan-600{background:linear-gradient(to right,#eef2ff,#fff,#ecfeff)}
@@ -153,8 +157,8 @@ const GRADIENT_RULES = `
 
 const BASE_RULES = `
 *,*::before,*::after{box-sizing:border-box}
-html,body{margin:0;padding:0;background:#fff;-webkit-text-size-adjust:100%}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#334155;line-height:1.6;font-size:17px;padding:10px 0 16px;background:linear-gradient(160deg,#f8faff 0%,#fff 52%,#fff7ed 140%)}
+html,body{margin:0;padding:0;background:#f7f9ff;-webkit-text-size-adjust:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#334155;line-height:1.6;font-size:17px;padding:12px 10px 18px;background:linear-gradient(165deg,#f4f7ff 0%,#fafbff 48%,#fff8f1 100%);border-radius:16px}
 .ai-tool-fallback-pre{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px;font-size:15px;line-height:1.6;color:#334155;overflow-x:auto}
 .ai-tool-empty-message{color:#64748b;font-size:15px;text-align:center;padding:24px 12px}
 img{max-width:100%;height:auto}

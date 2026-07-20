@@ -25,8 +25,10 @@ export default function SuperAdminHeader({ userName, subtitle, onMenu }: Props) 
     .slice(0, 2)
     .toUpperCase() || 'SA';
 
+  // `wrap` is transparent so the app artwork shows through the gradient's
+  // rounded bottom corners instead of an opaque square block.
   return (
-    <View style={[styles.wrap, { backgroundColor: colors.headerGradient[0] }]}>
+    <View style={styles.wrap}>
       <LinearGradient
         colors={[...colors.headerGradient]}
         start={{ x: 0, y: 0 }}

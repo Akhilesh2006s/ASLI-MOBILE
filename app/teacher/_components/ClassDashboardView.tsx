@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import teacherService from '../../../src/services/api/teacherService';
 import { TeacherShimmer } from '../../../src/components/teacher';
+import { GlassPanel } from '../../../src/components/ui';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../../src/theme/teacher';
 
 type AttendanceMap = Record<string, 'present' | 'absent'>;
@@ -112,7 +112,7 @@ export default function ClassDashboardView() {
       </ScrollView>
 
       {stats ? (
-        <LinearGradient colors={[...TEACHER.cardGradient]} style={styles.overview}>
+        <GlassPanel style={styles.overview} radius={TEACHER_RADIUS.card} tone="medium">
           <Text style={styles.overviewTitle}>{classLabel || 'Class Overview'}</Text>
           <View style={styles.statsRow}>
             <View style={styles.stat}>
@@ -132,7 +132,7 @@ export default function ClassDashboardView() {
               <Text style={styles.statLabel}>At Risk</Text>
             </View>
           </View>
-        </LinearGradient>
+        </GlassPanel>
       ) : null}
 
       <Text style={styles.sectionTitle}>Quick Attendance</Text>
@@ -141,18 +141,20 @@ export default function ClassDashboardView() {
         const name = student.fullName || student.name || 'Student';
         const status = attendance[id] || 'present';
         return (
-          <View key={id} style={styles.studentRow}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{name.charAt(0).toUpperCase()}</Text>
+          <GlassPanel key={id} style={styles.studentRow} radius={TEACHER_RADIUS.lg} tone="medium">
+            <View style={styles.studentRowBody}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{name.charAt(0).toUpperCase()}</Text>
+              </View>
+              <Text style={styles.studentName}>{name}</Text>
+              <Pressable
+                style={[styles.toggle, status === 'present' ? styles.togglePresent : styles.toggleAbsent]}
+                onPress={() => toggleAttendance(id)}
+              >
+                <Text style={styles.toggleText}>{status === 'present' ? 'Present' : 'Absent'}</Text>
+              </Pressable>
             </View>
-            <Text style={styles.studentName}>{name}</Text>
-            <Pressable
-              style={[styles.toggle, status === 'present' ? styles.togglePresent : styles.toggleAbsent]}
-              onPress={() => toggleAttendance(id)}
-            >
-              <Text style={styles.toggleText}>{status === 'present' ? 'Present' : 'Absent'}</Text>
-            </Pressable>
-          </View>
+          </GlassPanel>
         );
       })}
 
@@ -167,13 +169,15 @@ export default function ClassDashboardView() {
         <>
           <Text style={styles.sectionTitle}>Recent Activity</Text>
           {stats.recentActivity.map((act: any) => (
-            <View key={act._id || act.id} style={styles.activity}>
-              <Ionicons name="document-text-outline" size={18} color={TEACHER.primaryLight} />
-              <View style={styles.activityBody}>
-                <Text style={styles.activityTitle}>{act.title}</Text>
-                <Text style={styles.activityMeta}>{act.studentName}</Text>
+            <GlassPanel key={act._id || act.id} style={styles.activity} radius={TEACHER_RADIUS.lg} tone="medium">
+              <View style={styles.activityRow}>
+                <Ionicons name="document-text-outline" size={18} color={TEACHER.primaryLight} />
+                <View style={styles.activityBody}>
+                  <Text style={styles.activityTitle}>{act.title}</Text>
+                  <Text style={styles.activityMeta}>{act.studentName}</Text>
+                </View>
               </View>
-            </View>
+            </GlassPanel>
           ))}
         </>
       ) : null}
@@ -182,7 +186,8 @@ export default function ClassDashboardView() {
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: TEACHER.bg },
+  // Transparent so AppBackground's artwork shows through.
+  wrap: { flex: 1, backgroundColor: 'transparent' },
   content: { paddingHorizontal: TEACHER_SPACING.lg, paddingBottom: 120 },
   classRow: { gap: 8, marginBottom: TEACHER_SPACING.lg },
   classChip: {
@@ -216,14 +221,15 @@ const styles = StyleSheet.create({
     marginTop: TEACHER_SPACING.sm,
   },
   studentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: TEACHER.surface,
     borderRadius: TEACHER_RADIUS.lg,
     padding: TEACHER_SPACING.md,
     marginBottom: TEACHER_SPACING.sm,
     borderWidth: 1,
     borderColor: TEACHER.surfaceBorder,
+  },
+  studentRowBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: TEACHER_SPACING.md,
   },
   avatar: {
@@ -252,15 +258,16 @@ const styles = StyleSheet.create({
   },
   submitText: { color: TEACHER.textOnPrimary, fontWeight: '700' },
   activity: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: TEACHER_SPACING.md,
-    backgroundColor: TEACHER.surface,
     padding: TEACHER_SPACING.md,
     borderRadius: TEACHER_RADIUS.lg,
     marginBottom: TEACHER_SPACING.sm,
     borderWidth: 1,
     borderColor: TEACHER.surfaceBorder,
+  },
+  activityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: TEACHER_SPACING.md,
   },
   activityBody: { flex: 1 },
   activityTitle: { fontSize: 14, fontWeight: '700', color: TEACHER.text },

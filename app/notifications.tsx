@@ -6,7 +6,7 @@ import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { fetchStudentNotifications } from '../src/lib/student-notifications';
 import { useBackNavigation } from '../src/hooks/useBackNavigation';
-import { Badge, EmptyState, ErrorState, LoadingState, SectionHeader } from '../src/components/ui';
+import { Badge, EmptyState, ErrorState, GlassPanel, LoadingState, SectionHeader } from '../src/components/ui';
 import { COLORS, FONT, RADIUS, SHADOW, SPACING } from '../src/theme';
 
 type NotificationItem = {
@@ -94,13 +94,13 @@ export default function NotificationsScreen() {
             <View key={label}>
               <SectionHeader title={label} />
               {group.map((n) => (
-                <View key={n._id || n.id || n.title} style={styles.card}>
+                <GlassPanel key={n._id || n.id || n.title} style={styles.card} radius={RADIUS.lg} tone="strong">
                   <View style={styles.cardTop}>
                     <Text style={styles.cardTitle}>{n.title || 'Notification'}</Text>
                     <Badge label={n.type || 'system'} color={typeColor[n.type || 'system'] || COLORS.info} size="sm" />
                   </View>
                   <Text style={styles.cardBody}>{n.message || n.body || ''}</Text>
-                </View>
+                </GlassPanel>
               ))}
             </View>
           ))}
@@ -111,27 +111,27 @@ export default function NotificationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.bg },
+  // transparent so the app-wide pastel artwork shows through the glass surfaces
+  container: { flex: 1, backgroundColor: 'transparent' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md,
-    backgroundColor: COLORS.card,
+    backgroundColor: 'transparent',
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: 'rgba(255,255,255,0.55)',
   },
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: FONT.xl, fontWeight: FONT.bold, color: COLORS.text },
   content: { padding: SPACING.lg, paddingBottom: SPACING.xxxl },
   card: {
-    backgroundColor: COLORS.card,
     borderRadius: RADIUS.lg,
     padding: SPACING.lg,
     marginBottom: SPACING.md,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: 'rgba(255,255,255,0.65)',
     ...SHADOW.sm,
   },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.sm },

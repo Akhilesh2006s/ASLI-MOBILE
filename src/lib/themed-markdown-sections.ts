@@ -50,8 +50,6 @@ export function themedNumberedSectionCardHtml(opts: {
   premium?: boolean;
 }): string {
   const label = opts.sectionTitle.trim() || `Section ${opts.sectionNum}`;
-  const fullWidth =
-    opts.sectionNum === 5 || opts.sectionNum === 6 || opts.sectionNum === 10 ? ' ai-tool-section-full' : '';
 
   if (opts.premium && opts.toolType) {
     const meta = resolveStudentSectionMeta(opts.toolType, opts.sectionNum, label);
@@ -67,19 +65,24 @@ export function themedNumberedSectionCardHtml(opts: {
         labelClass: opts.labelClass,
         titleClass: opts.titleClass,
         body: opts.bodyHtml,
-      }).replace('ai-tool-section-card', `ai-tool-section-card${fullWidth}`);
+      });
     }
   }
 
-  return (
-    `<section class="mb-3 overflow-hidden rounded-xl border ${opts.border} ${opts.bg} shadow-sm ai-tool-section-card${fullWidth}">` +
-    `<header class="border-b border-slate-100/80 bg-white/60 px-3 py-2">` +
-    `<p class="text-[9px] font-bold uppercase tracking-wider ${opts.labelClass}">Section ${opts.sectionNum}</p>` +
-    `<h3 class="text-sm font-bold ${opts.titleClass}">${formatInlineMarkdown(label)}</h3>` +
-    `</header>` +
-    `<div class="px-3 py-2">${opts.bodyHtml}</div>` +
-    `</section>`
-  );
+  return sectionCardHtml({
+    sectionNum: `Section ${opts.sectionNum}`,
+    title: label,
+    stripe: opts.border.includes('border-')
+      ? opts.border.replace('/80', '').replace('-200', '-500')
+      : 'border-violet-500',
+    iconWrap: 'bg-violet-100 text-violet-800',
+    iconSvg: sectionIconSvg('sparkles'),
+    borderColor: opts.border,
+    bg: opts.bg,
+    labelClass: opts.labelClass,
+    titleClass: opts.titleClass,
+    body: opts.bodyHtml,
+  });
 }
 
 export function themedSection1TitleCardHtmlPremium(opts: {

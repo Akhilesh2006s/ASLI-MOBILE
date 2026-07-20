@@ -7,7 +7,6 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  Modal,
   Pressable,
   KeyboardAvoidingView,
   Platform,
@@ -36,6 +35,8 @@ import AiToolContentRenderer from '../../../src/components/ai-tools/AiToolConten
 import AiToolDownloadBar from '../../../src/components/ai-tools/AiToolDownloadBar';
 import AiToolParamsGrid from '../../../src/components/ai-tools/AiToolParamsGrid';
 import AiToolResultShell from '../../../src/components/ai-tools/AiToolResultShell';
+import AiToolOptionPicker from '../../../src/components/ai-tools/AiToolOptionPicker';
+import { GlassPanel, GlassSurface } from '../../../src/components/ui';
 import {
   aiToolTabletPageStyles,
   aiToolTabletStyles,
@@ -89,7 +90,8 @@ import {
   TEACHER_SPACING,
   TEACHER_TYPO,
 } from '../../../src/theme/teacher';
-import { AI, AI_HERO_GRADIENT, AI_RADIUS, AI_SHADOW, AI_SPACING, AI_TYPE } from '../../../src/theme/ai';
+import { AI, AI_RADIUS, AI_SHADOW, AI_SPACING, AI_TYPE } from '../../../src/theme/ai';
+import { GLASS_ROW } from '../../../src/theme/glass';
 
 function mergeSelectedIntoOptions(options: string[], selected: unknown): string[] {
   const v = typeof selected === 'string' ? selected.trim() : '';
@@ -166,7 +168,7 @@ function FormSection({
   tabletUi?: boolean;
 }) {
   return (
-    <View style={styles.sectionCard}>
+    <GlassPanel style={styles.sectionCard} radius={AI_RADIUS.lg} tone="strong" elevated>
       <View style={styles.sectionHeader}>
         <View style={[styles.sectionAccent, { backgroundColor: accent }]} />
         <View style={[styles.sectionHeaderText, tabletUi && aiToolTabletPageStyles.sectionHeaderText]}>
@@ -181,7 +183,7 @@ function FormSection({
         </View>
       </View>
       <View style={[styles.sectionBody, tabletUi && aiToolTabletPageStyles.sectionBody]}>{children}</View>
-    </View>
+    </GlassPanel>
   );
 }
 
@@ -198,12 +200,7 @@ function TeacherToolHeader({
 }) {
   return (
     <View style={[styles.header, tabletUi && styles.headerTablet]}>
-      <LinearGradient
-        colors={[...AI_HERO_GRADIENT]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+      <GlassSurface intensity={55} tone="strong" colors={['rgba(238,242,255,0.58)', 'rgba(255,255,255,0.28)']} />
       <Pressable
         onPress={onBack}
         style={styles.backBtn}
@@ -363,10 +360,22 @@ export default function TeacherToolPage() {
 
   const { curriculumFields, topicFields, extraFields } = useMemo(() => {
     if (!config) return { curriculumFields: [], topicFields: [], extraFields: [] };
+    const HIDDEN_EXTRA = new Set([
+      'questionCount',
+      'difficulty',
+      'duration',
+      'length',
+      'countMcq',
+      'countVsaq',
+      'countSaq',
+      'countLaq',
+      'countFib',
+    ]);
     const curriculum: TeacherToolFieldConfig[] = [];
     const topic: TeacherToolFieldConfig[] = [];
     const extra: TeacherToolFieldConfig[] = [];
     for (const field of config.fields) {
+      if (HIDDEN_EXTRA.has(field.name)) continue;
       if (field.name === 'gradeLevel' || field.name === 'subject') {
         curriculum.push(field);
       } else if (field.isNCERT || field.isCascadeSubtopic) {
@@ -393,7 +402,18 @@ export default function TeacherToolPage() {
         const curriculumBoard = resolveCurriculumBoardForAiTools(user);
         const defaultBoard = getDefaultAiToolBoard(exclusive, curriculumBoard);
         setSchoolBoardName(curriculumBoard);
+        const compositionDefaults =
+          toolType === 'worksheet-mcq-generator' || toolType === 'exam-question-paper-generator'
+            ? {
+                countMcq: '5',
+                countVsaq: '3',
+                countSaq: '3',
+                countLaq: '1',
+                countFib: '2',
+              }
+            : {};
         setFormParams((prev) => ({
+          ...compositionDefaults,
           ...prev,
           board: prev.board || defaultBoard,
         }));
@@ -960,7 +980,7 @@ export default function TeacherToolPage() {
             ) : null}
           </FormSection>
 
-          {topicFields.length > 0 ? (
+          {topicFields.length > 0 || extraFields.length > 0 ? (
             <FormSection
               title="Topic details"
               subtitle="Pick chapter and sub-topic from syllabus"
@@ -968,11 +988,6 @@ export default function TeacherToolPage() {
               tabletUi={isTablet}
             >
               {topicFields.map(renderField)}
-            </FormSection>
-          ) : null}
-
-          {extraFields.length > 0 ? (
-            <FormSection title="Options" subtitle="Customize your output" accent={accent} tabletUi={isTablet}>
               {extraFields.map(renderField)}
             </FormSection>
           ) : null}
@@ -994,6 +1009,7 @@ export default function TeacherToolPage() {
         toolName={config?.name || 'AI Tool'}
         toolDescription={config?.description}
         accent={accent}
+        variant="teacher"
         meta={{
           board: selectedBoard || formParams.board || '',
           classLabel: String(formParams.gradeLevel || ''),
@@ -1024,7 +1040,7 @@ export default function TeacherToolPage() {
                     })
                   }
                 >
-                  <Ionicons name="share-social-outline" size={18} color={AI.textSecondary} />
+                  <Ionicons name="share-social-outline" size={16} color={AI.textSecondary} />
                   <Text style={styles.actionBtnText}>Share</Text>
                 </Pressable>
                 <Pressable
@@ -1033,7 +1049,7 @@ export default function TeacherToolPage() {
                   accessibilityLabel="Regenerate content"
                   onPress={handleGenerate}
                 >
-                  <Ionicons name="refresh-outline" size={18} color="#FFFFFF" />
+                  <Ionicons name="refresh-outline" size={16} color="#FFFFFF" />
                   <Text style={styles.actionBtnPrimaryText}>Regenerate</Text>
                 </Pressable>
               </View>
@@ -1041,27 +1057,29 @@ export default function TeacherToolPage() {
           ) : null
         }
         empty={
-          <View style={styles.emptyResult}>
-            <Ionicons
-              name={fallbackEmptyMessage ? 'alert-circle-outline' : 'sparkles'}
-              size={28}
-              color={fallbackEmptyMessage ? '#dc2626' : TEACHER.navInactive}
-            />
-            <Text
-              style={[
-                styles.emptyResultTitle,
-                isTablet && aiToolTabletPageStyles.emptyResultTitle,
-                fallbackEmptyMessage ? styles.emptyResultTitleError : null,
-              ]}
-            >
-              {fallbackEmptyMessage || 'Fill in the form and generate to see your result'}
-            </Text>
-            {!fallbackEmptyMessage ? (
-              <Text style={[styles.emptyResultText, isTablet && aiToolTabletPageStyles.emptyResultText]}>
-                Choose tool parameters and tap Generate.
+          <GlassPanel style={styles.emptyResult} radius={TEACHER_RADIUS.lg} tone="light">
+            <View style={styles.emptyResultInner}>
+              <Ionicons
+                name={fallbackEmptyMessage ? 'alert-circle-outline' : 'sparkles'}
+                size={28}
+                color={fallbackEmptyMessage ? '#dc2626' : TEACHER.navInactive}
+              />
+              <Text
+                style={[
+                  styles.emptyResultTitle,
+                  isTablet && aiToolTabletPageStyles.emptyResultTitle,
+                  fallbackEmptyMessage ? styles.emptyResultTitleError : null,
+                ]}
+              >
+                {fallbackEmptyMessage || 'Fill in the form and generate to see your result'}
               </Text>
-            ) : null}
-          </View>
+              {!fallbackEmptyMessage ? (
+                <Text style={[styles.emptyResultText, isTablet && aiToolTabletPageStyles.emptyResultText]}>
+                  Choose tool parameters and tap Generate.
+                </Text>
+              ) : null}
+            </View>
+          </GlassPanel>
         }
       >
         {generatedContent ? (
@@ -1094,12 +1112,7 @@ export default function TeacherToolPage() {
       </Animated.View>
 
       <Animated.View style={[styles.compactHeader, compactHeaderAnimatedStyle]}>
-        <LinearGradient
-          colors={[...AI_HERO_GRADIENT]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
+        <GlassSurface intensity={50} tone="medium" />
         <View style={styles.compactHeaderRow}>
           <Pressable onPress={goBack} style={styles.backBtn} hitSlop={8}>
             <Ionicons name="arrow-back" size={22} color={TEACHER.text} />
@@ -1185,69 +1198,42 @@ export default function TeacherToolPage() {
         </View>
       </KeyboardAvoidingView>
 
-      <Modal
+      <AiToolOptionPicker
         visible={!!activeDropdown}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setActiveDropdown(null)}
-      >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setActiveDropdown(null)}
-          accessibilityViewIsModal
-        >
-          <Pressable style={styles.modalSheet} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>{activeDropdown?.title}</Text>
-            <ScrollView style={styles.modalList} keyboardShouldPersistTaps="handled">
-              {(activeDropdown?.options || []).map((option) => {
-                const selected = activeDropdown?.value === option;
-                return (
-                  <TouchableOpacity
-                    key={option}
-                    style={[styles.modalItem, selected && styles.modalItemSelected]}
-                    onPress={() => {
-                      if (activeDropdown) handleInputChange(activeDropdown.fieldName, option);
-                      setActiveDropdown(null);
-                    }}
-                  >
-                    <Text style={[styles.modalItemText, selected && styles.modalItemTextSelected]}>
-                      {option.charAt(0).toUpperCase() + option.slice(1)}
-                    </Text>
-                    {selected ? <Ionicons name="checkmark-circle" size={20} color={accent} /> : null}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-            <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setActiveDropdown(null)}>
-              <Text style={styles.modalCloseText}>Close</Text>
-            </TouchableOpacity>
-          </Pressable>
-        </Pressable>
-      </Modal>
+        title={activeDropdown?.title || ''}
+        options={activeDropdown?.options || []}
+        value={activeDropdown?.value}
+        accent={accent}
+        onClose={() => setActiveDropdown(null)}
+        onSelect={(option) => {
+          if (activeDropdown) handleInputChange(activeDropdown.fieldName, option);
+          setActiveDropdown(null);
+        }}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: AI.canvas },
+  // Transparent so AppBackground's artwork shows through.
+  container: { flex: 1, backgroundColor: 'transparent' },
   flex: { flex: 1 },
   outputSection: { alignSelf: 'stretch' },
   outputWrap: { width: '100%', minHeight: 240 },
   resultActionStack: { width: '100%', gap: AI_SPACING.sm },
   resultActions: { flexDirection: 'row', flexWrap: 'wrap', gap: AI_SPACING.sm },
   actionBtn: {
-    minHeight: 44,
+    minHeight: 40,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 7,
-    borderWidth: 1,
-    borderColor: AI.border,
-    backgroundColor: AI.surface,
-    borderRadius: AI_RADIUS.sm,
-    paddingHorizontal: 13,
-    paddingVertical: 10,
+    gap: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: GLASS_ROW.border,
+    backgroundColor: GLASS_ROW.fillStrong,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
   },
   actionBtnText: { ...AI_TYPE.caption, color: AI.textSecondary },
   actionBtnPrimary: { borderColor: AI.primary, backgroundColor: AI.primary },
@@ -1303,7 +1289,6 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { padding: AI_SPACING.lg, gap: AI_SPACING.md },
   sectionCard: {
-    backgroundColor: AI.surface,
     borderRadius: AI_RADIUS.lg,
     borderWidth: 1,
     borderColor: AI.border,
@@ -1371,7 +1356,7 @@ const styles = StyleSheet.create({
   },
   infoBannerText: { flex: 1, ...TEACHER_TYPO.caption, color: TEACHER.primaryLight, lineHeight: 18 },
   infoBannerWarning: {
-    backgroundColor: '#fffbeb',
+    backgroundColor: 'rgba(255,251,235,0.55)',
     borderColor: '#fcd34d',
   },
   infoBannerWarningText: { color: '#92400e' },
@@ -1385,15 +1370,17 @@ const styles = StyleSheet.create({
   generatingTitle: { fontSize: 16, fontWeight: '800', color: TEACHER.text },
   generatingText: { fontSize: 13, color: TEACHER.textMuted, textAlign: 'center' },
   emptyResult: {
-    alignItems: 'center',
-    justifyContent: 'center',
     paddingVertical: 36,
     paddingHorizontal: TEACHER_SPACING.xxl,
-    backgroundColor: TEACHER.surface,
     borderRadius: TEACHER_RADIUS.lg,
     borderWidth: 1,
     borderColor: TEACHER.surfaceBorder,
     borderStyle: 'dashed',
+  },
+  // Centering lives on an inner view because GlassPanel wraps its children.
+  emptyResultInner: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyResultTitle: {
     marginTop: TEACHER_SPACING.md,
@@ -1415,7 +1402,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: TEACHER_SPACING.lg,
     paddingTop: 10,
     paddingBottom: TEACHER_SPACING.md,
-    backgroundColor: AI.canvas,
+    // Transparent so AppBackground's artwork shows through.
+    backgroundColor: 'transparent',
     borderTopWidth: 1,
     borderTopColor: AI.border,
   },
@@ -1430,63 +1418,6 @@ const styles = StyleSheet.create({
     paddingVertical: AI_SPACING.md,
   },
   generateBtnText: { fontSize: 17, lineHeight: 22, fontWeight: '800', color: '#FFFFFF' },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.65)',
-    justifyContent: 'flex-end',
-  },
-  modalSheet: {
-    backgroundColor: AI.surface,
-    borderTopLeftRadius: AI_RADIUS.lg,
-    borderTopRightRadius: AI_RADIUS.lg,
-    maxHeight: '70%',
-    paddingBottom: TEACHER_SPACING.xl,
-    borderTopWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
-  },
-  modalHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: TEACHER_RADIUS.full,
-    backgroundColor: TEACHER.navInactive,
-    alignSelf: 'center',
-    marginTop: 10,
-    marginBottom: TEACHER_SPACING.md,
-  },
-  modalTitle: {
-    ...TEACHER_TYPO.section,
-    fontSize: 18,
-    color: TEACHER.text,
-    paddingHorizontal: TEACHER_SPACING.xl,
-    marginBottom: TEACHER_SPACING.sm,
-  },
-  modalList: { maxHeight: 360 },
-  modalItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: TEACHER_SPACING.xl,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: TEACHER.surfaceBorder,
-  },
-  modalItemSelected: { backgroundColor: TEACHER.surfaceHover },
-  modalItemText: {
-    fontSize: 16,
-    color: TEACHER.textSecondary,
-    flex: 1,
-    paddingRight: TEACHER_SPACING.md,
-  },
-  modalItemTextSelected: { fontWeight: '700', color: TEACHER.text },
-  modalCloseBtn: {
-    marginHorizontal: TEACHER_SPACING.xl,
-    marginTop: 10,
-    paddingVertical: 14,
-    borderRadius: TEACHER_RADIUS.md,
-    backgroundColor: TEACHER.surface,
-    alignItems: 'center',
-  },
-  modalCloseText: { ...TEACHER_TYPO.body, fontWeight: '700', color: TEACHER.textSecondary },
   errorContainer: {
     flex: 1,
     alignItems: 'center',
@@ -1497,7 +1428,7 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: TEACHER.surface,
+    backgroundColor: 'rgba(255,255,255,0.48)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: TEACHER_SPACING.lg,

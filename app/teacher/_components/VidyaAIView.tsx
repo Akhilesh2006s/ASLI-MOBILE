@@ -15,7 +15,7 @@ import {
 } from '../../../src/lib/teacher-ai-tools';
 import VidyaAvatar from '../../../src/components/vidya/VidyaAvatar';
 import AiToolCard from '../../../src/components/ai-tools/AiToolCard';
-import GlassSurface from '../../../src/components/ui/GlassSurface';
+import { GlassPanel } from '../../../src/components/ui';
 import { TEACHER_SPACING } from '../../../src/theme/teacher';
 import { AI, AI_RADIUS, AI_SPACING, AI_TYPE } from '../../../src/theme/ai';
 
@@ -90,16 +90,19 @@ export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: bool
           accessibilityLabel="Open Vidya AI Chat"
           accessibilityHint="Ask Vidya for classroom and teaching help"
         >
-          <Animated.View style={[styles.chatCard, chatPress.style]}>
-            <GlassSurface intensity={60} />
-            <VidyaAvatar size={48} borderColor="#93c5fd" />
-            <View style={styles.chatCardBody}>
-              <Text style={styles.chatCardTitle}>Vidya AI Chat</Text>
-              <Text style={styles.chatCardDesc}>
-                Ask about lessons, quizzes, classroom help, and teaching ideas
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={22} color={AI.primary} />
+          <Animated.View style={chatPress.style}>
+            <GlassPanel style={styles.chatCard} radius={AI_RADIUS.lg} tone="medium">
+              <View style={styles.chatCardRow}>
+                <VidyaAvatar size={48} borderColor="#93c5fd" />
+                <View style={styles.chatCardBody}>
+                  <Text style={styles.chatCardTitle}>Vidya AI Chat</Text>
+                  <Text style={styles.chatCardDesc}>
+                    Ask about lessons, quizzes, classroom help, and teaching ideas
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={22} color={AI.primary} />
+              </View>
+            </GlassPanel>
           </Animated.View>
         </Pressable>
         ) : null}
@@ -150,9 +153,6 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   chatCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: TEACHER_SPACING.md,
     marginHorizontal: TEACHER_SPACING.lg,
     marginTop: TEACHER_SPACING.lg,
     marginBottom: TEACHER_SPACING.sm,
@@ -167,6 +167,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 24,
     elevation: 5,
+  },
+  chatCardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: TEACHER_SPACING.md,
   },
   chatCardBody: {
     flex: 1,

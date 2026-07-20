@@ -30,7 +30,7 @@ export default function VidyaAIView() {
 
   if (loadingUser) {
     return (
-      <View style={[styles.loadingWrap, { backgroundColor: colors.bg }]}>
+      <View style={styles.loadingWrap}>
         <AdminSkeletonList count={3} />
         <Text style={[styles.loadingText, { color: colors.textMuted }]}>Loading Vidya AI...</Text>
       </View>
@@ -39,7 +39,7 @@ export default function VidyaAIView() {
 
   if (!adminId) {
     return (
-      <Animated.View entering={FadeIn.duration(400)} style={[styles.loadingWrap, { backgroundColor: colors.bg }]}>
+      <Animated.View entering={FadeIn.duration(400)} style={styles.loadingWrap}>
         <View style={[styles.emptyIcon, { backgroundColor: colors.primaryMuted }]}>
           <Ionicons name="chatbubbles-outline" size={40} color={colors.primary} />
         </View>
@@ -49,7 +49,7 @@ export default function VidyaAIView() {
   }
 
   return (
-    <View style={[styles.panelWrap, { backgroundColor: colors.bg }]}>
+    <View style={styles.panelWrap}>
       <AdminVidyaChatPanel adminId={adminId} adminName={adminName} />
     </View>
   );

@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import teacherService from '../../../src/services/api/teacherService';
 import { TeacherShimmer } from '../../../src/components/teacher';
+import { GlassPanel } from '../../../src/components/ui';
 import { sectionDisplayLabel } from '../../../src/lib/students-ui';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
 
@@ -272,11 +273,12 @@ export default function WorkDiaryView() {
         : entry.content;
 
     return (
-      <Pressable
-        key={id}
-        style={[styles.entry, highlighted && styles.entryHighlighted]}
-        onPress={() => setDetailEntry(entry)}
-      >
+      <Pressable key={id} onPress={() => setDetailEntry(entry)}>
+        <GlassPanel
+          style={[styles.entry, highlighted && styles.entryHighlighted]}
+          radius={TEACHER_RADIUS.md}
+          tone="strong"
+        >
         <View style={styles.entryHeader}>
           <View style={{ flex: 1 }}>
             <Text style={styles.entryDate}>{formatEntryDate(entry)}</Text>
@@ -293,6 +295,7 @@ export default function WorkDiaryView() {
           <Text style={styles.readMoreText}>Tap to read full entry</Text>
           <Ionicons name="chevron-forward" size={14} color={TEACHER.primaryLight} />
         </View>
+        </GlassPanel>
       </Pressable>
     );
   };
@@ -315,7 +318,7 @@ export default function WorkDiaryView() {
           </Text>
         </View>
       ) : (
-        <View style={styles.classListCard}>
+        <GlassPanel style={styles.classListCard} radius={TEACHER_RADIUS.lg} tone="light">
           {diaryClassGroups.map((group) => {
             const classExpanded = expandedClassNumbers.has(group.classNumber);
             return (
@@ -340,7 +343,12 @@ export default function WorkDiaryView() {
                     {group.sections.map((section) => {
                       const sectionExpanded = expandedSections.has(section.key);
                       return (
-                        <View key={section.key} style={styles.sectionBlock}>
+                        <GlassPanel
+                          key={section.key}
+                          style={styles.sectionBlock}
+                          radius={TEACHER_RADIUS.md}
+                          tone="light"
+                        >
                           <Pressable
                             style={[styles.sectionRow, sectionExpanded && styles.sectionRowActive]}
                             onPress={() => toggleSection(section.key)}
@@ -365,7 +373,7 @@ export default function WorkDiaryView() {
                               {section.entries.map((entry) => renderEntryCard(entry))}
                             </View>
                           ) : null}
-                        </View>
+                        </GlassPanel>
                       );
                     })}
                   </View>
@@ -373,13 +381,13 @@ export default function WorkDiaryView() {
               </View>
             );
           })}
-        </View>
+        </GlassPanel>
       )}
     </>
   );
 
   const renderAddForm = () => (
-    <View style={styles.panel}>
+    <GlassPanel style={styles.panel} radius={TEACHER_RADIUS.xl} tone="medium">
       <View style={styles.headerRow}>
         <View style={styles.headerIcon}>
           <Ionicons name="bookmark" size={20} color="#fff" />
@@ -442,7 +450,7 @@ export default function WorkDiaryView() {
           <Text style={styles.saveBtnText}>{saving ? 'Saving…' : 'Save entry'}</Text>
         </LinearGradient>
       </Pressable>
-    </View>
+    </GlassPanel>
   );
 
   if (loading) return <TeacherShimmer variant="list" count={4} />;
@@ -487,7 +495,8 @@ export default function WorkDiaryView() {
 
       <Modal visible={classPickerOpen} transparent animationType="fade">
         <Pressable style={styles.pickerOverlay} onPress={() => setClassPickerOpen(false)}>
-          <View style={styles.pickerSheet}>
+          {/* radius={0} so only the sheet's own top corners round. */}
+          <GlassPanel style={styles.pickerSheet} radius={0} tone="strong">
             <Text style={styles.pickerTitle}>Select class and section</Text>
             {classes.map((c) => {
               const id = String(c._id || c.id);
@@ -507,13 +516,13 @@ export default function WorkDiaryView() {
                 </Pressable>
               );
             })}
-          </View>
+          </GlassPanel>
         </Pressable>
       </Modal>
 
       <Modal visible={!!detailEntry} transparent animationType="slide">
         <View style={styles.detailOverlay}>
-          <View style={styles.detailCard}>
+          <GlassPanel style={styles.detailCard} radius={0} tone="strong">
             <View style={styles.detailHeader}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.detailDate}>{detailEntry ? formatEntryDate(detailEntry) : ''}</Text>
@@ -538,7 +547,7 @@ export default function WorkDiaryView() {
               <Ionicons name="trash-outline" size={16} color={TEACHER.danger} />
               <Text style={styles.detailDeleteText}>Delete entry</Text>
             </Pressable>
-          </View>
+          </GlassPanel>
         </View>
       </Modal>
     </ScrollView>
@@ -546,7 +555,8 @@ export default function WorkDiaryView() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: TEACHER.bg },
+  // Transparent so AppBackground's artwork shows through.
+  scroll: { flex: 1, backgroundColor: 'transparent' },
   scrollContent: { paddingHorizontal: TEACHER_SPACING.lg, paddingBottom: 120, gap: 14 },
   modeRow: { flexDirection: 'row', gap: 8 },
   modeChip: {
@@ -568,7 +578,8 @@ const styles = StyleSheet.create({
   },
   modeChipText: { fontSize: 12, fontWeight: '700', color: TEACHER.primaryLight },
   modeChipTextActive: { color: TEACHER.textOnPrimary },
-  panel: { ...glassCard, borderRadius: TEACHER_RADIUS.xl, padding: 16 },
+  // GlassPanel supplies the frosted fill on these former opaque cards.
+  panel: { ...glassCard, backgroundColor: 'transparent', borderRadius: TEACHER_RADIUS.xl, padding: 16 },
   headerRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
   headerIcon: {
     width: 44,
@@ -644,7 +655,6 @@ const styles = StyleSheet.create({
   entry: {
     borderRadius: TEACHER_RADIUS.md,
     padding: 14,
-    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: TEACHER.surfaceBorder,
   },
@@ -654,6 +664,7 @@ const styles = StyleSheet.create({
   },
   classListCard: {
     ...glassCard,
+    backgroundColor: 'transparent',
     borderRadius: TEACHER_RADIUS.lg,
     overflow: 'hidden',
   },
@@ -682,7 +693,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: TEACHER.surfaceBorder,
-    backgroundColor: '#FFFFFF',
   },
   sectionRow: {
     flexDirection: 'row',
@@ -690,7 +700,6 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 12,
     paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
   },
   sectionRowActive: { backgroundColor: TEACHER.navActiveBg },
   sectionRowLabel: { flex: 1, fontSize: 15, fontWeight: '700', color: TEACHER.text },
@@ -716,7 +725,6 @@ const styles = StyleSheet.create({
   readMoreText: { fontSize: 11, fontWeight: '600', color: TEACHER.primaryLight },
   pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'flex-end' },
   pickerSheet: {
-    backgroundColor: TEACHER.bg,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
@@ -731,7 +739,6 @@ const styles = StyleSheet.create({
   pickerItemTextActive: { fontWeight: '700', color: TEACHER.primaryLight },
   detailOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'flex-end' },
   detailCard: {
-    backgroundColor: TEACHER.bg,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,

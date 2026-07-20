@@ -24,6 +24,7 @@ import { API_BASE_URL } from '../../src/lib/api-config';
 import * as SecureStore from 'expo-secure-store';
 import { getDashboardPath } from '../../src/hooks/useBackNavigation';
 import ExamResultsView from '../../src/components/student/ExamResultsView';
+import { GlassPanel } from '../../src/components/ui';
 import { ExamAnalysisResult } from '../../src/lib/exam-analysis-helpers';
 import { normalizeAndFormatExamDisplayText } from '../../src/lib/exam-text-normalize';
 
@@ -651,7 +652,7 @@ export default function ExamPage() {
           </View>
         ) : null}
 
-        <View style={styles.navPanel}>
+        <GlassPanel style={styles.navPanel} radius={0} bordered={false}>
           <View style={styles.navPanelTop}>
             <Text style={styles.navPanelTitle}>Questions</Text>
             <Text style={styles.navPanelMeta}>
@@ -682,7 +683,7 @@ export default function ExamPage() {
               <Ionicons name="chevron-down" size={20} color="#6b7280" />
             </View>
           </TouchableOpacity>
-        </View>
+        </GlassPanel>
 
         <ScrollView
           style={styles.body}
@@ -706,7 +707,7 @@ export default function ExamPage() {
                   <Ionicons
                     name={flaggedQuestions.has(currentIndex) ? 'flag' : 'flag-outline'}
                     size={18}
-                    color={flaggedQuestions.has(currentIndex) ? '#ca8a04' : '#9ca3af'}
+                    color={flaggedQuestions.has(currentIndex) ? '#ca8a04' : '#5B6779'}
                   />
                 </TouchableOpacity>
                 {hasCurrentAnswer ? (
@@ -774,7 +775,8 @@ export default function ExamPage() {
           </View>
         </ScrollView>
 
-        <View style={styles.footer}>
+        <GlassPanel style={styles.footer} radius={0} bordered={false}>
+          <View style={styles.footerRow}>
           <TouchableOpacity
             style={[styles.navBtn, styles.prevBtn, currentIndex === 0 && styles.navBtnDisabled]}
             disabled={currentIndex === 0}
@@ -803,7 +805,8 @@ export default function ExamPage() {
               Next
             </Text>
           </TouchableOpacity>
-        </View>
+          </View>
+        </GlassPanel>
       </SafeAreaView>
 
       <Modal
@@ -961,8 +964,9 @@ export default function ExamPage() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#ffffff' },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff' },
+  // Transparent so the app background artwork shows through.
+  container: { flex: 1, backgroundColor: 'transparent' },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent' },
   loadingText: { marginTop: 12, color: '#6b7280', fontSize: 16 },
   gradingTitle: { marginTop: 16, fontSize: 18, fontWeight: '700', color: '#111827' },
   gradingHint: { marginTop: 8, fontSize: 14, color: '#6b7280', textAlign: 'center', paddingHorizontal: 32 },
@@ -981,7 +985,7 @@ const styles = StyleSheet.create({
   },
   headerSubmitText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   progressTrack: { height: 3, backgroundColor: 'rgba(255,255,255,0.35)', borderRadius: 2, marginTop: 12 },
-  progressFill: { height: '100%', backgroundColor: '#fff', borderRadius: 2 },
+  progressFill: { height: '100%', backgroundColor: 'rgba(255,255,255,0.48)', borderRadius: 2 },
   exitStrip: {
     backgroundColor: '#c2410c',
     paddingVertical: 7,
@@ -994,7 +998,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   exitAttemptsDanger: { color: '#fecaca' },
-  body: { flex: 1, backgroundColor: '#f3f4f6' },
+  body: { flex: 1, backgroundColor: 'transparent' },
   bodyContent: {
     paddingHorizontal: 16,
     paddingTop: 12,
@@ -1002,7 +1006,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   navPanel: {
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
     paddingTop: 10,
@@ -1029,7 +1032,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   questionDropdownLeft: { flex: 1, minWidth: 0 },
-  questionDropdownLabel: { fontSize: 11, fontWeight: '600', color: '#9ca3af', marginBottom: 2 },
+  questionDropdownLabel: { fontSize: 11, fontWeight: '600', color: '#5B6779', marginBottom: 2 },
   questionDropdownValue: { fontSize: 15, fontWeight: '800', color: '#111827' },
   questionDropdownRight: { flexDirection: 'row', alignItems: 'center', gap: 8, marginLeft: 8 },
   statusPill: {
@@ -1040,7 +1043,7 @@ const styles = StyleSheet.create({
   statusPillAnswered: { backgroundColor: '#dcfce7' },
   statusPillTextAnswered: { fontSize: 10, fontWeight: '700', color: '#166534' },
   questionCard: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#e5e7eb',
@@ -1063,7 +1066,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   questionNumberBadge: {
-    backgroundColor: '#fff7ed',
+    backgroundColor: 'rgba(255,247,237,0.55)',
     borderWidth: 1,
     borderColor: '#fed7aa',
     paddingHorizontal: 12,
@@ -1104,7 +1107,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9fafb',
   },
   option: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderWidth: 1,
     borderColor: '#e0e0e0',
     borderRadius: 16,
@@ -1112,11 +1115,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     marginBottom: 12,
   },
-  optionSelected: { borderColor: '#ea580c', backgroundColor: '#fff7ed' },
+  optionSelected: { borderColor: '#ea580c', backgroundColor: 'rgba(255,247,237,0.55)' },
   optionText: { fontSize: 16, color: '#111827' },
   optionTextSelected: { color: '#c2410c', fontWeight: '700' },
   integerInput: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderWidth: 1,
     borderColor: '#e0e0e0',
     borderRadius: 16,
@@ -1126,12 +1129,14 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 16,
-    backgroundColor: '#fff',
+  },
+  // Row layout lives on an inner view because GlassPanel wraps its children.
+  footerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     gap: 12,
   },
   navBtn: {
@@ -1160,7 +1165,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     borderColor: '#e5e7eb',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
   },
   palettePagerBtnActive: {
     backgroundColor: '#ea580c',
@@ -1180,7 +1185,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1.5,
     borderColor: '#e5e7eb',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -1222,7 +1227,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   dropdownSheet: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingBottom: 24,
@@ -1275,7 +1280,7 @@ const styles = StyleSheet.create({
   modalCard: {
     width: '100%',
     maxWidth: 400,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 16,
     borderWidth: 2,
     borderColor: '#fca5a5',

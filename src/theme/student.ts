@@ -1,33 +1,47 @@
-/** Student theme — premium scholar UI */
+/**
+ * Student theme — premium scholar UI.
+ *
+ * Violet-family, sitting on the shared pastel artwork (see AppBackground).
+ * Deliberately a step away from the teacher theme's indigo (#6366F1) so the two
+ * roles stay tellable apart, while staying in the same tonal family so they
+ * read as one product. Replaced the previous emerald palette, whose white-on-
+ * primary buttons only reached 2.54:1; this primary holds 5.17:1.
+ */
+import { GLASS_ROW, GLASS_VIOLET } from './glass';
+
 export const STUDENT = {
-  bg: '#f0fdf4',
-  bgAccent: '#ecfdf5',
-  surface: '#ffffff',
-  surfaceGlass: 'rgba(255,255,255,0.72)',
+  bg: '#f5f3ff',
+  bgAccent: '#ede9fe',
+  surface: 'rgba(255,255,255,0.48)',
+  surfaceGlass: GLASS_ROW.fillStrong,
+  glassSheen: GLASS_VIOLET,
   surfaceDark: '#0f172a',
-  surfaceElevated: '#ffffff',
-  surfaceBorder: '#e2e8f0',
-  surfaceHover: '#f8fafc',
-  primary: '#10b981',
-  primaryDark: '#047857',
-  primaryLight: '#34d399',
+  surfaceElevated: 'rgba(255,255,255,0.58)',
+  surfaceBorder: 'rgba(255,255,255,0.65)',
+  surfaceHover: 'rgba(255,255,255,0.36)',
+  primary: '#6d5bd0',
+  primaryDark: '#5443b8',
+  primaryLight: '#9b8ae6',
   accent: '#2563eb',
   accentSoft: '#dbeafe',
   warning: '#f59e0b',
   danger: '#ef4444',
-  success: '#10b981',
+  // Semantic success stays green — it encodes meaning, not brand.
+  success: '#059669',
   text: '#0f172a',
   textSecondary: '#475569',
-  textMuted: '#64748b',
+  // Darkened for legibility over the pastel page artwork (see AppBackground).
+  textMuted: '#5b6779',
   textOnPrimary: '#ffffff',
-  headerGradient: ['#006B44', '#00945C', '#00A669'] as const,
-  heroGradient: ['#006B44', '#008756', '#00A669'] as const,
-  cardGradient: ['#ecfdf5', '#f0fdf4'] as const,
+  headerGradient: ['#4C3BA6', '#5F4CC4', '#7C6BDA'] as const,
+  heroGradient: ['#4C3BA6', '#6D5BD0', '#8B7AE0'] as const,
+  cardGradient: ['#ede9fe', '#f5f3ff'] as const,
   tabBarBg: 'rgba(255,255,255,0.92)',
-  tabBarBorder: 'rgba(16,185,129,0.20)',
-  navInactive: '#94a3b8',
-  navActiveBg: '#d1fae5',
-  navActiveText: '#047857',
+  tabBarBorder: 'rgba(109,91,208,0.20)',
+  // Inactive tab labels sit at 9px on a translucent bar — #94a3b8 was unreadable.
+  navInactive: '#5b6779',
+  navActiveBg: '#e8e3fa',
+  navActiveText: '#5443b8',
   statGradients: {
     today: ['#f97316', '#fb923c'] as const,
     study: ['#2563eb', '#3b82f6'] as const,
@@ -39,7 +53,7 @@ export const STUDENT = {
   },
   shadow: {
     soft: {
-      shadowColor: '#10b981',
+      shadowColor: '#6d5bd0',
       shadowOffset: { width: 0, height: 8 },
       shadowOpacity: 0.1,
       shadowRadius: 24,
@@ -53,7 +67,7 @@ export const STUDENT = {
       elevation: 3,
     },
     md: {
-      shadowColor: '#047857',
+      shadowColor: '#5443b8',
       shadowOffset: { width: 0, height: 6 },
       shadowOpacity: 0.1,
       shadowRadius: 16,

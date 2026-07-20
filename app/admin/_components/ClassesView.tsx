@@ -1239,7 +1239,11 @@ export default function ClassesView() {
           <View style={[styles.modalContent, modalMaxWidth != null && { maxWidth: modalMaxWidth }]}>
             <View style={[styles.modalHeaderSky, { backgroundColor: colors.primary }]}>
               <Text style={styles.modalTitleWhite}>Add New Class</Text>
-              <TouchableOpacity onPress={() => setIsAddClassModalVisible(false)}>
+              <TouchableOpacity
+                onPress={() => setIsAddClassModalVisible(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Close add class form"
+              >
                 <Ionicons name="close" size={24} color="#fff" />
               </TouchableOpacity>
             </View>
@@ -1251,7 +1255,7 @@ export default function ClassesView() {
                   placeholder="e.g., 6, 7, 10"
                   value={newClass.classNumber}
                   onChangeText={(text) => setNewClass({ ...newClass, classNumber: text })}
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#5B6779"
                 />
               </View>
               <View style={styles.formGroup}>
@@ -1265,7 +1269,7 @@ export default function ClassesView() {
                   }
                   maxLength={1}
                   autoCapitalize="characters"
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#5B6779"
                 />
               </View>
               <View style={styles.formGroup}>
@@ -1277,7 +1281,7 @@ export default function ClassesView() {
                   onChangeText={(text) => setNewClass({ ...newClass, description: text })}
                   multiline
                   numberOfLines={3}
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#5B6779"
                 />
               </View>
             </ScrollView>
@@ -1404,7 +1408,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderWidth: 1,
     borderColor: '#e2e8f0',
     borderRadius: 12,
@@ -1616,7 +1620,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 2,
     borderColor: '#e5e7eb',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     marginBottom: 8,
   },
   subjectPickRowActive: { borderColor: '#4F46E5', backgroundColor: 'rgba(79, 70, 229, 0.08)' },
@@ -1680,7 +1684,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 2,
     borderColor: '#e5e7eb',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     marginBottom: 8,
     marginLeft: 8,
   },
@@ -1698,7 +1702,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   pickerSheet: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     padding: 16,
@@ -1723,7 +1727,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 16,
     overflow: 'hidden',
     maxHeight: '80%',

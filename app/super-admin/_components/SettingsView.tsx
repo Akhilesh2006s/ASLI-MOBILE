@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchCurrentUser } from '../../../src/lib/vidya-admin';
+import { GlassPanel } from '../../../src/components/ui';
 import type { SuperAdminView } from './SuperAdminNavDrawer';
 
 const VIDYA_PREFS_KEY = 'superAdminVidyaPrefs';
@@ -97,46 +98,52 @@ export default function SettingsView({ onNavigate, onLogout }: SettingsViewProps
         </Text>
       </View>
 
-      <View style={styles.profileCard}>
+      <GlassPanel style={styles.profileCard} radius={10} tone="medium">
+        <View style={styles.profileCardInner}>
         <View style={styles.profileAvatar}>
           <Ionicons name="person" size={22} color="#f97316" />
         </View>
         <View style={styles.profileText}>
           <Text style={styles.profileName}>{profile?.fullName || profile?.email || 'Super Admin'}</Text>
           <Text style={styles.profileEmail}>{profile?.email || '—'}</Text>
-          {profile?.role ? <Text style={styles.profileRole}>{profile.role}</Text> : null}
+            {profile?.role ? <Text style={styles.profileRole}>{profile.role}</Text> : null}
         </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Vidya AI preferences</Text>
-        <Text style={styles.sectionHint}>
-          Model choice and API credentials are configured on the server. Set tutor display preferences here.
-        </Text>
-        <Pressable style={styles.pickerRow} onPress={() => setDepthPickerOpen(true)}>
-          <Text style={styles.pickerLabel}>Default explanation depth</Text>
-          <Text style={styles.pickerValue}>{depthLabel}</Text>
-        </Pressable>
-        <TouchableOpacity style={styles.saveButton} onPress={saveVidyaPrefs}>
-          <Text style={styles.saveButtonText}>Save preferences</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Quick links</Text>
-        <View style={styles.linksGrid}>
-          {QUICK_LINKS.map((link) => (
-            <TouchableOpacity
-              key={link.view}
-              style={styles.linkButton}
-              onPress={() => onNavigate(link.view)}
-            >
-              <Ionicons name={link.icon} size={18} color="#374151" />
-              <Text style={styles.linkButtonText}>{link.label}</Text>
-            </TouchableOpacity>
-          ))}
         </View>
-      </View>
+      </GlassPanel>
+
+      <GlassPanel style={styles.section} radius={10} tone="medium">
+        <View style={styles.sectionInner}>
+          <Text style={styles.sectionTitle}>Vidya AI preferences</Text>
+          <Text style={styles.sectionHint}>
+            Model choice and API credentials are configured on the server. Set tutor display preferences here.
+          </Text>
+          <Pressable style={styles.pickerRow} onPress={() => setDepthPickerOpen(true)}>
+            <Text style={styles.pickerLabel}>Default explanation depth</Text>
+            <Text style={styles.pickerValue}>{depthLabel}</Text>
+          </Pressable>
+          <TouchableOpacity style={styles.saveButton} onPress={saveVidyaPrefs}>
+            <Text style={styles.saveButtonText}>Save preferences</Text>
+          </TouchableOpacity>
+        </View>
+      </GlassPanel>
+
+      <GlassPanel style={styles.section} radius={10} tone="medium">
+        <View style={styles.sectionInner}>
+          <Text style={styles.sectionTitle}>Quick links</Text>
+          <View style={styles.linksGrid}>
+            {QUICK_LINKS.map((link) => (
+              <TouchableOpacity
+                key={link.view}
+                style={styles.linkButton}
+                onPress={() => onNavigate(link.view)}
+              >
+                <Ionicons name={link.icon} size={18} color="#374151" />
+                <Text style={styles.linkButtonText}>{link.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </GlassPanel>
 
       <Text style={styles.envNote}>
         To change AI provider keys, JWT secrets, or database URLs, update the backend .env and redeploy.
@@ -180,22 +187,24 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 22, fontWeight: '800', color: '#111827', marginBottom: 6 },
   headerSubtitle: { fontSize: 14, color: '#6b7280', lineHeight: 20 },
   profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
     marginHorizontal: 16,
     marginBottom: 16,
-    padding: 14,
-    backgroundColor: '#fff',
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#e5e7eb',
+  },
+  // Row layout and padding move inside the frosted panel.
+  profileCardInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
   },
   profileAvatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#fff7ed',
+    backgroundColor: 'rgba(255,247,237,0.55)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -206,11 +215,13 @@ const styles = StyleSheet.create({
   section: {
     marginHorizontal: 16,
     marginBottom: 16,
-    padding: 14,
-    backgroundColor: '#fff',
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#e5e7eb',
+  },
+  // Padding moves inside the frosted panel.
+  sectionInner: {
+    padding: 14,
   },
   sectionTitle: { fontSize: 16, fontWeight: '800', color: '#111827', marginBottom: 6 },
   sectionHint: { fontSize: 12, color: '#6b7280', lineHeight: 18, marginBottom: 12 },
@@ -240,7 +251,7 @@ const styles = StyleSheet.create({
   linkButtonText: { fontSize: 14, fontWeight: '600', color: '#374151', flex: 1 },
   envNote: {
     fontSize: 12,
-    color: '#9ca3af',
+    color: '#5B6779',
     lineHeight: 18,
     marginHorizontal: 16,
     marginBottom: 16,
@@ -259,7 +270,7 @@ const styles = StyleSheet.create({
   },
   logoutText: { fontSize: 15, fontWeight: '700', color: '#ef4444' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16 },
+  modalSheet: { backgroundColor: 'rgba(255,255,255,0.48)', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16 },
   modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 12 },
   modalItem: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
   modalItemText: { fontSize: 15, color: '#111827' },

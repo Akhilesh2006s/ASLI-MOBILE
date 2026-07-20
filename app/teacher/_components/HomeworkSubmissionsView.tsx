@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import teacherService from '../../../src/services/api/teacherService';
 import { TeacherShimmer } from '../../../src/components/teacher';
+import { GlassPanel } from '../../../src/components/ui';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
 
 type HomeworkGroup = {
@@ -147,148 +148,154 @@ export default function HomeworkSubmissionsView() {
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-      <View style={styles.headerCard}>
-        <View style={styles.headerLeft}>
-          <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.headerIcon}>
-            <Ionicons name="document-text" size={22} color="#fff" />
-          </LinearGradient>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>Homework Submissions</Text>
-            <Text style={styles.headerSub}>View and manage student homework submissions</Text>
+      <GlassPanel style={styles.headerCard} radius={TEACHER_RADIUS.xl} tone="medium">
+        <View style={styles.headerCardInner}>
+          <View style={styles.headerLeft}>
+            <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.headerIcon}>
+              <Ionicons name="document-text" size={22} color="#fff" />
+            </LinearGradient>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.headerTitle}>Homework Submissions</Text>
+              <Text style={styles.headerSub}>View and manage student homework submissions</Text>
+            </View>
           </View>
+          <Pressable onPress={() => setShowCreate(true)}>
+            <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.createBtn}>
+              <Ionicons name="add" size={18} color="#fff" />
+              <Text style={styles.createBtnText}>Create Homework</Text>
+            </LinearGradient>
+          </Pressable>
         </View>
-        <Pressable onPress={() => setShowCreate(true)}>
-          <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.createBtn}>
-            <Ionicons name="add" size={18} color="#fff" />
-            <Text style={styles.createBtnText}>Create Homework</Text>
-          </LinearGradient>
-        </Pressable>
-      </View>
+      </GlassPanel>
 
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <Ionicons name="document-text" size={18} color={TEACHER.primaryLight} />
-          <Text style={styles.sectionTitle}>Homework Submissions</Text>
-        </View>
-        {groups.length === 0 ? (
-          <View style={styles.empty}>
-            <Ionicons name="document-text-outline" size={48} color={TEACHER.textMuted} />
-            <Text style={styles.emptyText}>No homework assignments found for your assigned subjects</Text>
+      <GlassPanel style={styles.sectionCard} radius={TEACHER_RADIUS.xl} tone="strong">
+        <View style={styles.sectionCardInner}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="document-text" size={18} color={TEACHER.primaryLight} />
+            <Text style={styles.sectionTitle}>Homework Submissions</Text>
           </View>
-        ) : (
-          groups.map((group) => {
-            const hw = group.homework;
-            const id = String(hw._id || hw.id);
-            const isOpen = expandedHw.has(id);
-            const deadline = hw.deadline ? new Date(hw.deadline) : null;
-            const overdue = deadline && deadline < new Date() && group.submissions.length === 0;
+          {groups.length === 0 ? (
+            <View style={styles.empty}>
+              <Ionicons name="document-text-outline" size={48} color={TEACHER.textMuted} />
+              <Text style={styles.emptyText}>No homework assignments found for your assigned subjects</Text>
+            </View>
+          ) : (
+            groups.map((group) => {
+              const hw = group.homework;
+              const id = String(hw._id || hw.id);
+              const isOpen = expandedHw.has(id);
+              const deadline = hw.deadline ? new Date(hw.deadline) : null;
+              const overdue = deadline && deadline < new Date() && group.submissions.length === 0;
 
-            return (
-              <View key={id} style={styles.hwCard}>
-                <Pressable
-                  style={[styles.hwHeader, overdue && styles.hwOverdue]}
-                  onPress={() => toggleHw(id)}
-                >
-                  <View style={{ flex: 1 }}>
-                    <View style={styles.hwTitleRow}>
-                      <Text style={styles.hwTitle}>{hw.title || 'Untitled Homework'}</Text>
-                      {overdue ? (
-                        <View style={styles.badgeRed}><Text style={styles.badgeRedText}>Overdue</Text></View>
-                      ) : deadline && deadline >= new Date() ? (
-                        <View style={styles.badgeYellow}><Text style={styles.badgeYellowText}>Active</Text></View>
+              return (
+                <GlassPanel key={id} style={styles.hwCard} radius={TEACHER_RADIUS.lg} tone="light">
+                  <Pressable
+                    style={[styles.hwHeader, overdue && styles.hwOverdue]}
+                    onPress={() => toggleHw(id)}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <View style={styles.hwTitleRow}>
+                        <Text style={styles.hwTitle}>{hw.title || 'Untitled Homework'}</Text>
+                        {overdue ? (
+                          <View style={styles.badgeRed}><Text style={styles.badgeRedText}>Overdue</Text></View>
+                        ) : deadline && deadline >= new Date() ? (
+                          <View style={styles.badgeYellow}><Text style={styles.badgeYellowText}>Active</Text></View>
+                        ) : null}
+                      </View>
+                      <Text style={styles.hwMeta}>
+                        Subject: {hw.subject?.name || hw.subject || 'N/A'}
+                        {hw.classNumber ? ` · Class: ${hw.classNumber}` : ''}
+                      </Text>
+                      {deadline ? (
+                        <Text style={[styles.deadline, overdue && { color: TEACHER.danger }]}>
+                          Deadline: {deadline.toLocaleDateString()}
+                        </Text>
                       ) : null}
                     </View>
-                    <Text style={styles.hwMeta}>
-                      Subject: {hw.subject?.name || hw.subject || 'N/A'}
-                      {hw.classNumber ? ` · Class: ${hw.classNumber}` : ''}
-                    </Text>
-                    {deadline ? (
-                      <Text style={[styles.deadline, overdue && { color: TEACHER.danger }]}>
-                        Deadline: {deadline.toLocaleDateString()}
-                      </Text>
-                    ) : null}
-                  </View>
-                  <Ionicons name={isOpen ? 'chevron-up' : 'chevron-down'} size={20} color={TEACHER.textMuted} />
-                </Pressable>
-                {isOpen ? (
-                  <View style={styles.subs}>
-                    {group.submissions.length === 0 ? (
-                      <Text style={styles.noSubs}>No submissions yet</Text>
-                    ) : (
-                      group.submissions.map((sub: any) => {
-                        const student = sub.student || sub.studentId || {};
-                        return (
-                          <View key={sub._id} style={styles.subRow}>
-                            <View style={{ flex: 1 }}>
-                              <Text style={styles.subName}>{student.fullName || student.name || 'Student'}</Text>
-                              <Text style={styles.subMeta}>{student.email || ''}</Text>
-                              {sub.submittedAt ? (
-                                <Text style={styles.subMeta}>Submitted {new Date(sub.submittedAt).toLocaleString()}</Text>
-                              ) : null}
+                    <Ionicons name={isOpen ? 'chevron-up' : 'chevron-down'} size={20} color={TEACHER.textMuted} />
+                  </Pressable>
+                  {isOpen ? (
+                    <View style={styles.subs}>
+                      {group.submissions.length === 0 ? (
+                        <Text style={styles.noSubs}>No submissions yet</Text>
+                      ) : (
+                        group.submissions.map((sub: any) => {
+                          const student = sub.student || sub.studentId || {};
+                          return (
+                            <View key={sub._id} style={styles.subRow}>
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.subName}>{student.fullName || student.name || 'Student'}</Text>
+                                <Text style={styles.subMeta}>{student.email || ''}</Text>
+                                {sub.submittedAt ? (
+                                  <Text style={styles.subMeta}>Submitted {new Date(sub.submittedAt).toLocaleString()}</Text>
+                                ) : null}
+                              </View>
+                              <Pressable style={styles.gradeBtn} onPress={() => {
+                                setGradeTarget(sub);
+                                setGrade(sub.grade != null ? String(sub.grade) : '');
+                                setFeedback(sub.feedback || '');
+                              }}>
+                                <Text style={styles.gradeBtnText}>Grade</Text>
+                              </Pressable>
                             </View>
-                            <Pressable style={styles.gradeBtn} onPress={() => {
-                              setGradeTarget(sub);
-                              setGrade(sub.grade != null ? String(sub.grade) : '');
-                              setFeedback(sub.feedback || '');
-                            }}>
-                              <Text style={styles.gradeBtnText}>Grade</Text>
-                            </Pressable>
-                          </View>
-                        );
-                      })
-                    )}
-                  </View>
-                ) : null}
-              </View>
-            );
-          })
-        )}
-      </View>
-
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <Ionicons name="people" size={18} color={TEACHER.primaryLight} />
-          <Text style={styles.sectionTitle}>Submissions by Students</Text>
+                          );
+                        })
+                      )}
+                    </View>
+                  ) : null}
+                </GlassPanel>
+              );
+            })
+          )}
         </View>
-        {classList.length === 0 ? (
-          <Text style={styles.emptyText}>No classes assigned yet.</Text>
-        ) : (
-          classList.map((classNum) => {
-            const open = expandedClasses.has(classNum);
-            const rows = studentRows.filter((row) => {
-              const cn = row.student?.classNumber || row.classNumber;
-              return String(cn) === classNum;
-            });
-            return (
-              <View key={classNum} style={styles.classBlock}>
-                <Pressable style={styles.classHeader} onPress={() => toggleClass(classNum)}>
-                  <Ionicons name={open ? 'chevron-down' : 'chevron-forward'} size={16} color={TEACHER.primaryLight} />
-                  <Text style={styles.classTitle}>{classNum}</Text>
-                  <Text style={styles.classCount}>{rows.length} student{rows.length !== 1 ? 's' : ''}</Text>
-                </Pressable>
-                {open ? (
-                  rows.map((row) => {
-                    const student = row.student || {};
-                    const subs = row.submissions || [];
-                    return (
-                      <View key={student._id || student.id || classNum} style={styles.studentSubBlock}>
-                        <Text style={styles.subName}>{student.fullName || student.name || 'Student'}</Text>
-                        <Text style={styles.subMeta}>{subs.length} submission{subs.length !== 1 ? 's' : ''}</Text>
-                        {subs.slice(0, 3).map((sub: any, i: number) => (
-                          <Text key={i} style={styles.subMeta}>
-                            {sub.homeworkId?.title || sub.title || 'Homework'}
-                            {sub.grade != null ? ` · Grade: ${sub.grade}%` : ''}
-                          </Text>
-                        ))}
-                      </View>
-                    );
-                  })
-                ) : null}
-              </View>
-            );
-          })
-        )}
-      </View>
+      </GlassPanel>
+
+      <GlassPanel style={styles.sectionCard} radius={TEACHER_RADIUS.xl} tone="strong">
+        <View style={styles.sectionCardInner}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="people" size={18} color={TEACHER.primaryLight} />
+            <Text style={styles.sectionTitle}>Submissions by Students</Text>
+          </View>
+          {classList.length === 0 ? (
+            <Text style={styles.emptyText}>No classes assigned yet.</Text>
+          ) : (
+            classList.map((classNum) => {
+              const open = expandedClasses.has(classNum);
+              const rows = studentRows.filter((row) => {
+                const cn = row.student?.classNumber || row.classNumber;
+                return String(cn) === classNum;
+              });
+              return (
+                <View key={classNum} style={styles.classBlock}>
+                  <Pressable style={styles.classHeader} onPress={() => toggleClass(classNum)}>
+                    <Ionicons name={open ? 'chevron-down' : 'chevron-forward'} size={16} color={TEACHER.primaryLight} />
+                    <Text style={styles.classTitle}>{classNum}</Text>
+                    <Text style={styles.classCount}>{rows.length} student{rows.length !== 1 ? 's' : ''}</Text>
+                  </Pressable>
+                  {open ? (
+                    rows.map((row) => {
+                      const student = row.student || {};
+                      const subs = row.submissions || [];
+                      return (
+                        <View key={student._id || student.id || classNum} style={styles.studentSubBlock}>
+                          <Text style={styles.subName}>{student.fullName || student.name || 'Student'}</Text>
+                          <Text style={styles.subMeta}>{subs.length} submission{subs.length !== 1 ? 's' : ''}</Text>
+                          {subs.slice(0, 3).map((sub: any, i: number) => (
+                            <Text key={i} style={styles.subMeta}>
+                              {sub.homeworkId?.title || sub.title || 'Homework'}
+                              {sub.grade != null ? ` · Grade: ${sub.grade}%` : ''}
+                            </Text>
+                          ))}
+                        </View>
+                      );
+                    })
+                  ) : null}
+                </View>
+              );
+            })
+          )}
+        </View>
+      </GlassPanel>
 
       <Modal visible={showCreate} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
@@ -360,22 +367,28 @@ export default function HomeworkSubmissionsView() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: TEACHER.bg },
+  // Transparent so AppBackground's artwork shows through.
+  scroll: { flex: 1, backgroundColor: 'transparent' },
   scrollContent: { paddingHorizontal: TEACHER_SPACING.lg, paddingBottom: 120, gap: 14 },
-  headerCard: { ...glassCard, borderRadius: TEACHER_RADIUS.xl, padding: 16, gap: 14 },
+  // GlassPanel wraps children in its own view, so the card's `gap` lives on
+  // an inner row instead of the panel itself.
+  headerCard: { ...glassCard, backgroundColor: 'transparent', borderRadius: TEACHER_RADIUS.xl, padding: 16 },
+  headerCardInner: { gap: 14 },
   headerLeft: { flexDirection: 'row', gap: 12, alignItems: 'center' },
   headerIcon: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { ...TEACHER_TYPO.section, fontSize: 20, color: TEACHER.primaryLight },
   headerSub: { fontSize: 13, color: TEACHER.textMuted, marginTop: 2 },
   createBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 12, borderRadius: 12 },
   createBtnText: { color: TEACHER.textOnPrimary, fontWeight: '700' },
-  sectionCard: { ...glassCard, borderRadius: TEACHER_RADIUS.xl, padding: 14, gap: 10 },
+  sectionCard: { ...glassCard, backgroundColor: 'transparent', borderRadius: TEACHER_RADIUS.xl, padding: 14 },
+  sectionCardInner: { gap: 10 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
   sectionTitle: { ...TEACHER_TYPO.section, fontSize: 17, color: TEACHER.text },
   empty: { alignItems: 'center', paddingVertical: 32 },
   emptyText: { color: TEACHER.textMuted, textAlign: 'center', marginTop: 8 },
   hwCard: { borderWidth: 1, borderColor: TEACHER.surfaceBorder, borderRadius: TEACHER_RADIUS.lg, overflow: 'hidden', marginBottom: 10 },
-  hwHeader: { flexDirection: 'row', alignItems: 'center', padding: 14, backgroundColor: TEACHER.surfaceElevated },
+  // No fill: the surrounding hwCard glass reads through this header row.
+  hwHeader: { flexDirection: 'row', alignItems: 'center', padding: 14 },
   hwOverdue: { borderLeftWidth: 4, borderLeftColor: TEACHER.danger },
   hwTitleRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
   hwTitle: { fontSize: 15, fontWeight: '700', color: TEACHER.text },

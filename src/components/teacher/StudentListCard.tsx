@@ -155,6 +155,8 @@ export default function StudentListCard({ student, onAddRemark }: Props) {
         onPressIn={press.onPressIn}
         onPressOut={press.onPressOut}
         style={styles.remarkBtnWrap}
+        accessibilityRole="button"
+        accessibilityLabel={`Add remark for ${student.name}`}
       >
         <Animated.View style={press.style}>
           <LinearGradient

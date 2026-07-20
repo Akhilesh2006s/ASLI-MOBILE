@@ -7,7 +7,6 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  Modal,
   Pressable,
   KeyboardAvoidingView,
   Platform,
@@ -57,11 +56,13 @@ import {
   useCurriculumCascade,
 } from '../../../src/hooks/useCurriculumCascade';
 import StudentScreenHeader from '../../../src/components/student/StudentScreenHeader';
+import { GlassPanel, GlassSurface } from '../../../src/components/ui';
 import AiToolContentRenderer from '../../../src/components/ai-tools/AiToolContentRenderer';
 import AiToolFieldIcon from '../../../src/components/ai-tools/AiToolFieldIcon';
 import AiToolParamsGrid from '../../../src/components/ai-tools/AiToolParamsGrid';
 import AiToolPremiumIcon from '../../../src/components/ai-tools/AiToolPremiumIcon';
 import AiToolResultShell from '../../../src/components/ai-tools/AiToolResultShell';
+import AiToolOptionPicker from '../../../src/components/ai-tools/AiToolOptionPicker';
 import AiGenerateIcon from '../../../src/components/ai-tools/AiGenerateIcon';
 import * as Clipboard from 'expo-clipboard';
 import { getAiToolIonicon } from '../../../src/lib/ai-tool-icons';
@@ -96,6 +97,7 @@ import {
   STUDENT_TYPO,
 } from '../../../src/theme/student';
 import { AI, AI_RADIUS, AI_SHADOW, AI_SPACING, AI_TYPE } from '../../../src/theme/ai';
+import { GLASS_ROW } from '../../../src/theme/glass';
 
 function mergeSelectedIntoOptions(options: string[], selected: unknown): string[] {
   const v = typeof selected === 'string' ? selected.trim() : '';
@@ -145,7 +147,7 @@ function FormSection({
   tabletUi?: boolean;
 }) {
   return (
-    <View style={styles.formCard}>
+    <GlassPanel style={styles.formCard} radius={AI_RADIUS.lg} tone="strong" elevated>
       <View style={styles.sectionHeader}>
         <View style={[styles.sectionAccent, { backgroundColor: accent }]} />
         <View style={[styles.sectionHeaderText, tabletUi && aiToolTabletPageStyles.sectionHeaderText]}>
@@ -160,7 +162,7 @@ function FormSection({
         </View>
       </View>
       <View style={[styles.sectionBody, tabletUi && aiToolTabletPageStyles.sectionBody]}>{children}</View>
-    </View>
+    </GlassPanel>
   );
 }
 
@@ -291,10 +293,22 @@ export default function StudentToolPage() {
 
   const { curriculumFields, topicFields, extraFields } = useMemo(() => {
     if (!config) return { curriculumFields: [], topicFields: [], extraFields: [] };
+    const HIDDEN_EXTRA = new Set([
+      'questionCount',
+      'difficulty',
+      'duration',
+      'length',
+      'countMcq',
+      'countVsaq',
+      'countSaq',
+      'countLaq',
+      'countFib',
+    ]);
     const curriculum: StudentToolFieldConfig[] = [];
     const topic: StudentToolFieldConfig[] = [];
     const extra: StudentToolFieldConfig[] = [];
     for (const field of config.fields) {
+      if (HIDDEN_EXTRA.has(field.name)) continue;
       if (field.name === 'gradeLevel' || field.name === 'subject') {
         curriculum.push(field);
       } else if (field.isNCERT || field.isCascadeSubtopic) {
@@ -935,7 +949,7 @@ export default function StudentToolPage() {
             ) : null}
           </FormSection>
 
-          {topicFields.length > 0 ? (
+          {topicFields.length > 0 || extraFields.length > 0 ? (
             <FormSection
               title="Topic details"
               subtitle="Pick chapter and sub-topic from syllabus"
@@ -943,11 +957,6 @@ export default function StudentToolPage() {
               tabletUi={isTablet}
             >
               {topicFields.map(renderField)}
-            </FormSection>
-          ) : null}
-
-          {extraFields.length > 0 ? (
-            <FormSection title="Options" subtitle="Customize your output" accent={accent} tabletUi={isTablet}>
               {extraFields.map(renderField)}
             </FormSection>
           ) : null}
@@ -969,6 +978,7 @@ export default function StudentToolPage() {
         toolName={config?.name || 'AI Tool'}
         toolDescription={config?.description}
         accent={accent}
+        variant="student"
         meta={{
           board: selectedBoard || formParams.board || '',
           classLabel: String(formParams.gradeLevel || assignedGradeLevel || ''),
@@ -1004,7 +1014,7 @@ export default function StudentToolPage() {
                   setTimeout(() => setCopied(false), 1800);
                 }}
               >
-                <Ionicons name={copied ? 'checkmark' : 'copy-outline'} size={18} color={AI.textSecondary} />
+                <Ionicons name={copied ? 'checkmark' : 'copy-outline'} size={16} color={AI.textSecondary} />
                 <Text style={styles.actionBtnText}>{copied ? 'Copied' : 'Copy'}</Text>
               </Pressable>
               <Pressable
@@ -1018,7 +1028,7 @@ export default function StudentToolPage() {
                   })
                 }
               >
-                <Ionicons name="share-social-outline" size={18} color={AI.textSecondary} />
+                <Ionicons name="share-social-outline" size={16} color={AI.textSecondary} />
                 <Text style={styles.actionBtnText}>Share</Text>
               </Pressable>
               <Pressable
@@ -1027,7 +1037,7 @@ export default function StudentToolPage() {
                 accessibilityLabel="Regenerate content"
                 onPress={handleGenerate}
               >
-                <Ionicons name="refresh-outline" size={18} color="#FFFFFF" />
+                <Ionicons name="refresh-outline" size={16} color="#FFFFFF" />
                 <Text style={styles.actionBtnPrimaryText}>Regenerate</Text>
               </Pressable>
             </View>
@@ -1093,12 +1103,7 @@ export default function StudentToolPage() {
       </Animated.View>
 
       <Animated.View style={[styles.compactHeader, compactHeaderAnimatedStyle]}>
-        <LinearGradient
-          colors={['#EEF2FF', '#FFFFFF', '#FFF7ED']}
-          style={StyleSheet.absoluteFill}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        />
+        <GlassSurface intensity={55} tone="medium" />
         <View style={styles.compactHeaderRow}>
           <Pressable
             style={styles.compactBackBtn}
@@ -1189,53 +1194,26 @@ export default function StudentToolPage() {
         </View>
       </KeyboardAvoidingView>
 
-      <Modal
+      <AiToolOptionPicker
         visible={!!activeDropdown}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setActiveDropdown(null)}
-      >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setActiveDropdown(null)}
-          accessibilityViewIsModal
-        >
-          <Pressable style={styles.modalSheet} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>{activeDropdown?.title}</Text>
-            <ScrollView style={styles.modalList} keyboardShouldPersistTaps="handled">
-              {(activeDropdown?.options || []).map((option) => {
-                const selected = activeDropdown?.value === option;
-                return (
-                <TouchableOpacity
-                    key={option}
-                    style={[styles.modalItem, selected && styles.modalItemSelected]}
-                    onPress={() => {
-                      if (activeDropdown) handleInputChange(activeDropdown.fieldName, option);
-                      setActiveDropdown(null);
-                    }}
-                  >
-                    <Text style={[styles.modalItemText, selected && styles.modalItemTextSelected]}>
-                      {option.charAt(0).toUpperCase() + option.slice(1)}
-                  </Text>
-                    {selected ? <Ionicons name="checkmark-circle" size={20} color={accent} /> : null}
-                </TouchableOpacity>
-                );
-              })}
-      </ScrollView>
-            <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setActiveDropdown(null)}>
-              <Text style={styles.modalCloseText}>Close</Text>
-            </TouchableOpacity>
-          </Pressable>
-        </Pressable>
-      </Modal>
+        title={activeDropdown?.title || ''}
+        options={activeDropdown?.options || []}
+        value={activeDropdown?.value}
+        accent={accent}
+        onClose={() => setActiveDropdown(null)}
+        onSelect={(option) => {
+          if (activeDropdown) handleInputChange(activeDropdown.fieldName, option);
+          setActiveDropdown(null);
+        }}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: AI.canvas },
-  containerPremium: { flex: 1, backgroundColor: AI.canvas },
+  // Transparent so the app background artwork shows through.
+  container: { flex: 1, backgroundColor: 'transparent' },
+  containerPremium: { flex: 1, backgroundColor: 'transparent' },
   flex: { flex: 1 },
   outputSection: { alignSelf: 'stretch' },
   outputWrap: { width: '100%', minHeight: 240 },
@@ -1246,17 +1224,17 @@ const styles = StyleSheet.create({
     gap: AI_SPACING.sm,
   },
   actionBtn: {
-    minHeight: 44,
+    minHeight: 40,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 7,
-    borderWidth: 1,
-    borderColor: AI.border,
-    backgroundColor: AI.surface,
-    borderRadius: AI_RADIUS.sm,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    gap: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: GLASS_ROW.border,
+    backgroundColor: GLASS_ROW.fillStrong,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
   },
   actionBtnText: {
     ...AI_TYPE.caption,
@@ -1266,10 +1244,10 @@ const styles = StyleSheet.create({
   actionBtnPrimaryText: { ...AI_TYPE.caption, color: '#FFFFFF' },
   citationsBox: {
     marginTop: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#dbeafe',
-    backgroundColor: 'rgba(239,246,255,0.7)',
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: GLASS_ROW.border,
+    backgroundColor: GLASS_ROW.fillSoft,
     padding: 8,
     maxHeight: 96,
   },
@@ -1300,7 +1278,6 @@ const styles = StyleSheet.create({
     borderRadius: AI_RADIUS.lg,
     borderWidth: 1,
     borderColor: AI.border,
-    backgroundColor: AI.surface,
     ...AI_SHADOW,
   },
   compactHeader: {
@@ -1396,7 +1373,7 @@ const styles = StyleSheet.create({
     borderRadius: STUDENT_RADIUS.md,
     borderWidth: 1,
     borderColor: STUDENT.surfaceBorder,
-    backgroundColor: STUDENT.surfaceHover,
+    backgroundColor: 'rgba(255,255,255,0.36)',
     paddingHorizontal: 14,
     ...AI_TYPE.body,
     color: AI.text,
@@ -1414,7 +1391,7 @@ const styles = StyleSheet.create({
   },
   infoBannerText: { flex: 1, ...STUDENT_TYPO.caption, color: STUDENT.accent, lineHeight: 18 },
   infoBannerWarning: {
-    backgroundColor: '#fffbeb',
+    backgroundColor: 'rgba(255,251,235,0.55)',
     borderColor: '#fcd34d',
   },
   infoBannerWarningText: { color: '#92400e' },
@@ -1428,7 +1405,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: STUDENT.surface,
+    backgroundColor: 'rgba(255,255,255,0.48)',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -1450,7 +1427,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: STUDENT_SPACING.lg,
     paddingTop: 10,
     paddingBottom: STUDENT_SPACING.md,
-    backgroundColor: AI.canvas,
+    // Transparent so the app background artwork shows through.
+    backgroundColor: 'transparent',
     borderTopWidth: 1,
     borderTopColor: AI.border,
   },
@@ -1465,56 +1443,6 @@ const styles = StyleSheet.create({
     paddingVertical: AI_SPACING.md,
   },
   generateBtnText: { fontSize: 17, lineHeight: 22, fontWeight: '800', color: '#FFFFFF' },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.45)',
-    justifyContent: 'flex-end',
-  },
-  modalSheet: {
-    backgroundColor: AI.surface,
-    borderTopLeftRadius: AI_RADIUS.lg,
-    borderTopRightRadius: AI_RADIUS.lg,
-    maxHeight: '70%',
-    paddingBottom: STUDENT_SPACING.xl,
-  },
-  modalHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: STUDENT_RADIUS.full,
-    backgroundColor: STUDENT.navInactive,
-    alignSelf: 'center',
-    marginTop: 10,
-    marginBottom: STUDENT_SPACING.md,
-  },
-  modalTitle: {
-    ...STUDENT_TYPO.section,
-    fontSize: 18,
-    color: STUDENT.text,
-    paddingHorizontal: STUDENT_SPACING.xl,
-    marginBottom: STUDENT_SPACING.sm,
-  },
-  modalList: { maxHeight: 360 },
-  modalItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: STUDENT_SPACING.xl,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: STUDENT.surfaceBorder,
-  },
-  modalItemSelected: { backgroundColor: STUDENT.surfaceHover },
-  modalItemText: { fontSize: 16, color: STUDENT.textSecondary, flex: 1, paddingRight: STUDENT_SPACING.md },
-  modalItemTextSelected: { fontWeight: '700', color: STUDENT.text },
-  modalCloseBtn: {
-    marginHorizontal: STUDENT_SPACING.xl,
-    marginTop: 10,
-    paddingVertical: 14,
-    borderRadius: STUDENT_RADIUS.md,
-    backgroundColor: STUDENT.bgAccent,
-    alignItems: 'center',
-  },
-  modalCloseText: { ...STUDENT_TYPO.body, fontWeight: '700', color: STUDENT.textSecondary },
   errorContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: STUDENT_SPACING.xxxl },
   errorIconWrap: {
     width: 88,

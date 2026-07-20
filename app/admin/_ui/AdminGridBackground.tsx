@@ -10,12 +10,12 @@ type Props = {
 };
 
 export default function AdminGridBackground({ cellSize = CELL }: Props) {
-  const { colors, isDark } = useAdminTheme();
+  const { isDark } = useAdminTheme();
   const { width, height } = Dimensions.get('window');
   const lineColor = isDark ? 'rgba(148, 163, 184, 0.1)' : 'rgba(203, 213, 225, 0.55)';
 
   return (
-    <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.bg }]} pointerEvents="none">
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
       <Svg width={width} height={height * 2} style={StyleSheet.absoluteFill}>
         <Defs>
           <Pattern id="adminGrid" width={cellSize} height={cellSize} patternUnits="userSpaceOnUse">

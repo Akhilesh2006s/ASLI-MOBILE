@@ -436,11 +436,11 @@ export default function AiToolTopicsView() {
 
       <View style={styles.toolbar}>
         <View style={styles.searchWrap}>
-          <Ionicons name="search" size={18} color="#9ca3af" />
+          <Ionicons name="search" size={18} color="#5B6779" />
           <TextInput
             style={styles.searchInput}
             placeholder="Search label / topic / sub topic"
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor="#5B6779"
             value={search}
             onChangeText={setSearch}
           />
@@ -760,7 +760,8 @@ export default function AiToolTopicsView() {
 }
 
 const styles = StyleSheet.create({
-  content: { flex: 1, backgroundColor: '#f8fafc' },
+  // Transparent: the shared app background artwork shows through.
+  content: { flex: 1, backgroundColor: 'transparent' },
   header: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
   headerTitle: { fontSize: 21, fontWeight: '800', color: '#111827' },
   headerSubtitle: { fontSize: 13, color: '#6b7280', marginTop: 4, lineHeight: 20 },
@@ -768,7 +769,7 @@ const styles = StyleSheet.create({
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 10,
     paddingHorizontal: 12,
     borderWidth: 1,
@@ -788,7 +789,7 @@ const styles = StyleSheet.create({
   addBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   hierarchyPanel: {
     marginHorizontal: 16,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#e2e8f0',
@@ -809,7 +810,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
   },
   boardTabActive: { borderColor: '#3b82f6', backgroundColor: '#eff6ff' },
   boardTabText: { fontSize: 13, fontWeight: '600', color: '#334155' },
@@ -820,7 +821,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 10,
     marginBottom: 10,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
   },
   hierarchyTitle: { fontSize: 13, fontWeight: '700', color: '#1e293b', marginBottom: 8 },
   hierarchyList: { maxHeight: 180 },
@@ -841,7 +842,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 10,
     marginBottom: 6,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
   },
   hierarchyItemActive: { borderColor: '#3b82f6', backgroundColor: '#eff6ff' },
   hierarchyItemText: { fontSize: 13, color: '#334155' },
@@ -856,7 +857,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: '#fffbeb',
+    backgroundColor: 'rgba(255,251,235,0.55)',
   },
   bulkBtnClassText: { fontSize: 12, fontWeight: '600', color: '#b45309' },
   bulkBtnSubject: {
@@ -875,7 +876,7 @@ const styles = StyleSheet.create({
   errorText: { color: '#dc2626', paddingHorizontal: 16, marginBottom: 8, fontSize: 13 },
   tableSection: {
     marginHorizontal: 16,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#e2e8f0',
@@ -895,7 +896,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#ea580c',
-    backgroundColor: '#fff7ed',
+    backgroundColor: 'rgba(255,247,237,0.55)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
@@ -911,10 +912,10 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
   },
   totalText: { fontSize: 12, color: '#64748b', paddingHorizontal: 16, paddingVertical: 12 },
-  dialog: { flex: 1, backgroundColor: '#fff' },
+  dialog: { flex: 1, backgroundColor: 'rgba(255,255,255,0.48)' },
   dialogHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -950,7 +951,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 14,
     color: '#0f172a',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     marginTop: 8,
   },
   dialogFooter: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 20, marginBottom: 24 },
@@ -971,7 +972,7 @@ const styles = StyleSheet.create({
   saveBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
   pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   pickerSheet: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     padding: 16,

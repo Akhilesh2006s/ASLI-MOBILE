@@ -10,5 +10,6 @@ export default function VidyaAIView() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, minHeight: 0, backgroundColor: '#f9fafb', paddingHorizontal: 16, paddingBottom: 8 },
+  // Transparent: the shared app background artwork shows through.
+  root: { flex: 1, minHeight: 0, backgroundColor: 'transparent', paddingHorizontal: 16, paddingBottom: 8 },
 });

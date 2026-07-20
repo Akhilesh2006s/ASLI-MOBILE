@@ -8,6 +8,7 @@ import { API_BASE_URL } from '../../src/lib/api-config';
 import * as SecureStore from 'expo-secure-store';
 import { useBackNavigation, getDashboardPath } from '../../src/hooks/useBackNavigation';
 import MathRenderer from '../../src/components/MathRenderer';
+import { GlassPanel } from '../../src/components/ui';
 
 interface Question {
   _id: string;
@@ -155,18 +156,20 @@ export default function QuizPage() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar style="dark" />
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#111827" />
-        </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Question {currentQuestionIndex + 1} of {questions.length}</Text>
-          <View style={styles.timerContainer}>
-            <Ionicons name="time" size={16} color="#f59e0b" />
-            <Text style={styles.timerText}>{formatTime(timeRemaining)}</Text>
+      <GlassPanel style={styles.header} radius={0} bordered={false}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#111827" />
+          </TouchableOpacity>
+          <View style={styles.headerContent}>
+            <Text style={styles.headerTitle}>Question {currentQuestionIndex + 1} of {questions.length}</Text>
+            <View style={styles.timerContainer}>
+              <Ionicons name="time" size={16} color="#f59e0b" />
+              <Text style={styles.timerText}>{formatTime(timeRemaining)}</Text>
+            </View>
           </View>
         </View>
-      </View>
+      </GlassPanel>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.questionCard}>
@@ -207,7 +210,7 @@ export default function QuizPage() {
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <GlassPanel style={styles.footer} radius={0} bordered={false}>
         <View style={styles.navigationButtons}>
           <TouchableOpacity
             style={[styles.navButton, currentQuestionIndex === 0 && styles.navButtonDisabled]}
@@ -238,15 +241,16 @@ export default function QuizPage() {
             </TouchableOpacity>
           )}
         </View>
-      </View>
+      </GlassPanel>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  // Transparent so the app background artwork shows through.
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: 'transparent',
   },
   loadingContainer: {
     flex: 1,
@@ -254,12 +258,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
     padding: 20,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
+  },
+  // Row layout lives on an inner view because GlassPanel wraps its children.
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   backButton: {
     marginRight: 16,
@@ -293,7 +299,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   questionCard: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     margin: 20,
     marginBottom: 16,
     borderRadius: 16,
@@ -318,7 +324,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   optionCard: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 12,
     padding: 16,
     borderWidth: 2,
@@ -367,7 +373,6 @@ const styles = StyleSheet.create({
   },
   footer: {
     padding: 20,
-    backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
   },
@@ -394,7 +399,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: '#10b981',
+    backgroundColor: '#6d5bd0',
     alignItems: 'center',
   },
   submitButtonDisabled: {

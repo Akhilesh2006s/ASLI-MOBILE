@@ -15,6 +15,7 @@ import { router } from 'expo-router';
 import teacherService from '../../../src/services/api/teacherService';
 import { TeacherShimmer, TimetableView } from '../../../src/components/teacher';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
+import { GlassPanel } from '../../../src/components/ui';
 import EduOTTView from './EduOTTView';
 import { EduOTTFilterProvider } from '../../../src/contexts/edu-ott-filter-context';
 import WorkDiaryView from './WorkDiaryView';
@@ -69,13 +70,15 @@ function useCountUp(target: number, duration = 900) {
 function StatTile({ tile, stats }: { tile: typeof STAT_TILES[number]; stats: Props['stats'] }) {
   const count = useCountUp(tile.value(stats));
   return (
-    <View style={styles.statTile}>
-      <LinearGradient colors={[tile.color + '40', tile.color + '18']} style={styles.statIconCircle}>
-        <Ionicons name={tile.icon} size={16} color={tile.color} />
-      </LinearGradient>
-      <Text style={styles.statNumber}>{count}</Text>
-      <Text style={styles.statLabel}>{tile.label}</Text>
-    </View>
+    <GlassPanel style={styles.statTile} radius={TEACHER_RADIUS.lg} tone="medium">
+      <View style={styles.statTileInner}>
+        <LinearGradient colors={[tile.color + '40', tile.color + '18']} style={styles.statIconCircle}>
+          <Ionicons name={tile.icon} size={16} color={tile.color} />
+        </LinearGradient>
+        <Text style={styles.statNumber}>{count}</Text>
+        <Text style={styles.statLabel}>{tile.label}</Text>
+      </View>
+    </GlassPanel>
   );
 }
 
@@ -92,15 +95,19 @@ function MenuRow({
   return (
     <Animated.View entering={FadeInDown.duration(350).delay(Math.min(index * 60, 440))}>
       <Pressable onPress={onPress} onPressIn={press.onPressIn} onPressOut={press.onPressOut}>
-        <Animated.View style={[styles.menuItem, press.style]}>
-          <LinearGradient
-            colors={[TEACHER.primary + '28', TEACHER.primaryDark + '18']}
-            style={styles.menuIconBadge}
-          >
-            <Ionicons name={item.icon} size={18} color={TEACHER.primaryLight} />
-          </LinearGradient>
-          <Text style={styles.menuLabel}>{item.label}</Text>
-          <Ionicons name="chevron-forward" size={18} color={TEACHER.textMuted} />
+        <Animated.View style={press.style}>
+          <GlassPanel style={styles.menuItem} radius={TEACHER_RADIUS.lg} tone="medium">
+            <View style={styles.menuItemRow}>
+              <LinearGradient
+                colors={[TEACHER.primary + '28', TEACHER.primaryDark + '18']}
+                style={styles.menuIconBadge}
+              >
+                <Ionicons name={item.icon} size={18} color={TEACHER.primaryLight} />
+              </LinearGradient>
+              <Text style={styles.menuLabel}>{item.label}</Text>
+              <Ionicons name="chevron-forward" size={18} color={TEACHER.textMuted} />
+            </View>
+          </GlassPanel>
         </Animated.View>
       </Pressable>
     </Animated.View>
@@ -149,9 +156,13 @@ export default function ProfileView({ user, stats, onNavigate, onLogout }: Props
   if (subView === 'eduott') {
     return (
       <View style={styles.full}>
-        <Pressable style={styles.backRow} onPress={() => setSubView('menu')}>
-          <Ionicons name="arrow-back" size={20} color={TEACHER.primaryLight} />
-          <Text style={styles.backText}>Back to Profile</Text>
+        <Pressable onPress={() => setSubView('menu')}>
+          <GlassPanel style={styles.backRow} radius={TEACHER_RADIUS.lg} tone="medium">
+            <View style={styles.backRowInner}>
+              <Ionicons name="arrow-back" size={20} color={TEACHER.primaryLight} />
+              <Text style={styles.backText}>Back to Profile</Text>
+            </View>
+          </GlassPanel>
         </Pressable>
         <EduOTTFilterProvider>
           <EduOTTView username={user?.fullName || 'Teacher'} />
@@ -163,21 +174,25 @@ export default function ProfileView({ user, stats, onNavigate, onLogout }: Props
   if (subView === 'calendar') {
     return (
       <ScrollView style={styles.full} contentContainerStyle={styles.scrollPad}>
-        <Pressable style={styles.backRow} onPress={() => setSubView('menu')}>
-          <Ionicons name="arrow-back" size={20} color={TEACHER.primaryLight} />
-          <Text style={styles.backText}>Back to Profile</Text>
+        <Pressable onPress={() => setSubView('menu')}>
+          <GlassPanel style={styles.backRow} radius={TEACHER_RADIUS.lg} tone="medium">
+            <View style={styles.backRowInner}>
+              <Ionicons name="arrow-back" size={20} color={TEACHER.primaryLight} />
+              <Text style={styles.backText}>Back to Profile</Text>
+            </View>
+          </GlassPanel>
         </Pressable>
         {loadingEvents ? (
           <TeacherShimmer variant="list" count={3} />
         ) : events.length ? (
           events.map((ev, i) => (
             <Animated.View key={ev._id || i} entering={FadeInDown.duration(320).delay(Math.min(i * 55, 440))}>
-              <View style={styles.eventCard}>
+              <GlassPanel style={styles.eventCard} radius={TEACHER_RADIUS.lg} tone="medium">
                 <Text style={styles.eventTitle}>{ev.title || ev.name || 'Event'}</Text>
                 <Text style={styles.eventMeta}>
                   {ev.date ? new Date(ev.date).toLocaleDateString() : ev.startDate || '—'} · {ev.type || 'Event'}
                 </Text>
-              </View>
+              </GlassPanel>
             </Animated.View>
           ))
         ) : (
@@ -242,7 +257,8 @@ export default function ProfileView({ user, stats, onNavigate, onLogout }: Props
 }
 
 const styles = StyleSheet.create({
-  full: { flex: 1, backgroundColor: TEACHER.bg },
+  // Transparent so AppBackground's artwork shows through.
+  full: { flex: 1, backgroundColor: 'transparent' },
   scrollPad: { paddingHorizontal: TEACHER_SPACING.lg, paddingBottom: 120, paddingTop: TEACHER_SPACING.sm },
   heroCard: {
     alignItems: 'center',
@@ -276,8 +292,11 @@ const styles = StyleSheet.create({
   },
   statTile: {
     ...glassCard,
+    backgroundColor: 'transparent',
     flex: 1,
     padding: TEACHER_SPACING.md,
+  },
+  statTileInner: {
     alignItems: 'center',
     gap: 4,
   },
@@ -297,12 +316,15 @@ const styles = StyleSheet.create({
     marginBottom: TEACHER_SPACING.sm,
   },
   menuItem: {
+    ...glassCard,
+    backgroundColor: 'transparent',
+    padding: TEACHER_SPACING.lg,
+    marginBottom: TEACHER_SPACING.sm,
+  },
+  menuItemRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: TEACHER_SPACING.md,
-    ...glassCard,
-    padding: TEACHER_SPACING.lg,
-    marginBottom: TEACHER_SPACING.sm,
   },
   menuIconBadge: {
     width: 36,
@@ -325,18 +347,21 @@ const styles = StyleSheet.create({
   },
   logoutText: { fontSize: 15, fontWeight: '700', color: TEACHER.danger },
   backRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
     marginHorizontal: TEACHER_SPACING.lg,
     marginBottom: TEACHER_SPACING.sm,
     padding: TEACHER_SPACING.md,
     ...glassCard,
-    backgroundColor: TEACHER.surface,
+    backgroundColor: 'transparent',
+  },
+  backRowInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   backText: { color: TEACHER.text, fontWeight: '700' },
   eventCard: {
     ...glassCard,
+    backgroundColor: 'transparent',
     padding: TEACHER_SPACING.lg,
     marginBottom: TEACHER_SPACING.sm,
   },

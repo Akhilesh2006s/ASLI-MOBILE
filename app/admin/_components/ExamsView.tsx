@@ -934,9 +934,9 @@ export default function ExamsView() {
       <View style={styles.innerShell} onLayout={onShellLayout}>
       <AdminGlassCard noAnimation style={{ marginBottom: spacing.sm }}>
         <AdminSectionHeader
-          icon="eye-outline"
-          title="Exams (View Only)"
-          subtitle="Exams created by Super Admin that your school can access. Export ranked results as CSV from any exam."
+          icon="document-text-outline"
+          title="Exams"
+          subtitle="View school exams, results, and export ranked CSVs."
         />
         <View style={[styles.viewerChip, { backgroundColor: colors.inputBg, borderColor: colors.surfaceBorder }]}>
           <Ionicons name="person-circle-outline" size={16} color={colors.primary} />
@@ -981,13 +981,14 @@ export default function ExamsView() {
           const classLabels = getExamClassStrings(exam);
           return (
             <View key={exam._id} style={isTablet ? { width: cardWidth } : undefined}>
-            <AdminGlassCard delay={index * 60} style={{ marginBottom: isTablet ? 0 : spacing.sm }}>
+            <AdminGlassCard delay={index * 60} style={styles.examCard}>
+              <View style={[styles.examAccentBar, { backgroundColor: colors.primary }]} />
               <View style={styles.cardTop}>
                 <Text style={[typo.section, { color: colors.text }]} numberOfLines={2}>
                   {exam.title}
                 </Text>
                 <View style={styles.badgeRow}>
-                  <View style={[styles.typeBadge, { backgroundColor: colors.primaryMuted }]}>
+                  <View style={[styles.typeBadge, { backgroundColor: colors.primaryMuted, borderColor: colors.surfaceBorder }]}>
                     <Text style={[styles.typeBadgeText, { color: colors.primary }]}>
                       {(exam.examType || 'practice').toUpperCase()}
                     </Text>
@@ -1028,29 +1029,29 @@ export default function ExamsView() {
                   </Text>
                 </View>
               </View>
-              <View style={[styles.metaBlock, { borderTopColor: colors.surfaceBorder }]}>
-                <View style={styles.metaRow}>
-                  <Ionicons name="time-outline" size={16} color={colors.primary} />
-                  <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-                    {exam.duration} minutes
+              <View style={styles.metaChips}>
+                <View style={[styles.metaChip, { backgroundColor: colors.inputBg, borderColor: colors.surfaceBorder }]}>
+                  <Ionicons name="time-outline" size={14} color={colors.textMuted} />
+                  <Text style={[styles.metaChipText, { color: colors.textSecondary }]}>
+                    {exam.duration} min
                   </Text>
                 </View>
-                <View style={styles.metaRow}>
-                  <Ionicons name="book-outline" size={16} color={colors.primary} />
-                  <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-                    {exam.totalQuestions} questions • {exam.totalMarks} marks
+                <View style={[styles.metaChip, { backgroundColor: colors.inputBg, borderColor: colors.surfaceBorder }]}>
+                  <Ionicons name="book-outline" size={14} color={colors.textMuted} />
+                  <Text style={[styles.metaChipText, { color: colors.textSecondary }]}>
+                    {exam.totalQuestions} Q · {exam.totalMarks} marks
                   </Text>
                 </View>
-                <View style={styles.metaRow}>
-                  <Ionicons name="calendar-outline" size={16} color={colors.primary} />
-                  <Text style={[styles.metaDate, { color: colors.textMuted }]}>
+                <View style={[styles.metaChip, { backgroundColor: colors.inputBg, borderColor: colors.surfaceBorder }]}>
+                  <Ionicons name="calendar-outline" size={14} color={colors.textMuted} />
+                  <Text style={[styles.metaChipText, { color: colors.textSecondary }]} numberOfLines={1}>
                     {formatDateShort(exam.startDate)} — {formatDateShort(exam.endDate)}
                   </Text>
                 </View>
-                <Text style={[styles.createdBy, { color: colors.textMuted }]}>
-                  Created by: {exam.createdBy?.fullName || 'Super Admin'}
-                </Text>
               </View>
+              <Text style={[styles.createdBy, { color: colors.textMuted }]}>
+                Created by: {exam.createdBy?.fullName || 'Super Admin'}
+              </Text>
               <View style={styles.ctaRow}>
                 <AdminScalePressable
                   onPress={() => openExamDetail(exam)}
@@ -1106,6 +1107,18 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     columnGap: GRID_GAP,
     rowGap: GRID_GAP,
+  },
+  examCard: {
+    marginBottom: 0,
+    overflow: 'hidden',
+    paddingLeft: 14,
+  },
+  examAccentBar: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
   },
   backRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
   backText: { fontSize: 15, fontWeight: '700' },
@@ -1205,7 +1218,7 @@ const styles = StyleSheet.create({
   questionPills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   pill: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1 },
   pillGood: { backgroundColor: '#ECFDF5', borderColor: '#BBF7D0' },
-  pillBad: { backgroundColor: '#FFF7ED', borderColor: '#FED7AA' },
+  pillBad: { backgroundColor: 'rgba(255,247,237,0.55)', borderColor: '#FED7AA' },
   pillSkip: { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' },
   pillText: { fontSize: 11, fontWeight: '700', color: '#334155' },
   resultFooter: {
@@ -1284,18 +1297,39 @@ const styles = StyleSheet.create({
   audienceValue: { fontSize: 13, fontWeight: '700', lineHeight: 18 },
   cardTop: { marginBottom: 8 },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
-  typeBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  typeBadgeText: { fontSize: 11, fontWeight: '800' },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  typeBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  typeBadgeText: { fontSize: 11, fontWeight: '800', letterSpacing: 0.3 },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
   statusBadgeText: { fontSize: 11, fontWeight: '800' },
-  classBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1 },
+  classBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
   classBadgeText: { fontSize: 11, fontWeight: '700' },
-  examDescription: { fontSize: 13, marginBottom: 10 },
+  examDescription: { fontSize: 13, lineHeight: 18, marginBottom: 10 },
+  metaChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 6 },
+  metaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  metaChipText: { fontSize: 12, fontWeight: '600' },
   metaBlock: { gap: 6, paddingTop: 8, borderTopWidth: 1 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   metaText: { fontSize: 13, fontWeight: '600' },
   metaDate: { fontSize: 12, fontWeight: '600' },
-  createdBy: { fontSize: 11, marginTop: 4 },
+  createdBy: { fontSize: 11, marginTop: 4, marginBottom: 8 },
   ctaRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
   ctaButton: {
     flexDirection: 'row',

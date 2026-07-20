@@ -91,7 +91,7 @@ export default function RankingsTab({ rankings }: Props) {
   if (sortedRankings.length === 0) {
     return (
       <View style={styles.emptyState}>
-        <Ionicons name="trophy-outline" size={48} color="#9ca3af" />
+        <Ionicons name="trophy-outline" size={48} color="#5B6779" />
         <Text style={styles.emptyText}>No exam results found. Complete an exam to see your rankings.</Text>
       </View>
     );
@@ -154,7 +154,7 @@ export default function RankingsTab({ rankings }: Props) {
         })}
       </View>
 
-      <GlassCard variant="elevated" padding={16} style={styles.leaderboardCard}>
+      <GlassCard variant="glass" padding={16} style={styles.leaderboardCard}>
         <Text style={styles.leaderboardTitle}>Leaderboard</Text>
         <View style={styles.leaderboardList}>
           {sortedRankings.map((ranking, idx) => {
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#f3f4f6',
     borderRadius: 14,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     padding: 12,
     gap: 10,
   },
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
   summaryGrid: { gap: 10 },
   summaryGridTablet: { flexDirection: 'row', gap: 12 },
   summaryItem: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',

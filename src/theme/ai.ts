@@ -1,23 +1,25 @@
 /** Shared visual language for every student and teacher AI experience. */
+import { GLASS_RIM, GLASS_ROW, GLASS_SHADOW } from './glass';
+
 export const AI = {
-  canvas: '#F8FAFF',
-  canvasDeep: '#F1F5FF',
-  surface: '#FFFFFF',
-  surfaceMuted: '#F8FAFC',
+  canvas: 'transparent',
+  canvasDeep: 'transparent',
+  surface: GLASS_ROW.fillStrong,
+  surfaceMuted: GLASS_ROW.fill,
   primary: '#4F46E5',
   primaryPressed: '#4338CA',
-  primarySoft: '#EEF2FF',
-  primaryBorder: '#C7D2FE',
+  primarySoft: 'rgba(79,70,229,0.12)',
+  primaryBorder: 'rgba(199,210,254,0.85)',
   sky: '#0284C7',
-  skySoft: '#F0F9FF',
-  skyBorder: '#BAE6FD',
+  skySoft: 'rgba(240,249,255,0.72)',
+  skyBorder: 'rgba(186,230,253,0.85)',
   orange: '#C2410C',
-  orangeSoft: '#FFF7ED',
-  orangeBorder: '#FED7AA',
+  orangeSoft: 'rgba(255,247,237,0.72)',
+  orangeBorder: 'rgba(253,215,170,0.85)',
   text: '#0F172A',
   textSecondary: '#475569',
-  textMuted: '#64748B',
-  border: '#E2E8F0',
+  textMuted: '#5B6779',
+  border: GLASS_RIM.border,
   success: '#047857',
   danger: '#DC2626',
   warning: '#B45309',
@@ -49,12 +51,7 @@ export const AI_TYPE = {
   hero: { fontSize: 32, lineHeight: 39, fontWeight: '900' as const, letterSpacing: -0.6 },
 } as const;
 
-export const AI_SHADOW = {
-  shadowColor: '#334155',
-  shadowOffset: { width: 0, height: 8 },
-  shadowOpacity: 0.09,
-  shadowRadius: 20,
-  elevation: 4,
-} as const;
+export const AI_SHADOW = GLASS_SHADOW.soft;
 
-export const AI_HERO_GRADIENT = ['#EEF2FF', '#FFFFFF', '#FFF7ED'] as const;
+/** Kept for legacy imports — prefer GlassPanel over hero gradients. */
+export const AI_HERO_GRADIENT = ['rgba(238,242,255,0.55)', 'rgba(255,255,255,0.35)', 'rgba(255,247,237,0.45)'] as const;

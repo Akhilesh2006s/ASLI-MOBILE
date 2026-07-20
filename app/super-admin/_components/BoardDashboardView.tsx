@@ -192,7 +192,7 @@ export default function BoardDashboardView({ boardCode = 'ASLI_EXCLUSIVE_SCHOOLS
     return (
       <ScrollView style={styles.content}>
         <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle" size={64} color="#d1d5db" />
+          <Ionicons name="alert-circle" size={64} color="#5B6779" />
           <Text style={styles.errorText}>{error || 'No board data available'}</Text>
           <TouchableOpacity style={styles.refreshButton} onPress={fetchBoardDashboard}>
             <Text style={styles.refreshButtonText}>Refresh</Text>
@@ -221,7 +221,7 @@ export default function BoardDashboardView({ boardCode = 'ASLI_EXCLUSIVE_SCHOOLS
       <View style={styles.statsGrid}>
         <View style={[styles.statCard, { borderLeftColor: '#fb923c' }]}>
           <View style={styles.statCardTop}>
-            <View style={[styles.statIconBadge, { backgroundColor: '#fff7ed' }]}>
+            <View style={[styles.statIconBadge, { backgroundColor: 'rgba(255,247,237,0.55)' }]}>
               <Ionicons name="people" size={20} color="#ea580c" />
             </View>
             <Text style={styles.statLabel}>Students</Text>
@@ -245,7 +245,7 @@ export default function BoardDashboardView({ boardCode = 'ASLI_EXCLUSIVE_SCHOOLS
 
         <View style={[styles.statCard, { borderLeftColor: '#f59e0b' }]}>
           <View style={styles.statCardTop}>
-            <View style={[styles.statIconBadge, { backgroundColor: '#fffbeb' }]}>
+            <View style={[styles.statIconBadge, { backgroundColor: 'rgba(255,251,235,0.55)' }]}>
               <Ionicons name="document-text" size={20} color="#d97706" />
             </View>
             <Text style={styles.statLabel}>Exams</Text>
@@ -288,7 +288,7 @@ export default function BoardDashboardView({ boardCode = 'ASLI_EXCLUSIVE_SCHOOLS
           </View>
         ) : comparisonData.length === 0 ? (
           <View style={styles.emptyComparisonCard}>
-            <Ionicons name="bar-chart" size={48} color="#d1d5db" />
+            <Ionicons name="bar-chart" size={48} color="#5B6779" />
             <Text style={styles.emptyComparisonText}>No comparison data available</Text>
           </View>
         ) : (
@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: '47%',
-    backgroundColor: '#ffffff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 14,
     paddingVertical: 14,
     paddingHorizontal: 14,
@@ -445,7 +445,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   schoolCard: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
@@ -512,7 +512,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#e5e7eb',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     gap: 6,
   },
   refreshButtonSmallText: {
@@ -521,7 +521,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   summaryCardSingle: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 12,
     padding: 20,
     marginBottom: 24,
@@ -545,7 +545,7 @@ const styles = StyleSheet.create({
   },
   summaryCardSingleSubtext: {
     fontSize: 14,
-    color: '#9ca3af',
+    color: '#5B6779',
     marginBottom: 16,
   },
   summaryCardSingleDetails: {
@@ -563,7 +563,7 @@ const styles = StyleSheet.create({
   },
   chartCard: {
     width: '100%',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -645,7 +645,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   emptyComparisonCard: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 12,
     padding: 40,
     alignItems: 'center',

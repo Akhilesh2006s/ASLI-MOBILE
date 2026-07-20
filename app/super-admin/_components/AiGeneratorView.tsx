@@ -47,6 +47,7 @@ import {
   isStoryPassageLanguageSubject,
   LANGUAGE_EXCLUDED_TOOL_ERROR,
 } from '../../../src/lib/student-ai-tools';
+import { GlassPanel } from '../../../src/components/ui';
 import AiToolRecordPreview from '../../../src/components/ai-tools/AiToolRecordPreview';
 import { extractMcqQuestionsFromRecord, isMcqTool } from '../../../src/lib/mcq-record-utils';
 import {
@@ -126,7 +127,7 @@ function RecordRowItem({
     : [];
 
   return (
-    <View style={styles.recordCard}>
+    <GlassPanel style={styles.recordCard} radius={10} tone="strong">
       <View style={styles.recordTop}>
         <Text style={styles.recordDate}>
           {row.createdAt ? new Date(row.createdAt).toLocaleString() : '—'}
@@ -173,7 +174,7 @@ function RecordRowItem({
           {recordListPreviewText(toolSlug, String(row.generatedContent || ''))}
         </Text>
       )}
-    </View>
+    </GlassPanel>
   );
 }
 
@@ -196,11 +197,11 @@ function SubtopicBlock({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <View style={styles.nestedBlock}>
+    <GlassPanel style={styles.nestedBlock} radius={10} tone="medium">
       <Pressable style={styles.nestedTrigger} onPress={() => setOpen((v) => !v)}>
         <Text style={styles.nestedLabel}>SUBTOPIC</Text>
         <Text style={styles.nestedTitle}>{node.subtopicName}</Text>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#94a3b8" />
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#5B6779" />
       </Pressable>
       {open ? (
         <View style={styles.nestedBody}>
@@ -221,7 +222,7 @@ function SubtopicBlock({
           ))}
         </View>
       ) : null}
-    </View>
+    </GlassPanel>
   );
 }
 
@@ -244,11 +245,11 @@ function TopicBlock({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <View style={styles.nestedBlock}>
+    <GlassPanel style={styles.nestedBlock} radius={10} tone="medium">
       <Pressable style={styles.nestedTrigger} onPress={() => setOpen((v) => !v)}>
         <Text style={styles.nestedLabel}>TOPIC</Text>
         <Text style={styles.nestedTitle}>{node.topicName || 'General'}</Text>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#94a3b8" />
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#5B6779" />
       </Pressable>
       {open ? (
         <View style={styles.nestedBody}>
@@ -266,7 +267,7 @@ function TopicBlock({
           ))}
         </View>
       ) : null}
-    </View>
+    </GlassPanel>
   );
 }
 
@@ -289,11 +290,11 @@ function SubjectBlock({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <View style={styles.nestedBlock}>
+    <GlassPanel style={styles.nestedBlock} radius={10} tone="medium">
       <Pressable style={styles.nestedTrigger} onPress={() => setOpen((v) => !v)}>
         <Text style={styles.nestedLabel}>SUBJECT</Text>
         <Text style={styles.nestedTitle}>{node.subjectName}</Text>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#94a3b8" />
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#5B6779" />
       </Pressable>
       {open ? (
         <View style={styles.nestedBody}>
@@ -311,7 +312,7 @@ function SubjectBlock({
           ))}
         </View>
       ) : null}
-    </View>
+    </GlassPanel>
   );
 }
 
@@ -334,14 +335,14 @@ function ClassBlock({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <View style={styles.nestedBlock}>
+    <GlassPanel style={styles.nestedBlock} radius={10} tone="medium">
       <Pressable style={styles.nestedTrigger} onPress={() => setOpen((v) => !v)}>
         <Text style={styles.nestedLabel}>CLASS</Text>
         <Text style={styles.nestedTitle}>
           {node.className}
           {node.boardName ? ` (${node.boardName})` : ''}
         </Text>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#94a3b8" />
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#5B6779" />
       </Pressable>
       {open ? (
         <View style={styles.nestedBody}>
@@ -359,7 +360,7 @@ function ClassBlock({
           ))}
         </View>
       ) : null}
-    </View>
+    </GlassPanel>
   );
 }
 
@@ -776,43 +777,51 @@ export default function AiGeneratorView() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#f97316" />}
       keyboardShouldPersistTaps="handled"
     >
-      <View style={styles.section}>
+      <GlassPanel style={styles.section} radius={14} tone="medium">
         <Text style={styles.sectionTitle}>Available Tools</Text>
         <Text style={styles.groupLabel}>Student</Text>
         <View style={styles.toolsGrid}>
           {studentTools.map((tool) => (
-            <Pressable
+            <GlassPanel
               key={tool.id}
               style={[styles.toolCard, selectedTool === tool.id && styles.toolCardActive]}
-              onPress={() => handleToolSelect(tool.id)}
+              radius={12}
+              tone="medium"
             >
-              <View style={styles.toolIcon}>
-                <Ionicons name="sparkles" size={16} color="#ea580c" />
-              </View>
-              <Text style={styles.toolName}>{tool.name}</Text>
-              <Text style={styles.toolDesc}>{tool.description}</Text>
-            </Pressable>
+              {/* Padding sits on the Pressable so the whole card stays tappable. */}
+              <Pressable style={styles.toolCardInner} onPress={() => handleToolSelect(tool.id)}>
+                <View style={styles.toolIcon}>
+                  <Ionicons name="sparkles" size={16} color="#ea580c" />
+                </View>
+                <Text style={styles.toolName}>{tool.name}</Text>
+                <Text style={styles.toolDesc}>{tool.description}</Text>
+              </Pressable>
+            </GlassPanel>
           ))}
         </View>
         <Text style={styles.groupLabel}>Teacher</Text>
         <View style={styles.toolsGrid}>
           {teacherTools.map((tool) => (
-            <Pressable
+            <GlassPanel
               key={tool.id}
               style={[styles.toolCard, selectedTool === tool.id && styles.toolCardActive]}
-              onPress={() => handleToolSelect(tool.id)}
+              radius={12}
+              tone="medium"
             >
-              <View style={styles.toolIcon}>
-                <Ionicons name="sparkles" size={16} color="#ea580c" />
-              </View>
-              <Text style={styles.toolName}>{TEACHER_TOOL_LABELS[tool.id] || tool.name}</Text>
-              <Text style={styles.toolDesc}>{tool.description}</Text>
-            </Pressable>
+              {/* Padding sits on the Pressable so the whole card stays tappable. */}
+              <Pressable style={styles.toolCardInner} onPress={() => handleToolSelect(tool.id)}>
+                <View style={styles.toolIcon}>
+                  <Ionicons name="sparkles" size={16} color="#ea580c" />
+                </View>
+                <Text style={styles.toolName}>{TEACHER_TOOL_LABELS[tool.id] || tool.name}</Text>
+                <Text style={styles.toolDesc}>{tool.description}</Text>
+              </Pressable>
+            </GlassPanel>
           ))}
         </View>
-      </View>
+      </GlassPanel>
 
-      <View style={styles.section}>
+      <GlassPanel style={styles.section} radius={14} tone="strong">
         <Text style={styles.sectionTitle}>Generate Content</Text>
         <Text style={styles.fieldLabel}>Selected Tool</Text>
         <View style={styles.badge}>
@@ -974,9 +983,9 @@ export default function AiGeneratorView() {
             </Text>
           </View>
         ) : null}
-      </View>
+      </GlassPanel>
 
-      <View style={styles.section}>
+      <GlassPanel style={styles.section} radius={14} tone="medium">
         <View style={styles.recordsHeader}>
           <Text style={styles.sectionTitle}>Records</Text>
           <Pressable
@@ -1025,13 +1034,17 @@ export default function AiGeneratorView() {
             />
           ))
         )}
-      </View>
+      </GlassPanel>
 
       <Modal visible={!!activeRecord} animationType="slide" onRequestClose={() => setActiveRecord(null)}>
         <View style={styles.fullModal}>
           <View style={styles.fullModalHeader}>
             <Text style={styles.fullModalTitle}>Generated Record</Text>
-            <Pressable onPress={() => setActiveRecord(null)}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Close generated record"
+              onPress={() => setActiveRecord(null)}
+            >
               <Ionicons name="close" size={24} color="#374151" />
             </Pressable>
           </View>
@@ -1065,7 +1078,11 @@ export default function AiGeneratorView() {
         <View style={styles.fullModal}>
           <View style={styles.fullModalHeader}>
             <Text style={styles.fullModalTitle}>Edit Record</Text>
-            <Pressable onPress={() => setEditRecord(null)}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Close record editor"
+              onPress={() => setEditRecord(null)}
+            >
               <Ionicons name="close" size={24} color="#374151" />
             </Pressable>
           </View>
@@ -1152,11 +1169,11 @@ export default function AiGeneratorView() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc' },
+  // Transparent: the shared app background artwork shows through.
+  container: { flex: 1, backgroundColor: 'transparent' },
   section: {
     margin: 16,
     marginBottom: 0,
-    backgroundColor: '#fff',
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#e2e8f0',
@@ -1178,10 +1195,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e2e8f0',
     borderRadius: 12,
-    padding: 12,
-    backgroundColor: '#fff',
   },
-  toolCardActive: { borderColor: '#fb923c', backgroundColor: '#fff7ed' },
+  toolCardInner: { padding: 12 },
+  toolCardActive: { borderColor: '#fb923c', backgroundColor: 'rgba(255,247,237,0.55)' },
   toolIcon: {
     width: 36,
     height: 36,
@@ -1214,7 +1230,7 @@ const styles = StyleSheet.create({
   },
   infoBannerWarning: {
     color: '#92400e',
-    backgroundColor: '#fffbeb',
+    backgroundColor: 'rgba(255,251,235,0.55)',
     borderColor: '#fcd34d',
   },
   selectField: {
@@ -1238,7 +1254,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 14,
     color: '#0f172a',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
   },
   generateBtn: {
     marginTop: 16,
@@ -1305,11 +1321,10 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     borderRadius: 10,
     marginBottom: 8,
-    backgroundColor: '#fff',
     overflow: 'hidden',
   },
   nestedTrigger: { flexDirection: 'row', alignItems: 'center', padding: 10, gap: 8 },
-  nestedLabel: { fontSize: 10, fontWeight: '700', color: '#94a3b8' },
+  nestedLabel: { fontSize: 10, fontWeight: '700', color: '#5B6779' },
   nestedTitle: { flex: 1, fontSize: 13, fontWeight: '600', color: '#0f172a' },
   nestedBody: { borderTopWidth: 1, borderTopColor: '#f1f5f9', padding: 8 },
   recordsCount: { fontSize: 12, fontWeight: '600', color: '#334155', marginBottom: 8 },
@@ -1319,12 +1334,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 10,
     marginBottom: 8,
-    backgroundColor: '#fff',
   },
   recordTop: { gap: 8, marginBottom: 8 },
   recordDate: { fontSize: 11, color: '#64748b' },
   recordActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  actionOrange: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#fff7ed', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  actionOrange: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,247,237,0.55)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
   actionOrangeText: { fontSize: 11, fontWeight: '600', color: '#c2410c' },
   actionBlue: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#eff6ff', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
   actionBlueText: { fontSize: 11, fontWeight: '600', color: '#1d4ed8' },
@@ -1337,7 +1351,7 @@ const styles = StyleSheet.create({
   mcqQ: { fontSize: 13, fontWeight: '600', color: '#0f172a', lineHeight: 20 },
   mcqOpt: { fontSize: 12, color: '#334155', marginTop: 6 },
   mcqAnswer: { fontSize: 11, color: '#047857', marginTop: 8, backgroundColor: '#ecfdf5', padding: 6, borderRadius: 6 },
-  fullModal: { flex: 1, backgroundColor: '#fff' },
+  fullModal: { flex: 1, backgroundColor: 'rgba(255,255,255,0.48)' },
   fullModalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1367,7 +1381,7 @@ const styles = StyleSheet.create({
   saveBtn: { backgroundColor: '#f97316', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 12 },
   saveBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
   pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  pickerSheet: { backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16, maxHeight: '70%' },
+  pickerSheet: { backgroundColor: 'rgba(255,255,255,0.48)', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16, maxHeight: '70%' },
   pickerTitle: { fontSize: 16, fontWeight: '700', color: '#0f172a', marginBottom: 12 },
   pickerItem: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   pickerItemText: { fontSize: 15, color: '#334155' },

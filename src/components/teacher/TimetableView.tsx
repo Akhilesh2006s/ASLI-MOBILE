@@ -145,11 +145,23 @@ export default function TimetableView() {
           </View>
 
           {classOptions.length > 0 ? (
-            <Pressable style={styles.filterTrigger} onPress={() => setPickerOpen(true)}>
+            <Pressable
+              style={styles.filterTrigger}
+              onPress={() => setPickerOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel={`Filter by class: ${classFilter === 'all' ? 'All classes' : classFilter}`}
+              accessibilityState={{ expanded: pickerOpen }}
+            >
               <Text style={styles.filterTriggerText} numberOfLines={1}>
                 {classFilter === 'all' ? 'All classes' : classFilter}
               </Text>
-              <Ionicons name="chevron-down" size={16} color={TEACHER.textSecondary} />
+              <Ionicons
+                name="chevron-down"
+                size={16}
+                color={TEACHER.textSecondary}
+                accessibilityElementsHidden
+                importantForAccessibility="no"
+              />
             </Pressable>
           ) : null}
         </View>
@@ -171,7 +183,12 @@ export default function TimetableView() {
       </View>
 
       <Modal visible={pickerOpen} transparent animationType="none">
-        <Pressable style={styles.pickerOverlay} onPress={() => setPickerOpen(false)}>
+        <Pressable
+          style={styles.pickerOverlay}
+          onPress={() => setPickerOpen(false)}
+          accessibilityRole="button"
+          accessibilityLabel="Close class filter"
+        >
           <View style={styles.pickerSheet}>
             <Text style={styles.pickerTitle}>Filter by class</Text>
             <ScrollView style={{ maxHeight: 320 }}>
@@ -183,6 +200,9 @@ export default function TimetableView() {
                     setClassFilter(opt);
                     setPickerOpen(false);
                   }}
+                  accessibilityRole="button"
+                  accessibilityLabel={opt === 'all' ? 'All classes' : opt}
+                  accessibilityState={{ selected: classFilter === opt }}
                 >
                   <Text
                     style={[
@@ -215,9 +235,20 @@ export default function TimetableView() {
             {selectedSlot ? (
               <Text style={styles.modalMeta}>{teacherSlotLabel(selectedSlot)}</Text>
             ) : null}
-            <Pressable style={styles.modalBtn} onPress={() => router.push('/teacher/attendance' as any)}>
+            <Pressable
+              style={styles.modalBtn}
+              onPress={() => router.push('/teacher/attendance' as any)}
+              accessibilityRole="button"
+              accessibilityLabel="Mark attendance"
+            >
               <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.modalBtnGrad}>
-                <Ionicons name="checkmark-done-outline" size={18} color={TEACHER.textOnPrimary} />
+                <Ionicons
+                  name="checkmark-done-outline"
+                  size={18}
+                  color={TEACHER.textOnPrimary}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no"
+                />
                 <Text style={styles.modalBtnText}>Mark Attendance</Text>
               </LinearGradient>
             </Pressable>
@@ -225,11 +256,18 @@ export default function TimetableView() {
               <Pressable
                 style={styles.modalBtnOutline}
                 onPress={() => selectedSlot && markComplete(selectedSlot)}
+                accessibilityRole="button"
+                accessibilityLabel="Mark class completed"
               >
                 <Text style={styles.modalBtnOutlineText}>Mark Completed</Text>
               </Pressable>
             ) : null}
-            <Pressable style={styles.modalClose} onPress={() => setSelectedSlot(null)}>
+            <Pressable
+              style={styles.modalClose}
+              onPress={() => setSelectedSlot(null)}
+              accessibilityRole="button"
+              accessibilityLabel="Close class details"
+            >
               <Text style={styles.modalCloseText}>Close</Text>
             </Pressable>
           </View>

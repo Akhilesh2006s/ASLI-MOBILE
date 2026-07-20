@@ -83,11 +83,25 @@ export default function StudentVidyaChatPanel({
               <Text style={styles.headerSub}>Ask anything, learn faster</Text>
             </View>
             {showSubjectPicker ? (
-              <Pressable style={styles.subjectChip} onPress={() => setSubjectPickerOpen(true)}>
+              <Pressable
+                style={styles.subjectChip}
+                onPress={() => setSubjectPickerOpen(true)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={`Subject: ${model.currentSubject}`}
+                accessibilityHint="Opens the subject picker"
+                accessibilityState={{ expanded: subjectPickerOpen }}
+              >
                 <Text style={styles.subjectChipText} numberOfLines={1}>
                   {model.currentSubject}
                 </Text>
-                <Ionicons name="chevron-down" size={14} color="#4338ca" />
+                <Ionicons
+                  name="chevron-down"
+                  size={14}
+                  color="#4338ca"
+                  accessibilityElementsHidden
+                  importantForAccessibility="no"
+                />
               </Pressable>
             ) : null}
           </View>
@@ -112,6 +126,8 @@ export default function StudentVidyaChatPanel({
                 <Pressable
                   style={styles.proactiveCard}
                   onPress={() => model.onPromptClick(model.proactivePrompt!)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Ask Vidya: ${model.proactivePrompt}`}
                 >
                   <Text style={styles.proactiveText}>{model.proactivePrompt}</Text>
                 </Pressable>
@@ -135,6 +151,8 @@ export default function StudentVidyaChatPanel({
                           { borderColor: colors.border, backgroundColor: colors.bg },
                         ]}
                         onPress={() => model.onPromptClick(question)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Ask Vidya: ${question}`}
                       >
                         <Text style={[styles.starterCardText, { color: colors.text }]}>{question}</Text>
                       </Pressable>
@@ -184,13 +202,25 @@ export default function StudentVidyaChatPanel({
 
         <View style={[styles.inputBar, { paddingBottom: inputPaddingBottom }]}>
           <View style={styles.inputWrap}>
-            <Pressable style={styles.iconBtn} onPress={model.pickAndAnalyzeImage} disabled={model.isPending}>
+            <Pressable
+              style={styles.iconBtn}
+              onPress={model.pickAndAnalyzeImage}
+              disabled={model.isPending}
+              hitSlop={4}
+              accessibilityRole="button"
+              accessibilityLabel="Attach an image"
+              accessibilityState={{ disabled: model.isPending }}
+            >
               <Ionicons name="image-outline" size={20} color="#64748b" />
             </Pressable>
             <Pressable
               style={styles.iconBtn}
               onPress={model.handleVoiceInput}
               disabled={model.isPending || model.isListening}
+              hitSlop={4}
+              accessibilityRole="button"
+              accessibilityLabel={model.isListening ? 'Listening, voice input active' : 'Start voice input'}
+              accessibilityState={{ disabled: model.isPending || model.isListening }}
             >
               <Ionicons
                 name="mic-outline"
@@ -202,6 +232,7 @@ export default function StudentVidyaChatPanel({
               style={styles.input}
               value={model.message}
               onChangeText={model.setMessage}
+              accessibilityLabel="Message Vidya"
               placeholder={model.inputPlaceholder}
               placeholderTextColor="#94a3b8"
               multiline
@@ -214,6 +245,13 @@ export default function StudentVidyaChatPanel({
               style={[styles.sendButton, (!model.message.trim() || model.isPending) && styles.sendButtonDisabled]}
               onPress={model.handleSendMessage}
               disabled={model.isPending || !model.message.trim()}
+              hitSlop={4}
+              accessibilityRole="button"
+              accessibilityLabel="Send message"
+              accessibilityState={{
+                disabled: model.isPending || !model.message.trim(),
+                busy: model.isPending,
+              }}
             >
               <Ionicons name="send" size={18} color="#fff" />
             </Pressable>
@@ -238,7 +276,7 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     minHeight: 0,
-    backgroundColor: '#f8fafc',
+    backgroundColor: 'rgba(248,250,252,0.45)',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#e0e7ff',
@@ -252,7 +290,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
   },
   header: {
     flexDirection: 'row',
@@ -262,13 +300,13 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e7ff',
-    backgroundColor: '#eef2ff',
+    backgroundColor: 'rgba(238,242,255,0.45)',
   },
   headerAvatar: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderWidth: 1,
     borderColor: '#c7d2fe',
     alignItems: 'center',
@@ -285,7 +323,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderWidth: 1,
     borderColor: '#c7d2fe',
   },
@@ -301,7 +339,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#fcd34d',
-    backgroundColor: '#fffbeb',
+    backgroundColor: 'rgba(255,251,235,0.55)',
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
@@ -318,7 +356,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#6ee7b7',
-    backgroundColor: '#ecfdf5',
+    backgroundColor: 'rgba(236,253,245,0.45)',
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
@@ -327,7 +365,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#c7d2fe',
-    backgroundColor: '#eef2ff',
+    backgroundColor: 'rgba(238,242,255,0.45)',
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
@@ -359,7 +397,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#eef2ff',
+    backgroundColor: 'rgba(238,242,255,0.45)',
     borderWidth: 1,
     borderColor: '#c7d2fe',
     alignItems: 'center',
@@ -380,7 +418,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 4,
   },
   bubbleAssistant: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderWidth: 1,
     borderColor: '#e2e8f0',
     borderBottomLeftRadius: 4,
@@ -392,7 +430,7 @@ const styles = StyleSheet.create({
   inputBar: {
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     paddingHorizontal: 10,
     paddingTop: 8,
   },
@@ -403,7 +441,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    backgroundColor: '#f8fafc',
+    backgroundColor: 'rgba(248,250,252,0.45)',
     paddingLeft: 4,
     paddingRight: 4,
     paddingVertical: 4,

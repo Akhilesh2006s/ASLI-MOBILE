@@ -255,7 +255,12 @@ export default function StudentRiskAnalysisModal({
                 Comprehensive AI-powered analysis of student performance patterns and risk assessment
               </Text>
             </View>
-            <Pressable onPress={onClose} hitSlop={12}>
+            <Pressable
+              onPress={onClose}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Close risk analysis"
+            >
               <Ionicons name="close" size={22} color="#64748b" />
             </Pressable>
           </View>
@@ -434,7 +439,7 @@ export default function StudentRiskAnalysisModal({
 
                 {data.generatedAt ? (
                   <View style={styles.metaRow}>
-                    <Ionicons name="time-outline" size={14} color="#94a3b8" />
+                    <Ionicons name="time-outline" size={14} color="#5B6779" />
                     <Text style={styles.metaText}>
                       Generated: {new Date(data.generatedAt).toLocaleString()}
                     </Text>
@@ -491,7 +496,7 @@ const styles = StyleSheet.create({
   },
   sheet: {
     width: '100%',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     overflow: 'hidden',
   },
   header: {
@@ -509,7 +514,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#fff7ed',
+    backgroundColor: 'rgba(255,247,237,0.55)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -531,7 +536,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 16,
-    backgroundColor: '#fff7ed',
+    backgroundColor: 'rgba(255,247,237,0.55)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -554,7 +559,7 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     borderRadius: 14,
     padding: 14,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     gap: 10,
   },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -629,7 +634,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
   },
-  metaText: { fontSize: 11, color: '#94a3b8' },
+  metaText: { fontSize: 11, color: '#5B6779' },
   footer: {
     flexShrink: 0,
     gap: 8,

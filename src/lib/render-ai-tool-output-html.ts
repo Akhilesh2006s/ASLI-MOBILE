@@ -8,6 +8,7 @@ import {
 import { stripStructuredAiToolMetadata } from './strip-ai-tool-metadata';
 import { escapeHtml } from './ai-tool-html-primitives';
 import { AI_TOOL_OUTPUT_STYLES } from './ai-tool-output-styles';
+import { AI_TOOL_QUEST_STYLES, wrapQuestExperience } from './ai-tool-quest-experience';
 import { renderNumberedTemplateAsCards } from './render-numbered-template-cards';
 import { tryRenderStructuredAiToolHtml, renderSmartPracticeQaOutputHtml } from './render-structured-ai-tool-html';
 import { resolveAiToolDisplayType } from './ai-tool-generate';
@@ -75,8 +76,8 @@ const TOOL_SHELLS: Record<string, ToolShell> = {
   },
   'worksheet-mcq-generator': {
     label: 'Worksheet & MCQ Generator',
-    wrapperClass: 'rounded-2xl border border-emerald-200/80 p-3',
-    wrapperStyle: 'background:linear-gradient(to bottom,#ecfdf5,#fff,#f0fdf4)',
+    wrapperClass: 'rounded-2xl border border-indigo-200/80 p-3',
+    wrapperStyle: 'background:linear-gradient(165deg,#eef2ff,#fff,#fdf4ff)',
   },
   'project-idea-lab': {
     label: 'Project Idea Lab',
@@ -308,9 +309,9 @@ function wrapAiToolHtmlDocument(body: string): string {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-  <style>${AI_TOOL_OUTPUT_STYLES}</style>
+  <style>${AI_TOOL_OUTPUT_STYLES}${AI_TOOL_QUEST_STYLES}</style>
 </head>
-<body>${body}</body>
+<body>${wrapQuestExperience(body)}</body>
 </html>`;
 }
 

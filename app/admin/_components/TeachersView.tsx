@@ -688,7 +688,12 @@ export default function TeachersView() {
               end={{ x: 1, y: 1 }}
             >
               <Text style={styles.modalTitle}>Add New Teacher</Text>
-              <TouchableOpacity onPress={() => setIsAddModalVisible(false)} hitSlop={12}>
+              <TouchableOpacity
+                onPress={() => setIsAddModalVisible(false)}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel="Close add teacher form"
+              >
                 <SvgIconClose size={24} color="#fff" />
               </TouchableOpacity>
             </LinearGradient>
@@ -701,7 +706,7 @@ export default function TeachersView() {
                   placeholder="Enter teacher's full name"
                   value={newTeacher.fullName}
                   onChangeText={(text) => setNewTeacher({ ...newTeacher, fullName: text })}
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#5B6779"
                 />
                   </View>
 
@@ -714,7 +719,7 @@ export default function TeachersView() {
                   onChangeText={(text) => setNewTeacher({ ...newTeacher, email: text })}
                   keyboardType="email-address"
                   autoCapitalize="none"
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#5B6779"
                 />
                 </View>
 
@@ -726,7 +731,7 @@ export default function TeachersView() {
                   value={newTeacher.phone}
                   onChangeText={(text) => setNewTeacher({ ...newTeacher, phone: text })}
                   keyboardType="phone-pad"
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#5B6779"
                 />
                   </View>
 
@@ -737,7 +742,7 @@ export default function TeachersView() {
                   placeholder="Enter department"
                   value={newTeacher.department}
                   onChangeText={(text) => setNewTeacher({ ...newTeacher, department: text })}
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#5B6779"
                 />
                     </View>
 
@@ -750,7 +755,7 @@ export default function TeachersView() {
                   onChangeText={(text) => setNewTeacher({ ...newTeacher, qualifications: text })}
                   multiline
                   numberOfLines={3}
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#5B6779"
                 />
               </View>
             </ScrollView>
@@ -797,7 +802,12 @@ export default function TeachersView() {
               end={{ x: 1, y: 1 }}
             >
               <Text style={styles.modalTitle}>Edit Teacher</Text>
-              <TouchableOpacity onPress={() => setIsEditModalVisible(false)} hitSlop={12}>
+              <TouchableOpacity
+                onPress={() => setIsEditModalVisible(false)}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel="Close edit teacher form"
+              >
                 <SvgIconClose size={24} color="#fff" />
               </TouchableOpacity>
             </LinearGradient>
@@ -810,7 +820,7 @@ export default function TeachersView() {
                   placeholder="Enter teacher's full name"
                   value={editTeacher.fullName}
                   onChangeText={(text) => setEditTeacher({ ...editTeacher, fullName: text })}
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#5B6779"
                 />
               </View>
 
@@ -823,7 +833,7 @@ export default function TeachersView() {
                   onChangeText={(text) => setEditTeacher({ ...editTeacher, email: text })}
                   keyboardType="email-address"
                   autoCapitalize="none"
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#5B6779"
                 />
               </View>
 
@@ -835,7 +845,7 @@ export default function TeachersView() {
                   value={editTeacher.phone}
                   onChangeText={(text) => setEditTeacher({ ...editTeacher, phone: text })}
                   keyboardType="phone-pad"
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#5B6779"
                 />
               </View>
 
@@ -846,7 +856,7 @@ export default function TeachersView() {
                   placeholder="Enter department"
                   value={editTeacher.department}
                   onChangeText={(text) => setEditTeacher({ ...editTeacher, department: text })}
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#5B6779"
                 />
               </View>
 
@@ -859,7 +869,7 @@ export default function TeachersView() {
                   onChangeText={(text) => setEditTeacher({ ...editTeacher, qualifications: text })}
                   multiline
                   numberOfLines={3}
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#5B6779"
                 />
               </View>
             </ScrollView>
@@ -910,6 +920,8 @@ export default function TeachersView() {
                 onPress={() => !assignSubmitting && setAssignSubjectsModal(false)}
                 hitSlop={12}
                 style={styles.assignModalClose}
+                accessibilityRole="button"
+                accessibilityLabel="Close assign subjects form"
               >
                 <SvgIconClose size={22} color="#64748b" />
               </TouchableOpacity>
@@ -995,6 +1007,8 @@ export default function TeachersView() {
                 onPress={() => !assignSubmitting && setAssignClassesModal(false)}
                 hitSlop={12}
                 style={styles.assignModalClose}
+                accessibilityRole="button"
+                accessibilityLabel="Close assign classes form"
               >
                 <SvgIconClose size={22} color="#64748b" />
               </TouchableOpacity>
@@ -1265,7 +1279,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e2e8f0',
     borderRadius: 12,
-    backgroundColor: '#fffbeb',
+    backgroundColor: 'rgba(255,251,235,0.55)',
     padding: 8,
   },
   assignedClassCard: {
@@ -1300,7 +1314,7 @@ const styles = StyleSheet.create({
   },
   assignedClassMetaDot: {
     fontSize: 12,
-    color: '#94a3b8',
+    color: '#5B6779',
   },
   noClassesAssignedWrap: {
     paddingVertical: 8,
@@ -1336,7 +1350,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 4,
     borderRadius: 16,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
@@ -1355,7 +1369,7 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 16,
     width: '100%',
     maxHeight: '78%',
@@ -1431,7 +1445,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   assignModalCard: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 16,
     width: '100%',
     maxWidth: 420,
@@ -1490,12 +1504,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
-    backgroundColor: '#fffbeb',
+    backgroundColor: 'rgba(255,251,235,0.55)',
     borderRadius: 12,
     marginBottom: 8,
   },
   assignRowInList: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 8,
     marginBottom: 6,
     borderBottomWidth: 0,
@@ -1526,7 +1540,7 @@ const styles = StyleSheet.create({
   },
   assignRowSub: {
     fontSize: 13,
-    color: '#94a3b8',
+    color: '#5B6779',
   },
   assignEmpty: {
     fontSize: 14,

@@ -22,6 +22,7 @@ import { exportCsvFile } from '../../../src/utils/csvExport';
 import { AdminGridList, useAdminListLayout } from '../../admin/_ui';
 import { EXAM_CALENDAR_PREFILL_KEY } from '../../../src/lib/super-admin-calendar';
 import { getExamClassStrings } from '../../../src/lib/exam-classes';
+import { GlassPanel } from '../../../src/components/ui';
 import DateTimePickerField, { parseDateTimeLocal } from '../../../src/components/shared/DateTimePickerField';
 import {
   type Exam,
@@ -800,7 +801,7 @@ export default function ExamManagementView() {
     const examSubjects = getExamSubjects(exam);
     const typeStyle = getExamTypeBadgeStyle(exam.examType);
     return (
-      <View key={exam._id} style={[styles.examCard, isTablet && styles.examCardTablet]}>
+      <GlassPanel key={exam._id} style={[styles.examCard, isTablet && styles.examCardTablet]} radius={12} tone="medium">
         <View style={styles.examCardTop}>
           <Text style={styles.examCardTitle} numberOfLines={isTablet ? 2 : undefined}>
             {exam.title}
@@ -896,34 +897,45 @@ export default function ExamManagementView() {
           )}
         </View>
         <View style={styles.cardFooter}>
+          {/* Padding lives on the inner Pressables so the tap target stays the full button. */}
           <View style={styles.cardActions}>
-            <Pressable style={[styles.cardActionBtn, isTablet && styles.cardActionBtnTablet]} onPress={() => openEditExam(exam)}>
-              <Ionicons name="create-outline" size={16} color="#374151" />
-              <Text style={styles.cardActionText}>Edit</Text>
-            </Pressable>
-            <Pressable style={[styles.cardActionBtn, isTablet && styles.cardActionBtnTablet]} onPress={() => openQuestionsModal(exam)}>
-              <Ionicons name="help-circle-outline" size={16} color="#374151" />
-              <Text style={styles.cardActionText} numberOfLines={isTablet ? 1 : undefined}>
-                Add Questions
-              </Text>
-            </Pressable>
-            <Pressable
+            <GlassPanel style={[styles.cardActionBtn, isTablet && styles.cardActionBtnTablet]} radius={8} tone="medium">
+              <Pressable style={[styles.cardActionBtnInner, isTablet && styles.cardActionBtnInnerTablet]} onPress={() => openEditExam(exam)}>
+                <Ionicons name="create-outline" size={16} color="#374151" />
+                <Text style={styles.cardActionText}>Edit</Text>
+              </Pressable>
+            </GlassPanel>
+            <GlassPanel style={[styles.cardActionBtn, isTablet && styles.cardActionBtnTablet]} radius={8} tone="medium">
+              <Pressable style={[styles.cardActionBtnInner, isTablet && styles.cardActionBtnInnerTablet]} onPress={() => openQuestionsModal(exam)}>
+                <Ionicons name="help-circle-outline" size={16} color="#374151" />
+                <Text style={styles.cardActionText} numberOfLines={isTablet ? 1 : undefined}>
+                  Add Questions
+                </Text>
+              </Pressable>
+            </GlassPanel>
+            <GlassPanel
               style={[styles.cardActionBtn, styles.deleteActionBtn, isTablet && styles.cardActionBtnTablet]}
-              onPress={() => handleDeleteExam(exam._id)}
-              disabled={isDeletingExam === exam._id}
+              radius={8}
+              tone="medium"
             >
-              {isDeletingExam === exam._id ? (
-                <ActivityIndicator size="small" color="#dc2626" />
-              ) : (
-                <>
-                  <Ionicons name="trash-outline" size={16} color="#dc2626" />
-                  <Text style={styles.deleteActionText}>Delete</Text>
-                </>
-              )}
-            </Pressable>
+              <Pressable
+                style={[styles.cardActionBtnInner, isTablet && styles.cardActionBtnInnerTablet]}
+                onPress={() => handleDeleteExam(exam._id)}
+                disabled={isDeletingExam === exam._id}
+              >
+                {isDeletingExam === exam._id ? (
+                  <ActivityIndicator size="small" color="#dc2626" />
+                ) : (
+                  <>
+                    <Ionicons name="trash-outline" size={16} color="#dc2626" />
+                    <Text style={styles.deleteActionText}>Delete</Text>
+                  </>
+                )}
+              </Pressable>
+            </GlassPanel>
           </View>
         </View>
-      </View>
+      </GlassPanel>
     );
   };
 
@@ -938,10 +950,13 @@ export default function ExamManagementView() {
           <Text style={styles.headerSubtitle}>Create and manage exams</Text>
         </View>
         <View style={[styles.headerActions, isTablet && styles.headerActionsTablet]}>
-          <TouchableOpacity style={styles.outlineButton} onPress={() => setIsCsvModalOpen(true)}>
-            <Ionicons name="cloud-upload-outline" size={18} color="#16a34a" />
-            <Text style={styles.outlineButtonTextGreen}>Upload CSV</Text>
-          </TouchableOpacity>
+          {/* Padding moved inward so the whole button stays tappable. */}
+          <GlassPanel style={styles.outlineButton} radius={8} tone="medium">
+            <TouchableOpacity style={styles.outlineButtonInner} onPress={() => setIsCsvModalOpen(true)}>
+              <Ionicons name="cloud-upload-outline" size={18} color="#16a34a" />
+              <Text style={styles.outlineButtonTextGreen}>Upload CSV</Text>
+            </TouchableOpacity>
+          </GlassPanel>
           <TouchableOpacity style={styles.addButton} onPress={openCreateExam}>
             <LinearGradient colors={['#7dd3fc', '#2dd4bf']} style={styles.addButtonGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
               <Ionicons name="add" size={20} color="#fff" />
@@ -976,50 +991,64 @@ export default function ExamManagementView() {
       )}
 
       <View style={[styles.filtersCard, isTablet && styles.filtersCardTablet]}>
+        {/* Padding moved to the inner Pressables so the full select stays tappable. */}
         {dedupedFilteredExams.length > 0 && (
-          <Pressable style={styles.filterSelect} onPress={() => setQuickAddPickerOpen(true)}>
-            <Ionicons name="help-circle-outline" size={16} color="#6b7280" />
-            <Text style={styles.filterSelectText}>Quick Add Questions</Text>
-            <Ionicons name="chevron-down" size={16} color="#9ca3af" />
-          </Pressable>
+          <GlassPanel style={styles.filterSelect} radius={8} tone="medium">
+            <Pressable style={styles.filterSelectInner} onPress={() => setQuickAddPickerOpen(true)}>
+              <Ionicons name="help-circle-outline" size={16} color="#6b7280" />
+              <Text style={styles.filterSelectText}>Quick Add Questions</Text>
+              <Ionicons name="chevron-down" size={16} color="#5B6779" />
+            </Pressable>
+          </GlassPanel>
         )}
-        <Pressable style={styles.filterSelect} onPress={() => setSchoolPickerOpen(true)}>
-          <Ionicons name="school-outline" size={16} color="#6b7280" />
-          <Text style={styles.filterSelectText} numberOfLines={1}>
-            {schoolFilterOptions.find((o) => o.value === selectedSchool)?.label || 'All Schools'}
-          </Text>
-          <Ionicons name="chevron-down" size={16} color="#9ca3af" />
-        </Pressable>
-        <Pressable style={styles.filterSelect} onPress={() => setClassPickerOpen(true)}>
-          <Ionicons name="school" size={16} color="#6b7280" />
-          <Text style={styles.filterSelectText}>
-            {classFilterOptions.find((o) => o.value === selectedClass)?.label || 'All Classes'}
-          </Text>
-          <Ionicons name="chevron-down" size={16} color="#9ca3af" />
-        </Pressable>
-        <View style={styles.countBadge}>
+        <GlassPanel style={styles.filterSelect} radius={8} tone="medium">
+          <Pressable style={styles.filterSelectInner} onPress={() => setSchoolPickerOpen(true)}>
+            <Ionicons name="school-outline" size={16} color="#6b7280" />
+            <Text style={styles.filterSelectText} numberOfLines={1}>
+              {schoolFilterOptions.find((o) => o.value === selectedSchool)?.label || 'All Schools'}
+            </Text>
+            <Ionicons name="chevron-down" size={16} color="#5B6779" />
+          </Pressable>
+        </GlassPanel>
+        <GlassPanel style={styles.filterSelect} radius={8} tone="medium">
+          <Pressable style={styles.filterSelectInner} onPress={() => setClassPickerOpen(true)}>
+            <Ionicons name="school" size={16} color="#6b7280" />
+            <Text style={styles.filterSelectText}>
+              {classFilterOptions.find((o) => o.value === selectedClass)?.label || 'All Classes'}
+            </Text>
+            <Ionicons name="chevron-down" size={16} color="#5B6779" />
+          </Pressable>
+        </GlassPanel>
+        <GlassPanel style={styles.countBadge} radius={8} tone="medium">
           <Text style={styles.countBadgeText}>
             {dedupedFilteredExams.length} {dedupedFilteredExams.length === 1 ? 'Exam' : 'Exams'}
           </Text>
-        </View>
+        </GlassPanel>
       </View>
 
       <View style={styles.searchContainer}>
-        <View style={styles.searchInputContainer}>
-          <Ionicons name="search" size={20} color="#9ca3af" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search exams by title, description, or type..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholderTextColor="#9ca3af"
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
-              <Ionicons name="close-circle" size={20} color="#9ca3af" />
-            </TouchableOpacity>
-          )}
-        </View>
+        <GlassPanel style={styles.searchInputContainer} radius={12} tone="strong">
+          <View style={styles.searchInputContainerInner}>
+            <Ionicons name="search" size={20} color="#5B6779" style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search exams by title, description, or type..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholderTextColor="#5B6779"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setSearchQuery('')}
+                style={styles.clearButton}
+                accessibilityRole="button"
+                accessibilityLabel="Clear exam search"
+              >
+                <Ionicons name="close-circle" size={20} color="#5B6779" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </GlassPanel>
       </View>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -1031,7 +1060,7 @@ export default function ExamManagementView() {
         </View>
       ) : dedupedFilteredExams.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="book-outline" size={64} color="#d1d5db" />
+          <Ionicons name="book-outline" size={64} color="#5B6779" />
           <Text style={styles.emptyText}>
             {searchQuery || selectedSchool !== 'all-schools' || selectedClass !== 'all-classes'
               ? 'No exams found matching your filters'
@@ -1067,7 +1096,11 @@ export default function ExamManagementView() {
         <View style={styles.formModalWrap}>
           <View style={styles.formModalHeader}>
             <Text style={styles.formModalTitle}>{isEditing ? 'Edit Exam' : 'Create New Exam'}</Text>
-            <Pressable onPress={() => setIsExamModalOpen(false)}>
+            <Pressable
+              onPress={() => setIsExamModalOpen(false)}
+              accessibilityRole="button"
+              accessibilityLabel="Close exam form"
+            >
               <Ionicons name="close" size={24} color="#6b7280" />
             </Pressable>
           </View>
@@ -1126,7 +1159,7 @@ export default function ExamManagementView() {
               <Text style={styles.formLabel}>Exam Type *</Text>
               <Pressable style={styles.pickerField} onPress={() => setExamTypePickerOpen(true)}>
                 <Text>{EXAM_TYPES.find((t) => t.value === examForm.examType)?.label}</Text>
-                <Ionicons name="chevron-down" size={18} color="#9ca3af" />
+                <Ionicons name="chevron-down" size={18} color="#5B6779" />
               </Pressable>
             </View>
             <View style={styles.formGroup}>
@@ -1137,7 +1170,11 @@ export default function ExamManagementView() {
                   {examForm.assignedClasses.map((cls) => (
                     <View key={cls} style={styles.selectedChip}>
                       <Text style={styles.selectedChipText}>Class {cls}</Text>
-                      <Pressable onPress={() => toggleAssignedClass(cls)}>
+                      <Pressable
+                        onPress={() => toggleAssignedClass(cls)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Remove Class ${cls}`}
+                      >
                         <Ionicons name="close" size={14} color="#0369a1" />
                       </Pressable>
                     </View>
@@ -1182,7 +1219,7 @@ export default function ExamManagementView() {
               <Text style={styles.formLabel}>Board</Text>
               <Pressable style={styles.pickerField} onPress={() => setBoardPickerOpen(true)}>
                 <Text>{getBoardLabel(examForm.board)}</Text>
-                <Ionicons name="chevron-down" size={18} color="#9ca3af" />
+                <Ionicons name="chevron-down" size={18} color="#5B6779" />
               </Pressable>
             </View>
             <View style={styles.formRow}>
@@ -1238,7 +1275,11 @@ export default function ExamManagementView() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Bulk Upload Exams via CSV</Text>
-              <Pressable onPress={() => setIsCsvModalOpen(false)}>
+              <Pressable
+                onPress={() => setIsCsvModalOpen(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Close bulk exam upload"
+              >
                 <Ionicons name="close" size={24} color="#6b7280" />
               </Pressable>
             </View>
@@ -1279,7 +1320,11 @@ export default function ExamManagementView() {
               <Text style={styles.formModalTitle}>Manage Questions</Text>
               <Text style={styles.formModalSubtitle} numberOfLines={1}>{selectedExam?.title}</Text>
             </View>
-            <Pressable onPress={closeQuestionsModal}>
+            <Pressable
+              onPress={closeQuestionsModal}
+              accessibilityRole="button"
+              accessibilityLabel="Close questions manager"
+            >
               <Ionicons name="close" size={24} color="#6b7280" />
             </Pressable>
           </View>
@@ -1464,7 +1509,11 @@ export default function ExamManagementView() {
                     </Text>
                   </View>
                   {q._id && (
-                    <Pressable onPress={() => handleDeleteQuestion(q._id)}>
+                    <Pressable
+                      onPress={() => handleDeleteQuestion(q._id)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Delete question ${idx + 1}`}
+                    >
                       <Ionicons name="trash-outline" size={18} color="#dc2626" />
                     </Pressable>
                   )}
@@ -1523,7 +1572,8 @@ export default function ExamManagementView() {
 }
 
 const styles = StyleSheet.create({
-  content: { flex: 1, backgroundColor: '#f9fafb' },
+  // Transparent: the shared app background artwork shows through.
+  content: { flex: 1, backgroundColor: 'transparent' },
   header: { padding: 20, paddingBottom: 12 },
   headerTablet: {
     flexDirection: 'row',
@@ -1537,15 +1587,16 @@ const styles = StyleSheet.create({
   headerActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
   headerActionsTablet: { marginTop: 0, flexShrink: 0, justifyContent: 'flex-end' },
   outlineButton: {
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#86efac',
+  },
+  outlineButtonInner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#86efac',
-    backgroundColor: '#fff',
   },
   outlineButtonTextGreen: { color: '#16a34a', fontWeight: '600', fontSize: 14 },
   addButton: { borderRadius: 8, overflow: 'hidden' },
@@ -1580,28 +1631,30 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   filterSelect: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#fff',
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#d1d5db',
+  },
+  filterSelectInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
   filterSelectText: { flex: 1, fontSize: 14, color: '#111827' },
-  countBadge: { alignSelf: 'flex-start', backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#d1d5db', paddingHorizontal: 10, paddingVertical: 6 },
+  countBadge: { alignSelf: 'flex-start', borderRadius: 8, borderWidth: 1, borderColor: '#d1d5db', paddingHorizontal: 10, paddingVertical: 6 },
   countBadgeText: { fontSize: 12, color: '#374151', fontWeight: '600' },
   searchContainer: { paddingHorizontal: 20, marginBottom: 16 },
   searchInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#e5e7eb',
     paddingHorizontal: 16,
+  },
+  searchInputContainerInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   searchIcon: { marginRight: 12 },
   searchInput: { flex: 1, fontSize: 16, color: '#111827', paddingVertical: 12 },
@@ -1609,7 +1662,6 @@ const styles = StyleSheet.create({
   classSection: { paddingHorizontal: 20, marginBottom: 24 },
   classSectionTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 12, borderBottomWidth: 1, borderBottomColor: '#e5e7eb', paddingBottom: 8 },
   examCard: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#e5e7eb',
@@ -1645,7 +1697,7 @@ const styles = StyleSheet.create({
   detailRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   detailRowTablet: { flexDirection: 'column', alignItems: 'flex-start', gap: 2 },
   detailRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  detailLabel: { fontSize: 11, color: '#9ca3af', fontWeight: '600' },
+  detailLabel: { fontSize: 11, color: '#5B6779', fontWeight: '600' },
   detailText: { fontSize: 13, color: '#4b5563' },
   detailTextTablet: { fontSize: 12 },
   subjectRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
@@ -1663,19 +1715,22 @@ const styles = StyleSheet.create({
   },
   cardActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, borderTopWidth: 1, borderTopColor: '#f3f4f6', paddingTop: 12 },
   cardActionBtn: {
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  cardActionBtnInner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     paddingHorizontal: 10,
     paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#fff',
   },
   cardActionBtnTablet: {
     flexBasis: '47%',
     flexGrow: 1,
+  },
+  cardActionBtnInnerTablet: {
     justifyContent: 'center',
   },
   cardActionText: { fontSize: 12, fontWeight: '600', color: '#374151' },
@@ -1685,15 +1740,15 @@ const styles = StyleSheet.create({
   loadingText: { marginTop: 16, fontSize: 16, color: '#6b7280' },
   errorText: { color: '#dc2626', paddingHorizontal: 20, marginBottom: 8, fontSize: 13 },
   emptyContainer: { alignItems: 'center', padding: 40 },
-  emptyText: { fontSize: 16, color: '#9ca3af', marginTop: 16, textAlign: 'center' },
-  emptyHint: { fontSize: 13, color: '#d1d5db', marginTop: 8 },
+  emptyText: { fontSize: 16, color: '#5B6779', marginTop: 16, textAlign: 'center' },
+  emptyHint: { fontSize: 13, color: '#5B6779', marginTop: 8 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '90%' },
+  modalContent: { backgroundColor: 'rgba(255,255,255,0.48)', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '90%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
   modalTitle: { fontSize: 20, fontWeight: '800', color: '#111827', flex: 1 },
   modalBody: { padding: 20 },
   modalFooter: { flexDirection: 'row', gap: 12, padding: 20, borderTopWidth: 1, borderTopColor: '#e5e7eb' },
-  formModalWrap: { flex: 1, backgroundColor: '#fff' },
+  formModalWrap: { flex: 1, backgroundColor: 'rgba(255,255,255,0.48)' },
   formModalHeader: { flexDirection: 'row', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
   formModalTitle: { fontSize: 20, fontWeight: '800', color: '#111827' },
   formModalSubtitle: { fontSize: 13, color: '#6b7280', marginTop: 2 },
@@ -1709,7 +1764,7 @@ const styles = StyleSheet.create({
   pickerField: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f9fafb', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#e5e7eb' },
   segmentRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: '#f3f4f6', borderWidth: 1, borderColor: '#e5e7eb' },
-  chipSelected: { backgroundColor: '#fff7ed', borderColor: '#f97316' },
+  chipSelected: { backgroundColor: 'rgba(255,247,237,0.55)', borderColor: '#f97316' },
   chipText: { fontSize: 13, fontWeight: '600', color: '#6b7280' },
   chipTextSelected: { color: '#c2410c' },
   checkboxListScroll: {
@@ -1738,7 +1793,7 @@ const styles = StyleSheet.create({
   filePickText: { flex: 1, fontSize: 14, color: '#374151' },
   uploadResults: { padding: 12, borderRadius: 12, marginTop: 8 },
   uploadResultsOk: { backgroundColor: '#ecfdf5', borderWidth: 1, borderColor: '#a7f3d0' },
-  uploadResultsWarn: { backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a' },
+  uploadResultsWarn: { backgroundColor: 'rgba(255,251,235,0.55)', borderWidth: 1, borderColor: '#fde68a' },
   uploadResultsTitle: { fontWeight: '700', fontSize: 13, marginBottom: 4 },
   uploadErrorLine: { fontSize: 12, color: '#92400e' },
   bulkModeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
@@ -1747,7 +1802,7 @@ const styles = StyleSheet.create({
   switchLabel: { fontSize: 14, color: '#374151' },
   divider: { height: 1, backgroundColor: '#e5e7eb', marginVertical: 16 },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 12 },
-  pdfPreview: { marginTop: 12, backgroundColor: '#fff', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#bfdbfe' },
+  pdfPreview: { marginTop: 12, backgroundColor: 'rgba(255,255,255,0.48)', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#bfdbfe' },
   pdfPreviewTitle: { fontWeight: '700', marginBottom: 8 },
   pdfPreviewWarn: { color: '#92400e', fontSize: 12, marginBottom: 8 },
   pdfPreviewRow: { borderBottomWidth: 1, borderBottomColor: '#f3f4f6', paddingVertical: 8 },
@@ -1756,11 +1811,11 @@ const styles = StyleSheet.create({
   questionsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   deleteAllText: { color: '#dc2626', fontWeight: '600', fontSize: 13 },
   questionItem: { flexDirection: 'row', gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
-  questionIndex: { fontSize: 11, fontWeight: '700', color: '#9ca3af' },
+  questionIndex: { fontSize: 11, fontWeight: '700', color: '#5B6779' },
   questionText: { fontSize: 14, color: '#111827', marginTop: 2 },
   questionMeta: { fontSize: 11, color: '#6b7280', marginTop: 4 },
   pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  pickerSheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '70%' },
+  pickerSheet: { backgroundColor: 'rgba(255,255,255,0.48)', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '70%' },
   pickerTitle: { fontSize: 18, fontWeight: '700', marginBottom: 12 },
   pickerItem: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
   pickerItemText: { fontSize: 16, color: '#111827' },

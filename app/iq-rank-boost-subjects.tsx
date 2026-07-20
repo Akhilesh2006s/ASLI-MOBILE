@@ -7,6 +7,7 @@ import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../src/lib/api-config';
 import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
+import { GlassPanel } from '../src/components/ui';
 
 interface Quiz {
   _id: string;
@@ -191,7 +192,7 @@ export default function IQRankBoostSubjects() {
           </View>
         ) : subjects.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="book-outline" size={64} color="#9ca3af" />
+            <Ionicons name="book-outline" size={64} color="#5B6779" />
             <Text style={styles.emptyText}>No subjects available</Text>
             <Text style={styles.emptySubtext}>IQ/Rank Boost quizzes will appear here</Text>
           </View>
@@ -211,55 +212,58 @@ export default function IQRankBoostSubjects() {
                 }}
                 activeOpacity={0.7}
               >
-                <View style={styles.subjectHeader}>
-                  <View style={styles.subjectIcon}>
-                    <Ionicons name="book" size={24} color="#8b5cf6" />
+                {/* the touchable stays for hit area; the glass card carries the padding */}
+                <GlassPanel style={styles.subjectCardInner} radius={12} tone="medium">
+                  <View style={styles.subjectHeader}>
+                    <View style={styles.subjectIcon}>
+                      <Ionicons name="book" size={24} color="#8b5cf6" />
+                    </View>
+                    <View style={styles.subjectInfo}>
+                      <Text style={styles.subjectName}>{subject.name}</Text>
+                      <Text style={styles.subjectStats}>
+                        {subject.totalQuizzes} quizzes • {subject.totalQuestions} questions
+                      </Text>
+                    </View>
+                    {subject.latestScore !== undefined && (
+                      <View style={styles.scoreBadge}>
+                        <Ionicons name="trophy" size={16} color="#f59e0b" />
+                        <Text style={styles.scoreText}>{subject.latestScore}%</Text>
+                      </View>
+                    )}
                   </View>
-                  <View style={styles.subjectInfo}>
-                    <Text style={styles.subjectName}>{subject.name}</Text>
-                    <Text style={styles.subjectStats}>
-                      {subject.totalQuizzes} quizzes • {subject.totalQuestions} questions
-                    </Text>
-                  </View>
-                  {subject.latestScore !== undefined && (
-                    <View style={styles.scoreBadge}>
-                      <Ionicons name="trophy" size={16} color="#f59e0b" />
-                      <Text style={styles.scoreText}>{subject.latestScore}%</Text>
+
+                  {subject.difficulties.length > 0 && (
+                    <View style={styles.difficultiesRow}>
+                      {subject.difficulties.map((diff) => (
+                        <View
+                          key={diff}
+                          style={[styles.difficultyBadge, { backgroundColor: getDifficultyColor(diff) + '20' }]}
+                        >
+                          <Text style={[styles.difficultyText, { color: getDifficultyColor(diff) }]}>
+                            {diff}
+                          </Text>
+                        </View>
+                      ))}
                     </View>
                   )}
-                </View>
 
-                {subject.difficulties.length > 0 && (
-                  <View style={styles.difficultiesRow}>
-                    {subject.difficulties.map((diff) => (
-                      <View
-                        key={diff}
-                        style={[styles.difficultyBadge, { backgroundColor: getDifficultyColor(diff) + '20' }]}
-                      >
-                        <Text style={[styles.difficultyText, { color: getDifficultyColor(diff) }]}>
-                          {diff}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-
-                <TouchableOpacity
-                  style={styles.startButton}
-                  onPress={() => {
-                    if (subject.quizzes.length > 0) {
-                      router.push({
-                        pathname: '/iq-rank-boost-quiz/[quizId]',
-                        params: { quizId: subject.quizzes[0]._id }
-                      });
-                    }
-                  }}
-                >
-                  <Ionicons name="play" size={20} color="#fff" />
-                  <Text style={styles.startButtonText}>
-                    {subject.quizzes.length > 0 ? 'Start Quiz' : 'No Quizzes'}
-                  </Text>
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.startButton}
+                    onPress={() => {
+                      if (subject.quizzes.length > 0) {
+                        router.push({
+                          pathname: '/iq-rank-boost-quiz/[quizId]',
+                          params: { quizId: subject.quizzes[0]._id }
+                        });
+                      }
+                    }}
+                  >
+                    <Ionicons name="play" size={20} color="#fff" />
+                    <Text style={styles.startButtonText}>
+                      {subject.quizzes.length > 0 ? 'Start Quiz' : 'No Quizzes'}
+                    </Text>
+                  </TouchableOpacity>
+                </GlassPanel>
               </TouchableOpacity>
             ))}
           </View>
@@ -272,7 +276,8 @@ export default function IQRankBoostSubjects() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    // transparent so the app-wide pastel artwork shows through the glass cards
+    backgroundColor: 'transparent',
   },
   header: {
     paddingTop: 50,
@@ -342,15 +347,12 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   subjectCard: {
-    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  subjectCardInner: {
     borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   subjectHeader: {
     flexDirection: 'row',

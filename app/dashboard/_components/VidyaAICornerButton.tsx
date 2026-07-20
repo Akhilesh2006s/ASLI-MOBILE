@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
+import { GlassPanel } from '../../../src/components/ui';
 
 const messages = [
   'Need Some Help With Your Homework?',
@@ -35,14 +36,16 @@ export default function VidyaAICornerButton() {
       {showMessage && (
         <Animated.View
           style={[
-            styles.messageBubble,
+            styles.messageBubbleWrap,
             {
               opacity: fadeAnim,
               transform: [{ translateY: slideAnim }],
             },
           ]}
         >
-          <Text style={styles.messageText}>{currentMessageText}</Text>
+          <GlassPanel radius={12} tone="strong" style={styles.messageBubble}>
+            <Text style={styles.messageText}>{currentMessageText}</Text>
+          </GlassPanel>
           <View style={styles.messageTail} />
         </Animated.View>
       )}
@@ -72,17 +75,20 @@ const styles = StyleSheet.create({
     left: 16,
     zIndex: 1000,
   },
+  // The tail must sit outside the panel's clipped bounds, so it stays a sibling
+  // inside this wrapper rather than a child of the frosted bubble.
+  messageBubbleWrap: {
+    marginBottom: 12,
+    maxWidth: 200,
+  },
   messageBubble: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 12,
-    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 8,
-    maxWidth: 200,
   },
   messageText: {
     fontSize: 13,

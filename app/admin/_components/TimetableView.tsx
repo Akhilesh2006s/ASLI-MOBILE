@@ -672,6 +672,8 @@ export default function TimetableView() {
                   <AdminScalePressable
                     onPress={() => setWeekAnchor((d) => subWeeks(d, 1))}
                     style={[styles.weekNavBtn, { borderColor: colors.surfaceBorder }]}
+                    accessibilityRole="button"
+                    accessibilityLabel="Previous week"
                   >
                     <Ionicons name="chevron-back" size={16} color={colors.text} />
                   </AdminScalePressable>
@@ -682,6 +684,8 @@ export default function TimetableView() {
                   <AdminScalePressable
                     onPress={() => setWeekAnchor((d) => addWeeks(d, 1))}
                     style={[styles.weekNavBtn, { borderColor: colors.surfaceBorder }]}
+                    accessibilityRole="button"
+                    accessibilityLabel="Next week"
                   >
                     <Ionicons name="chevron-forward" size={16} color={colors.text} />
                   </AdminScalePressable>

@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { format, isValid, parseISO } from 'date-fns';
 import teacherService from '../../../src/services/api/teacherService';
 import { TeacherShimmer } from '../../../src/components/teacher';
+import { GlassPanel } from '../../../src/components/ui';
 import {
   dateKeyForDate,
   formatEventScheduleDetail,
@@ -178,7 +179,8 @@ export default function ScheduleCalendarView() {
   if (loading) {
     return (
       <View style={styles.wrap}>
-        <View style={styles.outerCard}>
+        <GlassPanel style={styles.outerCard} radius={TEACHER_RADIUS.lg} tone="medium">
+          <View style={styles.outerCardBody}>
           <View style={styles.sectionHeader}>
             <View style={[styles.sectionIcon, { backgroundColor: TEACHER.secondary }]}>
               <Ionicons name="calendar" size={20} color="#fff" />
@@ -189,14 +191,16 @@ export default function ScheduleCalendarView() {
             </View>
           </View>
           <TeacherShimmer variant="list" count={4} />
-        </View>
+          </View>
+        </GlassPanel>
       </View>
     );
   }
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.outerCard}>
+      <GlassPanel style={styles.outerCard} radius={TEACHER_RADIUS.lg} tone="medium">
+        <View style={styles.outerCardBody}>
         <View style={styles.sectionHeader}>
           <View style={[styles.sectionIcon, { backgroundColor: TEACHER.secondary }]}>
             <Ionicons name="calendar" size={20} color={TEACHER.textOnPrimary} />
@@ -207,7 +211,7 @@ export default function ScheduleCalendarView() {
           </View>
         </View>
 
-        <View style={styles.calendarCard}>
+        <GlassPanel style={styles.calendarCard} radius={TEACHER_RADIUS.lg} tone="light">
           <View style={styles.monthNav}>
             <Pressable style={styles.navBtn} onPress={() => shiftMonth(-1)}>
               <Ionicons name="chevron-back" size={18} color={TEACHER.textSecondary} />
@@ -281,9 +285,9 @@ export default function ScheduleCalendarView() {
               </View>
             ))}
           </View>
-        </View>
+        </GlassPanel>
 
-        <View style={styles.scheduleCard}>
+        <GlassPanel style={styles.scheduleCard} radius={TEACHER_RADIUS.lg} tone="light">
           <View style={styles.scheduleHeader}>
             <View style={styles.scheduleIcon}>
               <Ionicons name="time" size={18} color="#fff" />
@@ -307,11 +311,8 @@ export default function ScheduleCalendarView() {
           ) : (
             <ScrollView style={styles.entriesList} nestedScrollEnabled>
               {dayEntries.map((entry) => (
-                <Pressable
-                  key={entry.id}
-                  style={styles.entryCard}
-                  onPress={() => setDetailEntry(entry)}
-                >
+                <Pressable key={entry.id} onPress={() => setDetailEntry(entry)}>
+                  <GlassPanel style={styles.entryCard} radius={TEACHER_RADIUS.md} tone="strong">
                   <View style={styles.entryTimeRow}>
                     <Ionicons name="time-outline" size={14} color={TEACHER.primaryLight} />
                     <Text style={styles.entryTime} numberOfLines={2}>
@@ -346,16 +347,19 @@ export default function ScheduleCalendarView() {
                       <Text style={styles.entryMeta}>{entry.room}</Text>
                     </View>
                   ) : null}
+                  </GlassPanel>
                 </Pressable>
               ))}
             </ScrollView>
           )}
+        </GlassPanel>
         </View>
-      </View>
+      </GlassPanel>
 
       <Modal visible={!!detailEntry} transparent animationType="fade">
         <Pressable style={styles.detailOverlay} onPress={() => setDetailEntry(null)}>
-          <Pressable style={styles.detailCard} onPress={(e) => e.stopPropagation()}>
+          <Pressable onPress={(e) => e.stopPropagation()}>
+            <GlassPanel style={styles.detailCard} radius={TEACHER_RADIUS.lg} tone="strong">
             <Text style={styles.detailTitle}>{detailEntry?.title || 'Event details'}</Text>
             <Text style={styles.detailType}>
               {detailEntry ? getEventLabel(detailEntry.eventType) : ''} details
@@ -420,6 +424,7 @@ export default function ScheduleCalendarView() {
             <Pressable style={styles.detailClose} onPress={() => setDetailEntry(null)}>
               <Text style={styles.detailCloseText}>Close</Text>
             </Pressable>
+            </GlassPanel>
           </Pressable>
         </Pressable>
       </Modal>
@@ -434,7 +439,12 @@ const styles = StyleSheet.create({
   },
   outerCard: {
     ...glassCard,
+    // GlassPanel supplies the frosted fill.
+    backgroundColor: 'transparent',
     padding: TEACHER_SPACING.lg,
+  },
+  // Child layout, kept inside GlassPanel's content wrapper.
+  outerCardBody: {
     gap: TEACHER_SPACING.md,
   },
   sectionHeader: {
@@ -463,7 +473,6 @@ const styles = StyleSheet.create({
     borderRadius: TEACHER_RADIUS.lg,
     borderWidth: 1,
     borderColor: TEACHER.surfaceBorder,
-    backgroundColor: TEACHER.surface,
     padding: 12,
   },
   monthNav: {
@@ -572,7 +581,6 @@ const styles = StyleSheet.create({
     borderRadius: TEACHER_RADIUS.lg,
     borderWidth: 1,
     borderColor: TEACHER.surfaceBorder,
-    backgroundColor: TEACHER.surface,
     padding: 14,
     minHeight: 280,
   },
@@ -639,7 +647,6 @@ const styles = StyleSheet.create({
     borderRadius: TEACHER_RADIUS.md,
     borderWidth: 1,
     borderColor: TEACHER.surfaceBorder,
-    backgroundColor: 'rgba(123,80,255,0.07)',
     padding: 12,
     marginBottom: 8,
   },
@@ -715,6 +722,7 @@ const styles = StyleSheet.create({
   },
   detailCard: {
     ...glassCard,
+    backgroundColor: 'transparent',
     padding: 20,
   },
   detailTitle: {

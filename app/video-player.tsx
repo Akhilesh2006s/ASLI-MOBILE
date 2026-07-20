@@ -1,19 +1,29 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, useWindowDimensions } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  ScrollView,
+  useWindowDimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { router, useLocalSearchParams } from 'expo-router';
-import { Video, ResizeMode } from 'expo-av';
+import { useLocalSearchParams } from 'expo-router';
+import { Video as ExpoVideo, ResizeMode, type AVPlaybackStatus } from 'expo-av';
 import api from '../src/services/api/api';
 import YouTubeEmbedWebView from '../src/components/shared/YouTubeEmbedWebView';
-import { useBackNavigation, useContentViewerBack } from '../src/hooks/useBackNavigation';
+import GlassPanel from '../src/components/ui/GlassPanel';
+import { useContentViewerBack } from '../src/hooks/useBackNavigation';
 import {
   extractYouTubeId,
   getAuthHeaders,
   resolveContentUrl,
 } from '../src/utils/contentPreview';
 import { getVideoDisplayTitle } from '../src/lib/video-chapter-schedule';
+import { STUDENT, STUDENT_RADIUS, STUDENT_TYPO } from '../src/theme/student';
+import { GLASS_ROW, GLASS_VIOLET } from '../src/theme/glass';
 
 const VIDEO_CONTENT_MAX = 960;
 
@@ -92,7 +102,7 @@ function transformLibraryVideo(videoData: any) {
   };
 }
 
-interface Video {
+interface LibraryVideo {
   _id: string;
   title: string;
   description?: string;
@@ -116,6 +126,25 @@ interface Video {
   };
 }
 
+type AiTab = 'notes' | 'mindmap' | 'qa';
+
+function MetaChip({
+  icon,
+  label,
+}: {
+  icon?: keyof typeof Ionicons.glyphMap;
+  label: string;
+}) {
+  return (
+    <View style={styles.metaChip}>
+      {icon ? <Ionicons name={icon} size={12} color={STUDENT.primaryDark} /> : null}
+      <Text style={styles.metaChipText} numberOfLines={1}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
 export default function VideoPlayer() {
   const params = useLocalSearchParams<{
     videoId?: string | string[];
@@ -126,42 +155,38 @@ export default function VideoPlayer() {
   const videoId = pickParam(params.videoId);
   const returnTo = pickParam(params.returnTo);
   const { isContentItem, contentData } = params;
-  const [video, setVideo] = useState<Video | null>(null);
+  const [video, setVideo] = useState<LibraryVideo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'notes' | 'mindmap' | 'qa'>('notes');
+  const [activeTab, setActiveTab] = useState<AiTab>('notes');
   const goBack = useContentViewerBack(returnTo || undefined);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [, setIsPlaying] = useState(false);
   const [videoHeaders, setVideoHeaders] = useState<Record<string, string> | undefined>();
-  const videoRef = useRef<Video>(null);
+  const videoRef = useRef<ExpoVideo>(null);
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const isTablet = windowWidth >= 768;
   const contentWidth = isTablet ? Math.min(windowWidth, VIDEO_CONTENT_MAX) : windowWidth;
+  const horizontalPad = isTablet ? 20 : 14;
   const videoHeight = Math.round(
-    Math.min(contentWidth * (9 / 16), windowHeight * (isTablet ? 0.52 : 0.45))
+    Math.min(
+      (contentWidth - horizontalPad * 2) * (9 / 16),
+      windowHeight * (isTablet ? 0.5 : 0.42)
+    )
   );
 
   useEffect(() => {
     if (videoId) {
-      // If content data is passed directly, use it
       if (isContentItem === 'true' && contentData) {
         try {
           const parsedContent = JSON.parse(contentData);
-          const videoFileUrl = parsedContent.fileUrl || parsedContent.videoUrl || '';
-          const isYouTube = !!parsedContent.youtubeUrl || (videoFileUrl && (
-            videoFileUrl.includes('youtube.com') ||
-            videoFileUrl.includes('youtu.be')
-          ));
-
           setVideo(transformLibraryVideo(parsedContent));
           setIsLoading(false);
           void fetchVideo({ silent: true });
           return;
         } catch (error) {
           console.error('Error parsing content data:', error);
-          // Fall through to fetchVideo
         }
       }
-      
+
       fetchVideo();
     }
   }, [videoId, isContentItem, contentData]);
@@ -221,16 +246,14 @@ export default function VideoPlayer() {
     getAuthHeaders(resolvedVideoUrl).then(setVideoHeaders);
   }, [isDirectVideo, resolvedVideoUrl]);
 
-  const contextLines = useMemo(
-    () =>
-      [
-        video?.subject ? `Subject: ${video.subject}` : '',
-        video?.chapter ? `Chapter: ${video.chapter}` : '',
-        video?.module ? `Module: ${video.module}` : '',
-        video?.topic ? `Topic: ${video.topic}` : '',
-      ].filter(Boolean),
-    [video?.subject, video?.chapter, video?.module, video?.topic]
-  );
+  const contextChips = useMemo(() => {
+    const chips: { icon: keyof typeof Ionicons.glyphMap; label: string }[] = [];
+    if (video?.subject) chips.push({ icon: 'book-outline', label: video.subject });
+    if (video?.chapter) chips.push({ icon: 'layers-outline', label: video.chapter });
+    if (video?.module) chips.push({ icon: 'albums-outline', label: video.module });
+    if (video?.topic) chips.push({ icon: 'pricetag-outline', label: video.topic });
+    return chips;
+  }, [video?.subject, video?.chapter, video?.module, video?.topic]);
 
   const notesBody = (video?.notesText || video?.description || '').trim();
   const showNotesTab = !!video?.aiFeatures?.hasAutoNotes && notesBody.length > 0;
@@ -247,10 +270,13 @@ export default function VideoPlayer() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3b82f6" />
-          <Text style={styles.loadingText}>Loading video...</Text>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <View style={styles.centeredState}>
+          <GlassPanel tone="medium" radius={22} contentStyle={styles.stateInner}>
+            <ActivityIndicator size="large" color={STUDENT.primary} />
+            <Text style={styles.stateTitle}>Loading video…</Text>
+            <Text style={styles.stateSub}>Getting your lesson ready</Text>
+          </GlassPanel>
         </View>
       </SafeAreaView>
     );
@@ -258,16 +284,19 @@ export default function VideoPlayer() {
 
   if (!video) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle" size={64} color="#ef4444" />
-          <Text style={styles.errorText}>Video not found</Text>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => void goBack()}
-          >
-            <Text style={styles.backButtonText}>Go Back</Text>
-          </TouchableOpacity>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <View style={styles.centeredState}>
+          <GlassPanel tone="medium" radius={22} contentStyle={styles.stateInner}>
+            <View style={styles.stateIcon}>
+              <Ionicons name="videocam-off-outline" size={28} color="#dc2626" />
+            </View>
+            <Text style={styles.stateTitle}>Video not found</Text>
+            <Text style={styles.stateSub}>This lesson may have been moved or removed.</Text>
+            <TouchableOpacity style={styles.primaryBtn} onPress={() => void goBack()} activeOpacity={0.88}>
+              <Ionicons name="arrow-back" size={18} color="#fff" />
+              <Text style={styles.primaryBtnText}>Go back</Text>
+            </TouchableOpacity>
+          </GlassPanel>
         </View>
       </SafeAreaView>
     );
@@ -278,166 +307,223 @@ export default function VideoPlayer() {
   const isYouTube = !!youtubeVideoId || !!video.isYouTubeVideo;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={[styles.playerShell, { maxWidth: contentWidth }]}>
-        {/* Header */}
-        <LinearGradient
-          colors={['#3b82f6', '#2563eb']}
-          style={[styles.header, isTablet && styles.headerTablet]}
-        >
-          <View style={styles.headerContent}>
-            <TouchableOpacity onPress={() => void goBack()} style={styles.headerBackBtn}>
-              <Ionicons name="arrow-back" size={24} color="#fff" />
-            </TouchableOpacity>
-            <View style={styles.headerText}>
-              <Text style={styles.headerTitle}>{video.title}</Text>
-              <View style={styles.headerBadges}>
-                {video.difficulty && (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{video.difficulty}</Text>
-                  </View>
-                )}
-                {video.language && (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{video.language}</Text>
-                  </View>
-                )}
-                <View style={styles.badge}>
-                  <Ionicons name="time" size={12} color="#fff" />
-                  <Text style={styles.badgeText}>{formatDuration(video.duration || 0)}</Text>
-                </View>
-              </View>
-            </View>
+        <View style={[styles.topBar, { paddingHorizontal: horizontalPad }]}>
+          <TouchableOpacity
+            onPress={() => void goBack()}
+            style={styles.backBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            activeOpacity={0.85}
+          >
+            <Ionicons name="chevron-back" size={22} color={STUDENT.text} />
+          </TouchableOpacity>
+          <View style={styles.topBarText}>
+            <Text style={styles.topEyebrow}>EduOTT Player</Text>
+            <Text style={styles.topTitle} numberOfLines={1}>
+              {video.title}
+            </Text>
           </View>
-        </LinearGradient>
-
-        {/* Video Player */}
-        <View style={[styles.videoContainer, { height: videoHeight }]}>
-          {isYouTube && youtubeSourceUrl ? (
-            <View style={styles.videoWrapper}>
-              <YouTubeEmbedWebView videoUrl={youtubeSourceUrl} style={styles.video} />
-            </View>
-          ) : isDirectVideo ? (
-            <View style={styles.videoWrapper}>
-              <Video
-                ref={videoRef}
-                source={{ uri: resolvedVideoUrl, headers: videoHeaders }}
-                style={styles.video}
-                useNativeControls
-                resizeMode={ResizeMode.CONTAIN}
-                onPlaybackStatusUpdate={(status) => {
-                  setIsPlaying(status.isPlaying);
-                }}
-              />
-            </View>
-          ) : (
-            <View style={styles.placeholderContainer}>
-              <Ionicons name="videocam-off" size={64} color="#9ca3af" />
-              <Text style={styles.placeholderText}>Video not available</Text>
-            </View>
-          )}
+          <View style={styles.livePill}>
+            <View style={styles.liveDot} />
+            <Text style={styles.livePillText}>Watch</Text>
+          </View>
         </View>
 
         <ScrollView
           style={styles.detailsScroll}
-          contentContainerStyle={[styles.detailsContent, isTablet && styles.detailsContentTablet]}
+          contentContainerStyle={[
+            styles.detailsContent,
+            { paddingHorizontal: horizontalPad },
+          ]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-        {contextLines.length > 0 ? (
-          <View style={styles.descriptionContainer}>
-            <Text style={styles.descriptionTitle}>About this video</Text>
-            {contextLines.map((line) => (
-              <Text key={line} style={styles.contextLine}>
-                {line}
+          <GlassPanel
+            tone="strong"
+            elevated
+            colors={[...GLASS_VIOLET]}
+            radius={22}
+            style={styles.stageCard}
+            contentStyle={styles.stageInner}
+          >
+            <View style={[styles.cinemaFrame, { height: videoHeight }]}>
+              {isYouTube && youtubeSourceUrl ? (
+                <YouTubeEmbedWebView videoUrl={youtubeSourceUrl} style={styles.video} />
+              ) : isDirectVideo ? (
+                <ExpoVideo
+                  ref={videoRef}
+                  source={{ uri: resolvedVideoUrl, headers: videoHeaders }}
+                  style={styles.video}
+                  useNativeControls
+                  resizeMode={ResizeMode.CONTAIN}
+                  onPlaybackStatusUpdate={(status: AVPlaybackStatus) => {
+                    if (status.isLoaded) {
+                      setIsPlaying(status.isPlaying);
+                    }
+                  }}
+                />
+              ) : (
+                <View style={styles.placeholder}>
+                  <View style={styles.placeholderIcon}>
+                    <Ionicons name="videocam-off-outline" size={28} color={STUDENT.textMuted} />
+                  </View>
+                  <Text style={styles.placeholderTitle}>Video not available</Text>
+                  <Text style={styles.placeholderSub}>
+                    This stream could not be loaded right now.
+                  </Text>
+                </View>
+              )}
+            </View>
+          </GlassPanel>
+
+          <GlassPanel
+            tone="strong"
+            elevated
+            radius={20}
+            style={styles.infoCard}
+            contentStyle={styles.infoInner}
+          >
+            <Text style={styles.videoTitle}>{video.title}</Text>
+            <View style={styles.metaRow}>
+              {video.difficulty ? <MetaChip label={video.difficulty} icon="flash-outline" /> : null}
+              {video.language ? <MetaChip label={video.language} icon="globe-outline" /> : null}
+              <MetaChip
+                label={formatDuration(video.duration || 0)}
+                icon="time-outline"
+              />
+              {isYouTube ? <MetaChip label="YouTube" icon="logo-youtube" /> : null}
+            </View>
+
+            {contextChips.length > 0 ? (
+              <View style={styles.contextBlock}>
+                <Text style={styles.sectionLabel}>About this video</Text>
+                <View style={styles.contextChips}>
+                  {contextChips.map((chip) => (
+                    <MetaChip key={chip.label} icon={chip.icon} label={chip.label} />
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
+            {video.description && video.description.trim() !== notesBody ? (
+              <View style={styles.contextBlock}>
+                <Text style={styles.sectionLabel}>Description</Text>
+                <Text style={styles.bodyText}>{video.description}</Text>
+              </View>
+            ) : null}
+          </GlassPanel>
+
+          {showAiTabs ? (
+            <GlassPanel
+              tone="medium"
+              elevated
+              radius={20}
+              style={styles.infoCard}
+              contentStyle={styles.infoInner}
+            >
+              <Text style={styles.sectionLabel}>Learning extras</Text>
+              <View style={styles.aiTabs}>
+                {showNotesTab ? (
+                  <TouchableOpacity
+                    style={[styles.aiTab, activeTab === 'notes' && styles.aiTabActive]}
+                    onPress={() => setActiveTab('notes')}
+                    activeOpacity={0.88}
+                  >
+                    <Ionicons
+                      name="document-text-outline"
+                      size={16}
+                      color={activeTab === 'notes' ? '#fff' : STUDENT.textSecondary}
+                    />
+                    <Text style={[styles.aiTabText, activeTab === 'notes' && styles.aiTabTextActive]}>
+                      Notes
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+                {showMindMapTab ? (
+                  <TouchableOpacity
+                    style={[styles.aiTab, activeTab === 'mindmap' && styles.aiTabActive]}
+                    onPress={() => setActiveTab('mindmap')}
+                    activeOpacity={0.88}
+                  >
+                    <Ionicons
+                      name="git-network-outline"
+                      size={16}
+                      color={activeTab === 'mindmap' ? '#fff' : STUDENT.textSecondary}
+                    />
+                    <Text
+                      style={[styles.aiTabText, activeTab === 'mindmap' && styles.aiTabTextActive]}
+                    >
+                      Mind map
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+                {showQATab ? (
+                  <TouchableOpacity
+                    style={[styles.aiTab, activeTab === 'qa' && styles.aiTabActive]}
+                    onPress={() => setActiveTab('qa')}
+                    activeOpacity={0.88}
+                  >
+                    <Ionicons
+                      name="chatbubbles-outline"
+                      size={16}
+                      color={activeTab === 'qa' ? '#fff' : STUDENT.textSecondary}
+                    />
+                    <Text style={[styles.aiTabText, activeTab === 'qa' && styles.aiTabTextActive]}>
+                      Q&A
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+
+              <View style={styles.aiBody}>
+                {activeTab === 'notes' && showNotesTab ? (
+                  <>
+                    <Text style={styles.aiBodyTitle}>Auto-generated notes</Text>
+                    <Text style={styles.bodyText}>{notesBody}</Text>
+                  </>
+                ) : null}
+                {activeTab === 'mindmap' && showMindMapTab ? (
+                  <>
+                    <Text style={styles.aiBodyTitle}>Visual mind map</Text>
+                    <Text style={styles.bodyText}>
+                      Mind map is not available for this video yet.
+                    </Text>
+                  </>
+                ) : null}
+                {activeTab === 'qa' && showQATab ? (
+                  <>
+                    <Text style={styles.aiBodyTitle}>Voice-enabled Q&A</Text>
+                    <Text style={styles.bodyText}>Q&A is not available for this video yet.</Text>
+                  </>
+                ) : null}
+              </View>
+            </GlassPanel>
+          ) : showNotesTab ? (
+            <GlassPanel
+              tone="medium"
+              elevated
+              radius={20}
+              style={styles.infoCard}
+              contentStyle={styles.infoInner}
+            >
+              <Text style={styles.sectionLabel}>Auto-generated notes</Text>
+              <Text style={styles.bodyText}>{notesBody}</Text>
+            </GlassPanel>
+          ) : !notesBody && contextChips.length === 0 ? (
+            <GlassPanel
+              tone="light"
+              radius={20}
+              style={styles.infoCard}
+              contentStyle={styles.infoInner}
+            >
+              <Text style={styles.sectionLabel}>Video details</Text>
+              <Text style={styles.bodyText}>
+                No additional notes or description are available for this video yet.
               </Text>
-            ))}
-          </View>
-        ) : null}
-
-        {video.description && video.description.trim() !== notesBody ? (
-          <View style={styles.descriptionContainer}>
-            <Text style={styles.descriptionTitle}>Description</Text>
-            <Text style={styles.descriptionText}>{video.description}</Text>
-          </View>
-        ) : null}
-
-        {showNotesTab ? (
-          <View style={styles.descriptionContainer}>
-            <Text style={styles.descriptionTitle}>Auto-Generated Notes</Text>
-            <Text style={styles.descriptionText}>{notesBody}</Text>
-          </View>
-        ) : null}
-
-        {showAiTabs ? (
-          <View style={styles.tabsContainer}>
-            <View style={styles.tabsHeader}>
-              {showNotesTab ? (
-                <TouchableOpacity
-                  style={[styles.tab, activeTab === 'notes' && styles.tabActive]}
-                  onPress={() => setActiveTab('notes')}
-                >
-                  <Ionicons name="document-text" size={20} color={activeTab === 'notes' ? '#fff' : '#6b7280'} />
-                  <Text style={[styles.tabText, activeTab === 'notes' && styles.tabTextActive]}>
-                    Notes
-                  </Text>
-                </TouchableOpacity>
-              ) : null}
-              {showMindMapTab ? (
-                <TouchableOpacity
-                  style={[styles.tab, activeTab === 'mindmap' && styles.tabActive]}
-                  onPress={() => setActiveTab('mindmap')}
-                >
-                  <Ionicons name="map" size={20} color={activeTab === 'mindmap' ? '#fff' : '#6b7280'} />
-                  <Text style={[styles.tabText, activeTab === 'mindmap' && styles.tabTextActive]}>
-                    Mind Map
-                  </Text>
-                </TouchableOpacity>
-              ) : null}
-              {showQATab ? (
-                <TouchableOpacity
-                  style={[styles.tab, activeTab === 'qa' && styles.tabActive]}
-                  onPress={() => setActiveTab('qa')}
-                >
-                  <Ionicons name="chatbubbles" size={20} color={activeTab === 'qa' ? '#fff' : '#6b7280'} />
-                  <Text style={[styles.tabText, activeTab === 'qa' && styles.tabTextActive]}>
-                    Q&A
-                  </Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
-
-            <View style={styles.tabContent}>
-              {activeTab === 'notes' && showNotesTab ? (
-                <View style={styles.featureContent}>
-                  <Text style={styles.featureTitle}>Auto-Generated Notes</Text>
-                  <Text style={styles.featureText}>{notesBody}</Text>
-                </View>
-              ) : null}
-              {activeTab === 'mindmap' && showMindMapTab ? (
-                <View style={styles.featureContent}>
-                  <Text style={styles.featureTitle}>Visual Mind Map</Text>
-                  <Text style={styles.featureText}>
-                    Mind map is not available for this video yet.
-                  </Text>
-                </View>
-              ) : null}
-              {activeTab === 'qa' && showQATab ? (
-                <View style={styles.featureContent}>
-                  <Text style={styles.featureTitle}>Voice-Enabled Q&A</Text>
-                  <Text style={styles.featureText}>
-                    Q&A is not available for this video yet.
-                  </Text>
-                </View>
-              ) : null}
-            </View>
-          </View>
-        ) : !notesBody && contextLines.length === 0 ? (
-          <View style={styles.descriptionContainer}>
-            <Text style={styles.descriptionTitle}>Video details</Text>
-            <Text style={styles.descriptionText}>
-              No additional notes or description are available for this video yet.
-            </Text>
-          </View>
-        ) : null}
+            </GlassPanel>
+          ) : null}
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -447,7 +533,7 @@ export default function VideoPlayer() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: 'transparent',
     alignItems: 'center',
   },
   playerShell: {
@@ -455,229 +541,257 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
   },
-  loadingContainer: {
+  centeredState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000',
+    paddingHorizontal: 28,
   },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#fff',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  stateInner: {
     alignItems: 'center',
-    backgroundColor: '#000',
-    padding: 32,
-  },
-  errorText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#fff',
-    marginTop: 16,
-    marginBottom: 24,
-  },
-  backButton: {
-    backgroundColor: '#3b82f6',
+    paddingVertical: 28,
     paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  backButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  header: {
-    paddingTop: 12,
-    paddingBottom: 16,
-    paddingHorizontal: 16,
-  },
-  headerTablet: {
-    paddingHorizontal: 20,
-    paddingBottom: 18,
-  },
-  headerBackBtn: {
-    padding: 4,
-    marginRight: 4,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerText: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#fff',
-    marginBottom: 8,
-    flexShrink: 1,
-  },
-  headerBadges: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 8,
+    minWidth: 260,
   },
-  badge: {
+  stateIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: GLASS_ROW.fillStrong,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: GLASS_ROW.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  stateTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: STUDENT.text,
+    marginTop: 4,
+  },
+  stateSub: {
+    fontSize: 13,
+    color: STUDENT.textMuted,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  primaryBtn: {
+    marginTop: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
+    gap: 8,
+    backgroundColor: STUDENT.primary,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: STUDENT_RADIUS.md,
   },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '600',
+  primaryBtnText: {
     color: '#fff',
+    fontSize: 15,
+    fontWeight: '800',
   },
-  videoContainer: {
-    width: '100%',
-    backgroundColor: '#000',
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingTop: 6,
+    paddingBottom: 10,
   },
-  videoWrapper: {
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: GLASS_ROW.fillStrong,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: GLASS_ROW.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topBarText: {
     flex: 1,
-    backgroundColor: '#000',
+    minWidth: 0,
+  },
+  topEyebrow: {
+    ...STUDENT_TYPO.caption,
+    color: STUDENT.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  topTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: STUDENT.text,
+  },
+  livePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: GLASS_ROW.fillStrong,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: GLASS_ROW.border,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 999,
+  },
+  liveDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: STUDENT.primary,
+  },
+  livePillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: STUDENT.text,
+  },
+  detailsScroll: {
+    flex: 1,
+  },
+  detailsContent: {
+    paddingBottom: 36,
+    gap: 12,
+  },
+  stageCard: {
+    width: '100%',
+  },
+  stageInner: {
+    padding: 8,
+  },
+  cinemaFrame: {
+    width: '100%',
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#0b1220',
   },
   video: {
     width: '100%',
     height: '100%',
+    backgroundColor: '#000',
   },
-  videoPlaceholder: {
+  placeholder: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#1f2937',
-    position: 'relative',
-  },
-  thumbnailFull: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: '100%',
-    height: '100%',
-  },
-  thumbnailPlaceholder: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#1f2937',
-  },
-  playButtonLarge: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(239, 68, 68, 0.9)',
     justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1,
-  },
-  playButtonText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#fff',
-    fontWeight: '600',
-    zIndex: 1,
-  },
-  placeholderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#1f2937',
-  },
-  placeholderText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#9ca3af',
-  },
-  detailsScroll: {
-    flex: 1,
+    paddingHorizontal: 24,
+    gap: 8,
     backgroundColor: '#111827',
   },
-  detailsContent: {
-    paddingBottom: 24,
-    gap: 0,
-  },
-  detailsContentTablet: {
-    paddingHorizontal: 20,
-  },
-  descriptionContainer: {
-    padding: 16,
-    backgroundColor: '#111827',
-  },
-  contextLine: {
-    fontSize: 14,
-    color: '#d1d5db',
-    lineHeight: 20,
+  placeholderIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 4,
   },
-  descriptionTitle: {
+  placeholderTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#fff',
-    marginBottom: 8,
+    fontWeight: '800',
+    color: '#f3f4f6',
   },
-  descriptionText: {
-    fontSize: 14,
-    color: '#d1d5db',
-    lineHeight: 20,
+  placeholderSub: {
+    fontSize: 13,
+    color: '#9ca3af',
+    textAlign: 'center',
+    lineHeight: 18,
   },
-  tabsContainer: {
-    flex: 1,
-    backgroundColor: '#111827',
+  infoCard: {
+    width: '100%',
   },
-  tabsHeader: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#374151',
-  },
-  tab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    gap: 8,
-  },
-  tabActive: {
-    backgroundColor: '#3b82f6',
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6b7280',
-  },
-  tabTextActive: {
-    color: '#fff',
-  },
-  tabContent: {
-    flex: 1,
+  infoInner: {
     padding: 16,
-  },
-  featureContent: {
     gap: 12,
   },
-  featureTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#fff',
-    marginBottom: 8,
+  videoTitle: {
+    ...STUDENT_TYPO.section,
+    fontSize: 20,
+    color: STUDENT.text,
+    lineHeight: 26,
   },
-  featureText: {
+  metaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  metaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    maxWidth: '100%',
+    backgroundColor: GLASS_ROW.fillStrong,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: GLASS_ROW.border,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  metaChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: STUDENT.text,
+    maxWidth: 160,
+  },
+  contextBlock: {
+    gap: 8,
+    paddingTop: 4,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: GLASS_ROW.border,
+  },
+  contextChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  sectionLabel: {
+    ...STUDENT_TYPO.caption,
+    color: STUDENT.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.55,
+  },
+  bodyText: {
     fontSize: 14,
-    color: '#d1d5db',
-    lineHeight: 20,
+    lineHeight: 21,
+    color: STUDENT.textSecondary,
+  },
+  aiTabs: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  aiTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 999,
+    backgroundColor: GLASS_ROW.fill,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: GLASS_ROW.border,
+  },
+  aiTabActive: {
+    backgroundColor: STUDENT.primary,
+    borderColor: STUDENT.primaryDark,
+  },
+  aiTabText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: STUDENT.textSecondary,
+  },
+  aiTabTextActive: {
+    color: '#fff',
+  },
+  aiBody: {
+    gap: 8,
+    marginTop: 4,
+  },
+  aiBodyTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: STUDENT.text,
   },
 });
-

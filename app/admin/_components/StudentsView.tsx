@@ -29,6 +29,7 @@ import {
   AdminStatsRow,
   useAdminResponsiveLayout,
 } from '../_ui';
+import { GlassPanel } from '../../../src/components/ui';
 import StudentRiskAnalysisModal from './StudentRiskAnalysisModal';
 
 interface Student {
@@ -736,7 +737,7 @@ export default function StudentsView() {
                           const isSectionCollapsed = collapsedSections[sectionScopeKey] ?? true;
                           const sectionStudents = classSectionGroups[classKey][sectionKey];
                           return (
-                            <View key={sectionScopeKey} style={styles.sectionCard}>
+                            <GlassPanel key={sectionScopeKey} style={styles.sectionCard} radius={12} tone="medium">
                               <TouchableOpacity
                                 style={styles.sectionHeader}
                                 onPress={() => toggleSectionCollapse(sectionScopeKey)}
@@ -760,7 +761,7 @@ export default function StudentsView() {
                                   {sectionStudents.map((student, idx) => renderStudentCard(student, idx))}
                                 </View>
                               )}
-                            </View>
+                            </GlassPanel>
                           );
                         })}
                     </View>
@@ -810,7 +811,7 @@ export default function StudentsView() {
                       .map((classKey) => {
                         const classStudents = sectionClassGroups[sectionKey][classKey];
                         return (
-                          <View key={`${sectionKey}::${classKey}`} style={styles.sectionCard}>
+                          <GlassPanel key={`${sectionKey}::${classKey}`} style={styles.sectionCard} radius={12} tone="medium">
                             <View style={styles.sectionClassHeader}>
                               <Text style={styles.sectionTitle}>{classKey}</Text>
                               <View style={styles.countBadge}>
@@ -820,7 +821,7 @@ export default function StudentsView() {
                             <View style={styles.sectionStudents}>
                               {classStudents.map((student, idx) => renderStudentCard(student, idx))}
                             </View>
-                          </View>
+                          </GlassPanel>
                         );
                       })}
                   </View>
@@ -995,7 +996,11 @@ export default function StudentsView() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Upload Students CSV</Text>
-              <TouchableOpacity onPress={() => setIsUploadModalVisible(false)}>
+              <TouchableOpacity
+                onPress={() => setIsUploadModalVisible(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Close upload CSV form"
+              >
                 <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
@@ -1065,6 +1070,8 @@ export default function StudentsView() {
                   setIsDeleteAllModalVisible(false);
                   setDeleteAllConfirmStep(1);
                 }}
+                accessibilityRole="button"
+                accessibilityLabel="Close delete all students confirmation"
               >
                 <Ionicons name="close" size={24} color="#991b1b" />
               </TouchableOpacity>
@@ -1121,7 +1128,11 @@ export default function StudentsView() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Add New Student</Text>
-              <TouchableOpacity onPress={() => setIsAddModalVisible(false)}>
+              <TouchableOpacity
+                onPress={() => setIsAddModalVisible(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Close add student form"
+              >
                 <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
@@ -1202,6 +1213,8 @@ export default function StudentsView() {
                   <TouchableOpacity
                     style={styles.eyeBtn}
                     onPress={() => setShowNewStudentPassword((p) => !p)}
+                    accessibilityRole="button"
+                    accessibilityLabel={showNewStudentPassword ? 'Hide password' : 'Show password'}
                   >
                     <Ionicons
                       name={showNewStudentPassword ? 'eye-off-outline' : 'eye-outline'}
@@ -1245,7 +1258,11 @@ export default function StudentsView() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Edit Student Details</Text>
-              <TouchableOpacity onPress={() => setIsEditModalVisible(false)}>
+              <TouchableOpacity
+                onPress={() => setIsEditModalVisible(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Close edit student form"
+              >
                 <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
@@ -1329,7 +1346,11 @@ export default function StudentsView() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Assign Class to Student</Text>
-              <TouchableOpacity onPress={() => setIsAssignClassModalVisible(false)}>
+              <TouchableOpacity
+                onPress={() => setIsAssignClassModalVisible(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Close assign class form"
+              >
                 <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
@@ -1390,7 +1411,7 @@ const styles = StyleSheet.create({
   summaryTile: {
     flex: 1,
     minWidth: 0,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 14,
     paddingVertical: 12,
     paddingHorizontal: 8,
@@ -1427,7 +1448,7 @@ const styles = StyleSheet.create({
   toolbarCard: {
     marginHorizontal: 16,
     marginBottom: 14,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 16,
     padding: 14,
     borderWidth: 1,
@@ -1448,7 +1469,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderWidth: 1,
     borderColor: '#E2E8F0',
     borderRadius: 12,
@@ -1466,7 +1487,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   selectDisabledText: {
-    color: '#94a3b8',
+    color: '#5B6779',
   },
   searchWrap: {
     flexDirection: 'row',
@@ -1494,7 +1515,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     padding: 4,
     gap: 4,
   },
@@ -1668,7 +1689,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(79, 70, 229, 0.12)',
-    backgroundColor: '#fff',
     overflow: 'hidden',
   },
   sectionHeader: {
@@ -1835,7 +1855,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F1F5F9',
   },
   riskActionBtn: {
-    backgroundColor: '#FFF7ED',
+    backgroundColor: 'rgba(255,247,237,0.55)',
   },
   assignClassBtn: {
     flexDirection: 'row',
@@ -1909,7 +1929,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   pickerSheet: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     padding: 16,
@@ -1953,7 +1973,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     maxHeight: '88%',
@@ -2089,7 +2109,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     marginBottom: 8,
   },
   classPickItemActive: {

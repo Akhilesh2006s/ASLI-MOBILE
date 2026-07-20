@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     borderRadius: TEACHER_RADIUS.md,
   },
   segmentInnerIdle: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255,255,255,0.48)',
   },
   segmentLabel: {
     fontSize: 11,

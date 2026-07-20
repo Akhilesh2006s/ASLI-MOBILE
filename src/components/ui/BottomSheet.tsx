@@ -23,8 +23,17 @@ export default function BottomSheet({ visible, onClose, title, children }: Props
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.overlay} onPress={onClose}>
-        <Animated.View style={[styles.sheet, sheetStyle]} onStartShouldSetResponder={() => true}>
+      <Pressable
+        style={styles.overlay}
+        onPress={onClose}
+        accessibilityRole="button"
+        accessibilityLabel={title ? `Close ${title}` : 'Close sheet'}
+      >
+        <Animated.View
+          style={[styles.sheet, sheetStyle]}
+          onStartShouldSetResponder={() => true}
+          accessibilityViewIsModal
+        >
           <View style={styles.handle} />
           {title ? <Text style={styles.title}>{title}</Text> : null}
           <View style={styles.content}>{children}</View>
@@ -41,9 +50,12 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: COLORS.card,
+    backgroundColor: 'rgba(255,255,255,0.72)',
     borderTopLeftRadius: RADIUS.xl,
     borderTopRightRadius: RADIUS.xl,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.65)',
+    overflow: 'hidden',
     paddingTop: SPACING.md,
     paddingBottom: SPACING.xxxl,
     paddingHorizontal: SPACING.lg,

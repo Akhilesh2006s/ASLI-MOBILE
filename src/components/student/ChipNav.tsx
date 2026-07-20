@@ -1,6 +1,8 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { STUDENT, STUDENT_RADIUS } from '../../theme/student';
+import { GLASS_RIM, GLASS_ROW } from '../../theme/glass';
+import GlassSurface from '../ui/GlassSurface';
 
 export type Chip = { id: string; label: string; shortLabel?: string };
 
@@ -17,107 +19,66 @@ function tabCaption(chip: Chip, mobile: boolean) {
   return chip.label;
 }
 
-function TabDivider({ narrow }: { narrow?: boolean }) {
-  return (
-    <View style={[styles.dividerWrap, narrow && styles.dividerWrapNarrow]} accessibilityElementsHidden importantForAccessibility="no">
-      <Text style={styles.dividerText}>|</Text>
-    </View>
-  );
-}
-
-function TabItem({
-  chip,
-  active,
-  onChange,
-  mobile,
-  compact,
-}: {
-  chip: Chip;
-  active: boolean;
-  onChange: (id: string) => void;
-  mobile?: boolean;
-  compact?: boolean;
-}) {
-  const caption = tabCaption(chip, !!mobile);
-
-  return (
-    <Pressable
-      onPress={() => onChange(chip.id)}
-      style={[
-        styles.tab,
-        mobile && styles.tabMobile,
-        compact && styles.tabCompact,
-        active && styles.tabActive,
-      ]}
-      accessibilityRole="tab"
-      accessibilityState={{ selected: active }}
-      accessibilityLabel={chip.label}
-    >
-      <Text
-        style={[styles.tabText, mobile && styles.tabTextMobile, active && styles.tabTextActive]}
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        minimumFontScale={0.8}
-      >
-        {caption}
-      </Text>
-    </Pressable>
-  );
-}
-
-function TabRow({
-  chips,
-  active,
-  onChange,
-  mobile,
-  compact,
-}: {
-  chips: Chip[];
-  active: string;
-  onChange: (id: string) => void;
-  mobile?: boolean;
-  compact?: boolean;
-}) {
-  return (
-    <>
-      {chips.map((chip, index) => (
-        <React.Fragment key={chip.id}>
-          {index > 0 ? <TabDivider narrow={mobile} /> : null}
-          <TabItem
-            chip={chip}
-            active={chip.id === active}
-            onChange={onChange}
-            mobile={mobile}
-            compact={compact}
-          />
-        </React.Fragment>
-      ))}
-    </>
-  );
-}
-
 export default function ChipNav({ chips, active, onChange }: Props) {
   const { width } = useWindowDimensions();
   const isMobile = width < TABLET_MIN_WIDTH;
   const scrollable = chips.length > 4;
 
-  if (scrollable) {
-    return (
-      <View style={styles.wrap}>
+  const row = (
+    <>
+      {chips.map((chip) => {
+        const isActive = chip.id === active;
+        const caption = tabCaption(chip, isMobile);
+        return (
+          <Pressable
+            key={chip.id}
+            onPress={() => onChange(chip.id)}
+            style={[
+              styles.tab,
+              isMobile && styles.tabMobile,
+              scrollable && styles.tabCompact,
+              isActive && styles.tabActive,
+            ]}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: isActive }}
+            accessibilityLabel={chip.label}
+          >
+            {isActive ? (
+              <View style={styles.activePill}>
+                <Text style={styles.tabTextActive} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                  {caption}
+                </Text>
+              </View>
+            ) : (
+              <Text
+                style={[styles.tabText, isMobile && styles.tabTextMobile]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
+              >
+                {caption}
+              </Text>
+            )}
+          </Pressable>
+        );
+      })}
+    </>
+  );
+
+  return (
+    <View style={styles.wrap}>
+      <GlassSurface intensity={50} tone="medium" />
+      {scrollable ? (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.scrollRow}
         >
-          <TabRow chips={chips} active={active} onChange={onChange} mobile={isMobile} compact />
+          {row}
         </ScrollView>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.wrap}>
-      <TabRow chips={chips} active={active} onChange={onChange} mobile={isMobile} />
+      ) : (
+        <View style={styles.row}>{row}</View>
+      )}
     </View>
   );
 }
@@ -125,67 +86,66 @@ export default function ChipNav({ chips, active, onChange }: Props) {
 const styles = StyleSheet.create({
   wrap: {
     width: '100%',
-    flexDirection: 'row',
-    backgroundColor: STUDENT.surface,
     borderRadius: STUDENT_RADIUS.lg,
     borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
+    borderColor: GLASS_RIM.border,
     overflow: 'hidden',
+    backgroundColor: 'transparent',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    zIndex: 1,
   },
   scrollRow: {
     flexDirection: 'row',
     alignItems: 'stretch',
     minWidth: '100%',
+    padding: 4,
+    zIndex: 1,
   },
   tab: {
     flex: 1,
     minWidth: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 6,
-    backgroundColor: STUDENT.surface,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
   },
   tabMobile: {
-    paddingVertical: 15,
-    paddingHorizontal: 2,
+    paddingVertical: 8,
   },
   tabCompact: {
     flex: 0,
-    minWidth: 96,
-    paddingHorizontal: 12,
+    minWidth: 100,
+    paddingHorizontal: 6,
   },
-  tabActive: {
-    backgroundColor: STUDENT.navActiveBg,
+  tabActive: {},
+  activePill: {
+    backgroundColor: GLASS_ROW.fillStrong,
+    borderRadius: STUDENT_RADIUS.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(109,91,208,0.35)',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    width: '100%',
+    alignItems: 'center',
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: STUDENT.textMuted,
     textAlign: 'center',
+    paddingVertical: 10,
   },
   tabTextMobile: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
   },
   tabTextActive: {
+    fontSize: 13,
     color: STUDENT.primaryDark,
     fontWeight: '800',
-  },
-  dividerWrap: {
-    width: 14,
-    alignSelf: 'stretch',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: STUDENT.surface,
-  },
-  dividerWrapNarrow: {
-    width: 10,
-  },
-  dividerText: {
-    fontSize: 16,
-    fontWeight: '400',
-    color: '#94a3b8',
-    lineHeight: 18,
+    textAlign: 'center',
   },
 });

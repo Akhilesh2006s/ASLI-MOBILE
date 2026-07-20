@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as SecureStore from 'expo-secure-store';
 import { fetchStudentTimetable, timetableEntriesToSlots } from '../../../../src/lib/timetable-helpers';
+import { GlassPanel } from '../../../../src/components/ui';
 import { STUDENT, STUDENT_RADIUS, SUBJECT_COLORS } from '../../../../src/theme/student';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -69,7 +70,7 @@ function ClassTimetableSectionComponent({ schoolName }: Props) {
         </View>
       </LinearGradient>
 
-      <View style={styles.gridCard}>
+      <GlassPanel style={styles.gridCard} radius={STUDENT_RADIUS.card} tone="strong">
         {loading ? (
           <ActivityIndicator color={STUDENT.accent} style={{ padding: 24 }} />
         ) : slots.length === 0 ? (
@@ -132,7 +133,7 @@ function ClassTimetableSectionComponent({ schoolName }: Props) {
             </View>
           </ScrollView>
         )}
-      </View>
+      </GlassPanel>
     </View>
   );
 }
@@ -164,7 +165,8 @@ const styles = StyleSheet.create({
   },
   sessionBadgeText: { fontSize: 11, fontWeight: '700', color: STUDENT.accent },
   gridCard: {
-    backgroundColor: STUDENT.surface,
+    // Frosted over the app background artwork instead of a solid fill.
+    backgroundColor: 'transparent',
     borderRadius: STUDENT_RADIUS.card,
     borderWidth: 1,
     borderColor: STUDENT.surfaceBorder,
@@ -217,13 +219,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 12,
     margin: 1,
-    backgroundColor: STUDENT.surfaceHover,
+    backgroundColor: 'rgba(255,255,255,0.28)',
   },
   cellFilled: {
-    backgroundColor: STUDENT.surface,
+    backgroundColor: 'rgba(255,255,255,0.48)',
   },
   cellCurrentDay: {
-    backgroundColor: STUDENT.bg,
+    backgroundColor: 'rgba(109,91,208,0.12)',
   },
   cellSubject: { fontSize: 10, fontWeight: '700' },
   cellTeacher: { fontSize: 9, color: STUDENT.textMuted, marginTop: 2 },

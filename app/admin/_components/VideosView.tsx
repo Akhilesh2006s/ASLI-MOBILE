@@ -199,7 +199,11 @@ export default function VideosView() {
                     </Text>
                     <Text style={[styles.videoSubject, { color: colors.textMuted }]}>{subjectName}</Text>
                   </View>
-                  <AdminScalePressable onPress={() => handleDeleteVideo(video._id)}>
+                  <AdminScalePressable
+                    onPress={() => handleDeleteVideo(video._id)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Delete video ${video.title}`}
+                  >
                     <Ionicons name="trash" size={20} color={colors.danger} />
                   </AdminScalePressable>
                 </View>

@@ -92,7 +92,7 @@ const TEACHER_THEME: GridTheme = {
 
 const ADMIN_THEME: GridTheme = {
   shellBorder: 'rgba(251, 146, 60, 0.45)',
-  shellBg: '#FFFFFF',
+  shellBg: 'rgba(255,255,255,0.42)',
   headerGradient: ['#EA580C', '#F59E0B'],
   cornerBg: 'rgba(194, 65, 12, 0.92)',
   cornerIcon: '#FFFFFF',
@@ -108,7 +108,7 @@ const ADMIN_THEME: GridTheme = {
   dayLabel: '#475569',
   dayLabelToday: '#9A3412',
   todayBadge: '#EA580C',
-  slotBg: '#FFFFFF',
+  slotBg: 'rgba(255,255,255,0.42)',
   slotAltBg: '#FFF7ED',
   emptyBorder: 'rgba(251, 146, 60, 0.35)',
   emptyBg: '#FFFBEB',
@@ -179,6 +179,8 @@ function EntryCard({
       onPress={() => onEntryClick?.(entry)}
       onPressIn={animatedPress ? press.onPressIn : undefined}
       onPressOut={animatedPress ? press.onPressOut : undefined}
+      accessibilityRole="button"
+      accessibilityLabel={done ? `${label}, completed` : label}
     >
       {animatedPress ? (
         <Animated.View style={cardStyle}>
@@ -303,6 +305,8 @@ export default function WeeklyTimetableGrid({
                         interactive && onEmptyClick ? (
                           <Pressable
                             onPress={() => onEmptyClick(dayIndex as WeekdayIndex, hour)}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Add entry for ${label} at ${formatHourLabel(hour)}`}
                             style={({ pressed }) => [
                               styles.emptyCell,
                               {

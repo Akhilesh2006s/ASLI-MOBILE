@@ -55,9 +55,20 @@ function FabActionItem({
 
   return (
     <Animated.View style={[styles.actionWrap, { bottom, right: 20 }, itemStyle]}>
-      <Pressable style={styles.actionBtn} onPress={() => onSelect(action)}>
+      <Pressable
+        style={styles.actionBtn}
+        onPress={() => onSelect(action)}
+        accessibilityRole="button"
+        accessibilityLabel={action.label}
+      >
         <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.actionIconCircle}>
-          <Ionicons name={action.icon} size={16} color={TEACHER.textOnPrimary} />
+          <Ionicons
+            name={action.icon}
+            size={16}
+            color={TEACHER.textOnPrimary}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
         </LinearGradient>
       </Pressable>
       <Text style={styles.actionLabel}>{action.label}</Text>
@@ -114,7 +125,12 @@ export default function TeacherFAB({ actions, bottomOffset = 88 }: Props) {
     <>
       {open ? (
         <Animated.View entering={FadeIn.duration(200)} style={[styles.backdrop, backdropStyle]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={close} />
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={close}
+            accessibilityRole="button"
+            accessibilityLabel="Close quick actions"
+          />
         </Animated.View>
       ) : null}
 
@@ -130,7 +146,13 @@ export default function TeacherFAB({ actions, bottomOffset = 88 }: Props) {
       ))}
 
       <Animated.View style={[styles.fabWrap, { bottom, right: 20 }, mountStyle]}>
-        <Pressable onPress={toggle} style={styles.fabOuter}>
+        <Pressable
+          onPress={toggle}
+          style={styles.fabOuter}
+          accessibilityRole="button"
+          accessibilityLabel={open ? 'Close quick actions' : 'Open quick actions'}
+          accessibilityState={{ expanded: open }}
+        >
           <LinearGradient colors={[...TEACHER.fabGradient]} style={styles.fab}>
             <Animated.View style={mainRotate}>
               <Ionicons name={open ? 'close' : 'add'} size={28} color={TEACHER.textOnPrimary} />

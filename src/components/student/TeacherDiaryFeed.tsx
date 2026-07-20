@@ -57,8 +57,14 @@ export default function TeacherDiaryFeed() {
         const preview = e.content?.slice(0, 120) || '';
         return (
           <Animated.View key={e._id} entering={FadeInDown.duration(320).delay(index * 60)}>
-            <Pressable onPress={() => setExpanded(open ? null : e._id)}>
-              <GlassCard variant="default" style={styles.card}>
+            <Pressable
+              onPress={() => setExpanded(open ? null : e._id)}
+              accessibilityRole="button"
+              accessibilityLabel={`Diary entry from ${teacher}`}
+              accessibilityHint={open ? 'Collapse entry' : 'Expand entry'}
+              accessibilityState={{ expanded: open }}
+            >
+              <GlassCard variant="glass" style={styles.card}>
                 <View style={styles.cardTop}>
                   <View style={styles.avatar}>
                     <Text style={styles.avatarText}>{teacher.charAt(0)}</Text>

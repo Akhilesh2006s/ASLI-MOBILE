@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { router } from 'expo-router';
+import { GlassPanel } from '../../../src/components/ui';
 
 interface LiveSession {
   _id: string;
@@ -79,7 +80,7 @@ export default function LiveSessionsView() {
   return (
     <View style={styles.container}>
       {/* Filters */}
-      <View style={styles.filtersContainer}>
+      <GlassPanel radius={0} bordered={false} tone="light" style={styles.filtersContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
           {['all', 'live', 'scheduled', 'ended'].map(status => (
             <TouchableOpacity
@@ -93,13 +94,13 @@ export default function LiveSessionsView() {
             </TouchableOpacity>
           ))}
         </ScrollView>
-      </View>
+      </GlassPanel>
 
       {/* Sessions List */}
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {filteredSessions.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="videocam-off" size={64} color="#9ca3af" />
+            <Ionicons name="videocam-off" size={64} color="#5B6779" />
             <Text style={styles.emptyText}>No live sessions found</Text>
             <Text style={styles.emptySubtext}>Live sessions will appear here when available</Text>
           </View>
@@ -114,61 +115,62 @@ export default function LiveSessionsView() {
             return (
               <TouchableOpacity
                 key={session._id}
-                style={[styles.sessionCard, isLive && styles.sessionCardLive]}
                 onPress={() => handleSessionPress(session)}
                 disabled={!isLive}
               >
-                <View style={styles.sessionHeader}>
-                  <View style={styles.sessionInfo}>
-                    <Text style={styles.sessionTitle} numberOfLines={2}>{session.title}</Text>
-                    <Text style={styles.sessionSubject}>{subjectName}</Text>
+                <GlassPanel radius={12} style={[styles.sessionCard, isLive && styles.sessionCardLive]}>
+                  <View style={styles.sessionHeader}>
+                    <View style={styles.sessionInfo}>
+                      <Text style={styles.sessionTitle} numberOfLines={2}>{session.title}</Text>
+                      <Text style={styles.sessionSubject}>{subjectName}</Text>
+                    </View>
+                    {isLive && (
+                      <View style={styles.liveBadge}>
+                        <View style={styles.liveDot} />
+                        <Text style={styles.liveText}>LIVE</Text>
+                      </View>
+                    )}
                   </View>
+
+                  {session.description && (
+                    <Text style={styles.sessionDescription} numberOfLines={2}>
+                      {session.description}
+                    </Text>
+                  )}
+
+                  <View style={styles.sessionMeta}>
+                    {session.streamer && (
+                      <View style={styles.metaItem}>
+                        <Ionicons name="person" size={16} color="#6b7280" />
+                        <Text style={styles.metaText}>{session.streamer.fullName}</Text>
+                      </View>
+                    )}
+                    {session.viewerCount !== undefined && (
+                      <View style={styles.metaItem}>
+                        <Ionicons name="people" size={16} color="#6b7280" />
+                        <Text style={styles.metaText}>{session.viewerCount} viewers</Text>
+                      </View>
+                    )}
+                    {isScheduled && session.scheduledTime && (
+                      <View style={styles.metaItem}>
+                        <Ionicons name="time" size={16} color="#6b7280" />
+                        <Text style={styles.metaText}>
+                          {new Date(session.scheduledTime).toLocaleString()}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
                   {isLive && (
-                    <View style={styles.liveBadge}>
-                      <View style={styles.liveDot} />
-                      <Text style={styles.liveText}>LIVE</Text>
-                    </View>
+                    <TouchableOpacity
+                      style={styles.watchButton}
+                      onPress={() => handleSessionPress(session)}
+                    >
+                      <Ionicons name="play" size={20} color="#fff" />
+                      <Text style={styles.watchButtonText}>Watch Live</Text>
+                    </TouchableOpacity>
                   )}
-                </View>
-
-                {session.description && (
-                  <Text style={styles.sessionDescription} numberOfLines={2}>
-                    {session.description}
-                  </Text>
-                )}
-
-                <View style={styles.sessionMeta}>
-                  {session.streamer && (
-                    <View style={styles.metaItem}>
-                      <Ionicons name="person" size={16} color="#6b7280" />
-                      <Text style={styles.metaText}>{session.streamer.fullName}</Text>
-                    </View>
-                  )}
-                  {session.viewerCount !== undefined && (
-                    <View style={styles.metaItem}>
-                      <Ionicons name="people" size={16} color="#6b7280" />
-                      <Text style={styles.metaText}>{session.viewerCount} viewers</Text>
-                    </View>
-                  )}
-                  {isScheduled && session.scheduledTime && (
-                    <View style={styles.metaItem}>
-                      <Ionicons name="time" size={16} color="#6b7280" />
-                      <Text style={styles.metaText}>
-                        {new Date(session.scheduledTime).toLocaleString()}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-
-                {isLive && (
-                  <TouchableOpacity
-                    style={styles.watchButton}
-                    onPress={() => handleSessionPress(session)}
-                  >
-                    <Ionicons name="play" size={20} color="#fff" />
-                    <Text style={styles.watchButtonText}>Watch Live</Text>
-                  </TouchableOpacity>
-                )}
+                </GlassPanel>
               </TouchableOpacity>
             );
           })
@@ -181,7 +183,8 @@ export default function LiveSessionsView() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    // Transparent so the app background artwork shows through.
+    backgroundColor: 'transparent',
   },
   loadingContainer: {
     flex: 1,
@@ -194,7 +197,6 @@ const styles = StyleSheet.create({
     color: '#6b7280',
   },
   filtersContainer: {
-    backgroundColor: '#fff',
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
@@ -243,7 +245,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   sessionCard: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,

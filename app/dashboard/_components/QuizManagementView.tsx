@@ -5,6 +5,7 @@ import { Picker } from '@react-native-picker/picker';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { router } from 'expo-router';
+import { GlassPanel } from '../../../src/components/ui';
 
 interface Quiz {
   _id: string;
@@ -112,19 +113,20 @@ export default function QuizManagementView() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <GlassPanel radius={0} bordered={false} tone="light" style={styles.header}>
         <Text style={styles.headerTitle}>Quiz Management</Text>
         <Text style={styles.headerSubtitle}>Practice and test your knowledge</Text>
-      </View>
+      </GlassPanel>
 
       {/* Search and Filters */}
-      <View style={styles.filtersContainer}>
+      <GlassPanel radius={0} bordered={false} tone="light" style={styles.filtersContainer}>
+        <View style={styles.filtersStack}>
         <View style={styles.searchContainer}>
           <Ionicons name="search" size={20} color="#6b7280" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search quizzes..."
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor="#5B6779"
             value={searchTerm}
             onChangeText={setSearchTerm}
           />
@@ -165,13 +167,14 @@ export default function QuizManagementView() {
             </TouchableOpacity>
           ))}
         </ScrollView>
-      </View>
+        </View>
+      </GlassPanel>
 
       {/* Quizzes List */}
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {filteredQuizzes.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="help-circle-outline" size={64} color="#9ca3af" />
+            <Ionicons name="help-circle-outline" size={64} color="#5B6779" />
             <Text style={styles.emptyText}>No quizzes found</Text>
             <Text style={styles.emptySubtext}>Try adjusting your filters</Text>
           </View>
@@ -179,7 +182,7 @@ export default function QuizManagementView() {
           filteredQuizzes.map((quiz) => {
             const subjectName = subjects.find(s => s._id === quiz.subject)?.name || 'Unknown';
             return (
-              <View key={quiz._id} style={styles.quizCard}>
+              <GlassPanel key={quiz._id} radius={12} style={styles.quizCard}>
                 <View style={styles.quizHeader}>
                   <View style={styles.quizInfo}>
                     <Text style={styles.quizTitle}>{quiz.title}</Text>
@@ -218,7 +221,7 @@ export default function QuizManagementView() {
                   <Ionicons name="play" size={20} color="#fff" />
                   <Text style={styles.startButtonText}>Start Quiz</Text>
                 </TouchableOpacity>
-              </View>
+              </GlassPanel>
             );
           })
         )}
@@ -230,7 +233,8 @@ export default function QuizManagementView() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    // Transparent so the app background artwork shows through.
+    backgroundColor: 'transparent',
   },
   loadingContainer: {
     flex: 1,
@@ -243,7 +247,6 @@ const styles = StyleSheet.create({
     color: '#6b7280',
   },
   header: {
-    backgroundColor: '#fff',
     padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
@@ -259,10 +262,12 @@ const styles = StyleSheet.create({
     color: '#6b7280',
   },
   filtersContainer: {
-    backgroundColor: '#fff',
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
+  },
+  // `gap` governed the children, so it moves inside GlassPanel's content view.
+  filtersStack: {
     gap: 12,
   },
   searchContainer: {
@@ -325,7 +330,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   quizCard: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,

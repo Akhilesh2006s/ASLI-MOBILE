@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.22)',
   },
   logoWrapOnLight: {
-    backgroundColor: '#fff7ed',
+    backgroundColor: 'rgba(255,247,237,0.55)',
     borderColor: '#fed7aa',
   },
   logoImg: {},

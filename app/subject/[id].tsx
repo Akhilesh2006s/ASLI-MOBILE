@@ -20,6 +20,7 @@ import {
 } from '../../src/lib/learningPathContent';
 import { useSchoolProgram } from '../../src/hooks/useSchoolProgram';
 import { prepareLibraryContents } from '../../src/lib/dedupe-library-content';
+import { GlassPanel } from '../../src/components/ui';
 
 function pickParam(v: string | string[] | undefined): string {
   if (v == null) return '';
@@ -91,15 +92,17 @@ export default function SubjectContent() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar style="dark" />
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => void goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#111827" />
-        </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>{subject?.name || 'Subject'}</Text>
-          <Text style={styles.headerSubtitle}>{subject?.description || 'Learning content'}</Text>
+      <GlassPanel style={styles.header} radius={0} bordered={false}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => void goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#111827" />
+          </TouchableOpacity>
+          <View style={styles.headerContent}>
+            <Text style={styles.headerTitle}>{subject?.name || 'Subject'}</Text>
+            <Text style={styles.headerSubtitle}>{subject?.description || 'Learning content'}</Text>
+          </View>
         </View>
-      </View>
+      </GlassPanel>
 
       <ScrollView
         style={styles.scrollView}
@@ -108,45 +111,46 @@ export default function SubjectContent() {
       >
         {content.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="book" size={64} color="#9ca3af" />
+            <Ionicons name="book" size={64} color="#5B6779" />
             <Text style={styles.emptyText}>No content available</Text>
           </View>
         ) : (
           content.map((item, index) => (
             <TouchableOpacity
               key={String(item._id || item.id || index)}
-              style={styles.contentCard}
               onPress={() => openContentItem(item)}
               activeOpacity={0.7}
             >
-              <View style={styles.contentHeader}>
-                <View
-                  style={[
-                    styles.contentIcon,
-                    { backgroundColor: isVideoContent(item) ? '#dbeafe' : '#d1fae5' },
-                  ]}
-                >
-                  {isVideoContent(item) ? (
-                    <Ionicons name="videocam" size={24} color="#3b82f6" />
-                  ) : (
-                    <Ionicons name="document-text" size={24} color="#10b981" />
+              <GlassPanel style={styles.contentCard} radius={16}>
+                <View style={styles.contentHeader}>
+                  <View
+                    style={[
+                      styles.contentIcon,
+                      { backgroundColor: isVideoContent(item) ? '#dbeafe' : '#e8e3fa' },
+                    ]}
+                  >
+                    {isVideoContent(item) ? (
+                      <Ionicons name="videocam" size={24} color="#3b82f6" />
+                    ) : (
+                      <Ionicons name="document-text" size={24} color="#6d5bd0" />
+                    )}
+                  </View>
+                  <View style={styles.contentInfo}>
+                    <Text style={styles.contentTitle}>{item.title || 'Content'}</Text>
+                    <Text style={styles.contentDescription} numberOfLines={2}>
+                      {item.description || 'Learn more about this topic'}
+                    </Text>
+                  </View>
+                  {item.completed && (
+                    <Ionicons name="checkmark-circle" size={24} color="#10b981" />
                   )}
                 </View>
-                <View style={styles.contentInfo}>
-                  <Text style={styles.contentTitle}>{item.title || 'Content'}</Text>
-                  <Text style={styles.contentDescription} numberOfLines={2}>
-                    {item.description || 'Learn more about this topic'}
-                  </Text>
-                </View>
-                {item.completed && (
-                  <Ionicons name="checkmark-circle" size={24} color="#10b981" />
-                )}
-              </View>
-              {item.duration ? (
-                <View style={styles.contentMeta}>
-                  <Text style={styles.metaText}>{String(item.duration)}</Text>
-                </View>
-              ) : null}
+                {item.duration ? (
+                  <View style={styles.contentMeta}>
+                    <Text style={styles.metaText}>{String(item.duration)}</Text>
+                  </View>
+                ) : null}
+              </GlassPanel>
             </TouchableOpacity>
           ))
         )}
@@ -156,9 +160,10 @@ export default function SubjectContent() {
 }
 
 const styles = StyleSheet.create({
+  // Transparent so the app background artwork shows through.
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: 'transparent',
   },
   loadingContainer: {
     flex: 1,
@@ -166,12 +171,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
     padding: 20,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
+  },
+  // Row layout lives on an inner view because GlassPanel wraps its children.
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   backButton: {
     marginRight: 16,
@@ -193,7 +200,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentCard: {
-    backgroundColor: '#fff',
     marginHorizontal: 20,
     marginTop: 16,
     borderRadius: 16,

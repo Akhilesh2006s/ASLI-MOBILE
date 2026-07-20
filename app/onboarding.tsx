@@ -100,7 +100,8 @@ export default function Onboarding() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.bg,
+    // transparent so the app-wide pastel artwork shows behind the slides
+    backgroundColor: 'transparent',
   },
   skip: {
     position: 'absolute',

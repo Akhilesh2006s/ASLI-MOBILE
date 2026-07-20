@@ -1,43 +1,13 @@
 import type { ReactNode } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { useState } from 'react';
+import { View, Text, StyleSheet, Pressable, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { formatAiToolText } from '../../lib/title-case';
+import { getAiSectionThemeByNum } from '../../lib/ai-tool-section-palette';
 
-const ACCENTS = [
-  ['#6C63FF', '#8B5CF6'],
-  ['#0ea5e9', '#2563eb'],
-  ['#8b5cf6', '#9333ea'],
-  ['#10b981', '#059669'],
-  ['#f59e0b', '#ea580c'],
-  ['#f43f5e', '#db2777'],
-  ['#06b6d4', '#0d9488'],
-  ['#6366f1', '#1d4ed8'],
-  ['#d946ef', '#9333ea'],
-  ['#84cc16', '#059669'],
-  ['#f97316', '#ef4444'],
-  ['#475569', '#1e293b'],
-];
-
-const GRADIENTS: [string, string][] = [
-  ['#f5f3ff', '#eef2ff'],
-  ['#f0f9ff', '#eff6ff'],
-  ['#f5f3ff', '#fdf4ff'],
-  ['#ecfdf5', '#f7fee7'],
-  ['#fffbeb', '#fff7ed'],
-  ['#fff1f2', '#fdf2f8'],
-  ['#ecfeff', '#f0fdfa'],
-  ['#eef2ff', '#eff6ff'],
-  ['#fdf4ff', '#faf5ff'],
-  ['#f7fee7', '#ecfdf5'],
-  ['#fff7ed', '#fef2f2'],
-  ['#f8fafc', '#f1f5f9'],
-];
-
-function themeForNum(num: string) {
-  const n = parseInt(String(num).replace(/\D/g, ''), 10);
-  const i = Number.isFinite(n) && n > 0 ? (n - 1) % ACCENTS.length : 0;
-  return { accent: ACCENTS[i], gradient: GRADIENTS[i] };
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
 type Props = {
@@ -46,6 +16,8 @@ type Props = {
   icon?: keyof typeof Ionicons.glyphMap;
   accentColor?: string;
   children: ReactNode;
+  /** First two quests start open for curiosity */
+  defaultOpen?: boolean;
 };
 
 export default function AiToolStackedSection({
@@ -54,29 +26,66 @@ export default function AiToolStackedSection({
   icon = 'layers-outline',
   accentColor,
   children,
+  defaultOpen,
 }: Props) {
   const numLabel = String(num).replace(/^section\s*/i, '').trim() || num;
-  const theme = themeForNum(numLabel);
-  const accent = accentColor || theme.accent[0];
-
+  const theme = getAiSectionThemeByNum(numLabel);
+  const accent = accentColor || theme.hex;
+  const accentDeep = theme.hexDeep;
+  const n = parseInt(numLabel.replace(/\D/g, ''), 10);
+  const [open, setOpen] = useState(
+    typeof defaultOpen === 'boolean' ? defaultOpen : !Number.isFinite(n) || n <= 2,
+  );
   const displayTitle = formatAiToolText(title);
 
+  const toggle = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setOpen((v) => !v);
+  };
+
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { borderColor: `${accent}66` }]}>
+      <LinearGradient
+        colors={[theme.glassFrom, theme.glassTo, 'rgba(255,255,255,0.25)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFillObject}
+      />
       <View style={[styles.accentBar, { backgroundColor: accent }]} />
-      <LinearGradient colors={theme.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.header}>
-        <LinearGradient colors={theme.accent} style={styles.numBadge}>
-          <Text style={styles.numText}>{numLabel.length > 3 ? numLabel.slice(0, 2) : numLabel}</Text>
+      <View style={[styles.foil, { backgroundColor: `${accent}22` }]} pointerEvents="none" />
+
+      <Pressable onPress={toggle} accessibilityRole="button" accessibilityState={{ expanded: open }}>
+        <LinearGradient
+          colors={['rgba(255,255,255,0.62)', 'rgba(255,255,255,0.12)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.header}
+        >
+          <LinearGradient colors={[accent, accentDeep]} style={styles.numBadge}>
+            <Text style={styles.numText}>{numLabel.length > 3 ? numLabel.slice(0, 2) : numLabel}</Text>
+          </LinearGradient>
+          <View style={styles.headerText}>
+            <View style={styles.kickerRow}>
+              <View style={[styles.dot, { backgroundColor: accent }]} />
+              <Text style={[styles.sectionLabel, { color: accentDeep }]}>
+                {formatAiToolText('Quest')} {numLabel}
+              </Text>
+            </View>
+            <Text style={styles.title}>{displayTitle}</Text>
+          </View>
+          <View style={[styles.iconWrap, { backgroundColor: `${accent}22`, borderColor: `${accent}44` }]}>
+            <Ionicons name={open ? 'chevron-up' : icon} size={20} color={accent} />
+          </View>
         </LinearGradient>
-        <View style={styles.headerText}>
-          <Text style={styles.sectionLabel}>{formatAiToolText('Section')} {numLabel}</Text>
-          <Text style={styles.title}>{displayTitle}</Text>
-        </View>
-        <View style={[styles.iconWrap, { backgroundColor: `${accent}18` }]}>
-          <Ionicons name={icon} size={22} color={accent} />
-        </View>
-      </LinearGradient>
-      <View style={styles.body}>{children}</View>
+      </Pressable>
+
+      {open ? <View style={styles.body}>{children}</View> : (
+        <Pressable onPress={toggle} style={styles.lockedHint}>
+          <Text style={[styles.lockedText, { color: accentDeep }]}>
+            {formatAiToolText('Tap to unlock this quest')}
+          </Text>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -86,81 +95,90 @@ export function AiToolStackedList({ children }: { children: ReactNode }) {
 }
 
 const styles = StyleSheet.create({
-  list: {
-    gap: 10,
-  },
+  list: { gap: 12 },
   card: {
-    borderRadius: 16,
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.9)',
+    borderRadius: 22,
+    borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
     shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3,
-    marginBottom: 10,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+    elevation: 5,
+    marginBottom: 12,
+    backgroundColor: 'rgba(255,255,255,0.28)',
   },
   accentBar: {
     position: 'absolute',
     left: 0,
     top: 0,
     bottom: 0,
-    width: 5,
-    borderTopLeftRadius: 20,
-    borderBottomLeftRadius: 20,
+    width: 7,
+    zIndex: 2,
+  },
+  foil: {
+    position: 'absolute',
+    right: -24,
+    top: -24,
+    width: 90,
+    height: 90,
+    borderRadius: 28,
+    transform: [{ rotate: '18deg' }],
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 14,
-    paddingLeft: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(148,163,184,0.18)',
+    paddingLeft: 18,
   },
   numBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 48,
+    height: 48,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  numText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  headerText: {
-    flex: 1,
-    minWidth: 0,
-  },
+  numText: { color: '#fff', fontSize: 15, fontWeight: '900' },
+  headerText: { flex: 1, minWidth: 0 },
+  kickerRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dot: { width: 6, height: 6, borderRadius: 99 },
   sectionLabel: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#64748b',
+    fontWeight: '800',
     textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    letterSpacing: 0.8,
   },
   title: {
-    marginTop: 2,
+    marginTop: 3,
     fontSize: 16,
     fontWeight: '800',
     color: '#0f172a',
     lineHeight: 22,
   },
   iconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
+    width: 42,
+    height: 42,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
   },
   body: {
     paddingHorizontal: 14,
     paddingVertical: 12,
-    paddingLeft: 16,
+    paddingLeft: 18,
+    backgroundColor: 'rgba(255,255,255,0.42)',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.55)',
+  },
+  lockedHint: {
+    paddingHorizontal: 18,
+    paddingBottom: 14,
+  },
+  lockedText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

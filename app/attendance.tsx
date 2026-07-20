@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import studentService from '../src/services/api/studentService';
+import { GlassPanel } from '../src/components/ui';
 
 type SessionItem = {
   _id?: string;
@@ -83,43 +84,46 @@ export default function AttendanceScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <View style={styles.summaryRow}>
-          <View style={styles.summaryCard}>
+          <GlassPanel style={styles.summaryCard} radius={14} tone="medium">
             <Text style={styles.summaryValue}>{summary.totalHours}h</Text>
             <Text style={styles.summaryLabel}>Total Study Time</Text>
-          </View>
-          <View style={styles.summaryCard}>
+          </GlassPanel>
+          <GlassPanel style={styles.summaryCard} radius={14} tone="medium">
             <Text style={styles.summaryValue}>{summary.activeDays}</Text>
             <Text style={styles.summaryLabel}>Active Days</Text>
-          </View>
+          </GlassPanel>
         </View>
 
-        <View style={styles.summaryCardSingle}>
+        <GlassPanel style={styles.summaryCardSingle} radius={14} tone="medium">
           <Text style={styles.summaryValue}>{summary.totalSessions}</Text>
           <Text style={styles.summaryLabel}>Sessions Logged</Text>
-        </View>
+        </GlassPanel>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         <Text style={styles.sectionTitle}>Recent Sessions</Text>
         {sessions.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Ionicons name="calendar-clear-outline" size={24} color="#9ca3af" />
+          <GlassPanel style={styles.emptyCard} radius={14} tone="medium">
+            <Ionicons name="calendar-clear-outline" size={24} color="#5B6779" />
             <Text style={styles.emptyText}>No attendance sessions found.</Text>
-          </View>
+          </GlassPanel>
         ) : (
           sessions.slice(0, 25).map((item, index) => {
             const dateText = item.date || item.startTime;
             const durationMin = Math.max(1, Math.round((item.duration || 0) / 60));
             return (
-              <View key={item._id || `${dateText}-${index}`} style={styles.sessionCard}>
-                <View>
-                  <Text style={styles.sessionDate}>
-                    {dateText ? new Date(dateText).toLocaleDateString() : 'Unknown date'}
-                  </Text>
-                  <Text style={styles.sessionTime}>{durationMin} minutes</Text>
+              <GlassPanel key={item._id || `${dateText}-${index}`} style={styles.sessionCard} radius={12} tone="medium">
+                {/* GlassPanel wraps children in its own view, so the row lives one level in */}
+                <View style={styles.sessionRow}>
+                  <View>
+                    <Text style={styles.sessionDate}>
+                      {dateText ? new Date(dateText).toLocaleDateString() : 'Unknown date'}
+                    </Text>
+                    <Text style={styles.sessionTime}>{durationMin} minutes</Text>
+                  </View>
+                  <Ionicons name="checkmark-circle" size={20} color="#22c55e" />
                 </View>
-                <Ionicons name="checkmark-circle" size={20} color="#22c55e" />
-              </View>
+              </GlassPanel>
             );
           })
         )}
@@ -129,15 +133,16 @@ export default function AttendanceScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc' },
+  // transparent so the app-wide pastel artwork shows through the glass surfaces
+  container: { flex: 1, backgroundColor: 'transparent' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: 10, color: '#6b7280' },
   header: {
     paddingHorizontal: 14,
     paddingVertical: 12,
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: 'rgba(255,255,255,0.55)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -149,17 +154,15 @@ const styles = StyleSheet.create({
   summaryRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
   summaryCard: {
     flex: 1,
-    backgroundColor: '#fff',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: 'rgba(255,255,255,0.65)',
     padding: 14,
   },
   summaryCardSingle: {
-    backgroundColor: '#fff',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: 'rgba(255,255,255,0.65)',
     padding: 14,
     marginBottom: 14,
   },
@@ -167,21 +170,21 @@ const styles = StyleSheet.create({
   summaryLabel: { fontSize: 13, color: '#64748b', marginTop: 4 },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 10 },
   emptyCard: {
-    backgroundColor: '#fff',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: 'rgba(255,255,255,0.65)',
     padding: 16,
     alignItems: 'center',
   },
   emptyText: { marginTop: 8, color: '#6b7280' },
   sessionCard: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: 'rgba(255,255,255,0.65)',
     padding: 14,
     marginBottom: 8,
+  },
+  sessionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',

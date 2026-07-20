@@ -21,6 +21,7 @@ import {
   AI_TOOL_OUTPUT_MOBILE,
 } from './ai-tool-tablet-layout';
 import { TabletSectionsLayout } from './TabletSectionsLayout';
+import { AI_SECTION_RAINBOW } from '../../lib/ai-tool-section-palette';
 
 type ViewerOutputCtx = { isTablet: boolean; isDigitalBoard: boolean };
 const ViewerTabletContext = createContext<ViewerOutputCtx>({ isTablet: false, isDigitalBoard: false });
@@ -235,14 +236,13 @@ const TEACHER_SECTIONS: SectionDef[] = [
   },
 ];
 
-const SECTION_CARD_THEMES = [
-  { stripe: '#a5b4fc', border: '#c7d2fe', bg: '#eef2ff', label: '#6366f1', title: '#312e81' },
-  { stripe: '#c4b5fd', border: '#ddd6fe', bg: '#f5f3ff', label: '#7c3aed', title: '#4c1d95' },
-  { stripe: '#6ee7b7', border: '#a7f3d0', bg: '#ecfdf5', label: '#059669', title: '#064e3b' },
-  { stripe: '#7dd3fc', border: '#bae6fd', bg: '#f0f9ff', label: '#0284c7', title: '#0c4a6e' },
-  { stripe: '#fcd34d', border: '#fde68a', bg: '#fffbeb', label: '#d97706', title: '#78350f' },
-  { stripe: '#5eead4', border: '#99f6e4', bg: '#f0fdfa', label: '#0d9488', title: '#134e4a' },
-];
+const SECTION_CARD_THEMES = AI_SECTION_RAINBOW.map((t) => ({
+  stripe: t.hex,
+  border: `${t.hex}55`,
+  bg: t.glassFrom,
+  label: t.hexDeep,
+  title: '#0f172a',
+}));
 
 function SectionCard({
   sectionNum,
@@ -521,6 +521,9 @@ export default function ActivityProjectViewer({
             <Pressable
               key={act.sl}
               onPress={() => setActiveIdx(idx)}
+              accessibilityRole="tab"
+              accessibilityLabel={act.title?.trim() ? act.title : `Activity ${idx + 1}`}
+              accessibilityState={{ selected: idx === safeIdx }}
               style={[styles.tab, idx === safeIdx && styles.tabActive]}
             >
               <Text style={[styles.tabText, idx === safeIdx && styles.tabTextActive, vt('tabText')]} numberOfLines={1}>
@@ -554,7 +557,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     overflow: 'hidden',
-    backgroundColor: '#f8fafc',
+    backgroundColor: 'rgba(255,255,255,0.42)',
   },
   shellTeacher: { borderColor: '#c7d2fe' },
   shellStudent: { borderColor: '#fed7aa' },
@@ -566,7 +569,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   shellHeaderTeacher: { backgroundColor: '#eef2ff', borderBottomWidth: 1, borderBottomColor: '#c7d2fe' },
-  shellHeaderStudent: { backgroundColor: '#fff7ed', borderBottomWidth: 1, borderBottomColor: '#fed7aa' },
+  shellHeaderStudent: { backgroundColor: 'rgba(255,247,237,0.55)', borderBottomWidth: 1, borderBottomColor: '#fed7aa' },
   shellHeaderIcon: {
     width: 40,
     height: 40,
@@ -591,7 +594,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: 'rgba(79,70,229,0.12)',
   },
-  tabActive: { backgroundColor: '#fff' },
+  tabActive: { backgroundColor: 'rgba(255,255,255,0.48)' },
   tabText: { fontSize: M.tab, fontWeight: '700', color: '#4f46e5', maxWidth: 140 },
   tabTextActive: { color: '#312e81' },
   scrollBody: { maxHeight: 720 },
@@ -601,7 +604,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#c7d2fe',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     padding: 16,
     shadowColor: '#6366f1',
     shadowOpacity: 0.12,
@@ -672,7 +675,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.6,
     textTransform: 'uppercase',
-    color: '#94a3b8',
+    color: '#5B6779',
   },
   sectionTitle: { fontSize: M.sectionTitle, fontWeight: '800', color: '#0f172a' },
   sectionBody: { paddingHorizontal: 12, paddingBottom: 12, paddingTop: 6 },
@@ -680,40 +683,55 @@ const styles = StyleSheet.create({
   checkList: { gap: 8 },
   checkRow: {
     flexDirection: 'row',
-    gap: 8,
-    backgroundColor: '#f5f3ff',
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    gap: 10,
+    backgroundColor: 'rgba(255,255,255,0.62)',
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.85)',
+    borderLeftWidth: 4,
+    borderLeftColor: '#8b5cf6',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   checkIcon: { marginTop: 2 },
-  checkText: { flex: 1, fontSize: M.body, lineHeight: M.bodyLh, color: '#334155' },
-  bulletList: { gap: 6 },
-  bulletRow: { flexDirection: 'row', gap: 8 },
-  bulletDot: { color: '#64748b', fontSize: M.body, marginTop: 2 },
-  bulletText: { flex: 1, fontSize: M.body, lineHeight: M.bodyLh, color: '#334155' },
+  checkText: { flex: 1, fontSize: M.body, lineHeight: M.bodyLh, color: '#1e293b', fontWeight: '500' },
+  bulletList: { gap: 8 },
+  bulletRow: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.55)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.8)',
+  },
+  bulletDot: { color: '#8b5cf6', fontSize: M.body, marginTop: 2, fontWeight: '900' },
+  bulletText: { flex: 1, fontSize: M.body, lineHeight: M.bodyLh, color: '#1e293b', fontWeight: '500' },
   matList: { gap: 8 },
   matRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#fde68a',
-    backgroundColor: '#fffbeb',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    gap: 10,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.85)',
+    borderLeftWidth: 4,
+    borderLeftColor: '#f59e0b',
+    backgroundColor: 'rgba(255,251,235,0.7)',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   matBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    backgroundColor: '#fde68a',
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+    backgroundColor: '#f59e0b',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  matBadgeText: { fontSize: 11, fontWeight: '800', color: '#92400e' },
-  matText: { flex: 1, fontSize: M.body, color: '#334155' },
+  matBadgeText: { fontSize: 11, fontWeight: '900', color: '#fff' },
+  matText: { flex: 1, fontSize: M.body, color: '#1e293b', fontWeight: '500' },
   stepList: { gap: 10 },
   stepRow: { flexDirection: 'row', gap: 10 },
   stepBadge: {
@@ -734,7 +752,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderStyle: 'dashed',
     borderColor: '#e2e8f0',
-    backgroundColor: '#f8fafc',
+    backgroundColor: 'rgba(255,255,255,0.42)',
   },
   emptyTitle: { marginTop: 10, fontSize: 14, fontWeight: '700', color: '#334155' },
   emptyHint: { marginTop: 4, fontSize: 12, color: '#64748b', textAlign: 'center' },

@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
+import { GlassPanel } from '../src/components/ui';
 import { useAuth } from '../src/context/AuthContext';
 import studentService from '../src/services/api/studentService';
 import * as SecureStore from 'expo-secure-store';
@@ -153,8 +154,9 @@ export default function Profile() {
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* translucent whites so the pastel artwork reads through the hero */}
         <LinearGradient
-          colors={['#ffffff', '#f8fafc']}
+          colors={['rgba(255,255,255,0.62)', 'rgba(255,255,255,0.38)']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[styles.profileHero, compact && { padding: 14 }]}
@@ -202,7 +204,7 @@ export default function Profile() {
 
         {activeTab === 'overview' && (
           <>
-            <View style={styles.sectionCard}>
+            <GlassPanel style={styles.sectionCard} radius={14} tone="medium">
               <Text style={styles.sectionTitle}>Performance Overview</Text>
               <View style={styles.metricRow}>
                 <View style={styles.metricItem}>
@@ -222,9 +224,9 @@ export default function Profile() {
                   <Text style={styles.metricLabel}>Rank</Text>
                 </View>
               </View>
-            </View>
+            </GlassPanel>
 
-            <View style={styles.sectionCard}>
+            <GlassPanel style={styles.sectionCard} radius={14} tone="medium">
               <Text style={styles.sectionTitle}>This Week&apos;s Activity</Text>
               <View style={styles.activityRow}>
                 {(weeklyActivity.length ? weeklyActivity : [
@@ -243,12 +245,12 @@ export default function Profile() {
                 ))}
               </View>
               <Text style={styles.activityTotal}>Total: {weeklyTotalHours} hours this week</Text>
-            </View>
+            </GlassPanel>
           </>
         )}
 
         {activeTab === 'achievements' && (
-          <View style={styles.sectionCard}>
+          <GlassPanel style={styles.sectionCard} radius={14} tone="medium">
             <View style={styles.achievementsHeader}>
               <Text style={styles.sectionTitle}>Achievements & Badges</Text>
               <View style={styles.achievementsCounter}>
@@ -310,11 +312,11 @@ export default function Profile() {
                 <Text style={styles.progressText}>{item.pct}% complete</Text>
               </View>
             ))}
-          </View>
+          </GlassPanel>
         )}
 
         {activeTab === 'progress' && (
-          <View style={styles.sectionCard}>
+          <GlassPanel style={styles.sectionCard} radius={14} tone="medium">
             <Text style={styles.sectionTitle}>Progress Snapshot</Text>
             <View style={styles.quickGrid}>
               <View style={styles.quickCard}>
@@ -334,12 +336,12 @@ export default function Profile() {
                 <Text style={styles.quickLabel}>Achievements</Text>
               </View>
             </View>
-          </View>
+          </GlassPanel>
         )}
 
         {activeTab === 'settings' && (
           <>
-            <View style={styles.sectionCard}>
+            <GlassPanel style={styles.sectionCard} radius={14} tone="medium">
               <Text style={styles.sectionTitle}>Account</Text>
               <TouchableOpacity
                 style={styles.menuItem}
@@ -353,7 +355,7 @@ export default function Profile() {
                   </View>
                   <Text style={styles.menuText}>Edit Profile</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+                <Ionicons name="chevron-forward" size={18} color="#5B6779" />
               </TouchableOpacity>
               <View style={styles.menuItem}>
                 <View style={styles.menuLeft}>
@@ -363,9 +365,9 @@ export default function Profile() {
                   <Text style={styles.menuText}>{userEmail || 'Email'}</Text>
                 </View>
               </View>
-            </View>
+            </GlassPanel>
 
-            <View style={styles.sectionCard}>
+            <GlassPanel style={styles.sectionCard} radius={14} tone="medium">
               <Text style={styles.sectionTitle}>Learning</Text>
               <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/learning-paths')}>
                 <View style={styles.menuLeft}>
@@ -374,7 +376,7 @@ export default function Profile() {
                   </View>
                   <Text style={styles.menuText}>Learning Paths</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+                <Ionicons name="chevron-forward" size={18} color="#5B6779" />
               </TouchableOpacity>
               <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/asli-prep-content')}>
                 <View style={styles.menuLeft}>
@@ -383,7 +385,7 @@ export default function Profile() {
                   </View>
                   <Text style={styles.menuText}>Digital Library</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+                <Ionicons name="chevron-forward" size={18} color="#5B6779" />
               </TouchableOpacity>
               <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/student/timetable')}>
                 <View style={styles.menuLeft}>
@@ -392,7 +394,7 @@ export default function Profile() {
                   </View>
                   <Text style={styles.menuText}>Class Timetable</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+                <Ionicons name="chevron-forward" size={18} color="#5B6779" />
               </TouchableOpacity>
               <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/student/schedule')}>
                 <View style={styles.menuLeft}>
@@ -401,7 +403,7 @@ export default function Profile() {
                   </View>
                   <Text style={styles.menuText}>Study Schedule</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+                <Ionicons name="chevron-forward" size={18} color="#5B6779" />
               </TouchableOpacity>
               <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/student/results')}>
                 <View style={styles.menuLeft}>
@@ -410,7 +412,7 @@ export default function Profile() {
                   </View>
                   <Text style={styles.menuText}>Exam Results</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+                <Ionicons name="chevron-forward" size={18} color="#5B6779" />
               </TouchableOpacity>
               <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/student-exams')}>
                 <View style={styles.menuLeft}>
@@ -419,7 +421,7 @@ export default function Profile() {
                   </View>
                   <Text style={styles.menuText}>My Exams</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+                <Ionicons name="chevron-forward" size={18} color="#5B6779" />
               </TouchableOpacity>
               <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/practice-tests')}>
                 <View style={styles.menuLeft}>
@@ -428,7 +430,7 @@ export default function Profile() {
                   </View>
                   <Text style={styles.menuText}>Practice Tests</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+                <Ionicons name="chevron-forward" size={18} color="#5B6779" />
               </TouchableOpacity>
               <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/dashboard?tab=vidya')}>
                 <View style={styles.menuLeft}>
@@ -437,7 +439,7 @@ export default function Profile() {
                   </View>
                   <Text style={styles.menuText}>AI Tools</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+                <Ionicons name="chevron-forward" size={18} color="#5B6779" />
               </TouchableOpacity>
               <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/drive-viewer')}>
                 <View style={styles.menuLeft}>
@@ -446,7 +448,7 @@ export default function Profile() {
                   </View>
                   <Text style={styles.menuText}>My Drive</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+                <Ionicons name="chevron-forward" size={18} color="#5B6779" />
               </TouchableOpacity>
               <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/attendance')}>
                 <View style={styles.menuLeft}>
@@ -455,7 +457,7 @@ export default function Profile() {
                   </View>
                   <Text style={styles.menuText}>Attendance</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+                <Ionicons name="chevron-forward" size={18} color="#5B6779" />
               </TouchableOpacity>
               <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/assignments')}>
                 <View style={styles.menuLeft}>
@@ -464,7 +466,7 @@ export default function Profile() {
                   </View>
                   <Text style={styles.menuText}>Assignments</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+                <Ionicons name="chevron-forward" size={18} color="#5B6779" />
               </TouchableOpacity>
               {(userRole === 'teacher' || userRole === 'admin') ? (
                 <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/staff/dashboard')}>
@@ -474,10 +476,10 @@ export default function Profile() {
                     </View>
                     <Text style={styles.menuText}>Staff Dashboard</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+                  <Ionicons name="chevron-forward" size={18} color="#5B6779" />
                 </TouchableOpacity>
               ) : null}
-            </View>
+            </GlassPanel>
           </>
         )}
 
@@ -493,7 +495,8 @@ export default function Profile() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    // transparent so the app-wide pastel artwork shows through the glass cards
+    backgroundColor: 'transparent',
   },
   header: {
     flexDirection: 'row',
@@ -501,9 +504,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: 'rgba(255,255,255,0.55)',
   },
   backButton: {
     width: 34,
@@ -534,7 +537,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: 'rgba(255,255,255,0.65)',
     padding: 16,
   },
   profileRow: {
@@ -546,7 +549,7 @@ const styles = StyleSheet.create({
     width: 68,
     height: 68,
     borderRadius: 34,
-    backgroundColor: '#047857',
+    backgroundColor: '#5443b8',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -599,7 +602,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tabBtnActive: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
   },
   tabText: {
     fontSize: 11,
@@ -612,10 +615,9 @@ const styles = StyleSheet.create({
   },
   sectionCard: {
     marginTop: 10,
-    backgroundColor: '#fff',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: 'rgba(255,255,255,0.65)',
     padding: 14,
   },
   sectionTitle: {
@@ -691,11 +693,12 @@ const styles = StyleSheet.create({
   },
   achievementCard: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: 'rgba(255,255,255,0.7)',
     borderRadius: 12,
     padding: 10,
     marginBottom: 10,
-    backgroundColor: '#fff',
+    // plain translucent white rather than a nested GlassPanel — blur inside blur muddies the text
+    backgroundColor: 'rgba(255,255,255,0.5)',
   },
   achievementTop: {
     flexDirection: 'row',
@@ -761,10 +764,11 @@ const styles = StyleSheet.create({
   quickCard: {
     width: '48.5%',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: 'rgba(255,255,255,0.7)',
     borderRadius: 10,
     padding: 10,
-    backgroundColor: '#f8fafc',
+    // plain translucent white rather than a nested GlassPanel — blur inside blur muddies the text
+    backgroundColor: 'rgba(255,255,255,0.5)',
   },
   quickValue: {
     fontSize: 22,

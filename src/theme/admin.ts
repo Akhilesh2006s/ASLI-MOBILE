@@ -65,12 +65,12 @@ export type AdminThemeColors = {
 };
 
 const ADMIN_LIGHT: AdminThemeColors = {
-  bg: '#EBEFF4',
-  bgElevated: '#E2E7EE',
-  surface: '#F3F5F9',
-  surfaceGlass: 'rgba(243, 245, 249, 0.9)',
-  surfaceBorder: 'rgba(148, 163, 184, 0.22)',
-  surfaceHover: '#E8ECF2',
+  bg: 'transparent',
+  bgElevated: 'rgba(226,231,238,0.55)',
+  surface: 'rgba(255,255,255,0.48)',
+  surfaceGlass: 'rgba(255,255,255,0.48)',
+  surfaceBorder: 'rgba(255,255,255,0.65)',
+  surfaceHover: 'rgba(232,236,242,0.45)',
   primary: '#5568A8',
   primaryDark: '#475985',
   primaryLight: '#6B7DB8',
@@ -79,7 +79,10 @@ const ADMIN_LIGHT: AdminThemeColors = {
   accent: '#3A9A8C',
   text: '#1E293B',
   textSecondary: '#64748B',
-  textMuted: '#94A3B8',
+  // Was #94A3B8 — ~2.4:1 on the admin surface and worse over the pastel page
+  // artwork. #5B6779 holds ~5.6:1 and still reads as clearly secondary.
+  // (The dark variant's #6B7A8F below is correct as light-on-dark.)
+  textMuted: '#5B6779',
   textInverse: '#FFFFFF',
   success: '#059669',
   successMuted: 'rgba(5, 150, 105, 0.1)',
@@ -95,10 +98,10 @@ const ADMIN_LIGHT: AdminThemeColors = {
   drawerText: '#334155',
   drawerTextMuted: '#64748B',
   overlay: 'rgba(15, 23, 42, 0.45)',
-  inputBg: '#F8FAFC',
-  inputBorder: '#E2E8F0',
-  skeleton: '#E2E8F0',
-  skeletonHighlight: '#F1F5F9',
+  inputBg: 'rgba(248,250,252,0.55)',
+  inputBorder: 'rgba(255,255,255,0.65)',
+  skeleton: 'rgba(226,232,240,0.55)',
+  skeletonHighlight: 'rgba(241,245,249,0.65)',
   headerGradient: ['#4A5F7A', '#5C7390', '#6D86A3'] as const,
   drawerGradient: ['#E8ECF2', '#F0F3F8'] as const,
   navActiveColor: '#475985',

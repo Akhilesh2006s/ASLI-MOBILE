@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import teacherService from '../../../src/services/api/teacherService';
-import { ActionButton, EmptyState, ErrorState, LoadingState } from '../../../src/components/ui';
+import { ActionButton, EmptyState, ErrorState, GlassPanel, LoadingState } from '../../../src/components/ui';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
 
 type StudentRow = {
@@ -98,28 +98,31 @@ export default function AttendanceTrackerView() {
                   <Animated.View
                     key={id}
                     entering={FadeInDown.duration(350).delay(Math.min(index * 60, 480))}
-                    style={styles.row}
                   >
-                    <View style={styles.rowInfo}>
-                      <Text style={styles.name}>{s.fullName || s.name}</Text>
-                      {s.rollNo ? <Text style={styles.roll}>Roll {s.rollNo}</Text> : null}
-                    </View>
-                    <View style={styles.statusRow}>
-                      {(['present', 'absent', 'late'] as const).map((st) => (
-                        <Pressable
-                          key={st}
-                          style={[
-                            styles.statusBtn,
-                            s.status === st && (st === 'present' ? styles.statusPresent : st === 'absent' ? styles.statusAbsent : styles.statusLate),
-                          ]}
-                          onPress={() => setStatus(String(id), st)}
-                        >
-                          <Text style={[styles.statusText, s.status === st && styles.statusTextActive]}>
-                            {st[0].toUpperCase()}
-                          </Text>
-                        </Pressable>
-                      ))}
-                    </View>
+                    <GlassPanel style={styles.row} radius={TEACHER_RADIUS.lg} tone="medium">
+                      <View style={styles.rowBody}>
+                        <View style={styles.rowInfo}>
+                          <Text style={styles.name}>{s.fullName || s.name}</Text>
+                          {s.rollNo ? <Text style={styles.roll}>Roll {s.rollNo}</Text> : null}
+                        </View>
+                        <View style={styles.statusRow}>
+                          {(['present', 'absent', 'late'] as const).map((st) => (
+                            <Pressable
+                              key={st}
+                              style={[
+                                styles.statusBtn,
+                                s.status === st && (st === 'present' ? styles.statusPresent : st === 'absent' ? styles.statusAbsent : styles.statusLate),
+                              ]}
+                              onPress={() => setStatus(String(id), st)}
+                            >
+                              <Text style={[styles.statusText, s.status === st && styles.statusTextActive]}>
+                                {st[0].toUpperCase()}
+                              </Text>
+                            </Pressable>
+                          ))}
+                        </View>
+                      </View>
+                    </GlassPanel>
                   </Animated.View>
                 );
               })
@@ -138,15 +141,13 @@ export default function AttendanceTrackerView() {
             <EmptyState icon="time-outline" title="No history" subtitle="Past attendance records appear here." />
           ) : (
             history.map((h, i) => (
-              <Animated.View
-                key={i}
-                entering={FadeInDown.duration(350).delay(Math.min(i * 60, 480))}
-                style={styles.historyCard}
-              >
-                <Text style={styles.historyDate}>{h.date || h.createdAt || 'Record'}</Text>
-                <Text style={styles.historyMeta}>
-                  Present: {h.present ?? '—'} • Absent: {h.absent ?? '—'}
-                </Text>
+              <Animated.View key={i} entering={FadeInDown.duration(350).delay(Math.min(i * 60, 480))}>
+                <GlassPanel style={styles.historyCard} radius={TEACHER_RADIUS.lg} tone="medium">
+                  <Text style={styles.historyDate}>{h.date || h.createdAt || 'Record'}</Text>
+                  <Text style={styles.historyMeta}>
+                    Present: {h.present ?? '—'} • Absent: {h.absent ?? '—'}
+                  </Text>
+                </GlassPanel>
               </Animated.View>
             ))
           )}
@@ -176,13 +177,16 @@ const styles = StyleSheet.create({
   list: { flex: 1, marginBottom: TEACHER_SPACING.md },
   listContent: { paddingBottom: 120 },
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     ...glassCard,
+    backgroundColor: 'transparent',
     borderRadius: TEACHER_RADIUS.lg,
     padding: TEACHER_SPACING.md,
     marginBottom: TEACHER_SPACING.sm,
+  },
+  rowBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   rowInfo: { flex: 1 },
   name: { ...TEACHER_TYPO.body, fontWeight: '700', color: TEACHER.text },
@@ -205,6 +209,7 @@ const styles = StyleSheet.create({
   statusTextActive: { color: TEACHER.text },
   historyCard: {
     ...glassCard,
+    backgroundColor: 'transparent',
     borderRadius: TEACHER_RADIUS.lg,
     padding: TEACHER_SPACING.md,
     marginBottom: TEACHER_SPACING.sm,

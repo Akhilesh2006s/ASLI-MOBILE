@@ -34,6 +34,9 @@ export default function ActionButton({
       <Pressable
         onPress={onPress}
         disabled={disabled}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityState={{ disabled, busy: loading }}
         style={({ pressed }) => [
           styles.pressable,
           fullWidth && styles.fullWidth,
@@ -74,6 +77,9 @@ export default function ActionButton({
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled, busy: loading }}
       style={({ pressed }) => [
         styles.base,
         variantStyle,

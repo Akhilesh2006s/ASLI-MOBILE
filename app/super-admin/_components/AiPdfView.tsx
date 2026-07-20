@@ -52,6 +52,7 @@ import {
   LANGUAGE_EXCLUDED_TOOL_ERROR,
 } from '../../../src/lib/student-ai-tools';
 import { extractMcqQuestionsFromRecord, isMcqTool } from '../../../src/lib/mcq-record-utils';
+import { GlassPanel } from '../../../src/components/ui';
 import AiToolRecordPreview from '../../../src/components/ai-tools/AiToolRecordPreview';
 
 type PickerFile = { uri: string; name: string; mimeType?: string | null; size?: number | null };
@@ -107,7 +108,7 @@ function RecordCard({
   onDelete: (record: PdfItem) => void;
 }) {
   return (
-    <View style={styles.recordCard}>
+    <GlassPanel style={styles.recordCard} radius={12} tone="strong">
       <View style={styles.recordTop}>
         <View style={{ flex: 1 }}>
           <View style={styles.recordBadges}>
@@ -133,13 +134,15 @@ function RecordCard({
         </Pressable>
         <Pressable
           style={styles.deleteBtn}
+          accessibilityRole="button"
+          accessibilityLabel={`Delete ${pdfRecordPreviewLine(record)}`}
           onPress={() => onDelete(record)}
           disabled={deletingId === record._id}
         >
           <Ionicons name="trash-outline" size={14} color="#b91c1c" />
         </Pressable>
       </View>
-    </View>
+    </GlassPanel>
   );
 }
 
@@ -162,7 +165,7 @@ function SubtopicSection({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <View style={styles.nestedBlock}>
+    <GlassPanel style={styles.nestedBlock} radius={10} tone="medium">
       <Pressable style={styles.nestedTrigger} onPress={() => setOpen((v) => !v)}>
         <Text style={styles.nestedLabel}>Subtopic</Text>
         <Text style={styles.nestedTitle} numberOfLines={2}>
@@ -171,7 +174,7 @@ function SubtopicSection({
         <View style={styles.countPill}>
           <Text style={styles.countPillText}>{node.records.length}</Text>
         </View>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#94a3b8" />
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#5B6779" />
       </Pressable>
       {open ? (
         <View style={styles.nestedBody}>
@@ -199,7 +202,7 @@ function SubtopicSection({
           ))}
         </View>
       ) : null}
-    </View>
+    </GlassPanel>
   );
 }
 
@@ -228,11 +231,11 @@ function TopicSection({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <View style={styles.nestedBlock}>
+    <GlassPanel style={styles.nestedBlock} radius={10} tone="medium">
       <Pressable style={styles.nestedTrigger} onPress={() => setOpen((v) => !v)}>
         <Text style={styles.nestedLabel}>Topic</Text>
         <Text style={styles.nestedTitle}>{node.topic}</Text>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#94a3b8" />
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#5B6779" />
       </Pressable>
       {open ? (
         <View style={styles.nestedBody}>
@@ -250,7 +253,7 @@ function TopicSection({
           ))}
         </View>
       ) : null}
-    </View>
+    </GlassPanel>
   );
 }
 
@@ -277,11 +280,11 @@ function SubjectSection({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <View style={styles.nestedBlock}>
+    <GlassPanel style={styles.nestedBlock} radius={10} tone="medium">
       <Pressable style={styles.nestedTrigger} onPress={() => setOpen((v) => !v)}>
         <Text style={styles.nestedLabel}>Subject</Text>
         <Text style={styles.nestedTitle}>{node.subject}</Text>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#94a3b8" />
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#5B6779" />
       </Pressable>
       {open ? (
         <View style={styles.nestedBody}>
@@ -302,7 +305,7 @@ function SubjectSection({
           ))}
         </View>
       ) : null}
-    </View>
+    </GlassPanel>
   );
 }
 
@@ -325,14 +328,14 @@ function ClassSection({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <View style={styles.nestedBlock}>
+    <GlassPanel style={styles.nestedBlock} radius={10} tone="medium">
       <Pressable style={styles.nestedTrigger} onPress={() => setOpen((v) => !v)}>
         <Text style={styles.nestedLabel}>Class</Text>
         <Text style={styles.nestedTitle}>{node.classLabel}</Text>
         <View style={styles.boardChip}>
           <Text style={styles.boardChipText}>{node.board || '-'}</Text>
         </View>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#94a3b8" />
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#5B6779" />
       </Pressable>
       {open ? (
         <View style={styles.nestedBody}>
@@ -352,7 +355,7 @@ function ClassSection({
           ))}
         </View>
       ) : null}
-    </View>
+    </GlassPanel>
   );
 }
 
@@ -693,7 +696,7 @@ export default function AiPdfView() {
       style={styles.container}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563eb" />}
     >
-      <View style={styles.section}>
+      <GlassPanel style={styles.section} radius={14} tone="strong">
         <Text style={styles.sectionTitle}>AI PDF</Text>
 
         <Text style={styles.fieldLabel}>Upload PDF file *</Text>
@@ -832,9 +835,9 @@ export default function AiPdfView() {
         ) : null}
 
         {uploadError ? <Text style={styles.errorText}>{uploadError}</Text> : null}
-      </View>
+      </GlassPanel>
 
-      <View style={styles.section}>
+      <GlassPanel style={styles.section} radius={14} tone="medium">
         <Text style={styles.sectionTitle}>Saved PDF records</Text>
         <Text style={styles.recordsHint}>
           Showing:{' '}
@@ -901,7 +904,7 @@ export default function AiPdfView() {
             />
           ))
         )}
-      </View>
+      </GlassPanel>
 
       <Modal visible={!!activeRecord} animationType="slide" onRequestClose={() => setActiveRecord(null)}>
         <View style={styles.fullModal}>
@@ -918,7 +921,11 @@ export default function AiPdfView() {
                 </Text>
               ) : null}
             </View>
-            <Pressable onPress={() => setActiveRecord(null)}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Close record view"
+              onPress={() => setActiveRecord(null)}
+            >
               <Ionicons name="close" size={24} color="#374151" />
             </Pressable>
           </View>
@@ -1024,11 +1031,11 @@ export default function AiPdfView() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc' },
+  // Transparent: the shared app background artwork shows through.
+  container: { flex: 1, backgroundColor: 'transparent' },
   section: {
     margin: 16,
     marginBottom: 0,
-    backgroundColor: '#fff',
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#e2e8f0',
@@ -1086,7 +1093,7 @@ const styles = StyleSheet.create({
   },
   infoBannerWarning: {
     color: '#92400e',
-    backgroundColor: '#fffbeb',
+    backgroundColor: 'rgba(255,251,235,0.55)',
     borderColor: '#fcd34d',
   },
   generateBtn: {
@@ -1168,14 +1175,13 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     borderRadius: 10,
     marginBottom: 8,
-    backgroundColor: '#fff',
     overflow: 'hidden',
   },
   nestedTrigger: { flexDirection: 'row', alignItems: 'center', padding: 10, gap: 8 },
   nestedLabel: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#94a3b8',
+    color: '#5B6779',
     textTransform: 'uppercase',
   },
   nestedTitle: { flex: 1, fontSize: 13, fontWeight: '600', color: '#0f172a' },
@@ -1210,13 +1216,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     marginBottom: 8,
-    backgroundColor: '#fff',
   },
   recordTop: { flexDirection: 'row', gap: 8, marginBottom: 8 },
   recordBadges: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   genBadge: { backgroundColor: '#f1f5f9', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   genBadgeText: { fontSize: 11, fontWeight: '600', color: '#334155' },
-  pdfCode: { fontSize: 10, color: '#94a3b8', fontFamily: 'monospace' },
+  pdfCode: { fontSize: 10, color: '#5B6779', fontFamily: 'monospace' },
   recordDate: { fontSize: 11, color: '#64748b', marginTop: 4 },
   recordTitle: { fontSize: 14, fontWeight: '600', color: '#0f172a', marginTop: 4 },
   approvalBadge: {
@@ -1257,7 +1262,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#fef2f2',
   },
-  fullModal: { flex: 1, backgroundColor: '#fff' },
+  fullModal: { flex: 1, backgroundColor: 'rgba(255,255,255,0.48)' },
   fullModalHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -1278,7 +1283,7 @@ const styles = StyleSheet.create({
   mcqAnswer: { fontSize: 12, color: '#047857', marginTop: 8, backgroundColor: '#ecfdf5', padding: 6, borderRadius: 6 },
   pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   pickerSheet: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     padding: 16,

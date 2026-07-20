@@ -10,12 +10,12 @@ type Props = {
 };
 
 export default function SuperAdminGridBackground({ cellSize = CELL }: Props) {
-  const { colors, isDark } = useSuperAdminTheme();
+  const { isDark } = useSuperAdminTheme();
   const { width, height } = Dimensions.get('window');
   const lineColor = isDark ? 'rgba(251, 146, 60, 0.12)' : 'rgba(253, 186, 116, 0.45)';
 
   return (
-    <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.bg }]} pointerEvents="none">
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
       <Svg width={width} height={height * 2} style={StyleSheet.absoluteFill}>
         <Defs>
           <Pattern id="superAdminGrid" width={cellSize} height={cellSize} patternUnits="userSpaceOnUse">

@@ -136,13 +136,13 @@ export const SPLASH_EXIT_DURATION_MS = EXIT_DURATION_MS;
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255,255,255,0.48)',
   },
   container: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     overflow: 'visible',
   },
   stage: {

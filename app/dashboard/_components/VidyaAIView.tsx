@@ -7,6 +7,7 @@ import { API_BASE_URL } from '../../../src/lib/api-config';
 import { filterVisibleStudentTools, type StudentAiTool } from '../../../src/lib/student-ai-tools';
 import { ShimmerCard } from '../../../src/components/student/StudentShimmer';
 import AiToolCard from '../../../src/components/ai-tools/AiToolCard';
+import { GlassPanel } from '../../../src/components/ui';
 import { AI, AI_RADIUS, AI_SHADOW, AI_SPACING, AI_TYPE } from '../../../src/theme/ai';
 import {
   STUDENT_ANIMATION,
@@ -68,12 +69,14 @@ export default function VidyaAIView() {
 
   return (
     <View style={styles.container}>
-      <Animated.View style={styles.hero} entering={FadeInDown.duration(STUDENT_ANIMATION.normal).delay(50)}>
-        <View style={styles.heroBadge}>
-          <Text style={styles.heroBadgeText}>VIDYA AI STUDIO</Text>
-        </View>
-        <Text style={styles.sectionTitle}>What would you like to learn?</Text>
-        <Text style={styles.sectionSubtitle}>{STUDENT_TOOLS_SUBTITLE}</Text>
+      <Animated.View entering={FadeInDown.duration(STUDENT_ANIMATION.normal).delay(50)}>
+        <GlassPanel radius={AI_RADIUS.lg} tone="strong" style={styles.hero}>
+          <View style={styles.heroBadge}>
+            <Text style={styles.heroBadgeText}>VIDYA AI STUDIO</Text>
+          </View>
+          <Text style={styles.sectionTitle}>What would you like to learn?</Text>
+          <Text style={styles.sectionSubtitle}>{STUDENT_TOOLS_SUBTITLE}</Text>
+        </GlassPanel>
       </Animated.View>
 
       {isLoading ? (
@@ -116,6 +119,7 @@ export default function VidyaAIView() {
                 accent={tool.color || AI.primary}
                 badge="Student"
                 compact={gridColumns > 1}
+                glass
                 onPress={() => openTool(tool)}
               />
             </Animated.View>
@@ -127,14 +131,12 @@ export default function VidyaAIView() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: AI.canvas },
+  // Transparent so the app background artwork shows through.
+  container: { flex: 1, backgroundColor: 'transparent' },
   hero: {
     marginBottom: AI_SPACING.xl,
     overflow: 'hidden',
     borderRadius: AI_RADIUS.lg,
-    borderWidth: 1,
-    borderColor: AI.primaryBorder,
-    backgroundColor: AI.surface,
     padding: AI_SPACING.xl,
     ...AI_SHADOW,
   },

@@ -54,7 +54,8 @@ export default function StudentExams() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    // transparent so the app-wide pastel artwork shows behind the exams list
+    backgroundColor: 'transparent',
   },
   header: {
     paddingTop: 12,

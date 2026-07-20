@@ -258,7 +258,7 @@ export default function SuperAdminDashboard() {
   const isDashboard = currentView === 'dashboard';
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -298,7 +298,8 @@ export default function SuperAdminDashboard() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  // Transparent so the shared app background artwork shows through.
+  container: { flex: 1, backgroundColor: 'transparent' },
   contentWrap: {
     flex: 1,
     minHeight: 0,

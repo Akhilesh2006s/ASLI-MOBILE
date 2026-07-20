@@ -25,7 +25,7 @@ export default function AiToolCard({
   accent = AI.primary,
   badge,
   compact,
-  glass,
+  glass = true,
   onPress,
   style,
 }: Props) {
@@ -54,7 +54,7 @@ export default function AiToolCard({
           animatedStyle,
         ]}
       >
-        {glass ? <GlassSurface intensity={55} /> : null}
+        {glass ? <GlassSurface intensity={55} tone="medium" /> : null}
         <View style={[styles.accent, { backgroundColor: accent }]} />
         <View
           style={[
@@ -98,8 +98,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderRadius: AI_RADIUS.lg,
     borderWidth: 1,
-    borderColor: AI.border,
-    backgroundColor: AI.surface,
+    borderColor: 'rgba(255,255,255,0.65)',
+    backgroundColor: 'transparent',
     padding: AI_SPACING.lg,
     ...AI_SHADOW,
   },
@@ -109,12 +109,7 @@ const styles = StyleSheet.create({
   },
   cardGlassShell: {
     backgroundColor: 'transparent',
-    borderColor: 'rgba(255,255,255,0.5)',
-    shadowColor: '#475569',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 24,
-    elevation: 5,
+    borderColor: 'rgba(255,255,255,0.65)',
   },
   accent: {
     position: 'absolute',

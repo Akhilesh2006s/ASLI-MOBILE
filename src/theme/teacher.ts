@@ -1,11 +1,14 @@
 /** Clean Classroom — light teacher portal theme */
+import { GLASS_ROW } from './glass';
+
 export const TEACHER = {
-  bg: '#FFFFFF',
-  cardBg: '#FFFFFF',
-  surface: '#F8FAFC',
-  surfaceElevated: '#F1F5F9',
-  surfaceBorder: '#E2E8F0',
-  surfaceHover: '#EEF2FF',
+  bg: 'transparent',
+  cardBg: 'rgba(255,255,255,0.48)',
+  surface: 'rgba(255,255,255,0.48)',
+  surfaceGlass: GLASS_ROW.fillStrong,
+  surfaceElevated: 'rgba(255,255,255,0.58)',
+  surfaceBorder: 'rgba(255,255,255,0.65)',
+  surfaceHover: 'rgba(238,242,255,0.45)',
   primary: '#6366F1',
   primaryDark: '#4F46E5',
   primaryLight: '#818CF8',
@@ -15,14 +18,17 @@ export const TEACHER = {
   warning: '#F59E0B',
   text: '#0F172A',
   textSecondary: '#475569',
-  textMuted: '#94A3B8',
+  // Was #94A3B8 — only 2.5:1 on white and ~1.8:1 over the pastel page artwork.
+  // #5B6779 holds ~5.6:1 on the artwork and still reads as clearly secondary.
+  textMuted: '#5B6779',
   textOnPrimary: '#FFFFFF',
   headerGradient: ['#7DD3FC', '#BAE6FD', '#DBEAFE'] as const,
   heroGradient: ['#4338CA', '#4F46E5', '#6366F1'] as const,
   cardGradient: ['#EEF2FF', '#FFFFFF'] as const,
   tabBarBg: 'rgba(255,255,255,0.98)',
   tabBarBorder: '#E2E8F0',
-  navInactive: '#94A3B8',
+  // Inactive tab labels sit at 10px on a translucent bar — #94A3B8 was unreadable.
+  navInactive: '#5B6779',
   navActiveBg: 'rgba(99,102,241,0.12)',
   navActiveText: '#4F46E5',
   fabGradient: ['#6366F1', '#4F46E5'] as const,
@@ -130,7 +136,9 @@ export function teacherSubjectBadgePalette(
 
 /** Card style for light surfaces */
 export const glassCard = {
-  backgroundColor: TEACHER.cardBg,
+  // Transparent so the page artwork blurs through. Consumers that need an
+  // opaque card (native modals, chart interiors) set backgroundColor themselves.
+  backgroundColor: 'transparent',
   borderWidth: 1,
   borderColor: TEACHER.surfaceBorder,
   borderRadius: TEACHER_RADIUS.lg,

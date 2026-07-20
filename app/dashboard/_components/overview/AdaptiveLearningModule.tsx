@@ -149,7 +149,7 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
   };
 
   return (
-    <GlassCard variant="gradient" padding={14} style={dark ? styles.darkWrap : undefined}>
+    <GlassCard variant="glass" padding={14} style={dark ? styles.darkWrap : undefined}>
       <PremiumSectionHeader
         title="Adaptive Learning"
         subtitle="Personalized Resources From Your Performance — Only Content Available In Your Library"
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 13, color: STUDENT.danger, textAlign: 'center' },
   retry: { fontSize: 13, fontWeight: '700', color: STUDENT.accent },
   emptyBox: {
-    backgroundColor: STUDENT.surface,
+    backgroundColor: 'rgba(255,255,255,0.42)',
     borderRadius: STUDENT_RADIUS.inner,
     padding: 16,
     borderWidth: 1,
@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
   emptySub: { fontSize: 12, color: STUDENT.textMuted, textAlign: 'center', marginTop: 6 },
   cardsScroll: { maxHeight: 420 },
   subjectCard: {
-    backgroundColor: STUDENT.surface,
+    backgroundColor: 'rgba(255,255,255,0.42)',
     borderRadius: STUDENT_RADIUS.inner,
     padding: 12,
     marginBottom: 10,

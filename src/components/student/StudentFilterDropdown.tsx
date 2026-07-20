@@ -31,17 +31,40 @@ export default function StudentFilterDropdown({
     <>
       <View style={styles.wrap}>
         <Text style={styles.label}>{label}</Text>
-        <Pressable style={styles.trigger} onPress={() => setOpen(true)}>
+        <Pressable
+          style={styles.trigger}
+          onPress={() => setOpen(true)}
+          hitSlop={2}
+          accessibilityRole="button"
+          accessibilityLabel={`${label}: ${selected?.label || placeholder}`}
+          accessibilityHint="Opens the filter options"
+          accessibilityState={{ expanded: open }}
+        >
           <Text style={styles.triggerText} numberOfLines={1}>
             {selected?.label || placeholder}
           </Text>
-          <Ionicons name="chevron-down" size={16} color={STUDENT.textMuted} />
+          <Ionicons
+            name="chevron-down"
+            size={16}
+            color={STUDENT.textMuted}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
         </Pressable>
       </View>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <Pressable style={styles.overlay} onPress={() => setOpen(false)}>
-          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+        <Pressable
+          style={styles.overlay}
+          onPress={() => setOpen(false)}
+          accessibilityRole="button"
+          accessibilityLabel={`Close ${label} filter`}
+        >
+          <Pressable
+            style={styles.sheet}
+            onPress={(e) => e.stopPropagation()}
+            accessibilityViewIsModal
+          >
             <Text style={styles.sheetTitle}>{label}</Text>
             {options.map((option) => {
               const active = option.value === value;
@@ -53,6 +76,11 @@ export default function StudentFilterDropdown({
                     onChange(option.value);
                     setOpen(false);
                   }}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    option.count != null ? `${option.label}, ${option.count}` : option.label
+                  }
+                  accessibilityState={{ selected: active }}
                 >
                   <Text style={[styles.optionText, active && styles.optionTextActive]}>
                     {option.label}

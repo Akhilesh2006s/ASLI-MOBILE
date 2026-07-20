@@ -105,13 +105,13 @@ function SchoolsModal({
           </Pressable>
         </View>
         <View style={styles.searchWrap}>
-          <Ionicons name="search" size={18} color="#9ca3af" />
+          <Ionicons name="search" size={18} color="#5B6779" />
           <TextInput
             style={styles.searchInput}
             value={search}
             onChangeText={onSearchChange}
             placeholder="Search schools..."
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor="#5B6779"
           />
         </View>
         <View style={styles.schoolActions}>
@@ -137,7 +137,7 @@ function SchoolsModal({
                   <Ionicons
                     name={checked ? 'checkbox' : 'square-outline'}
                     size={22}
-                    color={checked ? '#0ea5e9' : '#9ca3af'}
+                    color={checked ? '#0ea5e9' : '#5B6779'}
                   />
                   <Text style={styles.schoolRowText}>{school.schoolName}</Text>
                 </Pressable>
@@ -212,7 +212,7 @@ function SessionFormModal({
               value={form.title}
               onChangeText={(v) => setForm((p) => ({ ...p, title: v }))}
               placeholder="e.g. Class 10 Maths — Live Doubt Session"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor="#5B6779"
             />
 
             <Text style={styles.fieldLabel}>YouTube Live link *</Text>
@@ -221,7 +221,7 @@ function SessionFormModal({
               value={form.youtubeUrl}
               onChangeText={(v) => setForm((p) => ({ ...p, youtubeUrl: v }))}
               placeholder="https://www.youtube.com/watch?v=..."
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor="#5B6779"
               autoCapitalize="none"
             />
 
@@ -247,7 +247,7 @@ function SessionFormModal({
               value={form.description}
               onChangeText={(v) => setForm((p) => ({ ...p, description: v }))}
               placeholder="Short note for teachers/students"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor="#5B6779"
               multiline
               numberOfLines={3}
             />
@@ -430,13 +430,13 @@ export default function LiveSessionsView() {
       </View>
 
       <View style={styles.searchWrap}>
-        <Ionicons name="search" size={18} color="#9ca3af" />
+        <Ionicons name="search" size={18} color="#5B6779" />
         <TextInput
           style={styles.searchInput}
           value={searchTerm}
           onChangeText={setSearchTerm}
           placeholder="Search by session or school..."
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor="#5B6779"
         />
       </View>
 
@@ -446,7 +446,7 @@ export default function LiveSessionsView() {
         </View>
       ) : filtered.length === 0 ? (
         <View style={styles.center}>
-          <Ionicons name="videocam-outline" size={52} color="#d1d5db" />
+          <Ionicons name="videocam-outline" size={52} color="#5B6779" />
           <Text style={styles.emptyTitle}>No live sessions yet</Text>
           <Text style={styles.emptySub}>Add a YouTube Live link for one or more schools to get started.</Text>
         </View>
@@ -539,7 +539,7 @@ export default function LiveSessionsView() {
             <ScrollView style={{ maxHeight: 360 }}>
               {previewSchools.map((name) => (
                 <View key={name} style={styles.previewSchoolRow}>
-                  <Ionicons name="school-outline" size={16} color="#9ca3af" />
+                  <Ionicons name="school-outline" size={16} color="#5B6779" />
                   <Text style={styles.previewSchoolText}>{name}</Text>
                 </View>
               ))}
@@ -578,7 +578,7 @@ const styles = StyleSheet.create({
   searchWrap: {
     marginHorizontal: 16,
     marginVertical: 12,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#e5e7eb',
@@ -589,10 +589,10 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, paddingVertical: 10, marginLeft: 8, color: '#111827' },
   center: { alignItems: 'center', padding: 32, gap: 8 },
   emptyTitle: { color: '#4b5563', fontWeight: '700', fontSize: 16 },
-  emptySub: { color: '#9ca3af', textAlign: 'center', fontSize: 13 },
+  emptySub: { color: '#5B6779', textAlign: 'center', fontSize: 13 },
   list: { paddingHorizontal: 16, paddingBottom: 24, gap: 12 },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
@@ -624,7 +624,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   actionTxt: { fontSize: 12, fontWeight: '600', color: '#111827' },
-  formModalWrap: { flex: 1, backgroundColor: '#fff' },
+  formModalWrap: { flex: 1, backgroundColor: 'rgba(255,255,255,0.48)' },
   formModalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -646,7 +646,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 15,
     color: '#111827',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
   },
   textArea: { minHeight: 80, textAlignVertical: 'top' },
   pickerTrigger: {
@@ -686,7 +686,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   pickerSheet: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     padding: 16,
@@ -730,7 +730,7 @@ const styles = StyleSheet.create({
   },
   schoolRowActive: { backgroundColor: '#f0f9ff' },
   schoolRowText: { flex: 1, fontSize: 14, color: '#111827' },
-  emptySchools: { textAlign: 'center', color: '#9ca3af', padding: 24 },
+  emptySchools: { textAlign: 'center', color: '#5B6779', padding: 24 },
   doneBtn: {
     margin: 16,
     backgroundColor: '#111827',

@@ -35,6 +35,8 @@ function ActionItem({ action, index }: { action: Action; index: number }) {
         onPressOut={() => {
           scale.value = withSpring(1, PRESS_SPRING);
         }}
+        accessibilityRole="button"
+        accessibilityLabel={action.label}
       >
         <Animated.View style={[styles.item, animStyle]}>
           <LinearGradient

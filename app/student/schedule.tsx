@@ -5,7 +5,7 @@ import { router } from 'expo-router';
 import ScheduleView from '../dashboard/_components/ScheduleView';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import StudentScreenHeader from '../../src/components/student/StudentScreenHeader';
-import { STUDENT, STUDENT_SPACING } from '../../src/theme/student';
+import { STUDENT_SPACING } from '../../src/theme/student';
 
 export default function StudentScheduleScreen() {
   useBackNavigation('/dashboard', false);
@@ -27,6 +27,7 @@ export default function StudentScheduleScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: STUDENT.bg },
+  // Transparent so the app background artwork shows through.
+  container: { flex: 1, backgroundColor: 'transparent' },
   body: { flex: 1, paddingHorizontal: STUDENT_SPACING.lg },
 });

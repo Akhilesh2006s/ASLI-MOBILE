@@ -161,7 +161,7 @@ export default function StudentDashboard() {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <StatusBar barStyle="dark-content" translucent={false} backgroundColor={STUDENT.bg} />
+        <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
         <LoadingState variant="stats" style={{ padding: 16 }} />
       </SafeAreaView>
     );
@@ -171,7 +171,7 @@ export default function StudentDashboard() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" translucent={false} backgroundColor={STUDENT.bg} />
+      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       <View style={styles.tabContent}>
         {visitedTabs.has('home') ? (
           <VisitedTabPane visible={activeTab === 'home'}>
@@ -282,8 +282,9 @@ export default function StudentDashboard() {
 
 const styles = StyleSheet.create({
   container: {
+    // Transparent so AppBackground's artwork shows through.
     flex: 1,
-    backgroundColor: STUDENT.bg,
+    backgroundColor: 'transparent',
   },
   tabContent: {
     flex: 1,

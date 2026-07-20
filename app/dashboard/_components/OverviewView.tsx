@@ -34,6 +34,7 @@ import { StudentHomeHeader } from '../../../src/components/student';
 import StudentCardDecor from '../../../src/components/student/StudentCardDecor';
 import TeacherDiaryFeed from '../../../src/components/student/TeacherDiaryFeed';
 import { STUDENT } from '../../../src/theme/student';
+import { GlassPanel } from '../../../src/components/ui';
 import { openContentPreview } from '../../../src/utils/openContentPreview';
 import { resolveIsAsliPrepExclusive } from '../../../src/lib/school-program';
 import { prepareLibraryContents } from '../../../src/lib/dedupe-library-content';
@@ -51,27 +52,27 @@ interface OverviewViewProps {
 
 const STAT_SUMMARY_CARDS = {
   today: {
-    bg: '#FEFCE8',
+    bg: 'transparent',
     accent: '#f97316',
-    iconBg: '#fef08a',
+    iconBg: 'rgba(249,115,22,0.16)',
     icon: 'locate-outline' as const,
   },
   study: {
-    bg: '#F0F9FF',
+    bg: 'transparent',
     accent: '#2563eb',
-    iconBg: '#dbeafe',
+    iconBg: 'rgba(37,99,235,0.16)',
     icon: 'time' as const,
   },
   week: {
-    bg: '#F0FDFB',
+    bg: 'transparent',
     accent: '#0d9488',
-    iconBg: '#ccfbf1',
+    iconBg: 'rgba(13,148,136,0.16)',
     icon: 'calendar' as const,
   },
   efficiency: {
-    bg: '#F5F3FF',
+    bg: 'transparent',
     accent: '#7c3aed',
-    iconBg: '#ede9fe',
+    iconBg: 'rgba(124,58,237,0.16)',
     icon: 'trending-up' as const,
   },
 };
@@ -711,16 +712,14 @@ const OverviewView = memo(function OverviewView({
     cardKey: 'today' | 'study' | 'week' | 'efficiency',
     body: React.ReactNode
   ) => (
-    <View
-      style={[
-        styles.statCard,
-        isTablet && styles.statCardTablet,
-        { backgroundColor: STAT_SUMMARY_CARDS[cardKey].bg },
-      ]}
+    <GlassPanel
+      style={[styles.statCard, isTablet && styles.statCardTablet]}
+      radius={24}
+      bordered={false}
     >
       <StudentCardDecor variant={cardKey} color={STAT_SUMMARY_CARDS[cardKey].accent} />
       <View style={styles.statCardContent}>{body}</View>
-    </View>
+    </GlassPanel>
   );
 
   const todayStatBody = (
@@ -867,7 +866,7 @@ const OverviewView = memo(function OverviewView({
       <TeacherDiaryFeed />
 
       {remarks.length > 0 ? (
-        <View style={styles.sectionCard}>
+        <GlassPanel style={styles.sectionCard} radius={18}>
           <View style={styles.remarksHeader}>
             <Ionicons name="chatbubbles" size={20} color={STUDENT.accent} />
             <Text style={styles.sectionTitle}>Teacher Remarks</Text>
@@ -890,11 +889,11 @@ const OverviewView = memo(function OverviewView({
               </Text>
             </View>
           ))}
-        </View>
+        </GlassPanel>
       ) : null}
 
       {riskReports.length > 0 ? (
-        <View style={styles.sectionCard}>
+        <GlassPanel style={styles.sectionCard} radius={18}>
           <View style={styles.remarksHeader}>
             <Ionicons name="warning" size={20} color={STUDENT.warning} />
             <Text style={styles.sectionTitle}>AI Risk Analysis Reports</Text>
@@ -908,7 +907,7 @@ const OverviewView = memo(function OverviewView({
               </Text>
             </View>
           ))}
-        </View>
+        </GlassPanel>
       ) : null}
 
       <MyHomeworkSection
@@ -1018,7 +1017,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   welcomeButton: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 8,
@@ -1124,12 +1123,10 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   sectionCard: {
-    backgroundColor: STUDENT.surface,
+    // Fill comes from GlassPanel's blur + white rim.
     borderRadius: 18,
     padding: 20,
     marginTop: 8,
-    borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
     ...STUDENT.shadow.sm,
   },
   sectionHeader: {
@@ -1352,7 +1349,7 @@ const styles = StyleSheet.create({
   },
   todoDotHomework: {
     borderColor: '#f97316',
-    backgroundColor: '#fff7ed',
+    backgroundColor: 'rgba(255,247,237,0.55)',
   },
   todoItemTitle: {
     fontSize: 15,
@@ -1407,17 +1404,17 @@ const styles = StyleSheet.create({
     borderLeftColor: '#22c55e',
   },
   remarkNeutral: {
-    backgroundColor: '#fff7ed',
+    backgroundColor: 'rgba(255,247,237,0.55)',
     borderLeftColor: '#f97316',
   },
   remarkTeacher: { fontSize: 13, fontWeight: '700', color: '#111827' },
   remarkText: { fontSize: 13, color: '#374151', marginTop: 6 },
-  remarkDate: { fontSize: 11, color: '#9ca3af', marginTop: 6 },
+  remarkDate: { fontSize: 11, color: '#5B6779', marginTop: 6 },
   riskCard: {
     borderRadius: 10,
     padding: 12,
     marginBottom: 8,
-    backgroundColor: '#fff7ed',
+    backgroundColor: 'rgba(255,247,237,0.55)',
     borderLeftWidth: 4,
     borderLeftColor: '#f97316',
   },
@@ -1524,7 +1521,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   pathTabActive: {
-    backgroundColor: '#ffffff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderWidth: 1,
     borderColor: '#e5e7eb',
   },
@@ -1548,7 +1545,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 10,
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
   },
   miniLibraryIcon: {
     width: 36,
@@ -1572,7 +1569,7 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
     borderRadius: 12,
     padding: 12,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
   },
   recommendedTitle: {
     fontSize: 15,

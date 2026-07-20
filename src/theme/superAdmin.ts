@@ -2,12 +2,12 @@
 import type { AdminColorScheme, AdminThemeColors } from './admin';
 
 export const SUPER_ADMIN_LIGHT: AdminThemeColors = {
-  bg: '#FFF7ED',
-  bgElevated: '#FFEDD5',
-  surface: '#FFFFFF',
-  surfaceGlass: 'rgba(255, 255, 255, 0.82)',
-  surfaceBorder: 'rgba(251, 146, 60, 0.22)',
-  surfaceHover: '#FFF7ED',
+  bg: 'transparent',
+  bgElevated: 'rgba(255,237,213,0.45)',
+  surface: 'rgba(255,255,255,0.48)',
+  surfaceGlass: 'rgba(255, 255, 255, 0.55)',
+  surfaceBorder: 'rgba(255,255,255,0.65)',
+  surfaceHover: 'rgba(255,247,237,0.45)',
   primary: '#F97316',
   primaryDark: '#EA580C',
   primaryLight: '#FB923C',
@@ -16,7 +16,9 @@ export const SUPER_ADMIN_LIGHT: AdminThemeColors = {
   accent: '#14B8A6',
   text: '#0F172A',
   textSecondary: '#475569',
-  textMuted: '#94A3B8',
+  // Was #94A3B8 — ~2.4:1 on the warm surface. #5B6779 holds ~5.6:1.
+  // (The dark variant's #78716C below is correct as light-on-dark.)
+  textMuted: '#5B6779',
   textInverse: '#FFFFFF',
   success: '#10B981',
   successMuted: 'rgba(16, 185, 129, 0.12)',

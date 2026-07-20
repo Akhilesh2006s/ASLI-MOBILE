@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { ChipNav } from '../../../src/components/student';
+import { GlassPanel } from '../../../src/components/ui';
 import { STUDENT } from '../../../src/theme/student';
 import LearningPathsView from './LearningPathsView';
 import EduOTTView from './EduOTTView';
@@ -57,33 +58,45 @@ export default function LearnTabView({ username }: { username: string }) {
     <ScrollView style={styles.wrap} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
       <ChipNav chips={CHIPS} active={chip} onChange={setChip} />
       {chip === 'prep' && (
-        <Pressable style={styles.linkCard} onPress={() => router.push('/asli-prep-content')}>
-          <Ionicons name="library-outline" size={28} color={STUDENT.primary} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.linkTitle}>ASLI Prep Content</Text>
-            <Text style={styles.linkSub}>Notes, PDFs, flashcards & curated materials</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={STUDENT.textMuted} />
+        <Pressable onPress={() => router.push('/asli-prep-content')}>
+          <GlassPanel radius={16} style={styles.linkCard}>
+            <View style={styles.linkCardRow}>
+              <Ionicons name="library-outline" size={28} color={STUDENT.primary} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.linkTitle}>ASLI Prep Content</Text>
+                <Text style={styles.linkSub}>Notes, PDFs, flashcards & curated materials</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={STUDENT.textMuted} />
+            </View>
+          </GlassPanel>
         </Pressable>
       )}
       {chip === 'iq' && (
-        <Pressable style={styles.linkCard} onPress={() => router.push('/iq-rank-boost-subjects')}>
-          <Ionicons name="trophy-outline" size={28} color={STUDENT.accent} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.linkTitle}>IQ / Rank Boost</Text>
-            <Text style={styles.linkSub}>Gamified quizzes with XP & badges</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={STUDENT.textMuted} />
+        <Pressable onPress={() => router.push('/iq-rank-boost-subjects')}>
+          <GlassPanel radius={16} style={styles.linkCard}>
+            <View style={styles.linkCardRow}>
+              <Ionicons name="trophy-outline" size={28} color={STUDENT.accent} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.linkTitle}>IQ / Rank Boost</Text>
+                <Text style={styles.linkSub}>Gamified quizzes with XP & badges</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={STUDENT.textMuted} />
+            </View>
+          </GlassPanel>
         </Pressable>
       )}
       {chip === 'videos' && (
-        <Pressable style={styles.linkCard} onPress={() => router.push('/video-lectures')}>
-          <Ionicons name="videocam-outline" size={28} color={STUDENT.primary} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.linkTitle}>Video Lectures</Text>
-            <Text style={styles.linkSub}>Recorded lessons by subject</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={STUDENT.textMuted} />
+        <Pressable onPress={() => router.push('/video-lectures')}>
+          <GlassPanel radius={16} style={styles.linkCard}>
+            <View style={styles.linkCardRow}>
+              <Ionicons name="videocam-outline" size={28} color={STUDENT.primary} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.linkTitle}>Video Lectures</Text>
+                <Text style={styles.linkSub}>Recorded lessons by subject</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={STUDENT.textMuted} />
+            </View>
+          </GlassPanel>
         </Pressable>
       )}
       {chip === 'tools' && (
@@ -91,7 +104,6 @@ export default function LearnTabView({ username }: { username: string }) {
           {TOOLS.map((t) => (
             <Pressable
               key={t.id}
-              style={styles.toolRow}
               onPress={() =>
                 router.push({
                   pathname: `/student/tools/${t.id}` as any,
@@ -99,11 +111,15 @@ export default function LearnTabView({ username }: { username: string }) {
                 })
               }
             >
-              <Ionicons name={t.icon} size={22} color={STUDENT.primary} />
-              <Text style={styles.toolName} numberOfLines={1}>
-                {t.name}
-              </Text>
-              <Ionicons name="chevron-forward" size={18} color={STUDENT.textMuted} />
+              <GlassPanel radius={14} style={styles.toolRow}>
+                <View style={styles.toolRowInner}>
+                  <Ionicons name={t.icon} size={22} color={STUDENT.primary} />
+                  <Text style={styles.toolName} numberOfLines={1}>
+                    {t.name}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={18} color={STUDENT.textMuted} />
+                </View>
+              </GlassPanel>
             </Pressable>
           ))}
         </View>
@@ -117,16 +133,16 @@ const styles = StyleSheet.create({
   full: { minHeight: 0 },
   body: { flex: 1, marginTop: 8 },
   scroll: { paddingBottom: 24, gap: 10 },
+  // Row layout lives on the inner view — GlassPanel wraps its children.
   linkCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    backgroundColor: STUDENT.surface,
-    borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
     borderRadius: 16,
     padding: 16,
     marginTop: 8,
+  },
+  linkCardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
   },
   linkTitle: { fontSize: 16, fontWeight: '800', color: STUDENT.text },
   linkSub: { fontSize: 12, color: STUDENT.textMuted, marginTop: 4 },
@@ -135,15 +151,14 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   toolRow: {
+    width: '100%',
+    borderRadius: 14,
+    padding: 14,
+  },
+  toolRowInner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    width: '100%',
-    backgroundColor: STUDENT.surface,
-    borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
-    borderRadius: 14,
-    padding: 14,
   },
   toolName: {
     flex: 1,

@@ -5,6 +5,7 @@ import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
 import { prepareLibraryContents } from '../../../src/lib/dedupe-library-content';
+import { GlassPanel } from '../../../src/components/ui';
 
 export default function ScheduleView() {
   const { isAsliPrepExclusive } = useSchoolProgram();
@@ -124,9 +125,10 @@ export default function ScheduleView() {
             return (
               <TouchableOpacity
                 key={`quiz-${quiz._id}`}
-                style={[styles.todoItem, isCompleted && styles.todoItemCompleted]}
                 onPress={() => handleMarkAsComplete(quiz, true)}
               >
+                <GlassPanel radius={12} style={[styles.todoItem, isCompleted && styles.todoItemCompleted]}>
+                <View style={styles.todoRow}>
                 {isCompleted ? (
                   <View style={styles.checkboxCompleted}>
                     <Ionicons name="checkmark" size={16} color="#fff" />
@@ -163,6 +165,8 @@ export default function ScheduleView() {
                     )}
                   </View>
                 </View>
+                </View>
+                </GlassPanel>
               </TouchableOpacity>
             );
           })}
@@ -178,13 +182,17 @@ export default function ScheduleView() {
             return (
               <TouchableOpacity
                 key={`content-${content._id}`}
-                style={[
-                  styles.todoItem,
-                  isCompleted && styles.todoItemCompleted,
-                  isOverdue && styles.todoItemOverdue
-                ]}
                 onPress={() => handleMarkAsComplete(content, false)}
               >
+                <GlassPanel
+                  radius={12}
+                  style={[
+                    styles.todoItem,
+                    isCompleted && styles.todoItemCompleted,
+                    isOverdue && styles.todoItemOverdue
+                  ]}
+                >
+                <View style={styles.todoRow}>
                 {isCompleted ? (
                   <View style={styles.checkboxCompleted}>
                     <Ionicons name="checkmark" size={16} color="#fff" />
@@ -219,6 +227,8 @@ export default function ScheduleView() {
                     )}
                   </View>
                 </View>
+                </View>
+                </GlassPanel>
               </TouchableOpacity>
             );
           })}
@@ -283,13 +293,16 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
+  // Row layout moves to todoRow; the completed/overdue fills stay opaque
+  // because a solid tint is what communicates the item's state.
   todoItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
+  },
+  todoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     gap: 12,
   },
   todoItemCompleted: {
@@ -305,7 +318,7 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#d1d5db',
+    borderColor: '#5B6779',
     marginTop: 2,
   },
   checkboxCompleted: {

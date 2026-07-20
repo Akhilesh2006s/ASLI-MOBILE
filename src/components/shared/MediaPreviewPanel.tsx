@@ -196,12 +196,12 @@ export default function MediaPreviewPanel({
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#fff' },
+  flex: { flex: 1, backgroundColor: 'rgba(255,255,255,0.48)' },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     padding: 24,
   },
   loadingText: { marginTop: 12, fontSize: 14, color: '#64748B' },

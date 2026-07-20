@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { API_BASE_URL } from '../src/lib/api-config';
 import * as SecureStore from 'expo-secure-store';
 import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
+import { GlassPanel } from '../src/components/ui';
 
 export default function PracticeTests() {
   const router = useRouter();
@@ -67,7 +68,7 @@ export default function PracticeTests() {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {tests.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="document-text" size={64} color="#9ca3af" />
+            <Ionicons name="document-text" size={64} color="#5B6779" />
             <Text style={styles.emptyText}>No tests available</Text>
           </View>
         ) : (
@@ -77,45 +78,48 @@ export default function PracticeTests() {
               style={styles.testCard}
               onPress={() => router.push(`/quiz/${test._id}`)}
             >
-              <View style={styles.testHeader}>
-                <View style={styles.testIcon}>
-                  <Ionicons name="document-text" size={24} color="#3b82f6" />
+              {/* the touchable stays for hit area; the glass card carries the padding */}
+              <GlassPanel style={styles.testCardInner} radius={16} tone="medium">
+                <View style={styles.testHeader}>
+                  <View style={styles.testIcon}>
+                    <Ionicons name="document-text" size={24} color="#3b82f6" />
+                  </View>
+                  <View style={styles.testInfo}>
+                    <Text style={styles.testTitle}>{test.title || test.name || 'Practice Test'}</Text>
+                    <Text style={styles.testDescription} numberOfLines={2}>
+                      {test.description || 'Test your knowledge with this practice quiz'}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#5B6779" />
                 </View>
-                <View style={styles.testInfo}>
-                  <Text style={styles.testTitle}>{test.title || test.name || 'Practice Test'}</Text>
-                  <Text style={styles.testDescription} numberOfLines={2}>
-                    {test.description || 'Test your knowledge with this practice quiz'}
-                  </Text>
+                <View style={styles.testMeta}>
+                  {test.duration && (
+                    <View style={styles.metaItem}>
+                      <Ionicons name="time" size={16} color="#6b7280" />
+                      <Text style={styles.metaText}>{test.duration} min</Text>
+                    </View>
+                  )}
+                  {test.questions && (
+                    <View style={styles.metaItem}>
+                      <Ionicons name="document-text" size={16} color="#6b7280" />
+                      <Text style={styles.metaText}>{test.questions.length} questions</Text>
+                    </View>
+                  )}
+                  {test.score !== undefined && (
+                    <View style={styles.metaItem}>
+                      <Ionicons name="trophy" size={16} color="#f59e0b" />
+                      <Text style={styles.metaText}>Best: {test.score}%</Text>
+                    </View>
+                  )}
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
-              </View>
-              <View style={styles.testMeta}>
-                {test.duration && (
-                  <View style={styles.metaItem}>
-                    <Ionicons name="time" size={16} color="#6b7280" />
-                    <Text style={styles.metaText}>{test.duration} min</Text>
-                  </View>
-                )}
-                {test.questions && (
-                  <View style={styles.metaItem}>
-                    <Ionicons name="document-text" size={16} color="#6b7280" />
-                    <Text style={styles.metaText}>{test.questions.length} questions</Text>
-                  </View>
-                )}
-                {test.score !== undefined && (
-                  <View style={styles.metaItem}>
-                    <Ionicons name="trophy" size={16} color="#f59e0b" />
-                    <Text style={styles.metaText}>Best: {test.score}%</Text>
-                  </View>
-                )}
-              </View>
-              <TouchableOpacity
-                style={styles.startButton}
-                onPress={() => router.push(`/quiz/${test._id}`)}
-              >
-                <Ionicons name="play" size={16} color="#fff" />
-                <Text style={styles.startButtonText}>Start Test</Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.startButton}
+                  onPress={() => router.push(`/quiz/${test._id}`)}
+                >
+                  <Ionicons name="play" size={16} color="#fff" />
+                  <Text style={styles.startButtonText}>Start Test</Text>
+                </TouchableOpacity>
+              </GlassPanel>
             </TouchableOpacity>
           ))
         )}
@@ -127,7 +131,8 @@ export default function PracticeTests() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    // transparent so the app-wide pastel artwork shows through the glass cards
+    backgroundColor: 'transparent',
   },
   loadingContainer: {
     flex: 1,
@@ -141,9 +146,9 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: 'rgba(255,255,255,0.55)',
   },
   headerTitle: {
     fontSize: 28,
@@ -159,16 +164,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   testCard: {
-    backgroundColor: '#fff',
     marginHorizontal: 20,
     marginTop: 16,
     borderRadius: 16,
+  },
+  testCardInner: {
+    borderRadius: 16,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
   },
   testHeader: {
     flexDirection: 'row',
@@ -204,7 +206,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: 'rgba(255,255,255,0.7)',
   },
   metaItem: {
     flexDirection: 'row',

@@ -450,6 +450,20 @@ export function buildTeacherAiRequestBody(
   const selectedSubTopic = formParams.subTopic || '';
   const selectedSection = formParams.section || formParams.className || '';
 
+  const compositionTools = new Set([
+    'worksheet-mcq-generator',
+    'exam-question-paper-generator',
+  ]);
+  const questionComposition = compositionTools.has(toolType)
+    ? {
+        mcq: parseInt(String(formParams.countMcq || '0'), 10) || 0,
+        vsaq: parseInt(String(formParams.countVsaq || '0'), 10) || 0,
+        saq: parseInt(String(formParams.countSaq || '0'), 10) || 0,
+        laq: parseInt(String(formParams.countLaq || '0'), 10) || 0,
+        fib: parseInt(String(formParams.countFib || '0'), 10) || 0,
+      }
+    : undefined;
+
   return {
     toolType,
     classNumber: parseAiToolClassNumber(selectedClass),
@@ -460,6 +474,7 @@ export function buildTeacherAiRequestBody(
     questionCount: formParams.questionCount ? parseInt(String(formParams.questionCount), 10) : undefined,
     duration: formParams.duration ? parseInt(String(formParams.duration), 10) : undefined,
     ...formParams,
+    questionComposition,
     board: selectedBoard,
     gradeLevel: selectedClass,
   };

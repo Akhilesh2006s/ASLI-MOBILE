@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { SubNavChips } from '../../../src/components/teacher';
-import { TEACHER } from '../../../src/theme/teacher';
 import TeacherAssessmentsView from './AssessmentsView';
 import TeacherVideosView from './VideosView';
 import HomeworkCreatorView from './HomeworkCreatorView';
@@ -26,7 +25,8 @@ export default function ContentView({ initialSubTab }: Props) {
   }, [initialSubTab]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: TEACHER.bg }}>
+    // Transparent so AppBackground's artwork shows through.
+    <View style={{ flex: 1, backgroundColor: 'transparent' }}>
       <SubNavChips items={SUB_TABS} active={subTab} onChange={(id) => setSubTab(id as ContentSubTab)} />
       {subTab === 'assessments' && <TeacherAssessmentsView />}
       {subTab === 'videos' && <TeacherVideosView />}

@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { LinearGradient } from 'expo-linear-gradient';
+import api from '../../../src/services/api/api';
 import { parseClassBoardLabel } from '../../../src/lib/board-label';
 import {
   getCurriculumClassLabels,
@@ -59,6 +60,7 @@ import {
   extractPlainSubjectName,
 } from '../../../src/lib/subject-names';
 import { openContentPreview } from '../../../src/utils/openContentPreview';
+import { GlassPanel } from '../../../src/components/ui';
 
 function OptionPicker({
   visible,
@@ -616,7 +618,7 @@ export default function SubjectContentManagementView() {
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         {/* Classes */}
-        <View style={styles.panel}>
+        <GlassPanel style={styles.panel} radius={14} tone="medium">
           <View style={styles.panelHeader}>
             <Text style={styles.panelTitle}>Classes</Text>
             <Pressable style={styles.orangeBtn} onPress={() => setIsAddClassOpen(true)}>
@@ -641,14 +643,14 @@ export default function SubjectContentManagementView() {
                 <Text style={[styles.classText, selectedClassLabel === label && styles.classTextActive]}>
                   {label}
                 </Text>
-                <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
+                <Ionicons name="chevron-forward" size={16} color="#5B6779" />
               </Pressable>
             ))
           )}
-        </View>
+        </GlassPanel>
 
         {/* Subjects */}
-        <View style={styles.panel}>
+        <GlassPanel style={styles.panel} radius={14} tone="medium">
           <View style={styles.panelHeader}>
             <View style={{ flex: 1 }}>
               <Text style={styles.panelTitle}>Subjects under Class</Text>
@@ -711,11 +713,21 @@ export default function SubjectContentManagementView() {
                   {canManage ? (
                     <View style={styles.subjectActions}>
                       {inCatalog ? (
-                        <Pressable onPress={() => openEditSubject(subj)} hitSlop={8}>
+                        <Pressable
+                          onPress={() => openEditSubject(subj)}
+                          hitSlop={8}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Edit ${extractPlainSubjectName(subj.name)}`}
+                        >
                           <Ionicons name="create-outline" size={18} color="#0284c7" />
                         </Pressable>
                       ) : null}
-                      <Pressable onPress={() => handleDeleteSubject(subj._id)} hitSlop={8}>
+                      <Pressable
+                        onPress={() => handleDeleteSubject(subj._id)}
+                        hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Delete ${extractPlainSubjectName(subj.name)}`}
+                      >
                         <Ionicons name="trash-outline" size={18} color="#ef4444" />
                       </Pressable>
                     </View>
@@ -724,10 +736,10 @@ export default function SubjectContentManagementView() {
               );
             })
           )}
-        </View>
+        </GlassPanel>
 
         {/* Content */}
-        <View style={styles.panel}>
+        <GlassPanel style={styles.panel} radius={14} tone="medium">
           <View style={styles.panelHeader}>
             <View style={{ flex: 1 }}>
               <Text style={styles.panelTitle}>Content under Subject</Text>
@@ -755,56 +767,68 @@ export default function SubjectContentManagementView() {
               <View key={section.title} style={styles.contentSection}>
                 <Text style={styles.sectionHeading}>{section.title}</Text>
                 {section.items.map((content) => (
-                  <View key={content._id} style={styles.contentCard}>
-                    <LinearGradient
-                      colors={['#e0f2fe', '#ccfbf1']}
-                      style={styles.contentThumb}
-                    >
-                      <Ionicons
-                        name={contentIconName(content.type)}
-                        size={32}
-                        color="#0284c7"
-                      />
-                      {content.type === 'Video' && content.duration ? (
-                        <Text style={styles.durationBadge}>{content.duration} mins</Text>
-                      ) : null}
-                    </LinearGradient>
-                    <View style={styles.contentBody}>
-                      <Text style={styles.contentTitle} numberOfLines={2}>
-                        {getVideoContentDisplayTitle(content)}
-                      </Text>
-                      <View style={styles.badgeRow}>
-                        {syllabusLabel(content.board) ? (
-                          <Text style={styles.badge}>{syllabusLabel(content.board)}</Text>
+                  <GlassPanel key={content._id} style={styles.contentCard} radius={12} tone="medium">
+                    <View style={styles.contentCardInner}>
+                      <LinearGradient
+                        colors={['#e0f2fe', '#ccfbf1']}
+                        style={styles.contentThumb}
+                      >
+                        <Ionicons
+                          name={contentIconName(content.type)}
+                          size={32}
+                          color="#0284c7"
+                        />
+                        {content.type === 'Video' && content.duration ? (
+                          <Text style={styles.durationBadge}>{content.duration} mins</Text>
                         ) : null}
-                        {content.board === 'STATE' && content.stateName ? (
-                          <Text style={styles.badgeMuted}>{content.stateName}</Text>
-                        ) : null}
-                      </View>
-                      {content.date ? (
-                        <Text style={styles.contentDate}>
-                          {new Date(content.date).toLocaleDateString()}
+                      </LinearGradient>
+                      <View style={styles.contentBody}>
+                        <Text style={styles.contentTitle} numberOfLines={2}>
+                          {getVideoContentDisplayTitle(content)}
                         </Text>
-                      ) : null}
-                      <View style={styles.contentActions}>
-                        <Pressable style={styles.openBtn} onPress={() => previewContent(content)}>
-                          <Ionicons name="eye-outline" size={14} color="#0284c7" />
-                          <Text style={styles.openBtnText}>Preview</Text>
-                        </Pressable>
-                        <Pressable onPress={() => openEditContent(content)} hitSlop={8}>
-                          <Ionicons name="create-outline" size={18} color="#0284c7" />
-                        </Pressable>
-                        <Pressable onPress={() => handleDeleteContent(content._id)} hitSlop={8}>
-                          <Ionicons name="trash-outline" size={18} color="#ef4444" />
-                        </Pressable>
+                        <View style={styles.badgeRow}>
+                          {syllabusLabel(content.board) ? (
+                            <Text style={styles.badge}>{syllabusLabel(content.board)}</Text>
+                          ) : null}
+                          {content.board === 'STATE' && content.stateName ? (
+                            <Text style={styles.badgeMuted}>{content.stateName}</Text>
+                          ) : null}
+                        </View>
+                        {content.date ? (
+                          <Text style={styles.contentDate}>
+                            {new Date(content.date).toLocaleDateString()}
+                          </Text>
+                        ) : null}
+                        <View style={styles.contentActions}>
+                          <Pressable style={styles.openBtn} onPress={() => previewContent(content)}>
+                            <Ionicons name="eye-outline" size={14} color="#0284c7" />
+                            <Text style={styles.openBtnText}>Preview</Text>
+                          </Pressable>
+                          <Pressable
+                            onPress={() => openEditContent(content)}
+                            hitSlop={8}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Edit ${getVideoContentDisplayTitle(content)}`}
+                          >
+                            <Ionicons name="create-outline" size={18} color="#0284c7" />
+                          </Pressable>
+                          <Pressable
+                            onPress={() => handleDeleteContent(content._id)}
+                            hitSlop={8}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Delete ${getVideoContentDisplayTitle(content)}`}
+                          >
+                            <Ionicons name="trash-outline" size={18} color="#ef4444" />
+                          </Pressable>
+                        </View>
                       </View>
                     </View>
-                  </View>
+                  </GlassPanel>
                 ))}
               </View>
             ))
           )}
-        </View>
+        </GlassPanel>
       </ScrollView>
 
       {/* Add Class Modal */}
@@ -842,7 +866,11 @@ export default function SubjectContentManagementView() {
         <View style={styles.formModal}>
           <View style={styles.formHeader}>
             <Text style={styles.modalTitle}>Add Subject</Text>
-            <Pressable onPress={() => setIsAddSubjectOpen(false)}>
+            <Pressable
+              onPress={() => setIsAddSubjectOpen(false)}
+              accessibilityRole="button"
+              accessibilityLabel="Close add subject form"
+            >
               <Ionicons name="close" size={24} color="#64748b" />
             </Pressable>
           </View>
@@ -884,7 +912,11 @@ export default function SubjectContentManagementView() {
         <View style={styles.formModal}>
           <View style={styles.formHeader}>
             <Text style={styles.modalTitle}>Edit Subject</Text>
-            <Pressable onPress={() => setIsEditSubjectOpen(false)}>
+            <Pressable
+              onPress={() => setIsEditSubjectOpen(false)}
+              accessibilityRole="button"
+              accessibilityLabel="Close edit subject form"
+            >
               <Ionicons name="close" size={24} color="#64748b" />
             </Pressable>
           </View>
@@ -921,7 +953,11 @@ export default function SubjectContentManagementView() {
         <View style={styles.formModal}>
           <View style={styles.formHeader}>
             <Text style={styles.modalTitle}>{editingContentId ? 'Edit Content' : 'Add Content'}</Text>
-            <Pressable onPress={() => setIsContentModalOpen(false)}>
+            <Pressable
+              onPress={() => setIsContentModalOpen(false)}
+              accessibilityRole="button"
+              accessibilityLabel="Close content form"
+            >
               <Ionicons name="close" size={24} color="#64748b" />
             </Pressable>
           </View>
@@ -1065,7 +1101,6 @@ const styles = StyleSheet.create({
   pageSubtitle: { fontSize: 13, color: '#64748b', marginBottom: 8 },
   errorText: { color: '#dc2626', fontSize: 12, marginBottom: 8 },
   panel: {
-    backgroundColor: '#fff',
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#e2e8f0',
@@ -1161,13 +1196,15 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   contentCard: {
-    flexDirection: 'row',
     borderWidth: 1,
     borderColor: '#e2e8f0',
     borderRadius: 12,
     overflow: 'hidden',
     marginBottom: 10,
-    backgroundColor: '#fff',
+  },
+  // Row layout governed the card's children, so it moves inside the panel.
+  contentCardInner: {
+    flexDirection: 'row',
   },
   contentThumb: {
     width: 88,
@@ -1189,18 +1226,18 @@ const styles = StyleSheet.create({
   },
   contentBody: { flex: 1, padding: 10 },
   contentTitle: { fontWeight: '700', fontSize: 13, color: '#0f172a' },
-  contentDate: { fontSize: 11, color: '#94a3b8', marginTop: 4 },
+  contentDate: { fontSize: 11, color: '#5B6779', marginTop: 4 },
   contentActions: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8 },
   openBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, marginRight: 'auto' },
   openBtnText: { color: '#0284c7', fontSize: 12, fontWeight: '700' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   modalSheet: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     padding: 16,
   },
-  formModal: { flex: 1, backgroundColor: '#fff' },
+  formModal: { flex: 1, backgroundColor: 'rgba(255,255,255,0.48)' },
   formHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1252,7 +1289,7 @@ const styles = StyleSheet.create({
   saveBtn: { flex: 1, padding: 14, borderRadius: 10, backgroundColor: '#f97316', alignItems: 'center' },
   saveBtnText: { fontWeight: '700', color: '#fff' },
   pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  pickerSheet: { backgroundColor: '#fff', borderTopLeftRadius: 16, padding: 16, maxHeight: '70%' },
+  pickerSheet: { backgroundColor: 'rgba(255,255,255,0.48)', borderTopLeftRadius: 16, padding: 16, maxHeight: '70%' },
   pickerTitle: { fontSize: 18, fontWeight: '800', marginBottom: 12 },
   pickerItem: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   pickerItemText: { fontSize: 15, color: '#0f172a' },

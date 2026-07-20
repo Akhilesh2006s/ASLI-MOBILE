@@ -16,16 +16,18 @@ import {
 const TOOL_TYPE = 'chapter-summary-creator';
 
 const SECTION_STYLES: Record<number, { border: string; bg: string; title: string }> = {
-  1: { border: 'border-blue-300', bg: 'bg-blue-50/80', title: 'text-blue-900' },
-  2: { border: 'border-sky-200', bg: 'bg-sky-50/60', title: 'text-sky-900' },
-  3: { border: 'border-indigo-200', bg: 'bg-indigo-50/60', title: 'text-indigo-900' },
-  4: { border: 'border-violet-200', bg: 'bg-violet-50/60', title: 'text-violet-900' },
-  5: { border: 'border-purple-200', bg: 'bg-purple-50/60', title: 'text-purple-900' },
-  6: { border: 'border-fuchsia-200', bg: 'bg-fuchsia-50/60', title: 'text-fuchsia-900' },
-  7: { border: 'border-cyan-200', bg: 'bg-cyan-50/60', title: 'text-cyan-900' },
-  8: { border: 'border-emerald-200', bg: 'bg-emerald-50/60', title: 'text-emerald-900' },
-  9: { border: 'border-amber-200', bg: 'bg-amber-50/60', title: 'text-amber-900' },
-  10: { border: 'border-blue-400', bg: 'bg-blue-50/70', title: 'text-blue-950' },
+  1: { border: 'border-violet-200', bg: 'bg-violet-50/70', title: 'text-violet-900' },
+  2: { border: 'border-sky-200', bg: 'bg-sky-50/70', title: 'text-sky-900' },
+  3: { border: 'border-amber-200', bg: 'bg-amber-50/70', title: 'text-amber-900' },
+  4: { border: 'border-rose-200', bg: 'bg-rose-50/70', title: 'text-rose-900' },
+  5: { border: 'border-indigo-200', bg: 'bg-indigo-50/70', title: 'text-indigo-900' },
+  6: { border: 'border-cyan-200', bg: 'bg-cyan-50/70', title: 'text-cyan-900' },
+  7: { border: 'border-orange-200', bg: 'bg-orange-50/70', title: 'text-orange-900' },
+  8: { border: 'border-fuchsia-200', bg: 'bg-fuchsia-50/70', title: 'text-fuchsia-900' },
+  9: { border: 'border-blue-200', bg: 'bg-blue-50/70', title: 'text-blue-900' },
+  10: { border: 'border-teal-200', bg: 'bg-teal-50/70', title: 'text-teal-900' },
+  11: { border: 'border-violet-200', bg: 'bg-violet-50/70', title: 'text-violet-900' },
+  12: { border: 'border-sky-200', bg: 'bg-sky-50/70', title: 'text-sky-900' },
 };
 
 function sectionStyle(num: number) {

@@ -17,6 +17,7 @@ import {
 } from '../src/lib/school-program';
 import { prepareLibraryContents } from '../src/lib/dedupe-library-content';
 import { getVideoDisplayTitle } from '../src/lib/video-chapter-schedule';
+import { GlassPanel } from '../src/components/ui';
 
 interface Content {
   _id: string;
@@ -263,65 +264,70 @@ export default function AsliPrepContent() {
         onPress={() => handleOpenContent(content)}
         activeOpacity={0.7}
       >
-        <View style={[styles.contentIcon, { backgroundColor: typeColor + '20' }]}>
-          <Ionicons name={getTypeIcon(content.type) as any} size={24} color={typeColor} />
-        </View>
-        
-        <View style={styles.contentInfo}>
-          <View style={styles.contentHeader}>
-            <View style={[styles.typeBadge, { backgroundColor: typeColor + '20' }]}>
-              <Text style={[styles.typeBadgeText, { color: typeColor }]}>
-                {content.type}
-              </Text>
+        {/* the touchable stays for hit area; the glass card carries the padding and row */}
+        <GlassPanel style={styles.contentCardInner} radius={12} tone="medium">
+          <View style={styles.contentRow}>
+            <View style={[styles.contentIcon, { backgroundColor: typeColor + '20' }]}>
+              <Ionicons name={getTypeIcon(content.type) as any} size={24} color={typeColor} />
             </View>
-            {subjectName ? (
-              <View style={styles.subjectBadge}>
-                <Text style={styles.subjectBadgeText}>{subjectName}</Text>
+
+            <View style={styles.contentInfo}>
+              <View style={styles.contentHeader}>
+                <View style={[styles.typeBadge, { backgroundColor: typeColor + '20' }]}>
+                  <Text style={[styles.typeBadgeText, { color: typeColor }]}>
+                    {content.type}
+                  </Text>
+                </View>
+                {subjectName ? (
+                  <View style={styles.subjectBadge}>
+                    <Text style={styles.subjectBadgeText}>{subjectName}</Text>
+                  </View>
+                ) : null}
               </View>
-            ) : null}
+
+              <Text style={styles.contentTitle}>
+                {content.type === 'Video' ? getVideoDisplayTitle(content) : content.title}
+              </Text>
+
+              {typeof content.description === 'string' && content.description.length > 0 ? (
+                <Text style={styles.contentDescription} numberOfLines={2}>
+                  {content.description}
+                </Text>
+              ) : null}
+
+              <View style={styles.contentMeta}>
+                {content.duration != null && content.duration > 0 ? (
+                  <View style={styles.metaItem}>
+                    <Ionicons name="time" size={14} color="#6b7280" />
+                    <Text style={styles.metaText}>{formatDuration(content.duration)}</Text>
+                  </View>
+                ) : null}
+                {content.size != null && content.size > 0 ? (
+                  <View style={styles.metaItem}>
+                    <Ionicons name="document" size={14} color="#6b7280" />
+                    <Text style={styles.metaText}>{formatFileSize(content.size)}</Text>
+                  </View>
+                ) : null}
+                {typeof content.views === 'number' ? (
+                  <View style={styles.metaItem}>
+                    <Ionicons name="eye" size={14} color="#6b7280" />
+                    <Text style={styles.metaText}>{content.views} views</Text>
+                  </View>
+                ) : null}
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.downloadButton, { backgroundColor: typeColor }]}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleOpenContent(content);
+              }}
+            >
+              <Ionicons name="eye" size={20} color="#fff" />
+            </TouchableOpacity>
           </View>
-          
-          <Text style={styles.contentTitle}>
-            {content.type === 'Video' ? getVideoDisplayTitle(content) : content.title}
-          </Text>
-          
-          {typeof content.description === 'string' && content.description.length > 0 ? (
-            <Text style={styles.contentDescription} numberOfLines={2}>
-              {content.description}
-            </Text>
-          ) : null}
-          
-          <View style={styles.contentMeta}>
-            {content.duration != null && content.duration > 0 ? (
-              <View style={styles.metaItem}>
-                <Ionicons name="time" size={14} color="#6b7280" />
-                <Text style={styles.metaText}>{formatDuration(content.duration)}</Text>
-              </View>
-            ) : null}
-            {content.size != null && content.size > 0 ? (
-              <View style={styles.metaItem}>
-                <Ionicons name="document" size={14} color="#6b7280" />
-                <Text style={styles.metaText}>{formatFileSize(content.size)}</Text>
-              </View>
-            ) : null}
-            {typeof content.views === 'number' ? (
-              <View style={styles.metaItem}>
-                <Ionicons name="eye" size={14} color="#6b7280" />
-                <Text style={styles.metaText}>{content.views} views</Text>
-              </View>
-            ) : null}
-          </View>
-        </View>
-        
-        <TouchableOpacity
-          style={[styles.downloadButton, { backgroundColor: typeColor }]}
-          onPress={(e) => {
-            e.stopPropagation();
-            handleOpenContent(content);
-          }}
-        >
-          <Ionicons name="eye" size={20} color="#fff" />
-        </TouchableOpacity>
+        </GlassPanel>
       </TouchableOpacity>
     );
   }, [handleOpenContent, getSubjectName]);
@@ -368,7 +374,7 @@ export default function AsliPrepContent() {
           <TextInput
             style={styles.searchInput}
             placeholder="Search by topic..."
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor="#5B6779"
             value={filters.topic}
             onChangeText={(text) => setFilters({ ...filters, topic: text })}
           />
@@ -421,7 +427,7 @@ export default function AsliPrepContent() {
         </View>
       ) : filteredContents.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="document-outline" size={64} color="#9ca3af" />
+          <Ionicons name="document-outline" size={64} color="#5B6779" />
           <Text style={styles.emptyText}>No content found</Text>
           <Text style={styles.emptySubtext}>Try adjusting your filters</Text>
         </View>
@@ -447,7 +453,8 @@ export default function AsliPrepContent() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    // transparent so the app-wide pastel artwork shows through the glass cards
+    backgroundColor: 'transparent',
   },
   header: {
     paddingTop: 8,
@@ -493,15 +500,15 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   filtersContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: 'rgba(255,255,255,0.55)',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f3f4f6',
+    backgroundColor: 'rgba(255,255,255,0.6)',
     borderRadius: 12,
     paddingHorizontal: 16,
     marginBottom: 12,
@@ -522,7 +529,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: 'rgba(255,255,255,0.6)',
     marginRight: 8,
   },
   filterChipActive: {
@@ -573,16 +580,16 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   contentCard: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  contentCardInner: {
     borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  },
+  // GlassPanel wraps children in its own view, so the row lives one level in
+  contentRow: {
+    flexDirection: 'row',
   },
   contentIcon: {
     width: 56,

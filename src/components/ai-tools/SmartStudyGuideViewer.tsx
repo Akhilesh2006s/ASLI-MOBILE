@@ -1,6 +1,7 @@
 import { useMemo, type ReactNode } from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import AiToolWebView from './AiToolWebView';
 import {
   useAiToolTabletLayout,
@@ -44,8 +45,8 @@ function BulletList({
   return (
     <View style={styles.bulletList}>
       {items.map((line, i) => (
-        <View key={`${line}-${i}`} style={styles.bulletRow}>
-          <Text style={[styles.bulletDot, { color }]}>•</Text>
+        <View key={`${line}-${i}`} style={[styles.bulletRow, { borderLeftColor: color }]}>
+          <View style={[styles.bulletOrb, { backgroundColor: color }]} />
           <Text style={[styles.bulletText, viewerTabletStyle(!!tabletUi, 'bulletText', !!boardUi)]}>{line}</Text>
         </View>
       ))}
@@ -70,12 +71,20 @@ function PracticeQuestionCard({
   boardUi?: boolean;
 }) {
   const isMcq = q.type === 'objective' && q.options.length >= 2;
+  const accents = ['#8b5cf6', '#0ea5e9', '#f59e0b', '#f43f5e', '#6366f1', '#06b6d4', '#f97316', '#d946ef'];
+  const accent = accents[index % accents.length];
   return (
-    <View style={[styles.practiceCard, tabletUi && aiToolViewerTabletStyles.practiceCardCol]}>
+    <View
+      style={[
+        styles.practiceCard,
+        { borderLeftColor: accent },
+        tabletUi && aiToolViewerTabletStyles.practiceCardCol,
+      ]}
+    >
       <View style={styles.practiceHeader}>
-        <View style={styles.practiceBadge}>
+        <LinearGradient colors={[accent, `${accent}CC`]} style={styles.practiceBadge}>
           <Text style={styles.practiceBadgeText}>Q{index + 1}</Text>
-        </View>
+        </LinearGradient>
         <View style={[styles.typeBadge, isMcq ? styles.typeBadgeMcq : styles.typeBadgeSubjective]}>
           <Text style={[styles.typeBadgeText, isMcq ? styles.typeBadgeTextMcq : styles.typeBadgeTextSubjective]}>
             {isMcq ? 'MCQ' : 'Subjective'}
@@ -90,7 +99,7 @@ function PracticeQuestionCard({
             const text = opt.replace(/^[A-D]\)\s*/i, '').trim();
             return (
               <View key={`${opt}-${i}`} style={styles.optionRow}>
-                <View style={styles.optionLabel}>
+                <View style={[styles.optionLabel, { backgroundColor: accent }]}>
                   <Text style={styles.optionLabelText}>{label}</Text>
                 </View>
                 <Text style={styles.optionText}>{text}</Text>
@@ -100,11 +109,9 @@ function PracticeQuestionCard({
         </View>
       ) : null}
       {q.answer ? (
-        <View style={styles.answerBox}>
-          <Text style={styles.answerText}>
-            <Text style={styles.answerLabel}>Answer: </Text>
-            {q.answer}
-          </Text>
+        <View style={[styles.answerBox, { borderLeftColor: accent }]}>
+          <Text style={styles.answerLabel}>Answer</Text>
+          <Text style={styles.answerText}>{q.answer}</Text>
         </View>
       ) : null}
     </View>
@@ -379,7 +386,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#fcd34d',
-    backgroundColor: '#fffbeb',
+    backgroundColor: 'rgba(255,251,235,0.55)',
     padding: 12,
   },
   warningTitle: { fontSize: 14, fontWeight: '800', color: '#92400e' },
@@ -388,7 +395,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#fcd34d',
-    backgroundColor: '#fffbeb',
+    backgroundColor: 'rgba(255,251,235,0.55)',
     padding: 12,
   },
   incompleteBannerTitle: { fontSize: 14, fontWeight: '800', color: '#92400e' },
@@ -450,7 +457,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#c7d2fe',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     padding: 12,
   },
   titleSectionNum: {
@@ -475,7 +482,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#c7d2fe',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     overflow: 'hidden',
   },
   sectionCardHeader: {
@@ -485,7 +492,7 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     paddingHorizontal: 10,
     paddingVertical: 8,
-    backgroundColor: '#f8fafc',
+    backgroundColor: 'rgba(255,255,255,0.42)',
   },
   sectionIconWrap: {
     width: 28,
@@ -499,81 +506,126 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: M.sectionTitle, fontWeight: '800', color: '#0f172a' },
   sectionBody: { paddingHorizontal: 10, paddingBottom: 10, paddingTop: 4 },
   bulletList: { gap: 8 },
-  bulletRow: { flexDirection: 'row', gap: 8 },
+  bulletRow: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'flex-start',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.75)',
+    borderLeftWidth: 4,
+    backgroundColor: 'rgba(255,255,255,0.55)',
+  },
+  bulletOrb: {
+    width: 10,
+    height: 10,
+    borderRadius: 99,
+    marginTop: 6,
+  },
   bulletDot: { marginTop: 2, fontSize: M.body, fontWeight: '800' },
-  bulletText: { flex: 1, fontSize: M.body, lineHeight: M.bodyLh, color: '#334155' },
+  bulletText: { flex: 1, fontSize: M.body, lineHeight: M.bodyLh, color: '#1e293b', fontWeight: '500' },
   bodyText: { fontSize: M.body, lineHeight: M.bodyLh, color: '#334155' },
   conceptList: { gap: 8 },
   conceptCard: {
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#e0e7ff',
-    backgroundColor: '#f8fafc',
-    padding: 10,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.8)',
+    borderLeftWidth: 4,
+    borderLeftColor: '#8b5cf6',
+    backgroundColor: 'rgba(255,255,255,0.58)',
+    padding: 12,
   },
-  conceptName: { fontSize: M.concept, fontWeight: '800', color: '#312e81' },
+  conceptName: { fontSize: M.concept, fontWeight: '800', color: '#0f172a' },
   conceptExplanation: { marginTop: 4, fontSize: M.small, lineHeight: M.smallLh, color: '#475569' },
-  definitionRow: { marginBottom: 8 },
+  definitionRow: {
+    marginBottom: 8,
+    borderRadius: 14,
+    padding: 12,
+    backgroundColor: 'rgba(255,251,235,0.65)',
+    borderLeftWidth: 4,
+    borderLeftColor: '#f59e0b',
+  },
   definitionTerm: { fontSize: M.formula, fontWeight: '800', color: '#92400e' },
   definitionText: { marginTop: 2, fontSize: M.small, lineHeight: M.smallLh, color: '#475569' },
-  formulaRow: { marginBottom: 8 },
-  formulaName: { fontSize: M.formula, fontWeight: '800', color: '#92400e' },
+  formulaRow: {
+    marginBottom: 8,
+    borderRadius: 14,
+    padding: 12,
+    backgroundColor: 'rgba(238,242,255,0.7)',
+    borderLeftWidth: 4,
+    borderLeftColor: '#6366f1',
+  },
+  formulaName: { fontSize: M.formula, fontWeight: '800', color: '#4338ca' },
   formulaText: { marginTop: 2, fontSize: M.small, lineHeight: M.smallLh, color: '#0f172a', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
   formulaNote: { marginTop: 2, fontSize: M.caption, color: '#64748b' },
-  practiceList: { gap: 8 },
+  practiceList: { gap: 10 },
   practiceCard: {
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#e0e7ff',
-    backgroundColor: '#f8fafc',
-    padding: 10,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.85)',
+    borderLeftWidth: 5,
+    backgroundColor: 'rgba(255,255,255,0.62)',
+    padding: 12,
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
   },
   practiceHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   practiceBadge: {
-    minWidth: 28,
-    height: 24,
-    borderRadius: 8,
-    backgroundColor: '#a5b4fc',
+    minWidth: 34,
+    height: 28,
+    borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: 10,
   },
-  practiceBadgeText: { fontSize: 10, fontWeight: '800', color: '#fff' },
+  practiceBadgeText: { fontSize: 11, fontWeight: '900', color: '#fff' },
   typeBadge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
   typeBadgeMcq: { backgroundColor: '#ede9fe' },
   typeBadgeSubjective: { backgroundColor: '#e0f2fe' },
   typeBadgeText: { fontSize: 10, fontWeight: '700' },
   typeBadgeTextMcq: { color: '#5b21b6' },
   typeBadgeTextSubjective: { color: '#0369a1' },
-  practiceQuestion: { fontSize: M.body, fontWeight: '600', lineHeight: M.bodyLh, color: '#0f172a' },
-  optionsGrid: { marginTop: 8, gap: 6 },
+  practiceQuestion: { fontSize: M.body, fontWeight: '700', lineHeight: M.bodyLh, color: '#0f172a' },
+  optionsGrid: { marginTop: 10, gap: 8 },
   optionRow: {
     flexDirection: 'row',
-    gap: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    backgroundColor: '#fff',
-    paddingHorizontal: 8,
-    paddingVertical: 8,
+    gap: 10,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(226,232,240,0.95)',
+    backgroundColor: 'rgba(255,255,255,0.78)',
+    paddingHorizontal: 10,
+    paddingVertical: 10,
   },
   optionLabel: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#e0e7ff',
+    width: 26,
+    height: 26,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  optionLabelText: { fontSize: 11, fontWeight: '800', color: '#312e81' },
-  optionText: { flex: 1, fontSize: M.small, lineHeight: M.smallLh, color: '#475569', paddingTop: 2 },
+  optionLabelText: { fontSize: 11, fontWeight: '900', color: '#fff' },
+  optionText: { flex: 1, fontSize: M.small, lineHeight: M.smallLh, color: '#334155', paddingTop: 3, fontWeight: '500' },
   answerBox: {
-    marginTop: 8,
-    borderRadius: 8,
-    backgroundColor: '#ecfdf5',
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    marginTop: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.72)',
+    borderLeftWidth: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
   },
-  answerText: { fontSize: 12, lineHeight: 18, color: '#065f46' },
-  answerLabel: { fontWeight: '800' },
+  answerLabel: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: '#64748b',
+    marginBottom: 2,
+  },
+  answerText: { fontSize: 13, lineHeight: 19, color: '#1e293b', fontWeight: '600' },
 });

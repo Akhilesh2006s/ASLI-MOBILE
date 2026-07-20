@@ -331,7 +331,7 @@ export default function ProfileTabView({ user, onLogout }: Props) {
         </LinearGradient>
       </Animated.View>
 
-      <GlassCard variant="default" padding={16}>
+      <GlassCard variant="glass" padding={16}>
         <View style={styles.cardTitleRow}>
           <Ionicons name="settings-outline" size={20} color={STUDENT.text} />
           <Text style={styles.cardTitle}>Profile Settings</Text>
@@ -347,7 +347,7 @@ export default function ProfileTabView({ user, onLogout }: Props) {
         </View>
       </GlassCard>
 
-      <GlassCard variant="elevated" padding={16}>
+      <GlassCard variant="glass" padding={16}>
         <View style={styles.cardTitleRow}>
           <Ionicons name="trending-up-outline" size={20} color={STUDENT.text} />
           <Text style={styles.cardTitle}>Performance Overview</Text>
@@ -380,7 +380,7 @@ export default function ProfileTabView({ user, onLogout }: Props) {
         )}
       </GlassCard>
 
-      <GlassCard variant="elevated" padding={16}>
+      <GlassCard variant="glass" padding={16}>
         <View style={styles.cardTitleRow}>
           <Ionicons name="calendar-outline" size={20} color={STUDENT.text} />
           <Text style={styles.cardTitle}>This Week&apos;s Activity</Text>
@@ -477,7 +477,7 @@ const styles = StyleSheet.create({
     borderRadius: STUDENT_RADIUS.md,
     paddingHorizontal: 14,
     paddingVertical: 9,
-    backgroundColor: STUDENT.surface,
+    backgroundColor: 'rgba(255,255,255,0.55)',
   },
   editBtnText: { fontSize: 12, fontWeight: '700', color: STUDENT.primaryDark },
   cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },

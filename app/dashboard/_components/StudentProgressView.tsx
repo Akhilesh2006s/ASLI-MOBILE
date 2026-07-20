@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
+import { GlassPanel } from '../../../src/components/ui';
 
 interface ProgressRecord {
   _id: string;
@@ -246,21 +247,28 @@ export default function StudentProgressView() {
           </LinearGradient>
 
           <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <Ionicons name="time" size={24} color="#3b82f6" />
-              <Text style={styles.statValue}>{formatTime(stats.totalTimeSpent)}</Text>
-              <Text style={styles.statLabel}>Time Spent</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Ionicons name="trophy" size={24} color="#10b981" />
-              <Text style={styles.statValue}>{stats.averageScore}%</Text>
-              <Text style={styles.statLabel}>Avg Score</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Ionicons name="checkmark-circle" size={24} color="#f59e0b" />
-              <Text style={styles.statValue}>{stats.completedContent}</Text>
-              <Text style={styles.statLabel}>Completed</Text>
-            </View>
+            {/* Inner views carry the centring GlassPanel's wrapper would swallow. */}
+            <GlassPanel style={styles.statCard} radius={12} tone="light">
+              <View style={styles.statCardInner}>
+                <Ionicons name="time" size={24} color="#3b82f6" />
+                <Text style={styles.statValue}>{formatTime(stats.totalTimeSpent)}</Text>
+                <Text style={styles.statLabel}>Time Spent</Text>
+              </View>
+            </GlassPanel>
+            <GlassPanel style={styles.statCard} radius={12} tone="light">
+              <View style={styles.statCardInner}>
+                <Ionicons name="trophy" size={24} color="#10b981" />
+                <Text style={styles.statValue}>{stats.averageScore}%</Text>
+                <Text style={styles.statLabel}>Avg Score</Text>
+              </View>
+            </GlassPanel>
+            <GlassPanel style={styles.statCard} radius={12} tone="light">
+              <View style={styles.statCardInner}>
+                <Ionicons name="checkmark-circle" size={24} color="#f59e0b" />
+                <Text style={styles.statValue}>{stats.completedContent}</Text>
+                <Text style={styles.statLabel}>Completed</Text>
+              </View>
+            </GlassPanel>
           </View>
         </View>
       )}
@@ -295,7 +303,7 @@ export default function StudentProgressView() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Subject-wise Progress</Text>
           {stats.subjectProgress.map((subject) => (
-            <View key={subject.subjectId} style={styles.subjectCard}>
+            <GlassPanel key={subject.subjectId} style={styles.subjectCard} radius={12}>
               <View style={styles.subjectHeader}>
                 <Text style={styles.subjectName}>{subject.subjectName}</Text>
                 <Text style={styles.subjectProgress}>{subject.progress}%</Text>
@@ -306,7 +314,7 @@ export default function StudentProgressView() {
               <Text style={styles.subjectStats}>
                 {subject.completed} of {subject.total} completed
               </Text>
-            </View>
+            </GlassPanel>
           ))}
         </View>
       )}
@@ -316,13 +324,13 @@ export default function StudentProgressView() {
         <Text style={styles.sectionTitle}>Recent Activity</Text>
         {progressRecords.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="document-text-outline" size={64} color="#9ca3af" />
+            <Ionicons name="document-text-outline" size={64} color="#5B6779" />
             <Text style={styles.emptyText}>No progress records yet</Text>
             <Text style={styles.emptySubtext}>Start learning to see your progress here</Text>
           </View>
         ) : (
           progressRecords.map((record) => (
-            <View key={record._id} style={styles.recordCard}>
+            <GlassPanel key={record._id} style={styles.recordCard} radius={12}>
               <View style={styles.recordHeader}>
                 <View style={styles.recordIcon}>
                   <Ionicons
@@ -364,7 +372,7 @@ export default function StudentProgressView() {
                   {new Date(record.lastAccessed).toLocaleDateString()}
                 </Text>
               </View>
-            </View>
+            </GlassPanel>
           ))
         )}
       </View>
@@ -375,7 +383,8 @@ export default function StudentProgressView() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    // Transparent so the app background artwork shows through.
+    backgroundColor: 'transparent',
   },
   loadingContainer: {
     flex: 1,
@@ -389,7 +398,8 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     padding: 16,
-    backgroundColor: '#fff',
+    // Page band, not a card — let the app background artwork show through.
+    backgroundColor: 'transparent',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
   },
@@ -418,7 +428,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 4,
   },
   progressText: {
@@ -429,11 +439,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
+  // Box props only — `statCard` is passed to GlassPanel, so the centring that
+  // used to live here now sits on `statCardInner`.
   statCard: {
     flex: 1,
-    backgroundColor: '#f9fafb',
     borderRadius: 12,
     padding: 16,
+  },
+  statCardInner: {
     alignItems: 'center',
   },
   statValue: {
@@ -448,7 +461,8 @@ const styles = StyleSheet.create({
     color: '#6b7280',
   },
   filtersContainer: {
-    backgroundColor: '#fff',
+    // Page band, not a card — let the app background artwork show through.
+    backgroundColor: 'transparent',
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
@@ -481,7 +495,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   subjectCard: {
-    backgroundColor: '#fff',
+    // Fill comes from GlassPanel's blur + tint, not a solid colour.
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -540,7 +554,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   recordCard: {
-    backgroundColor: '#fff',
+    // Fill comes from GlassPanel's blur + tint, not a solid colour.
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,

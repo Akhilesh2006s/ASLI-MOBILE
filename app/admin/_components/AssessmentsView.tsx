@@ -254,7 +254,11 @@ export default function AssessmentsView() {
                       {assessment.type.toUpperCase()}
                     </Text>
                   </View>
-                  <AdminScalePressable onPress={() => handleDeleteAssessment(assessment._id)}>
+                  <AdminScalePressable
+                    onPress={() => handleDeleteAssessment(assessment._id)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Delete assessment ${assessment.title}`}
+                  >
                     <Ionicons name="trash" size={20} color={colors.danger} />
                   </AdminScalePressable>
                 </View>

@@ -7,6 +7,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../src/lib/api-config';
 import { useBackNavigation, getDashboardPath } from '../../src/hooks/useBackNavigation';
+import { GlassPanel } from '../../src/components/ui';
 
 interface Question {
   _id: string;
@@ -171,21 +172,27 @@ export default function IQRankBoostQuiz() {
             </View>
 
             <View style={styles.statsGrid}>
-              <View style={styles.statCard}>
-                <Ionicons name="checkmark-circle" size={32} color="#10b981" />
-                <Text style={styles.statValue}>{results.correct}</Text>
-                <Text style={styles.statLabel}>Correct</Text>
-              </View>
-              <View style={styles.statCard}>
-                <Ionicons name="close-circle" size={32} color="#ef4444" />
-                <Text style={styles.statValue}>{results.incorrect}</Text>
-                <Text style={styles.statLabel}>Incorrect</Text>
-              </View>
-              <View style={styles.statCard}>
-                <Ionicons name="alert-circle" size={32} color="#6b7280" />
-                <Text style={styles.statValue}>{results.unattempted}</Text>
-                <Text style={styles.statLabel}>Unattempted</Text>
-              </View>
+              <GlassPanel style={styles.statCard} radius={12}>
+                <View style={styles.statCardInner}>
+                  <Ionicons name="checkmark-circle" size={32} color="#10b981" />
+                  <Text style={styles.statValue}>{results.correct}</Text>
+                  <Text style={styles.statLabel}>Correct</Text>
+                </View>
+              </GlassPanel>
+              <GlassPanel style={styles.statCard} radius={12}>
+                <View style={styles.statCardInner}>
+                  <Ionicons name="close-circle" size={32} color="#ef4444" />
+                  <Text style={styles.statValue}>{results.incorrect}</Text>
+                  <Text style={styles.statLabel}>Incorrect</Text>
+                </View>
+              </GlassPanel>
+              <GlassPanel style={styles.statCard} radius={12}>
+                <View style={styles.statCardInner}>
+                  <Ionicons name="alert-circle" size={32} color="#6b7280" />
+                  <Text style={styles.statValue}>{results.unattempted}</Text>
+                  <Text style={styles.statLabel}>Unattempted</Text>
+                </View>
+              </GlassPanel>
             </View>
 
             <TouchableOpacity
@@ -283,7 +290,8 @@ export default function IQRankBoostQuiz() {
         </View>
       </ScrollView>
 
-      <View style={styles.navigationFooter}>
+      <GlassPanel style={styles.navigationFooter} radius={0} bordered={false}>
+        <View style={styles.navigationFooterRow}>
         <TouchableOpacity
           style={[styles.navButton, currentQuestionIndex === 0 && styles.navButtonDisabled]}
           onPress={() => setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))}
@@ -312,15 +320,17 @@ export default function IQRankBoostQuiz() {
             <Ionicons name="checkmark" size={20} color="#fff" />
           </TouchableOpacity>
         )}
-      </View>
+        </View>
+      </GlassPanel>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  // Transparent so the app background artwork shows through.
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: 'transparent',
   },
   header: {
     paddingTop: 50,
@@ -416,7 +426,7 @@ const styles = StyleSheet.create({
   optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     padding: 16,
     borderRadius: 12,
     borderWidth: 2,
@@ -455,12 +465,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   navigationFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     padding: 16,
-    backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
+  },
+  // Row layout lives on an inner view because GlassPanel wraps its children.
+  navigationFooterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   navButton: {
     flexDirection: 'row',
@@ -483,7 +495,7 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
   },
   submitButton: {
-    backgroundColor: '#10b981',
+    backgroundColor: '#6d5bd0',
   },
   resultsContainer: {
     padding: 20,
@@ -516,9 +528,11 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
+  },
+  // Child stacking lives on an inner view because GlassPanel wraps its children.
+  statCardInner: {
     alignItems: 'center',
     gap: 8,
   },

@@ -19,6 +19,7 @@ export default function DetailedAIAnalyticsRedirect() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9fafb' },
+  // Transparent: the shared app background artwork shows through.
+  container: { flex: 1, backgroundColor: 'transparent' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 });

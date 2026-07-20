@@ -14,6 +14,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import teacherService from '../../../src/services/api/teacherService';
 import { openContentPreview } from '../../../src/utils/openContentPreview';
 import { FilterDropdown, TeacherShimmer } from '../../../src/components/teacher';
+import { GlassPanel } from '../../../src/components/ui';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../../src/theme/teacher';
 import { useContentViewerBack } from '../../../src/hooks/useBackNavigation';
 import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
@@ -244,22 +245,26 @@ export default function TeacherSubjectContentScreen() {
               </Pressable>
               {isSectionOpen(section.type)
                 ? section.items.map((item) => (
-                    <Pressable key={item._id} style={styles.item} onPress={() => openContent(item)}>
-                      <View style={styles.itemIcon}>
-                        <Ionicons
-                          name={iconForType(item.type)}
-                          size={20}
-                          color={TEACHER.primaryLight}
-                        />
-                      </View>
-                      <View style={styles.itemBody}>
-                        <Text style={styles.itemTitle}>{item.title}</Text>
-                        {item.description ? (
-                          <Text style={styles.itemDesc} numberOfLines={2}>
-                            {item.description}
-                          </Text>
-                        ) : null}
-                      </View>
+                    <Pressable key={item._id} onPress={() => openContent(item)}>
+                      <GlassPanel style={styles.item} radius={TEACHER_RADIUS.lg} tone="medium">
+                        <View style={styles.itemRow}>
+                          <View style={styles.itemIcon}>
+                            <Ionicons
+                              name={iconForType(item.type)}
+                              size={20}
+                              color={TEACHER.primaryLight}
+                            />
+                          </View>
+                          <View style={styles.itemBody}>
+                            <Text style={styles.itemTitle}>{item.title}</Text>
+                            {item.description ? (
+                              <Text style={styles.itemDesc} numberOfLines={2}>
+                                {item.description}
+                              </Text>
+                            ) : null}
+                          </View>
+                        </View>
+                      </GlassPanel>
                     </Pressable>
                   ))
                 : null}
@@ -270,14 +275,14 @@ export default function TeacherSubjectContentScreen() {
 
       <Modal visible={!!preview} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+          <GlassPanel style={styles.modalCard} radius={0} tone="strong">
             <Text style={styles.modalTitle}>{preview?.title}</Text>
             <Text style={styles.modalMeta}>{preview?.type}</Text>
             {preview?.description ? <Text style={styles.modalDesc}>{preview.description}</Text> : null}
             <Pressable style={styles.modalClose} onPress={() => setPreview(null)}>
               <Text style={styles.modalCloseText}>Close</Text>
             </Pressable>
-          </View>
+          </GlassPanel>
         </View>
       </Modal>
     </SafeAreaView>
@@ -285,7 +290,8 @@ export default function TeacherSubjectContentScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: TEACHER.bg },
+  // Transparent so AppBackground's artwork shows through.
+  screen: { flex: 1, backgroundColor: 'transparent' },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -328,14 +334,16 @@ const styles = StyleSheet.create({
   typeHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   typeCount: { fontSize: 12, fontWeight: '700', color: TEACHER.textMuted },
   item: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: TEACHER_SPACING.md,
-    backgroundColor: TEACHER.surface,
     borderRadius: TEACHER_RADIUS.lg,
     padding: TEACHER_SPACING.md,
     borderWidth: 1,
     borderColor: TEACHER.surfaceBorder,
+  },
+  // Row layout lives on an inner view because GlassPanel wraps its children.
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: TEACHER_SPACING.md,
   },
   itemIcon: {
     width: 40,
@@ -352,7 +360,6 @@ const styles = StyleSheet.create({
   emptyText: { color: TEACHER.textMuted },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   modalCard: {
-    backgroundColor: TEACHER.bg,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: TEACHER_SPACING.xxl,

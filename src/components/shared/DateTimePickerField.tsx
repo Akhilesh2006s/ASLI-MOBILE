@@ -90,21 +90,53 @@ export default function DateTimePickerField({
   return (
     <View style={styles.wrap}>
       <Text style={styles.label}>{label}</Text>
-      <Pressable style={styles.field} onPress={openPicker} accessibilityRole="button">
-        <Ionicons name="calendar-outline" size={18} color="#6b7280" />
+      <Pressable
+        style={styles.field}
+        onPress={openPicker}
+        accessibilityRole="button"
+        accessibilityLabel={`${label}: ${display}`}
+        accessibilityHint="Opens the date and time picker"
+      >
+        <Ionicons
+          name="calendar-outline"
+          size={18}
+          color="#6b7280"
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+        />
         <Text style={[styles.fieldText, !value?.trim() && styles.placeholder]} numberOfLines={2}>
           {display}
         </Text>
-        <Ionicons name="chevron-down" size={18} color="#9ca3af" />
+        <Ionicons
+          name="chevron-down"
+          size={18}
+          color="#9ca3af"
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+        />
       </Pressable>
 
       {Platform.OS === 'ios' ? (
         <Modal visible={iosOpen} transparent animationType="slide" onRequestClose={() => setIosOpen(false)}>
-          <Pressable style={styles.overlay} onPress={() => setIosOpen(false)}>
-            <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+          <Pressable
+            style={styles.overlay}
+            onPress={() => setIosOpen(false)}
+            accessibilityRole="button"
+            accessibilityLabel={`Close ${label} picker`}
+          >
+            <Pressable
+              style={styles.sheet}
+              onPress={(e) => e.stopPropagation()}
+              accessibilityViewIsModal
+            >
               <View style={styles.sheetHeader}>
                 <Text style={styles.sheetTitle}>{label}</Text>
-                <Pressable onPress={() => setIosOpen(false)} hitSlop={12}>
+                <Pressable
+                  onPress={() => setIosOpen(false)}
+                  hitSlop={12}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Close ${label} picker`}
+                >
                   <Ionicons name="close" size={22} color="#6b7280" />
                 </Pressable>
               </View>
@@ -123,6 +155,8 @@ export default function DateTimePickerField({
                   commit(draft);
                   setIosOpen(false);
                 }}
+                accessibilityRole="button"
+                accessibilityLabel={`Confirm ${label}`}
               >
                 <Text style={styles.doneBtnText}>Done</Text>
               </Pressable>
@@ -168,7 +202,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.45)',
   },
   sheet: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingBottom: 24,

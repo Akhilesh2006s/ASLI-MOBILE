@@ -10,6 +10,7 @@ import Animated, {
   withDelay,
   withTiming,
 } from 'react-native-reanimated';
+import { GlassPanel } from '../../../../src/components/ui';
 import { STUDENT, STUDENT_RADIUS, STUDENT_TYPO, SUBJECT_COLORS } from '../../../../src/theme/student';
 
 interface SubjectProgress {
@@ -76,7 +77,7 @@ function LearningProgressModuleComponent({
   const section = dark ? styles.sectionCardDark : styles.sectionCard;
 
   return (
-    <View style={section}>
+    <GlassPanel style={section} radius={STUDENT_RADIUS.card}>
       <View style={styles.sectionHeader}>
         <Text style={dark ? styles.sectionTitleDark : styles.sectionTitle}>
           Your Learning Progress
@@ -124,13 +125,14 @@ function LearningProgressModuleComponent({
           <Text style={styles.noProgressText}>Complete Exams To See Your Subject-Wise Progress</Text>
         )}
       </View>
-    </View>
+    </GlassPanel>
   );
 }
 
 const styles = StyleSheet.create({
   sectionCard: {
-    backgroundColor: STUDENT.surface,
+    // Frosted over the app background artwork instead of a solid fill.
+    backgroundColor: 'transparent',
     borderRadius: STUDENT_RADIUS.card,
     padding: 14,
     marginTop: 8,
@@ -211,7 +213,7 @@ const styles = StyleSheet.create({
     borderRadius: STUDENT_RADIUS.inner,
     borderWidth: 1,
     borderColor: STUDENT.surfaceBorder,
-    backgroundColor: STUDENT.surface,
+    backgroundColor: 'rgba(255,255,255,0.42)',
     padding: 12,
   },
   subjectRow: {

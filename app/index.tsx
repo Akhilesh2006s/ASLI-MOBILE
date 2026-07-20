@@ -26,6 +26,7 @@ export default function Index() {
 const styles = StyleSheet.create({
   boot: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    // transparent so the app-wide pastel artwork shows during the auth check
+    backgroundColor: 'transparent',
   },
 });

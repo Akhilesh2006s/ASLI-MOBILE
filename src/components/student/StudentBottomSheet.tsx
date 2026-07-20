@@ -14,7 +14,12 @@ export default function StudentBottomSheet({ visible, onClose, title, children }
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       <View style={styles.backdrop}>
-        <Pressable style={styles.backdropPress} onPress={onClose} />
+        <Pressable
+          style={styles.backdropPress}
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel={title ? `Close ${title}` : 'Close sheet'}
+        />
         <Animated.View
           entering={SlideInDown.duration(280)}
           exiting={SlideOutDown.duration(220)}

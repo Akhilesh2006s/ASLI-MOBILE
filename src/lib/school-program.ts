@@ -195,6 +195,44 @@ export function resolveIitBoardGradeLevel(classOptions: string[]): string {
   return classOptions.find((c) => /iit/i.test(c)) || 'Class 6';
 }
 
+export function resolveSchoolIitCategories(user?: {
+  iitCategories?: string[];
+  assignedAdmin?: { iitCategories?: string[] };
+} | null): string[] {
+  const fromAdmin = user?.assignedAdmin?.iitCategories;
+  const fromUser = user?.iitCategories;
+  const list = Array.isArray(fromAdmin) && fromAdmin.length ? fromAdmin : fromUser;
+  if (!Array.isArray(list)) return [];
+  return list.map((c) => String(c || '').toUpperCase().trim()).filter(Boolean);
+}
+
+export function schoolCanAccessProductCategory(
+  schoolIitCategories: string[] | undefined,
+  productCategory?: string | null
+): boolean {
+  const cat = String(productCategory || '').toUpperCase().trim();
+  if (!cat) return true;
+  const allowed = new Set(
+    (schoolIitCategories || []).map((c) => String(c || '').toUpperCase().trim()).filter(Boolean)
+  );
+  return allowed.has(cat);
+}
+
+export function filterByProductCategory<
+  T extends {
+    productCategory?: string | null;
+    subject?: { productCategory?: string | null } | null;
+  }
+>(rows: T[], schoolIitCategories?: string[]): T[] {
+  if (!Array.isArray(rows)) return [];
+  return rows.filter((row) =>
+    schoolCanAccessProductCategory(
+      schoolIitCategories,
+      row.productCategory || row.subject?.productCategory || ''
+    )
+  );
+}
+
 export const LIBRARY_TYPE_TILES = [
   { key: 'textbook', label: 'TextBook', type: 'TextBook' as ContentTypeName, icon: 'book-outline' },
   { key: 'workbook', label: 'Workbook', type: 'Workbook' as ContentTypeName, icon: 'document-text-outline' },

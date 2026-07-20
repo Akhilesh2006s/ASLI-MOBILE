@@ -1,3 +1,16 @@
+export {
+  GLASS_TONES,
+  GLASS_BLUE,
+  GLASS_VIOLET,
+  GLASS_SPECULAR,
+  GLASS_RIM,
+  GLASS_ROW,
+  GLASS_RADIUS,
+  GLASS_SHADOW,
+  glassTone,
+} from './glass';
+export type { GlassTone, GlassToneSpec } from './glass';
+
 export const COLORS = {
   primary: '#4F46E5',
   primaryDark: '#4338CA',
@@ -11,9 +24,9 @@ export const COLORS = {
   superAdmin: '#8B5CF6',
 
   bg: '#F4F7FB',
-  card: '#FFFFFF',
-  border: '#DBE3EF',
-  divider: '#EDF2F8',
+  card: 'rgba(255,255,255,0.48)',
+  border: 'rgba(255,255,255,0.65)',
+  divider: 'rgba(237,242,248,0.55)',
 
   text: '#0F172A',
   textSecondary: '#475569',

@@ -9,7 +9,7 @@ interface DigitalLibraryModuleProps {
 
 function DigitalLibraryModuleComponent({ dark }: DigitalLibraryModuleProps) {
   return (
-    <GlassCard variant="elevated" padding={14}>
+    <GlassCard variant="glass" padding={14}>
       <DigitalLibraryBrowseSection returnTo="learning" dark={dark} />
     </GlassCard>
   );

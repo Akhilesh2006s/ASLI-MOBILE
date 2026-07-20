@@ -11,9 +11,16 @@ type Props = {
 export default function SectionHeader({ title, onViewAll, viewAllLabel = 'View All' }: Props) {
   return (
     <View style={styles.row}>
-      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.title} accessibilityRole="header">
+        {title}
+      </Text>
       {onViewAll ? (
-        <Pressable onPress={onViewAll} hitSlop={8}>
+        <Pressable
+          onPress={onViewAll}
+          hitSlop={13}
+          accessibilityRole="button"
+          accessibilityLabel={`${viewAllLabel} ${title}`}
+        >
           <Text style={styles.link}>{viewAllLabel}</Text>
         </Pressable>
       ) : null}

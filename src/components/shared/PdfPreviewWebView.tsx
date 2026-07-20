@@ -199,7 +199,12 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
     return (
       <View style={[styles.centered, style]}>
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryBtn} onPress={() => setReloadKey((k) => k + 1)}>
+        <TouchableOpacity
+          style={styles.retryBtn}
+          onPress={() => setReloadKey((k) => k + 1)}
+          accessibilityRole="button"
+          accessibilityLabel="Retry loading the document"
+        >
           <Text style={styles.retryText}>Retry</Text>
         </TouchableOpacity>
       </View>

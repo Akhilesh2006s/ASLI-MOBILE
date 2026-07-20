@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-nat
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
+import { GlassPanel } from '../../../src/components/ui';
 
 export default function RemarksView() {
   const [remarks, setRemarks] = useState<any[]>([]);
@@ -52,15 +53,17 @@ export default function RemarksView() {
         <ActivityIndicator size="large" color="#3b82f6" style={styles.loader} />
       ) : remarks.length === 0 ? (
         <View style={styles.emptyState}>
-          <Ionicons name="chatbubbles-outline" size={64} color="#d1d5db" />
+          <Ionicons name="chatbubbles-outline" size={64} color="#5B6779" />
           <Text style={styles.emptyStateTitle}>No Remarks Yet</Text>
           <Text style={styles.emptyStateText}>Your teachers haven't left any remarks yet.</Text>
         </View>
       ) : (
         <ScrollView style={styles.content}>
           {remarks.map((remark: any) => (
-            <View
+            <GlassPanel
               key={remark._id}
+              radius={12}
+              tone="strong"
               style={[
                 styles.remarkCard,
                 remark.isPositive ? styles.remarkCardPositive : styles.remarkCardNegative
@@ -89,7 +92,7 @@ export default function RemarksView() {
               {remark.teacherName && (
                 <Text style={styles.remarkTeacher}>— {remark.teacherName}</Text>
               )}
-            </View>
+            </GlassPanel>
           ))}
         </ScrollView>
       )}
@@ -141,7 +144,7 @@ const styles = StyleSheet.create({
   },
   emptyStateText: {
     fontSize: 14,
-    color: '#9ca3af',
+    color: '#5B6779',
     textAlign: 'center',
   },
   content: {
@@ -153,12 +156,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderLeftWidth: 4,
   },
+  // The frosted panel supplies the surface now, so positive/negative reads from
+  // the coloured left rule and the icon rather than a solid fill.
   remarkCardPositive: {
-    backgroundColor: '#d1fae5',
     borderLeftColor: '#10b981',
   },
   remarkCardNegative: {
-    backgroundColor: '#fed7aa',
     borderLeftColor: '#fb923c',
   },
   remarkHeader: {

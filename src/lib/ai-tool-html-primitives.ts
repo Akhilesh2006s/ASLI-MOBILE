@@ -4,8 +4,9 @@ import { stripAiToolGenerationLabel } from './strip-ai-tool-generation-label';
 import { getAiToolHeroEmoji } from './ai-tool-icons';
 import { premiumToolHeroIconHtml } from './student-section-icons';
 import { formatAiToolText } from './title-case';
+import { getAiSectionTheme, getAiSectionThemeByNum } from './ai-tool-section-palette';
 
-type LightHeaderTheme = 'blue' | 'amber' | 'indigo' | 'emerald' | 'violet' | 'slate';
+type LightHeaderTheme = 'blue' | 'amber' | 'indigo' | 'violet' | 'sky' | 'orange';
 
 const LIGHT_HEADER_THEMES: Record<
   LightHeaderTheme,
@@ -26,15 +27,15 @@ const LIGHT_HEADER_THEMES: Record<
     bg: 'bg-gradient-to-br from-indigo-50 via-white to-slate-50',
     eyebrow: 'text-indigo-600',
   },
-  slate: {
-    border: 'border-slate-200',
-    bg: 'bg-gradient-to-br from-slate-50 via-white to-indigo-50',
-    eyebrow: 'text-indigo-600',
+  sky: {
+    border: 'border-sky-200',
+    bg: 'bg-gradient-to-br from-sky-50 via-white to-cyan-50',
+    eyebrow: 'text-sky-700',
   },
-  emerald: {
-    border: 'border-emerald-200',
-    bg: 'bg-gradient-to-br from-emerald-50 via-white to-teal-50',
-    eyebrow: 'text-emerald-700',
+  orange: {
+    border: 'border-orange-200',
+    bg: 'bg-gradient-to-br from-orange-50 via-white to-amber-50',
+    eyebrow: 'text-orange-700',
   },
   violet: {
     border: 'border-violet-200',
@@ -47,11 +48,17 @@ const LIGHT_HEADER_THEMES: Record<
 export function lightDocHeaderHtml(opts: {
   eyebrow: string;
   titleHtml: string;
-  theme: LightHeaderTheme;
+  theme: LightHeaderTheme | 'emerald' | 'slate' | 'teal';
   titleTag?: 'h1' | 'h3';
   extraClass?: string;
 }): string {
-  const t = LIGHT_HEADER_THEMES[opts.theme] ?? LIGHT_HEADER_THEMES.indigo;
+  const themeKey =
+    opts.theme === 'emerald' || opts.theme === 'teal'
+      ? 'violet'
+      : opts.theme === 'slate'
+        ? 'indigo'
+        : opts.theme;
+  const t = LIGHT_HEADER_THEMES[themeKey as LightHeaderTheme] ?? LIGHT_HEADER_THEMES.indigo;
   const tag = opts.titleTag ?? 'h3';
   const titleSize = tag === 'h1' ? 'text-xl' : 'text-lg';
   const extra = opts.extraClass ? ` ${opts.extraClass}` : '';
@@ -102,14 +109,25 @@ export { sectionNumberIconSvg, sectionIconSvg, premiumToolHeroIconHtml } from '.
 function themeFromStripe(stripe: string) {
   const match = stripe.match(/border-([a-z]+)-(\d+)/);
   if (!match) {
+    const fallback = getAiSectionTheme(0);
     return {
-      border: 'border-slate-200/80',
-      bg: 'bg-slate-50/80',
-      label: 'text-slate-500',
-      title: 'text-slate-900',
+      border: fallback.border,
+      bg: fallback.bg,
+      label: fallback.label,
+      title: fallback.title,
     };
   }
   const color = match[1];
+  // Map legacy emerald/green stripes onto the rainbow palette so old callers stay colorful.
+  if (color === 'emerald' || color === 'green' || color === 'lime') {
+    const mapped = getAiSectionTheme(color === 'green' ? 5 : color === 'lime' ? 2 : 9);
+    return {
+      border: mapped.border,
+      bg: mapped.bg,
+      label: mapped.label,
+      title: mapped.title,
+    };
+  }
   return {
     border: `border-${color}-200/80`,
     bg: `bg-${color}-50/80`,
@@ -130,71 +148,109 @@ export function sectionCardHtml(opts: {
   titleClass?: string;
   body: string;
 }): string {
-  const derived = themeFromStripe(opts.stripe);
-  const border = opts.borderColor || derived.border;
-  const bg = opts.bg || derived.bg;
-  const labelClass = opts.labelClass || derived.label;
-  const titleClass = opts.titleClass || derived.title;
+  const byNum = getAiSectionThemeByNum(opts.sectionNum);
+  const stripeIsGreen = /border-(emerald|green|lime)-/.test(opts.stripe);
+  const theme = stripeIsGreen ? byNum : (() => {
+    const match = opts.stripe.match(/border-([a-z]+)-/);
+    if (!match) return byNum;
+    // Keep rainbow identity from section number for consistency
+    return byNum;
+  })();
+  const numMatch = String(opts.sectionNum).match(/(\d+)/);
+  const idx = numMatch ? Math.max(0, parseInt(numMatch[1], 10) - 1) : 0;
+  const openAttr = idx < 2 ? ' open' : '';
+  const label = formatAiToolText(opts.sectionNum);
+  const title = formatAiToolText(opts.title);
+  const orb = numMatch ? numMatch[1] : '✦';
+
   return `
-<section class="mb-3 overflow-hidden rounded-xl border ${border} ${bg} shadow-sm ai-tool-section-card">
-  <header class="flex items-center gap-2.5 border-b border-slate-100/80 bg-white/60 px-3 py-2.5 border-l-[5px] ${opts.stripe}">
-    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${opts.iconWrap}">
-      ${opts.iconSvg}
+<details class="quest-node"${openAttr} style="--quest:${theme.hex};--quest-deep:${theme.hexDeep}" id="quest-${orb}">
+  <summary class="quest-summary">
+    <div class="quest-orb" aria-hidden="true">${escapeHtml(orb)}</div>
+    <div class="quest-copy">
+      <div class="quest-kicker"><span class="dot"></span>${escapeHtml(label)}</div>
+      <div class="quest-title">${escapeHtml(title)}</div>
     </div>
-    <div class="min-w-0">
-      <p class="text-[10px] font-bold uppercase tracking-wider ${labelClass}">${escapeHtml(formatAiToolText(opts.sectionNum))}</p>
-      <h4 class="text-sm font-bold ${titleClass} leading-tight">${escapeHtml(formatAiToolText(opts.title))}</h4>
-    </div>
-  </header>
-  <div class="px-3 py-2 text-sm leading-relaxed text-slate-700">${opts.body}</div>
-</section>`;
+    <div class="quest-hint">${idx < 2 ? 'Open' : 'Unlock'}</div>
+  </summary>
+  <div class="quest-body">${opts.body}</div>
+</details>`;
 }
 
-export function bulletListHtml(items: string[], accent = 'text-stone-500'): string {
+export function colorfulQuestionCardHtml(opts: {
+  index: number;
+  badge: string;
+  metaHtml?: string;
+  questionHtml: string;
+  extraHtml?: string;
+}): string {
+  const t = getAiSectionTheme(opts.index);
+  return `<article class="quest-q" style="--quest:${t.hex};--quest-deep:${t.hexDeep}">
+    <div class="quest-q-top">
+      <span class="quest-q-badge">${escapeHtml(opts.badge)}</span>
+      ${opts.metaHtml ? `<div class="quest-q-meta">${opts.metaHtml}</div>` : ''}
+    </div>
+    <div class="quest-q-prompt">${opts.questionHtml}</div>
+    ${opts.extraHtml || ''}
+  </article>`;
+}
+
+export { getAiSectionTheme, getAiSectionThemeByNum };
+
+export function bulletListHtml(items: string[], accent = 'text-violet-500'): string {
   if (!items.length) return richTextHtml('');
-  return `<ul class="space-y-1.5">${items
+  return `<ul class="quest-bullets">${items
     .map(
-      (line) =>
-        `<li class="flex gap-2 text-sm text-slate-800"><span class="mt-0.5 shrink-0 ${accent}">•</span><span class="whitespace-pre-wrap leading-relaxed">${escapeHtml(line)}</span></li>`
+      (line, i) => {
+        const t = getAiSectionTheme(i);
+        return `<li class="quest-bullet" style="--quest:${t.hex}">
+          <span class="quest-bullet-orb" aria-hidden="true"></span>
+          <span class="quest-bullet-text">${escapeHtml(line)}</span>
+        </li>`;
+      }
     )
     .join('')}</ul>`;
 }
 
 export function checkListHtml(items: string[]): string {
   if (!items.length) return richTextHtml('');
-  return `<ul class="space-y-2">${items
+  return `<ul class="quest-checks">${items
     .map(
-      (line) =>
-        `<li class="flex gap-2 rounded-lg bg-violet-50/80 px-3 py-2 text-sm text-slate-800">
-          <span class="shrink-0 text-violet-500 mt-0.5">✓</span>
+      (line, i) => {
+        const t = getAiSectionTheme(i);
+        return `<li class="quest-check" style="--quest:${t.hex};--quest-deep:${t.hexDeep}">
+          <span class="quest-check-mark" aria-hidden="true">✓</span>
           <span>${escapeHtml(line)}</span>
-        </li>`
+        </li>`;
+      }
     )
     .join('')}</ul>`;
 }
 
-export function numberedStepsHtml(items: string[], color = 'bg-emerald-100 text-emerald-800'): string {
+export function numberedStepsHtml(items: string[], _color?: string): string {
   if (!items.length) return richTextHtml('');
-  return `<ol class="space-y-2.5 list-none pl-0 m-0">${items
-    .map(
-      (step, i) =>
-        `<li class="flex gap-3 text-sm leading-relaxed text-stone-700">
-          <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${color} text-xs font-semibold">${i + 1}</span>
-          <span class="pt-1 min-w-0 flex-1">${escapeHtml(step)}</span>
-        </li>`
-    )
+  return `<ol class="quest-steps">${items
+    .map((step, i) => {
+      const t = getAiSectionTheme(i);
+      return `<li class="quest-step" style="--quest:${t.hex};--quest-deep:${t.hexDeep}">
+          <span class="quest-step-num">${i + 1}</span>
+          <span class="quest-step-text">${escapeHtml(step)}</span>
+        </li>`;
+    })
     .join('')}</ol>`;
 }
 
 export function numberedMaterialsHtml(items: string[]): string {
   if (!items.length) return richTextHtml('');
-  return `<ul class="space-y-2">${items
+  return `<ul class="quest-materials">${items
     .map(
-      (m, i) =>
-        `<li class="flex items-center gap-2 rounded-lg border border-amber-100 bg-amber-50/50 px-3 py-2 text-sm">
-          <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-amber-200/80 text-[11px] font-bold text-amber-900">${i + 1}</span>
-          ${escapeHtml(m)}
-        </li>`
+      (m, i) => {
+        const t = getAiSectionTheme(i);
+        return `<li class="quest-material" style="--quest:${t.hex};--quest-deep:${t.hexDeep}">
+          <span class="quest-material-num">${i + 1}</span>
+          <span>${escapeHtml(m)}</span>
+        </li>`;
+      }
     )
     .join('')}</ul>`;
 }
@@ -203,13 +259,14 @@ export function termGridHtml(
   items: { term?: string; name?: string; definition?: string; explanation?: string }[]
 ): string {
   if (!items.length) return richTextHtml('');
-  return `<div class="grid gap-1.5">${items
-    .map((t) => {
-      const title = t.term || t.name || '';
-      const body = t.definition || t.explanation || '';
-      return `<div class="rounded-lg border border-amber-100 bg-amber-50/50 px-2.5 py-1.5">
-        <p class="text-sm font-semibold text-amber-900">${escapeHtml(title)}</p>
-        ${body ? `<p class="mt-0.5 text-sm text-slate-700">${escapeHtml(body)}</p>` : ''}
+  return `<div class="quest-term-grid">${items
+    .map((item, i) => {
+      const t = getAiSectionTheme(i);
+      const title = item.term || item.name || '';
+      const body = item.definition || item.explanation || '';
+      return `<div class="quest-term" style="--quest:${t.hex};--quest-deep:${t.hexDeep}">
+        <p class="quest-term-title">${escapeHtml(title)}</p>
+        ${body ? `<p class="quest-term-body">${escapeHtml(body)}</p>` : ''}
       </div>`;
     })
     .join('')}</div>`;
@@ -217,21 +274,21 @@ export function termGridHtml(
 
 export function conceptGridHtml(items: { name: string; explanation?: string }[]): string {
   if (!items.length) return richTextHtml('');
-  return `<div class="grid gap-1.5">${items
-    .map(
-      (c) =>
-        `<div class="rounded-lg border border-violet-100 bg-violet-50/30 px-3 py-2">
-          <p class="text-sm font-semibold text-violet-900">${escapeHtml(c.name)}</p>
-          ${c.explanation ? `<p class="mt-1 text-sm leading-relaxed text-slate-700">${escapeHtml(c.explanation)}</p>` : ''}
-        </div>`
-    )
+  return `<div class="quest-term-grid">${items
+    .map((c, i) => {
+      const t = getAiSectionTheme(i);
+      return `<div class="quest-term" style="--quest:${t.hex};--quest-deep:${t.hexDeep}">
+          <p class="quest-term-title">${escapeHtml(c.name)}</p>
+          ${c.explanation ? `<p class="quest-term-body">${escapeHtml(c.explanation)}</p>` : ''}
+        </div>`;
+    })
     .join('')}</div>`;
 }
 
 export function heroTitleCardHtml(opts: {
   eyebrow: string;
   title: string;
-  theme: 'indigo' | 'orange' | 'violet' | 'blue' | 'amber' | 'emerald';
+  theme: 'indigo' | 'orange' | 'violet' | 'blue' | 'amber' | 'emerald' | 'sky' | 'rose';
   badge?: string;
   progressPct?: number;
   toolType?: string;
@@ -242,7 +299,7 @@ export function heroTitleCardHtml(opts: {
     indigo: {
       border: 'border-indigo-200/90',
       shadow: 'shadow-indigo-100/50',
-      gradient: 'radial-gradient(circle_at_0%_0%,rgba(99,102,241,0.06),transparent_55%)',
+      gradient: 'radial-gradient(circle_at_0%_0%,rgba(99,102,241,0.14),transparent_55%)',
       icon: 'bg-indigo-100 text-indigo-700 border border-indigo-200',
       eyebrow: 'text-indigo-600',
       badge: 'border-indigo-200 text-indigo-700',
@@ -252,7 +309,7 @@ export function heroTitleCardHtml(opts: {
     orange: {
       border: 'border-orange-200',
       shadow: 'shadow-orange-100/60',
-      gradient: 'radial-gradient(circle_at_100%_0%,rgba(251,146,60,0.08),transparent_50%)',
+      gradient: 'radial-gradient(circle_at_100%_0%,rgba(251,146,60,0.16),transparent_50%)',
       icon: 'bg-orange-100 text-orange-700 border border-orange-200',
       eyebrow: 'text-orange-600',
       badge: 'border-orange-200 text-orange-700',
@@ -262,7 +319,7 @@ export function heroTitleCardHtml(opts: {
     violet: {
       border: 'border-violet-200',
       shadow: 'shadow-violet-100/50',
-      gradient: 'radial-gradient(circle_at_0%_0%,rgba(139,92,246,0.06),transparent_55%)',
+      gradient: 'radial-gradient(circle_at_0%_0%,rgba(139,92,246,0.16),transparent_55%)',
       icon: 'bg-violet-100 text-violet-700 border border-violet-200',
       eyebrow: 'text-violet-600',
       badge: 'border-violet-200 text-violet-700',
@@ -272,7 +329,7 @@ export function heroTitleCardHtml(opts: {
     blue: {
       border: 'border-blue-200',
       shadow: 'shadow-blue-100/50',
-      gradient: 'radial-gradient(circle_at_0%_0%,rgba(59,130,246,0.06),transparent_55%)',
+      gradient: 'radial-gradient(circle_at_0%_0%,rgba(59,130,246,0.14),transparent_55%)',
       icon: 'bg-blue-100 text-blue-700 border border-blue-200',
       eyebrow: 'text-blue-600',
       badge: 'border-blue-200 text-blue-700',
@@ -282,22 +339,43 @@ export function heroTitleCardHtml(opts: {
     amber: {
       border: 'border-amber-200',
       shadow: 'shadow-amber-100/50',
-      gradient: 'radial-gradient(circle_at_0%_0%,rgba(245,158,11,0.06),transparent_55%)',
+      gradient: 'radial-gradient(circle_at_0%_0%,rgba(245,158,11,0.16),transparent_55%)',
       icon: 'bg-amber-100 text-amber-700 border border-amber-200',
       eyebrow: 'text-amber-600',
       badge: 'border-amber-200 text-amber-700',
       barBg: 'bg-amber-100',
       barFill: 'from-amber-200 to-orange-200',
     },
+    sky: {
+      border: 'border-sky-200',
+      shadow: 'shadow-sky-100/50',
+      gradient: 'radial-gradient(circle_at_0%_0%,rgba(14,165,233,0.14),transparent_55%)',
+      icon: 'bg-sky-100 text-sky-700 border border-sky-200',
+      eyebrow: 'text-sky-600',
+      badge: 'border-sky-200 text-sky-700',
+      barBg: 'bg-sky-100',
+      barFill: 'from-sky-200 to-cyan-200',
+    },
+    rose: {
+      border: 'border-rose-200',
+      shadow: 'shadow-rose-100/50',
+      gradient: 'radial-gradient(circle_at_0%_0%,rgba(244,63,94,0.14),transparent_55%)',
+      icon: 'bg-rose-100 text-rose-700 border border-rose-200',
+      eyebrow: 'text-rose-600',
+      badge: 'border-rose-200 text-rose-700',
+      barBg: 'bg-rose-100',
+      barFill: 'from-rose-200 to-orange-200',
+    },
+    // Legacy green theme → lively violet (students hated the green wall)
     emerald: {
-      border: 'border-emerald-200',
-      shadow: 'shadow-emerald-100/50',
-      gradient: 'radial-gradient(circle_at_0%_0%,rgba(16,185,129,0.08),transparent_55%)',
-      icon: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
-      eyebrow: 'text-emerald-600',
-      badge: 'border-emerald-200 text-emerald-700',
-      barBg: 'bg-emerald-100',
-      barFill: 'from-emerald-200 to-teal-200',
+      border: 'border-violet-200',
+      shadow: 'shadow-violet-100/50',
+      gradient: 'radial-gradient(circle_at_0%_0%,rgba(139,92,246,0.16),transparent_55%)',
+      icon: 'bg-violet-100 text-violet-700 border border-violet-200',
+      eyebrow: 'text-violet-600',
+      badge: 'border-violet-200 text-violet-700',
+      barBg: 'bg-violet-100',
+      barFill: 'from-violet-200 to-fuchsia-200',
     },
   };
   const t =

@@ -273,11 +273,11 @@ export default function SchoolOrdersView({
       </ScrollView>
 
       <View style={styles.searchWrap}>
-        <Ionicons name="search" size={18} color="#9ca3af" style={styles.searchIcon} />
+        <Ionicons name="search" size={18} color="#5B6779" style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search orders…"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor="#5B6779"
           value={search}
           onChangeText={setSearch}
         />
@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
   },
   statsGrid: {
     flexDirection: 'row',
@@ -411,7 +411,7 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     minWidth: '46%',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 10,
     padding: 12,
     borderWidth: 1,
@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
   },
   statLabel: { fontSize: 11, color: '#6b7280', fontWeight: '600', textTransform: 'uppercase' },
   statValue: { fontSize: 22, fontWeight: '800', color: '#111827', marginTop: 4 },
-  statHint: { fontSize: 10, color: '#9ca3af', marginTop: 2 },
+  statHint: { fontSize: 10, color: '#5B6779', marginTop: 2 },
   filterRow: { paddingHorizontal: 16, gap: 8, marginBottom: 12 },
   filterChip: {
     paddingHorizontal: 14,
@@ -437,7 +437,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#e5e7eb',
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
   emptyBox: {
     alignItems: 'center',
     padding: 32,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#e5e7eb',
@@ -458,7 +458,7 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 16, fontWeight: '700', color: '#374151', marginTop: 12 },
   emptyDesc: { fontSize: 13, color: '#6b7280', textAlign: 'center', marginTop: 6, lineHeight: 20 },
   orderCard: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 12,
     padding: 14,
     marginBottom: 10,
@@ -467,9 +467,9 @@ const styles = StyleSheet.create({
   },
   orderCardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 8 },
   orderNumber: { fontFamily: 'monospace', fontSize: 14, fontWeight: '700', color: '#111827' },
-  orderMeta: { fontSize: 11, color: '#9ca3af', marginTop: 2 },
+  orderMeta: { fontSize: 11, color: '#5B6779', marginTop: 2 },
   schoolName: { fontSize: 14, fontWeight: '600', color: '#1f2937' },
-  brand: { fontSize: 12, color: '#9ca3af', marginTop: 2 },
+  brand: { fontSize: 12, color: '#5B6779', marginTop: 2 },
   orderFooter: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -497,7 +497,7 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 11, fontWeight: '700' },
   badgeTextConfirmed: { color: '#047857' },
   badgeTextDraft: { color: '#b45309' },
-  detailModal: { flex: 1, backgroundColor: '#fff' },
+  detailModal: { flex: 1, backgroundColor: 'rgba(255,255,255,0.48)' },
   detailHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -511,12 +511,12 @@ const styles = StyleSheet.create({
   detailSub: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
   detailBody: { flex: 1, padding: 16 },
   detailGrid: { marginTop: 16, gap: 8 },
-  detailLabel: { fontSize: 11, color: '#9ca3af', fontWeight: '600', textTransform: 'uppercase' },
+  detailLabel: { fontSize: 11, color: '#5B6779', fontWeight: '600', textTransform: 'uppercase' },
   detailValue: { fontSize: 15, fontWeight: '600', color: '#111827', marginBottom: 8 },
   productsTitle: { fontSize: 15, fontWeight: '700', color: '#111827', marginTop: 8, marginBottom: 8 },
   productRow: {
     padding: 12,
-    backgroundColor: '#fff7ed',
+    backgroundColor: 'rgba(255,247,237,0.55)',
     borderRadius: 8,
     marginBottom: 8,
     borderWidth: 1,

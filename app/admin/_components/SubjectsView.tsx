@@ -10,8 +10,6 @@ import {
   Alert,
   Modal,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { FadeInUp } from 'react-native-reanimated';
 import api from '../../../src/services/api/api';
 import {
   AdminScreenShell,
@@ -379,22 +377,43 @@ export default function SubjectsView() {
       style={[styles.subjectCard, isTablet && styles.subjectCardTablet]}
       noAnimation={isTablet}
     >
+      <View style={[styles.subjectAccentBar, { backgroundColor: colors.primary }]} />
       <View style={styles.cardTopRow}>
-        <View style={[styles.subjectAvatar, { backgroundColor: colors.primary }]}>
-          <Text style={styles.subjectAvatarText}>{(subject.name || 'S').charAt(0).toUpperCase()}</Text>
+        <View
+          style={[
+            styles.subjectAvatar,
+            { backgroundColor: colors.primaryMuted, borderColor: colors.surfaceBorder },
+          ]}
+        >
+          <Text style={[styles.subjectAvatarText, { color: colors.primary }]}>
+            {(subject.name || 'S').charAt(0).toUpperCase()}
+          </Text>
         </View>
         <View style={styles.cardTitleBlock}>
           <TouchableOpacity onPress={() => showSubjectDetail(subject)} activeOpacity={0.75}>
-            <Text style={styles.cardTitle} numberOfLines={1}>
+            <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>
               {subject.name}
             </Text>
           </TouchableOpacity>
-          <Text style={styles.cardSubtitle} numberOfLines={1}>
-            {subject.code ? `#${subject.code}` : 'Subject'}
+          <Text style={[styles.cardSubtitle, { color: colors.textMuted }]} numberOfLines={1}>
+            {subject.code ? `#${subject.code}` : 'Open details & classes'}
           </Text>
         </View>
-        <View style={[styles.activePill, !subject.isActive && styles.activePillOff]}>
-          <Text style={[styles.activePillText, !subject.isActive && styles.activePillTextOff]}>
+        <View
+          style={[
+            styles.activePill,
+            {
+              backgroundColor: subject.isActive ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.1)',
+              borderColor: subject.isActive ? 'rgba(16,185,129,0.35)' : 'rgba(239,68,68,0.3)',
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.activePillText,
+              { color: subject.isActive ? colors.success : colors.danger },
+            ]}
+          >
             {subject.isActive ? 'Active' : 'Inactive'}
           </Text>
         </View>
@@ -494,8 +513,8 @@ export default function SubjectsView() {
     >
       <View style={styles.innerShell}>
       <AdminSectionHeader
-        title="Subject Management"
-        subtitle="Manage subjects and their assignments"
+        title="Browse subjects"
+        subtitle="Manage subjects, teachers, and class assignments"
         icon="book-outline"
       />
 
@@ -549,17 +568,26 @@ export default function SubjectsView() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <LinearGradient
-              colors={[...colors.fabGradient]}
-              style={styles.modalHeader}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+            <View
+              style={[
+                styles.modalHeader,
+                {
+                  backgroundColor: colors.surfaceGlass || colors.surface,
+                  borderBottomWidth: StyleSheet.hairlineWidth,
+                  borderBottomColor: colors.surfaceBorder,
+                },
+              ]}
             >
-              <Text style={styles.modalTitle}>Add New Subject</Text>
-              <TouchableOpacity onPress={() => setIsAddModalVisible(false)} hitSlop={12}>
-                <SvgIconClose size={24} color="#fff" />
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Add New Subject</Text>
+              <TouchableOpacity
+                onPress={() => setIsAddModalVisible(false)}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel="Close add subject form"
+              >
+                <SvgIconClose size={24} color={colors.text} />
               </TouchableOpacity>
-            </LinearGradient>
+            </View>
             <ScrollView style={styles.modalBody} keyboardShouldPersistTaps="handled">
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Name *</Text>
@@ -568,7 +596,7 @@ export default function SubjectsView() {
                   placeholder="e.g. Biology"
                   value={newSubject.name}
                   onChangeText={(t) => setNewSubject({ ...newSubject, name: t })}
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#5B6779"
                 />
               </View>
               <View style={styles.formGroup}>
@@ -578,7 +606,7 @@ export default function SubjectsView() {
                   placeholder="e.g. BIO101"
                   value={newSubject.code}
                   onChangeText={(t) => setNewSubject({ ...newSubject, code: t })}
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#5B6779"
                 />
               </View>
               <View style={styles.formGroup}>
@@ -590,7 +618,7 @@ export default function SubjectsView() {
                   onChangeText={(t) => setNewSubject({ ...newSubject, description: t })}
                   multiline
                   numberOfLines={3}
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#5B6779"
                 />
               </View>
               <View style={styles.formGroup}>
@@ -599,7 +627,7 @@ export default function SubjectsView() {
                   style={styles.formInput}
                   value={newSubject.department}
                   onChangeText={(t) => setNewSubject({ ...newSubject, department: t })}
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#5B6779"
                 />
               </View>
               <View style={styles.formGroup}>
@@ -608,7 +636,7 @@ export default function SubjectsView() {
                   style={styles.formInput}
                   value={newSubject.grade}
                   onChangeText={(t) => setNewSubject({ ...newSubject, grade: t })}
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#5B6779"
                 />
               </View>
               {renderClassPicker(newSubject.classIds, (classIds) =>
@@ -636,17 +664,26 @@ export default function SubjectsView() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <LinearGradient
-              colors={[...colors.fabGradient]}
-              style={styles.modalHeader}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+            <View
+              style={[
+                styles.modalHeader,
+                {
+                  backgroundColor: colors.surfaceGlass || colors.surface,
+                  borderBottomWidth: StyleSheet.hairlineWidth,
+                  borderBottomColor: colors.surfaceBorder,
+                },
+              ]}
             >
-              <Text style={styles.modalTitle}>Edit Subject</Text>
-              <TouchableOpacity onPress={() => setIsEditModalVisible(false)} hitSlop={12}>
-                <SvgIconClose size={24} color="#fff" />
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Edit Subject</Text>
+              <TouchableOpacity
+                onPress={() => setIsEditModalVisible(false)}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel="Close edit subject form"
+              >
+                <SvgIconClose size={24} color={colors.text} />
               </TouchableOpacity>
-            </LinearGradient>
+            </View>
             <ScrollView style={styles.modalBody} keyboardShouldPersistTaps="handled">
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Name *</Text>
@@ -654,7 +691,7 @@ export default function SubjectsView() {
                   style={styles.formInput}
                   value={editSubject.name}
                   onChangeText={(t) => setEditSubject({ ...editSubject, name: t })}
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#5B6779"
                 />
               </View>
               <View style={styles.formGroup}>
@@ -663,7 +700,7 @@ export default function SubjectsView() {
                   style={styles.formInput}
                   value={editSubject.code}
                   onChangeText={(t) => setEditSubject({ ...editSubject, code: t })}
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#5B6779"
                 />
               </View>
               <View style={styles.formGroup}>
@@ -674,7 +711,7 @@ export default function SubjectsView() {
                   onChangeText={(t) => setEditSubject({ ...editSubject, description: t })}
                   multiline
                   numberOfLines={3}
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#5B6779"
                 />
               </View>
               <View style={styles.formGroup}>
@@ -683,7 +720,7 @@ export default function SubjectsView() {
                   style={styles.formInput}
                   value={editSubject.department}
                   onChangeText={(t) => setEditSubject({ ...editSubject, department: t })}
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#5B6779"
                 />
               </View>
               <View style={styles.formGroup}>
@@ -692,7 +729,7 @@ export default function SubjectsView() {
                   style={styles.formInput}
                   value={editSubject.grade}
                   onChangeText={(t) => setEditSubject({ ...editSubject, grade: t })}
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#5B6779"
                 />
               </View>
               {renderClassPicker(editSubject.classIds, (classIds) =>
@@ -741,9 +778,18 @@ const styles = StyleSheet.create({
   },
   subjectCard: {
     padding: 14,
+    paddingLeft: 16,
+    overflow: 'hidden',
   },
   subjectCardTablet: {
     width: '100%',
+  },
+  subjectAccentBar: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
   },
   kvBlockTablet: {
     gap: 6,
@@ -764,14 +810,14 @@ const styles = StyleSheet.create({
   subjectAvatar: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
   },
   subjectAvatarText: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#fff',
   },
   cardTitleBlock: {
     flex: 1,
@@ -780,32 +826,20 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 17,
     fontWeight: '800',
-    color: '#0f172a',
     marginBottom: 2,
   },
   cardSubtitle: {
     fontSize: 13,
-    color: '#64748b',
   },
   activePill: {
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 999,
-    backgroundColor: '#ecfdf5',
-    borderWidth: 1,
-    borderColor: '#a7f3d0',
-  },
-  activePillOff: {
-    backgroundColor: '#fef2f2',
-    borderColor: '#fecaca',
+    borderWidth: StyleSheet.hairlineWidth,
   },
   activePillText: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#047857',
-  },
-  activePillTextOff: {
-    color: '#b91c1c',
   },
   kvBlock: {
     gap: 8,
@@ -877,7 +911,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
     height: 52,
     borderRadius: 16,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
@@ -890,7 +924,7 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 20,
     width: '100%',
     maxHeight: '85%',
@@ -905,7 +939,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#fff',
+    color: '#0f172a',
     flex: 1,
   },
   modalBody: {
@@ -1016,7 +1050,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e2e8f0',
     borderRadius: 12,
-    backgroundColor: '#fffbeb',
+    backgroundColor: 'rgba(255,251,235,0.55)',
     padding: 8,
   },
   assignedClassItem: {

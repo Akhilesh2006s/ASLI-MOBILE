@@ -11,6 +11,7 @@ import {
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { GlassPanel } from '../../../src/components/ui';
 import api from '../../../src/services/api/api';
 import { extractClassNumberFromSubjectName } from '../../../src/lib/subject-names';
 import {
@@ -208,7 +209,7 @@ export default function IQRankBoostQuestionGenerator({ classNumber, onBack }: Pr
         <Text style={styles.subtitle}>Use AI to generate MCQ questions for IQ/Rank Boost activities</Text>
       </View>
 
-      <View style={styles.card}>
+      <GlassPanel style={styles.card} radius={12} tone="strong">
         <Text style={styles.cardTitle}>Question Generation Settings</Text>
         <Text style={styles.cardDesc}>Configure the parameters for AI-generated questions</Text>
 
@@ -230,7 +231,7 @@ export default function IQRankBoostQuestionGenerator({ classNumber, onBack }: Pr
               <Text style={selectedSubject ? styles.pickerValue : styles.pickerPlaceholder}>
                 {selectedSubject?.name || 'Select subject'}
               </Text>
-              <Ionicons name="chevron-down" size={18} color="#9ca3af" />
+              <Ionicons name="chevron-down" size={18} color="#5B6779" />
             </Pressable>
           )}
         </View>
@@ -244,7 +245,7 @@ export default function IQRankBoostQuestionGenerator({ classNumber, onBack }: Pr
               <Text style={form.topic ? styles.pickerValue : styles.pickerPlaceholder}>
                 {form.topic || 'All Topics (optional)'}
               </Text>
-              <Ionicons name="chevron-down" size={18} color="#9ca3af" />
+              <Ionicons name="chevron-down" size={18} color="#5B6779" />
             </Pressable>
           ) : (
             <TextInput
@@ -290,7 +291,7 @@ export default function IQRankBoostQuestionGenerator({ classNumber, onBack }: Pr
               <Text style={styles.pickerValue}>
                 {IQ_DIFFICULTIES.find((d) => d.value === form.difficulty)?.label || form.difficulty}
               </Text>
-              <Ionicons name="chevron-down" size={18} color="#9ca3af" />
+              <Ionicons name="chevron-down" size={18} color="#5B6779" />
             </Pressable>
           </View>
         </View>
@@ -306,7 +307,7 @@ export default function IQRankBoostQuestionGenerator({ classNumber, onBack }: Pr
             <Text style={styles.generateBtnText}>Generate Questions</Text>
           )}
         </Pressable>
-      </View>
+      </GlassPanel>
 
       {isSuccess && generatedQuestions.length > 0 && (
         <View style={styles.successBox}>
@@ -330,7 +331,7 @@ export default function IQRankBoostQuestionGenerator({ classNumber, onBack }: Pr
             Preview of the {generatedQuestions.length} questions that were generated and saved
           </Text>
           {generatedQuestions.map((question, index) => (
-            <View key={index} style={styles.questionCard}>
+            <GlassPanel key={index} style={styles.questionCard} radius={12} tone="strong">
               <View style={styles.questionHeader}>
                 <Text style={styles.questionText} numberOfLines={4}>
                   Q{index + 1}. {question.questionText || question.question}
@@ -368,7 +369,7 @@ export default function IQRankBoostQuestionGenerator({ classNumber, onBack }: Pr
                   </Text>
                 </View>
               ) : null}
-            </View>
+            </GlassPanel>
           ))}
         </View>
       )}
@@ -401,7 +402,8 @@ export default function IQRankBoostQuestionGenerator({ classNumber, onBack }: Pr
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9fafb' },
+  // Transparent: the shared app background artwork shows through.
+  container: { flex: 1, backgroundColor: 'transparent' },
   header: { padding: 20, paddingBottom: 12 },
   backBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
   backText: { fontSize: 16, fontWeight: '600', color: '#111827' },
@@ -409,7 +411,7 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 14, color: '#6b7280', marginTop: 4 },
   card: {
     marginHorizontal: 20,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#e5e7eb',
@@ -424,10 +426,10 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 },
   input: { backgroundColor: '#f9fafb', borderRadius: 10, borderWidth: 1, borderColor: '#e5e7eb', padding: 12, fontSize: 15, color: '#111827' },
   inputDisabled: { backgroundColor: '#f3f4f6', color: '#6b7280' },
-  hint: { fontSize: 11, color: '#9ca3af', marginTop: 4 },
+  hint: { fontSize: 11, color: '#5B6779', marginTop: 4 },
   pickerField: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#f9fafb', borderRadius: 10, borderWidth: 1, borderColor: '#e5e7eb', padding: 12 },
   pickerValue: { fontSize: 15, color: '#111827', flex: 1 },
-  pickerPlaceholder: { fontSize: 15, color: '#9ca3af', flex: 1 },
+  pickerPlaceholder: { fontSize: 15, color: '#5B6779', flex: 1 },
   generateBtn: { marginTop: 8, backgroundColor: '#f97316', borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
   generateBtnDisabled: { opacity: 0.6 },
   generateBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
@@ -437,7 +439,7 @@ const styles = StyleSheet.create({
   previewSection: { marginHorizontal: 20, marginBottom: 16 },
   previewTitle: { fontSize: 18, fontWeight: '700', color: '#111827' },
   previewDesc: { fontSize: 13, color: '#6b7280', marginTop: 4, marginBottom: 12 },
-  questionCard: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', borderLeftWidth: 4, borderLeftColor: '#3b82f6', padding: 14, marginBottom: 12 },
+  questionCard: { backgroundColor: 'rgba(255,255,255,0.48)', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', borderLeftWidth: 4, borderLeftColor: '#3b82f6', padding: 14, marginBottom: 12 },
   questionHeader: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
   questionText: { flex: 1, fontSize: 14, fontWeight: '600', color: '#111827' },
   difficultyChip: { backgroundColor: '#f3f4f6', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
@@ -451,7 +453,7 @@ const styles = StyleSheet.create({
   explanationBox: { marginTop: 10, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', borderRadius: 8, padding: 10 },
   explanationText: { fontSize: 13, color: '#374151' },
   pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  pickerSheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '70%' },
+  pickerSheet: { backgroundColor: 'rgba(255,255,255,0.48)', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '70%' },
   pickerTitle: { fontSize: 18, fontWeight: '700', marginBottom: 12 },
   pickerItem: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
   pickerItemText: { fontSize: 16, color: '#111827' },

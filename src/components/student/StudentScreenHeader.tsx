@@ -1,10 +1,11 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { STUDENT, STUDENT_RADIUS, STUDENT_TYPO } from '../../theme/student';
-import { AI, AI_HERO_GRADIENT, AI_RADIUS, AI_SHADOW, AI_TYPE } from '../../theme/ai';
+import { AI, AI_RADIUS, AI_TYPE } from '../../theme/ai';
+import { GLASS_ROW, GLASS_VIOLET } from '../../theme/glass';
+import GlassPanel from '../ui/GlassPanel';
 
 type Props = {
   title: string;
@@ -17,6 +18,7 @@ type Props = {
   variant?: 'default' | 'ai';
 };
 
+/** Shared liquid-glass header for student tool pages (all AI tools). */
 export default function StudentScreenHeader({
   title,
   onBack,
@@ -28,12 +30,15 @@ export default function StudentScreenHeader({
 }: Props) {
   const isAi = variant === 'ai';
   return (
-    <Animated.View entering={FadeInDown.duration(200)}>
-      <LinearGradient
-        colors={isAi ? [...AI_HERO_GRADIENT] : [...STUDENT.heroGradient]}
+    <Animated.View entering={FadeInDown.duration(200)} style={styles.outer}>
+      <GlassPanel
+        tone="strong"
+        elevated
+        colors={[...GLASS_VIOLET]}
+        radius={0}
+        bordered={false}
         style={[styles.wrap, isAi && styles.wrapAi, tabletUi && styles.wrapTablet]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        contentStyle={styles.content}
       >
         <View style={styles.row}>
           <Pressable
@@ -42,50 +47,54 @@ export default function StudentScreenHeader({
             accessibilityLabel="Go back"
             accessibilityRole="button"
           >
-            <Ionicons name="chevron-back" size={tabletUi ? 26 : 24} color={isAi ? AI.primary : STUDENT.textOnPrimary} />
+            <Ionicons name="chevron-back" size={tabletUi ? 26 : 24} color={isAi ? AI.primary : STUDENT.primaryDark} />
           </Pressable>
           <View style={styles.titleWrap}>
-            <Text style={[styles.title, isAi && styles.titleAi, tabletUi && styles.titleTablet]} numberOfLines={1}>
+            <Text
+              style={[styles.title, isAi && styles.titleAi, tabletUi && styles.titleTablet]}
+              numberOfLines={1}
+            >
               {title}
             </Text>
             {subtitle ? (
-              <Text style={[styles.subtitle, isAi && styles.subtitleAi, tabletUi && styles.subtitleTablet]} numberOfLines={tabletUi ? 2 : 1}>
+              <Text
+                style={[styles.subtitle, isAi && styles.subtitleAi, tabletUi && styles.subtitleTablet]}
+                numberOfLines={tabletUi ? 2 : 1}
+              >
                 {subtitle}
               </Text>
             ) : null}
           </View>
           {rightLabel && onRightPress ? (
-            <Pressable
-              style={styles.rightBtn}
-              onPress={onRightPress}
-              accessibilityRole="button"
-            >
+            <Pressable style={styles.rightBtn} onPress={onRightPress} accessibilityRole="button">
               <Text style={styles.rightText}>{rightLabel}</Text>
             </Pressable>
           ) : (
             <View style={styles.rightPlaceholder} />
           )}
         </View>
-      </LinearGradient>
+      </GlassPanel>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
-    paddingVertical: 20,
-    paddingHorizontal: 16,
+  outer: {
     borderBottomLeftRadius: STUDENT_RADIUS.xxl,
     borderBottomRightRadius: STUDENT_RADIUS.xxl,
+    overflow: 'hidden',
   },
-  wrapTablet: {
-    paddingVertical: 22,
-    paddingHorizontal: 28,
+  wrap: {
+    width: '100%',
   },
+  wrapTablet: {},
   wrapAi: {
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: AI.primaryBorder,
-    ...AI_SHADOW,
+  },
+  content: {
+    paddingVertical: 20,
+    paddingHorizontal: 16,
   },
   row: {
     flexDirection: 'row',
@@ -96,10 +105,12 @@ const styles = StyleSheet.create({
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: AI_RADIUS.sm,
+    backgroundColor: GLASS_ROW.fill,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: GLASS_ROW.border,
   },
   backBtnAi: {
-    borderRadius: AI_RADIUS.sm,
-    borderWidth: 1,
     borderColor: AI.primaryBorder,
     backgroundColor: AI.surface,
   },
@@ -109,7 +120,7 @@ const styles = StyleSheet.create({
   },
   title: {
     ...STUDENT_TYPO.section,
-    color: STUDENT.textOnPrimary,
+    color: STUDENT.text,
     textAlign: 'center',
   },
   titleTablet: {
@@ -122,7 +133,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     ...STUDENT_TYPO.caption,
-    color: 'rgba(255,255,255,0.82)',
+    color: STUDENT.textSecondary,
     marginTop: 2,
     textAlign: 'center',
   },
@@ -147,6 +158,6 @@ const styles = StyleSheet.create({
   rightText: {
     fontSize: 13,
     fontWeight: '700',
-    color: STUDENT.textOnPrimary,
+    color: STUDENT.primaryDark,
   },
 });

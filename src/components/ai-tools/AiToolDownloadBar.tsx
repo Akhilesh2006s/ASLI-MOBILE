@@ -6,7 +6,8 @@ import {
   exportTeacherToolDocument,
   isTeacherDownloadTool,
 } from '../../lib/ai-tool-teacher-export';
-import { AI, AI_RADIUS, AI_SPACING, AI_TYPE } from '../../theme/ai';
+import { AI, AI_SPACING, AI_TYPE } from '../../theme/ai';
+import { GLASS_ROW } from '../../theme/glass';
 
 type Props = {
   toolType: string;
@@ -39,7 +40,7 @@ export default function AiToolDownloadBar({ toolType, toolLabel, content, rawCon
       <Text style={styles.label}>Download generated content</Text>
       <View style={styles.row}>
         <TouchableOpacity
-          style={[styles.btn, { borderColor: `${accent}55` }]}
+          style={[styles.btn, { borderColor: `${accent}40` }]}
           onPress={() =>
             run('doc', () => exportTeacherToolDocument(toolType, toolLabel, content, rawContent))
           }
@@ -51,13 +52,13 @@ export default function AiToolDownloadBar({ toolType, toolLabel, content, rawCon
           {busy === 'doc' ? (
             <ActivityIndicator size="small" color={accent} />
           ) : (
-            <Ionicons name="document-text-outline" size={18} color={accent} />
+            <Ionicons name="document-text-outline" size={17} color={accent} />
           )}
           <Text style={[styles.btnText, { color: accent }]}>PDF / Print</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.btn, { borderColor: `${accent}55` }]}
+          style={[styles.btn, { borderColor: `${accent}40` }]}
           onPress={() =>
             run('csv', () => exportTeacherToolCsvDownload(toolType, toolLabel, content, rawContent))
           }
@@ -69,7 +70,7 @@ export default function AiToolDownloadBar({ toolType, toolLabel, content, rawCon
           {busy === 'csv' ? (
             <ActivityIndicator size="small" color={accent} />
           ) : (
-            <Ionicons name="grid-outline" size={18} color={accent} />
+            <Ionicons name="grid-outline" size={17} color={accent} />
           )}
           <Text style={[styles.btnText, { color: accent }]}>CSV</Text>
         </TouchableOpacity>
@@ -80,18 +81,19 @@ export default function AiToolDownloadBar({ toolType, toolLabel, content, rawCon
 
 const styles = StyleSheet.create({
   wrap: {
-    marginBottom: AI_SPACING.sm,
+    marginBottom: 2,
     padding: AI_SPACING.md,
-    borderRadius: AI_RADIUS.md,
-    borderWidth: 1,
-    borderColor: AI.border,
-    backgroundColor: AI.surfaceMuted,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: GLASS_ROW.border,
+    backgroundColor: GLASS_ROW.fillSoft,
   },
   label: {
     ...AI_TYPE.caption,
     color: AI.textSecondary,
     marginBottom: AI_SPACING.sm,
     textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   row: {
     flexDirection: 'row',
@@ -99,17 +101,18 @@ const styles = StyleSheet.create({
   },
   btn: {
     flex: 1,
-    minHeight: 44,
-    borderRadius: AI_RADIUS.sm,
-    borderWidth: 1,
-    backgroundColor: AI.surface,
+    minHeight: 40,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    backgroundColor: GLASS_ROW.fillStrong,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingHorizontal: 10,
+    gap: 7,
+    paddingHorizontal: 12,
   },
   btnText: {
     ...AI_TYPE.caption,
+    fontWeight: '700',
   },
 });

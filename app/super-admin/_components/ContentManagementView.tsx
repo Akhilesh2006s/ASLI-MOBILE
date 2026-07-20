@@ -195,17 +195,17 @@ export default function ContentManagementView() {
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
-          <Ionicons name="search" size={20} color="#9ca3af" style={styles.searchIcon} />
+          <Ionicons name="search" size={20} color="#5B6779" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search content by title, description, or subject..."
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor="#5B6779"
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
-              <Ionicons name="close-circle" size={20} color="#9ca3af" />
+              <Ionicons name="close-circle" size={20} color="#5B6779" />
             </TouchableOpacity>
           )}
         </View>
@@ -259,13 +259,13 @@ export default function ContentManagementView() {
         </View>
       ) : contents.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="cloud-upload" size={64} color="#d1d5db" />
+          <Ionicons name="cloud-upload" size={64} color="#5B6779" />
           <Text style={styles.emptyText}>No content yet</Text>
           <Text style={styles.emptySubtext}>Start uploading exclusive content for {BOARDS.find(b => b.value === selectedBoard)?.label} students</Text>
         </View>
       ) : filteredContents.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="cloud-upload" size={64} color="#d1d5db" />
+          <Ionicons name="cloud-upload" size={64} color="#5B6779" />
           <Text style={styles.emptyText}>No content matches filters</Text>
           <Text style={styles.emptySubtext}>Try adjusting your filter criteria</Text>
         </View>
@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#e5e7eb',
@@ -489,7 +489,7 @@ const styles = StyleSheet.create({
   },
   countBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
@@ -581,7 +581,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -629,7 +629,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '90%',

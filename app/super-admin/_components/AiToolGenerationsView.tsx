@@ -35,6 +35,7 @@ import {
 } from '../../../src/lib/ai-tool-generations';
 import { extractMcqQuestionsFromRecord, isMcqTool } from '../../../src/lib/mcq-record-utils';
 import AiToolRecordPreview from '../../../src/components/ai-tools/AiToolRecordPreview';
+import { GlassPanel } from '../../../src/components/ui';
 
 type BoardPickerProps = {
   visible: boolean;
@@ -227,7 +228,7 @@ function RecordsSection({ parents }: { parents: Record<string, string> }) {
       : [];
 
   return (
-    <View style={styles.recordsCard}>
+    <GlassPanel style={styles.recordsCard} radius={12} tone="medium">
       <View style={styles.recordsHeader}>
         <View style={styles.recordsHeaderLeft}>
           <View style={styles.recordsIcon}>
@@ -264,7 +265,7 @@ function RecordsSection({ parents }: { parents: Record<string, string> }) {
           items.map((row) => {
             const mcqQs = isMcqTool(parents.toolName) ? extractMcqQuestionsFromRecord(row) : [];
             return (
-              <View key={row._id} style={styles.recordItem}>
+              <GlassPanel key={row._id} style={styles.recordItem} radius={10} tone="strong">
                 <View style={styles.recordMeta}>
                   <Text style={styles.recordDate}>
                     {row.createdAt ? new Date(row.createdAt).toLocaleString() : '—'}
@@ -295,7 +296,12 @@ function RecordsSection({ parents }: { parents: Record<string, string> }) {
                 </View>
                 {mcqQs.length > 0 ? (
                   mcqQs.map((q, qIdx) => (
-                    <View key={`${row._id}-mcq-${qIdx}`} style={styles.mcqCard}>
+                    <GlassPanel
+                      key={`${row._id}-mcq-${qIdx}`}
+                      style={styles.mcqCard}
+                      radius={10}
+                      tone="strong"
+                    >
                       <View style={styles.mcqHeader}>
                         <Text style={styles.mcqQuestion}>
                           Q{qIdx + 1}. {q.question}
@@ -303,6 +309,8 @@ function RecordsSection({ parents }: { parents: Record<string, string> }) {
                         <Pressable
                           onPress={() => removeQuestionFromRecord(row, qIdx)}
                           disabled={deletingQuestionKey === `${row._id}:${qIdx}`}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Delete question ${qIdx + 1}`}
                         >
                           <Ionicons name="trash-outline" size={16} color="#dc2626" />
                         </Pressable>
@@ -318,37 +326,50 @@ function RecordsSection({ parents }: { parents: Record<string, string> }) {
                       {q.explanation ? (
                         <Text style={styles.mcqExplanation}>Explanation: {q.explanation}</Text>
                       ) : null}
-                    </View>
+                    </GlassPanel>
                   ))
                 ) : (
                   <Text style={styles.recordPreview} numberOfLines={4}>
                     {toEditablePlainText(String(row.content || row.preview || ''))}
                   </Text>
                 )}
-              </View>
+              </GlassPanel>
             );
           })
         )}
 
         {total > 20 ? (
           <View style={styles.pagination}>
-            <Pressable
+            {/* Padding moved to the inner Pressable so the tap target stays the full button. */}
+            <GlassPanel
               style={[styles.pageBtn, page <= 1 && styles.pageBtnDisabled]}
-              disabled={page <= 1}
-              onPress={() => setPage((p) => Math.max(1, p - 1))}
+              radius={10}
+              tone="medium"
             >
-              <Text style={styles.pageBtnText}>Previous</Text>
-            </Pressable>
+              <Pressable
+                style={styles.pageBtnInner}
+                disabled={page <= 1}
+                onPress={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                <Text style={styles.pageBtnText}>Previous</Text>
+              </Pressable>
+            </GlassPanel>
             <Text style={styles.pageInfo}>
               Page {page} · {total} total
             </Text>
-            <Pressable
+            <GlassPanel
               style={[styles.pageBtn, page * 20 >= total && styles.pageBtnDisabled]}
-              disabled={page * 20 >= total}
-              onPress={() => setPage((p) => p + 1)}
+              radius={10}
+              tone="medium"
             >
-              <Text style={styles.pageBtnText}>Next</Text>
-            </Pressable>
+              <Pressable
+                style={styles.pageBtnInner}
+                disabled={page * 20 >= total}
+                onPress={() => setPage((p) => p + 1)}
+              >
+                <Text style={styles.pageBtnText}>Next</Text>
+              </Pressable>
+            </GlassPanel>
           </View>
         ) : null}
       </View>
@@ -357,7 +378,11 @@ function RecordsSection({ parents }: { parents: Record<string, string> }) {
         <View style={styles.fullModal}>
           <View style={styles.fullModalHeader}>
             <Text style={styles.fullModalTitle}>Generated content</Text>
-            <Pressable onPress={() => setViewRow(null)}>
+            <Pressable
+              onPress={() => setViewRow(null)}
+              accessibilityRole="button"
+              accessibilityLabel="Close generated content"
+            >
               <Ionicons name="close" size={24} color="#374151" />
             </Pressable>
           </View>
@@ -366,7 +391,7 @@ function RecordsSection({ parents }: { parents: Record<string, string> }) {
               <ActivityIndicator size="large" color="#f97316" style={{ marginTop: 40 }} />
             ) : viewMcqQs.length > 0 ? (
               viewMcqQs.map((q, idx) => (
-                <View key={`dlg-q-${idx}`} style={styles.mcqCard}>
+                <View key={`dlg-q-${idx}`} style={[styles.mcqCard, styles.mcqCardOpaque]}>
                   <Text style={styles.mcqQuestion}>
                     Q{idx + 1}. {q.question}
                   </Text>
@@ -396,7 +421,11 @@ function RecordsSection({ parents }: { parents: Record<string, string> }) {
         <View style={styles.fullModal}>
           <View style={styles.fullModalHeader}>
             <Text style={styles.fullModalTitle}>Edit content</Text>
-            <Pressable onPress={() => setEditRow(null)}>
+            <Pressable
+              onPress={() => setEditRow(null)}
+              accessibilityRole="button"
+              accessibilityLabel="Close editor"
+            >
               <Ionicons name="close" size={24} color="#374151" />
             </Pressable>
           </View>
@@ -420,7 +449,7 @@ function RecordsSection({ parents }: { parents: Record<string, string> }) {
           </ScrollView>
         </View>
       </Modal>
-    </View>
+    </GlassPanel>
   );
 }
 
@@ -466,7 +495,7 @@ function SubtopicLeafRow({
           <View style={styles.countPill}>
             <Text style={styles.countPillText}>{item.count}</Text>
           </View>
-          <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#9ca3af" />
+          <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#5B6779" />
         </View>
       </Pressable>
       {open ? (
@@ -517,7 +546,7 @@ function TopicRow({
   }, [open, subs, toolName, classLabel, subject, topic, board]);
 
   return (
-    <View style={styles.topicCard}>
+    <GlassPanel style={styles.topicCard} radius={10} tone="medium">
       <Pressable style={styles.topicTrigger} onPress={() => setOpen((v) => !v)}>
         <Ionicons name="bookmark-outline" size={16} color="#0d9488" />
         <Text style={styles.topicTitle} numberOfLines={1}>
@@ -526,7 +555,7 @@ function TopicRow({
         <View style={styles.levelBadge}>
           <Text style={styles.levelBadgeText}>Topic</Text>
         </View>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#9ca3af" />
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#5B6779" />
       </Pressable>
       {open ? (
         <View style={styles.topicBody}>
@@ -549,7 +578,7 @@ function TopicRow({
           ))}
         </View>
       ) : null}
-    </View>
+    </GlassPanel>
   );
 }
 
@@ -589,7 +618,7 @@ function SubjectRow({
   }, [open, topics, toolName, classLabel, subject, board]);
 
   return (
-    <View style={styles.subjectCard}>
+    <GlassPanel style={styles.subjectCard} radius={10} tone="medium">
       <Pressable style={styles.subjectTrigger} onPress={() => setOpen((v) => !v)}>
         <Ionicons name="book-outline" size={16} color="#6366f1" />
         <Text style={styles.subjectTitle} numberOfLines={1}>
@@ -598,7 +627,7 @@ function SubjectRow({
         <View style={styles.levelBadge}>
           <Text style={styles.levelBadgeText}>Subject</Text>
         </View>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#9ca3af" />
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#5B6779" />
       </Pressable>
       {open ? (
         <View style={styles.subjectBody}>
@@ -621,7 +650,7 @@ function SubjectRow({
           ))}
         </View>
       ) : null}
-    </View>
+    </GlassPanel>
   );
 }
 
@@ -653,7 +682,7 @@ function ClassBlock({
   }, [open, subjects, toolName, classLabel, board]);
 
   return (
-    <View style={styles.classBlock}>
+    <GlassPanel style={styles.classBlock} radius={12} tone="medium">
       <Pressable style={styles.classTrigger} onPress={() => setOpen((v) => !v)}>
         <View style={styles.classBadge}>
           <Text style={styles.classBadgeText}>Class</Text>
@@ -661,7 +690,7 @@ function ClassBlock({
         <Text style={styles.classTitle} numberOfLines={1}>
           {classTitle}
         </Text>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#9ca3af" />
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#5B6779" />
       </Pressable>
       {open ? (
         <View style={styles.classBody}>
@@ -683,7 +712,7 @@ function ClassBlock({
           ))}
         </View>
       ) : null}
-    </View>
+    </GlassPanel>
   );
 }
 
@@ -707,11 +736,14 @@ function ClassSection({ toolName, board }: { toolName: string; board?: string })
 
   return (
     <View style={styles.classSection}>
-      <Pressable style={styles.classSectionTrigger} onPress={() => setOpen((v) => !v)}>
-        <Ionicons name="school-outline" size={18} color="#475569" />
-        <Text style={styles.classSectionTitle}>Classes in this tool</Text>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#9ca3af" />
-      </Pressable>
+      {/* Padding moved to the inner Pressable so the tap target stays the full row. */}
+      <GlassPanel style={styles.classSectionTrigger} radius={10} tone="medium">
+        <Pressable style={styles.classSectionTriggerInner} onPress={() => setOpen((v) => !v)}>
+          <Ionicons name="school-outline" size={18} color="#475569" />
+          <Text style={styles.classSectionTitle}>Classes in this tool</Text>
+          <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#5B6779" />
+        </Pressable>
+      </GlassPanel>
       {open ? (
         <View style={styles.classSectionBody}>
           {loading ? (
@@ -747,7 +779,7 @@ function ToolSection({
   const title = displayName || humanizeToolId(tool.value);
 
   return (
-    <View style={styles.toolCard}>
+    <GlassPanel style={styles.toolCard} radius={14} tone="medium">
       <Pressable style={styles.toolTrigger} onPress={() => setOpen((v) => !v)}>
         <View style={styles.toolIcon}>
           <Ionicons name="sparkles" size={16} color="#fff" />
@@ -772,7 +804,7 @@ function ToolSection({
           <ClassSection toolName={tool.value} board={board} />
         </View>
       ) : null}
-    </View>
+    </GlassPanel>
   );
 }
 
@@ -833,75 +865,78 @@ export default function AiToolGenerationsView() {
       style={styles.container}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#f97316" />}
     >
-      <View style={styles.hero}>
+      {/* Padding lives on heroInner so the full-bleed accent bar is not inset by it. */}
+      <GlassPanel style={styles.hero} radius={16} tone="medium">
         <View style={styles.heroAccent} />
-        <View style={styles.heroBadge}>
-          <Ionicons name="layers-outline" size={14} color="#c2410c" />
-          <Text style={styles.heroBadgeText}>Super Admin · Saved AI output</Text>
-        </View>
-        <Text style={styles.heroTitle}>AI tool data</Text>
-        <Text style={styles.heroDesc}>
-          Browse generations from teacher tools. Open each tool to drill down; use Export on a subtopic to
-          share that slice.
-        </Text>
+        <View style={styles.heroInner}>
+          <View style={styles.heroBadge}>
+            <Ionicons name="layers-outline" size={14} color="#c2410c" />
+            <Text style={styles.heroBadgeText}>Super Admin · Saved AI output</Text>
+          </View>
+          <Text style={styles.heroTitle}>AI tool data</Text>
+          <Text style={styles.heroDesc}>
+            Browse generations from teacher tools. Open each tool to drill down; use Export on a subtopic to
+            share that slice.
+          </Text>
 
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: '#f97316' }]}>
-              <Ionicons name="documents-outline" size={20} color="#fff" />
-            </View>
-            <Text style={styles.statLabel}>Total generations</Text>
-            <Text style={styles.statHint}>Each run may include many questions or sections.</Text>
-            {loading ? (
-              <ActivityIndicator color="#f97316" style={{ marginTop: 8 }} />
-            ) : (
-              <Text style={styles.statValue}>{metaTotal ?? '—'}</Text>
-            )}
+          <View style={styles.statsGrid}>
+            <GlassPanel style={styles.statCard} radius={14} tone="medium">
+              <View style={[styles.statIcon, { backgroundColor: '#f97316' }]}>
+                <Ionicons name="documents-outline" size={20} color="#fff" />
+              </View>
+              <Text style={styles.statLabel}>Total generations</Text>
+              <Text style={styles.statHint}>Each run may include many questions or sections.</Text>
+              {loading ? (
+                <ActivityIndicator color="#f97316" style={{ marginTop: 8 }} />
+              ) : (
+                <Text style={styles.statValue}>{metaTotal ?? '—'}</Text>
+              )}
+            </GlassPanel>
+
+            <GlassPanel style={styles.statCard} radius={14} tone="medium">
+              <View style={[styles.statIcon, { backgroundColor: '#1e293b' }]}>
+                <Ionicons name="construct-outline" size={20} color="#fff" />
+              </View>
+              <Text style={styles.statLabel}>Tools with data</Text>
+              <Text style={styles.statHint}>Distinct teacher tools with saved generations</Text>
+              {loading ? (
+                <ActivityIndicator color="#f97316" style={{ marginTop: 8 }} />
+              ) : (
+                <Text style={styles.statValue}>{sortedTools.length}</Text>
+              )}
+            </GlassPanel>
+
+            <GlassPanel style={styles.statCard} radius={14} tone="medium">
+              <View style={[styles.statIcon, { backgroundColor: '#4f46e5' }]}>
+                <Ionicons name="book-outline" size={20} color="#fff" />
+              </View>
+              <Text style={styles.statLabel}>Topics covered</Text>
+              <Text style={styles.statHint}>Distinct topic names across all saved generations</Text>
+              {loading ? (
+                <ActivityIndicator color="#f97316" style={{ marginTop: 8 }} />
+              ) : (
+                <Text style={styles.statValue}>{metaTopicsCount ?? '—'}</Text>
+              )}
+            </GlassPanel>
           </View>
 
-          <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: '#1e293b' }]}>
-              <Ionicons name="construct-outline" size={20} color="#fff" />
-            </View>
-            <Text style={styles.statLabel}>Tools with data</Text>
-            <Text style={styles.statHint}>Distinct teacher tools with saved generations</Text>
-            {loading ? (
-              <ActivityIndicator color="#f97316" style={{ marginTop: 8 }} />
-            ) : (
-              <Text style={styles.statValue}>{sortedTools.length}</Text>
-            )}
-          </View>
-
-          <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: '#4f46e5' }]}>
-              <Ionicons name="book-outline" size={20} color="#fff" />
-            </View>
-            <Text style={styles.statLabel}>Topics covered</Text>
-            <Text style={styles.statHint}>Distinct topic names across all saved generations</Text>
-            {loading ? (
-              <ActivityIndicator color="#f97316" style={{ marginTop: 8 }} />
-            ) : (
-              <Text style={styles.statValue}>{metaTopicsCount ?? '—'}</Text>
-            )}
-          </View>
-        </View>
-
-        <View style={styles.browsePath}>
-          <Text style={styles.browsePathLabel}>Browse path</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.browseSteps}>
-              {BROWSE_STEPS.map((step, i) => (
-                <View key={step} style={styles.browseStepRow}>
-                  {i > 0 ? <Ionicons name="chevron-forward" size={12} color="#cbd5e1" /> : null}
-                  <View style={styles.stepBadge}>
-                    <Text style={styles.stepBadgeText}>{step}</Text>
+          <View style={styles.browsePath}>
+            <Text style={styles.browsePathLabel}>Browse path</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.browseSteps}>
+                {BROWSE_STEPS.map((step, i) => (
+                  <View key={step} style={styles.browseStepRow}>
+                    {i > 0 ? <Ionicons name="chevron-forward" size={12} color="#5B6779" /> : null}
+                    <View style={styles.stepBadge}>
+                      <Text style={styles.stepBadgeText}>{step}</Text>
+                    </View>
                   </View>
-                </View>
-              ))}
-            </View>
-          </ScrollView>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
         </View>
-      </View>
+      </GlassPanel>
 
       <View style={styles.sectionHeader}>
         <View>
@@ -910,49 +945,54 @@ export default function AiToolGenerationsView() {
             Records Board: <Text style={styles.sectionSubtitleBold}>{board || 'All Boards'}</Text>
           </Text>
         </View>
-        <Pressable style={styles.boardBtn} onPress={() => setBoardPickerOpen(true)}>
-          <Text style={styles.boardBtnText} numberOfLines={1}>
-            {board || 'All boards'}
-          </Text>
-          <Ionicons name="chevron-down" size={14} color="#475569" />
-        </Pressable>
-      </View>
-
-      <View style={styles.toolsCard}>
-        {loading ? (
-          <View style={styles.centerBox}>
-            <ActivityIndicator size="large" color="#f97316" />
-            <Text style={styles.mutedText}>Loading hierarchy…</Text>
-          </View>
-        ) : null}
-
-        {!loading && error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        ) : null}
-
-        {!loading && !error && sortedTools.length === 0 ? (
-          <View style={styles.emptyBox}>
-            <Ionicons name="layers-outline" size={40} color="#cbd5e1" />
-            <Text style={styles.emptyTitle}>No saved generations yet</Text>
-            <Text style={styles.emptyDesc}>
-              When teachers generate content from AI tools, new runs are stored here automatically.
+        {/* Padding moved to the inner Pressable so the tap target stays the full button. */}
+        <GlassPanel style={styles.boardBtn} radius={10} tone="medium">
+          <Pressable style={styles.boardBtnInner} onPress={() => setBoardPickerOpen(true)}>
+            <Text style={styles.boardBtnText} numberOfLines={1}>
+              {board || 'All boards'}
             </Text>
-          </View>
-        ) : null}
-
-        {!loading &&
-          !error &&
-          sortedTools.map((t) => (
-            <ToolSection
-              key={t.value}
-              tool={t}
-              displayName={TOOL_LABELS[t.value]}
-              board={board}
-            />
-          ))}
+            <Ionicons name="chevron-down" size={14} color="#475569" />
+          </Pressable>
+        </GlassPanel>
       </View>
+
+      <GlassPanel style={styles.toolsCard} radius={14} tone="medium">
+        <View style={styles.toolsCardInner}>
+          {loading ? (
+            <View style={styles.centerBox}>
+              <ActivityIndicator size="large" color="#f97316" />
+              <Text style={styles.mutedText}>Loading hierarchy…</Text>
+            </View>
+          ) : null}
+
+          {!loading && error ? (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
+
+          {!loading && !error && sortedTools.length === 0 ? (
+            <View style={styles.emptyBox}>
+              <Ionicons name="layers-outline" size={40} color="#5B6779" />
+              <Text style={styles.emptyTitle}>No saved generations yet</Text>
+              <Text style={styles.emptyDesc}>
+                When teachers generate content from AI tools, new runs are stored here automatically.
+              </Text>
+            </View>
+          ) : null}
+
+          {!loading &&
+            !error &&
+            sortedTools.map((t) => (
+              <ToolSection
+                key={t.value}
+                tool={t}
+                displayName={TOOL_LABELS[t.value]}
+                board={board}
+              />
+            ))}
+        </View>
+      </GlassPanel>
 
       <BoardPicker
         visible={boardPickerOpen}
@@ -968,16 +1008,16 @@ export default function AiToolGenerationsView() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc' },
+  // Transparent: the shared app background artwork shows through.
+  container: { flex: 1, backgroundColor: 'transparent' },
   hero: {
     margin: 16,
-    backgroundColor: '#fff',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#e2e8f0',
     overflow: 'hidden',
-    padding: 16,
   },
+  heroInner: { padding: 16 },
   heroAccent: {
     position: 'absolute',
     top: 0,
@@ -991,7 +1031,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     alignSelf: 'flex-start',
-    backgroundColor: '#fff7ed',
+    backgroundColor: 'rgba(255,247,237,0.55)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
@@ -1008,7 +1048,6 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     borderRadius: 14,
     padding: 14,
-    backgroundColor: '#fff',
   },
   statIcon: {
     width: 40,
@@ -1025,13 +1064,13 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  statHint: { fontSize: 11, color: '#94a3b8', marginTop: 4, lineHeight: 16 },
+  statHint: { fontSize: 11, color: '#5B6779', marginTop: 4, lineHeight: 16 },
   statValue: { fontSize: 32, fontWeight: '800', color: '#0f172a', marginTop: 6 },
   browsePath: { marginTop: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
   browsePathLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#94a3b8',
+    color: '#5B6779',
     textTransform: 'uppercase',
     marginBottom: 8,
   },
@@ -1064,27 +1103,27 @@ const styles = StyleSheet.create({
   sectionSubtitle: { fontSize: 12, color: '#64748b', marginTop: 4 },
   sectionSubtitleBold: { fontWeight: '600', color: '#334155' },
   boardBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
     borderWidth: 1,
     borderColor: '#e2e8f0',
     borderRadius: 10,
+    maxWidth: 140,
+  },
+  boardBtnInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: '#fff',
-    maxWidth: 140,
   },
   boardBtnText: { fontSize: 13, color: '#334155', flex: 1 },
   toolsCard: {
     marginHorizontal: 16,
-    backgroundColor: '#fff',
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#e2e8f0',
     padding: 12,
-    gap: 12,
   },
+  toolsCardInner: { gap: 12 },
   centerBox: { alignItems: 'center', paddingVertical: 40, gap: 8 },
   mutedText: { fontSize: 13, color: '#64748b' },
   errorBox: {
@@ -1103,7 +1142,6 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     borderRadius: 14,
     overflow: 'hidden',
-    backgroundColor: '#fff',
   },
   toolTrigger: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, padding: 14 },
   toolIcon: {
@@ -1132,13 +1170,14 @@ const styles = StyleSheet.create({
   },
   classSection: { gap: 8 },
   classSectionTrigger: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#e2e8f0',
     borderRadius: 10,
+  },
+  classSectionTriggerInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     padding: 10,
   },
   classSectionTitle: { flex: 1, fontSize: 13, fontWeight: '600', color: '#334155' },
@@ -1148,7 +1187,6 @@ const styles = StyleSheet.create({
     borderColor: '#fed7aa',
     borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: '#fff',
   },
   classTrigger: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12 },
   classBadge: { backgroundColor: '#1e293b', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
@@ -1160,7 +1198,6 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     borderRadius: 10,
     overflow: 'hidden',
-    backgroundColor: '#fff',
   },
   subjectTrigger: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10 },
   subjectTitle: { flex: 1, fontSize: 13, fontWeight: '600', color: '#1e293b' },
@@ -1178,7 +1215,6 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     borderRadius: 10,
     overflow: 'hidden',
-    backgroundColor: '#fff',
   },
   topicTrigger: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10 },
   topicTitle: { flex: 1, fontSize: 13, fontWeight: '600', color: '#1e293b' },
@@ -1211,7 +1247,6 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: '#fff',
   },
   recordsHeader: {
     flexDirection: 'row',
@@ -1259,7 +1294,6 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     borderRadius: 10,
     padding: 12,
-    backgroundColor: '#fff',
   },
   recordMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   recordDate: { fontSize: 11, color: '#64748b' },
@@ -1279,7 +1313,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
-    backgroundColor: '#fff7ed',
+    backgroundColor: 'rgba(255,247,237,0.55)',
   },
   actionBtnOrangeText: { fontSize: 11, fontWeight: '600', color: '#c2410c' },
   actionBtnBlue: {
@@ -1316,8 +1350,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 10,
     marginTop: 8,
-    backgroundColor: '#fff',
   },
+  // The same card is reused inside a native Modal, where the app background —
+  // and therefore the glass blur — does not render. Keep that copy opaque.
+  mcqCardOpaque: { backgroundColor: 'rgba(255,255,255,0.48)' },
   mcqHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
   mcqQuestion: { flex: 1, fontSize: 13, fontWeight: '600', color: '#0f172a', lineHeight: 20 },
   mcqOption: { fontSize: 12, color: '#334155', marginTop: 6, lineHeight: 18 },
@@ -1346,14 +1382,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e2e8f0',
     borderRadius: 10,
+  },
+  pageBtnInner: {
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: '#fff',
   },
   pageBtnDisabled: { opacity: 0.4 },
   pageBtnText: { fontSize: 12, color: '#334155', fontWeight: '600' },
   pageInfo: { fontSize: 12, color: '#64748b' },
-  fullModal: { flex: 1, backgroundColor: '#fff' },
+  fullModal: { flex: 1, backgroundColor: 'rgba(255,255,255,0.48)' },
   fullModalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1395,7 +1432,7 @@ const styles = StyleSheet.create({
   saveBtnText: { fontSize: 14, color: '#fff', fontWeight: '700' },
   pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   pickerSheet: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     padding: 16,
@@ -1410,7 +1447,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
   },
-  pickerItemActive: { backgroundColor: '#fff7ed' },
+  pickerItemActive: { backgroundColor: 'rgba(255,247,237,0.55)' },
   pickerItemText: { fontSize: 15, color: '#334155' },
   pickerClose: { marginTop: 12, alignItems: 'center', paddingVertical: 12 },
   pickerCloseText: { fontSize: 15, fontWeight: '600', color: '#64748b' },

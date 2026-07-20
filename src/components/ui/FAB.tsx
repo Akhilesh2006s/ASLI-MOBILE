@@ -10,6 +10,7 @@ type Props = {
   icon?: keyof typeof Ionicons.glyphMap;
   bottom?: number;
   right?: number;
+  accessibilityLabel?: string;
 };
 
 export default function FAB({
@@ -18,10 +19,13 @@ export default function FAB({
   icon = 'add',
   bottom = 80,
   right = 20,
+  accessibilityLabel = 'Add new item',
 }: Props) {
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
       style={({ pressed }) => [styles.wrap, { bottom, right }, pressed && styles.pressed]}
     >
       <LinearGradient colors={[...gradient]} style={styles.btn}>

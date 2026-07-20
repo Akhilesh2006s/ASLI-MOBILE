@@ -159,7 +159,7 @@ export default function AnalyticsView({ onSelectSchool }: AnalyticsViewProps) {
 
           {analytics.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Ionicons name="bar-chart" size={64} color="#d1d5db" />
+              <Ionicons name="bar-chart" size={64} color="#5B6779" />
               <Text style={styles.emptyText}>No admin data available</Text>
             </View>
           ) : (
@@ -425,7 +425,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    color: '#9ca3af',
+    color: '#5B6779',
     marginTop: 16,
     textAlign: 'center',
   },

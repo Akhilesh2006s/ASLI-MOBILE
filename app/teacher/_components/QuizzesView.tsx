@@ -6,6 +6,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import teacherService from '../../../src/services/api/teacherService';
 import { TeacherShimmer } from '../../../src/components/teacher';
+import { GlassPanel } from '../../../src/components/ui';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
 
 export default function QuizzesView() {
@@ -48,19 +49,21 @@ export default function QuizzesView() {
       </Pressable>
 
       {quizzes.map((quiz, index) => (
-        <Animated.View key={quiz._id || quiz.id} entering={FadeInDown.duration(350).delay(Math.min(index * 60, 480))} style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.title}>{quiz.title || 'Untitled Quiz'}</Text>
-            <View style={[styles.badge, quiz.isActive !== false && styles.badgeActive]}>
-              <Text style={styles.badgeText}>{quiz.isActive !== false ? 'Active' : 'Inactive'}</Text>
+        <Animated.View key={quiz._id || quiz.id} entering={FadeInDown.duration(350).delay(Math.min(index * 60, 480))}>
+          <GlassPanel style={styles.card} radius={TEACHER_RADIUS.lg} tone="medium">
+            <View style={styles.cardHeader}>
+              <Text style={styles.title}>{quiz.title || 'Untitled Quiz'}</Text>
+              <View style={[styles.badge, quiz.isActive !== false && styles.badgeActive]}>
+                <Text style={styles.badgeText}>{quiz.isActive !== false ? 'Active' : 'Inactive'}</Text>
+              </View>
             </View>
-          </View>
-          <Text style={styles.meta}>
-            {quiz.subject || 'General'} · {quiz.questions?.length || quiz.questionCount || 0} questions
-          </Text>
-          {quiz.averageScore != null ? (
-            <Text style={styles.score}>Avg score: {quiz.averageScore}%</Text>
-          ) : null}
+            <Text style={styles.meta}>
+              {quiz.subject || 'General'} · {quiz.questions?.length || quiz.questionCount || 0} questions
+            </Text>
+            {quiz.averageScore != null ? (
+              <Text style={styles.score}>Avg score: {quiz.averageScore}%</Text>
+            ) : null}
+          </GlassPanel>
         </Animated.View>
       ))}
 
@@ -76,7 +79,8 @@ export default function QuizzesView() {
 }
 
 const styles = StyleSheet.create({
-  wrap: { paddingHorizontal: TEACHER_SPACING.lg, paddingBottom: 120, backgroundColor: TEACHER.bg },
+  // Transparent so AppBackground's artwork shows through.
+  wrap: { paddingHorizontal: TEACHER_SPACING.lg, paddingBottom: 120, backgroundColor: 'transparent' },
   createBtn: { borderRadius: TEACHER_RADIUS.md, overflow: 'hidden', marginBottom: TEACHER_SPACING.lg },
   createBtnGrad: {
     flexDirection: 'row',
@@ -88,6 +92,7 @@ const styles = StyleSheet.create({
   createBtnText: { color: TEACHER.textOnPrimary, fontWeight: '700' },
   card: {
     ...glassCard,
+    backgroundColor: 'transparent',
     borderRadius: TEACHER_RADIUS.lg,
     padding: TEACHER_SPACING.lg,
     marginBottom: TEACHER_SPACING.sm,

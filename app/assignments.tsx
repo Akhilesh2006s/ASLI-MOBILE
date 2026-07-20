@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import studentService from '../src/services/api/studentService';
+import { GlassPanel } from '../src/components/ui';
 
 type AssignmentItem = {
   _id?: string;
@@ -77,17 +78,22 @@ export default function AssignmentsScreen() {
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         {items.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Ionicons name="document-text-outline" size={26} color="#9ca3af" />
+          <GlassPanel style={styles.emptyCard} radius={14} tone="medium">
+            <Ionicons name="document-text-outline" size={26} color="#5B6779" />
             <Text style={styles.emptyText}>No assignments found.</Text>
-          </View>
+          </GlassPanel>
         ) : (
           items.map((item, index) => {
             const status = item.status || (item.gradedAt ? 'graded' : 'submitted');
             const statusColor = status === 'graded' ? '#16a34a' : '#2563eb';
             const createdAt = item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'N/A';
             return (
-              <View key={item._id || item.homeworkId || `${status}-${index}`} style={styles.assignmentCard}>
+              <GlassPanel
+                key={item._id || item.homeworkId || `${status}-${index}`}
+                style={styles.assignmentCard}
+                radius={14}
+                tone="medium"
+              >
                 <View style={styles.assignmentTop}>
                   <Text style={styles.assignmentTitle}>{item.subject || 'General Assignment'}</Text>
                   <View style={[styles.statusChip, { backgroundColor: `${statusColor}18` }]}>
@@ -103,7 +109,7 @@ export default function AssignmentsScreen() {
                   <Ionicons name="open-outline" size={16} color="#2563eb" />
                   <Text style={styles.actionBtnText}>View Details</Text>
                 </TouchableOpacity>
-              </View>
+              </GlassPanel>
             );
           })
         )}
@@ -113,15 +119,16 @@ export default function AssignmentsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc' },
+  // transparent so the app-wide pastel artwork shows through the glass surfaces
+  container: { flex: 1, backgroundColor: 'transparent' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: 10, color: '#6b7280' },
   header: {
     paddingHorizontal: 14,
     paddingVertical: 12,
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: 'rgba(255,255,255,0.55)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -131,10 +138,9 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { padding: 14, paddingBottom: 36 },
   assignmentCard: {
-    backgroundColor: '#fff',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: 'rgba(255,255,255,0.65)',
     padding: 14,
     marginBottom: 10,
   },
@@ -148,10 +154,9 @@ const styles = StyleSheet.create({
   actionBtn: { marginTop: 10, flexDirection: 'row', alignItems: 'center' },
   actionBtnText: { marginLeft: 6, color: '#2563eb', fontWeight: '600' },
   emptyCard: {
-    backgroundColor: '#fff',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: 'rgba(255,255,255,0.65)',
     padding: 16,
     alignItems: 'center',
   },

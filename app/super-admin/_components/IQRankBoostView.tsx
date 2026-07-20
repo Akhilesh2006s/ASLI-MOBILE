@@ -135,7 +135,8 @@ export default function IQRankBoostView() {
 }
 
 const styles = StyleSheet.create({
-  content: { flex: 1, backgroundColor: '#f9fafb' },
+  // Transparent: the shared app background artwork shows through.
+  content: { flex: 1, backgroundColor: 'transparent' },
   header: { padding: 20, paddingBottom: 12 },
   headerTitle: { fontSize: 28, fontWeight: '800', color: '#111827', marginBottom: 4 },
   headerSubtitle: { fontSize: 16, color: '#6b7280' },
@@ -145,7 +146,7 @@ const styles = StyleSheet.create({
   classCard: { width: '47%', borderRadius: 12, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 6 },
   classCardGradient: { padding: 14 },
   classCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
-  classNumberBadge: { width: 44, height: 44, borderRadius: 10, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' },
+  classNumberBadge: { width: 44, height: 44, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.48)', justifyContent: 'center', alignItems: 'center' },
   classNumberText: { fontSize: 18, fontWeight: '800', color: '#3b82f6' },
   classCardTitle: { fontSize: 16, fontWeight: '700', color: '#fff' },
   classCardDesc: { fontSize: 12, color: 'rgba(255,255,255,0.85)' },
@@ -155,6 +156,6 @@ const styles = StyleSheet.create({
   statBadge: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
   statBadgeText: { fontSize: 12, fontWeight: '700', color: '#fff' },
   statValue: { fontSize: 13, fontWeight: '700', color: '#fff' },
-  addQuestionsBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#fff', borderRadius: 10, paddingVertical: 12 },
+  addQuestionsBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.48)', borderRadius: 10, paddingVertical: 12 },
   addQuestionsText: { color: '#2563eb', fontWeight: '700', fontSize: 14 },
 });

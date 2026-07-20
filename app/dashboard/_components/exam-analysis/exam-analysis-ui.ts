@@ -19,8 +19,8 @@ export const ANALYSIS = {
   accent: '#3B82F6',
   accentSoft: '#EFF6FF',
   accentBorder: '#BFDBFE',
-  surface: '#FFFFFF',
-  canvas: '#F8FAFC',
+  surface: 'rgba(255,255,255,0.48)',
+  canvas: 'transparent',
   correct: '#34D399',
   correctSoft: '#ECFDF5',
   wrong: '#F87171',
@@ -43,7 +43,8 @@ export const TAB_META = {
 export const ANALYSIS_TAB_ORDER = Object.keys(TAB_META) as (keyof typeof TAB_META)[];
 
 export const analysisStyles = StyleSheet.create({
-  canvas: { flex: 1, backgroundColor: ANALYSIS.canvas },
+  // Transparent so the app background artwork shows through.
+  canvas: { flex: 1, backgroundColor: 'transparent' },
   header: {
     backgroundColor: ANALYSIS.surface,
     borderBottomLeftRadius: RADIUS.xl,
@@ -183,17 +184,17 @@ export const analysisStyles = StyleSheet.create({
     borderColor: ANALYSIS.accentBorder,
     ...SHADOW.md,
   },
+  // Box props only — `card` is passed to GlassPanel, so the child spacing that
+  // used to live here now sits on `cardInner`.
   card: {
     position: 'relative',
-    overflow: 'visible',
-    backgroundColor: ANALYSIS.surface,
     borderRadius: RADIUS.lg,
     padding: SPACING.lg,
-    gap: SPACING.md,
     borderWidth: 1,
     borderColor: COLORS.border,
     ...SHADOW.sm,
   },
+  cardInner: { gap: SPACING.md },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
   cardIconWrap: {
     width: 36,

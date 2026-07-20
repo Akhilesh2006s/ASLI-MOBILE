@@ -3,8 +3,10 @@ import { Pressable, StyleSheet, View, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { STUDENT, STUDENT_ANIMATION, STUDENT_RADIUS } from '../../theme/student';
+import { GLASS_RIM, GLASS_SHADOW } from '../../theme/glass';
+import GlassPanel from '../ui/GlassPanel';
 
-type Variant = 'default' | 'elevated' | 'gradient' | 'dark';
+type Variant = 'default' | 'elevated' | 'gradient' | 'dark' | 'glass';
 
 type Props = {
   children: React.ReactNode;
@@ -18,6 +20,10 @@ type Props = {
 
 const PRESS_SPRING = { damping: 18, stiffness: 260 };
 
+/**
+ * Student card wrapper. `variant="glass"` delegates to shared GlassPanel
+ * so student/teacher/admin liquid glass stay aligned.
+ */
 export default function GlassCard({
   children,
   style,
@@ -32,13 +38,39 @@ export default function GlassCard({
     transform: [{ scale: scale.value }],
   }));
 
-  const variantStyle = getVariantStyle(variant);
   const fillsParent =
     !!style &&
     ((style as ViewStyle).height === '100%' ||
       (style as ViewStyle).flex === 1 ||
       (style as ViewStyle).minHeight != null);
 
+  if (variant === 'glass') {
+    const glassInner = (
+      <GlassPanel
+        tone="medium"
+        elevated
+        style={[styles.glassOuter, fillsParent && styles.cardFillParent, style]}
+        contentStyle={{ padding }}
+        onPress={onPress}
+      >
+        {children}
+      </GlassPanel>
+    );
+
+    if (animate) {
+      return (
+        <Animated.View
+          style={[styles.outer, fillsParent && styles.pressableFill]}
+          entering={FadeInDown.duration(STUDENT_ANIMATION.normal).delay(delay)}
+        >
+          {glassInner}
+        </Animated.View>
+      );
+    }
+    return <View style={[styles.outer, fillsParent && styles.pressableFill]}>{glassInner}</View>;
+  }
+
+  const variantStyle = getVariantStyle(variant);
   const cardStyle = [
     styles.card,
     variantStyle,
@@ -75,6 +107,7 @@ export default function GlassCard({
         onPressOut={() => {
           scale.value = withSpring(1, PRESS_SPRING);
         }}
+        accessibilityRole="button"
       >
         <Animated.View style={[animStyle, fillsParent && styles.pressableInnerFill]}>
           {animatedInner}
@@ -101,8 +134,9 @@ function getVariantStyle(variant: Variant): ViewStyle {
   switch (variant) {
     case 'elevated':
       return {
-        backgroundColor: STUDENT.surface,
-        borderWidth: 0,
+        backgroundColor: 'rgba(255,255,255,0.55)',
+        borderWidth: 1,
+        borderColor: GLASS_RIM.border,
         ...STUDENT.shadow.soft,
       };
     case 'gradient':
@@ -119,11 +153,12 @@ function getVariantStyle(variant: Variant): ViewStyle {
         ...STUDENT.shadow.soft,
       };
     default:
+      // Default student cards also lean translucent so home stays glass-first.
       return {
-        backgroundColor: STUDENT.surface,
+        backgroundColor: 'rgba(255,255,255,0.72)',
         borderWidth: 1,
-        borderColor: STUDENT.surfaceBorder,
-        ...STUDENT.shadow.sm,
+        borderColor: GLASS_RIM.border,
+        ...GLASS_SHADOW.sm,
       };
   }
 }
@@ -155,5 +190,8 @@ const styles = StyleSheet.create({
   cardFillParent: {
     flex: 1,
     minHeight: '100%',
+  },
+  glassOuter: {
+    width: '100%',
   },
 });

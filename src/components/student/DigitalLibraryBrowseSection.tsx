@@ -8,13 +8,14 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../services/api/api';
 import { useSchoolProgram } from '../../hooks/useSchoolProgram';
 import { prepareLibraryContents } from '../../lib/dedupe-library-content';
 import { openDigitalLibraryType } from '../../lib/digital-library-nav';
 import PremiumSectionHeader from './PremiumSectionHeader';
 import { STUDENT, STUDENT_RADIUS, SUBJECT_COLORS } from '../../theme/student';
+import { GLASS_ROW } from '../../theme/glass';
+import GlassPanel from '../ui/GlassPanel';
 
 type Props = {
   returnTo?: 'learning';
@@ -32,7 +33,8 @@ export default function DigitalLibraryBrowseSection({
   const [allContent, setAllContent] = useState<{ type?: string }[]>([]);
   const [isLoadingContent, setIsLoadingContent] = useState(true);
 
-  const tileWidth = width < 380 ? '48%' : '31.5%';
+  const cols = width < 380 ? 2 : 3;
+  const tileWidth = cols === 2 ? '48%' : '31.5%';
 
   useEffect(() => {
     let cancelled = false;
@@ -72,7 +74,7 @@ export default function DigitalLibraryBrowseSection({
       {showHeader ? (
         <PremiumSectionHeader
           title="Digital Library"
-          subtitle="Browse by Type"
+          subtitle="Browse by type"
           icon="library-outline"
           accent={STUDENT.accent}
         />
@@ -82,29 +84,38 @@ export default function DigitalLibraryBrowseSection({
         <ActivityIndicator color={STUDENT.primary} style={styles.loader} />
       ) : (
         <View style={styles.grid}>
-          {libraryTiles.map((tile, index) => (
-            <TouchableOpacity
-              key={tile.key}
-              style={[styles.tile, { width: tileWidth }]}
-              activeOpacity={0.85}
-              onPress={() => openDigitalLibraryType(tile.type, returnTo)}
-            >
-              <LinearGradient
-                colors={[STUDENT.accent, SUBJECT_COLORS[index % SUBJECT_COLORS.length]]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.tileIcon}
+          {libraryTiles.map((tile, index) => {
+            const color = SUBJECT_COLORS[index % SUBJECT_COLORS.length];
+            return (
+              <TouchableOpacity
+                key={tile.key}
+                style={[styles.tileWrap, { width: tileWidth }]}
+                activeOpacity={0.88}
+                onPress={() => openDigitalLibraryType(tile.type, returnTo)}
+                accessibilityRole="button"
+                accessibilityLabel={tile.label}
               >
-                <Ionicons
-                  name={tile.icon as keyof typeof Ionicons.glyphMap}
-                  size={22}
-                  color={STUDENT.textOnPrimary}
-                />
-              </LinearGradient>
-              <Text style={[styles.tileLabel, dark && styles.tileLabelDark]}>{tile.label}</Text>
-              <Text style={styles.tileCount}>{libraryCounts[tile.type] ?? 0} files</Text>
-            </TouchableOpacity>
-          ))}
+                <GlassPanel
+                  tone="light"
+                  radius={STUDENT_RADIUS.lg}
+                  style={styles.tile}
+                  contentStyle={styles.tileInner}
+                >
+                  <View style={[styles.tileIcon, { backgroundColor: `${color}20`, borderColor: `${color}40` }]}>
+                    <Ionicons
+                      name={tile.icon as keyof typeof Ionicons.glyphMap}
+                      size={20}
+                      color={color}
+                    />
+                  </View>
+                  <Text style={[styles.tileLabel, dark && styles.tileLabelDark]} numberOfLines={2}>
+                    {tile.label}
+                  </Text>
+                  <Text style={styles.tileCount}>{libraryCounts[tile.type] ?? 0} files</Text>
+                </GlassPanel>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       )}
     </View>
@@ -122,38 +133,46 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: 8,
+    gap: 10,
+  },
+  tileWrap: {
+    marginBottom: 2,
   },
   tile: {
+    width: '100%',
+  },
+  tileInner: {
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
-    borderRadius: STUDENT_RADIUS.inner,
-    backgroundColor: STUDENT.surface,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    marginBottom: 4,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+    gap: 6,
   },
   tileIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: STUDENT_RADIUS.inner,
+    width: 42,
+    height: 42,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    borderWidth: 1,
+    marginBottom: 2,
   },
   tileLabel: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
     color: STUDENT.text,
     textAlign: 'center',
   },
   tileLabelDark: {
-    color: STUDENT.surfaceHover,
+    color: STUDENT.text,
   },
   tileCount: {
-    marginTop: 4,
     fontSize: 11,
+    fontWeight: '600',
     color: STUDENT.textMuted,
+    backgroundColor: GLASS_ROW.fillSoft,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+    overflow: 'hidden',
   },
 });

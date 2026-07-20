@@ -59,7 +59,7 @@ function ResultCard({ r, index }: { r: ResultItem; index: number }) {
   const chartSize = 72;
 
   return (
-    <GlassCard animate delay={index * 60} style={styles.card}>
+    <GlassCard variant="glass" animate delay={index * 60} style={styles.card}>
       <View style={styles.cardInner}>
         <View style={styles.chartWrap}>
           <DonutChart
@@ -176,7 +176,8 @@ export default function StudentResults() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: STUDENT.bg },
+  // Transparent so the app background artwork shows through.
+  container: { flex: 1, backgroundColor: 'transparent' },
   filters: { padding: STUDENT_SPACING.lg, gap: STUDENT_SPACING.md },
   list: { paddingHorizontal: STUDENT_SPACING.lg, paddingBottom: STUDENT_SPACING.xxxl },
   card: { marginBottom: STUDENT_SPACING.md },

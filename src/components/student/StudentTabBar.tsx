@@ -5,6 +5,14 @@ import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { STUDENT, STUDENT_RADIUS } from '../../theme/student';
+import { GLASS_RIM, GLASS_ROW, GLASS_SHADOW } from '../../theme/glass';
+import GlassSurface from '../ui/GlassSurface';
+
+/** Matches shared liquid glass — white-leaning, soft tint. */
+const TAB_BAR_TINT: [string, string] = [
+  'rgba(255,255,255,0.62)',
+  'rgba(255,255,255,0.34)',
+];
 
 export type StudentTab = {
   id: string;
@@ -42,6 +50,7 @@ export default function StudentTabBar({ tabs, activeTab, onTabChange }: Props) {
       ]}
     >
       <View style={[styles.bar, isTablet && styles.barTablet]}>
+        <GlassSurface intensity={60} colors={TAB_BAR_TINT} />
         {tabs.map((tab) => {
           const active = tab.id === activeTab;
           const iconName = active ? tab.activeIcon : tab.icon;
@@ -96,13 +105,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
-    backgroundColor: STUDENT.tabBarBg,
+    backgroundColor: 'transparent',
     borderRadius: STUDENT_RADIUS.xxl,
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: STUDENT.tabBarBorder,
+    borderColor: GLASS_RIM.border,
     paddingVertical: 6,
     paddingHorizontal: 4,
-    ...STUDENT.shadow.lg,
+    ...GLASS_SHADOW.soft,
   },
   barTablet: {
     maxWidth: TAB_BAR_MAX_WIDTH,
@@ -119,7 +129,9 @@ const styles = StyleSheet.create({
     width: ACTIVE_CIRCLE,
     height: ACTIVE_CIRCLE,
     borderRadius: ACTIVE_CIRCLE / 2,
-    backgroundColor: STUDENT.navActiveBg,
+    backgroundColor: GLASS_ROW.fillStrong,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(109,91,208,0.35)',
     alignItems: 'center',
     justifyContent: 'center',
   },

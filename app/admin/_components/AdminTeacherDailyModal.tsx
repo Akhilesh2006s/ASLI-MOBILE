@@ -186,7 +186,11 @@ export default function AdminTeacherDailyModal({
                 </Text>
               </View>
             </View>
-            <AdminScalePressable onPress={onClose}>
+            <AdminScalePressable
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel="Close teacher daily report"
+          >
               <SvgIconClose size={22} color={colors.textMuted} />
             </AdminScalePressable>
           </View>

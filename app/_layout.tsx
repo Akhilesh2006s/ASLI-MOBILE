@@ -4,6 +4,7 @@ import { View, StyleSheet } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { LoadingState } from '../src/components/ui';
+import AppBackground from '../src/components/ui/AppBackground';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { usePathname, useRouter } from 'expo-router';
 import { queryClient } from '../src/lib/queryClient';
@@ -104,6 +105,10 @@ function AuthGate() {
     <Stack
       screenOptions={{
         headerShown: false,
+        // Transparent so the app-wide AppBackground artwork shows through every
+        // route. Screens that need to be opaque (video player, drive viewer)
+        // paint their own background over it.
+        contentStyle: { backgroundColor: 'transparent' },
       }}
     >
       <Stack.Screen name="index" />
@@ -214,7 +219,11 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <AuthGate />
+          {/* Mounted once for the whole app so every route inherits the pastel
+              artwork and glass surfaces always have real colour to blur. */}
+          <AppBackground>
+            <AuthGate />
+          </AppBackground>
           <SplashOverlay />
         </AuthProvider>
       </QueryClientProvider>
@@ -227,7 +236,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: 'transparent',
   },
   splashOverlay: {
     ...StyleSheet.absoluteFillObject,

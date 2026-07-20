@@ -37,9 +37,11 @@ import { stripAiToolGenerationLabel } from './strip-ai-tool-generation-label';
 import {
   bulletListHtml,
   checkListHtml,
+  colorfulQuestionCardHtml,
   conceptGridHtml,
   emptySectionPlaceholderHtml,
   escapeHtml,
+  getAiSectionTheme,
   heroTitleCardHtml,
   numberedMaterialsHtml,
   numberedStepsHtml,
@@ -49,6 +51,7 @@ import {
   termGridHtml,
 } from './ai-tool-html-primitives';
 import { resolveStudentSectionMeta, sectionIconSvg } from './student-section-icons';
+import { AI_SECTION_RAINBOW } from './ai-tool-section-palette';
 
 type Variant = 'student' | 'teacher';
 
@@ -122,7 +125,7 @@ function renderConceptBreakdownHtml(content: string, rawContent: unknown): strin
           'concept-breakdown-explainer',
           4,
           'Real-life and Indian Context Examples',
-          bulletListHtml(concept.realLifeExamples, 'text-emerald-600'),
+          bulletListHtml(concept.realLifeExamples, 'text-violet-600'),
           'border-violet-200/90',
         );
       }
@@ -270,41 +273,42 @@ function renderKeyPointsHtml(content: string, rawContent: unknown): string | nul
 
 function renderPracticeQaQuestionCard(q: PracticeQaQuestion, index: number): string {
   const num = q.questionNumber ?? index + 1;
+  const t = getAiSectionTheme(index);
   const isMcq = q.options.length >= 2;
   const opts =
     isMcq
-      ? `<div class="mt-2 grid gap-1.5 sm:grid-cols-2">${q.options
+      ? `<div class="quest-options">${q.options
           .map((opt) => {
             const label = opt.match(/^([A-D])\)/i)?.[1]?.toUpperCase() || '';
             const text = opt.replace(/^[A-D]\)\s*/i, '').trim();
-            return `<div class="flex gap-2 rounded-md border border-slate-200/80 bg-white px-2.5 py-1.5 text-sm text-slate-700">
-              ${label ? `<span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-800">${label}</span>` : ''}
-              <span class="min-w-0 flex-1 pt-0.5">${escapeHtml(text || opt)}</span>
+            return `<div class="quest-option" style="--quest:${t.hex};--quest-deep:${t.hexDeep}">
+              ${label ? `<span class="quest-option-letter">${label}</span>` : ''}
+              <span class="quest-option-text">${escapeHtml(text || opt)}</span>
             </div>`;
           })
           .join('')}</div>`
       : '';
   const meta = [
-    q.type ? `<span class="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700">${escapeHtml(q.type)}</span>` : '',
-    q.marks != null ? `<span class="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900">${q.marks} mark${q.marks === 1 ? '' : 's'}</span>` : '',
-    q.bloomLevel ? `<span class="inline-flex rounded-full border border-violet-200 px-2 py-0.5 text-[10px] text-violet-700">${escapeHtml(q.bloomLevel)}</span>` : '',
+    q.type ? `<span class="quest-pill">${escapeHtml(q.type)}</span>` : '',
+    q.marks != null ? `<span class="quest-pill quest-pill-amber">${q.marks} mark${q.marks === 1 ? '' : 's'}</span>` : '',
+    q.bloomLevel ? `<span class="quest-pill quest-pill-violet">${escapeHtml(q.bloomLevel)}</span>` : '',
   ]
     .filter(Boolean)
     .join(' ');
   const ans = q.answer
-    ? `<p class="mt-2 rounded-md bg-emerald-50 px-2 py-1 text-xs text-emerald-800"><span class="font-semibold">Answer:</span> ${escapeHtml(q.answer)}</p>`
+    ? `<div class="quest-answer" style="--quest:${t.hex};--quest-deep:${t.hexDeep}"><span class="quest-answer-label">Answer</span><p>${escapeHtml(q.answer)}</p></div>`
     : '';
   const expl = q.explanation
-    ? `<p class="mt-1.5 rounded-md border border-slate-100 bg-slate-50 px-2 py-1.5 text-xs text-slate-600"><span class="font-semibold text-slate-700">Explanation:</span> ${escapeHtml(q.explanation)}</p>`
+    ? `<div class="quest-explain"><span class="quest-explain-label">Why</span><p>${escapeHtml(q.explanation)}</p></div>`
     : '';
-  return `<article class="rounded-lg border border-emerald-100 bg-gradient-to-br from-white to-emerald-50/30 p-3 mb-2">
-    <div class="mb-2 flex flex-wrap items-center gap-2">
-      <span class="inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-md bg-emerald-600 px-1.5 text-[10px] font-bold text-white">Q${num}</span>
-      ${meta}
-    </div>
-    <p class="text-sm font-medium leading-snug text-slate-900">${escapeHtml(q.question || '')}</p>
-    ${opts}${ans}${expl}
-  </article>`;
+
+  return colorfulQuestionCardHtml({
+    index,
+    badge: `Q${num}`,
+    metaHtml: meta,
+    questionHtml: `<p class="quest-q-text">${escapeHtml(q.question || '')}</p>`,
+    extraHtml: `${opts}${ans}${expl}`,
+  });
 }
 
 function renderPracticeQaHtml(content: string, rawContent: unknown): string | null {
@@ -316,31 +320,36 @@ function renderPracticeQaHtml(content: string, rawContent: unknown): string | nu
   let html = heroTitleCardHtml({
     eyebrow: 'Smart Q&A Practice',
     title: practice.title || 'Smart Q&A Practice',
-    theme: 'emerald',
+    theme: 'violet',
     badge: `${countPracticeQaQuestions(practice)} questions`,
     toolType: 'smart-qa-practice-generator',
   });
 
+  let themeCursor = 0;
+  const nextTheme = () => getAiSectionTheme(themeCursor++);
+
   if (practice.learningObjectives.length) {
+    const t = nextTheme();
     html += sectionCardHtml({
       sectionNum: 'Section 2',
       title: 'Learning Objectives',
-      stripe: 'border-teal-300',
-      iconWrap: 'bg-teal-100 text-teal-800',
+      stripe: t.stripe,
+      iconWrap: t.iconWrap,
       iconSvg: '<span>🎯</span>',
-      borderColor: 'border-emerald-200/90',
-      body: bulletListHtml(practice.learningObjectives, 'text-teal-600'),
+      borderColor: t.border,
+      body: bulletListHtml(practice.learningObjectives, t.bullet),
     });
   }
 
   if (practice.instructions) {
+    const t = nextTheme();
     html += sectionCardHtml({
       sectionNum: 'Section 3',
       title: 'Instructions to Students',
-      stripe: 'border-green-300',
-      iconWrap: 'bg-green-100 text-green-800',
+      stripe: t.stripe,
+      iconWrap: t.iconWrap,
       iconSvg: '<span>📋</span>',
-      borderColor: 'border-emerald-200/90',
+      borderColor: t.border,
       body: richTextHtml(practice.instructions),
     });
   }
@@ -352,39 +361,42 @@ function renderPracticeQaHtml(content: string, rawContent: unknown): string | nu
     const body = sec.questions.length
       ? sec.questions.map((q, i) => renderPracticeQaQuestionCard(q, i)).join('')
       : emptySectionPlaceholderHtml('No questions in this section yet.');
+    const t = nextTheme();
 
     html += sectionCardHtml({
       sectionNum,
       title: shortTitle,
-      stripe: 'border-emerald-300',
-      iconWrap: 'bg-emerald-100 text-emerald-800',
+      stripe: t.stripe,
+      iconWrap: t.iconWrap,
       iconSvg: '<span>❓</span>',
-      borderColor: 'border-emerald-200/90',
+      borderColor: t.border,
       body,
     });
   }
 
   if (practice.realLifeQuestions.length) {
+    const t = nextTheme();
     html += sectionCardHtml({
       sectionNum: 'Section 10',
       title: 'Real-life Problem-solving Questions',
-      stripe: 'border-green-400',
-      iconWrap: 'bg-green-100 text-green-900',
+      stripe: t.stripe,
+      iconWrap: t.iconWrap,
       iconSvg: '<span>💡</span>',
-      borderColor: 'border-emerald-200/90',
+      borderColor: t.border,
       body: practice.realLifeQuestions.map((q, i) => renderPracticeQaQuestionCard(q, i)).join(''),
     });
   }
 
   if (practice.answerKey) {
+    const t = nextTheme();
     html += sectionCardHtml({
       sectionNum: 'Section 11',
       title: 'Answer Key with Explanations',
-      stripe: 'border-emerald-400',
-      iconWrap: 'bg-emerald-100 text-emerald-900',
+      stripe: t.stripe,
+      iconWrap: t.iconWrap,
       iconSvg: '<span>🔑</span>',
-      borderColor: 'border-emerald-200/90',
-      body: `<div class="rounded-lg border border-emerald-100 bg-emerald-50/50 px-2.5 py-2">${richTextHtml(practice.answerKey)}</div>`,
+      borderColor: t.border,
+      body: `<div class="rounded-lg border ${t.softBorder} ${t.softBg} px-2.5 py-2">${richTextHtml(practice.answerKey)}</div>`,
     });
   }
 
@@ -434,7 +446,7 @@ function renderQuickAssignmentHtml(content: string, rawContent: unknown): string
       sectionNum: 'Section 4',
       title: 'Concept Questions',
       stripe: 'border-emerald-300',
-      iconWrap: 'bg-emerald-100 text-emerald-800',
+      iconWrap: 'bg-violet-100 text-violet-800',
       iconSvg: '<span>❓</span>',
       body: assignment.conceptQuestions
         .map(
@@ -513,14 +525,10 @@ function renderExamPaperHtml(content: string, rawContent: unknown): string | nul
   return html;
 }
 
-const ACTIVITY_SECTION_THEMES = [
-  { stripe: 'border-indigo-300', iconWrap: 'bg-indigo-100 text-indigo-800' },
-  { stripe: 'border-violet-300', iconWrap: 'bg-violet-100 text-violet-800' },
-  { stripe: 'border-emerald-300', iconWrap: 'bg-emerald-100 text-emerald-800' },
-  { stripe: 'border-sky-300', iconWrap: 'bg-sky-100 text-sky-800' },
-  { stripe: 'border-amber-300', iconWrap: 'bg-amber-100 text-amber-800' },
-  { stripe: 'border-teal-300', iconWrap: 'bg-teal-100 text-teal-800' },
-] as const;
+const ACTIVITY_SECTION_THEMES = AI_SECTION_RAINBOW.map((t) => ({
+  stripe: t.stripe,
+  iconWrap: t.iconWrap,
+}));
 
 type NormalizedActivityRow = {
   title: string;
@@ -685,7 +693,7 @@ function appendActivitySectionCards(
       title: 'Step-by-step procedure',
       iconSvg: '<span>📋</span>',
       hasContent: (a) => a.steps.length > 0,
-      body: (a) => numberedStepsHtml(a.steps, 'bg-emerald-100 text-emerald-800'),
+      body: (a) => numberedStepsHtml(a.steps),
     },
     {
       num: 7,
@@ -758,7 +766,7 @@ function appendActivitySectionCards(
       title: 'Step-by-step Student Procedure',
       iconSvg: '<span>📋</span>',
       hasContent: (a) => a.steps.length > 0,
-      body: (a) => numberedStepsHtml(a.steps, 'bg-emerald-100 text-emerald-800'),
+      body: (a) => numberedStepsHtml(a.steps),
     },
   ];
 
@@ -1124,7 +1132,7 @@ function renderLessonPlannerHtml(content: string, rawContent: unknown): string |
           title: 'Study plan / procedure',
           iconSvg: '<span>📋</span>',
           hasContent: () => (procedure?.length ?? 0) > 0,
-          body: numberedStepsHtml(procedure || [], 'bg-emerald-100 text-emerald-800'),
+          body: numberedStepsHtml(procedure || []),
         },
         {
           num: 7,
@@ -1280,7 +1288,7 @@ function homeworkPracticeQuestionsHtml(
         .map((t) => `<span class="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-900 mr-1">${escapeHtml(String(t))}</span>`)
         .join('');
       const answer = q.answer
-        ? `<p class="mt-2 text-xs text-emerald-700 font-semibold">Answer: ${escapeHtml(q.answer)}</p>`
+        ? `<p class="mt-2 text-xs text-violet-700 font-semibold">Answer: ${escapeHtml(q.answer)}</p>`
         : '';
       const explanation = q.explanation
         ? `<p class="mt-1 text-xs text-slate-600">Explanation: ${escapeHtml(q.explanation)}</p>`
@@ -1386,7 +1394,7 @@ function renderHomeworkHtml(content: string, rawContent: unknown): string | null
       num: 9,
       title: 'Answer Hints / Key Points',
       stripe: 'border-emerald-300',
-      iconWrap: 'bg-emerald-100 text-emerald-800',
+      iconWrap: 'bg-violet-100 text-violet-800',
       icon: '🔑',
       body: homework.answerHints.trim()
         ? richTextHtml(homework.answerHints)
@@ -1420,12 +1428,13 @@ function renderHomeworkHtml(content: string, rawContent: unknown): string | null
 
 function worksheetOptionsHtml(options: string[]): string {
   if (!options.length) return '';
-  return `<div class="mt-2 grid gap-2">${options
+  return `<div class="quest-options">${options
     .map((o, i) => {
       const { letter, text } = formatWorksheetOptionDisplay(o, i);
-      return `<div class="flex items-start gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2">
-        <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-slate-400 text-[10px] font-bold text-slate-600">${escapeHtml(letter)}</span>
-        <span class="text-xs text-slate-800 leading-snug">${escapeHtml(text)}</span>
+      const t = getAiSectionTheme(i);
+      return `<div class="quest-option" style="--quest:${t.hex};--quest-deep:${t.hexDeep}">
+        <span class="quest-option-letter">${escapeHtml(letter)}</span>
+        <span class="quest-option-text">${escapeHtml(text)}</span>
       </div>`;
     })
     .join('')}</div>`;
@@ -1440,45 +1449,55 @@ function renderWorksheetHtml(content: string, rawContent: unknown): string | nul
   let html = heroTitleCardHtml({
     eyebrow: 'Worksheet & MCQ Generator',
     title: worksheetTitle,
-    theme: 'emerald',
+    theme: 'indigo',
     badge: 'Teacher View',
     toolType: 'worksheet-mcq-generator',
   });
 
-  html += sectionCardHtml({
-    sectionNum: 'Section 2',
-    title: 'Learning Objectives',
-    stripe: 'border-emerald-300',
-    iconWrap: 'bg-emerald-100 text-emerald-800',
-    iconSvg: '<span>🎯</span>',
-    borderColor: 'border-emerald-200/80',
-    body: worksheet.learningObjectives.length
-      ? bulletListHtml(worksheet.learningObjectives, 'text-emerald-600')
-      : emptySectionPlaceholderHtml(),
-  });
+  let themeCursor = 0;
+  const nextTheme = () => getAiSectionTheme(themeCursor++);
 
-  html += sectionCardHtml({
-    sectionNum: 'Section 3',
-    title: 'Instructions to Students',
-    stripe: 'border-teal-300',
-    iconWrap: 'bg-teal-100 text-teal-800',
-    iconSvg: '<span>📋</span>',
-    borderColor: 'border-emerald-200/80',
-    body: worksheet.instructions.trim()
-      ? richTextHtml(worksheet.instructions)
-      : emptySectionPlaceholderHtml(),
-  });
+  {
+    const t = nextTheme();
+    html += sectionCardHtml({
+      sectionNum: 'Section 2',
+      title: 'Learning Objectives',
+      stripe: t.stripe,
+      iconWrap: t.iconWrap,
+      iconSvg: '<span>🎯</span>',
+      borderColor: t.border,
+      body: worksheet.learningObjectives.length
+        ? bulletListHtml(worksheet.learningObjectives, t.bullet)
+        : emptySectionPlaceholderHtml(),
+    });
+  }
+
+  {
+    const t = nextTheme();
+    html += sectionCardHtml({
+      sectionNum: 'Section 3',
+      title: 'Instructions to Students',
+      stripe: t.stripe,
+      iconWrap: t.iconWrap,
+      iconSvg: '<span>📋</span>',
+      borderColor: t.border,
+      body: worksheet.instructions.trim()
+        ? richTextHtml(worksheet.instructions)
+        : emptySectionPlaceholderHtml(),
+    });
+  }
 
   const sortedSections = [...(worksheet.sections || [])].sort((a, b) => a.order - b.order);
   for (const sec of sortedSections) {
     const qs = sec.questions || [];
+    const t = nextTheme();
     html += sectionCardHtml({
       sectionNum: `Section ${sec.order}`,
       title: sec.label || 'Questions',
-      stripe: 'border-emerald-300',
-      iconWrap: 'bg-emerald-100 text-emerald-800',
+      stripe: t.stripe,
+      iconWrap: t.iconWrap,
       iconSvg: '<span>✓</span>',
-      borderColor: 'border-emerald-200/80',
+      borderColor: t.border,
       body: qs.length
         ? qs
             .map((q, i) => {
@@ -1487,53 +1506,61 @@ function renderWorksheetHtml(content: string, rawContent: unknown): string | nul
               const explanation = q.explanation
                 ? `<p class="mt-1 text-xs text-slate-600">Explanation: ${escapeHtml(q.explanation)}</p>`
                 : '';
-              return `<div class="mb-3 rounded-lg border border-emerald-100 bg-emerald-50/40 px-3 py-2">
-            <p class="text-xs font-bold text-emerald-800">Q${num}${q.marks ? ` (${q.marks} Marks)` : ''}</p>
-            <p class="text-sm text-slate-800 mt-1">${escapeHtml(q.question || '')}</p>${opts}${explanation}
-          </div>`;
+              return colorfulQuestionCardHtml({
+                index: i,
+                badge: `Q${num}${q.marks ? ` · ${q.marks}M` : ''}`,
+                questionHtml: `<p class="text-sm text-slate-800 mt-0.5">${escapeHtml(q.question || '')}</p>`,
+                extraHtml: `${opts}${explanation}`,
+              });
             })
             .join('')
         : emptySectionPlaceholderHtml(),
     });
   }
 
-  html += sectionCardHtml({
-    sectionNum: 'Section 9',
-    title: 'Answer Key',
-    stripe: 'border-sky-300',
-    iconWrap: 'bg-sky-100 text-sky-800',
-    iconSvg: '<span>🔑</span>',
-    borderColor: 'border-emerald-200/80',
-    body: worksheet.answerKey.trim()
-      ? richTextHtml(worksheet.answerKey)
-      : emptySectionPlaceholderHtml(),
-  });
+  {
+    const t = nextTheme();
+    html += sectionCardHtml({
+      sectionNum: 'Section 9',
+      title: 'Answer Key',
+      stripe: t.stripe,
+      iconWrap: t.iconWrap,
+      iconSvg: '<span>🔑</span>',
+      borderColor: t.border,
+      body: worksheet.answerKey.trim()
+        ? richTextHtml(worksheet.answerKey)
+        : emptySectionPlaceholderHtml(),
+    });
+  }
 
   const tags = [worksheet.bloomLevel, worksheet.difficultyTag].filter(Boolean).join(' — ');
-  html += sectionCardHtml({
-    sectionNum: 'Section 10',
-    title: "Bloom's Level & Difficulty",
-    stripe: 'border-violet-300',
-    iconWrap: 'bg-violet-100 text-violet-800',
-    iconSvg: '<span>🎓</span>',
-    borderColor: 'border-emerald-200/80',
-    body: tags.trim() ? richTextHtml(tags) : emptySectionPlaceholderHtml(),
-  });
+  {
+    const t = nextTheme();
+    html += sectionCardHtml({
+      sectionNum: 'Section 10',
+      title: "Bloom's Level & Difficulty",
+      stripe: t.stripe,
+      iconWrap: t.iconWrap,
+      iconSvg: '<span>🎓</span>',
+      borderColor: t.border,
+      body: tags.trim() ? richTextHtml(tags) : emptySectionPlaceholderHtml(),
+    });
+  }
 
   return html;
 }
 
-function storyQuestionsHtml(questions: StoryQuestion[], badgeClass: string): string {
+function storyQuestionsHtml(questions: StoryQuestion[], _badgeClass: string): string {
   const valid = questions.filter((q) => q.question && q.question !== '[object Object]');
   if (!valid.length) return emptySectionPlaceholderHtml();
   return valid
-    .map(
-      (q, i) =>
-        `<div class="mb-2 flex gap-2 rounded-lg border border-slate-200/80 bg-white/80 px-3 py-2">
-          <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${badgeClass} text-xs font-bold">${i + 1}</span>
-          <p class="text-sm text-slate-800 leading-relaxed">${escapeHtml(q.question)}</p>
-        </div>`,
-    )
+    .map((q, i) => {
+      const t = getAiSectionTheme(i);
+      return `<div class="quest-story-q" style="--quest:${t.hex};--quest-deep:${t.hexDeep}">
+          <span class="quest-story-num">${i + 1}</span>
+          <p>${escapeHtml(q.question)}</p>
+        </div>`;
+    })
     .join('');
 }
 
@@ -1636,9 +1663,9 @@ function renderTeacherStoryPassageSections(story: ParsedStory): string {
       num: 11,
       title: 'Apply and Connect Questions',
       stripe: 'border-emerald-300',
-      iconWrap: 'bg-emerald-100 text-emerald-800',
+      iconWrap: 'bg-violet-100 text-violet-800',
       icon: '❓',
-      body: storyQuestionsHtml(story.applyConnectQuestions, 'bg-emerald-100 text-emerald-800'),
+      body: storyQuestionsHtml(story.applyConnectQuestions, 'bg-violet-100 text-violet-800'),
     },
     {
       num: 12,
@@ -1690,7 +1717,7 @@ function renderTeacherStoryPassageSections(story: ParsedStory): string {
       num: 16,
       title: 'Differentiation Support',
       stripe: 'border-emerald-300',
-      iconWrap: 'bg-emerald-100 text-emerald-800',
+      iconWrap: 'bg-violet-100 text-violet-800',
       icon: '👥',
       body: story.differentiationSupport?.trim()
         ? richTextHtml(story.differentiationSupport)
@@ -1873,7 +1900,7 @@ function renderConceptMasterySections(concept: NormalizedConcept): string {
       num: 9,
       title: 'Key points to remember',
       stripe: 'border-emerald-300',
-      iconWrap: 'bg-emerald-100 text-emerald-800',
+      iconWrap: 'bg-violet-100 text-violet-800',
       body: concept.keyPoints.length
         ? checkListHtml(concept.keyPoints)
         : emptySectionPlaceholderHtml(),

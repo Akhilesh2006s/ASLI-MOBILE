@@ -57,7 +57,7 @@ export default function AdminVidyaChatPanel({ adminId, adminName }: Props) {
 
   if (model.isLoading) {
     return (
-      <View style={[styles.loadingWrap, { backgroundColor: colors.bg }]}>
+      <View style={styles.loadingWrap}>
         <ActivityIndicator size="large" color={colors.primary} />
         <Text style={[styles.loadingText, { color: colors.textMuted }]}>Loading chat...</Text>
       </View>
@@ -66,7 +66,7 @@ export default function AdminVidyaChatPanel({ adminId, adminName }: Props) {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.root, { backgroundColor: colors.bg }]}
+      style={styles.root}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={keyboardVerticalOffset}
     >
@@ -89,6 +89,8 @@ export default function AdminVidyaChatPanel({ adminId, adminName }: Props) {
           ]}
           onPress={model.clearChat}
           disabled={model.isPending || model.isClearingChat || model.displayMessages.length === 0}
+          accessibilityRole="button"
+          accessibilityLabel="Clear chat history"
         >
           <Ionicons name="trash-outline" size={16} color={colors.danger} />
         </AdminScalePressable>
@@ -234,6 +236,8 @@ export default function AdminVidyaChatPanel({ adminId, adminName }: Props) {
           ]}
           onPress={model.handleSendMessage}
           disabled={!model.message.trim() || model.isPending}
+          accessibilityRole="button"
+          accessibilityLabel="Send message"
         >
           {model.isPending ? (
             <ActivityIndicator size="small" color="#fff" />

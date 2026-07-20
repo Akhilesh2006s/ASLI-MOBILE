@@ -132,11 +132,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(251, 146, 60, 0.35)',
     overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255,255,255,0.48)',
   },
   headerRow: {
     flexDirection: 'row',
-    backgroundColor: '#FFF7ED',
+    backgroundColor: 'rgba(255,247,237,0.55)',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(251, 146, 60, 0.25)',
   },
@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   entryPill: {
-    backgroundColor: '#FFF7ED',
+    backgroundColor: 'rgba(255,247,237,0.55)',
     borderWidth: 1,
     borderColor: 'rgba(234, 88, 12, 0.28)',
     borderRadius: 6,

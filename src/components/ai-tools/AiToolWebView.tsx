@@ -4,6 +4,7 @@ import { WebView } from 'react-native-webview';
 import { renderAiToolOutputHtml } from '../../lib/render-ai-tool-output-html';
 import { resolveRichDisplayContent, coalesceAiToolRawContent } from '../../lib/ai-tool-display-content';
 import { AI_TOOL_OUTPUT_STYLES } from '../../lib/ai-tool-output-styles';
+import { AI_TOOL_QUEST_STYLES, wrapQuestExperience } from '../../lib/ai-tool-quest-experience';
 import { renderMarkdown } from '../../lib/render-teacher-markdown';
 import { simpleContentFingerprint } from '../../lib/ai-tool-rotation-label';
 
@@ -75,7 +76,7 @@ export default function AiToolWebView({ toolType, content, rawContent, variant =
     } catch {
       const display = resolveRichDisplayContent(content, mergedRaw);
       const body = renderMarkdown(display.slice(0, 80000));
-      return `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><style>${AI_TOOL_OUTPUT_STYLES}</style></head><body>${body}</body></html>`;
+      return `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><style>${AI_TOOL_OUTPUT_STYLES}${AI_TOOL_QUEST_STYLES}</style></head><body>${wrapQuestExperience(body)}</body></html>`;
     }
   }, [toolType, content, mergedRaw, variant]);
 
@@ -147,6 +148,7 @@ export default function AiToolWebView({ toolType, content, rawContent, variant =
           { height: webViewHeight },
           Platform.OS === 'android' ? styles.webViewAndroid : null,
         ]}
+        containerStyle={styles.webViewContainer}
         scrollEnabled={needsInternalScroll}
         nestedScrollEnabled={needsInternalScroll}
         overScrollMode={needsInternalScroll ? 'always' : 'never'}
@@ -166,8 +168,25 @@ export default function AiToolWebView({ toolType, content, rawContent, variant =
   );
 }
 
+const WEB_BG = '#F7F9FF';
+
 const styles = StyleSheet.create({
-  wrap: { width: '100%' },
-  webView: { width: '100%', backgroundColor: '#ffffff', opacity: 0.99 },
-  webViewAndroid: { backgroundColor: '#ffffff' },
+  wrap: {
+    width: '100%',
+    overflow: 'hidden',
+    borderRadius: 16,
+    backgroundColor: WEB_BG,
+  },
+  webViewContainer: {
+    backgroundColor: WEB_BG,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  webView: {
+    width: '100%',
+    backgroundColor: WEB_BG,
+    opacity: 0.99,
+    borderRadius: 16,
+  },
+  webViewAndroid: { backgroundColor: WEB_BG },
 });

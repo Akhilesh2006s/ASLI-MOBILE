@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { ShimmerCard } from '../../../src/components/student/StudentShimmer';
 import { STUDENT, STUDENT_RADIUS, STUDENT_SPACING, STUDENT_TYPO } from '../../../src/theme/student';
+import { GlassPanel } from '../../../src/components/ui';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
@@ -738,18 +739,21 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
     actionLabel?: string;
     onAction?: () => void;
   }) => (
-    <View style={styles.emptyCard}>
-      <View style={styles.emptyIconWrap}>
-        <Ionicons name={content.icon} size={32} color={STUDENT.primaryDark} />
+    <GlassPanel style={styles.emptyCard} radius={STUDENT_RADIUS.card}>
+      {/* Child centering lives on this inner view — GlassPanel wraps children itself. */}
+      <View style={styles.emptyCardInner}>
+        <View style={styles.emptyIconWrap}>
+          <Ionicons name={content.icon} size={32} color={STUDENT.primaryDark} />
+        </View>
+        <Text style={styles.emptyTitle}>{content.title}</Text>
+        <Text style={styles.emptyText}>{content.subtitle}</Text>
+        {content.actionLabel && content.onAction ? (
+          <TouchableOpacity style={styles.emptyActionBtn} activeOpacity={0.85} onPress={content.onAction}>
+            <Text style={styles.emptyActionText}>{content.actionLabel}</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
-      <Text style={styles.emptyTitle}>{content.title}</Text>
-      <Text style={styles.emptyText}>{content.subtitle}</Text>
-      {content.actionLabel && content.onAction ? (
-        <TouchableOpacity style={styles.emptyActionBtn} activeOpacity={0.85} onPress={content.onAction}>
-          <Text style={styles.emptyActionText}>{content.actionLabel}</Text>
-        </TouchableOpacity>
-      ) : null}
-    </View>
+    </GlassPanel>
   );
 
   const renderVideoItem = useCallback(({ item: video }: { item: VideoItem }) => (
@@ -777,7 +781,7 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
     const statusColor = getStatusColor(item.status);
     const joinable = canJoinLiveSession(item);
     return (
-      <View style={styles.sessionCard}>
+      <GlassPanel style={styles.sessionCard} radius={STUDENT_RADIUS.inner}>
         <View style={styles.sessionTopRow}>
           <Text style={styles.sessionTitle} numberOfLines={2}>
             {item.title}
@@ -811,7 +815,7 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
             <Text style={styles.joinSessionButtonText}>Join Session</Text>
           </TouchableOpacity>
         ) : null}
-      </View>
+      </GlassPanel>
     );
   }, [handleJoinLive]);
 
@@ -821,7 +825,7 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
     <>
       <Header username={username} dashboardLabel={dashboardLabel} />
 
-      <View style={styles.summaryCard}>
+      <GlassPanel style={styles.summaryCard} radius={STUDENT_RADIUS.inner}>
         <View style={styles.summaryTop}>
           <View style={styles.summaryIcon}>
             <Ionicons name="videocam" size={20} color="#2563eb" />
@@ -855,7 +859,7 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
             </Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </GlassPanel>
 
       <View style={styles.filterRow}>
         <StudentFilterDropdown
@@ -980,7 +984,8 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: STUDENT.bg,
+    // Transparent so the app background artwork shows through.
+    backgroundColor: 'transparent',
     paddingTop: STUDENT_SPACING.sm,
   },
   listContainer: {
@@ -1001,10 +1006,8 @@ const styles = StyleSheet.create({
     gap: STUDENT_SPACING.md,
   },
   summaryCard: {
-    backgroundColor: STUDENT.accentSoft,
+    // Fill comes from GlassPanel's blur + white rim.
     borderRadius: STUDENT_RADIUS.inner,
-    borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
     padding: STUDENT_SPACING.md,
     marginBottom: STUDENT_SPACING.md,
     ...STUDENT.shadow.sm,
@@ -1038,7 +1041,7 @@ const styles = StyleSheet.create({
   },
   statChip: {
     flex: 1,
-    backgroundColor: STUDENT.surface,
+    backgroundColor: 'rgba(255,255,255,0.42)',
     borderRadius: STUDENT_RADIUS.full,
     paddingVertical: 9,
     paddingHorizontal: 12,
@@ -1069,16 +1072,15 @@ const styles = StyleSheet.create({
     marginBottom: STUDENT_SPACING.sm,
   },
   emptyCard: {
-    alignItems: 'center',
     marginTop: STUDENT_SPACING.lg,
     marginBottom: STUDENT_SPACING.xl,
     paddingVertical: STUDENT_SPACING.xxl,
     paddingHorizontal: STUDENT_SPACING.lg,
-    backgroundColor: STUDENT.surface,
     borderRadius: STUDENT_RADIUS.card,
-    borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
     ...STUDENT.shadow.sm,
+  },
+  emptyCardInner: {
+    alignItems: 'center',
   },
   emptyIconWrap: {
     width: 72,
@@ -1117,12 +1119,10 @@ const styles = StyleSheet.create({
     color: STUDENT.textOnPrimary,
   },
   sessionCard: {
-    backgroundColor: STUDENT.surface,
+    // Fill comes from GlassPanel's blur + white rim.
     borderRadius: STUDENT_RADIUS.inner,
     padding: STUDENT_SPACING.md,
     marginBottom: STUDENT_SPACING.sm,
-    borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
     ...STUDENT.shadow.sm,
   },
   sessionTopRow: {

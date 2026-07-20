@@ -182,15 +182,28 @@ function FlipCardSession({ cards }: { cards: Flashcard[] }) {
               showsVerticalScrollIndicator={false}
               nestedScrollEnabled
             >
-              <Pressable onPress={() => toggleFlip()}>
+              <Pressable
+                onPress={() => toggleFlip()}
+                accessibilityRole="button"
+                accessibilityLabel={`Question: ${current.front}`}
+                accessibilityHint="Flips the card to reveal the answer"
+              >
                 <Text style={styles.faceText}>{current.front}</Text>
               </Pressable>
             </ScrollView>
             <Pressable
               style={styles.showAnswerBtn}
               onPress={() => toggleFlip(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Show answer"
             >
-              <Ionicons name="book-outline" size={14} color="#fff" />
+              <Ionicons
+                name="book-outline"
+                size={14}
+                color="#fff"
+                accessibilityElementsHidden
+                importantForAccessibility="no"
+              />
               <Text style={styles.showAnswerText}>Show answer</Text>
             </Pressable>
           </View>
@@ -207,7 +220,12 @@ function FlipCardSession({ cards }: { cards: Flashcard[] }) {
               showsVerticalScrollIndicator={false}
               nestedScrollEnabled
             >
-              <Pressable onPress={() => toggleFlip(false)}>
+              <Pressable
+                onPress={() => toggleFlip(false)}
+                accessibilityRole="button"
+                accessibilityLabel={`Answer: ${current.back}`}
+                accessibilityHint="Flips the card back to the question"
+              >
                 <Text style={styles.faceText}>{current.back}</Text>
                 {extras.length > 0 ? (
                   <View style={styles.extrasRow}>
@@ -220,8 +238,19 @@ function FlipCardSession({ cards }: { cards: Flashcard[] }) {
                 ) : null}
               </Pressable>
             </ScrollView>
-            <Pressable style={styles.backBtn} onPress={() => toggleFlip(false)}>
-              <Ionicons name="refresh-outline" size={14} color="#4338ca" />
+            <Pressable
+              style={styles.backBtn}
+              onPress={() => toggleFlip(false)}
+              accessibilityRole="button"
+              accessibilityLabel="Back to question"
+            >
+              <Ionicons
+                name="refresh-outline"
+                size={14}
+                color="#4338ca"
+                accessibilityElementsHidden
+                importantForAccessibility="no"
+              />
               <Text style={styles.backBtnText}>Back</Text>
             </Pressable>
           </View>
@@ -244,6 +273,10 @@ function FlipCardSession({ cards }: { cards: Flashcard[] }) {
           style={[styles.navBtn, currentIndex === 0 && styles.navBtnDisabled]}
           disabled={currentIndex === 0}
           onPress={() => goTo(currentIndex - 1)}
+          hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel="Previous card"
+          accessibilityState={{ disabled: currentIndex === 0 }}
         >
           <Ionicons name="chevron-back" size={18} color="#5b21b6" />
         </Pressable>
@@ -252,6 +285,10 @@ function FlipCardSession({ cards }: { cards: Flashcard[] }) {
             <Pressable
               key={idx}
               onPress={() => goTo(idx)}
+              hitSlop={18}
+              accessibilityRole="button"
+              accessibilityLabel={`Go to card ${idx + 1} of ${cards.length}`}
+              accessibilityState={{ selected: idx === currentIndex }}
               style={[styles.dot, idx === currentIndex ? styles.dotActive : styles.dotInactive]}
             />
           ))}
@@ -260,6 +297,10 @@ function FlipCardSession({ cards }: { cards: Flashcard[] }) {
           style={[styles.navBtn, currentIndex >= cards.length - 1 && styles.navBtnDisabled]}
           disabled={currentIndex >= cards.length - 1}
           onPress={() => goTo(currentIndex + 1)}
+          hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel="Next card"
+          accessibilityState={{ disabled: currentIndex >= cards.length - 1 }}
         >
           <Ionicons name="chevron-forward" size={18} color="#5b21b6" />
         </Pressable>
@@ -402,7 +443,7 @@ function StudentDeckView({ meta, cards }: { meta: StudentDeckMeta; cards: Flashc
       num: 11,
       title: 'Real-life Application',
       icon: 'sparkles-outline',
-      stripe: '#10b981',
+      stripe: '#f43f5e',
       body: meta.realLifeApplication ? (
         <Text style={styles.bodyText}>{meta.realLifeApplication}</Text>
       ) : (
@@ -823,7 +864,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#ddd6fe',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     padding: 12,
   },
   section1Label: {
@@ -848,7 +889,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#ddd6fe',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     overflow: 'hidden',
   },
   sectionHeader: {
@@ -858,7 +899,7 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     paddingHorizontal: 10,
     paddingVertical: 10,
-    backgroundColor: '#fafafa',
+    backgroundColor: 'rgba(255,255,255,0.36)',
   },
   sectionIcon: {
     width: 28,
@@ -886,7 +927,7 @@ const styles = StyleSheet.create({
   bulletRow: { flexDirection: 'row', gap: 8 },
   bulletDot: { color: '#8b5cf6', fontSize: 14, fontWeight: '800', marginTop: 2 },
   bulletText: { flex: 1, fontSize: 14, lineHeight: 22, color: '#334155' },
-  emptyHint: { fontSize: 12, fontStyle: 'italic', color: '#94a3b8' },
+  emptyHint: { fontSize: 12, fontStyle: 'italic', color: '#5B6779' },
   perCardList: { gap: 6 },
   perCardRow: {
     borderRadius: 8,
@@ -915,7 +956,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   cardCountText: { fontSize: 11, fontWeight: '700', color: '#5b21b6' },
-  tapHint: { fontSize: 11, color: '#94a3b8' },
+  tapHint: { fontSize: 11, color: '#5B6779' },
   flipContainer: { minHeight: 340, height: 340, position: 'relative' },
   flipFace: { ...flipFaceBase, height: '100%' },
   flipCardInner: { flex: 1, flexDirection: 'column', minHeight: 0 },
@@ -923,7 +964,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#c4b5fd',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     overflow: 'hidden',
     shadowColor: '#7c3aed',
     shadowOpacity: 0.12,
@@ -1002,7 +1043,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#c7d2fe',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 999,
     paddingVertical: 8,
   },
@@ -1048,7 +1089,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
   },
   navBtnDisabled: { opacity: 0.35 },
   dotsRow: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6 },
@@ -1063,9 +1104,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderStyle: 'dashed',
     borderColor: '#e2e8f0',
-    backgroundColor: '#f8fafc',
+    backgroundColor: 'rgba(255,255,255,0.42)',
     gap: 8,
   },
   emptyTitle: { fontSize: 14, fontWeight: '600', color: '#475569' },
-  emptySub: { fontSize: 12, color: '#94a3b8', textAlign: 'center' },
+  emptySub: { fontSize: 12, color: '#5B6779', textAlign: 'center' },
 });

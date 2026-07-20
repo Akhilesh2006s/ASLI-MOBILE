@@ -177,7 +177,7 @@ export default function BoardComparisonView() {
 
       {analytics.length === 0 ? (
         <View style={styles.emptyBox}>
-          <Ionicons name="bar-chart" size={64} color="#d1d5db" />
+          <Ionicons name="bar-chart" size={64} color="#5B6779" />
           <Text style={styles.emptyTitle}>No Board Data Available</Text>
           <Text style={styles.emptyText}>There is no data to display for board comparison.</Text>
           <TouchableOpacity style={styles.refreshButton} onPress={() => load(true)}>
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#e5e7eb',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
   },
   refreshButtonText: { fontSize: 13, fontWeight: '600', color: '#374151' },
   errorText: { color: '#dc2626', paddingHorizontal: 16, marginBottom: 8, fontSize: 13 },
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
   summaryCard: {
     flex: 1,
     minWidth: '47%',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 10,
     padding: 14,
     borderLeftWidth: 4,
@@ -272,14 +272,14 @@ const styles = StyleSheet.create({
   },
   summaryBoard: { fontSize: 12, fontWeight: '600', color: '#6b7280', marginBottom: 4 },
   summaryStudents: { fontSize: 24, fontWeight: '800', color: '#111827' },
-  summaryStudentsLabel: { fontSize: 11, color: '#9ca3af' },
+  summaryStudentsLabel: { fontSize: 11, color: '#5B6779' },
   summaryMeta: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#f3f4f6', gap: 4 },
   summaryMetaText: { fontSize: 11, color: '#6b7280' },
   summaryMetaBold: { fontWeight: '700', color: '#111827' },
   chartCard: {
     marginHorizontal: 16,
     marginBottom: 16,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',

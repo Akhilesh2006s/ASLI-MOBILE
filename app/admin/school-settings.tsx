@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import adminService from '../../src/services/api/adminService';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
-import { ErrorState, LoadingState } from '../../src/components/ui';
+import { ErrorState, GlassPanel, LoadingState } from '../../src/components/ui';
 import { AdminScalePressable, AdminSectionHeader, AdminSkeletonStats, useAdminTheme } from './_ui';
 
 export default function SchoolSettings() {
@@ -63,14 +63,16 @@ export default function SchoolSettings() {
   ];
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]} edges={['top']}>
-      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.surfaceBorder }]}>
-        <AdminScalePressable onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: colors.bgElevated, borderRadius: radius.full }]}>
-          <Ionicons name="chevron-back" size={22} color={colors.text} />
-        </AdminScalePressable>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>School Settings</Text>
-        <View style={styles.backBtn} />
-      </View>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <GlassPanel style={[styles.header, { borderBottomColor: colors.surfaceBorder }]} radius={0} bordered={false} tone="strong">
+        <View style={styles.headerInner}>
+          <AdminScalePressable onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: colors.bgElevated, borderRadius: radius.full }]}>
+            <Ionicons name="chevron-back" size={22} color={colors.text} />
+          </AdminScalePressable>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>School Settings</Text>
+          <View style={styles.backBtn} />
+        </View>
+      </GlassPanel>
 
       {loading ? (
         <AdminSkeletonStats />
@@ -132,14 +134,18 @@ export default function SchoolSettings() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  // Transparent so the shared app background artwork shows through.
+  container: { flex: 1, backgroundColor: 'transparent' },
   header: {
+    borderBottomWidth: 1,
+  },
+  // Row layout and padding move inside the frosted panel.
+  headerInner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 1,
   },
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 18, fontWeight: '800' },

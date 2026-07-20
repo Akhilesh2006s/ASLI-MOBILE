@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import teacherService from '../../../src/services/api/teacherService';
 import { TeacherShimmer } from '../../../src/components/teacher';
+import { GlassPanel } from '../../../src/components/ui';
 import { formatPersonName } from '../../../src/lib/teacher-text';
 import {
   buildProgressAiSummaryPayload,
@@ -106,13 +107,15 @@ function SectionCard({
   }
 
   return (
-    <View style={styles.sectionCard}>
-      <View style={styles.sectionHeader}>
-        <Ionicons name={icon} size={20} color={iconColor} />
-        <Text style={styles.sectionTitle}>{title}</Text>
+    <GlassPanel style={styles.sectionCard} radius={TEACHER_RADIUS.xl} tone="strong">
+      <View style={styles.sectionCardInner}>
+        <View style={styles.sectionHeader}>
+          <Ionicons name={icon} size={20} color={iconColor} />
+          <Text style={styles.sectionTitle}>{title}</Text>
+        </View>
+        {children}
       </View>
-      {children}
-    </View>
+    </GlassPanel>
   );
 }
 
@@ -162,30 +165,32 @@ function StudentProgressRow({
   const initial = student.name.charAt(0).toUpperCase();
 
   return (
-    <View style={styles.studentRow}>
-      <View style={styles.studentAvatar}>
-        <Text style={styles.studentAvatarText}>{initial}</Text>
-      </View>
-      <View style={styles.studentInfo}>
-        <Text style={styles.listName} numberOfLines={1}>{student.name}</Text>
-        <Text style={styles.listSub} numberOfLines={1}>{student.email}</Text>
-        <View style={styles.studentMeta}>
-          <View style={[styles.pill, { backgroundColor: colors.bg }]}>
-            <Text style={[styles.pillText, { color: colors.text }]}>
-              {overall > 0 ? `${overall.toFixed(0)}%` : 'No data'}
+    <GlassPanel style={styles.studentRow} radius={TEACHER_RADIUS.md} tone="medium">
+      <View style={styles.studentRowInner}>
+        <View style={styles.studentAvatar}>
+          <Text style={styles.studentAvatarText}>{initial}</Text>
+        </View>
+        <View style={styles.studentInfo}>
+          <Text style={styles.listName} numberOfLines={1}>{student.name}</Text>
+          <Text style={styles.listSub} numberOfLines={1}>{student.email}</Text>
+          <View style={styles.studentMeta}>
+            <View style={[styles.pill, { backgroundColor: colors.bg }]}>
+              <Text style={[styles.pillText, { color: colors.text }]}>
+                {overall > 0 ? `${overall.toFixed(0)}%` : 'No data'}
+              </Text>
+            </View>
+            <Text style={styles.studentMetaText}>
+              {(student.performance?.totalExams ?? 0)} exams ·{' '}
+              {(student.performance?.dailyAverageWatchTime ?? 0).toFixed(0)} min/day
             </Text>
           </View>
-          <Text style={styles.studentMetaText}>
-            {(student.performance?.totalExams ?? 0)} exams ·{' '}
-            {(student.performance?.dailyAverageWatchTime ?? 0).toFixed(0)} min/day
-          </Text>
         </View>
+        <Pressable style={styles.viewBtn} onPress={onView}>
+          <Ionicons name="eye-outline" size={14} color={TEACHER.primaryLight} />
+          <Text style={styles.viewBtnText}>View</Text>
+        </Pressable>
       </View>
-      <Pressable style={styles.viewBtn} onPress={onView}>
-        <Ionicons name="eye-outline" size={14} color={TEACHER.primaryLight} />
-        <Text style={styles.viewBtnText}>View</Text>
-      </Pressable>
-    </View>
+    </GlassPanel>
   );
 }
 
@@ -554,19 +559,21 @@ export default function TrackProgressView({ initialClassFilter, initialStudentId
   return (
     <View style={styles.root}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.headerCard}>
-          <View style={styles.headerIcon}>
-            <Ionicons name="bar-chart" size={22} color="#fff" />
+        <GlassPanel style={styles.headerCard} radius={TEACHER_RADIUS.xl} tone="medium">
+          <View style={styles.headerCardRow}>
+            <View style={styles.headerIcon}>
+              <Ionicons name="bar-chart" size={22} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.headerTitle}>Track Student Progress</Text>
+              <Text style={styles.headerSub}>
+                Expand class → section → View student progress
+              </Text>
+            </View>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>Track Student Progress</Text>
-            <Text style={styles.headerSub}>
-              Expand class → section → View student progress
-            </Text>
-          </View>
-        </View>
+        </GlassPanel>
 
-        <View style={styles.classListCard}>
+        <GlassPanel style={styles.classListCard} radius={TEACHER_RADIUS.lg} tone="strong">
           <Text style={styles.classListTitle}>My assigned classes</Text>
           {classGroups.length === 0 ? (
             <View style={styles.classEmptyBlock}>
@@ -600,7 +607,12 @@ export default function TrackProgressView({ initialClassFilter, initialStudentId
                         const sectionExpanded = expandedSections.has(section.id);
                         const stats = computeClassStats(section.students);
                         return (
-                          <View key={section.id} style={styles.sectionBlock}>
+                          <GlassPanel
+                            key={section.id}
+                            style={styles.sectionBlock}
+                            radius={TEACHER_RADIUS.md}
+                            tone="light"
+                          >
                             <Pressable
                               style={[styles.sectionRow, sectionExpanded && styles.sectionRowActive]}
                               onPress={() => toggleSection(section.id)}
@@ -644,7 +656,7 @@ export default function TrackProgressView({ initialClassFilter, initialStudentId
                                 )}
                               </View>
                             ) : null}
-                          </View>
+                          </GlassPanel>
                         );
                       })}
                     </View>
@@ -653,12 +665,12 @@ export default function TrackProgressView({ initialClassFilter, initialStudentId
               );
             })
           )}
-        </View>
+        </GlassPanel>
       </ScrollView>
 
       <Modal visible={!!detailStudent} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+          <GlassPanel style={styles.modalCard} radius={24} tone="strong">
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={styles.modalTitle}>{detailStudent?.name}</Text>
               <Text style={styles.listSub}>{detailStudent?.email}</Text>
@@ -673,7 +685,7 @@ export default function TrackProgressView({ initialClassFilter, initialStudentId
                 <Text style={styles.closeBtnText}>Close</Text>
               </Pressable>
             </ScrollView>
-          </View>
+          </GlassPanel>
         </View>
       </Modal>
     </View>
@@ -681,15 +693,20 @@ export default function TrackProgressView({ initialClassFilter, initialStudentId
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: TEACHER.bg },
+  // Transparent so AppBackground's artwork shows through.
+  root: { flex: 1, backgroundColor: 'transparent' },
   scrollContent: { paddingHorizontal: TEACHER_SPACING.lg, paddingBottom: 120, gap: 12 },
   headerCard: {
-    flexDirection: 'row',
-    gap: 12,
     ...glassCard,
+    // GlassPanel supplies the frosted fill; glassCard's opaque bg would hide it.
+    backgroundColor: 'transparent',
     borderRadius: TEACHER_RADIUS.xl,
     padding: 16,
     marginTop: 4,
+  },
+  headerCardRow: {
+    flexDirection: 'row',
+    gap: 12,
   },
   headerIcon: {
     width: 44,
@@ -703,6 +720,7 @@ const styles = StyleSheet.create({
   headerSub: { fontSize: 12, color: TEACHER.textMuted, marginTop: 4, lineHeight: 18 },
   classListCard: {
     ...glassCard,
+    backgroundColor: 'transparent',
     borderRadius: TEACHER_RADIUS.lg,
     overflow: 'hidden',
   },
@@ -741,7 +759,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: TEACHER.surfaceBorder,
-    backgroundColor: '#FFFFFF',
   },
   sectionRow: {
     flexDirection: 'row',
@@ -749,7 +766,6 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 12,
     paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
   },
   sectionRowActive: { backgroundColor: TEACHER.navActiveBg },
   sectionRowLabel: { flex: 1, fontSize: 15, fontWeight: '700', color: TEACHER.text },
@@ -768,15 +784,16 @@ const styles = StyleSheet.create({
   },
   classSummaryText: { fontSize: 11, color: TEACHER.textMuted },
   studentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
     padding: 10,
     marginBottom: 8,
     borderRadius: TEACHER_RADIUS.md,
     borderWidth: 1,
     borderColor: TEACHER.surfaceBorder,
-    backgroundColor: '#FFFFFF',
+  },
+  studentRowInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   studentAvatar: {
     width: 40,
@@ -792,10 +809,13 @@ const styles = StyleSheet.create({
   studentMetaText: { fontSize: 10, color: TEACHER.textMuted },
   sectionCard: {
     ...glassCard,
+    backgroundColor: 'transparent',
     borderRadius: TEACHER_RADIUS.xl,
     padding: 14,
-    gap: 10,
     marginTop: 12,
+  },
+  sectionCardInner: {
+    gap: 10,
   },
   improvementCard: {
     borderRadius: TEACHER_RADIUS.xl,
@@ -855,7 +875,6 @@ const styles = StyleSheet.create({
   statusInactiveText: { color: '#991B1B' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'flex-end' },
   modalCard: {
-    backgroundColor: TEACHER.bg,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
@@ -872,7 +891,7 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
   },
   remarkPositive: { backgroundColor: '#F0FDF4', borderLeftColor: '#22C55E' },
-  remarkNeedsWork: { backgroundColor: '#FFF7ED', borderLeftColor: '#F97316' },
+  remarkNeedsWork: { backgroundColor: 'rgba(255,247,237,0.55)', borderLeftColor: '#F97316' },
   remarkText: { fontSize: 14, color: TEACHER.text },
   remarkMeta: { fontSize: 11, color: TEACHER.textMuted, marginTop: 4 },
   metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 8 },

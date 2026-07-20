@@ -77,7 +77,7 @@ function TabButton({
   );
 }
 
-export default function TeacherTabBar({ tabs, activeTab, onTabChange, glass }: Props) {
+export default function TeacherTabBar({ tabs, activeTab, onTabChange, glass = true }: Props) {
   const insets = useSafeAreaInsets();
   const [barWidth, setBarWidth] = useState(0);
   const activeIndex = Math.max(0, tabs.findIndex((t) => t.id === activeTab));

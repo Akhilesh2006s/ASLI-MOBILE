@@ -100,8 +100,9 @@ export default function TeacherVidyaChatScreen() {
 
 const styles = StyleSheet.create({
   screen: {
+    // Transparent so AppBackground's artwork shows through.
     flex: 1,
-    backgroundColor: TEACHER.bg,
+    backgroundColor: 'transparent',
   },
   header: {
     flexDirection: 'row',

@@ -74,7 +74,7 @@ function VideoCardComponent({
   const accent = subjectAccent(subjectName || description);
 
   return (
-    <GlassCard variant="elevated" padding={12} style={styles.cardWrap} onPress={onPress}>
+    <GlassCard variant="glass" padding={12} style={styles.cardWrap} onPress={onPress}>
       <View style={styles.row}>
         <View style={[styles.thumbnail, { backgroundColor: `${accent}14` }]}>
           <Ionicons

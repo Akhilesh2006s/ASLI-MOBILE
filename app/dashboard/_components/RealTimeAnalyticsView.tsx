@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { getMergedStudyTime } from '../../../src/lib/session-time-sync';
+import { GlassPanel } from '../../../src/components/ui';
 
 interface RealTimeMetric {
   label: string;
@@ -182,16 +183,18 @@ export default function RealTimeAnalyticsView() {
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>Real-Time Analytics</Text>
-          <Text style={styles.headerSubtitle}>Last updated: {formatTime(lastUpdate)}</Text>
+      <GlassPanel radius={0} bordered={false} tone="light" style={styles.header}>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.headerTitle}>Real-Time Analytics</Text>
+            <Text style={styles.headerSubtitle}>Last updated: {formatTime(lastUpdate)}</Text>
+          </View>
+          <View style={styles.liveIndicator}>
+            <View style={styles.liveDot} />
+            <Text style={styles.liveText}>LIVE</Text>
+          </View>
         </View>
-        <View style={styles.liveIndicator}>
-          <View style={styles.liveDot} />
-          <Text style={styles.liveText}>LIVE</Text>
-        </View>
-      </View>
+      </GlassPanel>
 
       <View style={styles.metricsGrid}>
         {metrics.map((metric, index) => (
@@ -212,15 +215,17 @@ export default function RealTimeAnalyticsView() {
             <Text style={styles.emptyText}>No recent activity yet.</Text>
           ) : (
             activities.map((item) => (
-              <View key={item.id} style={styles.activityItem}>
-                <View style={styles.activityIcon}>
-                  <Ionicons name={item.icon} size={20} color={item.iconColor} />
+              <GlassPanel key={item.id} radius={12} style={styles.activityItem}>
+                <View style={styles.activityRow}>
+                  <View style={styles.activityIcon}>
+                    <Ionicons name={item.icon} size={20} color={item.iconColor} />
+                  </View>
+                  <View style={styles.activityContent}>
+                    <Text style={styles.activityText}>{item.text}</Text>
+                    <Text style={styles.activityTime}>{item.time}</Text>
+                  </View>
                 </View>
-                <View style={styles.activityContent}>
-                  <Text style={styles.activityText}>{item.text}</Text>
-                  <Text style={styles.activityTime}>{item.time}</Text>
-                </View>
-              </View>
+              </GlassPanel>
             ))
           )}
         </View>
@@ -228,7 +233,8 @@ export default function RealTimeAnalyticsView() {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Performance Trends</Text>
-        <View style={styles.trendCard}>
+        {/* tone="strong" keeps the trend bars legible against the artwork. */}
+        <GlassPanel radius={12} tone="strong" style={styles.trendCard}>
           <View style={styles.trendHeader}>
             <Text style={styles.trendLabel}>This Week</Text>
             <Text style={[styles.trendValue, weekTrend < 0 && styles.trendDown]}>
@@ -244,8 +250,8 @@ export default function RealTimeAnalyticsView() {
               end={{ x: 1, y: 0 }}
             />
           </View>
-        </View>
-        <View style={styles.trendCard}>
+        </GlassPanel>
+        <GlassPanel radius={12} tone="strong" style={styles.trendCard}>
           <View style={styles.trendHeader}>
             <Text style={styles.trendLabel}>This Month</Text>
             <Text style={[styles.trendValue, monthTrend < 0 && styles.trendDown]}>
@@ -261,24 +267,26 @@ export default function RealTimeAnalyticsView() {
               end={{ x: 1, y: 0 }}
             />
           </View>
-        </View>
+        </GlassPanel>
       </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9fafb' },
+  // Transparent so the app background artwork shows through.
+  container: { flex: 1, backgroundColor: 'transparent' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: 12, fontSize: 16, color: '#6b7280' },
   header: {
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
   },
   headerTitle: { fontSize: 24, fontWeight: '800', color: '#111827', marginBottom: 4 },
   headerSubtitle: { fontSize: 12, color: '#6b7280' },
@@ -310,14 +318,15 @@ const styles = StyleSheet.create({
   section: { padding: 16 },
   sectionTitle: { fontSize: 20, fontWeight: '800', color: '#111827', marginBottom: 16 },
   activityList: { gap: 12 },
-  emptyText: { color: '#9ca3af', textAlign: 'center', padding: 16 },
+  emptyText: { color: '#5B6779', textAlign: 'center', padding: 16 },
   activityItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     elevation: 3,
+  },
+  activityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   activityIcon: {
     width: 40,
@@ -332,7 +341,6 @@ const styles = StyleSheet.create({
   activityText: { fontSize: 14, fontWeight: '600', color: '#111827', marginBottom: 4 },
   activityTime: { fontSize: 12, color: '#6b7280' },
   trendCard: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,

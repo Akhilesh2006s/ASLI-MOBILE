@@ -35,7 +35,7 @@ export function useToast() {
   );
 
   return {
-    toast,
+    toastState: toast,
     showToast,
     hideToast,
     toast: toastFn,

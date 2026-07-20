@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
+import { GlassPanel } from '../../src/components/ui';
 
 export default function Register() {
   const router = useRouter();
@@ -27,23 +27,22 @@ export default function Register() {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar style="dark" />
-      <LinearGradient
-        colors={['#dbeafe', '#ffffff', '#f3e8ff']}
-        style={StyleSheet.absoluteFill}
-      />
-      
-      <ScrollView 
+      {/* the app-wide pastel artwork is the page background now, so no local gradient */}
+
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         <TouchableOpacity 
           style={styles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
           onPress={() => router.back()}
         >
-          <Ionicons name="arrow-back" size={20} color="#374151" />
+          <Ionicons name="arrow-back" size={20} color="#0f172a" />
         </TouchableOpacity>
 
-        <View style={styles.card}>
+        <GlassPanel style={styles.card} radius={24} tone="strong">
           <View style={styles.header}>
             <View style={styles.iconContainer}>
               <Ionicons name="sparkles" size={32} color="#fff" />
@@ -60,11 +59,11 @@ export default function Register() {
 
           <View style={styles.form}>
             <View style={styles.inputContainer}>
-              <Ionicons name="person" size={20} color="#6366f1" style={styles.inputIcon} />
+              <Ionicons name="person" size={20} color="#4F46E5" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="Full Name"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor="#5B6779"
                 value={formData.fullName}
                 onChangeText={(text) => setFormData({ ...formData, fullName: text })}
                 autoCapitalize="words"
@@ -72,11 +71,11 @@ export default function Register() {
             </View>
 
             <View style={styles.inputContainer}>
-              <Ionicons name="mail" size={20} color="#6366f1" style={styles.inputIcon} />
+              <Ionicons name="mail" size={20} color="#4F46E5" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="Email Address"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor="#5B6779"
                 value={formData.email}
                 onChangeText={(text) => setFormData({ ...formData, email: text })}
                 keyboardType="email-address"
@@ -86,11 +85,11 @@ export default function Register() {
             </View>
 
             <View style={styles.inputContainer}>
-              <Ionicons name="lock-closed" size={20} color="#6366f1" style={styles.inputIcon} />
+              <Ionicons name="lock-closed" size={20} color="#4F46E5" style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { paddingRight: 50 }]}
                 placeholder="Password"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor="#5B6779"
                 value={formData.password}
                 onChangeText={(text) => setFormData({ ...formData, password: text })}
                 secureTextEntry={!showPassword}
@@ -98,22 +97,24 @@ export default function Register() {
               />
               <TouchableOpacity
                 style={styles.eyeButton}
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
                 onPress={() => setShowPassword(!showPassword)}
               >
                 {showPassword ? (
-                  <Ionicons name="eye-off" size={20} color="#9ca3af" />
+                  <Ionicons name="eye-off" size={20} color="#5B6779" />
                 ) : (
-                  <Ionicons name="eye" size={20} color="#9ca3af" />
+                  <Ionicons name="eye" size={20} color="#5B6779" />
                 )}
               </TouchableOpacity>
             </View>
 
             <View style={styles.inputContainer}>
-              <Ionicons name="lock-closed" size={20} color="#6366f1" style={styles.inputIcon} />
+              <Ionicons name="lock-closed" size={20} color="#4F46E5" style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { paddingRight: 50 }]}
                 placeholder="Confirm Password"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor="#5B6779"
                 value={formData.confirmPassword}
                 onChangeText={(text) => setFormData({ ...formData, confirmPassword: text })}
                 secureTextEntry={!showConfirmPassword}
@@ -121,12 +122,16 @@ export default function Register() {
               />
               <TouchableOpacity
                 style={styles.eyeButton}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'
+                }
                 onPress={() => setShowConfirmPassword(!showConfirmPassword)}
               >
                 {showConfirmPassword ? (
-                  <Ionicons name="eye-off" size={20} color="#9ca3af" />
+                  <Ionicons name="eye-off" size={20} color="#5B6779" />
                 ) : (
-                  <Ionicons name="eye" size={20} color="#9ca3af" />
+                  <Ionicons name="eye" size={20} color="#5B6779" />
                 )}
               </TouchableOpacity>
             </View>
@@ -162,7 +167,7 @@ export default function Register() {
               </Text>
             </Text>
           </View>
-        </View>
+        </GlassPanel>
       </ScrollView>
     </SafeAreaView>
   );
@@ -171,6 +176,8 @@ export default function Register() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    // transparent so the app-wide pastel artwork shows behind the glass card
+    backgroundColor: 'transparent',
   },
   scrollContent: {
     flexGrow: 1,
@@ -185,7 +192,6 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 24,
     padding: 24,
     shadowColor: '#000',
@@ -202,7 +208,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#2563eb',
+    backgroundColor: '#4F46E5',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
@@ -210,12 +216,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#111827',
+    color: '#0f172a',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#5B6779',
     textAlign: 'center',
   },
   errorContainer: {
@@ -225,7 +231,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   errorText: {
-    color: '#dc2626',
+    color: '#991B1B',
     fontSize: 14,
     textAlign: 'center',
   },
@@ -235,10 +241,12 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f9fafb',
+    // near-opaque white field so the dark input text stays legible over any
+    // pastel hue in the background artwork
+    backgroundColor: 'rgba(255,255,255,0.85)',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: 'rgba(15,23,42,0.10)',
     paddingHorizontal: 16,
     height: 56,
   },
@@ -248,7 +256,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#111827',
+    color: '#0f172a',
   },
   eyeButton: {
     padding: 4,
@@ -259,22 +267,22 @@ const styles = StyleSheet.create({
   pickerLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: '#0f172a',
     marginLeft: 4,
   },
   pickerWrapper: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: 'rgba(255,255,255,0.85)',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: 'rgba(15,23,42,0.10)',
     overflow: 'hidden',
   },
   picker: {
     height: 56,
-    color: '#111827',
+    color: '#0f172a',
   },
   submitButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#4F46E5',
     paddingVertical: 16,
     borderRadius: 12,
     marginTop: 8,
@@ -293,15 +301,15 @@ const styles = StyleSheet.create({
     marginTop: 24,
     paddingTop: 24,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: 'rgba(15,23,42,0.10)',
     alignItems: 'center',
   },
   footerText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#5B6779',
   },
   footerLink: {
-    color: '#2563eb',
+    color: '#4F46E5',
     fontWeight: '600',
   },
   successContainer: {
@@ -322,18 +330,18 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#111827',
+    color: '#0f172a',
     marginBottom: 12,
     textAlign: 'center',
   },
   successText: {
     fontSize: 16,
-    color: '#6b7280',
+    color: '#5B6779',
     marginBottom: 32,
     textAlign: 'center',
   },
   successButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#4F46E5',
     paddingHorizontal: 32,
     paddingVertical: 16,
     borderRadius: 12,

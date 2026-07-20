@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { getWeeklyStudyData } from '../../../src/utils/studyTimeTracker';
+import { GlassPanel } from '../../../src/components/ui';
 
 const { width } = Dimensions.get('window');
 
@@ -115,7 +116,7 @@ export default function ProgressChartsView() {
     const barWidth = (width - 64) / data.labels.length - 8;
     
     return (
-      <View style={styles.chartContainer}>
+      <GlassPanel style={styles.chartContainer} radius={16}>
         <Text style={styles.chartTitle}>{title}</Text>
         <View style={styles.chartContent}>
           <View style={styles.chartBars}>
@@ -143,7 +144,7 @@ export default function ProgressChartsView() {
             })}
           </View>
         </View>
-      </View>
+      </GlassPanel>
     );
   };
 
@@ -169,7 +170,7 @@ export default function ProgressChartsView() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Subject Progress</Text>
           {subjectProgress.map((subject) => (
-            <View key={subject.subjectId} style={styles.subjectCard}>
+            <GlassPanel key={subject.subjectId} style={styles.subjectCard} radius={12}>
               <View style={styles.subjectHeader}>
                 <Text style={styles.subjectName}>{subject.subjectName}</Text>
                 <Text style={styles.subjectProgress}>{subject.progress}%</Text>
@@ -185,7 +186,7 @@ export default function ProgressChartsView() {
               <Text style={styles.subjectStats}>
                 {subject.completed} of {subject.total} completed
               </Text>
-            </View>
+            </GlassPanel>
           ))}
         </View>
       )}
@@ -233,7 +234,8 @@ export default function ProgressChartsView() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    // Transparent so the app background artwork shows through.
+    backgroundColor: 'transparent',
   },
   loadingContainer: {
     flex: 1,
@@ -256,7 +258,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   chartContainer: {
-    backgroundColor: '#fff',
+    // Fill comes from GlassPanel's blur + tint, not a solid colour.
     borderRadius: 16,
     padding: 20,
     shadowColor: '#000',
@@ -311,7 +313,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   subjectCard: {
-    backgroundColor: '#fff',
+    // Fill comes from GlassPanel's blur + tint, not a solid colour.
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,

@@ -8,6 +8,7 @@ import HomeworkSubmissionsView from './HomeworkSubmissionsView';
 import TrackProgressView from './TrackProgressView';
 import WorkDiaryView from './WorkDiaryView';
 import { SubNavChips, StudentListCard } from '../../../src/components/teacher';
+import { GlassPanel } from '../../../src/components/ui';
 import {
   buildAssignedClassRows,
   filterAssignedClassRows,
@@ -158,7 +159,7 @@ export default function StudentsView({ initialSubTab, progressClassFilter, progr
     }
 
     return (
-      <View style={styles.classListCard}>
+      <GlassPanel style={styles.classListCard} radius={TEACHER_RADIUS.lg} tone="strong">
         <Text style={styles.classListTitle}>My assigned classes</Text>
         {classGroups.map((group) => {
           const classExpanded = expandedClassNumbers.has(group.classNumber);
@@ -184,7 +185,12 @@ export default function StudentsView({ initialSubTab, progressClassFilter, progr
                   {group.sections.map((section) => {
                     const sectionExpanded = expandedSections.has(section.id);
                     return (
-                      <View key={section.id} style={styles.sectionBlock}>
+                      <GlassPanel
+                        key={section.id}
+                        style={styles.sectionBlock}
+                        radius={TEACHER_RADIUS.md}
+                        tone="light"
+                      >
                         <Pressable
                           style={[styles.sectionRow, sectionExpanded && styles.sectionRowActive]}
                           onPress={() => toggleSection(section.id)}
@@ -221,7 +227,7 @@ export default function StudentsView({ initialSubTab, progressClassFilter, progr
                             ))}
                           </View>
                         ) : null}
-                      </View>
+                      </GlassPanel>
                     );
                   })}
                 </View>
@@ -229,7 +235,7 @@ export default function StudentsView({ initialSubTab, progressClassFilter, progr
             </View>
           );
         })}
-      </View>
+      </GlassPanel>
     );
   };
 
@@ -296,7 +302,7 @@ export default function StudentsView({ initialSubTab, progressClassFilter, progr
         onRequestClose={() => setIsRemarkModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <GlassPanel style={styles.modalContent} radius={24} tone="strong">
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
                 Add Remark for {selectedStudent?.name}
@@ -386,7 +392,7 @@ export default function StudentsView({ initialSubTab, progressClassFilter, progr
                 </LinearGradient>
               </TouchableOpacity>
             </View>
-          </View>
+          </GlassPanel>
         </View>
       </Modal>
     </View>
@@ -396,10 +402,11 @@ export default function StudentsView({ initialSubTab, progressClassFilter, progr
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: TEACHER.bg,
+    // Transparent so AppBackground's artwork shows through.
+    backgroundColor: 'transparent',
   },
   subNavBar: {
-    backgroundColor: TEACHER.bg,
+    backgroundColor: 'transparent',
     paddingTop: TEACHER_SPACING.xs,
     zIndex: 20,
     elevation: 4,
@@ -435,7 +442,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   subTabsContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
@@ -496,6 +503,8 @@ const styles = StyleSheet.create({
     marginHorizontal: TEACHER_SPACING.lg,
     marginBottom: TEACHER_SPACING.lg,
     ...glassCard,
+    // GlassPanel supplies the frosted fill; glassCard's opaque bg would hide it.
+    backgroundColor: 'transparent',
     borderRadius: TEACHER_RADIUS.lg,
     overflow: 'hidden',
   },
@@ -531,7 +540,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: TEACHER.surfaceBorder,
-    backgroundColor: '#FFFFFF',
   },
   sectionRow: {
     flexDirection: 'row',
@@ -539,7 +547,6 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 12,
     paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
   },
   sectionRowActive: { backgroundColor: TEACHER.navActiveBg },
   sectionRowLabel: { flex: 1, fontSize: 15, fontWeight: '700', color: TEACHER.text },
@@ -557,7 +564,7 @@ const styles = StyleSheet.create({
     minHeight: 0,
   },
   studentCard: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
@@ -711,7 +718,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: TEACHER.bg,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '90%',
@@ -839,7 +845,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   progressCard: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
@@ -869,7 +875,7 @@ const styles = StyleSheet.create({
   },
   studentClass: {
     fontSize: 12,
-    color: '#9ca3af',
+    color: '#5B6779',
     marginTop: 2,
   },
   progressMetrics: {
@@ -898,7 +904,7 @@ const styles = StyleSheet.create({
   },
   metricSubtext: {
     fontSize: 12,
-    color: '#9ca3af',
+    color: '#5B6779',
   },
 });
 

@@ -51,10 +51,7 @@ export const STUDENT_TOOL_CONFIGS: Record<string, StudentToolConfig> = {
     description: 'Generate practice questions with detailed answers',
     icon: 'help-circle',
     color: '#fb923c',
-    fields: cascadeFields([
-      { name: 'questionCount', label: 'Number of Questions', type: 'number', placeholder: '10' },
-      { name: 'difficulty', label: 'Difficulty', type: 'select', options: ['easy', 'medium', 'hard'] },
-    ]),
+    fields: cascadeFields(),
   },
   'chapter-summary-creator': {
     name: 'Chapter Summary Creator',
@@ -101,22 +98,14 @@ export const STUDENT_TOOL_CONFIGS: Record<string, StudentToolConfig> = {
     description: '12-section mock tests with question paper, answer key, solutions, and remedial guidance',
     icon: 'checkmark-circle',
     color: '#6366f1',
-    fields: cascadeFields([
-      { name: 'questionCount', label: 'Number of Questions', type: 'number', placeholder: '20' },
-      { name: 'duration', label: 'Test Duration (minutes)', type: 'number', placeholder: '90' },
-      { name: 'difficulty', label: 'Difficulty Mix', type: 'select', options: ['easy', 'medium', 'hard', 'mixed'] },
-    ]),
+    fields: cascadeFields(),
   },
   'exam-question-paper-generator': {
     name: 'Mock Test Builder',
     description: 'Legacy route — same as Mock Test Builder',
     icon: 'checkmark-circle',
     color: '#6366f1',
-    fields: cascadeFields([
-      { name: 'questionCount', label: 'Number of Questions', type: 'number', placeholder: '20' },
-      { name: 'duration', label: 'Exam Duration (minutes)', type: 'number', placeholder: '90' },
-      { name: 'difficulty', label: 'Difficulty Mix', type: 'select', options: ['easy', 'medium', 'hard', 'mixed'] },
-    ]),
+    fields: cascadeFields(),
   },
   'project-idea-lab': {
     name: 'Project Idea Lab',

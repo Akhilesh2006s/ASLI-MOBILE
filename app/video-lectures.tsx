@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,6 +10,7 @@ import { API_BASE_URL } from '../src/lib/api-config';
 import { dedupeLibraryContents } from '../src/lib/dedupe-library-content';
 import { getVideoDisplayTitle } from '../src/lib/video-chapter-schedule';
 import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
+import { GlassPanel } from '../src/components/ui';
 
 interface Video {
   _id: string;
@@ -50,7 +51,7 @@ export default function VideoLectures() {
     });
   }, []);
 
-  useBackNavigation(false, dashboardPath);
+  useBackNavigation(dashboardPath, false);
 
   const fetchVideos = async () => {
     try {
@@ -129,57 +130,60 @@ export default function VideoLectures() {
         onPress={() => handleVideoPress(video)}
         activeOpacity={0.7}
       >
-        <View style={styles.videoThumbnail}>
-          {youtubeId ? (
-            <Image
-              source={{ uri: `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg` }}
-              style={styles.thumbnailImage}
-              contentFit="cover"
-              cachePolicy="memory-disk"
-              transition={200}
-            />
-          ) : video.thumbnailUrl ? (
-            <Image
-              source={{ uri: video.thumbnailUrl }}
-              style={styles.thumbnailImage}
-              contentFit="cover"
-              cachePolicy="memory-disk"
-              transition={200}
-            />
-          ) : (
-            <View style={styles.thumbnailPlaceholder}>
-              <Ionicons name="videocam" size={48} color="#9ca3af" />
-            </View>
-          )}
-          <View style={styles.playOverlay}>
-            <View style={styles.playButton}>
-              <Ionicons name="play" size={24} color="#fff" />
-            </View>
-          </View>
-          <View style={styles.durationBadge}>
-            <Ionicons name="time" size={12} color="#fff" />
-            <Text style={styles.durationText}>
-              {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.videoInfo}>
-          <Text style={styles.videoTitle}>{getVideoDisplayTitle({ ...video, type: 'Video' })}</Text>
-          <Text style={styles.videoSubject}>{subjectName}</Text>
-          <View style={styles.videoMeta}>
-            {video.difficulty && (
-              <View style={[styles.difficultyBadge, styles[`difficulty${video.difficulty}` as keyof typeof styles]]}>
-                <Text style={styles.difficultyText}>{video.difficulty}</Text>
+        {/* the touchable stays for hit area; the glass card carries the clipped frame */}
+        <GlassPanel style={styles.videoCardInner} radius={12} tone="medium">
+          <View style={styles.videoThumbnail}>
+            {youtubeId ? (
+              <Image
+                source={{ uri: `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg` }}
+                style={styles.thumbnailImage}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                transition={200}
+              />
+            ) : video.thumbnailUrl ? (
+              <Image
+                source={{ uri: video.thumbnailUrl }}
+                style={styles.thumbnailImage}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                transition={200}
+              />
+            ) : (
+              <View style={styles.thumbnailPlaceholder}>
+                <Ionicons name="videocam" size={48} color="#9ca3af" />
               </View>
             )}
-            {video.views !== undefined && (
-              <View style={styles.viewsContainer}>
-                <Ionicons name="eye" size={14} color="#6b7280" />
-                <Text style={styles.viewsText}>{video.views}</Text>
+            <View style={styles.playOverlay}>
+              <View style={styles.playButton}>
+                <Ionicons name="play" size={24} color="#fff" />
               </View>
-            )}
+            </View>
+            <View style={styles.durationBadge}>
+              <Ionicons name="time" size={12} color="#fff" />
+              <Text style={styles.durationText}>
+                {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}
+              </Text>
+            </View>
           </View>
-        </View>
+          <View style={styles.videoInfo}>
+            <Text style={styles.videoTitle}>{getVideoDisplayTitle({ ...video, type: 'Video' })}</Text>
+            <Text style={styles.videoSubject}>{subjectName}</Text>
+            <View style={styles.videoMeta}>
+              {video.difficulty && (
+                <View style={[styles.difficultyBadge, difficultyBadgeStyle(video.difficulty)]}>
+                  <Text style={styles.difficultyText}>{video.difficulty}</Text>
+                </View>
+              )}
+              {video.views !== undefined && (
+                <View style={styles.viewsContainer}>
+                  <Ionicons name="eye" size={14} color="#6b7280" />
+                  <Text style={styles.viewsText}>{video.views}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </GlassPanel>
       </TouchableOpacity>
     );
   }, [handleVideoPress]);
@@ -222,7 +226,7 @@ export default function VideoLectures() {
           <TextInput
             style={styles.searchInput}
             placeholder="Search videos..."
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor="#5B6779"
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -268,7 +272,7 @@ export default function VideoLectures() {
       {/* Videos Grid */}
       {filteredVideos.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="videocam-off" size={64} color="#9ca3af" />
+          <Ionicons name="videocam-off" size={64} color="#5B6779" />
           <Text style={styles.emptyText}>No videos found</Text>
           <Text style={styles.emptySubtext}>Try adjusting your filters</Text>
         </View>
@@ -300,7 +304,8 @@ export default function VideoLectures() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    // transparent so the app-wide pastel artwork shows through the glass cards
+    backgroundColor: 'transparent',
   },
   loadingContainer: {
     flex: 1,
@@ -339,15 +344,15 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.9)',
   },
   filtersContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: 'rgba(255,255,255,0.55)',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f3f4f6',
+    backgroundColor: 'rgba(255,255,255,0.6)',
     borderRadius: 12,
     paddingHorizontal: 16,
     marginBottom: 12,
@@ -368,7 +373,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: 'rgba(255,255,255,0.6)',
     marginRight: 8,
   },
   filterChipActive: {
@@ -410,14 +415,11 @@ const styles = StyleSheet.create({
   },
   videoCard: {
     width: '47%',
-    backgroundColor: '#fff',
+    borderRadius: 12,
+  },
+  videoCardInner: {
     borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   videoThumbnail: {
     width: '100%',
@@ -495,6 +497,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 8,
   },
+  // Tints below are matched case-insensitively — see difficultyBadgeStyle.
   difficultyEasy: {
     backgroundColor: '#d1fae5',
   },
@@ -518,3 +521,21 @@ const styles = StyleSheet.create({
     color: '#6b7280',
   },
 });
+/**
+ * The API returns difficulty with inconsistent casing (see the .toLowerCase()
+ * comparison in the filter above), so match case-insensitively rather than
+ * building a style key by string interpolation — that silently produced an
+ * untinted badge for any value that wasn't exactly Easy/Medium/Hard.
+ */
+function difficultyBadgeStyle(difficulty?: string) {
+  switch (difficulty?.toLowerCase()) {
+    case 'easy':
+      return styles.difficultyEasy;
+    case 'medium':
+      return styles.difficultyMedium;
+    case 'hard':
+      return styles.difficultyHard;
+    default:
+      return undefined;
+  }
+}

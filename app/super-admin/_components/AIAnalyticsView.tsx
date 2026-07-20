@@ -143,7 +143,7 @@ export default function AIAnalyticsView({
     return (
       <ScrollView style={styles.content}>
         <View style={styles.emptyContainer}>
-          <Ionicons name="alert-circle" size={64} color="#d1d5db" />
+          <Ionicons name="alert-circle" size={64} color="#5B6779" />
           <Text style={styles.emptyText}>No Analytics Data</Text>
           <Text style={styles.emptySubtext}>Tap below to generate detailed analytics</Text>
           <TouchableOpacity style={styles.generateButton} onPress={() => loadData()}>
@@ -391,7 +391,7 @@ function AdminComparisonTab({ filteredAnalytics }: { filteredAnalytics: Detailed
   if (!filteredAnalytics?.adminAnalytics.length) {
     return (
       <View style={styles.emptyContainer}>
-        <Ionicons name="people" size={64} color="#d1d5db" />
+        <Ionicons name="people" size={64} color="#5B6779" />
         <Text style={styles.emptyText}>No schools found matching the selected filters</Text>
       </View>
     );
@@ -469,7 +469,7 @@ function TopScorersTab({ filteredAnalytics }: { filteredAnalytics: DetailedAnaly
   if (!scorers.length) {
     return (
       <View style={styles.emptyContainer}>
-        <Ionicons name="trophy" size={64} color="#d1d5db" />
+        <Ionicons name="trophy" size={64} color="#5B6779" />
         <Text style={styles.emptyText}>No top performers found matching the selected filters</Text>
       </View>
     );
@@ -510,7 +510,7 @@ function DifficultyTab({ filteredAnalytics }: { filteredAnalytics: DetailedAnaly
   if (!filteredAnalytics?.adminAnalytics.length) {
     return (
       <View style={styles.emptyContainer}>
-        <Ionicons name="calculator" size={64} color="#d1d5db" />
+        <Ionicons name="calculator" size={64} color="#5B6779" />
         <Text style={styles.emptyText}>No schools found matching the selected filters</Text>
       </View>
     );
@@ -573,7 +573,7 @@ function PerformanceDistributionTab({
   if (!filteredAnalytics?.adminAnalytics.length) {
     return (
       <View style={styles.emptyContainer}>
-        <Ionicons name="pie-chart" size={64} color="#d1d5db" />
+        <Ionicons name="pie-chart" size={64} color="#5B6779" />
         <Text style={styles.emptyText}>No schools found matching the selected filters</Text>
       </View>
     );
@@ -621,7 +621,7 @@ function SubjectAnalysisTab({ filteredAnalytics }: { filteredAnalytics: Detailed
   if (!subjects.length) {
     return (
       <View style={styles.emptyContainer}>
-        <Ionicons name="book" size={64} color="#d1d5db" />
+        <Ionicons name="book" size={64} color="#5B6779" />
         <Text style={styles.emptyText}>No subject data found matching the selected filters</Text>
       </View>
     );
@@ -728,7 +728,7 @@ function TrendsTab({
 
       {!filteredAnalytics?.adminAnalytics.length ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="trending-up" size={64} color="#d1d5db" />
+          <Ionicons name="trending-up" size={64} color="#5B6779" />
           <Text style={styles.emptyText}>No performance trends found matching the selected filters</Text>
         </View>
       ) : (
@@ -760,7 +760,7 @@ const pickerStyles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     padding: 16,
@@ -838,7 +838,7 @@ const styles = StyleSheet.create({
   filtersCard: {
     marginHorizontal: 16,
     marginBottom: 16,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
@@ -925,7 +925,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#14b8a6',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
   },
   backAllButtonText: {
     fontSize: 13,
@@ -935,7 +935,7 @@ const styles = StyleSheet.create({
   noDataCard: {
     marginHorizontal: 16,
     marginBottom: 16,
-    backgroundColor: '#fffbeb',
+    backgroundColor: 'rgba(255,251,235,0.55)',
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
@@ -1150,7 +1150,7 @@ const styles = StyleSheet.create({
   scorerCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
@@ -1189,7 +1189,7 @@ const styles = StyleSheet.create({
   },
   scorerExams: {
     fontSize: 12,
-    color: '#9ca3af',
+    color: '#5B6779',
   },
   scorerScore: {
     alignItems: 'flex-end',
@@ -1213,7 +1213,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   difficultyCard: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 12,
     padding: 20,
     shadowColor: '#000',
@@ -1305,7 +1305,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   distributionCard: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 12,
     padding: 20,
     marginBottom: 16,
@@ -1343,7 +1343,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   subjectCard: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 12,
     padding: 20,
     shadowColor: '#000',
@@ -1518,7 +1518,7 @@ const styles = StyleSheet.create({
   },
   insightMeta: {
     fontSize: 11,
-    color: '#9ca3af',
+    color: '#5B6779',
   },
   impactBadge: {
     paddingHorizontal: 8,

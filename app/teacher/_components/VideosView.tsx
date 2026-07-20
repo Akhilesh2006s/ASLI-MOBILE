@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import teacherService, { asArray } from '../../../src/services/api/teacherService';
+import { GlassPanel } from '../../../src/components/ui';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
 
 interface Video {
@@ -121,13 +122,13 @@ export default function TeacherVideosView() {
   return (
     <View style={styles.container}>
       {/* Search and Filters */}
-      <View style={styles.filtersContainer}>
+      <GlassPanel style={styles.filtersContainer} radius={TEACHER_RADIUS.lg} tone="light">
         <View style={styles.searchContainer}>
           <Ionicons name="search" size={20} color="#6b7280" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search videos..."
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor="#5B6779"
             value={searchTerm}
             onChangeText={setSearchTerm}
           />
@@ -154,7 +155,7 @@ export default function TeacherVideosView() {
             </TouchableOpacity>
           ))}
         </ScrollView>
-      </View>
+      </GlassPanel>
 
       {/* Add Button */}
       <TouchableOpacity style={styles.addButton} onPress={() => setIsCreateModalOpen(true)} activeOpacity={0.85}>
@@ -167,7 +168,7 @@ export default function TeacherVideosView() {
       <ScrollView style={styles.content} contentContainerStyle={styles.contentInner} showsVerticalScrollIndicator={false}>
         {filteredVideos.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="videocam-outline" size={64} color="#9ca3af" />
+            <Ionicons name="videocam-outline" size={64} color="#5B6779" />
             <Text style={styles.emptyText}>No videos found</Text>
             <Text style={styles.emptySubtext}>Create your first video to get started</Text>
           </View>
@@ -178,52 +179,54 @@ export default function TeacherVideosView() {
               : video.subject || 'General';
 
             return (
-              <Animated.View key={video._id} entering={FadeInDown.duration(350).delay(Math.min(index * 60, 480))} style={styles.videoCard}>
-                <View style={styles.videoHeader}>
-                  <View style={styles.videoIcon}>
-                    <Ionicons name="videocam" size={24} color={TEACHER.primaryLight} />
+              <Animated.View key={video._id} entering={FadeInDown.duration(350).delay(Math.min(index * 60, 480))}>
+                <GlassPanel style={styles.videoCard} radius={TEACHER_RADIUS.lg} tone="medium">
+                  <View style={styles.videoHeader}>
+                    <View style={styles.videoIcon}>
+                      <Ionicons name="videocam" size={24} color={TEACHER.primaryLight} />
+                    </View>
+                    <View style={styles.videoInfo}>
+                      <Text style={styles.videoTitle} numberOfLines={2}>{video.title}</Text>
+                      <Text style={styles.videoSubject}>{subjectName}</Text>
+                    </View>
                   </View>
-                  <View style={styles.videoInfo}>
-                    <Text style={styles.videoTitle} numberOfLines={2}>{video.title}</Text>
-                    <Text style={styles.videoSubject}>{subjectName}</Text>
-                  </View>
-                </View>
 
-                {video.description && (
-                  <Text style={styles.videoDescription} numberOfLines={2}>
-                    {video.description}
-                  </Text>
-                )}
+                  {video.description && (
+                    <Text style={styles.videoDescription} numberOfLines={2}>
+                      {video.description}
+                    </Text>
+                  )}
 
-                <View style={styles.videoMeta}>
-                  <View style={styles.metaItem}>
-                    <Ionicons name="time" size={16} color={TEACHER.primaryLight} />
-                    <Text style={styles.metaText}>{video.duration} min</Text>
-                  </View>
-                  {video.views !== undefined && (
+                  <View style={styles.videoMeta}>
                     <View style={styles.metaItem}>
-                      <Ionicons name="eye" size={16} color={TEACHER.textMuted} />
-                      <Text style={styles.metaText}>{video.views} views</Text>
+                      <Ionicons name="time" size={16} color={TEACHER.primaryLight} />
+                      <Text style={styles.metaText}>{video.duration} min</Text>
                     </View>
-                  )}
-                  {video.isYouTubeVideo && (
-                    <View style={styles.youtubeBadge}>
-                      <Ionicons name="logo-youtube" size={16} color="#ef4444" />
-                      <Text style={styles.youtubeText}>YouTube</Text>
-                    </View>
-                  )}
-                </View>
+                    {video.views !== undefined && (
+                      <View style={styles.metaItem}>
+                        <Ionicons name="eye" size={16} color={TEACHER.textMuted} />
+                        <Text style={styles.metaText}>{video.views} views</Text>
+                      </View>
+                    )}
+                    {video.isYouTubeVideo && (
+                      <View style={styles.youtubeBadge}>
+                        <Ionicons name="logo-youtube" size={16} color="#ef4444" />
+                        <Text style={styles.youtubeText}>YouTube</Text>
+                      </View>
+                    )}
+                  </View>
 
-                <View style={styles.statusBadge}>
-                  <Ionicons
-                    name={video.isActive ? 'checkmark-circle' : 'close-circle'}
-                    size={16}
-                    color={video.isActive ? TEACHER.success : TEACHER.danger}
-                  />
-                  <Text style={[styles.statusText, { color: video.isActive ? TEACHER.success : TEACHER.danger }]}>
-                    {video.isActive ? 'Active' : 'Inactive'}
-                  </Text>
-                </View>
+                  <View style={styles.statusBadge}>
+                    <Ionicons
+                      name={video.isActive ? 'checkmark-circle' : 'close-circle'}
+                      size={16}
+                      color={video.isActive ? TEACHER.success : TEACHER.danger}
+                    />
+                    <Text style={[styles.statusText, { color: video.isActive ? TEACHER.success : TEACHER.danger }]}>
+                      {video.isActive ? 'Active' : 'Inactive'}
+                    </Text>
+                  </View>
+                </GlassPanel>
               </Animated.View>
             );
           })
@@ -387,10 +390,12 @@ export default function TeacherVideosView() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: TEACHER.bg, paddingHorizontal: TEACHER_SPACING.lg },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: TEACHER.bg },
+  // Transparent so AppBackground's artwork shows through.
+  container: { flex: 1, backgroundColor: 'transparent', paddingHorizontal: TEACHER_SPACING.lg },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'transparent' },
   loadingText: { marginTop: 12, ...TEACHER_TYPO.body, color: TEACHER.textMuted },
-  filtersContainer: { ...glassCard, borderRadius: TEACHER_RADIUS.lg, padding: TEACHER_SPACING.lg, marginBottom: TEACHER_SPACING.md },
+  // backgroundColor cleared: GlassPanel supplies the fill for these cards.
+  filtersContainer: { ...glassCard, backgroundColor: 'transparent', borderRadius: TEACHER_RADIUS.lg, padding: TEACHER_SPACING.lg, marginBottom: TEACHER_SPACING.md },
   searchContainer: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: TEACHER.surfaceElevated,
     borderRadius: TEACHER_RADIUS.md, borderWidth: 1, borderColor: TEACHER.surfaceBorder,
@@ -414,7 +419,7 @@ const styles = StyleSheet.create({
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 64 },
   emptyText: { ...TEACHER_TYPO.section, fontSize: 20, color: TEACHER.text, marginTop: 16, marginBottom: 8 },
   emptySubtext: { fontSize: 14, color: TEACHER.textMuted, textAlign: 'center' },
-  videoCard: { ...glassCard, borderRadius: TEACHER_RADIUS.lg, padding: TEACHER_SPACING.lg, marginBottom: TEACHER_SPACING.md },
+  videoCard: { ...glassCard, backgroundColor: 'transparent', borderRadius: TEACHER_RADIUS.lg, padding: TEACHER_SPACING.lg, marginBottom: TEACHER_SPACING.md },
   videoHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 12 },
   videoIcon: {
     width: 48, height: 48, borderRadius: 12, backgroundColor: TEACHER.surfaceElevated,

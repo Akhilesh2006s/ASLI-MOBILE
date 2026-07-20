@@ -6,7 +6,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import * as SecureStore from 'expo-secure-store';
 import { fetchStudentTimetable, timetableEntriesToSlots } from '../../src/lib/timetable-helpers';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
-import { EmptyState, ErrorState, LoadingState } from '../../src/components/ui';
+import { EmptyState, ErrorState, GlassPanel, LoadingState } from '../../src/components/ui';
 import StudentScreenHeader from '../../src/components/student/StudentScreenHeader';
 import {
   STUDENT,
@@ -92,8 +92,11 @@ export default function StudentTimetable() {
                   );
                   const color = SUBJECT_COLORS[di % SUBJECT_COLORS.length];
                   return (
-                    <View
+                    <GlassPanel
                       key={`${day}-${p}`}
+                      radius={STUDENT_RADIUS.sm}
+                      tone="strong"
+                      bordered={false}
                       style={[
                         styles.cell,
                         slot && { backgroundColor: `${color}15`, borderColor: `${color}40` },
@@ -111,7 +114,7 @@ export default function StudentTimetable() {
                           ) : null}
                         </>
                       ) : null}
-                    </View>
+                    </GlassPanel>
                   );
                 })}
               </Animated.View>
@@ -125,7 +128,8 @@ export default function StudentTimetable() {
 
 const CELL_W = 110;
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: STUDENT.bg },
+  // Transparent so the app background artwork shows through.
+  container: { flex: 1, backgroundColor: 'transparent' },
   grid: { padding: STUDENT_SPACING.lg },
   row: { flexDirection: 'row' },
   corner: { width: 44, height: 44 },
@@ -140,7 +144,6 @@ const styles = StyleSheet.create({
     borderRadius: STUDENT_RADIUS.sm,
     borderWidth: 1,
     borderColor: STUDENT.surfaceBorder,
-    backgroundColor: STUDENT.surface,
     padding: STUDENT_SPACING.xs,
     justifyContent: 'center',
   },

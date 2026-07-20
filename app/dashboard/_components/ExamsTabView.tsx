@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { STUDENT, STUDENT_SPACING } from '../../../src/theme/student';
+import { STUDENT_SPACING } from '../../../src/theme/student';
 import ExamsView from './ExamsView';
 
 type ExamsTabViewProps = {
@@ -24,7 +24,8 @@ const styles = StyleSheet.create({
   wrap: {
     flex: 1,
     minHeight: 0,
-    backgroundColor: STUDENT.bg,
+    // Transparent so the app background artwork shows through.
+    backgroundColor: 'transparent',
     paddingHorizontal: STUDENT_SPACING.lg,
     paddingTop: STUDENT_SPACING.sm,
   },

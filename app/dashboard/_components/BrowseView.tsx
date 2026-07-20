@@ -7,6 +7,7 @@ import { API_BASE_URL } from '../../../src/lib/api-config';
 import { openContentPreview } from '../../../src/utils/openContentPreview';
 import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
 import { prepareLibraryContents } from '../../../src/lib/dedupe-library-content';
+import { GlassPanel } from '../../../src/components/ui';
 
 export default function BrowseView() {
   const { isAsliPrepExclusive, libraryTiles } = useSchoolProgram();
@@ -114,19 +115,26 @@ export default function BrowseView() {
         {visibleTypes.map((type) => (
           <TouchableOpacity
             key={type.id}
-            style={[
-              styles.typeCard,
-              selectedType === type.id && styles.typeCardActive
-            ]}
+            style={styles.typeCardWrap}
             onPress={() => setSelectedType(selectedType === type.id ? null : type.id)}
           >
-            <View style={styles.typeIconContainer}>
-              <Ionicons name={type.icon} size={40} color="#fff" />
-            </View>
-            <Text style={styles.typeLabel}>{type.label}</Text>
-            <Text style={styles.typeCount}>
-              {isLoading ? '...' : `${contentTypeCounts[type.id] || 0} files`}
-            </Text>
+            <GlassPanel
+              radius={16}
+              style={[
+                styles.typeCard,
+                selectedType === type.id && styles.typeCardActive
+              ]}
+            >
+              <View style={styles.typeCardInner}>
+                <View style={styles.typeIconContainer}>
+                  <Ionicons name={type.icon} size={40} color="#fff" />
+                </View>
+                <Text style={styles.typeLabel}>{type.label}</Text>
+                <Text style={styles.typeCount}>
+                  {isLoading ? '...' : `${contentTypeCounts[type.id] || 0} files`}
+                </Text>
+              </View>
+            </GlassPanel>
           </TouchableOpacity>
         ))}
       </View>
@@ -147,7 +155,7 @@ export default function BrowseView() {
             <ActivityIndicator size="large" color="#3b82f6" style={styles.loader} />
           ) : content.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons name="document" size={64} color="#d1d5db" />
+              <Ionicons name="document" size={64} color="#5B6779" />
               <Text style={styles.emptyStateText}>No content found for this type.</Text>
             </View>
           ) : (
@@ -157,26 +165,29 @@ export default function BrowseView() {
                 return (
                   <TouchableOpacity
                     key={item._id || item.id}
-                    style={styles.contentCard}
                     onPress={() => handleOpenContent(item)}
                   >
-                    <View style={styles.contentIconContainer}>
-                      <Ionicons name={iconName as any} size={24} color="#fff" />
-                    </View>
-                    <View style={styles.contentInfo}>
-                      <Text style={styles.contentCardTitle}>{item.title || 'Untitled'}</Text>
-                      {item.description && (
-                        <Text style={styles.contentCardDescription} numberOfLines={2}>
-                          {item.description}
-                        </Text>
-                      )}
-                      {item.subjectId && typeof item.subjectId === 'object' && item.subjectId.name && (
-                        <View style={styles.subjectBadge}>
-                          <Text style={styles.subjectBadgeText}>{item.subjectId.name}</Text>
+                    <GlassPanel radius={12} style={styles.contentCard}>
+                      <View style={styles.contentCardRow}>
+                        <View style={styles.contentIconContainer}>
+                          <Ionicons name={iconName as any} size={24} color="#fff" />
                         </View>
-                      )}
-                    </View>
-                    <Ionicons name="open-outline" size={20} color="#3b82f6" />
+                        <View style={styles.contentInfo}>
+                          <Text style={styles.contentCardTitle}>{item.title || 'Untitled'}</Text>
+                          {item.description && (
+                            <Text style={styles.contentCardDescription} numberOfLines={2}>
+                              {item.description}
+                            </Text>
+                          )}
+                          {item.subjectId && typeof item.subjectId === 'object' && item.subjectId.name && (
+                            <View style={styles.subjectBadge}>
+                              <Text style={styles.subjectBadgeText}>{item.subjectId.name}</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Ionicons name="open-outline" size={20} color="#3b82f6" />
+                      </View>
+                    </GlassPanel>
                   </TouchableOpacity>
                 );
               })}
@@ -210,11 +221,16 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 24,
   },
-  typeCard: {
+  // The 47% width lives on the touchable; the panel fills it and the stacked
+  // child layout moves inside, since GlassPanel wraps children in its own view.
+  typeCardWrap: {
     width: '47%',
-    backgroundColor: '#fff',
+  },
+  typeCard: {
     borderRadius: 16,
     padding: 20,
+  },
+  typeCardInner: {
     alignItems: 'center',
     gap: 12,
   },
@@ -269,11 +285,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   contentCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
+  },
+  contentCardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
   },
   contentIconContainer: {

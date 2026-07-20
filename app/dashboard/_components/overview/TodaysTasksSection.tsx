@@ -12,6 +12,7 @@ import {
   getVideoDisplayTitle,
   isVideoContentType,
 } from '../../../../src/lib/video-chapter-schedule';
+import { GlassPanel } from '../../../../src/components/ui';
 import { STUDENT, STUDENT_RADIUS, STUDENT_TYPO, SUBJECT_COLORS } from '../../../../src/theme/student';
 
 type Props = {
@@ -51,7 +52,7 @@ function TodaysTasksSectionComponent({
   ];
 
   return (
-    <View style={styles.card}>
+    <GlassPanel style={styles.card} radius={STUDENT_RADIUS.card} tone="strong">
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <LinearGradient
@@ -211,13 +212,14 @@ function TodaysTasksSectionComponent({
           })}
         </View>
       )}
-    </View>
+    </GlassPanel>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: STUDENT.surface,
+    // Frosted over the app background artwork instead of a solid fill.
+    backgroundColor: 'transparent',
     borderRadius: STUDENT_RADIUS.card,
     padding: 14,
     borderWidth: 1,
@@ -308,7 +310,7 @@ const styles = StyleSheet.create({
   timePill: {
     borderWidth: 1,
     borderColor: STUDENT.surfaceBorder,
-    backgroundColor: STUDENT.surface,
+    backgroundColor: 'rgba(255,255,255,0.42)',
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 20,

@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../src/services/api/api';
 import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
+import { GlassPanel } from '../src/components/ui';
 
 export default function LearningPaths() {
   const router = useRouter();
@@ -58,7 +59,7 @@ export default function LearningPaths() {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {learningPaths.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="book" size={64} color="#9ca3af" />
+            <Ionicons name="book" size={64} color="#5B6779" />
             <Text style={styles.emptyText}>No learning paths available</Text>
           </View>
         ) : (
@@ -68,39 +69,42 @@ export default function LearningPaths() {
               style={styles.pathCard}
               onPress={() => router.push(`/subject/${path._id || path.id}`)}
             >
-              <View style={styles.pathHeader}>
-                <View style={[styles.pathIcon, { backgroundColor: '#dbeafe' }]}>
-                  <Ionicons name="book" size={24} color="#3b82f6" />
+              {/* the touchable stays for hit area; the glass card carries the padding */}
+              <GlassPanel style={styles.pathCardInner} radius={16} tone="medium">
+                <View style={styles.pathHeader}>
+                  <View style={[styles.pathIcon, { backgroundColor: '#dbeafe' }]}>
+                    <Ionicons name="book" size={24} color="#3b82f6" />
+                  </View>
+                  <View style={styles.pathInfo}>
+                    <Text style={styles.pathTitle}>{path.name || 'Subject'}</Text>
+                    <Text style={styles.pathDescription} numberOfLines={2}>
+                      {path.description || 'Start your learning journey'}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#5B6779" />
                 </View>
-                <View style={styles.pathInfo}>
-                  <Text style={styles.pathTitle}>{path.name || 'Subject'}</Text>
-                  <Text style={styles.pathDescription} numberOfLines={2}>
-                    {path.description || 'Start your learning journey'}
-                  </Text>
+                <View style={styles.pathStats}>
+                  <View style={styles.statItem}>
+                    <Ionicons name="people" size={16} color="#6b7280" />
+                    <Text style={styles.statText}>{path.students || 0} students</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Ionicons name="star" size={16} color="#fbbf24" />
+                    <Text style={styles.statText}>{path.rating || 0}</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Ionicons name="trending-up" size={16} color="#10b981" />
+                    <Text style={styles.statText}>{path.progress || 0}% complete</Text>
+                  </View>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
-              </View>
-              <View style={styles.pathStats}>
-                <View style={styles.statItem}>
-                  <Ionicons name="people" size={16} color="#6b7280" />
-                  <Text style={styles.statText}>{path.students || 0} students</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Ionicons name="star" size={16} color="#fbbf24" />
-                  <Text style={styles.statText}>{path.rating || 0}</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Ionicons name="trending-up" size={16} color="#10b981" />
-                  <Text style={styles.statText}>{path.progress || 0}% complete</Text>
-                </View>
-              </View>
-              {path.progress > 0 && (
-                <View style={styles.progressBar}>
-                  <View 
-                    style={[styles.progressFill, { width: `${path.progress}%` }]} 
-                  />
-                </View>
-              )}
+                {path.progress > 0 && (
+                  <View style={styles.progressBar}>
+                    <View
+                      style={[styles.progressFill, { width: `${path.progress}%` }]}
+                    />
+                  </View>
+                )}
+              </GlassPanel>
             </TouchableOpacity>
           ))
         )}
@@ -112,7 +116,8 @@ export default function LearningPaths() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    // transparent so the app-wide pastel artwork shows through the glass cards
+    backgroundColor: 'transparent',
   },
   loadingContainer: {
     flex: 1,
@@ -126,9 +131,9 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: 'rgba(255,255,255,0.55)',
   },
   headerTitle: {
     fontSize: 28,
@@ -144,16 +149,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   pathCard: {
-    backgroundColor: '#fff',
     marginHorizontal: 20,
     marginTop: 16,
     borderRadius: 16,
+  },
+  pathCardInner: {
+    borderRadius: 16,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
   },
   pathHeader: {
     flexDirection: 'row',
@@ -198,7 +200,7 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: 6,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: 'rgba(255,255,255,0.7)',
     borderRadius: 3,
     overflow: 'hidden',
     marginTop: 8,

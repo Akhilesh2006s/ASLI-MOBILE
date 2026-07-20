@@ -12,7 +12,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  type DimensionValue,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -29,75 +28,30 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
-  withSequence,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
 import { API_BASE_URL } from '../../src/services/api/api';
 import { useAuth } from '../../src/context/AuthContext';
+import { GlassPanel } from '../../src/components/ui';
 import { COLORS, FONT, RADIUS, SPACING } from '../../src/theme';
 
+/**
+ * Auth palette for the light pastel background. The app-wide <AppBackground>
+ * supplies the artwork, so everything here is derived for dark-on-light.
+ *
+ * `accent` is the role-neutral brand violet used for fills, borders and icons.
+ * `accentText` is the darker step used whenever the violet carries *text* on a
+ * light surface — #6366F1 only reaches ~4.4:1 on white, which misses 4.5:1.
+ */
 const PALETTE = {
-  bgTop: '#0B1220',
-  bgMid: '#111827',
-  bgBottom: '#1E1B4B',
   accent: '#6366F1',
-  accentLight: '#818CF8',
-  cyan: '#22D3EE',
-  violet: '#A855F7',
-  glass: 'rgba(255,255,255,0.07)',
-  glassBorder: 'rgba(255,255,255,0.14)',
-  card: 'rgba(255,255,255,0.96)',
-  textOnDark: '#F8FAFC',
-  mutedOnDark: 'rgba(248,250,252,0.65)',
+  accentText: '#4338CA',
+  link: '#4F46E5',
+  text: '#0f172a',
+  muted: '#5B6779',
+  hairline: 'rgba(15,23,42,0.10)',
 };
-
-const ORBS: { size: number; left: DimensionValue; top: DimensionValue; colors: [string, string]; delay: number }[] = [
-  { size: 220, left: '-15%', top: '-8%', colors: ['#6366F1', '#4F46E5'], delay: 0 },
-  { size: 180, left: '60%', top: '5%', colors: ['#22D3EE', '#0891B2'], delay: 1 },
-  { size: 160, left: '10%', top: '55%', colors: ['#A855F7', '#7C3AED'], delay: 2 },
-  { size: 140, left: '72%', top: '68%', colors: ['#3B82F6', '#2563EB'], delay: 3 },
-];
-
-function MeshOrb({ size, left, top, colors, delay }: (typeof ORBS)[number]) {
-  const drift = useSharedValue(0);
-  const pulse = useSharedValue(1);
-
-  useEffect(() => {
-    const base = 9000 + delay * 1500;
-    drift.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: base, easing: Easing.inOut(Easing.sin) }),
-        withTiming(0, { duration: base, easing: Easing.inOut(Easing.sin) }),
-      ),
-      -1,
-      false,
-    );
-    pulse.value = withRepeat(
-      withSequence(
-        withTiming(1.08, { duration: 4000 + delay * 500, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0.92, { duration: 4000 + delay * 500, easing: Easing.inOut(Easing.ease) }),
-      ),
-      -1,
-      false,
-    );
-  }, [delay, drift, pulse]);
-
-  const style = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: interpolate(drift.value, [0, 1], [0, 24]) },
-      { translateY: interpolate(drift.value, [0, 1], [0, 18]) },
-      { scale: pulse.value },
-    ],
-    opacity: interpolate(drift.value, [0, 1], [0.45, 0.65]),
-  }));
-
-  return (
-    <Animated.View style={[styles.orbShell, { width: size, height: size, left, top }, style]} pointerEvents="none">
-      <LinearGradient colors={colors} style={styles.orb} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
-    </Animated.View>
-  );
-}
 
 function ShimmerButton({
   label,
@@ -130,6 +84,8 @@ function ShimmerButton({
     <Animated.View style={btnStyle}>
       <Pressable
         disabled={loading}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: loading, busy: loading }}
         onPressIn={() => {
           scale.value = withSpring(0.97, { damping: 15 });
         }}
@@ -140,7 +96,7 @@ function ShimmerButton({
         style={({ pressed }) => [styles.signInWrap, pressed && !loading && { opacity: 0.95 }]}
       >
         <LinearGradient
-          colors={['#6366F1', '#4F46E5', '#0891B2']}
+          colors={['#4F46E5', '#4338CA']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.signInGradient}
@@ -148,7 +104,7 @@ function ShimmerButton({
           {!loading ? (
             <Animated.View style={[styles.shimmer, shimmerStyle]} pointerEvents="none">
               <LinearGradient
-                colors={['transparent', 'rgba(255,255,255,0.35)', 'transparent']}
+                colors={['transparent', 'rgba(255,255,255,0.18)', 'transparent']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={StyleSheet.absoluteFill}
@@ -202,7 +158,7 @@ function PremiumField({
   }, [focused, focusAnim]);
 
   const borderStyle = useAnimatedStyle(() => ({
-    borderColor: focused ? PALETTE.accent : '#E2E8F0',
+    borderColor: focused ? PALETTE.accent : '#D8DEE9',
     shadowOpacity: interpolate(focusAnim.value, [0, 1], [0, 0.12]),
   }));
 
@@ -211,15 +167,15 @@ function PremiumField({
       <Text style={styles.fieldLabel}>{label}</Text>
       <Animated.View style={[styles.fieldBox, borderStyle]}>
         <LinearGradient
-          colors={focused ? ['#EEF2FF', '#ECFEFF'] : ['#F8FAFC', '#F8FAFC']}
+          colors={focused ? ['#EEF2FF', '#ECFEFF'] : ['#F1F5F9', '#F1F5F9']}
           style={styles.fieldIconPill}
         >
-          <Ionicons name={icon} size={18} color={focused ? PALETTE.accent : '#94A3B8'} />
+          <Ionicons name={icon} size={18} color={focused ? PALETTE.accentText : PALETTE.muted} />
         </LinearGradient>
         <TextInput
           style={styles.fieldInput}
           placeholder={placeholder}
-          placeholderTextColor="#94A3B8"
+          placeholderTextColor={PALETTE.muted}
           value={value}
           onChangeText={onChangeText}
           onFocus={() => setFocused(true)}
@@ -230,8 +186,18 @@ function PremiumField({
           secureTextEntry={secure && !showPassword}
         />
         {onTogglePassword ? (
-          <Pressable onPress={onTogglePassword} style={styles.eyeBtn} hitSlop={10}>
-            <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color="#94A3B8" />
+          <Pressable
+            onPress={onTogglePassword}
+            style={styles.eyeBtn}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+          >
+            <Ionicons
+              name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+              size={20}
+              color={PALETTE.muted}
+            />
           </Pressable>
         ) : null}
       </Animated.View>
@@ -319,16 +285,8 @@ export default function Login() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style="light" />
-      <LinearGradient colors={[PALETTE.bgTop, PALETTE.bgMid, PALETTE.bgBottom]} style={StyleSheet.absoluteFill} />
-
-      <View style={styles.orbLayer} pointerEvents="none">
-        {ORBS.map((orb, i) => (
-          <MeshOrb key={i} {...orb} />
-        ))}
-      </View>
-
-      <View style={styles.gridOverlay} pointerEvents="none" />
+      {/* the app-wide pastel artwork is the page background now, so no local gradient */}
+      <StatusBar style="dark" />
 
       {showForm ? (
         <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
@@ -362,6 +320,7 @@ export default function Login() {
                       source={require('../../assets/logo.png')}
                       style={styles.brandLogo}
                       resizeMode="contain"
+                      accessibilityLabel="ASLI Learn logo"
                     />
                   </View>
                 </LinearGradient>
@@ -369,94 +328,89 @@ export default function Login() {
 
               {/* Glass card */}
               <Animated.View entering={FadeInDown.duration(600).delay(120).springify()} style={{ width: cardWidth }}>
-                <LinearGradient
-                  colors={['rgba(99,102,241,0.6)', 'rgba(34,211,238,0.4)', 'rgba(168,85,247,0.5)']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.cardBorder}
-                >
-                  <View style={styles.card}>
-                    <View style={styles.cardTop}>
-                      <Text style={styles.cardTitle}>Welcome Back</Text>
-                    </View>
-
-                    {error ? (
-                      <Animated.View entering={FadeIn.duration(250)} style={styles.errorBox}>
-                        <View style={styles.errorIconWrap}>
-                          <Ionicons name="alert-circle" size={18} color="#DC2626" />
-                        </View>
-                        <Text style={styles.errorMsg}>{error}</Text>
-                      </Animated.View>
-                    ) : null}
-
-                    <View style={styles.form}>
-                      <PremiumField
-                        label="Email Address"
-                        icon="mail-outline"
-                        placeholder="Enter your email"
-                        value={formData.email}
-                        onChangeText={(email) => setFormData((p) => ({ ...p, email }))}
-                        keyboardType="email-address"
-                        delay={180}
-                      />
-                      <PremiumField
-                        label="Password"
-                        icon="lock-closed-outline"
-                        placeholder="Enter your password"
-                        value={formData.password}
-                        onChangeText={(password) => setFormData((p) => ({ ...p, password }))}
-                        secure
-                        showPassword={showPassword}
-                        onTogglePassword={() => setShowPassword((v) => !v)}
-                        delay={260}
-                      />
-
-                      <Animated.View entering={FadeInDown.duration(450).delay(340)} style={styles.optionsRow}>
-                        <Pressable
-                          style={styles.rememberRow}
-                          onPress={() => {
-                            Haptics.selectionAsync();
-                            setRememberMe((v) => !v);
-                          }}
-                        >
-                          <LinearGradient
-                            colors={rememberMe ? ['#6366F1', '#4F46E5'] : ['#F1F5F9', '#F1F5F9']}
-                            style={[styles.checkbox, rememberMe && styles.checkboxOn]}
-                          >
-                            {rememberMe ? <Ionicons name="checkmark" size={13} color="#fff" /> : null}
-                          </LinearGradient>
-                          <Text style={styles.rememberLabel}>Remember me</Text>
-                        </Pressable>
-                        <Pressable onPress={handleForgotPassword} hitSlop={8}>
-                          <Text style={styles.forgotLink}>Forgot password?</Text>
-                        </Pressable>
-                      </Animated.View>
-
-                      <Animated.View entering={FadeInDown.duration(450).delay(420)}>
-                        <ShimmerButton
-                          label={isSubmitting ? 'Signing in...' : 'Sign In'}
-                          loading={isSubmitting}
-                          onPress={handleSubmit}
-                        />
-                      </Animated.View>
-                    </View>
-
-                    <View style={styles.dividerRow}>
-                      <View style={styles.dividerLine} />
-                      <Text style={styles.dividerText}>or</Text>
-                      <View style={styles.dividerLine} />
-                    </View>
-
-                    <Pressable
-                      style={styles.registerBtn}
-                      onPress={handleCreateAccount}
-                    >
-                      <Ionicons name="person-add-outline" size={18} color={PALETTE.accent} />
-                      <Text style={styles.registerBtnText}>Create a free account</Text>
-                    </Pressable>
-
+                <GlassPanel style={styles.card} radius={28} tone="strong">
+                  <View style={styles.cardTop}>
+                    <Text style={styles.cardTitle}>Welcome Back</Text>
                   </View>
-                </LinearGradient>
+
+                  {error ? (
+                    <Animated.View entering={FadeIn.duration(250)} style={styles.errorBox}>
+                      <View style={styles.errorIconWrap}>
+                        <Ionicons name="alert-circle" size={18} color="#B91C1C" />
+                      </View>
+                      <Text style={styles.errorMsg}>{error}</Text>
+                    </Animated.View>
+                  ) : null}
+
+                  <View style={styles.form}>
+                    <PremiumField
+                      label="Email Address"
+                      icon="mail-outline"
+                      placeholder="Enter your email"
+                      value={formData.email}
+                      onChangeText={(email) => setFormData((p) => ({ ...p, email }))}
+                      keyboardType="email-address"
+                      delay={180}
+                    />
+                    <PremiumField
+                      label="Password"
+                      icon="lock-closed-outline"
+                      placeholder="Enter your password"
+                      value={formData.password}
+                      onChangeText={(password) => setFormData((p) => ({ ...p, password }))}
+                      secure
+                      showPassword={showPassword}
+                      onTogglePassword={() => setShowPassword((v) => !v)}
+                      delay={260}
+                    />
+
+                    <Animated.View entering={FadeInDown.duration(450).delay(340)} style={styles.optionsRow}>
+                      <Pressable
+                        style={styles.rememberRow}
+                        accessibilityRole="checkbox"
+                        accessibilityState={{ checked: rememberMe }}
+                        onPress={() => {
+                          Haptics.selectionAsync();
+                          setRememberMe((v) => !v);
+                        }}
+                      >
+                        <LinearGradient
+                          colors={rememberMe ? ['#4F46E5', '#4338CA'] : ['#FFFFFF', '#FFFFFF']}
+                          style={[styles.checkbox, rememberMe && styles.checkboxOn]}
+                        >
+                          {rememberMe ? <Ionicons name="checkmark" size={13} color="#fff" /> : null}
+                        </LinearGradient>
+                        <Text style={styles.rememberLabel}>Remember me</Text>
+                      </Pressable>
+                      <Pressable onPress={handleForgotPassword} hitSlop={8} accessibilityRole="button">
+                        <Text style={styles.forgotLink}>Forgot password?</Text>
+                      </Pressable>
+                    </Animated.View>
+
+                    <Animated.View entering={FadeInDown.duration(450).delay(420)}>
+                      <ShimmerButton
+                        label={isSubmitting ? 'Signing in...' : 'Sign In'}
+                        loading={isSubmitting}
+                        onPress={handleSubmit}
+                      />
+                    </Animated.View>
+                  </View>
+
+                  <View style={styles.dividerRow}>
+                    <View style={styles.dividerLine} />
+                    <Text style={styles.dividerText}>or</Text>
+                    <View style={styles.dividerLine} />
+                  </View>
+
+                  <Pressable
+                    style={styles.registerBtn}
+                    accessibilityRole="button"
+                    onPress={handleCreateAccount}
+                  >
+                    <Ionicons name="person-add-outline" size={18} color={PALETTE.accentText} />
+                    <Text style={styles.registerBtnText}>Create a free account</Text>
+                  </Pressable>
+                </GlassPanel>
               </Animated.View>
             </ScrollView>
           </KeyboardAvoidingView>
@@ -467,17 +421,9 @@ export default function Login() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  // transparent so the app-wide pastel artwork shows behind the glass card
+  root: { flex: 1, backgroundColor: 'transparent' },
   flex: { flex: 1 },
-  orbLayer: { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },
-  orbShell: { position: 'absolute' },
-  orb: { flex: 1, borderRadius: 9999, opacity: 0.55 },
-  gridOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: 0.04,
-    backgroundColor: 'transparent',
-    borderWidth: 0,
-  },
   scroll: {
     flexGrow: 1,
     justifyContent: 'center',
@@ -496,14 +442,14 @@ const styles = StyleSheet.create({
     padding: 3,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#6366F1',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 10,
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    elevation: 6,
   },
   brandLogoInner: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
@@ -513,17 +459,15 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  cardBorder: {
-    borderRadius: 28,
-    padding: 1.5,
-  },
   card: {
-    backgroundColor: PALETTE.card,
-    borderRadius: 26.5,
     paddingHorizontal: SPACING.xl,
     paddingTop: SPACING.xxl,
     paddingBottom: SPACING.xl,
-    overflow: 'hidden',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    elevation: 8,
   },
   cardTop: {
     marginBottom: SPACING.xl,
@@ -531,13 +475,13 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#0F172A',
+    color: PALETTE.text,
     letterSpacing: -0.5,
     marginBottom: 6,
   },
   cardSubtitle: {
     fontSize: FONT.base,
-    color: '#64748B',
+    color: PALETTE.muted,
     lineHeight: 20,
   },
   errorBox: {
@@ -569,16 +513,18 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: FONT.sm,
     fontWeight: FONT.semibold,
-    color: '#334155',
+    color: PALETTE.text,
     marginLeft: 2,
   },
   fieldBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    // opaque white field on frosted glass: keeps the dark input text legible
+    // no matter which pastel hue sits behind the card
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: RADIUS.lg + 2,
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderColor: '#D8DEE9',
     height: 56,
     paddingRight: SPACING.md,
     shadowColor: PALETTE.accent,
@@ -623,19 +569,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: SPACING.sm,
     borderWidth: 1.5,
-    borderColor: '#CBD5E1',
+    borderColor: 'rgba(15,23,42,0.25)',
   },
   checkboxOn: {
     borderColor: 'transparent',
   },
   rememberLabel: {
     fontSize: FONT.base,
-    color: '#475569',
+    color: PALETTE.text,
     fontWeight: FONT.medium,
   },
   forgotLink: {
     fontSize: FONT.base,
-    color: PALETTE.accent,
+    color: PALETTE.link,
     fontWeight: FONT.bold,
   },
   signInWrap: {
@@ -644,7 +590,7 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xs,
     shadowColor: '#4F46E5',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
+    shadowOpacity: 0.28,
     shadowRadius: 16,
     elevation: 8,
   },
@@ -681,11 +627,11 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: PALETTE.hairline,
   },
   dividerText: {
     fontSize: FONT.sm,
-    color: '#94A3B8',
+    color: PALETTE.muted,
     fontWeight: FONT.medium,
   },
   registerBtn: {
@@ -696,12 +642,12 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: RADIUS.lg + 2,
     borderWidth: 1.5,
-    borderColor: '#E0E7FF',
+    borderColor: '#C7D2FE',
     backgroundColor: '#EEF2FF',
   },
   registerBtnText: {
     fontSize: FONT.md,
     fontWeight: FONT.bold,
-    color: PALETTE.accent,
+    color: PALETTE.accentText,
   },
 });

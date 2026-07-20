@@ -104,7 +104,7 @@ export default function StudentHomeworkSubmissionsView() {
                 key={submission._id}
                 entering={FadeInDown.duration(STUDENT_ANIMATION.normal).delay(index * 60)}
               >
-                <GlassCard variant="elevated" style={styles.submissionCard}>
+                <GlassCard variant="glass" style={styles.submissionCard}>
                   <View style={[styles.subjectStripe, { backgroundColor: subjectColor }]} />
                   <View style={styles.submissionHeader}>
                     <View style={styles.homeworkInfo}>
@@ -159,9 +159,10 @@ export default function StudentHomeworkSubmissionsView() {
 }
 
 const styles = StyleSheet.create({
+  // Transparent so the app background artwork shows through.
   container: {
     flex: 1,
-    backgroundColor: STUDENT.bg,
+    backgroundColor: 'transparent',
   },
   loadingContainer: {
     flex: 1,

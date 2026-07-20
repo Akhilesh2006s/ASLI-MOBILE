@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import staffService from '../../src/services/api/staffService';
 import adminService from '../../src/services/api/adminService';
 import { useAuth } from '../../src/context/AuthContext';
+import { GlassPanel } from '../../src/components/ui';
 
 export default function StaffDashboardScreen() {
   const { role } = useAuth();
@@ -75,15 +76,17 @@ export default function StaffDashboardScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
-          <Ionicons name="arrow-back" size={20} color="#111827" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Staff Dashboard</Text>
-        <TouchableOpacity onPress={() => router.push('/profile')} style={styles.iconBtn}>
-          <Ionicons name="person-outline" size={20} color="#111827" />
-        </TouchableOpacity>
-      </View>
+      <GlassPanel style={styles.header} radius={0} bordered={false}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+            <Ionicons name="arrow-back" size={20} color="#111827" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Staff Dashboard</Text>
+          <TouchableOpacity onPress={() => router.push('/profile')} style={styles.iconBtn}>
+            <Ionicons name="person-outline" size={20} color="#111827" />
+          </TouchableOpacity>
+        </View>
+      </GlassPanel>
 
       <ScrollView
         style={styles.scroll}
@@ -94,11 +97,11 @@ export default function StaffDashboardScreen() {
 
         <View style={styles.cardsGrid}>
           {cards.map((card) => (
-            <View key={card.label} style={styles.metricCard}>
+            <GlassPanel key={card.label} style={styles.metricCard} radius={12}>
               <Ionicons name={card.icon} size={18} color="#2563eb" />
               <Text style={styles.metricValue}>{card.value}</Text>
               <Text style={styles.metricLabel}>{card.label}</Text>
-            </View>
+            </GlassPanel>
           ))}
         </View>
 
@@ -106,10 +109,10 @@ export default function StaffDashboardScreen() {
           <Text style={styles.sectionTitle}>{role === 'admin' ? 'Teachers' : 'Students Performance'}</Text>
         </View>
         {(students || []).slice(0, 20).map((item, idx) => (
-          <View key={item?._id || item?.id || idx} style={styles.listCard}>
+          <GlassPanel key={item?._id || item?.id || idx} style={styles.listCard} radius={12} tone="strong">
             <Text style={styles.listTitle}>{item?.fullName || item?.name || item?.email || 'User'}</Text>
             <Text style={styles.listSubtitle}>{item?.email || item?.subject || 'No additional details'}</Text>
-          </View>
+          </GlassPanel>
         ))}
       </ScrollView>
     </SafeAreaView>
@@ -117,15 +120,18 @@ export default function StaffDashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc' },
+  // Transparent so the app background artwork shows through.
+  container: { flex: 1, backgroundColor: 'transparent' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: 10, color: '#6b7280' },
   header: {
     paddingHorizontal: 14,
     paddingVertical: 12,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
+  },
+  // Row layout lives on an inner view because GlassPanel wraps its children.
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -137,7 +143,6 @@ const styles = StyleSheet.create({
   cardsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 14 },
   metricCard: {
     width: '48.5%',
-    backgroundColor: '#fff',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#e5e7eb',
@@ -149,7 +154,6 @@ const styles = StyleSheet.create({
   sectionHeader: { marginBottom: 8 },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: '#111827' },
   listCard: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#e5e7eb',

@@ -27,6 +27,7 @@ import SubjectPickerModal from '../../../src/components/vidya/SubjectPickerModal
 import VidyaAvatar from '../../../src/components/vidya/VidyaAvatar';
 import type { AIChatContext, TeachingTab } from '../../../src/types/vidya';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
+import { GlassPanel } from '../../../src/components/ui';
 
 function ThinkingDots() {
   const dots = [0, 1, 2];
@@ -195,13 +196,18 @@ export default function VidyaAIViewChat({
         keyboardDismissMode="interactive"
         bounces
       >
-        <View style={[styles.modeHeader, fullPage && styles.modeHeaderFull]}>
+        <GlassPanel
+          style={[styles.modeHeader, fullPage && styles.modeHeaderFull]}
+          radius={0}
+          tone="medium"
+          bordered={false}
+        >
           <View style={styles.modeHeaderRow}>
             <Ionicons name={mode.icon} size={18} color={TEACHER.primaryLight} />
             <Text style={styles.modeTitle}>{mode.title}</Text>
           </View>
           <Text style={styles.modeSubtitle}>{mode.subtitle}</Text>
-        </View>
+        </GlassPanel>
 
         <ScrollView
           horizontal
@@ -270,10 +276,11 @@ export default function VidyaAIViewChat({
                 {model.quickQuestions.map((question) => (
                   <Pressable
                     key={question}
-                    style={styles.starterCard}
                     onPress={() => model.onPromptClick(question)}
                   >
-                    <Text style={styles.starterCardText}>{question}</Text>
+                    <GlassPanel style={styles.starterCard} radius={TEACHER_RADIUS.md} tone="strong">
+                      <Text style={styles.starterCardText}>{question}</Text>
+                    </GlassPanel>
                   </Pressable>
                 ))}
               </View>
@@ -302,11 +309,11 @@ export default function VidyaAIViewChat({
                     </Text>
                   </LinearGradient>
                 ) : (
-                  <View style={[styles.bubble, styles.bubbleAssistant]}>
+                  <GlassPanel style={[styles.bubble, styles.bubbleAssistant]} radius={16} tone="strong">
                     <Text style={styles.bubbleText}>
                       {model.formatMessage(msg.content)}
                     </Text>
-                  </View>
+                  </GlassPanel>
                 )}
                 {msg.role === 'user' ? (
                   <View style={styles.avatarUser}>
@@ -320,9 +327,11 @@ export default function VidyaAIViewChat({
           {model.isPending ? (
             <View style={[styles.messageRow, styles.messageRowAssistant]}>
               <VidyaAvatar size={28} borderColor="#93c5fd" borderWidth={1} />
-              <View style={[styles.bubble, styles.bubbleAssistant, styles.thinkingBubble]}>
-                <ThinkingDots />
-              </View>
+              <GlassPanel style={[styles.bubble, styles.bubbleAssistant]} radius={16} tone="strong">
+                <View style={styles.thinkingBubbleRow}>
+                  <ThinkingDots />
+                </View>
+              </GlassPanel>
             </View>
           ) : null}
         </View>
@@ -404,7 +413,8 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: TEACHER.bg,
+    // Transparent so AppBackground's artwork shows through.
+    backgroundColor: 'transparent',
   },
   chatRoot: {
     flex: 1,
@@ -415,7 +425,8 @@ const styles = StyleSheet.create({
     borderRadius: TEACHER_RADIUS.lg,
     borderWidth: 1,
     borderColor: TEACHER.surfaceBorder,
-    backgroundColor: TEACHER.surface,
+    // Transparent so AppBackground's artwork shows through.
+    backgroundColor: 'transparent',
   },
   chatRootFull: {
     marginHorizontal: 0,
@@ -423,17 +434,17 @@ const styles = StyleSheet.create({
     marginBottom: 0,
     borderRadius: 0,
     borderWidth: 0,
-    backgroundColor: TEACHER.bg,
+    backgroundColor: 'transparent',
   },
   modeHeader: {
     ...glassCard,
+    backgroundColor: 'transparent',
     borderRadius: 0,
     borderWidth: 0,
     borderBottomWidth: 1,
     paddingHorizontal: TEACHER_SPACING.lg,
     paddingTop: TEACHER_SPACING.lg,
     paddingBottom: TEACHER_SPACING.sm,
-    backgroundColor: TEACHER.surface,
   },
   modeHeaderFull: {
     paddingTop: TEACHER_SPACING.md,
@@ -568,7 +579,6 @@ const styles = StyleSheet.create({
   starterCard: {
     padding: TEACHER_SPACING.md,
     borderRadius: TEACHER_RADIUS.md,
-    backgroundColor: TEACHER.surfaceElevated,
     borderWidth: 1,
     borderColor: TEACHER.surfaceBorder,
   },
@@ -626,7 +636,6 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 18,
   },
   bubbleAssistant: {
-    backgroundColor: TEACHER.surface,
     borderWidth: 1,
     borderColor: TEACHER.surfaceBorder,
     borderBottomLeftRadius: 4,
@@ -642,7 +651,7 @@ const styles = StyleSheet.create({
   bubbleTextUser: {
     color: TEACHER.textOnPrimary,
   },
-  thinkingBubble: {
+  thinkingBubbleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,

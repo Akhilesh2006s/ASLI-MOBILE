@@ -171,7 +171,7 @@ export default function SuperAdminVidyaChatPanel({ userId = 'super-admin' }: Pro
             value={model.message}
             onChangeText={model.setMessage}
             placeholder={model.inputPlaceholder}
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor="#5B6779"
             multiline
             maxLength={2000}
             editable={!model.isPending}
@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
   chatCard: {
     flex: 1,
     minHeight: 0,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderWidth: 1,
     borderColor: '#ffedd5',
     borderBottomLeftRadius: 16,
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
   },
   input: {
     flex: 1,
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 14,
     color: '#0f172a',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
   },
   sendBtn: {
     width: 44,

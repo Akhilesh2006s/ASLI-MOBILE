@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { GlassPanel } from '../../../src/components/ui';
 
 const { width } = Dimensions.get('window');
 
@@ -13,7 +14,7 @@ export default function ProgressChart({ title, data, maxValue }: ProgressChartPr
   const max = maxValue || Math.max(...data.map(d => d.value), 100);
 
   return (
-    <View style={styles.container}>
+    <GlassPanel style={styles.container} radius={12}>
       <Text style={styles.title}>{title}</Text>
       <View style={styles.chartContainer}>
         {data.map((item, index) => {
@@ -39,13 +40,13 @@ export default function ProgressChart({ title, data, maxValue }: ProgressChartPr
           );
         })}
       </View>
-    </View>
+    </GlassPanel>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
+    // Fill comes from GlassPanel's blur + tint, not a solid colour.
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,

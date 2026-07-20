@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   navItemActive: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
   },
   navLabel: {
     flex: 1,

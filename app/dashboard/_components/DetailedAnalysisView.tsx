@@ -299,7 +299,7 @@ export default function DetailedAnalysisView({
   if (!displayResult?.examId) {
     return (
       <View style={[styles.container, styles.missingState]}>
-        <Ionicons name="document-text-outline" size={40} color="#9ca3af" />
+        <Ionicons name="document-text-outline" size={40} color="#5B6779" />
         <Text style={styles.missingTitle}>Exam data unavailable</Text>
         <Text style={styles.missingText}>Open an attempted exam and tap View Details.</Text>
         {!embedded ? (
@@ -356,7 +356,7 @@ export default function DetailedAnalysisView({
           />
         ) : (
           <View style={styles.advancedUnavailable}>
-            <Ionicons name="stats-chart-outline" size={36} color="#9ca3af" />
+            <Ionicons name="stats-chart-outline" size={36} color="#5B6779" />
             <Text style={styles.advancedUnavailableTitle}>Advanced analytics unavailable</Text>
             <Text style={styles.advancedUnavailableText}>
               Exam details could not be loaded. Go back and open this attempt again from View Details.
@@ -388,7 +388,7 @@ export default function DetailedAnalysisView({
       <Ionicons
         name={tab.icon}
         size={15}
-        color={activeTab === id ? ANALYSIS.accent : '#94A3B8'}
+        color={activeTab === id ? ANALYSIS.accent : '#5B6779'}
       />
       <Text style={[analysisStyles.tabPillText, activeTab === id && analysisStyles.tabPillTextActive]}>
         {tab.label}
@@ -480,7 +480,8 @@ export default function DetailedAnalysisView({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  // Transparent so the app background artwork shows through.
+  container: { flex: 1, backgroundColor: 'transparent' },
   headerGradient: { paddingBottom: 4 },
   body: { flex: 1, zIndex: 0 },
   pagerContent: { flexGrow: 1 },

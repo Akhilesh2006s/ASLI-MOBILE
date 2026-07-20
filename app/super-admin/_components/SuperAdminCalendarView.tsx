@@ -12,6 +12,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { GlassPanel } from '../../../src/components/ui';
 import api from '../../../src/services/api/api';
 import {
   type CalendarEventRecord,
@@ -275,7 +276,7 @@ export default function SuperAdminCalendarView({ onNavigateToExams }: Props) {
         </Pressable>
       </View>
 
-      <View style={styles.card}>
+      <GlassPanel style={styles.card} radius={12} tone="medium">
         <View style={styles.schoolFilterRow}>
           <Ionicons name="business-outline" size={20} color="#6b7280" />
           <View style={{ flex: 1 }}>
@@ -284,7 +285,7 @@ export default function SuperAdminCalendarView({ onNavigateToExams }: Props) {
               <Text style={styles.pickerValue}>
                 {schoolOptions.find((o) => o.value === selectedSchoolId)?.label || 'All Schools'}
               </Text>
-              <Ionicons name="chevron-down" size={18} color="#9ca3af" />
+              <Ionicons name="chevron-down" size={18} color="#5B6779" />
             </Pressable>
           </View>
         </View>
@@ -304,17 +305,27 @@ export default function SuperAdminCalendarView({ onNavigateToExams }: Props) {
             <Text style={styles.filteredSchoolEmail}>{selectedAdmin.email}</Text>
           </View>
         )}
-      </View>
+      </GlassPanel>
 
-      <View style={styles.card}>
+      <GlassPanel style={styles.card} radius={12} tone="medium">
         <View style={styles.monthNav}>
-          <Pressable style={styles.navBtn} onPress={goToPreviousMonth}>
+          <Pressable
+            style={styles.navBtn}
+            onPress={goToPreviousMonth}
+            accessibilityRole="button"
+            accessibilityLabel="Previous month"
+          >
             <Ionicons name="chevron-back" size={20} color="#374151" />
           </Pressable>
           <Text style={styles.monthTitle}>
             {MONTH_NAMES[currentDate.getMonth()]} {currentDate.getFullYear()}
           </Text>
-          <Pressable style={styles.navBtn} onPress={goToNextMonth}>
+          <Pressable
+            style={styles.navBtn}
+            onPress={goToNextMonth}
+            accessibilityRole="button"
+            accessibilityLabel="Next month"
+          >
             <Ionicons name="chevron-forward" size={20} color="#374151" />
           </Pressable>
         </View>
@@ -324,7 +335,7 @@ export default function SuperAdminCalendarView({ onNavigateToExams }: Props) {
             value={jumpDate}
             onChangeText={setJumpDate}
             placeholder="YYYY-MM-DD"
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor="#5B6779"
           />
           <Pressable style={styles.jumpBtn} onPress={goToDate}>
             <Text style={styles.jumpBtnText}>Go</Text>
@@ -365,7 +376,12 @@ export default function SuperAdminCalendarView({ onNavigateToExams }: Props) {
                         <Text style={[styles.dayNumber, today && styles.dayNumberToday, !inMonth && styles.dayNumberMuted]}>
                           {date.getDate()}
                         </Text>
-                        <Pressable style={styles.addDayBtn} onPress={() => openQuickAdd(date)}>
+                        <Pressable
+                          style={styles.addDayBtn}
+                          onPress={() => openQuickAdd(date)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Add event on ${date.toDateString()}`}
+                        >
                           <Ionicons name="add" size={14} color="#64748b" />
                         </Pressable>
                       </View>
@@ -401,7 +417,7 @@ export default function SuperAdminCalendarView({ onNavigateToExams }: Props) {
               <Text style={styles.emptyText}>No events or exams scheduled this month.</Text>
             ) : (
               monthlyEventsByDate.map(([dateKey, dayEvents]) => (
-                <View key={dateKey} style={styles.dayGroup}>
+                <GlassPanel key={dateKey} style={styles.dayGroup} radius={10} tone="medium">
                   <Text style={styles.dayGroupTitle}>
                     {new Date(dateKey).toLocaleDateString(undefined, {
                       weekday: 'short',
@@ -423,7 +439,7 @@ export default function SuperAdminCalendarView({ onNavigateToExams }: Props) {
                       </Pressable>
                     );
                   })}
-                </View>
+                </GlassPanel>
               ))
             )}
 
@@ -438,24 +454,27 @@ export default function SuperAdminCalendarView({ onNavigateToExams }: Props) {
                 const isRange = start.toDateString() !== end.toDateString();
                 const style = TYPE_STYLES[event.type] || TYPE_STYLES.custom;
                 return (
-                  <Pressable key={`flat-${event.id}`} style={styles.flatEvent} onPress={() => handleViewEvent(event)}>
-                    <View style={styles.listEventTop}>
-                      <Text style={styles.listEventTitle} numberOfLines={2}>{event.title}</Text>
-                      <View style={[styles.typeBadge, { backgroundColor: style.dot }]}>
-                        <Text style={styles.typeBadgeText}>{style.label}</Text>
+                  <GlassPanel key={`flat-${event.id}`} style={styles.flatEvent} radius={10} tone="medium">
+                    {/* Padding rides on the Pressable so the tap target stays the full card. */}
+                    <Pressable style={styles.flatEventInner} onPress={() => handleViewEvent(event)}>
+                      <View style={styles.listEventTop}>
+                        <Text style={styles.listEventTitle} numberOfLines={2}>{event.title}</Text>
+                        <View style={[styles.typeBadge, { backgroundColor: style.dot }]}>
+                          <Text style={styles.typeBadgeText}>{style.label}</Text>
+                        </View>
                       </View>
-                    </View>
-                    <Text style={styles.flatEventDate}>
-                      {start.toLocaleDateString()}
-                      {isRange ? ` - ${end.toLocaleDateString()}` : ''}
-                    </Text>
-                  </Pressable>
+                      <Text style={styles.flatEventDate}>
+                        {start.toLocaleDateString()}
+                        {isRange ? ` - ${end.toLocaleDateString()}` : ''}
+                      </Text>
+                    </Pressable>
+                  </GlassPanel>
                 );
               })
             )}
           </>
         )}
-      </View>
+      </GlassPanel>
 
       {/* Quick Add Modal */}
       <Modal visible={quickAddOpen} animationType="slide" onRequestClose={() => setQuickAddOpen(false)}>
@@ -472,7 +491,11 @@ export default function SuperAdminCalendarView({ onNavigateToExams }: Props) {
                 })}
               </Text>
             </View>
-            <Pressable onPress={() => setQuickAddOpen(false)}>
+            <Pressable
+              onPress={() => setQuickAddOpen(false)}
+              accessibilityRole="button"
+              accessibilityLabel="Close add event"
+            >
               <Ionicons name="close" size={24} color="#6b7280" />
             </Pressable>
           </View>
@@ -531,7 +554,7 @@ export default function SuperAdminCalendarView({ onNavigateToExams }: Props) {
                 <Text style={styles.pickerValue}>
                   {quickAddForm.priority.charAt(0).toUpperCase() + quickAddForm.priority.slice(1)}
                 </Text>
-                <Ionicons name="chevron-down" size={18} color="#9ca3af" />
+                <Ionicons name="chevron-down" size={18} color="#5B6779" />
               </Pressable>
             </View>
             <View style={styles.formGroup}>
@@ -542,7 +565,7 @@ export default function SuperAdminCalendarView({ onNavigateToExams }: Props) {
                     ? 'School Event'
                     : quickAddForm.category.charAt(0).toUpperCase() + quickAddForm.category.slice(1)}
                 </Text>
-                <Ionicons name="chevron-down" size={18} color="#9ca3af" />
+                <Ionicons name="chevron-down" size={18} color="#5B6779" />
               </Pressable>
             </View>
             <View style={styles.formGroup}>
@@ -675,30 +698,31 @@ export default function SuperAdminCalendarView({ onNavigateToExams }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9fafb' },
+  // Transparent: the shared app background artwork shows through.
+  container: { flex: 1, backgroundColor: 'transparent' },
   headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, padding: 20, paddingBottom: 12 },
   title: { fontSize: 28, fontWeight: '800', color: '#111827' },
   subtitle: { fontSize: 14, color: '#6b7280', marginTop: 4 },
-  todayBtn: { borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#fff', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10 },
+  todayBtn: { borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: 'rgba(255,255,255,0.48)', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10 },
   todayBtnText: { fontWeight: '600', color: '#374151' },
-  card: { marginHorizontal: 16, marginBottom: 12, backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', padding: 14 },
+  card: { marginHorizontal: 16, marginBottom: 12, borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', padding: 14 },
   schoolFilterRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
   formLabel: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 },
-  pickerField: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: '#fed7aa', padding: 12 },
+  pickerField: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(255,255,255,0.48)', borderRadius: 10, borderWidth: 1, borderColor: '#fed7aa', padding: 12 },
   pickerValue: { fontSize: 15, color: '#111827', flex: 1 },
   legendRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 12 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
   legendText: { fontSize: 11, color: '#6b7280' },
-  filteredSchoolBox: { marginTop: 12, backgroundColor: '#fff7ed', borderRadius: 10, padding: 12 },
+  filteredSchoolBox: { marginTop: 12, backgroundColor: 'rgba(255,247,237,0.55)', borderRadius: 10, padding: 12 },
   filteredSchoolTitle: { fontSize: 13, fontWeight: '600', color: '#374151' },
   filteredSchoolEmail: { fontSize: 12, color: '#6b7280', marginTop: 4 },
   monthNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  navBtn: { width: 36, height: 36, borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
+  navBtn: { width: 36, height: 36, borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.48)' },
   monthTitle: { fontSize: 18, fontWeight: '700', color: '#111827' },
   jumpRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   jumpInput: { flex: 1, backgroundColor: '#f9fafb', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, color: '#111827' },
-  jumpBtn: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, paddingHorizontal: 16, justifyContent: 'center' },
+  jumpBtn: { backgroundColor: 'rgba(255,255,255,0.48)', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, paddingHorizontal: 16, justifyContent: 'center' },
   jumpBtnText: { fontWeight: '600', color: '#374151' },
   loadingBox: { alignItems: 'center', paddingVertical: 48 },
   loadingText: { marginTop: 12, color: '#6b7280' },
@@ -707,13 +731,13 @@ const styles = StyleSheet.create({
   dayHeader: { flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '700', color: '#6b7280', paddingVertical: 4 },
   grid: {},
   gridRow: { flexDirection: 'row' },
-  dayCell: { flex: 1, minHeight: 72, borderWidth: 1, borderColor: '#e5e7eb', padding: 4, backgroundColor: '#fff' },
+  dayCell: { flex: 1, minHeight: 72, borderWidth: 1, borderColor: '#e5e7eb', padding: 4, backgroundColor: 'rgba(255,255,255,0.48)' },
   dayCellMuted: { backgroundColor: '#f9fafb', opacity: 0.7 },
   dayCellToday: { borderColor: '#f97316', borderWidth: 2 },
   dayCellTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   dayNumber: { fontSize: 12, fontWeight: '600', color: '#374151' },
   dayNumberToday: { color: '#ea580c', fontWeight: '800' },
-  dayNumberMuted: { color: '#9ca3af' },
+  dayNumberMuted: { color: '#5B6779' },
   addDayBtn: { padding: 2 },
   eventPill: { borderRadius: 4, paddingHorizontal: 4, paddingVertical: 2, marginTop: 2 },
   eventPillText: { fontSize: 8, color: '#fff', fontWeight: '600' },
@@ -723,16 +747,17 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: '700', color: '#0c4a6e' },
   sectionCount: { fontSize: 12, color: '#0284c7' },
   emptyText: { fontSize: 13, color: '#6b7280' },
-  dayGroup: { borderRadius: 10, borderWidth: 1, borderColor: '#e0f2fe', backgroundColor: '#fff', padding: 10, marginBottom: 10 },
+  dayGroup: { borderRadius: 10, borderWidth: 1, borderColor: '#e0f2fe', padding: 10, marginBottom: 10 },
   dayGroupTitle: { fontSize: 12, fontWeight: '700', color: '#0369a1', marginBottom: 8 },
   listEvent: { backgroundColor: '#f0f9ff', borderRadius: 8, padding: 10, marginBottom: 6 },
   listEventTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 8, alignItems: 'flex-start' },
   listEventTitle: { flex: 1, fontSize: 14, fontWeight: '600', color: '#0c4a6e' },
   typeBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   typeBadgeText: { fontSize: 10, fontWeight: '700', color: '#fff' },
-  flatEvent: { borderRadius: 10, borderWidth: 1, borderColor: '#e0f2fe', backgroundColor: '#fff', padding: 12, marginBottom: 8 },
+  flatEvent: { borderRadius: 10, borderWidth: 1, borderColor: '#e0f2fe', marginBottom: 8 },
+  flatEventInner: { padding: 12 },
   flatEventDate: { fontSize: 12, color: '#0284c7', marginTop: 4 },
-  formModalWrap: { flex: 1, backgroundColor: '#fff' },
+  formModalWrap: { flex: 1, backgroundColor: 'rgba(255,255,255,0.48)' },
   formModalHeader: { flexDirection: 'row', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
   formModalTitle: { fontSize: 20, fontWeight: '800', color: '#111827' },
   formModalSubtitle: { fontSize: 13, color: '#6b7280', marginTop: 2 },
@@ -740,7 +765,7 @@ const styles = StyleSheet.create({
   formModalFooter: { flexDirection: 'row', gap: 12, padding: 20, borderTopWidth: 1, borderTopColor: '#e5e7eb' },
   quickAddTopRow: { gap: 10, marginBottom: 12 },
   formHint: { fontSize: 13, color: '#64748b' },
-  examInsteadBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', borderWidth: 1, borderColor: '#bfdbfe', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#fff' },
+  examInsteadBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', borderWidth: 1, borderColor: '#bfdbfe', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: 'rgba(255,255,255,0.48)' },
   examInsteadText: { color: '#2563eb', fontWeight: '600', fontSize: 13 },
   formGroup: { marginBottom: 14 },
   formInput: { backgroundColor: '#f9fafb', borderRadius: 10, borderWidth: 1, borderColor: '#e5e7eb', padding: 12, fontSize: 15, color: '#111827' },
@@ -759,7 +784,7 @@ const styles = StyleSheet.create({
   readOnlyRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16 },
   readOnlyText: { fontSize: 13, color: '#6b7280' },
   pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  pickerSheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '70%' },
+  pickerSheet: { backgroundColor: 'rgba(255,255,255,0.48)', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '70%' },
   pickerTitle: { fontSize: 18, fontWeight: '700', marginBottom: 12 },
   pickerItem: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
   pickerItemText: { fontSize: 16, color: '#111827' },

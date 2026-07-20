@@ -20,8 +20,17 @@ export default function SubjectPickerModal({
 }: SubjectPickerModalProps) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+      <Pressable
+        style={styles.backdrop}
+        onPress={onClose}
+        accessibilityRole="button"
+        accessibilityLabel="Close subject picker"
+      >
+        <Pressable
+          style={styles.sheet}
+          onPress={(e) => e.stopPropagation()}
+          accessibilityViewIsModal
+        >
           <Text style={styles.title}>Select subject</Text>
           <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
             {subjects.map((subject) => {
@@ -34,6 +43,9 @@ export default function SubjectPickerModal({
                     onSelect(subject);
                     onClose();
                   }}
+                  accessibilityRole="button"
+                  accessibilityLabel={subject}
+                  accessibilityState={{ selected: active }}
                 >
                   <Text style={[styles.rowText, active && { color: accentColor, fontWeight: '700' }]}>
                     {subject}
@@ -57,7 +69,7 @@ const styles = StyleSheet.create({
   },
   sheet: {
     maxHeight: '55%',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingTop: 16,

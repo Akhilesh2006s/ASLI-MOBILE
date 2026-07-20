@@ -386,7 +386,7 @@ function StudyCalendarSectionComponent({
 
   const renderEventsCard = () => (
       <GlassCard
-        variant="default"
+        variant="glass"
         padding={14}
         style={isTablet ? styles.cardFillTablet : styles.cardFill}
       >
@@ -576,11 +576,13 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   calInnerBody: {
-    backgroundColor: '#ffffff',
+    backgroundColor: 'rgba(255,255,255,0.42)',
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 14,
     marginTop: 4,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.55)',
   },
   calInnerBodyTablet: {
     flex: 1,
@@ -653,10 +655,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+    backgroundColor: 'rgba(255,255,255,0.28)',
   },
   dayCellInnerToday: {
     borderWidth: 2,
     borderColor: STUDENT.primaryLight,
+    backgroundColor: 'rgba(109,91,208,0.14)',
   },
   dayCellInnerSelected: {
     backgroundColor: STUDENT.primary,
@@ -664,7 +668,7 @@ const styles = StyleSheet.create({
   dayCellInnerTodaySelected: {
     backgroundColor: STUDENT.primaryDark,
     borderWidth: 2,
-    borderColor: '#ffffff',
+    borderColor: 'rgba(255,255,255,0.85)',
   },
   dayNum: {
     fontSize: 13,

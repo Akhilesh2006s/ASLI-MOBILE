@@ -25,6 +25,7 @@ import GroupedBarChart from '../../../../src/components/ui/charts/GroupedBarChar
 import ComposedStackedBarChart from '../../../../src/components/ui/charts/ComposedStackedBarChart';
 import HorizontalStackedBarChart from '../../../../src/components/ui/charts/HorizontalStackedBarChart';
 import BarChart from '../../../../src/components/ui/charts/BarChart';
+import { GlassPanel } from '../../../../src/components/ui';
 import AnalysisCard from './AnalysisCard';
 import { ANALYSIS, ANALYSIS_CONTENT_MAX, useExamAnalysisLayout } from './exam-analysis-ui';
 
@@ -306,20 +307,23 @@ export default function AdvancedPerformanceDashboardMobile({
         </View>
       ) : null}
 
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Advanced Performance Intelligence</Text>
-        <Text style={styles.headerSub}>Live data: time × difficulty × question type × chapter</Text>
-        <View style={styles.badgeRow}>
-          <View style={styles.badgeBlue}>
-            <Text style={styles.badgeBlueText}>Risk: {analytics.recommendation?.riskLevel || 'N/A'}</Text>
-          </View>
-          <View style={styles.badgeGreen}>
-            <Text style={styles.badgeGreenText}>
-              Trend: {analytics.recommendation?.confidenceTrend || 'Stable'}
-            </Text>
+      <GlassPanel style={styles.header} radius={14}>
+        {/* Inner view carries the row spacing GlassPanel's wrapper would swallow. */}
+        <View style={styles.headerInner}>
+          <Text style={styles.headerTitle}>Advanced Performance Intelligence</Text>
+          <Text style={styles.headerSub}>Live data: time × difficulty × question type × chapter</Text>
+          <View style={styles.badgeRow}>
+            <View style={styles.badgeBlue}>
+              <Text style={styles.badgeBlueText}>Risk: {analytics.recommendation?.riskLevel || 'N/A'}</Text>
+            </View>
+            <View style={styles.badgeGreen}>
+              <Text style={styles.badgeGreenText}>
+                Trend: {analytics.recommendation?.confidenceTrend || 'Stable'}
+              </Text>
+            </View>
           </View>
         </View>
-      </View>
+      </GlassPanel>
 
       <DashboardCard
         title="Question-Type Intelligence Matrix"
@@ -444,7 +448,9 @@ export default function AdvancedPerformanceDashboardMobile({
       </DashboardCard>
 
       <View style={styles.footerGrid}>
-        <View style={[styles.footerCard, styles.footerBlue]}>
+        {/* Inner views carry the row spacing GlassPanel's wrapper would swallow. */}
+        <GlassPanel style={[styles.footerCard, styles.footerBlue]} radius={14} tone="strong">
+          <View style={styles.footerCardInner}>
           <Text style={styles.footerTitleBlue}>Time Efficiency</Text>
           {analytics.timeEfficiency.avgTimePerSubject.length > 0 ? (
             <>
@@ -472,9 +478,11 @@ export default function AdvancedPerformanceDashboardMobile({
           ) : (
             <Text style={styles.metaText}>No subject timing data.</Text>
           )}
-        </View>
+          </View>
+        </GlassPanel>
 
-        <View style={[styles.footerCard, styles.footerGreen]}>
+        <GlassPanel style={[styles.footerCard, styles.footerGreen]} radius={14} tone="strong">
+          <View style={styles.footerCardInner}>
           <Text style={styles.footerTitleGreen}>Summary</Text>
           <Text style={styles.metaText}>
             Slowest: <Text style={styles.orangeBold}>{analytics.timeEfficiency.slowestSubject || '—'}</Text>
@@ -492,13 +500,14 @@ export default function AdvancedPerformanceDashboardMobile({
             Questions analysed:{' '}
             <Text style={styles.blueBold}>{analytics.metadata.totalQuestionsAnalyzed}</Text>
           </Text>
-        </View>
+          </View>
+        </GlassPanel>
       </View>
 
       {(analytics.aiObservations || []).map((obs, i) => (
-        <View key={i} style={styles.obsBox}>
+        <GlassPanel key={i} style={styles.obsBox} radius={10} tone="strong">
           <Text style={styles.obsText}>{obs}</Text>
-        </View>
+        </GlassPanel>
       ))}
 
       {analytics.recommendation?.actionPlan?.thisWeek?.length ? (
@@ -537,21 +546,22 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   retryBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  // Box props only — `header` is passed to GlassPanel, so the child spacing that
+  // used to live here now sits on `headerInner`.
   header: {
-    backgroundColor: '#F8FAFC',
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     padding: 14,
-    gap: 6,
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 8,
     elevation: 2,
   },
+  headerInner: { gap: 6 },
   headerTitle: { fontSize: 16, fontWeight: '800', color: '#334155' },
-  headerSub: { fontSize: 11, color: '#94A3B8' },
+  headerSub: { fontSize: 11, color: '#5B6779' },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
   badgeBlue: {
     backgroundColor: '#EFF6FF',
@@ -572,7 +582,7 @@ const styles = StyleSheet.create({
   },
   badgeGreenText: { color: '#10B981', fontSize: 11, fontWeight: '700' },
   warnBox: {
-    backgroundColor: '#fff7ed',
+    backgroundColor: 'rgba(255,247,237,0.55)',
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#fed7aa',
@@ -592,9 +602,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 16,
   },
-  emptyText: { color: '#94a3b8', fontSize: 13, textAlign: 'center' },
+  emptyText: { color: '#5B6779', fontSize: 13, textAlign: 'center' },
   breakdownRow: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#e2e8f0',
@@ -617,7 +627,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#FED7AA',
-    backgroundColor: '#FFFBEB',
+    backgroundColor: 'rgba(255,251,235,0.55)',
     padding: 10,
     gap: 8,
   },
@@ -644,9 +654,12 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   footerGrid: { gap: 10 },
-  footerCard: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 8 },
-  footerBlue: { borderColor: '#BFDBFE', backgroundColor: '#F8FAFC' },
-  footerGreen: { borderColor: '#BBF7D0', backgroundColor: '#F8FAFC' },
+  // Box props only — footer cards are passed to GlassPanel, so the child spacing
+  // that used to live here now sits on `footerCardInner`.
+  footerCard: { borderRadius: 14, borderWidth: 1, padding: 14 },
+  footerCardInner: { gap: 8 },
+  footerBlue: { borderColor: '#BFDBFE' },
+  footerGreen: { borderColor: '#BBF7D0' },
   footerTitleBlue: { fontSize: 14, fontWeight: '800', color: '#60A5FA' },
   footerTitleGreen: { fontSize: 14, fontWeight: '800', color: '#34D399' },
   metaText: { fontSize: 12, color: '#475569', lineHeight: 18 },
@@ -654,7 +667,7 @@ const styles = StyleSheet.create({
   greenBold: { fontWeight: '800', color: '#16a34a', textTransform: 'capitalize' },
   blueBold: { fontWeight: '800', color: '#2563eb' },
   obsBox: {
-    backgroundColor: '#f8fafc',
+    // Fill comes from GlassPanel's blur + tint, not a solid colour.
     borderRadius: 10,
     padding: 12,
     borderWidth: 1,

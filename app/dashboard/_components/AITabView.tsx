@@ -15,6 +15,7 @@ import {
   STUDENT_SPACING,
   STUDENT_TYPO,
 } from '../../../src/theme/student';
+import { GlassPanel } from '../../../src/components/ui';
 import VidyaAvatar from '../../../src/components/vidya/VidyaAvatar';
 import VidyaAIView from './VidyaAIView';
 
@@ -49,13 +50,17 @@ export default function AITabView({ chatEnabled = true }: { chatEnabled?: boolea
           onPressIn={chatPress.onPressIn}
           onPressOut={chatPress.onPressOut}
         >
-          <Animated.View style={[styles.chatCard, chatPress.style]}>
-            <VidyaAvatar size={48} borderColor="#c7d2fe" />
-            <View style={styles.chatTextWrap}>
-              <Text style={styles.chatTitle}>Vidya AI Chat</Text>
-              <Text style={styles.chatSub}>Ask Doubts · Instant Answers</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={STUDENT.primaryDark} />
+          <Animated.View style={chatPress.style}>
+            <GlassPanel style={styles.chatCard} radius={STUDENT_RADIUS.lg}>
+              <View style={styles.chatCardRow}>
+                <VidyaAvatar size={48} borderColor="#c7d2fe" />
+                <View style={styles.chatTextWrap}>
+                  <Text style={styles.chatTitle}>Vidya AI Chat</Text>
+                  <Text style={styles.chatSub}>Ask Doubts · Instant Answers</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={STUDENT.primaryDark} />
+              </View>
+            </GlassPanel>
           </Animated.View>
         </Pressable>
       </Animated.View>
@@ -82,17 +87,18 @@ const styles = StyleSheet.create({
     color: STUDENT.textMuted,
     lineHeight: 18,
   },
+  // Box props stay on the panel; the row layout moves to chatCardRow because
+  // GlassPanel wraps children in its own view.
   chatCard: {
+    marginBottom: STUDENT_SPACING.lg,
+    padding: STUDENT_SPACING.lg,
+    borderRadius: STUDENT_RADIUS.lg,
+    ...STUDENT.shadow.sm,
+  },
+  chatCardRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: STUDENT_SPACING.md,
-    marginBottom: STUDENT_SPACING.lg,
-    padding: STUDENT_SPACING.lg,
-    backgroundColor: STUDENT.surface,
-    borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
-    borderRadius: STUDENT_RADIUS.lg,
-    ...STUDENT.shadow.sm,
   },
   chatTextWrap: { flex: 1, minWidth: 0 },
   chatTitle: {

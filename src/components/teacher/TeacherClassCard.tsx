@@ -176,8 +176,17 @@ export default function TeacherClassCard({
                         <Pressable
                           style={styles.analysisBtn}
                           onPress={() => onViewStudentAnalysis(student.id)}
+                          hitSlop={8}
+                          accessibilityRole="button"
+                          accessibilityLabel={`View analysis for ${displayName}`}
                         >
-                          <Ionicons name="bar-chart-outline" size={14} color={TEACHER.primaryDark} />
+                          <Ionicons
+                            name="bar-chart-outline"
+                            size={14}
+                            color={TEACHER.primaryDark}
+                            accessibilityElementsHidden
+                            importantForAccessibility="no"
+                          />
                           <Text style={styles.analysisBtnText}>Analysis</Text>
                         </Pressable>
                       ) : null}
@@ -200,6 +209,9 @@ export default function TeacherClassCard({
         onPressIn={press.onPressIn}
         onPressOut={press.onPressOut}
         style={styles.btnWrap}
+        accessibilityRole="button"
+        accessibilityLabel={expanded ? 'Hide students' : 'View students'}
+        accessibilityState={{ expanded }}
       >
         <Animated.View style={press.style}>
           <LinearGradient
@@ -349,7 +361,7 @@ const styles = StyleSheet.create({
   studentRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E0E7FF',

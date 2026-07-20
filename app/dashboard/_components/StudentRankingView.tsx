@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
+import { GlassPanel } from '../../../src/components/ui';
 
 interface StudentRanking {
   examId: string;
@@ -68,7 +69,7 @@ export default function StudentRankingView() {
   if (rankings.length === 0) {
     return (
       <View style={styles.emptyContainer}>
-        <Ionicons name="trophy-outline" size={64} color="#9ca3af" />
+        <Ionicons name="trophy-outline" size={64} color="#5B6779" />
         <Text style={styles.emptyText}>No rankings yet</Text>
         <Text style={styles.emptySubtext}>Complete exams to see your rankings</Text>
       </View>
@@ -107,7 +108,7 @@ export default function StudentRankingView() {
         const percentileBadge = getPercentileBadge(ranking.percentile);
         
         return (
-          <View key={ranking.examId || idx} style={styles.rankingCard}>
+          <GlassPanel key={ranking.examId || idx} radius={12} style={styles.rankingCard}>
             <View style={styles.rankingHeader}>
               <View style={styles.rankingPosition}>
                 <Text style={styles.rankingPositionText}>#{ranking.rank}</Text>
@@ -158,7 +159,7 @@ export default function StudentRankingView() {
                 </Text>
               </View>
             )}
-          </View>
+          </GlassPanel>
         );
       })}
     </ScrollView>
@@ -221,7 +222,7 @@ const styles = StyleSheet.create({
   },
   summaryItem: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 8,
     padding: 12,
     alignItems: 'center',
@@ -237,7 +238,6 @@ const styles = StyleSheet.create({
     color: '#9333ea',
   },
   rankingCard: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
   },
   rankingStatSubtext: {
     fontSize: 10,
-    color: '#9ca3af',
+    color: '#5B6779',
     marginTop: 4,
   },
   percentileBadge: {

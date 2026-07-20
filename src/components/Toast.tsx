@@ -86,10 +86,22 @@ export default function Toast({ visible, message, type = 'info', duration = 3000
         },
       ]}
     >
-      <View style={[styles.toast, { backgroundColor: bg }]}>
-        <Ionicons name={icon} size={20} color="#fff" />
+      <View style={[styles.toast, { backgroundColor: bg }]} accessibilityLiveRegion="polite">
+        <Ionicons
+          name={icon}
+          size={20}
+          color="#fff"
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+        />
         <Text style={styles.message}>{message}</Text>
-        <TouchableOpacity onPress={hideToast} style={styles.closeButton}>
+        <TouchableOpacity
+          onPress={hideToast}
+          style={styles.closeButton}
+          hitSlop={9}
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss notification"
+        >
           <Ionicons name="close" size={18} color="#fff" />
         </TouchableOpacity>
       </View>

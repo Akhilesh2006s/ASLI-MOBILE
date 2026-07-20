@@ -22,7 +22,6 @@ import { EduOTTFilterProvider } from '../../src/contexts/edu-ott-filter-context'
 import VideosView from './_components/VideosView';
 import TimetableView from './_components/TimetableView';
 import CalendarView from './_components/CalendarView';
-import SchoolManagementView from './_components/SchoolManagementView';
 import VidyaAIView from './_components/VidyaAIView';
 import VidyaAIFloatingAssistant from '../../src/components/vidya/VidyaAIFloatingAssistant';
 import AdminNavDrawer, { adminNavLabel, type AdminNavView } from './_components/AdminNavDrawer';
@@ -135,7 +134,7 @@ export default function AdminDashboard() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]} edges={['bottom']}>
+      <SafeAreaView style={styles.container} edges={['bottom']}>
         <LoadingState variant="stats" style={{ padding: spacing.lg, flex: 1 }} />
       </SafeAreaView>
     );
@@ -160,8 +159,9 @@ export default function AdminDashboard() {
 
       <View
         style={[
+          // Transparent so the shared app background artwork shows through.
           styles.contentWrap,
-          { backgroundColor: colors.bg, paddingBottom: shellPaddingBottom },
+          { paddingBottom: shellPaddingBottom },
         ]}
       >
         <View style={styles.content}>
@@ -237,11 +237,6 @@ export default function AdminDashboard() {
               <CalendarView />
             </VisitedTabPane>
           ) : null}
-          {visitedViews.has('school-management') ? (
-            <VisitedTabPane visible={currentView === 'school-management'}>
-              <SchoolManagementView />
-            </VisitedTabPane>
-          ) : null}
           {visitedViews.has('vidya-ai') ? (
             <VisitedTabPane visible={currentView === 'vidya-ai'}>
               <VidyaAIView />
@@ -253,7 +248,7 @@ export default function AdminDashboard() {
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.shell}>
         {mainColumn}
       </View>
@@ -279,7 +274,8 @@ export default function AdminDashboard() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  // Transparent so the shared app background artwork shows through.
+  container: { flex: 1, backgroundColor: 'transparent' },
   shell: {
     flex: 1,
     flexDirection: 'row',

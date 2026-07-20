@@ -19,6 +19,7 @@ import BarChart from '../../../../src/components/ui/charts/BarChart';
 import ChartLegend from '../../../../src/components/ui/charts/ChartLegend';
 import PerformanceDNARadar from '../../../../src/components/ui/charts/PerformanceDNARadar';
 import StackedTaxonomyBar from '../../../../src/components/ui/charts/StackedTaxonomyBar';
+import { GlassPanel } from '../../../../src/components/ui';
 import AdvancedPerformanceDashboardMobile from './AdvancedPerformanceDashboardMobile';
 import AnalysisCard from './AnalysisCard';
 import { ANALYSIS, analysisStyles, useExamAnalysisLayout } from './exam-analysis-ui';
@@ -239,7 +240,7 @@ export function AiReportTabMobile({ result, examTitle, studentName, aiAnalysis, 
           <Text style={analysisStyles.heroSub}>Personalised for {studentName}</Text>
         </LinearGradient>
 
-        <View style={panelStyles.scoreCardBody}>
+        <GlassPanel style={panelStyles.scoreCardBody} radius={20} tone="strong">
         {isTablet ? (
           <View style={panelStyles.scoreCardTablet}>
             {scoreRing}
@@ -269,7 +270,7 @@ export function AiReportTabMobile({ result, examTitle, studentName, aiAnalysis, 
             <View style={panelStyles.scoreFooterSection}>{timeBox}</View>
           </>
         )}
-        </View>
+        </GlassPanel>
       </View>
 
       {aiError ? <Text style={panelStyles.errorText}>{aiError}</Text> : null}
@@ -971,11 +972,11 @@ export function InsightsTabMobile({ result, aiAnalysis }: { result: ExamAnalysis
         {Object.entries(result.subjectWiseScore || {}).map(([subject, score]) => {
           const pct = score.total > 0 ? (score.correct / score.total) * 100 : 0;
           return (
-            <View key={subject} style={[panelStyles.insightSubjectCard, isTablet && panelStyles.insightSubjectCardTablet]}>
+            <GlassPanel key={subject} style={[panelStyles.insightSubjectCard, isTablet && panelStyles.insightSubjectCardTablet]} radius={14}>
               <Text style={panelStyles.insightSubjectName}>{subject.charAt(0).toUpperCase() + subject.slice(1)}</Text>
               <Text style={panelStyles.insightSubjectPct}>{pct.toFixed(1)}%</Text>
               <Text style={panelStyles.metaText}>{score.correct}/{score.total} correct</Text>
-            </View>
+            </GlassPanel>
           );
         })}
       </View>
@@ -1172,7 +1173,7 @@ export function PlanTabMobile({ studentName, aiAnalysis }: { studentName: string
               ]}
             >
               <Text style={panelStyles.videoSubj}>{v.subj} · {v.min} MIN</Text>
-              <Ionicons name="play-circle" size={28} color="#9ca3af" style={{ alignSelf: 'center', marginVertical: 8 }} />
+              <Ionicons name="play-circle" size={28} color="#5B6779" style={{ alignSelf: 'center', marginVertical: 8 }} />
               <Text style={panelStyles.videoTitle}>{v.title}</Text>
               <Text style={panelStyles.metaText}>Your mastery: {Math.round(v.mastery)}%</Text>
             </View>
@@ -1195,7 +1196,7 @@ const panelStyles = StyleSheet.create({
   tabScroll: { flex: 1 },
   performanceReportWrap: { gap: 16 },
   scoreCardBody: {
-    backgroundColor: '#FFFFFF',
+    // Fill comes from GlassPanel's blur + tint, not a solid colour.
     borderRadius: 20,
     padding: 20,
     borderWidth: 1,
@@ -1213,7 +1214,8 @@ const panelStyles = StyleSheet.create({
   questionsTabScroll: { flex: 1 },
   filterScroll: { flexGrow: 0, flexShrink: 0 },
   filterRowContent: { alignItems: 'center' },
-  filterRowModern: { paddingHorizontal: 16, paddingVertical: 12, gap: 8, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  // Page band, not a card — let the app background artwork show through.
+  filterRowModern: { paddingHorizontal: 16, paddingVertical: 12, gap: 8, backgroundColor: 'transparent', borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
   filterRowTablet: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1226,7 +1228,7 @@ const panelStyles = StyleSheet.create({
   heroBadge: { color: 'rgba(255,255,255,0.9)', fontSize: 12, fontWeight: '600' },
   heroTitle: { color: '#fff', fontSize: 24, fontWeight: '800' },
   heroSub: { color: 'rgba(255,255,255,0.9)', fontSize: 14 },
-  scoreCard: { backgroundColor: '#fff', borderRadius: 18, padding: 18, gap: 12, borderWidth: 1, borderColor: '#e5e7eb' },
+  scoreCard: { backgroundColor: 'rgba(255,255,255,0.48)', borderRadius: 18, padding: 18, gap: 12, borderWidth: 1, borderColor: '#e5e7eb' },
   scoreCardTablet: { flexDirection: 'row', alignItems: 'flex-start', gap: 20 },
   scoreCardTabletMid: { flex: 1.1, minWidth: 0, alignItems: 'center' },
   scoreCardTabletEnd: { flex: 1.2, minWidth: 0, gap: 12 },
@@ -1253,7 +1255,7 @@ const panelStyles = StyleSheet.create({
     maxHeight: '92%',
     borderRadius: 20,
     overflow: 'hidden',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
   },
   insightsTopRow: { flexDirection: 'row', gap: 16, alignItems: 'stretch' },
   insightsTopCol: { flex: 1, minWidth: 0 },
@@ -1304,7 +1306,7 @@ const panelStyles = StyleSheet.create({
   timeBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#eff6ff', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#bfdbfe' },
   timeLabel: { flex: 1, fontSize: 13, fontWeight: '600', color: '#1e40af' },
   timeVal: { fontSize: 14, fontWeight: '700', color: '#111827' },
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#e9edf3', gap: 10 },
+  card: { backgroundColor: 'rgba(255,255,255,0.48)', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#e9edf3', gap: 10 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   cardIcon: { fontSize: 16 },
   cardTitle: { fontSize: 16, fontWeight: '800', color: '#1e293b' },
@@ -1332,12 +1334,12 @@ const panelStyles = StyleSheet.create({
   motivationBox: { backgroundColor: '#EEF2FF', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#C7D2FE', marginTop: 8 },
   motivationText: { color: '#6366F1', fontWeight: '600', fontSize: 13, lineHeight: 18 },
   filterRow: { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
-  filterPill: { borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#fff' },
+  filterPill: { borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: 'rgba(255,255,255,0.48)' },
   filterPillActive: { backgroundColor: '#7c3aed', borderColor: '#7c3aed' },
   filterPillText: { fontSize: 12, fontWeight: '600', color: '#4b5563' },
   filterPillTextActive: { color: '#fff' },
   questionCard: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.48)',
     borderRadius: 14,
     padding: 14,
     marginBottom: 10,
@@ -1357,9 +1359,9 @@ const panelStyles = StyleSheet.create({
   qNum: { fontWeight: '800', color: '#111827' },
   qSubject: { fontSize: 12, color: '#6b7280', textTransform: 'capitalize' },
   qText: { fontSize: 14, color: '#111827', lineHeight: 20 },
-  emptyText: { textAlign: 'center', color: '#9ca3af', padding: 24, fontSize: 14 },
+  emptyText: { textAlign: 'center', color: '#5B6779', padding: 24, fontSize: 14 },
   emptyTextFull: { width: '100%' },
-  modalWrap: { flex: 1, backgroundColor: '#fff' },
+  modalWrap: { flex: 1, backgroundColor: 'rgba(255,255,255,0.48)' },
   modalBody: { padding: 20, paddingTop: 48 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   modalTitle: { fontSize: 20, fontWeight: '800', color: '#111827' },
@@ -1447,11 +1449,11 @@ const panelStyles = StyleSheet.create({
   badgeWrong: { backgroundColor: '#fee2e2', borderColor: '#fca5a5' },
   badgeNeutral: { backgroundColor: '#f1f5f9', borderColor: '#cbd5e1' },
   statusBadgeText: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', color: '#374151' },
-  priorityBadge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: '#cbd5e1', backgroundColor: '#fff' },
+  priorityBadge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: '#cbd5e1', backgroundColor: 'rgba(255,255,255,0.48)' },
   priorityBadgeText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', color: '#64748b' },
   analysisBlock: { marginBottom: 8 },
   analysisLoading: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8 },
-  warnText: { color: '#9a3412', backgroundColor: '#fff7ed', padding: 12, borderRadius: 10, fontSize: 13 },
+  warnText: { color: '#9a3412', backgroundColor: 'rgba(255,247,237,0.55)', padding: 12, borderRadius: 10, fontSize: 13 },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
   badgeBlue: { backgroundColor: '#dbeafe', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
   badgeBlueText: { color: '#1d4ed8', fontWeight: '700', fontSize: 12 },
@@ -1459,16 +1461,16 @@ const panelStyles = StyleSheet.create({
   badgeGreenText: { color: '#15803d', fontWeight: '700', fontSize: 12 },
   bodyText: { fontSize: 14, color: '#374151', lineHeight: 20 },
   metaText: { fontSize: 12, color: '#6b7280', marginTop: 2 },
-  chapterRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', marginBottom: 8 },
+  chapterRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.48)', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', marginBottom: 8 },
   chapterTitle: { fontWeight: '700', color: '#111827', fontSize: 14 },
   chapterPct: { fontSize: 16, fontWeight: '800' },
-  obsBox: { backgroundColor: '#fff', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', marginBottom: 8 },
+  obsBox: { backgroundColor: 'rgba(255,255,255,0.48)', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', marginBottom: 8 },
   bulletText: { fontSize: 14, color: '#374151', marginBottom: 6, lineHeight: 20 },
   sectionHeading: { fontSize: 18, fontWeight: '800', color: '#111827' },
   subjectGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   insightSubjectCard: {
     width: '47%',
-    backgroundColor: '#fff',
+    // Fill comes from GlassPanel's blur + tint, not a solid colour.
     borderRadius: 14,
     padding: 14,
     borderWidth: 1,
@@ -1486,7 +1488,7 @@ const panelStyles = StyleSheet.create({
   weakCard: { borderRadius: 12, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: '#e5e7eb' },
   weakHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
   weakSubject: { fontWeight: '800', color: '#111827' },
-  alertCard: { backgroundColor: '#FFFBEB', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#FDE68A', marginBottom: 10 },
+  alertCard: { backgroundColor: 'rgba(255,251,235,0.55)', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#FDE68A', marginBottom: 10 },
   alertTitle: { fontWeight: '800', color: '#111827', fontSize: 14 },
   alertFix: { color: '#6366F1', fontWeight: '600', fontSize: 13, marginTop: 6 },
   planHero: { borderRadius: 18, padding: 20, borderWidth: 1, borderColor: '#BFDBFE' },

@@ -2,7 +2,9 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS, FONT, RADIUS, SHADOW, SPACING } from '../../theme';
+import { COLORS, FONT, RADIUS, SPACING } from '../../theme';
+import { GLASS_RIM, GLASS_SHADOW } from '../../theme/glass';
+import GlassSurface from './GlassSurface';
 
 type Props = {
   title?: string;
@@ -25,6 +27,7 @@ export default function PremiumCard({
 }: Props) {
   const content = (
     <View style={[styles.card, style]}>
+      <GlassSurface intensity={55} tone="medium" />
       {gradient && title ? (
         <LinearGradient colors={[...gradient]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.header}>
           {icon ? (
@@ -52,7 +55,12 @@ export default function PremiumCard({
 
   if (onPress) {
     return (
-      <Pressable onPress={onPress} style={({ pressed }) => [pressed && styles.pressed]}>
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={subtitle ? `${title}. ${subtitle}` : title}
+        style={({ pressed }) => [pressed && styles.pressed]}
+      >
         {content}
       </Pressable>
     );
@@ -63,64 +71,47 @@ export default function PremiumCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: COLORS.card,
+    backgroundColor: 'transparent',
     borderRadius: RADIUS.lg,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: GLASS_RIM.border,
     overflow: 'hidden',
-    ...SHADOW.md,
+    ...GLASS_SHADOW.sm,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.lg,
-    gap: SPACING.md,
+    gap: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    zIndex: 1,
   },
   iconWrap: {
     width: 36,
     height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.22)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerText: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: FONT.lg,
-    fontWeight: FONT.bold,
-    color: COLORS.textInverse,
-  },
-  headerSubtitle: {
-    fontSize: FONT.sm,
-    color: 'rgba(255,255,255,0.85)',
-    marginTop: 2,
-  },
+  headerText: { flex: 1 },
+  headerTitle: { fontSize: 16, fontWeight: FONT.semibold, color: COLORS.textInverse },
+  headerSubtitle: { fontSize: 12, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
   plainHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
+    gap: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    zIndex: 1,
   },
-  plainIcon: {
-    marginRight: SPACING.md,
-  },
-  plainTitle: {
-    fontSize: FONT.lg,
-    fontWeight: FONT.bold,
-    color: COLORS.text,
-  },
-  plainSubtitle: {
-    fontSize: FONT.sm,
-    color: COLORS.textMuted,
-    marginTop: 2,
-  },
+  plainIcon: { marginRight: 2 },
+  plainTitle: { fontSize: 16, fontWeight: FONT.semibold, color: COLORS.text },
+  plainSubtitle: { fontSize: 12, color: COLORS.textSecondary, marginTop: 2 },
   body: {
-    padding: SPACING.lg,
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.lg,
+    zIndex: 1,
   },
-  pressed: {
-    transform: [{ scale: 0.98 }],
-  },
+  pressed: { opacity: 0.92 },
 });

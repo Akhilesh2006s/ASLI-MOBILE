@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { GlassPanel } from '../../../src/components/ui';
 import { useSuperAdminTheme } from './useSuperAdminTheme';
 import type { SuperAdminView } from '../_components/SuperAdminNavDrawer';
 
@@ -59,10 +60,13 @@ export default function SuperAdminTabBar({ activeView, onTabChange }: Props) {
 
   return (
     <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-      <View
-        style={[styles.bar, { backgroundColor: colors.surface, borderColor: ORANGE_BORDER }]}
-        onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}
-      >
+      {/* Frosted pill floating over the app artwork; `strong` keeps the small
+          tab labels legible against whatever is scrolling underneath. */}
+      <GlassPanel style={[styles.bar, { borderColor: ORANGE_BORDER }]} radius={9999} tone="strong">
+        <View
+          style={styles.barInner}
+          onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}
+        >
         {tabWidth > 0 && (
           <Animated.View style={[styles.indicator, slideStyle, { left: 4, backgroundColor: ORANGE_MUTED }]} />
         )}
@@ -93,7 +97,8 @@ export default function SuperAdminTabBar({ activeView, onTabChange }: Props) {
             </Pressable>
           );
         })}
-      </View>
+        </View>
+      </GlassPanel>
     </View>
   );
 }
@@ -107,17 +112,20 @@ const styles = StyleSheet.create({
     zIndex: 50,
   },
   bar: {
-    flexDirection: 'row',
-    alignItems: 'center',
     borderRadius: 9999,
-    borderWidth: 1,
-    paddingVertical: 6,
-    paddingHorizontal: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 8,
+  },
+  // Row layout lives on the inner view so GlassPanel's content wrapper doesn't
+  // flatten the tabs into a column.
+  barInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 4,
   },
   indicator: {
     position: 'absolute',

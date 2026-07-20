@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   Easing,
   FadeInDown,
@@ -16,6 +15,8 @@ import GlassCard from '../../../src/components/student/GlassCard';
 import ChipNav from '../../../src/components/student/ChipNav';
 import DigitalLibraryBrowseSection from '../../../src/components/student/DigitalLibraryBrowseSection';
 import { ShimmerCard } from '../../../src/components/student/StudentShimmer';
+import GlassPanel from '../../../src/components/ui/GlassPanel';
+import { GLASS_ROW, GLASS_VIOLET } from '../../../src/theme/glass';
 import {
   STUDENT,
   STUDENT_ANIMATION,
@@ -46,14 +47,21 @@ function AnimatedProgressBar({ progress, delay = 0 }: { progress: number; delay?
   );
 }
 
+function getSubjectIcon(subjectName: string): keyof typeof Ionicons.glyphMap {
+  const name = subjectName.toLowerCase();
+  if (name.includes('math')) return 'calculator-outline';
+  if (name.includes('physics')) return 'nuclear-outline';
+  if (name.includes('chemistry')) return 'flask-outline';
+  if (name.includes('biology') || name.includes('science')) return 'leaf-outline';
+  if (name.includes('english')) return 'book-outline';
+  if (name.includes('history') || name.includes('social')) return 'globe-outline';
+  if (name.includes('computer') || name.includes('it')) return 'laptop-outline';
+  return 'library-outline';
+}
+
 export default function LearningPathsView({ dark }: { dark?: boolean }) {
   const { width } = useWindowDimensions();
   const compact = width < 380;
-  const useThreeColumns = width >= 380;
-  const subjectTileWidth = useThreeColumns ? '31.5%' : '48%';
-  const subjectCardPadding = useThreeColumns ? 12 : 16;
-  const subjectIconSize = useThreeColumns ? 44 : 52;
-  const subjectGlyphSize = useThreeColumns ? 22 : 26;
   const [activeTab, setActiveTab] = useState<'subjects' | 'quizzes'>('subjects');
   const [subjects, setSubjects] = useState<any[]>([]);
   const [quizzes, setQuizzes] = useState<any[]>([]);
@@ -69,8 +77,7 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
     try {
       setIsLoadingSubjects(true);
       const { data } = await api.get('/api/student/subjects');
-      const subjectsArray = data.subjects || data.data || [];
-      setSubjects(subjectsArray);
+      setSubjects(data.subjects || data.data || []);
     } catch (error) {
       console.error('Failed to fetch subjects:', error);
     } finally {
@@ -90,34 +97,37 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
     }
   };
 
-  const getSubjectIcon = (subjectName: string) => {
-    const name = subjectName.toLowerCase();
-    if (name.includes('math')) return 'calculator';
-    if (name.includes('physics')) return 'nuclear';
-    if (name.includes('chemistry')) return 'flask';
-    if (name.includes('biology')) return 'leaf';
-    if (name.includes('english')) return 'book';
-    return 'book';
-  };
-
   const tabChips = [
-    { id: 'subjects', label: 'Browse by Subject' },
-    { id: 'quizzes', label: 'My Quizzes' },
+    { id: 'subjects', label: 'Browse Subjects', shortLabel: 'Subjects' },
+    { id: 'quizzes', label: 'My Quizzes', shortLabel: 'Quizzes' },
   ];
 
   return (
     <View style={[styles.container, dark && styles.containerDark]}>
       {!dark ? (
         <Animated.View entering={FadeInDown.duration(STUDENT_ANIMATION.normal)}>
-          <LinearGradient
-            colors={[...STUDENT.heroGradient]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.banner, compact && { paddingHorizontal: 14 }]}
+          <GlassPanel
+            tone="strong"
+            elevated
+            colors={[...GLASS_VIOLET]}
+            radius={STUDENT_RADIUS.xxl}
+            style={styles.banner}
+            contentStyle={[styles.bannerInner, compact && { paddingHorizontal: 16 }]}
           >
-            <Text style={styles.bannerTitle}>Learning Paths</Text>
-            <Text style={styles.bannerSub}>Subjects, quizzes, and your digital library in one place.</Text>
-          </LinearGradient>
+            <View style={styles.bannerIcon}>
+              <Ionicons name="book-outline" size={22} color={STUDENT.primaryDark} />
+            </View>
+            <View style={styles.bannerText}>
+              <Text style={styles.bannerTitle}>
+                {activeTab === 'subjects' ? 'Browse subjects' : 'My quizzes'}
+              </Text>
+              <Text style={styles.bannerSub}>
+                {activeTab === 'subjects'
+                  ? 'Open a subject for chapters, topics, and practice materials.'
+                  : 'Short checks assigned by your teacher to lock in what you studied.'}
+              </Text>
+            </View>
+          </GlassPanel>
         </Animated.View>
       ) : null}
 
@@ -129,7 +139,7 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
         />
       </View>
 
-      {activeTab === 'subjects' && (
+      {activeTab === 'subjects' ? (
         <View style={styles.content}>
           {isLoadingSubjects ? (
             <View style={styles.shimmerWrap}>
@@ -138,24 +148,29 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
               <ShimmerCard />
             </View>
           ) : subjects.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="book" size={64} color={STUDENT.surfaceBorder} />
-              <Text style={styles.emptyStateTitle}>No Subjects Available</Text>
-              <Text style={styles.emptyStateText}>Check back later for new learning content.</Text>
-            </View>
+            <GlassPanel tone="medium" radius={STUDENT_RADIUS.card} style={styles.emptyCard} contentStyle={styles.emptyInner}>
+              <View style={styles.emptyIcon}>
+                <Ionicons name="book-outline" size={28} color={STUDENT.primary} />
+              </View>
+              <Text style={styles.emptyStateTitle}>No subjects yet</Text>
+              <Text style={styles.emptyStateText}>
+                Subjects for your class will show up here once they are assigned.
+              </Text>
+            </GlassPanel>
           ) : (
-            <View style={styles.subjectsGrid}>
+            <View style={styles.subjectsList}>
+              <Text style={styles.sectionLabel}>Your subjects</Text>
               {subjects.map((subject: any, index: number) => {
                 const iconName = getSubjectIcon(subject.name);
                 const color = SUBJECT_COLORS[index % SUBJECT_COLORS.length];
                 return (
                   <GlassCard
                     key={subject._id || subject.id}
-                    variant="elevated"
-                    style={[styles.subjectTile, { width: subjectTileWidth }]}
-                    padding={subjectCardPadding}
+                    variant="glass"
+                    padding={0}
                     animate
-                    delay={index * 50}
+                    delay={index * 40}
+                    style={styles.subjectCard}
                     onPress={() =>
                       router.push({
                         pathname: '/subject/[id]',
@@ -163,28 +178,19 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
                       })
                     }
                   >
-                    <View style={styles.subjectCardInner}>
-                      <LinearGradient
-                        colors={[color, `${color}cc`]}
-                        style={[
-                          styles.subjectIconContainer,
-                          {
-                            width: subjectIconSize,
-                            height: subjectIconSize,
-                            borderRadius: subjectIconSize / 2,
-                          },
-                        ]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                      >
-                        <Ionicons name={iconName as any} size={subjectGlyphSize} color={STUDENT.textOnPrimary} />
-                      </LinearGradient>
-                      <Text
-                        style={[styles.subjectName, useThreeColumns && styles.subjectNameCompact]}
-                        numberOfLines={2}
-                      >
-                        {subject.name}
-                      </Text>
+                    <View style={styles.subjectRow}>
+                      <View style={[styles.subjectIcon, { backgroundColor: `${color}22`, borderColor: `${color}44` }]}>
+                        <Ionicons name={iconName} size={22} color={color} />
+                      </View>
+                      <View style={styles.subjectMeta}>
+                        <Text style={styles.subjectName} numberOfLines={2}>
+                          {subject.name}
+                        </Text>
+                        <Text style={styles.subjectHint}>Open chapters & materials</Text>
+                      </View>
+                      <View style={styles.subjectChevron}>
+                        <Ionicons name="chevron-forward" size={16} color={STUDENT.textMuted} />
+                      </View>
                     </View>
                   </GlassCard>
                 );
@@ -193,14 +199,20 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
           )}
 
           {!isLoadingSubjects && subjects.length > 0 ? (
-            <GlassCard variant="default" padding={14} style={styles.sectionCard}>
+            <GlassPanel
+              tone="medium"
+              elevated
+              radius={STUDENT_RADIUS.card}
+              style={styles.sectionCard}
+              contentStyle={styles.sectionInner}
+            >
               <DigitalLibraryBrowseSection returnTo="learning" dark={dark} />
-            </GlassCard>
+            </GlassPanel>
           ) : null}
         </View>
-      )}
+      ) : null}
 
-      {activeTab === 'quizzes' && (
+      {activeTab === 'quizzes' ? (
         <View style={styles.content}>
           {isLoadingQuizzes ? (
             <View style={styles.shimmerWrap}>
@@ -208,199 +220,205 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
               <ShimmerCard />
             </View>
           ) : quizzes.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="document-text" size={64} color={STUDENT.surfaceBorder} />
-              <Text style={styles.emptyStateTitle}>No Quizzes Assigned</Text>
-              <Text style={styles.emptyStateText}>Your teacher hasn't assigned any quizzes yet.</Text>
-            </View>
+            <GlassPanel tone="medium" radius={STUDENT_RADIUS.card} style={styles.emptyCard} contentStyle={styles.emptyInner}>
+              <View style={styles.emptyIcon}>
+                <Ionicons name="document-text-outline" size={28} color={STUDENT.primary} />
+              </View>
+              <Text style={styles.emptyStateTitle}>No quizzes assigned</Text>
+              <Text style={styles.emptyStateText}>Your teacher hasn&apos;t assigned any quizzes yet.</Text>
+            </GlassPanel>
           ) : (
             <View style={styles.quizzesList}>
               {quizzes.map((quiz: any, index: number) => (
-                <GlassCard key={quiz._id} variant="elevated" padding={16} animate delay={index * 60}>
-                  <TouchableOpacity
-                    activeOpacity={0.9}
-                    onPress={() => router.push(`/quiz/${quiz._id}`)}
-                  >
+                <GlassCard key={quiz._id} variant="glass" padding={16} animate delay={index * 50}>
+                  <TouchableOpacity activeOpacity={0.9} onPress={() => router.push(`/quiz/${quiz._id}`)}>
                     <View style={styles.quizHeader}>
                       <View style={styles.quizIconContainer}>
-                        <Ionicons name="document-text" size={24} color={STUDENT.textOnPrimary} />
+                        <Ionicons name="document-text-outline" size={22} color={STUDENT.primaryDark} />
                       </View>
-                      {quiz.hasAttempted && (
+                      {quiz.hasAttempted ? (
                         <View style={styles.completedBadge}>
-                          <Ionicons name="checkmark-circle" size={16} color={STUDENT.success} />
+                          <Ionicons name="checkmark-circle" size={14} color={STUDENT.success} />
                           <Text style={styles.completedText}>Completed</Text>
                         </View>
-                      )}
+                      ) : null}
                     </View>
                     <Text style={styles.quizTitle}>{quiz.title}</Text>
                     <Text style={styles.quizDescription}>
-                      {quiz.description || `Quiz on ${quiz.subject?.name || quiz.subject}`}
+                      {quiz.description || `Quiz on ${quiz.subject?.name || quiz.subject || 'subject'}`}
                     </Text>
                     <View style={styles.quizStats}>
                       <View style={styles.quizStat}>
-                        <Ionicons name="time" size={16} color={STUDENT.warning} />
+                        <Ionicons name="time-outline" size={15} color={STUDENT.textMuted} />
                         <Text style={styles.quizStatText}>{quiz.duration || 60} min</Text>
                       </View>
                       <View style={styles.quizStat}>
-                        <Ionicons name="help-circle" size={16} color={STUDENT.warning} />
+                        <Ionicons name="help-circle-outline" size={15} color={STUDENT.textMuted} />
                         <Text style={styles.quizStatText}>
                           {quiz.questions?.length || quiz.questionCount || 0} questions
                         </Text>
                       </View>
                     </View>
-                    {quiz.hasAttempted && quiz.bestScore !== null && (
+                    {quiz.hasAttempted && quiz.bestScore != null ? (
                       <View style={styles.bestScoreContainer}>
                         <View style={styles.bestScoreHeader}>
-                          <Text style={styles.bestScoreLabel}>Best Score:</Text>
+                          <Text style={styles.bestScoreLabel}>Best score</Text>
                           <Text style={styles.bestScoreValue}>{quiz.bestScore}%</Text>
                         </View>
                         <AnimatedProgressBar progress={quiz.bestScore} delay={index * 80} />
                       </View>
-                    )}
-                    <TouchableOpacity
-                      style={styles.quizButton}
-                      onPress={() => router.push(`/quiz/${quiz._id}`)}
-                    >
+                    ) : null}
+                    <View style={styles.quizButton}>
                       <Text style={styles.quizButtonText}>
-                        {quiz.hasAttempted ? 'Review Quiz' : 'Start Quiz'}
+                        {quiz.hasAttempted ? 'Review quiz' : 'Start quiz'}
                       </Text>
-                    </TouchableOpacity>
+                      <Ionicons name="arrow-forward" size={16} color={STUDENT.textOnPrimary} />
+                    </View>
                   </TouchableOpacity>
                 </GlassCard>
               ))}
             </View>
           )}
         </View>
-      )}
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  containerDark: {
-    backgroundColor: 'transparent',
-  },
+  container: { flex: 1 },
+  containerDark: { backgroundColor: 'transparent' },
   banner: {
-    borderRadius: STUDENT_RADIUS.xxl,
+    marginBottom: STUDENT_SPACING.lg,
+  },
+  bannerInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
     paddingHorizontal: 18,
     paddingVertical: 18,
-    marginBottom: STUDENT_SPACING.lg,
-    ...STUDENT.shadow.md,
   },
+  bannerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: GLASS_ROW.fillStrong,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: GLASS_ROW.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bannerText: { flex: 1, minWidth: 0 },
   bannerTitle: {
     ...STUDENT_TYPO.section,
-    color: STUDENT.textOnPrimary,
+    color: STUDENT.text,
   },
   bannerSub: {
     marginTop: 4,
     fontSize: 13,
-    color: 'rgba(255,255,255,0.9)',
+    lineHeight: 18,
+    color: STUDENT.textSecondary,
   },
   tabsContainer: {
-    marginBottom: STUDENT_SPACING.xl,
+    marginBottom: STUDENT_SPACING.lg,
   },
-  content: {
-    flex: 1,
-  },
+  content: { flex: 1 },
   shimmerWrap: {
     gap: STUDENT_SPACING.md,
-    marginTop: STUDENT_SPACING.sm,
+  },
+  sectionLabel: {
+    ...STUDENT_TYPO.caption,
+    color: STUDENT.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 10,
   },
   sectionCard: {
-    marginTop: STUDENT_SPACING.lg,
+    marginTop: STUDENT_SPACING.xl,
     width: '100%',
-    alignSelf: 'stretch',
   },
-  emptyState: {
+  sectionInner: {
+    padding: 14,
+  },
+  emptyCard: {
+    marginTop: 4,
+  },
+  emptyInner: {
     alignItems: 'center',
-    padding: 40,
-    marginTop: 40,
+    paddingVertical: 36,
+    paddingHorizontal: 24,
+    gap: 8,
+  },
+  emptyIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: GLASS_ROW.fillStrong,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: GLASS_ROW.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
   },
   emptyStateTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: STUDENT.textMuted,
-    marginTop: 16,
-    marginBottom: 8,
+    fontSize: 17,
+    fontWeight: '800',
+    color: STUDENT.text,
+    marginTop: 4,
   },
   emptyStateText: {
     fontSize: 14,
-    color: STUDENT.navInactive,
-    textAlign: 'center',
-  },
-  subjectsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: STUDENT_SPACING.sm,
-    width: '100%',
-    alignSelf: 'stretch',
-  },
-  subjectTile: {
-    marginBottom: STUDENT_SPACING.xs,
-  },
-  subjectCardInner: {
-    alignItems: 'center',
-    gap: STUDENT_SPACING.sm,
-    width: '100%',
-  },
-  subjectIconContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  subjectName: {
-    ...STUDENT_TYPO.body,
-    fontWeight: '800',
-    color: STUDENT.text,
-    textAlign: 'center',
-    width: '100%',
-  },
-  subjectNameCompact: {
-    fontSize: 13,
-    lineHeight: 17,
-  },
-  quizzesList: {
-    gap: STUDENT_SPACING.lg,
-  },
-  libraryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    width: '100%',
-  },
-  libraryTile: {
-    width: '48%',
-    marginBottom: STUDENT_SPACING.sm,
-  },
-  libraryTileCard: {
-    width: '100%',
-  },
-  libraryCardInner: {
-    alignItems: 'center',
-    width: '100%',
-  },
-  libraryIconWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: STUDENT_RADIUS.inner,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  libraryTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: STUDENT.text,
-    textAlign: 'center',
-  },
-  libraryCount: {
-    marginTop: 4,
-    fontSize: 11,
     color: STUDENT.textMuted,
     textAlign: 'center',
+    lineHeight: 20,
+  },
+  subjectsList: {
+    gap: 10,
+  },
+  subjectCard: {
+    width: '100%',
+  },
+  subjectRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+  },
+  subjectIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  subjectMeta: {
+    flex: 1,
+    minWidth: 0,
+  },
+  subjectName: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: STUDENT.text,
+  },
+  subjectHint: {
+    marginTop: 2,
+    fontSize: 12,
+    color: STUDENT.textMuted,
+  },
+  subjectChevron: {
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+    backgroundColor: GLASS_ROW.fill,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: GLASS_ROW.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quizzesList: {
+    gap: STUDENT_SPACING.md,
   },
   quizHeader: {
     flexDirection: 'row',
@@ -408,17 +426,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   quizIconContainer: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     borderRadius: STUDENT_RADIUS.inner,
-    backgroundColor: STUDENT.warning,
+    backgroundColor: GLASS_ROW.fillStrong,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: GLASS_ROW.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
   completedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: STUDENT.navActiveBg,
+    backgroundColor: 'rgba(5,150,105,0.12)',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: STUDENT_RADIUS.sm,
@@ -426,19 +446,20 @@ const styles = StyleSheet.create({
   },
   completedText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
     color: STUDENT.success,
   },
   quizTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '800',
     color: STUDENT.text,
     marginTop: STUDENT_SPACING.md,
   },
   quizDescription: {
-    fontSize: 14,
+    fontSize: 13,
     color: STUDENT.textMuted,
     marginTop: 4,
+    lineHeight: 18,
   },
   quizStats: {
     flexDirection: 'row',
@@ -451,11 +472,13 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   quizStatText: {
-    fontSize: 14,
+    fontSize: 13,
     color: STUDENT.textMuted,
   },
   bestScoreContainer: {
-    backgroundColor: STUDENT.navActiveBg,
+    backgroundColor: GLASS_ROW.fill,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: GLASS_ROW.border,
     padding: 12,
     borderRadius: STUDENT_RADIUS.sm,
     marginTop: STUDENT_SPACING.sm,
@@ -467,19 +490,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   bestScoreLabel: {
-    fontSize: 14,
+    fontSize: 13,
     color: STUDENT.success,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   bestScoreValue: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
     color: STUDENT.success,
   },
   progressTrack: {
     height: 6,
     borderRadius: STUDENT_RADIUS.full,
-    backgroundColor: 'rgba(16,185,129,0.15)',
+    backgroundColor: 'rgba(109,91,208,0.15)',
     overflow: 'hidden',
   },
   progressFill: {
@@ -488,15 +511,19 @@ const styles = StyleSheet.create({
     backgroundColor: STUDENT.primary,
   },
   quizButton: {
-    backgroundColor: STUDENT.warning,
+    backgroundColor: STUDENT.primary,
     paddingVertical: 12,
-    borderRadius: STUDENT_RADIUS.sm,
+    paddingHorizontal: 14,
+    borderRadius: STUDENT_RADIUS.md,
     alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
     marginTop: STUDENT_SPACING.md,
   },
   quizButtonText: {
     color: STUDENT.textOnPrimary,
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '800',
   },
 });

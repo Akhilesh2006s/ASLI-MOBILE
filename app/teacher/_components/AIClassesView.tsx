@@ -10,6 +10,7 @@ import {
   TeacherClassCard,
   TimetableView,
 } from '../../../src/components/teacher';
+import { GlassPanel } from '../../../src/components/ui';
 import { formatPersonName, formatSubjectList } from '../../../src/lib/teacher-text';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO } from '../../../src/theme/teacher';
 import ScheduleCalendarView from './ScheduleCalendarView';
@@ -67,17 +68,14 @@ function useCountUp(target: number, duration = 900) {
 function StatsRibbon({ stats }: { stats: Props['stats'] }) {
   return (
     <Animated.View entering={FadeInDown.duration(400)} style={styles.statsWrap}>
-      <LinearGradient
-        colors={['#EEF2FF', '#FFFFFF']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.statsRibbon}
-      >
-        <View style={styles.statsGlow} />
-        {STAT_ITEMS.map((item, index) => (
-          <StatCell key={item.key} item={item} stats={stats} showDivider={index < STAT_ITEMS.length - 1} />
-        ))}
-      </LinearGradient>
+      <GlassPanel style={styles.statsRibbon} radius={TEACHER_RADIUS.lg} tone="medium">
+        <View style={styles.statsRibbonRow}>
+          <View style={styles.statsGlow} />
+          {STAT_ITEMS.map((item, index) => (
+            <StatCell key={item.key} item={item} stats={stats} showDivider={index < STAT_ITEMS.length - 1} />
+          ))}
+        </View>
+      </GlassPanel>
     </Animated.View>
   );
 }
@@ -205,13 +203,15 @@ export default function AIClassesView({ stats, initialSubTab, onOpenProgress }: 
 
     if (!classes.length) {
       return (
-        <View style={styles.empty}>
-          <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.emptyIconCircle}>
-            <Ionicons name="school-outline" size={36} color="#fff" />
-          </LinearGradient>
-          <Text style={styles.emptyTitle}>No Classes Assigned</Text>
-          <Text style={styles.emptySub}>Contact your administrator to get class assignments.</Text>
-        </View>
+        <GlassPanel style={styles.empty} radius={TEACHER_RADIUS.lg} tone="medium">
+          <View style={styles.emptyInner}>
+            <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.emptyIconCircle}>
+              <Ionicons name="school-outline" size={36} color="#fff" />
+            </LinearGradient>
+            <Text style={styles.emptyTitle}>No Classes Assigned</Text>
+            <Text style={styles.emptySub}>Contact your administrator to get class assignments.</Text>
+          </View>
+        </GlassPanel>
       );
     }
 
@@ -274,7 +274,8 @@ export default function AIClassesView({ stats, initialSubTab, onOpenProgress }: 
 
 const styles = StyleSheet.create({
   root: {
-    backgroundColor: TEACHER.bg,
+    // Transparent so AppBackground's artwork shows through.
+    backgroundColor: 'transparent',
   },
   statsWrap: {
     paddingHorizontal: TEACHER_SPACING.lg,
@@ -282,12 +283,14 @@ const styles = StyleSheet.create({
     paddingBottom: TEACHER_SPACING.md,
   },
   statsRibbon: {
-    flexDirection: 'row',
     borderRadius: TEACHER_RADIUS.lg,
     borderWidth: 1,
     borderColor: TEACHER.surfaceBorder,
     overflow: 'hidden',
     paddingVertical: TEACHER_SPACING.lg,
+  },
+  statsRibbonRow: {
+    flexDirection: 'row',
   },
   statsGlow: {
     position: 'absolute',
@@ -368,13 +371,14 @@ const styles = StyleSheet.create({
     color: TEACHER.primaryDark,
   },
   empty: {
-    alignItems: 'center',
     padding: TEACHER_SPACING.xxxl,
     marginHorizontal: TEACHER_SPACING.lg,
-    backgroundColor: TEACHER.cardBg,
     borderRadius: TEACHER_RADIUS.lg,
     borderWidth: 1,
     borderColor: TEACHER.surfaceBorder,
+  },
+  emptyInner: {
+    alignItems: 'center',
   },
   emptyIconCircle: {
     width: 80,

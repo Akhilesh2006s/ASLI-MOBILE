@@ -15,7 +15,7 @@ const TOOL_META: Record<string, { eyebrow: string; theme: ThemeName }> = {
   'smart-study-guide-generator': { eyebrow: 'Smart Study Guide', theme: 'indigo' },
   'concept-breakdown-explainer': { eyebrow: 'Concept Breakdown', theme: 'violet' },
   'chapter-summary-creator': { eyebrow: 'Chapter Summary', theme: 'blue' },
-  'key-points-formula-extractor': { eyebrow: 'Key Points & Formulae', theme: 'emerald' },
+  'key-points-formula-extractor': { eyebrow: 'Key Points & Formulae', theme: 'amber' },
   'quick-assignment-builder': { eyebrow: 'Quick Assignment', theme: 'orange' },
   'smart-qa-practice-generator': { eyebrow: 'Practice Q&A', theme: 'orange' },
   'lesson-planner': { eyebrow: 'Lesson Planner', theme: 'amber' },
@@ -78,10 +78,10 @@ const SECTION_THEME_CYCLE = [
     label: 'text-violet-600',
   },
   {
-    border: 'border-emerald-200/80',
-    bg: 'bg-emerald-50/80',
-    title: 'text-emerald-900',
-    label: 'text-emerald-600',
+    border: 'border-rose-200/80',
+    bg: 'bg-rose-50/80',
+    title: 'text-rose-900',
+    label: 'text-rose-600',
   },
   {
     border: 'border-sky-200/80',
