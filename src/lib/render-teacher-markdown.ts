@@ -1,12 +1,13 @@
-/** Mobile port of web render-teacher-markdown (no KaTeX — math shown as plain text). */
+/** Mobile port of web render-teacher-markdown (no KaTeX — math shown as plain Unicode). */
 import { stripMarkdownSyntax } from './strip-markdown-syntax';
+import { formatClassroomScienceText } from './exam-text-normalize';
 
 export function formatInlineMarkdown(t: string): string {
   if (t.includes('__MATH_BLOCK__') || t.includes('__MATH_ERROR__') || t.includes('__NOTE_CARD')) {
     return t;
   }
 
-  let formatted = stripMarkdownSyntax(t)
+  let formatted = stripMarkdownSyntax(formatClassroomScienceText(t))
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');

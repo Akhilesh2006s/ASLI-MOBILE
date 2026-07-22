@@ -14,6 +14,7 @@ import {
   sanitizeWorksheetOptionLine,
 } from '@/lib/worksheet-question-sanitize';
 import { extractAiToolV2Context } from '@/lib/extract-ai-tool-v2-context';
+import { isUnsupportedQuestionStem } from '@/lib/unsupported-question-filter';
 
 export type WorksheetQuestion = {
   questionNumber?: number;
@@ -251,6 +252,8 @@ function toWorksheetQuestions(value: unknown): WorksheetQuestion[] {
     if (!question) continue;
     const options = normalizeOptions(entry);
     if (!isValidWorksheetQuestionInput(question, options)) continue;
+    const type = stripInlineMarkdown(String(entry.type || entry.question_type || '').trim()) || undefined;
+    if (isUnsupportedQuestionStem(question, type || '')) continue;
     const marksRaw = entry.marks ?? entry.mark;
     const marks =
       marksRaw != null && !Number.isNaN(Number(marksRaw)) ? Number(marksRaw) : undefined;
@@ -267,7 +270,7 @@ function toWorksheetQuestions(value: unknown): WorksheetQuestion[] {
       explanation:
         stripInlineMarkdown(String(entry.explanation || entry.solution || '').trim()) || undefined,
       marks: Number.isFinite(marks) ? marks : undefined,
-      type: stripInlineMarkdown(String(entry.type || entry.question_type || '').trim()) || undefined,
+      type,
       section:
         stripInlineMarkdown(String(entry.section || entry.sectionName || '').trim()) || undefined,
     });
@@ -278,6 +281,7 @@ function toWorksheetQuestions(value: unknown): WorksheetQuestion[] {
 
 export function mapSectionName(name: string): string {
   const n = String(name || '').trim();
+  if (/match\s+the\s+following/i.test(n)) return '';
   if (/^multiple\s*choice\s*questions?$/i.test(n)) return WORKSHEET_SECTION_ORDER[0];
   if (/^fill\s*in\s*the\s*blanks?$/i.test(n)) return WORKSHEET_SECTION_ORDER[1];
   if (/^very\s*short\s*answer\s*questions?$/i.test(n)) return WORKSHEET_SECTION_ORDER[2];
@@ -447,6 +451,7 @@ function materializeWorksheet(raw: Record<string, unknown>, rawContent?: unknown
       if (!sec || typeof sec !== 'object') continue;
       const s = sec as Record<string, unknown>;
       const name = mapSectionName(String(s.sectionName || s.title || s.name || 'Section'));
+      if (!name) continue;
       const qs = toWorksheetQuestions(s.questions);
       const prev = sectionMap.get(name) || [];
       sectionMap.set(name, [...prev, ...qs]);

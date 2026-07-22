@@ -1,3 +1,4 @@
+import { filterUnsupportedQuestions, isUnsupportedQuestionStem } from './unsupported-question-filter';
 /**
  * Parse Smart Q&A Practice Generator payloads (sections A–G + answer key).
  */
@@ -32,10 +33,14 @@ export type NormalizedPracticeQa = {
   answerKey: string;
 };
 
+const LEGACY_SECTION_ALIASES: Record<string, string> = {
+  'Section C: Match the Following': 'Section C: True or False',
+};
+
 export const PRACTICE_QA_SECTION_ORDER = [
   'Section A: MCQs',
   'Section B: Fill in the Blanks',
-  'Section C: Match the Following',
+  'Section C: True or False',
   'Section D: Very Short Answer Questions',
   'Section E: Short Answer Questions',
   'Section F: Application / Case-based Questions',
@@ -47,7 +52,7 @@ export const PRACTICE_QA_REAL_LIFE_SECTION = 'Real-life Problem-solving Question
 const SECTION_META: Record<string, { id: string; order: number; displayPrefix: string }> = {
   'Section A: MCQs': { id: 'section_a', order: 4, displayPrefix: '4' },
   'Section B: Fill in the Blanks': { id: 'section_b', order: 5, displayPrefix: '5' },
-  'Section C: Match the Following': { id: 'section_c', order: 6, displayPrefix: '6' },
+  'Section C: True or False': { id: 'section_c', order: 6, displayPrefix: '6' },
   'Section D: Very Short Answer Questions': { id: 'section_d', order: 7, displayPrefix: '7' },
   'Section E: Short Answer Questions': { id: 'section_e', order: 8, displayPrefix: '8' },
   'Section F: Application / Case-based Questions': { id: 'section_f', order: 9, displayPrefix: '9' },
@@ -100,7 +105,7 @@ export function toPracticeQaQuestions(value: unknown): PracticeQaQuestion[] {
   for (const row of rows) {
     if (typeof row === 'string') {
       const question = stripInlineMarkdown(row);
-      if (question) out.push({ question, options: [], answer: '' });
+      if (question && !isUnsupportedQuestionStem(question)) out.push({ question, options: [], answer: '' });
       continue;
     }
     if (!row || typeof row !== 'object') continue;
@@ -109,6 +114,8 @@ export function toPracticeQaQuestions(value: unknown): PracticeQaQuestion[] {
       String(entry.question || entry.question_text || entry.prompt || entry.text || '').trim(),
     );
     if (!question) continue;
+    const type = stripInlineMarkdown(String(entry.type || entry.question_type || '').trim()) || undefined;
+    if (isUnsupportedQuestionStem(question, type || '')) continue;
     const marksRaw = entry.marks ?? entry.mark;
     const marks =
       marksRaw != null && !Number.isNaN(Number(marksRaw)) ? Number(marksRaw) : undefined;
@@ -125,7 +132,7 @@ export function toPracticeQaQuestions(value: unknown): PracticeQaQuestion[] {
       explanation:
         stripInlineMarkdown(String(entry.explanation || entry.solution || '').trim()) || undefined,
       marks: Number.isFinite(marks) ? marks : undefined,
-      type: stripInlineMarkdown(String(entry.type || entry.question_type || '').trim()) || undefined,
+      type,
       section:
         stripInlineMarkdown(String(entry.section || entry.sectionName || '').trim()) || undefined,
       bloomLevel:
@@ -141,11 +148,14 @@ export function toPracticeQaQuestions(value: unknown): PracticeQaQuestion[] {
 }
 
 export function mapPracticeQaSectionName(name: string): string {
-  const n = String(name || '').trim();
+  const raw = String(name || '').trim();
+  const aliased = LEGACY_SECTION_ALIASES[raw];
+  if (aliased) return aliased;
+  const n = raw;
   if (/^section\s*a|mcq|multiple\s*choice/i.test(n)) return PRACTICE_QA_SECTION_ORDER[0];
   if (/^section\s*b|fill|blank|fib/i.test(n)) return PRACTICE_QA_SECTION_ORDER[1];
-  if (/^section\s*c|match/i.test(n)) return PRACTICE_QA_SECTION_ORDER[2];
-  if (/^6\b|section\s*6/i.test(n) && /match/i.test(n)) return PRACTICE_QA_SECTION_ORDER[2];
+  if (/^section\s*c|true\s*or\s*false|t\/?f\b|match/i.test(n)) return PRACTICE_QA_SECTION_ORDER[2];
+  if (/^6\b|section\s*6/i.test(n) && /(match|true\s*or\s*false)/i.test(n)) return PRACTICE_QA_SECTION_ORDER[2];
   if (/^section\s*d|very\s*short|vsa/i.test(n)) return PRACTICE_QA_SECTION_ORDER[3];
   if (/^section\s*e|short\s*answer/i.test(n) && !/very/i.test(n)) return PRACTICE_QA_SECTION_ORDER[4];
   if (/^section\s*f|application|case/i.test(n)) return PRACTICE_QA_SECTION_ORDER[5];
@@ -179,7 +189,7 @@ function inferSectionForQuestion(q: PracticeQaQuestion): string {
   const qType = String(q.type || '').trim().toUpperCase();
   if (qType === 'MCQ' || /multiple\s*choice/i.test(qType)) return PRACTICE_QA_SECTION_ORDER[0];
   if (qType === 'FIB' || /fill/i.test(qType)) return PRACTICE_QA_SECTION_ORDER[1];
-  if (qType === 'MATCH') return PRACTICE_QA_SECTION_ORDER[2];
+  if (qType === 'TF' || qType === 'TRUE_FALSE' || qType === 'TRUEFALSE' || /true\s*or\s*false/i.test(qType)) return PRACTICE_QA_SECTION_ORDER[2];
   if (qType === 'VSA') return PRACTICE_QA_SECTION_ORDER[3];
   if (/short\s*answer/i.test(qType) && !/very/i.test(qType)) return PRACTICE_QA_SECTION_ORDER[4];
   if (qType === 'HOTS' || /analytical/i.test(qType)) return PRACTICE_QA_SECTION_ORDER[6];
@@ -188,7 +198,7 @@ function inferSectionForQuestion(q: PracticeQaQuestion): string {
   const words = qt.split(/\s+/).filter(Boolean).length;
   if (q.options.length >= 2) return PRACTICE_QA_SECTION_ORDER[0];
   if (/_{2,}/.test(qt)) return PRACTICE_QA_SECTION_ORDER[1];
-  if (/match\s*(the\s*)?following/i.test(qt)) return PRACTICE_QA_SECTION_ORDER[2];
+  if (/true\s*or\s*false|^t\/?f\b/i.test(qt)) return PRACTICE_QA_SECTION_ORDER[2];
   if (/application|case[\s-]*based|competency/i.test(qt)) return PRACTICE_QA_SECTION_ORDER[5];
   if (/hots|analytical|higher[\s-]*order/i.test(qt)) return PRACTICE_QA_SECTION_ORDER[6];
   if (/\?/.test(qt) && words <= 22) return PRACTICE_QA_SECTION_ORDER[3];
@@ -198,7 +208,7 @@ function inferSectionForQuestion(q: PracticeQaQuestion): string {
 
 function buildSectionsFromQuestions(questions: PracticeQaQuestion[]): PracticeQaSection[] {
   const sectionMap = new Map<string, PracticeQaQuestion[]>();
-  for (const q of questions) {
+  for (const q of filterUnsupportedQuestions(questions) as PracticeQaQuestion[]) {
     const key = inferSectionForQuestion(q);
     const prev = sectionMap.get(key) || [];
     sectionMap.set(key, [...prev, q]);
@@ -237,7 +247,7 @@ function materializePracticeQa(raw: Record<string, unknown>): NormalizedPractice
       if (!sec || typeof sec !== 'object') continue;
       const s = sec as Record<string, unknown>;
       const name = mapPracticeQaSectionName(String(s.sectionName || s.title || s.name || 'Section'));
-      const qs = toPracticeQaQuestions(s.questions);
+      const qs = filterUnsupportedQuestions(toPracticeQaQuestions(s.questions)) as PracticeQaQuestion[];
       const prev = sectionMap.get(name) || [];
       sectionMap.set(name, [...prev, ...qs]);
     }
@@ -249,6 +259,9 @@ function materializePracticeQa(raw: Record<string, unknown>): NormalizedPractice
     ['section_b_fill_in_blanks', PRACTICE_QA_SECTION_ORDER[1]],
     ['section_b_fib', PRACTICE_QA_SECTION_ORDER[1]],
     ['fill_in_blanks', PRACTICE_QA_SECTION_ORDER[1]],
+    ['section_c_true_false', PRACTICE_QA_SECTION_ORDER[2]],
+    ['section_c_tf', PRACTICE_QA_SECTION_ORDER[2]],
+    ['true_false', PRACTICE_QA_SECTION_ORDER[2]],
     ['section_c_match_following', PRACTICE_QA_SECTION_ORDER[2]],
     ['section_c_match', PRACTICE_QA_SECTION_ORDER[2]],
     ['match_following', PRACTICE_QA_SECTION_ORDER[2]],

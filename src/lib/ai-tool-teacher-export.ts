@@ -7,6 +7,7 @@ import { resolveWorksheetFromPayload } from './parse-worksheet-mcq';
 import { resolveHomeworkFromPayload } from './parse-homework-creator';
 import { resolveExamPaperFromPayload } from './parse-exam-question-paper';
 import { resolveFlashcardsFromPayload } from './parse-flashcards';
+import { formatClassroomScienceText } from './exam-text-normalize';
 
 export const TEACHER_DOWNLOAD_TOOL_IDS = [
   'worksheet-mcq-generator',
@@ -14,6 +15,10 @@ export const TEACHER_DOWNLOAD_TOOL_IDS = [
   'homework-creator',
   'flashcard-generator',
 ] as const;
+
+function fmt(value: unknown): string {
+  return formatClassroomScienceText(value);
+}
 
 export function isTeacherDownloadTool(toolType: string): boolean {
   return (TEACHER_DOWNLOAD_TOOL_IDS as readonly string[]).includes(toolType);
@@ -37,12 +42,12 @@ export function buildTeacherToolCsv(toolType: string, content: string, rawConten
           section.label,
           q.questionNumber ?? index + 1,
           q.type || '',
-          q.question,
-          q.options[0] || '',
-          q.options[1] || '',
-          q.options[2] || '',
-          q.options[3] || '',
-          q.answer,
+          fmt(q.question),
+          fmt(q.options[0] || ''),
+          fmt(q.options[1] || ''),
+          fmt(q.options[2] || ''),
+          fmt(q.options[3] || ''),
+          fmt(q.answer),
           q.marks ?? '',
         ]);
       });
@@ -111,11 +116,11 @@ export function buildTeacherToolCsv(toolType: string, content: string, rawConten
     return buildCsvContent(
       ['Front', 'Back', 'Type', 'Category', 'Memory Hook'],
       cards.map((card) => [
-        card.front,
-        card.back,
+        fmt(card.front),
+        fmt(card.back),
         card.type || '',
         card.cardCategory || '',
-        card.memoryHookQuickTip || card.memoryCue || '',
+        fmt(card.memoryHookQuickTip || card.memoryCue || ''),
       ]),
     );
   }

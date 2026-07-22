@@ -1009,7 +1009,7 @@ const styles = StyleSheet.create({
   faceBodyScroll: { flex: 1, minHeight: 0 },
   faceBodyContent: {
     flexGrow: 1,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 12,
   },
@@ -1019,6 +1019,8 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: '#0f172a',
     textAlign: 'left',
+    flexShrink: 1,
+    width: '100%',
   },
   showAnswerBtn: {
     flexShrink: 0,

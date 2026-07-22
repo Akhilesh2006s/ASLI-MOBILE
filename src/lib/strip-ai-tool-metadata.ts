@@ -208,6 +208,28 @@ export function normalizeFlashcardClassLevel(text: string): string {
   return s.replace(/^Class\s+Class\s+/i, 'Class ').trim();
 }
 
+const FLASHCARD_SECTION_LEAK_RE =
+  /(?:^|\n)\s*(?:#{1,6}\s*)?(?:\d+\s*[.)·:\-]\s*)?(?:Study Aids|The Card Set|Application\s*&\s*HOTS|Wrap-?Up|Foundations|Context\s*&\s*Alignment|Memory Hook|Common Mistakes|NCF Competency|Learning Objectives)\b[\s\S]*$/i;
+
+/**
+ * Clean flashcard front/back for display (old + new generations):
+ * - drop leaked markdown section headers (### 4. Study Aids)
+ * - drop leftover ## / ### heading lines
+ * - strip bold markers
+ */
+export function sanitizeFlashcardFieldText(text: string): string {
+  let s = String(text || '').replace(/\r\n/g, '\n').trim();
+  if (!s) return '';
+
+  s = s.replace(FLASHCARD_SECTION_LEAK_RE, '').trim();
+  s = s.replace(/(?:^|\n)\s*#{1,6}\s+\d+[.)]?\s*[^\n]*$/gm, '').trim();
+  s = s.replace(/(?:^|\n)\s*#{1,6}\s+[^\n]+$/gm, '').trim();
+  s = s.replace(/\s*#{1,6}\s*(?:\d+[.)]?\s*)?(?:Study Aids|Wrap-?Up|Foundations|Context\s*&\s*Alignment)\s*$/i, '').trim();
+  s = s.replace(/\*\*/g, '').trim();
+  s = s.replace(/\s{2,}/g, ' ').trim();
+  return s;
+}
+
 /**
  * Teacher/student AI tools ask the model for plain text shaped like:
  * NAME OF THE TOOL / CLASS / SUBJECT / TOPIC / SUB TOPIC / CONTENT / ...

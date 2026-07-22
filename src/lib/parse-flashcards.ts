@@ -1,4 +1,6 @@
 import { stripAiToolGenerationLabel } from './strip-ai-tool-generation-label';
+import { formatClassroomScienceText } from './exam-text-normalize';
+import { sanitizeFlashcardFieldText } from './strip-ai-tool-metadata';
 
 export type FlashcardType = 'question' | 'note' | 'fact';
 
@@ -52,7 +54,7 @@ export type TeacherDeckMeta = {
 const BLOOM_FALLBACK_LEVELS = ['Remember', 'Understand', 'Apply', 'Analyze', 'Evaluate', 'Create'];
 
 function stripMdBold(s: string): string {
-  return s.replace(/\*\*/g, '').trim();
+  return sanitizeFlashcardFieldText(s.replace(/\*\*/g, '').trim());
 }
 
 function toStringList(value: unknown): string[] {
@@ -112,7 +114,7 @@ function parseSevenFieldTemplateBlock(block: string): Flashcard | null {
 
   const taskBold = block.match(/\*\*Task:\*\*\s*([\s\S]*?)(?=\n\s*\*\*Solution:\*\*)/i);
   const solutionBold = block.match(
-    /\*\*Solution:\*\*\s*([\s\S]*?)(?=\n\s*\*\*(?:Difficulty|Memory Hook|Memory Cue|Self-Check|Front|Back|Task)[^*]*:\*|\n+---|\n+##\s*(?:Card|Flashcard)|$)/i
+    /\*\*Solution:\*\*\s*([\s\S]*?)(?=\n\s*\*\*(?:Difficulty|Memory Hook|Memory Cue|Self-Check|Front|Back|Task)[^*]*:\*|\n+---|\n+#{1,6}\s*(?:\d+[.)]?\s*)?(?:Study Aids|Card|Flashcard|Wrap)|$)/i
   );
   if (taskBold && solutionBold) {
     front = stripMdBold(taskBold[1].trim());
@@ -231,8 +233,8 @@ function cardFromLooseObject(item: Record<string, unknown>): Flashcard | null {
     typeRaw === 'note' || typeRaw === 'fact' || typeRaw === 'question' ? typeRaw : 'question';
 
   return {
-    front: stripMdBold(String(front)),
-    back: stripMdBold(String(back)),
+    front: formatClassroomScienceText(stripMdBold(String(front))),
+    back: formatClassroomScienceText(stripMdBold(String(back))),
     type,
     cardCategory: String(item.card_category || item.cardCategory || '').trim().toLowerCase() || undefined,
     difficultyTag: stripMdBold(
@@ -316,7 +318,7 @@ function parseTaskSolutionPairs(content: string): Flashcard[] {
   if (cards.length) return cards;
 
   const re =
-    /\*\*Task:\*\*\s*([\s\S]*?)\n+\*\*Solution:\*\*\s*([\s\S]*?)(?=\n+\*\*Task:|\n+---|\n###\s*[45]\.|$)/gi;
+    /\*\*Task:\*\*\s*([\s\S]*?)\n+\*\*Solution:\*\*\s*([\s\S]*?)(?=\n+\*\*Task:|\n+---|\n#{1,6}\s*[345]\.|\n#{1,6}\s*Study Aids|\n+\*\*Card\s*\d+|\n+##\s*(?:Card|Flashcard|Study)|$)/gi;
   let m: RegExpExecArray | null;
   while ((m = re.exec(content)) !== null) {
     const front = stripMdBold(m[1].trim());
@@ -421,7 +423,7 @@ export function enrichStudyDeckCards(cards: Flashcard[], rawContent?: unknown): 
           : []) as Record<string, unknown>[])
     : [];
 
-  return cards.map((card, i) => {
+  const enriched = cards.map((card, i) => {
     const r = rawList[i];
     const difficultyFromRaw = r
       ? String(
@@ -459,12 +461,33 @@ export function enrichStudyDeckCards(cards: Flashcard[], rawContent?: unknown): 
 
     return {
       ...card,
-      difficultyTag,
-      memoryHookQuickTip,
-      memoryCue: memoryHookQuickTip,
-      selfCheckRound,
+      front: formatClassroomScienceText(sanitizeFlashcardFieldText(card.front)),
+      back: formatClassroomScienceText(sanitizeFlashcardFieldText(card.back)),
+      difficultyTag: formatClassroomScienceText(sanitizeFlashcardFieldText(difficultyTag)),
+      memoryHookQuickTip: formatClassroomScienceText(sanitizeFlashcardFieldText(memoryHookQuickTip)),
+      memoryCue: formatClassroomScienceText(sanitizeFlashcardFieldText(memoryHookQuickTip)),
+      selfCheckRound: formatClassroomScienceText(sanitizeFlashcardFieldText(selfCheckRound)),
     };
   });
+
+  return dedupeFlashcardsByFront(enriched);
+}
+
+/** Drop near-duplicate fronts so decks don't repeat the same task. */
+export function dedupeFlashcardsByFront(cards: Flashcard[]): Flashcard[] {
+  const seen = new Set<string>();
+  const out: Flashcard[] = [];
+  for (const card of cards) {
+    const key = String(card.front || '')
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 240);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(card);
+  }
+  return out;
 }
 
 function pickText(sources: Record<string, unknown>[], ...keys: string[]): string {
