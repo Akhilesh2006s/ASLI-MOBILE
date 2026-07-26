@@ -42,7 +42,8 @@ interface Student {
   status: 'active' | 'inactive';
   createdAt: string;
   lastLogin?: string;
-  assignedClass?: string;
+  assignedClass?: string | null;
+  classLabel?: string;
 }
 
 type ViewMode = 'all' | 'class-wise' | 'section-wise';
@@ -53,6 +54,53 @@ const normalizeClassNumberForDisplay = (value: unknown): string => {
   return raw
     .replace(/^class\s*-\s*(\d+)/i, 'Class $1')
     .replace(/^-([0-9]+)([A-Za-z]?)$/, '$1$2');
+};
+
+const resolveAssignedClassId = (assignedClass: unknown): string | null => {
+  if (!assignedClass) return null;
+  if (typeof assignedClass === 'string' || typeof assignedClass === 'number') {
+    const id = String(assignedClass).trim();
+    return id || null;
+  }
+  if (typeof assignedClass === 'object') {
+    const obj = assignedClass as { _id?: unknown; id?: unknown };
+    const id = obj._id ?? obj.id;
+    if (id == null) return null;
+    return String(id).trim() || null;
+  }
+  return null;
+};
+
+const mapApiUserToStudent = (user: any): Student => {
+  const assignedClassId = resolveAssignedClassId(user.assignedClass);
+  const sectionFromAssigned =
+    (typeof user.assignedClass === 'object' && user.assignedClass?.section
+      ? String(user.assignedClass.section)
+      : '') ||
+    (user.section ? String(user.section) : '');
+  const classNumber = normalizeClassNumberForDisplay(
+    (typeof user.assignedClass === 'object' && user.assignedClass?.classNumber) ||
+      user.classNumber
+  );
+  const classLabel =
+    user.classLabel ||
+    (assignedClassId && sectionFromAssigned
+      ? `${classNumber}-${sectionFromAssigned}`
+      : classNumber);
+
+  return {
+    id: user._id || user.id,
+    name: user.fullName || user.name || 'Unknown Student',
+    email: user.email || '',
+    classNumber,
+    section: sectionFromAssigned,
+    phone: user.phone || '',
+    status: user.isActive ? ('active' as const) : ('inactive' as const),
+    createdAt: user.createdAt || new Date().toISOString(),
+    lastLogin: user.lastLogin || undefined,
+    assignedClass: assignedClassId,
+    classLabel,
+  };
 };
 
 const formatSectionLabel = (sectionRaw: string) => {
@@ -187,21 +235,7 @@ export default function StudentsView() {
       const response = await api.get('/api/admin/students');
       const data = response?.data;
       const studentsData = data?.data || data || [];
-      const mappedStudents = (Array.isArray(studentsData) ? studentsData : []).map((user: any) => ({
-        id: user._id || user.id,
-        name: user.fullName || user.name || 'Unknown Student',
-        email: user.email || '',
-        classNumber: normalizeClassNumberForDisplay(user.classNumber),
-        section:
-          user.assignedClass?.section ||
-          (typeof user.assignedClass === 'object' ? user.assignedClass?.section : '') ||
-          '',
-        phone: user.phone || '',
-        status: user.isActive ? ('active' as const) : ('inactive' as const),
-        createdAt: user.createdAt || new Date().toISOString(),
-        lastLogin: user.lastLogin || null,
-        assignedClass: user.assignedClass?._id || user.assignedClass || null,
-      }));
+      const mappedStudents = (Array.isArray(studentsData) ? studentsData : []).map(mapApiUserToStudent);
       setStudents(mappedStudents);
     } catch (error) {
       console.error('Failed to fetch students:', error);
@@ -345,8 +379,30 @@ export default function StudentsView() {
       const result = response?.data;
       setIsUploadModalVisible(false);
       setSelectedFile(null);
-      fetchStudents();
-      fetchClasses();
+
+      const created = Array.isArray(result?.createdUsers) ? result.createdUsers : [];
+      if (created.length > 0) {
+        const optimistic = created.map((row: any) =>
+          mapApiUserToStudent({
+            _id: row.id,
+            fullName: row.name,
+            email: row.email,
+            classNumber: row.classNumber,
+            section: row.section,
+            classLabel: row.classLabel || row.class,
+            assignedClass: row.assignedClass || null,
+            isActive: true,
+            createdAt: new Date().toISOString(),
+          })
+        );
+        setStudents((prev) => {
+          const existingIds = new Set(prev.map((s) => s.id));
+          const fresh = optimistic.filter((s: Student) => s.id && !existingIds.has(s.id));
+          return [...fresh, ...prev];
+        });
+      }
+
+      await Promise.all([fetchStudents(), fetchClasses()]);
 
       let message =
         result?.message ||
@@ -494,11 +550,11 @@ export default function StudentsView() {
   };
 
   const toggleClassCollapse = (classKey: string) => {
-    setCollapsedClasses((prev) => ({ ...prev, [classKey]: !(prev[classKey] ?? true) }));
+    setCollapsedClasses((prev) => ({ ...prev, [classKey]: !(prev[classKey] ?? false) }));
   };
 
   const toggleSectionCollapse = (scopeKey: string) => {
-    setCollapsedSections((prev) => ({ ...prev, [scopeKey]: !(prev[scopeKey] ?? true) }));
+    setCollapsedSections((prev) => ({ ...prev, [scopeKey]: !(prev[scopeKey] ?? false) }));
   };
 
   const pickCsvFile = async () => {
@@ -556,7 +612,7 @@ export default function StudentsView() {
             </View>
             <View style={[styles.classBadge, { backgroundColor: colors.primaryMuted, borderColor: colors.surfaceBorder }]}>
               <Text style={[styles.classBadgeText, { color: colors.primary }]} numberOfLines={1}>
-                {student.classNumber || 'N/A'}
+                {student.classLabel || student.classNumber || 'N/A'}
               </Text>
             </View>
           </View>
@@ -616,7 +672,9 @@ export default function StudentsView() {
               }}
             >
               <Ionicons name="school-outline" size={16} color={colors.primary} />
-              <Text style={[styles.assignClassBtnText, { color: colors.primary }]}>Assign Class</Text>
+              <Text style={[styles.assignClassBtnText, { color: colors.primary }]}>
+                {student.assignedClass ? 'Change Class' : 'Assign Class'}
+              </Text>
             </AdminScalePressable>
           </View>
         </View>
@@ -704,7 +762,7 @@ export default function StudentsView() {
           {Object.keys(classSectionGroups)
             .sort(sortByClassLabel)
             .map((classKey) => {
-              const isClassCollapsed = collapsedClasses[classKey] ?? true;
+              const isClassCollapsed = collapsedClasses[classKey] ?? false;
               const classCount = Object.values(classSectionGroups[classKey]).flat().length;
               return (
                 <View key={classKey} style={styles.accordionCard}>
@@ -734,7 +792,7 @@ export default function StudentsView() {
                         .sort()
                         .map((sectionKey) => {
                           const sectionScopeKey = `${classKey}::${sectionKey}`;
-                          const isSectionCollapsed = collapsedSections[sectionScopeKey] ?? true;
+                          const isSectionCollapsed = collapsedSections[sectionScopeKey] ?? false;
                           const sectionStudents = classSectionGroups[classKey][sectionKey];
                           return (
                             <GlassPanel key={sectionScopeKey} style={styles.sectionCard} radius={12} tone="medium">
@@ -778,7 +836,7 @@ export default function StudentsView() {
         {Object.keys(sectionClassGroups)
           .sort()
           .map((sectionKey) => {
-            const isSectionCollapsed = collapsedSections[sectionKey] ?? true;
+            const isSectionCollapsed = collapsedSections[sectionKey] ?? false;
             const sectionCount = Object.values(sectionClassGroups[sectionKey]).flat().length;
             return (
               <View key={sectionKey} style={[styles.accordionCard, styles.sectionAccordionCard]}>
@@ -1365,7 +1423,8 @@ export default function StudentsView() {
               ) : (
                 availableClasses.map((classItem) => {
                   const classId = classItem._id || classItem.id;
-                  const isSelected = selectedStudentForClass?.assignedClass === classId;
+                  const isSelected =
+                    String(selectedStudentForClass?.assignedClass || '') === String(classId);
                   return (
                     <TouchableOpacity
                       key={String(classId)}

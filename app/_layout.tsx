@@ -208,7 +208,7 @@ function SplashOverlay() {
   if (hidden) return null;
 
   return (
-    <View style={styles.splashOverlay} onLayout={onSplashLayout} pointerEvents="box-none">
+    <View style={styles.splashOverlay} onLayout={onSplashLayout} pointerEvents="auto">
       <AppSplash exiting={exiting} />
     </View>
   );

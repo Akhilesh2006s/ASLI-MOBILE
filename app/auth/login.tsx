@@ -184,6 +184,8 @@ function PremiumField({
           autoCapitalize="none"
           autoComplete={keyboardType === 'email-address' ? 'email' : 'password'}
           secureTextEntry={secure && !showPassword}
+          underlineColorAndroid="transparent"
+          selectionColor={PALETTE.accent}
         />
         {onTogglePassword ? (
           <Pressable
@@ -210,7 +212,8 @@ export default function Login() {
   const { width } = useWindowDimensions();
   const { signIn } = useAuth();
   const cardWidth = useMemo(() => Math.min(width - 28, 440), [width]);
-  const logoSize = useMemo(() => Math.min(width * 0.3, 116), [width]);
+  const logoWidth = useMemo(() => Math.min(width * 0.52, 200), [width]);
+  const logoHeight = useMemo(() => logoWidth * 0.92, [logoWidth]);
 
   const [showForm, setShowForm] = useState(true);
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -297,33 +300,12 @@ export default function Login() {
               keyboardShouldPersistTaps="handled"
             >
               <Animated.View entering={FadeInDown.duration(500)} style={styles.brandHeader}>
-                <LinearGradient
-                  colors={['#6366F1', '#22D3EE']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={[
-                    styles.brandLogoRing,
-                    { width: logoSize, height: logoSize, borderRadius: logoSize / 2 },
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.brandLogoInner,
-                      {
-                        width: logoSize - 6,
-                        height: logoSize - 6,
-                        borderRadius: (logoSize - 6) / 2,
-                      },
-                    ]}
-                  >
-                    <Image
-                      source={require('../../assets/logo.png')}
-                      style={styles.brandLogo}
-                      resizeMode="contain"
-                      accessibilityLabel="ASLI Learn logo"
-                    />
-                  </View>
-                </LinearGradient>
+                <Image
+                  source={require('../../assets/logo-transparent.png')}
+                  style={{ width: logoWidth, height: logoHeight }}
+                  resizeMode="contain"
+                  accessibilityLabel="ASLI Learn logo"
+                />
               </Animated.View>
 
               {/* Glass card */}
@@ -426,38 +408,19 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   scroll: {
     flexGrow: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.xxxl,
+    paddingTop: SPACING.sm,
+    paddingBottom: SPACING.xl,
     alignItems: 'center',
   },
   brandHeader: {
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
-    marginBottom: SPACING.xl,
+    marginTop: 0,
+    marginBottom: SPACING.md,
     width: '100%',
-  },
-  brandLogoRing: {
-    padding: 3,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#4F46E5',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.18,
-    shadowRadius: 14,
-    elevation: 6,
-  },
-  brandLogoInner: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 6,
-  },
-  brandLogo: {
-    width: '100%',
-    height: '100%',
   },
   card: {
     paddingHorizontal: SPACING.xl,
@@ -519,14 +482,13 @@ const styles = StyleSheet.create({
   fieldBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    // opaque white field on frosted glass: keeps the dark input text legible
-    // no matter which pastel hue sits behind the card
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#F1F5F9',
     borderRadius: RADIUS.lg + 2,
     borderWidth: 1.5,
     borderColor: '#D8DEE9',
     height: 56,
     paddingRight: SPACING.md,
+    overflow: 'hidden',
     shadowColor: PALETTE.accent,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 12,
@@ -543,9 +505,15 @@ const styles = StyleSheet.create({
   },
   fieldInput: {
     flex: 1,
+    alignSelf: 'stretch',
     fontSize: FONT.lg,
     color: COLORS.text,
-    paddingVertical: 0,
+    paddingVertical: Platform.OS === 'ios' ? 14 : 10,
+    paddingHorizontal: 0,
+    margin: 0,
+    backgroundColor: 'transparent',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   eyeBtn: {
     padding: SPACING.xs,

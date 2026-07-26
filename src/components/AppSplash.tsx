@@ -18,7 +18,7 @@ export const SPLASH_DURATION_MS = 1200;
 const EXIT_DURATION_MS = 450;
 /** Max scale from breathe + exit animations — size budget must include this. */
 const MAX_LOGO_SCALE = 1.08;
-const BRAND_LOGO = require('../../assets/logo.png');
+const BRAND_LOGO = require('../../assets/logo-transparent.png');
 
 type AppSplashProps = {
   exiting?: boolean;
@@ -136,13 +136,14 @@ export const SPLASH_EXIT_DURATION_MS = EXIT_DURATION_MS;
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    // Solid wash so login (under the overlay) is never visible through the splash.
+    backgroundColor: '#E8EEF9',
   },
   container: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#E8EEF9',
     overflow: 'visible',
   },
   stage: {

@@ -472,11 +472,12 @@ export default function ExamManagementView() {
       } else if (res?.status === 409 && String(data?.message || '').toLowerCase().includes('duplicate')) {
         Alert.alert(
           'Duplicate Question',
-          'This question already exists. Replace the existing duplicate?',
+          'A question with the same text AND image already exists.\n\nReplace will DELETE the existing question. Cancel keeps it.\n\nDifferent image questions are not duplicates.',
           [
             { text: 'Cancel', style: 'cancel' },
             {
               text: 'Replace',
+              style: 'destructive',
               onPress: async () => {
                 const replacePayload = buildQuestionPayload(questionForm, selectedExam.board, true);
                 await api.post(`/api/super-admin/exams/${selectedExam._id}/questions`, replacePayload);
