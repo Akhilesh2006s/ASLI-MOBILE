@@ -7,18 +7,19 @@
  * read as one product. Replaced the previous emerald palette, whose white-on-
  * primary buttons only reached 2.54:1; this primary holds 5.17:1.
  */
+import { Platform } from 'react-native';
 import { GLASS_ROW, GLASS_VIOLET } from './glass';
 
 export const STUDENT = {
   bg: '#f5f3ff',
   bgAccent: '#ede9fe',
-  surface: 'rgba(255,255,255,0.48)',
-  surfaceGlass: GLASS_ROW.fillStrong,
+  surface: Platform.OS === 'android' ? 'rgba(255,255,255,0.90)' : 'rgba(255,255,255,0.48)',
+  surfaceGlass: Platform.OS === 'android' ? 'rgba(255,255,255,0.92)' : GLASS_ROW.fillStrong,
   glassSheen: GLASS_VIOLET,
   surfaceDark: '#0f172a',
-  surfaceElevated: 'rgba(255,255,255,0.58)',
-  surfaceBorder: 'rgba(255,255,255,0.65)',
-  surfaceHover: 'rgba(255,255,255,0.36)',
+  surfaceElevated: Platform.OS === 'android' ? 'rgba(255,255,255,0.96)' : 'rgba(255,255,255,0.58)',
+  surfaceBorder: Platform.OS === 'android' ? 'rgba(226,232,240,0.95)' : 'rgba(255,255,255,0.65)',
+  surfaceHover: Platform.OS === 'android' ? 'rgba(248,250,252,0.98)' : 'rgba(255,255,255,0.36)',
   primary: '#6d5bd0',
   primaryDark: '#5443b8',
   primaryLight: '#9b8ae6',
@@ -36,7 +37,7 @@ export const STUDENT = {
   headerGradient: ['#4C3BA6', '#5F4CC4', '#7C6BDA'] as const,
   heroGradient: ['#4C3BA6', '#6D5BD0', '#8B7AE0'] as const,
   cardGradient: ['#ede9fe', '#f5f3ff'] as const,
-  tabBarBg: 'rgba(255,255,255,0.92)',
+  tabBarBg: Platform.OS === 'android' ? 'rgba(255,255,255,0.98)' : 'rgba(255,255,255,0.92)',
   tabBarBorder: 'rgba(109,91,208,0.20)',
   // Inactive tab labels sit at 9px on a translucent bar — #94a3b8 was unreadable.
   navInactive: '#5b6779',
@@ -57,28 +58,28 @@ export const STUDENT = {
       shadowOffset: { width: 0, height: 8 },
       shadowOpacity: 0.1,
       shadowRadius: 24,
-      elevation: 8,
+      elevation: Platform.OS === 'android' ? 1 : 8,
     },
     sm: {
       shadowColor: '#0f172a',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.06,
       shadowRadius: 8,
-      elevation: 3,
+      elevation: Platform.OS === 'android' ? 0 : 3,
     },
     md: {
       shadowColor: '#5443b8',
       shadowOffset: { width: 0, height: 6 },
       shadowOpacity: 0.1,
       shadowRadius: 16,
-      elevation: 8,
+      elevation: Platform.OS === 'android' ? 1 : 8,
     },
     lg: {
       shadowColor: '#0f172a',
       shadowOffset: { width: 0, height: 10 },
       shadowOpacity: 0.12,
       shadowRadius: 24,
-      elevation: 12,
+      elevation: Platform.OS === 'android' ? 1 : 12,
     },
   },
 };

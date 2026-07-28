@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Platform,
   Pressable,
   StyleSheet,
   View,
@@ -52,6 +53,7 @@ export default function GlassPanel({
   elevated = false,
   onPress,
 }: Props) {
+  const isAndroid = Platform.OS === 'android';
   const { intensity } = glassTone(tone);
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({
@@ -64,7 +66,7 @@ export default function GlassPanel({
         styles.panel,
         { borderRadius: radius },
         bordered && styles.bordered,
-        elevated && GLASS_SHADOW.soft,
+        elevated && !isAndroid && GLASS_SHADOW.soft,
         !onPress && style,
       ]}
     >

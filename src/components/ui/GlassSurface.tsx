@@ -9,7 +9,8 @@ import {
   type GlassTone,
 } from '../../theme/glass';
 
-const ANDROID_BLUR_METHOD = Platform.OS === 'android' ? 'dimezisBlurView' : undefined;
+const IS_ANDROID = Platform.OS === 'android';
+const ANDROID_BLUR_METHOD = IS_ANDROID ? 'none' : undefined;
 
 export { GLASS_BLUE };
 
@@ -39,30 +40,53 @@ export default function GlassSurface({
 
   return (
     <>
-      <BlurView
-        intensity={blurIntensity}
-        tint="default"
-        experimentalBlurMethod={ANDROID_BLUR_METHOD}
-        style={StyleSheet.absoluteFillObject}
-      />
-      <LinearGradient
-        colors={sheen}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
-      />
-      {specular ? (
-        <LinearGradient
-          colors={[...GLASS_SPECULAR]}
-          locations={[0, 0.35, 1]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0.75, y: 0.55 }}
-          style={StyleSheet.absoluteFillObject}
-          pointerEvents="none"
+      {IS_ANDROID ? (
+        // Android's blur + sheen stack can render as muddy gray cards and
+        // rectangular highlight patches on some OEM builds. Keep Android to a
+        // plain translucent fill and let borders/shadows carry the depth.
+        <View
+          style={[
+            StyleSheet.absoluteFillObject,
+            {
+              backgroundColor:
+                tone === 'strong'
+                  ? 'rgba(255,255,255,0.94)'
+                  : tone === 'light'
+                    ? 'rgba(255,255,255,0.82)'
+                    : 'rgba(255,255,255,0.88)',
+            },
+          ]}
         />
+      ) : (
+        <BlurView
+          intensity={blurIntensity}
+          tint="light"
+          experimentalBlurMethod={ANDROID_BLUR_METHOD}
+          style={StyleSheet.absoluteFillObject}
+        />
+      )}
+      {!IS_ANDROID ? (
+        <>
+          <LinearGradient
+            colors={sheen}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+          {specular ? (
+            <LinearGradient
+              colors={[...GLASS_SPECULAR]}
+              locations={[0, 0.35, 1]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0.75, y: 0.55 }}
+              style={StyleSheet.absoluteFillObject}
+              pointerEvents="none"
+            />
+          ) : null}
+          <View style={styles.rimTop} pointerEvents="none" />
+          <View style={styles.rimBottom} pointerEvents="none" />
+        </>
       ) : null}
-      <View style={styles.rimTop} pointerEvents="none" />
-      <View style={styles.rimBottom} pointerEvents="none" />
     </>
   );
 }

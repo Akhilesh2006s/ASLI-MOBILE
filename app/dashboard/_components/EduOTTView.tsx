@@ -1041,7 +1041,7 @@ const styles = StyleSheet.create({
   },
   statChip: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.42)',
+    backgroundColor: STUDENT.surfaceElevated,
     borderRadius: STUDENT_RADIUS.full,
     paddingVertical: 9,
     paddingHorizontal: 12,

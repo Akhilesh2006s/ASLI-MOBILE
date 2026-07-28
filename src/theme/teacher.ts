@@ -1,14 +1,15 @@
 /** Clean Classroom — light teacher portal theme */
+import { Platform } from 'react-native';
 import { GLASS_ROW } from './glass';
 
 export const TEACHER = {
   bg: 'transparent',
-  cardBg: 'rgba(255,255,255,0.48)',
-  surface: 'rgba(255,255,255,0.48)',
-  surfaceGlass: GLASS_ROW.fillStrong,
-  surfaceElevated: 'rgba(255,255,255,0.58)',
-  surfaceBorder: 'rgba(255,255,255,0.65)',
-  surfaceHover: 'rgba(238,242,255,0.45)',
+  cardBg: Platform.OS === 'android' ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.48)',
+  surface: Platform.OS === 'android' ? 'rgba(255,255,255,0.90)' : 'rgba(255,255,255,0.48)',
+  surfaceGlass: Platform.OS === 'android' ? 'rgba(255,255,255,0.92)' : GLASS_ROW.fillStrong,
+  surfaceElevated: Platform.OS === 'android' ? 'rgba(255,255,255,0.96)' : 'rgba(255,255,255,0.58)',
+  surfaceBorder: Platform.OS === 'android' ? 'rgba(226,232,240,0.95)' : 'rgba(255,255,255,0.65)',
+  surfaceHover: Platform.OS === 'android' ? 'rgba(248,250,252,0.98)' : 'rgba(238,242,255,0.45)',
   primary: '#6366F1',
   primaryDark: '#4F46E5',
   primaryLight: '#818CF8',
@@ -39,21 +40,21 @@ export const TEACHER = {
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.08,
       shadowRadius: 4,
-      elevation: 2,
+      elevation: Platform.OS === 'android' ? 0 : 2,
     },
     md: {
       shadowColor: '#64748B',
       shadowOffset: { width: 0, height: 3 },
       shadowOpacity: 0.10,
       shadowRadius: 8,
-      elevation: 4,
+      elevation: Platform.OS === 'android' ? 1 : 4,
     },
     lg: {
       shadowColor: '#64748B',
       shadowOffset: { width: 0, height: 6 },
       shadowOpacity: 0.12,
       shadowRadius: 12,
-      elevation: 6,
+      elevation: Platform.OS === 'android' ? 1 : 6,
     },
   },
 };
@@ -146,5 +147,5 @@ export const glassCard = {
   shadowOffset: { width: 0, height: 2 },
   shadowOpacity: 0.08,
   shadowRadius: 8,
-  elevation: 2,
+  elevation: Platform.OS === 'android' ? 0 : 2,
 } as const;

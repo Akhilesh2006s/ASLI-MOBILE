@@ -1,3 +1,6 @@
+import { Platform } from 'react-native';
+const IS_ANDROID = Platform.OS === 'android';
+
 /**
  * Shared liquid-glass material tokens for the whole mobile app.
  * Role themes keep brand color; glass physics lives here.
@@ -48,15 +51,15 @@ export const GLASS_SPECULAR: [string, string, string] = [
 export const GLASS_RIM = {
   top: 'rgba(255,255,255,0.92)',
   bottom: 'rgba(255,255,255,0.28)',
-  border: 'rgba(255,255,255,0.65)',
+  border: IS_ANDROID ? 'rgba(226,232,240,0.95)' : 'rgba(255,255,255,0.65)',
 } as const;
 
 /** Nested cells inside a glass card — never solid #fff. */
 export const GLASS_ROW = {
-  fill: 'rgba(255,255,255,0.36)',
-  fillStrong: 'rgba(255,255,255,0.48)',
-  fillSoft: 'rgba(255,255,255,0.22)',
-  border: 'rgba(255,255,255,0.45)',
+  fill: IS_ANDROID ? 'rgba(255,255,255,0.90)' : 'rgba(255,255,255,0.36)',
+  fillStrong: IS_ANDROID ? 'rgba(255,255,255,0.94)' : 'rgba(255,255,255,0.48)',
+  fillSoft: IS_ANDROID ? 'rgba(255,255,255,0.84)' : 'rgba(255,255,255,0.22)',
+  border: IS_ANDROID ? 'rgba(226,232,240,0.90)' : 'rgba(255,255,255,0.45)',
 } as const;
 
 export const GLASS_RADIUS = {
@@ -74,14 +77,14 @@ export const GLASS_SHADOW = {
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.08,
     shadowRadius: 28,
-    elevation: 6,
+    elevation: IS_ANDROID ? 0 : 6,
   },
   sm: {
     shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
     shadowRadius: 14,
-    elevation: 3,
+    elevation: IS_ANDROID ? 0 : 3,
   },
 } as const;
 
