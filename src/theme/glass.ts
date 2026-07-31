@@ -54,12 +54,12 @@ export const GLASS_RIM = {
   border: IS_ANDROID ? 'rgba(226,232,240,0.95)' : 'rgba(255,255,255,0.65)',
 } as const;
 
-/** Nested cells inside a glass card — never solid #fff. */
+/** Nested cells inside a glass card. Android stays opaque white to avoid grey bleed. */
 export const GLASS_ROW = {
-  fill: IS_ANDROID ? 'rgba(255,255,255,0.90)' : 'rgba(255,255,255,0.36)',
-  fillStrong: IS_ANDROID ? 'rgba(255,255,255,0.94)' : 'rgba(255,255,255,0.48)',
-  fillSoft: IS_ANDROID ? 'rgba(255,255,255,0.84)' : 'rgba(255,255,255,0.22)',
-  border: IS_ANDROID ? 'rgba(226,232,240,0.90)' : 'rgba(255,255,255,0.45)',
+  fill: IS_ANDROID ? '#FFFFFF' : 'rgba(255,255,255,0.36)',
+  fillStrong: IS_ANDROID ? '#FFFFFF' : 'rgba(255,255,255,0.48)',
+  fillSoft: IS_ANDROID ? '#F8FAFC' : 'rgba(255,255,255,0.22)',
+  border: IS_ANDROID ? 'rgba(226,232,240,0.95)' : 'rgba(255,255,255,0.45)',
 } as const;
 
 export const GLASS_RADIUS = {

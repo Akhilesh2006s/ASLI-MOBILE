@@ -91,7 +91,7 @@ export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: bool
           accessibilityHint="Ask Vidya for classroom and teaching help"
         >
           <Animated.View style={chatPress.style}>
-            <GlassPanel style={styles.chatCard} radius={AI_RADIUS.lg} tone="medium">
+            <GlassPanel style={styles.chatCard} radius={AI_RADIUS.lg} tone="strong">
               <View style={styles.chatCardRow}>
                 <VidyaAvatar size={48} borderColor="#93c5fd" />
                 <View style={styles.chatCardBody}>
@@ -166,7 +166,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.1,
     shadowRadius: 24,
-    elevation: 5,
+    // Elevation on Android paints a muddy grey sheet under translucent cards.
+    elevation: 0,
   },
   chatCardRow: {
     flexDirection: 'row',

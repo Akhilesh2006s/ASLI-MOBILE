@@ -51,7 +51,7 @@ export default function AITabView({ chatEnabled = true }: { chatEnabled?: boolea
           onPressOut={chatPress.onPressOut}
         >
           <Animated.View style={chatPress.style}>
-            <GlassPanel style={styles.chatCard} radius={STUDENT_RADIUS.lg}>
+            <GlassPanel style={styles.chatCard} radius={STUDENT_RADIUS.lg} tone="strong">
               <View style={styles.chatCardRow}>
                 <VidyaAvatar size={48} borderColor="#c7d2fe" />
                 <View style={styles.chatTextWrap}>

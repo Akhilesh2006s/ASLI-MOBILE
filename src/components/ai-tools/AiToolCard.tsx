@@ -54,7 +54,7 @@ export default function AiToolCard({
           animatedStyle,
         ]}
       >
-        {glass ? <GlassSurface intensity={55} tone="medium" /> : null}
+        {glass ? <GlassSurface intensity={55} tone="strong" /> : null}
         <View style={[styles.accent, { backgroundColor: accent }]} />
         <View
           style={[

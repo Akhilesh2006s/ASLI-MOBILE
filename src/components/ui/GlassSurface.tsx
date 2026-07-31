@@ -41,19 +41,14 @@ export default function GlassSurface({
   return (
     <>
       {IS_ANDROID ? (
-        // Android's blur + sheen stack can render as muddy gray cards and
-        // rectangular highlight patches on some OEM builds. Keep Android to a
-        // plain translucent fill and let borders/shadows carry the depth.
+        // Android cannot frost-blur reliably. Semi-transparent white over the
+        // pastel page art reads as muddy grey in release/Play builds, while
+        // Expo web/preview (non-android path) still looks white. Use solid fills.
         <View
           style={[
             StyleSheet.absoluteFillObject,
             {
-              backgroundColor:
-                tone === 'strong'
-                  ? 'rgba(255,255,255,0.94)'
-                  : tone === 'light'
-                    ? 'rgba(255,255,255,0.82)'
-                    : 'rgba(255,255,255,0.88)',
+              backgroundColor: tone === 'light' ? '#FAFBFC' : '#FFFFFF',
             },
           ]}
         />

@@ -4,12 +4,12 @@ import { GLASS_ROW } from './glass';
 
 export const TEACHER = {
   bg: 'transparent',
-  cardBg: Platform.OS === 'android' ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.48)',
-  surface: Platform.OS === 'android' ? 'rgba(255,255,255,0.90)' : 'rgba(255,255,255,0.48)',
-  surfaceGlass: Platform.OS === 'android' ? 'rgba(255,255,255,0.92)' : GLASS_ROW.fillStrong,
-  surfaceElevated: Platform.OS === 'android' ? 'rgba(255,255,255,0.96)' : 'rgba(255,255,255,0.58)',
+  cardBg: Platform.OS === 'android' ? '#FFFFFF' : 'rgba(255,255,255,0.48)',
+  surface: Platform.OS === 'android' ? '#FFFFFF' : 'rgba(255,255,255,0.48)',
+  surfaceGlass: Platform.OS === 'android' ? '#FFFFFF' : GLASS_ROW.fillStrong,
+  surfaceElevated: Platform.OS === 'android' ? '#FFFFFF' : 'rgba(255,255,255,0.58)',
   surfaceBorder: Platform.OS === 'android' ? 'rgba(226,232,240,0.95)' : 'rgba(255,255,255,0.65)',
-  surfaceHover: Platform.OS === 'android' ? 'rgba(248,250,252,0.98)' : 'rgba(238,242,255,0.45)',
+  surfaceHover: Platform.OS === 'android' ? '#F8FAFC' : 'rgba(238,242,255,0.45)',
   primary: '#6366F1',
   primaryDark: '#4F46E5',
   primaryLight: '#818CF8',
