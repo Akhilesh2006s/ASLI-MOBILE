@@ -18,7 +18,13 @@ import { GlassPanel } from '../../../src/components/ui';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../../src/theme/teacher';
 import { useContentViewerBack } from '../../../src/hooks/useBackNavigation';
 import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
-import { prepareLibraryContents } from '../../../src/lib/dedupe-library-content';
+import {
+  getLibraryContentClassNumber,
+  getLibraryContentDisplayTitle,
+  getLibraryContentProductCategory,
+  prepareLibraryContents,
+} from '../../../src/lib/dedupe-library-content';
+import { formatProductCategoryLabel } from '../../../src/lib/library-content-labels';
 import { groupContentsByType } from '../../../src/lib/learning-path-content-groups';
 
 type ContentItem = {
@@ -33,7 +39,14 @@ type ContentItem = {
   driveLink?: string;
   date?: string;
   deadline?: string;
-  classNumber?: string;
+  classNumber?: string | number | null;
+  productCategory?: string | null;
+  subject?: {
+    _id?: string;
+    name?: string;
+    classNumber?: string | number | null;
+    productCategory?: string | null;
+  };
 };
 
 function iconForType(type: string): keyof typeof Ionicons.glyphMap {
@@ -65,6 +78,7 @@ export default function TeacherSubjectContentScreen() {
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [classFilter, setClassFilter] = useState<string | null>(null);
+  const [trackFilter, setTrackFilter] = useState<string | null>(null);
   const [preview, setPreview] = useState<ContentItem | null>(null);
   const [expandedTypes, setExpandedTypes] = useState<Record<string, boolean>>({});
 
@@ -79,7 +93,14 @@ export default function TeacherSubjectContentScreen() {
       const subData = subRes.data?.subject ?? subRes.data;
       setSubject(subData || { _id: subjectId, name: 'Subject' });
       const raw = Array.isArray(contentRes.data) ? contentRes.data : [];
-      setContents(prepareLibraryContents(raw, asliPrep));
+      setContents(
+        prepareLibraryContents(raw, asliPrep, {
+          subjectSlot: {
+            classNumber: subData?.classNumber,
+            productCategory: subData?.productCategory,
+          },
+        }),
+      );
       setClasses(Array.isArray(classRes.data) ? classRes.data : []);
       setExpandedTypes({});
     } catch {
@@ -97,12 +118,19 @@ export default function TeacherSubjectContentScreen() {
 
   useEffect(() => {
     setTypeFilter(null);
+    setTrackFilter(null);
   }, [classFilter]);
 
   const classOptions = useMemo(() => {
     const set = new Set<string>();
-    classes.forEach((c) => c.classNumber && set.add(String(c.classNumber)));
-    contents.forEach((c) => c.classNumber && set.add(String(c.classNumber)));
+    classes.forEach((c) => {
+      const cn = getLibraryContentClassNumber({ classNumber: c.classNumber });
+      if (cn) set.add(cn);
+    });
+    contents.forEach((c) => {
+      const cn = getLibraryContentClassNumber(c);
+      if (cn) set.add(cn);
+    });
     return Array.from(set).sort((a, b) => {
       const na = parseInt(a, 10);
       const nb = parseInt(b, 10);
@@ -111,10 +139,25 @@ export default function TeacherSubjectContentScreen() {
     });
   }, [classes, contents]);
 
+  const trackOptions = useMemo(() => {
+    const set = new Set<string>();
+    contents.forEach((c) => {
+      const track = getLibraryContentProductCategory(c);
+      if (track) set.add(track);
+    });
+    return Array.from(set).sort();
+  }, [contents]);
+
   const classFiltered = useMemo(() => {
-    if (!classFilter) return contents;
-    return contents.filter((c) => String(c.classNumber) === classFilter);
-  }, [contents, classFilter]);
+    let list = contents;
+    if (classFilter) {
+      list = list.filter((c) => getLibraryContentClassNumber(c) === classFilter);
+    }
+    if (trackFilter) {
+      list = list.filter((c) => getLibraryContentProductCategory(c) === trackFilter);
+    }
+    return list;
+  }, [contents, classFilter, trackFilter]);
 
   const filtered = useMemo(() => {
     if (!typeFilter) return classFiltered;
@@ -128,7 +171,7 @@ export default function TeacherSubjectContentScreen() {
     [classFiltered]
   );
 
-  const hasActiveFilters = Boolean(typeFilter || classFilter);
+  const hasActiveFilters = Boolean(typeFilter || classFilter || trackFilter);
 
   const toggleSection = (type: string) => {
     setExpandedTypes((prev) => ({ ...prev, [type]: !(prev[type] ?? true) }));
@@ -188,7 +231,23 @@ export default function TeacherSubjectContentScreen() {
               ...classOptions.map((c) => ({
                 value: c,
                 label: `Class ${c}`,
-                count: contents.filter((item) => String(item.classNumber) === c).length,
+                count: contents.filter((item) => getLibraryContentClassNumber(item) === c).length,
+              })),
+            ]}
+          />
+        ) : null}
+        {trackOptions.length > 1 ? (
+          <FilterDropdown
+            label="Filter by Track"
+            placeholder="Filter by Track"
+            value={trackFilter}
+            onChange={setTrackFilter}
+            options={[
+              { value: null, label: 'All Tracks', count: contents.length },
+              ...trackOptions.map((t) => ({
+                value: t,
+                label: formatProductCategoryLabel(t),
+                count: contents.filter((item) => getLibraryContentProductCategory(item) === t).length,
               })),
             ]}
           />
@@ -217,6 +276,7 @@ export default function TeacherSubjectContentScreen() {
           onPress={() => {
             setTypeFilter(null);
             setClassFilter(null);
+            setTrackFilter(null);
           }}
         >
           <Ionicons name="close-circle" size={16} color={TEACHER.primaryLight} />
@@ -256,7 +316,7 @@ export default function TeacherSubjectContentScreen() {
                             />
                           </View>
                           <View style={styles.itemBody}>
-                            <Text style={styles.itemTitle}>{item.title}</Text>
+                            <Text style={styles.itemTitle}>{getLibraryContentDisplayTitle(item)}</Text>
                             {item.description ? (
                               <Text style={styles.itemDesc} numberOfLines={2}>
                                 {item.description}
@@ -276,7 +336,9 @@ export default function TeacherSubjectContentScreen() {
       <Modal visible={!!preview} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <GlassPanel style={styles.modalCard} radius={0} tone="strong">
-            <Text style={styles.modalTitle}>{preview?.title}</Text>
+            <Text style={styles.modalTitle}>
+              {preview ? getLibraryContentDisplayTitle(preview) : ''}
+            </Text>
             <Text style={styles.modalMeta}>{preview?.type}</Text>
             {preview?.description ? <Text style={styles.modalDesc}>{preview.description}</Text> : null}
             <Pressable style={styles.modalClose} onPress={() => setPreview(null)}>

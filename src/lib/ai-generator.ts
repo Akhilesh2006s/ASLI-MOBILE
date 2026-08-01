@@ -46,7 +46,7 @@ export const AI_GENERATOR_TOOLS: AiToolDef[] = [
   { id: 'flashcard-generator', name: 'Flash Card Generator', description: '5-block teacher deck: Context, Foundations, HOTS Task/Solution cards, Study Aids, and Wrap-Up.' },
   { id: 'daily-class-plan-maker', name: 'Daily Class Plan', description: 'Create day-wise classroom plans.' },
   { id: 'mock-test-builder', name: 'Mock Test Builder', description: '12-section mock tests with question paper, answer key, solutions, and remedial guidance.' },
-  { id: 'exam-question-paper-generator', name: 'Exam Question Paper Generator', description: '11-section exam papers: blueprint, sections A–E, answer key, marking scheme, and rubric.' },
+  { id: 'exam-question-paper-generator', name: 'Exam Question Paper Generator', description: '6-section exam papers: title/instructions and sections A–E.' },
   { id: 'smart-study-guide-generator', name: 'Smart Study Guide Generator', description: '11-section study guides with overview, concepts, practice questions, and improvement tips.' },
   { id: 'concept-breakdown-explainer', name: 'Concept Breakdown Explainer', description: '9-section concept breakdown with Indian-context examples and thinking prompts.' },
   { id: 'smart-qa-practice-generator', name: 'Smart Q&A Practice Generator', description: '11-section practice sets with MCQs, sections A–G, and answer key with explanations.' },

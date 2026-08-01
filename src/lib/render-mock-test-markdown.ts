@@ -5,7 +5,7 @@ import {
   type MarkdownRenderOpts,
 } from './themed-markdown-sections';
 
-const TOOL_TYPE = 'mock-test-builder';
+const DEFAULT_TOOL_TYPE = 'mock-test-builder';
 
 const SECTION_STYLES: Record<number, { border: string; bg: string; title: string }> = {
   1: { border: 'border-violet-200', bg: 'bg-violet-50/70', title: 'text-violet-900' },
@@ -81,9 +81,12 @@ function bodyLinesToHtml(lines: string[]): string {
   return out.join('');
 }
 
-/** Rose-themed HTML for Mock Test formatted markdown (## 1. … ## 12. sections). */
+/** HTML for Mock Test / Exam numbered markdown (## 1. … sections). */
 export function renderMockTestMarkdown(text: string, opts?: MarkdownRenderOpts): string {
   if (!text?.trim()) return '';
+
+  const toolType = opts?.toolType || DEFAULT_TOOL_TYPE;
+  const isExam = toolType === 'exam-question-paper-generator';
 
   let processed = text;
   try {
@@ -107,6 +110,13 @@ export function renderMockTestMarkdown(text: string, opts?: MarkdownRenderOpts):
       bodyLines = [];
       return;
     }
+    // Exam papers only use sections 1–6 (title + A–E). Drop mock-test Remedial/etc. cards.
+    if (isExam && currentSection > 6) {
+      bodyLines = [];
+      currentSection = 0;
+      currentTitle = '';
+      return;
+    }
     const style = sectionStyle(currentSection || 1);
     const bodyHtml = bodyLinesToHtml(bodyLines);
     parts.push(
@@ -117,9 +127,9 @@ export function renderMockTestMarkdown(text: string, opts?: MarkdownRenderOpts):
         border: style.border,
         bg: style.bg,
         titleClass: style.title,
-        labelClass: 'text-indigo-500',
+        labelClass: isExam ? 'text-blue-500' : 'text-indigo-500',
         premium: opts?.premium,
-        toolType: TOOL_TYPE,
+        toolType,
       }),
     );
     bodyLines = [];
@@ -141,9 +151,9 @@ export function renderMockTestMarkdown(text: string, opts?: MarkdownRenderOpts):
     const h1 = trimmed.match(/^#\s+(.+)$/);
     if (h1 && !trimmed.startsWith('##')) {
       docHeader = lightDocHeaderHtml({
-        eyebrow: 'Mock Test Builder',
+        eyebrow: isExam ? 'Exam Question Paper' : 'Mock Test Builder',
         titleHtml: formatInlineMarkdown(h1[1].trim()),
-        theme: 'indigo',
+        theme: isExam ? 'blue' : 'indigo',
         titleTag: 'h1',
       });
       continue;
@@ -175,7 +185,7 @@ export function renderMockTestMarkdown(text: string, opts?: MarkdownRenderOpts):
   }
 
   return (
-    `<div class="mock-test-markdown space-y-1 rounded-2xl border border-indigo-200/80 p-3 sm:p-4" style="background-color:#eef2ff;background-image:radial-gradient(circle,rgba(99,102,241,0.08) 1px,transparent 1px);background-size:20px 20px">` +
+    `<div class="${isExam ? 'exam-paper-markdown' : 'mock-test-markdown'} space-y-1 rounded-2xl border ${isExam ? 'border-blue-200/80' : 'border-indigo-200/80'} p-3 sm:p-4" style="background-color:${isExam ? '#eff6ff' : '#eef2ff'};background-image:radial-gradient(circle,rgba(${isExam ? '37,99,235' : '99,102,241'},0.08) 1px,transparent 1px);background-size:20px 20px">` +
     docHeader +
     parts.join('') +
     `</div>`

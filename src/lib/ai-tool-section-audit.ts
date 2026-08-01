@@ -106,11 +106,19 @@ export function apiMarkdownShouldDriveDisplay(toolType: string, display: string)
 export function shouldPreferMarkdownOverStructured(
   display: string,
   structuredHtml: string | null | undefined,
+  toolType?: string,
 ): boolean {
   const { title, sections: rawSections } = parseNumberedTemplateSections(display);
   const apiSections = withImplicitSectionOne(title, rawSections);
   if (!apiSections.length) return false;
   if (!structuredHtml?.trim()) return true;
+
+  // Exam structured HTML uses sections 1–6 (title + A–E). Sparse mock-style
+  // numbered markdown (e.g. only 1 and 9) must not override that layout.
+  if (toolType === 'exam-question-paper-generator') {
+    const renderedNums = extractSectionNumsFromHtml(structuredHtml);
+    if (renderedNums.some((n) => n >= 1 && n <= 6)) return false;
+  }
 
   const renderedNums = new Set(extractSectionNumsFromHtml(structuredHtml));
   const apiWithBody = apiSections.filter((s) => s.num > 0 && s.body.trim());

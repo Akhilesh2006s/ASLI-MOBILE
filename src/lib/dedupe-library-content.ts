@@ -1,7 +1,24 @@
-import { filterContentsBySchoolProgram } from './school-program';
+import { filterContentsBySchoolProgram, filterByProductCategory } from './school-program';
+import {
+  filterLibraryContentsForSubjectSlot,
+  getLibraryContentClassNumber,
+  getLibraryContentDisplayTitle,
+  getLibraryContentProductCategory,
+  type LibrarySubjectContext,
+} from './library-content-labels';
+
+export {
+  filterLibraryContentsForSubjectSlot,
+  formatProductCategoryLabel,
+  getLibraryContentClassNumber,
+  getLibraryContentDisplayTitle,
+  getLibraryContentProductCategory,
+  normalizeLibraryClassNumber,
+} from './library-content-labels';
 
 /** Row shape from /api/student/asli-prep-content (and teacher/admin equivalents). */
-export type LibraryContentRow = {  _id?: string;
+export type LibraryContentRow = {
+  _id?: string;
   title?: string;
   type?: string;
   topic?: string;
@@ -10,8 +27,26 @@ export type LibraryContentRow = {  _id?: string;
   videoUrl?: string;
   youtubeUrl?: string;
   driveLink?: string;
-  subject?: { _id?: string; name?: string } | string;
-  subjectId?: { _id?: string; name?: string } | string;
+  classNumber?: string | number | null;
+  productCategory?: string | null;
+  subject?:
+    | {
+        _id?: string;
+        name?: string;
+        classNumber?: string | number | null;
+        productCategory?: string | null;
+        board?: string | null;
+      }
+    | string;
+  subjectId?:
+    | {
+        _id?: string;
+        name?: string;
+        classNumber?: string | number | null;
+        productCategory?: string | null;
+        board?: string | null;
+      }
+    | string;
   description?: string;
   duration?: number;
   views?: number;
@@ -33,17 +68,19 @@ function subjectKey(row: LibraryContentRow): string {
     .toLowerCase();
 }
 
-/** Stable key for duplicate detection — prefers media URL, then title + type + topic. */
+/** Stable key for duplicate detection — prefers media URL, then title + type + topic + slot. */
 export function libraryContentDedupeKey(row: LibraryContentRow): string {
   const url = normalizeUrl(
     row.fileUrl ||
       row.videoUrl ||
       row.youtubeUrl ||
       row.driveLink ||
-      (Array.isArray(row.fileUrls) ? row.fileUrls[0] : '')
+      (Array.isArray(row.fileUrls) ? row.fileUrls[0] : ''),
   );
+  // Same uploaded file under sibling subjects should collapse.
   if (url) return `media:${url}`;
 
+  const slot = `${getLibraryContentClassNumber(row)}|${getLibraryContentProductCategory(row)}`;
   const title = String(row.title || '')
     .trim()
     .toLowerCase();
@@ -53,7 +90,7 @@ export function libraryContentDedupeKey(row: LibraryContentRow): string {
   const topic = String(row.topic || '')
     .trim()
     .toLowerCase();
-  return `meta:${type}|${title}|${topic}|${subjectKey(row)}`;
+  return `meta:${type}|${title}|${topic}|${subjectKey(row)}|${slot}`;
 }
 
 function rowRichness(row: LibraryContentRow): number {
@@ -62,6 +99,8 @@ function rowRichness(row: LibraryContentRow): number {
   if (row.description?.trim()) score += 2;
   if (normalizeUrl(row.fileUrl || row.videoUrl || row.youtubeUrl)) score += 3;
   if (typeof row.views === 'number' && row.views > 0) score += 1;
+  if (getLibraryContentClassNumber(row)) score += 1;
+  if (getLibraryContentProductCategory(row)) score += 1;
   return score;
 }
 
@@ -99,14 +138,28 @@ export function dedupeLibraryContents<T extends LibraryContentRow>(rows: T[]): T
   return rows.filter((row) => kept.has(row));
 }
 
+export type PrepareLibraryContentsOptions = {
+  subjectSlot?: LibrarySubjectContext | null;
+  schoolIitCategories?: string[];
+};
+
 /**
- * Apply school-program type rules, then collapse duplicate library rows.
+ * Apply school-program type rules, place into Alpha/Beta + class slots, then collapse duplicates.
  * Use for every client list built from /asli-prep-content (student, teacher, admin).
  */
 export function prepareLibraryContents<T extends LibraryContentRow>(
   rows: T[] | null | undefined,
-  isAsliPrepExclusive: boolean
+  isAsliPrepExclusive: boolean,
+  options?: PrepareLibraryContentsOptions,
 ): T[] {
-  const filtered = filterContentsBySchoolProgram(Array.isArray(rows) ? rows : [], isAsliPrepExclusive);
-  return dedupeLibraryContents(filtered);
+  let list = filterContentsBySchoolProgram(Array.isArray(rows) ? rows : [], isAsliPrepExclusive);
+  if (options?.schoolIitCategories?.length) {
+    list = filterByProductCategory(list, options.schoolIitCategories);
+  }
+  if (options?.subjectSlot) {
+    list = filterLibraryContentsForSubjectSlot(list, options.subjectSlot);
+  }
+  return dedupeLibraryContents(list);
 }
+
+export { getLibraryContentDisplayTitle };

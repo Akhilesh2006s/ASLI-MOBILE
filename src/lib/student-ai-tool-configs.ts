@@ -101,10 +101,10 @@ export const STUDENT_TOOL_CONFIGS: Record<string, StudentToolConfig> = {
     fields: cascadeFields(),
   },
   'exam-question-paper-generator': {
-    name: 'Mock Test Builder',
-    description: 'Legacy route — same as Mock Test Builder',
-    icon: 'checkmark-circle',
-    color: '#6366f1',
+    name: 'Exam Question Paper Generator',
+    description: '6-section exam papers: instructions plus sections A–E',
+    icon: 'document-text',
+    color: '#2563eb',
     fields: cascadeFields(),
   },
   'project-idea-lab': {

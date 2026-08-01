@@ -82,6 +82,15 @@ export const STUDENT_TOOL_SECTIONS: Record<string, Record<number, SectionVisualM
     11: { title: 'Real-life Application', stripe: 'border-lime-600', iconWrap: 'bg-lime-100 text-lime-900', icon: 'leaf' },
     12: { title: 'Reflection / Exit Ticket', stripe: 'border-fuchsia-500', iconWrap: 'bg-fuchsia-100 text-fuchsia-800', icon: 'messageCircle' },
   },
+  /** Teacher exam paper — 6 sections: title/instructions + A–E (not Mock Test Remedial layout). */
+  'exam-question-paper-generator': {
+    1: { title: 'Paper Title and General Instructions', stripe: 'border-blue-500', iconWrap: 'bg-blue-100 text-blue-800', icon: 'bookOpen' },
+    2: { title: 'Section A: MCQs', stripe: 'border-indigo-500', iconWrap: 'bg-indigo-100 text-indigo-800', icon: 'listChecks' },
+    3: { title: 'Section B: Very Short Answer Questions', stripe: 'border-violet-500', iconWrap: 'bg-violet-100 text-violet-800', icon: 'fileQuestion' },
+    4: { title: 'Section C: Short Answer Questions', stripe: 'border-cyan-500', iconWrap: 'bg-cyan-100 text-cyan-800', icon: 'messageCircle' },
+    5: { title: 'Section D: Long Answer Questions', stripe: 'border-amber-500', iconWrap: 'bg-amber-100 text-amber-900', icon: 'bookText' },
+    6: { title: 'Section E: Case-based / Competency Questions', stripe: 'border-rose-500', iconWrap: 'bg-rose-100 text-rose-800', icon: 'lightbulb' },
+  },
 };
 
 const SVG_BASE =

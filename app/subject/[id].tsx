@@ -19,7 +19,7 @@ import {
   type LearningPathContentItem,
 } from '../../src/lib/learningPathContent';
 import { useSchoolProgram } from '../../src/hooks/useSchoolProgram';
-import { prepareLibraryContents } from '../../src/lib/dedupe-library-content';
+import { prepareLibraryContents, getLibraryContentDisplayTitle } from '../../src/lib/dedupe-library-content';
 import { GlassPanel } from '../../src/components/ui';
 
 function pickParam(v: string | string[] | undefined): string {
@@ -47,12 +47,18 @@ export default function SubjectContent() {
     try {
       setIsLoading(true);
 
+      let subjectMeta: any = { name: 'Subject', description: '' };
       try {
         const subRes = await api.get(`/api/subjects/${encodeURIComponent(id)}`);
         const sub = subRes.data?.subject ?? subRes.data;
-        if (sub) setSubject(sub);
+        if (sub) {
+          subjectMeta = sub;
+          setSubject(sub);
+        } else {
+          setSubject(subjectMeta);
+        }
       } catch {
-        setSubject({ name: 'Subject', description: '' });
+        setSubject(subjectMeta);
       }
 
       const contentRes = await api.get('/api/student/asli-prep-content', {
@@ -60,7 +66,14 @@ export default function SubjectContent() {
       });
       const raw = contentRes.data?.data ?? contentRes.data;
       const list = Array.isArray(raw) ? raw : [];
-      setContent(prepareLibraryContents(list, isAsliPrepExclusive));
+      setContent(
+        prepareLibraryContents(list, isAsliPrepExclusive, {
+          subjectSlot: {
+            classNumber: subjectMeta?.classNumber,
+            productCategory: subjectMeta?.productCategory,
+          },
+        }),
+      );
     } catch (error) {
       console.error('Error fetching subject data:', error);
       setContent([]);
@@ -136,7 +149,9 @@ export default function SubjectContent() {
                     )}
                   </View>
                   <View style={styles.contentInfo}>
-                    <Text style={styles.contentTitle}>{item.title || 'Content'}</Text>
+                    <Text style={styles.contentTitle}>
+                      {getLibraryContentDisplayTitle(item) || 'Content'}
+                    </Text>
                     <Text style={styles.contentDescription} numberOfLines={2}>
                       {item.description || 'Learn more about this topic'}
                     </Text>

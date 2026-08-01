@@ -15,7 +15,7 @@ import {
   getAllowedContentTypes,
   type ContentTypeName,
 } from '../src/lib/school-program';
-import { prepareLibraryContents } from '../src/lib/dedupe-library-content';
+import { prepareLibraryContents, getLibraryContentDisplayTitle } from '../src/lib/dedupe-library-content';
 import { getVideoDisplayTitle } from '../src/lib/video-chapter-schedule';
 import { GlassPanel } from '../src/components/ui';
 
@@ -27,14 +27,20 @@ interface Content {
   subject?: {
     _id: string;
     name: string;
+    classNumber?: string | number | null;
+    productCategory?: string | null;
   };
   subjectId?: {
     _id: string;
     name: string;
+    classNumber?: string | number | null;
+    productCategory?: string | null;
   } | string;
   topic?: string;
   chapter?: string;
   module?: string;
+  classNumber?: string | number | null;
+  productCategory?: string | null;
   fileUrl?: string;
   fileUrls?: string[];
   youtubeUrl?: string;
@@ -286,7 +292,9 @@ export default function AsliPrepContent() {
               </View>
 
               <Text style={styles.contentTitle}>
-                {content.type === 'Video' ? getVideoDisplayTitle(content) : content.title}
+                {content.type === 'Video'
+                  ? getVideoDisplayTitle(content)
+                  : getLibraryContentDisplayTitle(content)}
               </Text>
 
               {typeof content.description === 'string' && content.description.length > 0 ? (

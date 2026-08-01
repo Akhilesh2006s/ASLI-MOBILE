@@ -4,7 +4,7 @@ import { resolveKeyPointsFromPayload } from './parse-key-points';
 import { resolvePracticeQaFromPayload, countPracticeQaQuestions, type PracticeQaQuestion } from './parse-practice-qa';
 import { resolveQuickAssignmentFromPayload } from './parse-quick-assignment';
 import { resolveMockTestFromPayload } from './parse-mock-test';
-import { resolveExamPaperFromPayload } from './parse-exam-question-paper';
+import { examPaperHasVisibleContent, resolveExamPaperFromPayload } from './parse-exam-question-paper';
 import { resolveLessonsFromPayload } from './parse-lesson-planner';
 import { resolveDailyPlansFromPayload } from './parse-daily-class-plan';
 import { resolveHomeworkFromPayload } from './parse-homework-creator';
@@ -492,36 +492,89 @@ function renderMockTestHtml(content: string, rawContent: unknown): string | null
   return html;
 }
 
-function renderExamPaperHtml(content: string, rawContent: unknown): string | null {
-  const { paper, markdownFallback } = resolveExamPaperFromPayload(content, rawContent);
-  if (markdownFallback || !paper) return null;
-  let html = heroTitleCardHtml({
-    eyebrow: 'Exam Question Paper',
-    title: paper.paperTitle || 'Question Paper',
-    theme: 'blue',
-    toolType: 'exam-question-paper-generator',
-  });
-  for (const section of paper.sections || []) {
-    const qs = section.questions || [];
-    if (!qs.length) continue;
-    const body = qs
-      .map(
-        (q, i) =>
-          `<div class="rounded-lg border border-blue-100 bg-blue-50/40 px-3 py-2 mb-2">
-            <p class="text-xs font-bold text-blue-800">Q${i + 1}${q.marks ? ` (${q.marks} marks)` : ''}</p>
-            <p class="text-sm text-slate-800 mt-1">${escapeHtml(q.question || '')}</p>
-          </div>`
-      )
-      .join('');
-    html += sectionCardHtml({
-      sectionNum: section.id || 'Section',
-      title: section.title || 'Questions',
-      stripe: 'border-blue-300',
-      iconWrap: 'bg-blue-100 text-blue-800',
-      iconSvg: '<span>📄</span>',
-      body,
-    });
+const EXAM_LETTER_SECTION_TITLES = [
+  'Section A: MCQs',
+  'Section B: Very Short Answer Questions',
+  'Section C: Short Answer Questions',
+  'Section D: Long Answer Questions',
+  'Section E: Case-based / Competency Questions',
+] as const;
+
+function renderExamQuestionCards(
+  questions: Array<{ question?: string; options?: string[]; marks?: number | null; answer?: string }>,
+): string {
+  if (!questions.length) {
+    return emptySectionPlaceholderHtml('No questions in this section yet.');
   }
+  return questions
+    .map((q, i) => {
+      const options = (q.options || [])
+        .map((opt) => String(opt || '').trim())
+        .filter(Boolean)
+        .map(
+          (opt) =>
+            `<p class="text-sm text-slate-700 pl-2">${escapeHtml(opt)}</p>`,
+        )
+        .join('');
+      const marks =
+        q.marks != null && Number.isFinite(Number(q.marks))
+          ? `<p class="text-xs font-semibold text-blue-700 mt-1">Marks: ${escapeHtml(String(q.marks))}</p>`
+          : '';
+      return `<div class="rounded-lg border border-blue-100 bg-blue-50/40 px-3 py-2 mb-2">
+            <p class="text-xs font-bold text-blue-800">Q${i + 1}</p>
+            <p class="text-sm text-slate-800 mt-1">${escapeHtml(q.question || '')}</p>
+            ${options}
+            ${marks}
+          </div>`;
+    })
+    .join('');
+}
+
+/** Always render the 6 exam paper sections (title/instructions + A–E), never Mock Test Remedial cards. */
+function renderExamPaperHtml(content: string, rawContent: unknown): string | null {
+  const { paper } = resolveExamPaperFromPayload(content, rawContent);
+  if (!paper || !examPaperHasVisibleContent(paper)) return null;
+
+  const toolType = 'exam-question-paper-generator';
+  const introBits: string[] = [];
+  if (paper.paperTitle) {
+    introBits.push(
+      `<p class="text-base font-bold text-slate-900 mb-2">${escapeHtml(paper.paperTitle)}</p>`,
+    );
+  }
+  if (paper.instructions) {
+    introBits.push(
+      `<div class="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">${escapeHtml(paper.instructions)}</div>`,
+    );
+  }
+  if (paper.blueprint) {
+    introBits.push(
+      `<p class="text-xs font-semibold text-indigo-700 mt-3 mb-1">Blueprint</p>` +
+        `<div class="text-sm text-slate-700 whitespace-pre-wrap">${escapeHtml(paper.blueprint)}</div>`,
+    );
+  }
+
+  let html = studentSectionCard(
+    toolType,
+    1,
+    'Paper Title and General Instructions',
+    introBits.join('') || emptySectionPlaceholderHtml('Paper title and instructions will appear here.'),
+  );
+
+  const byId = new Map((paper.sections || []).map((s) => [String(s.id || '').toLowerCase(), s]));
+  const letterIds = ['a', 'b', 'c', 'd', 'e'] as const;
+  letterIds.forEach((id, idx) => {
+    const section = byId.get(id);
+    const sectionNum = idx + 2;
+    const fallbackTitle = EXAM_LETTER_SECTION_TITLES[idx];
+    html += studentSectionCard(
+      toolType,
+      sectionNum,
+      section?.title || fallbackTitle,
+      renderExamQuestionCards(section?.questions || []),
+    );
+  });
+
   return html;
 }
 

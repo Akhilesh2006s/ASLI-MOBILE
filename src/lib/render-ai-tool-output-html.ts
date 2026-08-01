@@ -39,6 +39,7 @@ import { resolveChapterSummaryFromPayload } from './parse-chapter-summary';
 import { resolveKeyPointsFromPayload } from './parse-key-points';
 import { resolveQuickAssignmentFromPayload } from './parse-quick-assignment';
 import { resolveMockTestFromPayload } from './parse-mock-test';
+import { resolveExamPaperFromPayload } from './parse-exam-question-paper';
 
 type ToolShell = {
   label: string;
@@ -146,7 +147,8 @@ const TOOL_RENDERERS: Record<
   'key-points-formula-extractor': renderKeyPointsMarkdown,
   'quick-assignment-builder': renderQuickAssignmentMarkdown,
   'mock-test-builder': renderMockTestMarkdown,
-  'exam-question-paper-generator': renderMockTestMarkdown,
+  'exam-question-paper-generator': (text, opts) =>
+    renderMockTestMarkdown(text, { ...opts, toolType: 'exam-question-paper-generator' }),
   'concept-mastery-helper': renderConceptMasteryMarkdown,
 };
 
@@ -298,6 +300,10 @@ function shouldUseStructuredStudentOutput(
       const resolved = resolveMockTestFromPayload(display, rawContent);
       return Boolean(resolved.paper && !resolved.markdownFallback);
     }
+    case 'exam-question-paper-generator': {
+      const resolved = resolveExamPaperFromPayload(display, rawContent);
+      return Boolean(resolved.paper && !resolved.markdownFallback);
+    }
     default:
       return false;
   }
@@ -342,8 +348,15 @@ function renderAiToolOutputHtmlInner(
   // Teachers get the same richly-styled section cards (icon + colour accent) as students —
   // there's no product reason for teacher output to look plainer than student output.
   const premium = true;
-  const preferMarkdown = shouldPreferMarkdownOverStructured(display, structured);
-  const markdownDriven = apiMarkdownShouldDriveDisplay(resolvedToolType, display);
+  const preferMarkdown = shouldPreferMarkdownOverStructured(
+    display,
+    structured,
+    resolvedToolType,
+  );
+  const markdownDriven =
+    resolvedToolType === 'exam-question-paper-generator'
+      ? false
+      : apiMarkdownShouldDriveDisplay(resolvedToolType, display);
 
   const teacherHasSections = countNumberedTemplateSections(display) >= 1;
   const studentHasSections = countNumberedTemplateSections(display) >= 1;
@@ -361,7 +374,12 @@ function renderAiToolOutputHtmlInner(
       renderedPath = 'numbered-cards';
     }
   } else if (variant === 'teacher') {
-    if (structured && TEACHER_STRUCTURED_TOOLS.has(resolvedToolType) && !preferMarkdown) {
+    // Prefer structured exam layout (6 sections) over sparse mock-style markdown.
+    if (
+      structured &&
+      TEACHER_STRUCTURED_TOOLS.has(resolvedToolType) &&
+      (!preferMarkdown || resolvedToolType === 'exam-question-paper-generator')
+    ) {
       inner = structured;
       renderedPath = 'structured';
     } else if (themedMarkdown && (numberedTemplate || teacherHasSections)) {
@@ -412,7 +430,11 @@ function renderAiToolOutputHtmlInner(
     renderedHtml: inner,
     preferMarkdown: preferMarkdown || markdownDriven,
   });
-  if (audit.missingFromRender.length > 0 && display.trim()) {
+  if (
+    audit.missingFromRender.length > 0 &&
+    display.trim() &&
+    resolvedToolType !== 'exam-question-paper-generator'
+  ) {
     const markdownFallback =
       renderNumberedTemplateAsCards(resolvedToolType, display, { premium: variant === 'student' }) ||
       renderMarkdown(display);

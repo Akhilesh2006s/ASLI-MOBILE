@@ -13,6 +13,15 @@ export type LearningPathContentItem = {
   description?: string;
   duration?: number;
   completed?: boolean;
+  classNumber?: string | number | null;
+  productCategory?: string | null;
+  topic?: string;
+  subject?: {
+    _id?: string;
+    name?: string;
+    classNumber?: string | number | null;
+    productCategory?: string | null;
+  } | string;
 };
 
 export function isVideoContent(content: LearningPathContentItem): boolean {
