@@ -1,12 +1,15 @@
 import { filterContentsBySchoolProgram, filterByProductCategory } from './school-program';
 import {
   filterLibraryContentsForSubjectSlot,
+  formatProductCategoryLabel,
   getLibraryContentClassNumber,
   getLibraryContentDisplayTitle,
   getLibraryContentProductCategory,
+  normalizeLibraryClassNumber,
   type LibrarySubjectContext,
 } from './library-content-labels';
 
+// Single re-export path — duplicate export-from + export crashes Hermes ("property is not configurable").
 export {
   filterLibraryContentsForSubjectSlot,
   formatProductCategoryLabel,
@@ -14,7 +17,7 @@ export {
   getLibraryContentDisplayTitle,
   getLibraryContentProductCategory,
   normalizeLibraryClassNumber,
-} from './library-content-labels';
+};
 
 /** Row shape from /api/student/asli-prep-content (and teacher/admin equivalents). */
 export type LibraryContentRow = {
@@ -161,5 +164,3 @@ export function prepareLibraryContents<T extends LibraryContentRow>(
   }
   return dedupeLibraryContents(list);
 }
-
-export { getLibraryContentDisplayTitle };
