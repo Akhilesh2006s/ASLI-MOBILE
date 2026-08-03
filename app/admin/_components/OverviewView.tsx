@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { memo, useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,20 +7,16 @@ import {
   ActivityIndicator,
   RefreshControl,
   useWindowDimensions,
+  Pressable,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeInUp } from 'react-native-reanimated';
 import api from '../../../src/services/api/api';
 import { useIsTablet } from '../../../src/hooks/useIsTablet';
 import type { AdminNavView } from './AdminNavDrawer';
-import {
-  AdminScalePressable,
-  AdminSkeletonStats,
-  AdminAnimatedProgress,
-  useAdminTheme,
-} from '../_ui';
-import { ADMIN_SHADOW } from '../../../src/theme/admin';
+import { AdminSkeletonStats, useAdminTheme } from '../_ui';
 
+/** Admin dashboard overview — keep free of Reanimated for scroll/perf stability. */
 interface Stats {
   totalStudents: number;
   totalTeachers: number;
@@ -42,12 +38,37 @@ type Props = {
   onNavigate?: (view: AdminNavView) => void;
 };
 
+/** Dashboard-only palette — sky blue + white (does not affect other admin tabs). */
+const DASH = {
+  sky: '#0EA5E9',
+  skyDeep: '#0284C7',
+  skyDark: '#0369A1',
+  skyInk: '#0C4A6E',
+  skyMuted: '#64748B',
+  white: '#FFFFFF',
+  wash: '#F0F9FF',
+  soft: '#E0F2FE',
+  chip: '#BAE6FD',
+  border: 'rgba(14, 165, 233, 0.22)',
+} as const;
+
+const DASHBOARD_STAT_CARDS = [
+  { bg: DASH.white, accent: DASH.skyDeep, iconBg: DASH.soft },
+  { bg: DASH.wash, accent: DASH.sky, iconBg: DASH.chip },
+  { bg: DASH.white, accent: DASH.skyDark, iconBg: DASH.soft },
+  { bg: DASH.soft, accent: DASH.skyDeep, iconBg: DASH.chip },
+] as const;
+
+/** Border-only card chrome — shadows/elevation over scroll kill FPS. */
+const CARD_EDGE = {
+  borderWidth: 1,
+} as const;
+
 function StatCard({
   label,
   value,
   icon,
   theme,
-  delay = 0,
   loading,
   wide,
 }: {
@@ -55,24 +76,22 @@ function StatCard({
   value: string | number;
   icon: keyof typeof Ionicons.glyphMap;
   theme: { bg: string; accent: string; iconBg: string };
-  delay?: number;
   loading?: boolean;
   wide?: boolean;
 }) {
-  const { colors, radius } = useAdminTheme();
+  const { radius } = useAdminTheme();
 
   return (
-    <Animated.View
-      entering={FadeInUp.delay(delay).duration(450).springify()}
+    <View
       style={[
         styles.statCard,
         wide && styles.statCardWide,
+        CARD_EDGE,
         {
           borderRadius: radius.lg,
           backgroundColor: theme.bg,
-          borderColor: `${theme.accent}22`,
+          borderColor: `${theme.accent}33`,
         },
-        ADMIN_SHADOW.sm,
       ]}
     >
       <View style={styles.statInner}>
@@ -80,52 +99,121 @@ function StatCard({
           <Ionicons name={icon} size={22} color={theme.accent} />
         </View>
         <View style={styles.statTextWrap}>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{label}</Text>
+          <Text style={[styles.statLabel, { color: DASH.skyMuted }]}>{label}</Text>
           <Text style={[styles.statValue, { color: theme.accent }]}>{loading ? '—' : value}</Text>
         </View>
       </View>
-    </Animated.View>
+    </View>
   );
 }
+
+const MemoStatCard = memo(StatCard);
+
+const ANALYSIS_ACCENTS = {
+  class: {
+    accent: DASH.skyDeep,
+    muted: 'rgba(14, 165, 233, 0.14)',
+    panel: DASH.white,
+    border: DASH.border,
+  },
+  performance: {
+    accent: DASH.sky,
+    muted: 'rgba(14, 165, 233, 0.14)',
+    panel: DASH.wash,
+    border: DASH.border,
+  },
+  subject: {
+    accent: DASH.skyDark,
+    muted: 'rgba(3, 105, 161, 0.14)',
+    panel: DASH.white,
+    border: DASH.border,
+  },
+  shell: {
+    accent: DASH.skyDeep,
+    muted: 'rgba(14, 165, 233, 0.14)',
+    panel: DASH.white,
+    border: DASH.border,
+  },
+} as const;
+
+const CLASS_BADGE_COLORS = [
+  { bg: DASH.soft, text: DASH.skyDeep },
+  { bg: DASH.chip, text: DASH.skyDark },
+  { bg: DASH.wash, text: DASH.sky },
+  { bg: DASH.soft, text: DASH.skyInk },
+  { bg: DASH.chip, text: DASH.skyDeep },
+] as const;
 
 function AnalysisPanel({
   title,
   icon,
   iconColor,
+  panelBg,
+  borderColor,
   children,
 }: {
   title: string;
   icon: keyof typeof Ionicons.glyphMap;
   iconColor: string;
+  panelBg?: string;
+  borderColor?: string;
   children: React.ReactNode;
 }) {
-  const { colors, radius } = useAdminTheme();
+  const { radius } = useAdminTheme();
 
   return (
     <View
       style={[
         styles.panel,
+        CARD_EDGE,
         {
-          backgroundColor: colors.surface,
+          backgroundColor: panelBg || DASH.white,
           borderRadius: radius.md,
-          borderColor: colors.surfaceBorder,
+          borderColor: borderColor || DASH.border,
         },
-        ADMIN_SHADOW.sm,
       ]}
     >
+      <View style={[styles.panelAccent, { backgroundColor: iconColor }]} />
       <View style={styles.panelHeader}>
-        <View style={[styles.panelIcon, { backgroundColor: `${iconColor}18` }]}>
+        <View style={[styles.panelIcon, { backgroundColor: `${iconColor}22` }]}>
           <Ionicons name={icon} size={16} color={iconColor} />
         </View>
-        <Text style={[styles.panelTitle, { color: colors.text }]}>{title}</Text>
+        <Text style={[styles.panelTitle, { color: DASH.skyInk }]}>{title}</Text>
       </View>
       {children}
     </View>
   );
 }
 
+/** Static bar — no Reanimated (keeps scroll buttery). */
+function SubjectBar({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: number;
+  color: string;
+}) {
+  const pct = Math.min(Math.max(value, 0), 100);
+
+  return (
+    <View style={styles.barWrap}>
+      <View style={styles.barLabelRow}>
+        <Text style={[styles.barLabel, { color: DASH.skyMuted }]} numberOfLines={1}>
+          {label}
+        </Text>
+        <Text style={[styles.barValue, { color: DASH.skyInk }]}>{Math.round(pct)}%</Text>
+      </View>
+      <View style={[styles.barTrack, { backgroundColor: DASH.soft }]}>
+        <View style={[styles.barFill, { width: `${pct}%`, backgroundColor: color }]} />
+      </View>
+    </View>
+  );
+}
+
 export default function OverviewView({ onNavigate }: Props) {
-  const { colors, spacing, radius } = useAdminTheme();
+  const { spacing, radius } = useAdminTheme();
   const { width } = useWindowDimensions();
   const isTablet = useIsTablet();
   const isWide = isTablet || width >= 680;
@@ -191,15 +279,18 @@ export default function OverviewView({ onNavigate }: Props) {
     loadAll();
   }, [loadAll]);
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadAll();
     setRefreshing(false);
-  };
+  }, [loadAll]);
+
+  const goStudents = useCallback(() => onNavigate?.('students'), [onNavigate]);
+  const goTeachers = useCallback(() => onNavigate?.('teachers'), [onNavigate]);
 
   const topClassDistribution = studentAnalytics.classDistribution?.slice(0, 5) || [];
   const topSubjectPerformance = studentAnalytics.subjectPerformance?.slice(0, 4) || [];
-  const statCards = colors.dashboardStatCards;
+  const statCards = DASHBOARD_STAT_CARDS;
 
   if (isLoadingStats && !refreshing) {
     return <AdminSkeletonStats />;
@@ -208,216 +299,246 @@ export default function OverviewView({ onNavigate }: Props) {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={{ padding: spacing.md, paddingBottom: 32, gap: spacing.md }}
+      contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
+      // Opaque fill avoids expensive blending over AppBackground artwork while scrolling.
+      removeClippedSubviews={Platform.OS === 'android'}
+      overScrollMode="never"
+      nestedScrollEnabled={false}
+      keyboardShouldPersistTaps="handled"
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={DASH.sky} />
       }
     >
-      {/* Stat cards */}
       <View style={[styles.statsGrid, isTablet && styles.statsGridTablet]}>
-        <StatCard
+        <MemoStatCard
           label="Total Students"
           value={stats.totalStudents}
           icon="people"
           theme={statCards[0]}
-          delay={0}
           wide={isTablet}
         />
-        <StatCard
+        <MemoStatCard
           label="Active Classes"
           value={stats.totalClasses}
           icon="school"
           theme={statCards[1]}
-          delay={60}
           wide={isTablet}
         />
-        <StatCard
+        <MemoStatCard
           label="Active Users"
           value={stats.activeUsers}
           icon="pulse"
           theme={statCards[2]}
-          delay={120}
           wide={isTablet}
         />
-        <StatCard
+        <MemoStatCard
           label="Teachers"
           value={stats.totalTeachers}
           icon="person"
           theme={statCards[3]}
-          delay={180}
           wide={isTablet}
         />
       </View>
 
-      {/* School analysis */}
-      <Animated.View entering={FadeInUp.delay(200).duration(500)}>
-        <View
-          style={[
-            styles.analysisWrap,
-            {
-              backgroundColor: colors.surface,
-              borderRadius: radius.xl,
-              borderColor: colors.surfaceBorder,
-            },
-            ADMIN_SHADOW.md,
-          ]}
-        >
-          <View style={styles.analysisHeader}>
-            <View
-              style={[
-                styles.analysisIconBox,
-                { borderRadius: radius.md, backgroundColor: colors.primaryMuted },
-              ]}
-            >
-              <Ionicons name="bar-chart" size={22} color={colors.primary} />
-            </View>
-            <View style={styles.analysisHeaderText}>
-              <Text style={[styles.analysisTitle, { color: colors.primary }]}>Detailed School Analysis</Text>
-              <Text style={[styles.analysisSubtitle, { color: colors.textMuted }]}>
-                Comprehensive insights about your students
-              </Text>
-            </View>
+      <View
+        style={[
+          styles.analysisWrap,
+          CARD_EDGE,
+          {
+            backgroundColor: ANALYSIS_ACCENTS.shell.panel,
+            borderRadius: radius.xl,
+            borderColor: ANALYSIS_ACCENTS.shell.border,
+            marginTop: spacing.md,
+          },
+        ]}
+      >
+        <View style={styles.analysisHeader}>
+          <View
+            style={[
+              styles.analysisIconBox,
+              { borderRadius: radius.md, backgroundColor: ANALYSIS_ACCENTS.shell.accent },
+            ]}
+          >
+            <Ionicons name="bar-chart" size={22} color="#FFFFFF" />
           </View>
+          <View style={styles.analysisHeaderText}>
+            <Text style={[styles.analysisTitle, { color: ANALYSIS_ACCENTS.shell.accent }]}>
+              Detailed School Analysis
+            </Text>
+            <Text style={[styles.analysisSubtitle, { color: DASH.skyMuted }]}>
+              Comprehensive insights about your students
+            </Text>
+          </View>
+        </View>
 
-          {isLoadingAnalytics ? (
-            <ActivityIndicator size="small" color={colors.primary} style={{ padding: 24 }} />
-          ) : (
-            <View style={[styles.panelsRow, isWide && styles.panelsRowWide]}>
-              <AnalysisPanel title="Class Distribution" icon="school" iconColor={colors.primary}>
-                {topClassDistribution.length > 0 ? (
-                  topClassDistribution.map((item, idx) => (
+        {isLoadingAnalytics ? (
+          <ActivityIndicator size="small" color={ANALYSIS_ACCENTS.shell.accent} style={{ padding: 24 }} />
+        ) : (
+          <View style={[styles.panelsRow, isWide && styles.panelsRowWide]}>
+            <AnalysisPanel
+              title="Class Distribution"
+              icon="school"
+              iconColor={ANALYSIS_ACCENTS.class.accent}
+              panelBg={ANALYSIS_ACCENTS.class.panel}
+              borderColor={ANALYSIS_ACCENTS.class.border}
+            >
+              {topClassDistribution.length > 0 ? (
+                topClassDistribution.map((item, idx) => {
+                  const badge = CLASS_BADGE_COLORS[idx % CLASS_BADGE_COLORS.length];
+                  return (
                     <View
-                      key={idx}
+                      key={`${item.className || item.class || 'c'}-${idx}`}
                       style={[
                         styles.rowItem,
-                        idx < topClassDistribution.length - 1 && {
-                          borderBottomWidth: 1,
-                          borderBottomColor: colors.surfaceBorder,
-                        },
+                        idx < topClassDistribution.length - 1 && styles.rowDivider,
                       ]}
                     >
-                      <Text style={[styles.rowLabel, { color: colors.textSecondary }]}>
+                      <Text style={[styles.rowLabel, { color: DASH.skyInk }]}>
                         {item.className || item.class || 'Unknown'}
                       </Text>
-                      <View style={[styles.countBadge, { backgroundColor: colors.primaryMuted }]}>
-                        <Text style={[styles.countText, { color: colors.primary }]}>{item.count || 0}</Text>
+                      <View style={[styles.countBadge, { backgroundColor: badge.bg }]}>
+                        <Text style={[styles.countText, { color: badge.text }]}>{item.count || 0}</Text>
                       </View>
                     </View>
-                  ))
-                ) : (
-                  <Text style={[styles.empty, { color: colors.textMuted }]}>No class data</Text>
-                )}
-              </AnalysisPanel>
+                  );
+                })
+              ) : (
+                <Text style={[styles.empty, { color: DASH.skyMuted }]}>No class data</Text>
+              )}
+            </AnalysisPanel>
 
-              <AnalysisPanel title="Performance Metrics" icon="trending-up" iconColor={colors.success}>
-                <View style={styles.rowItem}>
-                  <Text style={[styles.rowLabel, { color: colors.textMuted }]}>Average Score</Text>
-                  <Text style={[styles.metricHighlight, { color: colors.success }]}>
-                    {studentAnalytics.performanceMetrics?.averageScore || 0}%
+            <AnalysisPanel
+              title="Performance Metrics"
+              icon="trending-up"
+              iconColor={ANALYSIS_ACCENTS.performance.accent}
+              panelBg={ANALYSIS_ACCENTS.performance.panel}
+              borderColor={ANALYSIS_ACCENTS.performance.border}
+            >
+              <View style={styles.rowItem}>
+                <Text style={[styles.rowLabel, { color: DASH.skyMuted }]}>Average Score</Text>
+                <Text style={[styles.metricHighlight, { color: ANALYSIS_ACCENTS.performance.accent }]}>
+                  {studentAnalytics.performanceMetrics?.averageScore || 0}%
+                </Text>
+              </View>
+              <View style={styles.rowItem}>
+                <Text style={[styles.rowLabel, { color: DASH.skyMuted }]}>Total Exams Taken</Text>
+                <Text style={[styles.metricHighlight, { color: ANALYSIS_ACCENTS.class.accent }]}>
+                  {studentAnalytics.performanceMetrics?.totalExamsTaken || 0}
+                </Text>
+              </View>
+              {studentAnalytics.performanceMetrics?.topPerformers?.[0] ? (
+                <View
+                  style={[
+                    styles.topBox,
+                    {
+                      backgroundColor: 'rgba(14, 165, 233, 0.1)',
+                      borderRadius: radius.sm,
+                      borderWidth: 1,
+                      borderColor: 'rgba(14, 165, 233, 0.2)',
+                    },
+                  ]}
+                >
+                  <Text style={[styles.topLabel, { color: ANALYSIS_ACCENTS.performance.accent }]}>
+                    Top Performer
+                  </Text>
+                  <Text style={[styles.topName, { color: DASH.skyInk }]}>
+                    {studentAnalytics.performanceMetrics.topPerformers[0].studentName}
+                  </Text>
+                  <Text style={[styles.topScore, { color: DASH.skyMuted }]}>
+                    {studentAnalytics.performanceMetrics.topPerformers[0].averageScore}% avg
                   </Text>
                 </View>
-                <View style={styles.rowItem}>
-                  <Text style={[styles.rowLabel, { color: colors.textMuted }]}>Total Exams Taken</Text>
-                  <Text style={[styles.metricHighlight, { color: colors.primary }]}>
-                    {studentAnalytics.performanceMetrics?.totalExamsTaken || 0}
-                  </Text>
-                </View>
-                {studentAnalytics.performanceMetrics?.topPerformers?.[0] ? (
-                  <View style={[styles.topBox, { backgroundColor: colors.bg, borderRadius: radius.sm }]}>
-                    <Text style={[styles.topLabel, { color: colors.textMuted }]}>Top Performer</Text>
-                    <Text style={[styles.topName, { color: colors.text }]}>
-                      {studentAnalytics.performanceMetrics.topPerformers[0].studentName}
-                    </Text>
-                    <Text style={[styles.topScore, { color: colors.textSecondary }]}>
-                      {studentAnalytics.performanceMetrics.topPerformers[0].averageScore}% avg
-                    </Text>
-                  </View>
-                ) : null}
-              </AnalysisPanel>
+              ) : null}
+            </AnalysisPanel>
 
-              <AnalysisPanel title="Subject Performance" icon="book" iconColor={colors.primary}>
-                {topSubjectPerformance.length > 0 ? (
-                  topSubjectPerformance.map((subject, idx) => (
-                    <AdminAnimatedProgress
-                      key={idx}
-                      label={(subject.subject || subject.name || 'Unknown').toUpperCase()}
-                      value={subject.averageScore || 0}
-                      color={colors.primary}
-                      height={6}
-                    />
-                  ))
-                ) : (
-                  <Text style={[styles.empty, { color: colors.textMuted }]}>No subject data</Text>
-                )}
-              </AnalysisPanel>
-            </View>
-          )}
-        </View>
-      </Animated.View>
+            <AnalysisPanel
+              title="Subject Performance"
+              icon="book"
+              iconColor={ANALYSIS_ACCENTS.subject.accent}
+              panelBg={ANALYSIS_ACCENTS.subject.panel}
+              borderColor={ANALYSIS_ACCENTS.subject.border}
+            >
+              {topSubjectPerformance.length > 0 ? (
+                topSubjectPerformance.map((subject, idx) => (
+                  <SubjectBar
+                    key={`${subject.subject || subject.name || 's'}-${idx}`}
+                    label={(subject.subject || subject.name || 'Unknown').toUpperCase()}
+                    value={subject.averageScore || 0}
+                    color={ANALYSIS_ACCENTS.subject.accent}
+                  />
+                ))
+              ) : (
+                <Text style={[styles.empty, { color: DASH.skyMuted }]}>No subject data</Text>
+              )}
+            </AnalysisPanel>
+          </View>
+        )}
+      </View>
 
-      {/* Assigned cards */}
-      <View style={[styles.assignRow, isWide && styles.assignRowWide]}>
-        <AdminScalePressable
-          onPress={() => onNavigate?.('students')}
+      <View style={[styles.assignRow, isWide && styles.assignRowWide, { marginTop: spacing.md }]}>
+        <Pressable
+          onPress={goStudents}
           style={[
             styles.assignCard,
+            CARD_EDGE,
             {
               borderRadius: radius.xl,
               backgroundColor: statCards[1].bg,
-              borderColor: `${statCards[1].accent}22`,
+              borderColor: `${statCards[1].accent}33`,
             },
-            ADMIN_SHADOW.sm,
           ]}
         >
           <View style={[styles.assignIcon, { backgroundColor: statCards[1].iconBg }]}>
             <Ionicons name="people" size={24} color={statCards[1].accent} />
           </View>
-          <Text style={[styles.assignHeading, { color: colors.text }]}>Your Students</Text>
-          <Text style={[styles.assignSub, { color: colors.textMuted }]}>Total Students Assigned</Text>
+          <Text style={[styles.assignHeading, { color: DASH.skyInk }]}>Your Students</Text>
+          <Text style={[styles.assignSub, { color: DASH.skyMuted }]}>Total Students Assigned</Text>
           <Text style={[styles.assignValue, { color: statCards[1].accent }]}>{stats.totalStudents}</Text>
-          <Text style={[styles.assignDesc, { color: colors.textSecondary }]}>
+          <Text style={[styles.assignDesc, { color: DASH.skyMuted }]}>
             Students specifically assigned to your admin account
           </Text>
           <View style={styles.assignCta}>
             <Text style={[styles.assignCtaText, { color: statCards[1].accent }]}>View details</Text>
             <Ionicons name="arrow-forward" size={14} color={statCards[1].accent} />
           </View>
-        </AdminScalePressable>
+        </Pressable>
 
-        <AdminScalePressable
-          onPress={() => onNavigate?.('teachers')}
+        <Pressable
+          onPress={goTeachers}
           style={[
             styles.assignCard,
+            CARD_EDGE,
             {
               borderRadius: radius.xl,
               backgroundColor: statCards[3].bg,
-              borderColor: `${statCards[3].accent}22`,
+              borderColor: `${statCards[3].accent}33`,
             },
-            ADMIN_SHADOW.sm,
           ]}
         >
           <View style={[styles.assignIcon, { backgroundColor: statCards[3].iconBg }]}>
             <Ionicons name="school" size={24} color={statCards[3].accent} />
           </View>
-          <Text style={[styles.assignHeading, { color: colors.text }]}>Your Teachers</Text>
-          <Text style={[styles.assignSub, { color: colors.textMuted }]}>Total Teachers Assigned</Text>
+          <Text style={[styles.assignHeading, { color: DASH.skyInk }]}>Your Teachers</Text>
+          <Text style={[styles.assignSub, { color: DASH.skyMuted }]}>Total Teachers Assigned</Text>
           <Text style={[styles.assignValue, { color: statCards[3].accent }]}>{stats.totalTeachers}</Text>
-          <Text style={[styles.assignDesc, { color: colors.textSecondary }]}>
+          <Text style={[styles.assignDesc, { color: DASH.skyMuted }]}>
             Teachers specifically assigned to your admin account
           </Text>
           <View style={styles.assignCta}>
             <Text style={[styles.assignCtaText, { color: statCards[3].accent }]}>View details</Text>
             <Ionicons name="arrow-forward" size={14} color={statCards[3].accent} />
           </View>
-        </AdminScalePressable>
+        </Pressable>
       </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, minHeight: 0 },
+  // Sky wash — Dashboard tab only.
+  container: { flex: 1, minHeight: 0, backgroundColor: DASH.wash },
+  content: { padding: 16, paddingBottom: 40 },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -429,7 +550,6 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     minWidth: '46%',
-    borderWidth: 1,
     overflow: 'hidden',
   },
   statCardWide: {
@@ -463,7 +583,6 @@ const styles = StyleSheet.create({
   },
   analysisWrap: {
     padding: 18,
-    borderWidth: 1,
     overflow: 'hidden',
   },
   analysisHeader: {
@@ -498,8 +617,16 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 200,
     padding: 14,
-    borderWidth: 1,
+    paddingTop: 16,
     gap: 8,
+    overflow: 'hidden',
+  },
+  panelAccent: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 3,
   },
   panelHeader: {
     flexDirection: 'row',
@@ -514,105 +641,75 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  panelTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
+  panelTitle: { fontSize: 14, fontWeight: '700', flex: 1 },
   rowItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    gap: 8,
+  },
+  rowDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(14, 116, 144, 0.15)',
+  },
+  rowLabel: { flex: 1, fontSize: 13, fontWeight: '600' },
+  countBadge: {
+    minWidth: 36,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    alignItems: 'center',
+  },
+  countText: { fontSize: 13, fontWeight: '800' },
+  metricHighlight: { fontSize: 16, fontWeight: '800' },
+  topBox: { padding: 10, marginTop: 4, gap: 2 },
+  topLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.4 },
+  topName: { fontSize: 14, fontWeight: '700' },
+  topScore: { fontSize: 12 },
+  empty: { fontSize: 13, paddingVertical: 8 },
+  barWrap: { gap: 6, marginBottom: 4 },
+  barLabelRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    gap: 8,
   },
-  rowLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    flex: 1,
+  barLabel: { flex: 1, fontSize: 12, fontWeight: '600' },
+  barValue: { fontSize: 12, fontWeight: '700' },
+  barTrack: {
+    height: 6,
+    borderRadius: 999,
+    overflow: 'hidden',
   },
-  countBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-    minWidth: 36,
-    alignItems: 'center',
-  },
-  countText: {
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  metricHighlight: {
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  topBox: {
-    padding: 10,
-    marginTop: 4,
-    gap: 2,
-  },
-  topLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  topName: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  topScore: {
-    fontSize: 12,
-  },
-  empty: {
-    fontSize: 12,
-    textAlign: 'center',
-    paddingVertical: 12,
+  barFill: {
+    height: '100%',
+    borderRadius: 999,
   },
   assignRow: { gap: 12 },
-  assignRowWide: {
-    flexDirection: 'row',
-  },
+  assignRowWide: { flexDirection: 'row' },
   assignCard: {
     flex: 1,
-    minWidth: 280,
     padding: 18,
-    borderWidth: 1,
+    gap: 6,
   },
   assignIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 4,
   },
-  assignHeading: {
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  assignSub: {
-    fontSize: 11,
-    marginTop: 2,
-  },
-  assignValue: {
-    fontSize: 30,
-    fontWeight: '800',
-    letterSpacing: -1,
-    marginVertical: 6,
-  },
-  assignDesc: {
-    fontSize: 12,
-    lineHeight: 17,
-    marginBottom: 14,
-  },
+  assignHeading: { fontSize: 16, fontWeight: '800' },
+  assignSub: { fontSize: 12, fontWeight: '600' },
+  assignValue: { fontSize: 28, fontWeight: '800', marginTop: 4 },
+  assignDesc: { fontSize: 12, lineHeight: 17, marginTop: 2 },
   assignCta: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    alignSelf: 'flex-start',
-    paddingVertical: 4,
+    marginTop: 10,
   },
-  assignCtaText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
+  assignCtaText: { fontSize: 13, fontWeight: '700' },
 });

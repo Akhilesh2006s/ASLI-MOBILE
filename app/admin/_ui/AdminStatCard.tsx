@@ -2,7 +2,6 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useAdminTheme } from './useAdminTheme';
 
 type Props = {
@@ -26,7 +25,7 @@ export default function AdminStatCard({
   gradientIndex = 0,
   subtext,
   loading,
-  delay = 0,
+  delay: _delay,
   compact = false,
   grid = !compact,
 }: Props) {
@@ -37,8 +36,7 @@ export default function AdminStatCard({
   const horizontal = compact || grid;
 
   return (
-    <Animated.View
-      entering={FadeInUp.delay(delay).duration(450).springify()}
+    <View
       style={[
         styles.wrap,
         horizontal && styles.wrapCompact,
@@ -83,7 +81,7 @@ export default function AdminStatCard({
           </View>
         </View>
       </LinearGradient>
-    </Animated.View>
+    </View>
   );
 }
 

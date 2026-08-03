@@ -26,7 +26,6 @@ const styles = StyleSheet.create({
     minHeight: 0,
     // Transparent so the app background artwork shows through.
     backgroundColor: 'transparent',
-    paddingHorizontal: STUDENT_SPACING.lg,
-    paddingTop: STUDENT_SPACING.sm,
+    paddingTop: STUDENT_SPACING.xs,
   },
 });

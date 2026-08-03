@@ -1,21 +1,19 @@
 import React, { ReactNode, useMemo } from 'react';
 import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-import Animated, { FadeInUp } from 'react-native-reanimated';
-import { GlassPanel } from '../../../src/components/ui';
 import { useAdminTheme } from './useAdminTheme';
 
 type Props = {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
+  /** Ignored — enter animations disabled for scroll FPS (kept for call-site compat). */
   delay?: number;
+  /** Ignored — cards never animate on mount. */
   noAnimation?: boolean;
 };
 
 /**
- * Style keys that govern how the CHILDREN are laid out (plus padding, which has
- * always sat inside the card). GlassPanel wraps children in its own content
- * view, so these have to ride on that inner view — otherwise a caller passing a
- * row/gap card style would silently collapse back to a column.
+ * Style keys that govern how the CHILDREN are laid out (plus padding).
+ * Outer view owns border/background; inner owns flex/gap/padding.
  */
 const INNER_STYLE_KEYS: readonly string[] = [
   'flexDirection',
@@ -47,11 +45,13 @@ function splitCardStyle(flat: ViewStyle) {
   return { outer: outer as ViewStyle, inner: inner as ViewStyle };
 }
 
-export default function AdminGlassCard({ children, style, delay = 0, noAnimation }: Props) {
-  const { radius, spacing } = useAdminTheme();
+/**
+ * Opaque admin card — solid white, no BlurView / GlassPanel / Reanimated.
+ * Frosted glass over AppBackground was the primary scroll-jank source on iOS.
+ */
+export default function AdminGlassCard({ children, style }: Props) {
+  const { colors, radius, spacing } = useAdminTheme();
 
-  // The opaque `glassCard` surface is dropped in favour of a real frosted panel
-  // over the app artwork; only the caller's own layout styles carry through.
   const { outer, inner } = useMemo(() => {
     const flat = (StyleSheet.flatten([{ padding: spacing.md }, style]) ?? {}) as ViewStyle;
     return splitCardStyle(flat);
@@ -59,24 +59,28 @@ export default function AdminGlassCard({ children, style, delay = 0, noAnimation
 
   const cardRadius = (outer.borderRadius as number | undefined) ?? radius.lg;
 
-  const content = (
-    <GlassPanel style={[styles.card, outer]} radius={cardRadius} tone="medium">
-      <View style={[styles.inner, inner]}>{children}</View>
-    </GlassPanel>
-  );
-
-  if (noAnimation) return content;
-
   return (
-    <Animated.View entering={FadeInUp.delay(delay).duration(400).springify()}>
-      {content}
-    </Animated.View>
+    <View
+      style={[
+        styles.card,
+        {
+          borderRadius: cardRadius,
+          backgroundColor: colors.surface,
+          borderColor: colors.surfaceBorder,
+        },
+        outer,
+      ]}
+    >
+      <View style={[styles.inner, inner]}>{children}</View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
     width: '100%',
+    borderWidth: 1,
+    overflow: 'hidden',
   },
   inner: {
     flexDirection: 'column',

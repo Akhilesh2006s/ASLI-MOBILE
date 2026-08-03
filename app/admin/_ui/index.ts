@@ -21,3 +21,4 @@ export { default as AdminStatsRow } from './AdminStatsRow';
 export type { AdminStatItem } from './AdminStatsRow';
 export { default as AdminGridList } from './AdminGridList';
 export { default as AdminCardScrollBox } from './AdminCardScrollBox';
+export { default as AdminHorizontalScroll } from './AdminHorizontalScroll';

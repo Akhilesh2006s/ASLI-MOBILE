@@ -69,7 +69,10 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
       setBooks(bookRows);
       setImportable(importRows);
     } catch (err: any) {
-      Alert.alert('Load failed', err?.message || 'Could not load book knowledge data.');
+      Alert.alert(
+        'Load failed',
+        err?.friendlyMessage || err?.message || 'Could not load book knowledge data.',
+      );
     } finally {
       setLoading(false);
     }
@@ -86,24 +89,32 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
   }, [loadAll]);
 
   const handleImportOne = async (contentId: string) => {
-    setImportingIds((prev) => new Set(prev).add(contentId));
+    const id = String(contentId || '').trim();
+    if (!id) {
+      Alert.alert('Import failed', 'This content item is missing an id.');
+      return;
+    }
+    setImportingIds((prev) => new Set(prev).add(id));
     try {
-      await importBookFromContent(contentId);
+      await importBookFromContent(id);
       await loadAll();
       Alert.alert('Imported', 'Book linked and indexing started.');
     } catch (err: any) {
-      Alert.alert('Import failed', err?.message || 'Could not import content.');
+      Alert.alert(
+        'Import failed',
+        err?.friendlyMessage || err?.message || 'Could not import content.',
+      );
     } finally {
       setImportingIds((prev) => {
         const next = new Set(prev);
-        next.delete(contentId);
+        next.delete(id);
         return next;
       });
     }
   };
 
   const handleBulkImport = async () => {
-    const ids = [...selectedImportIds];
+    const ids = [...selectedImportIds].map((id) => String(id || '').trim()).filter(Boolean);
     if (!ids.length) {
       Alert.alert('Select items', 'Choose at least one content item to import.');
       return;
@@ -115,7 +126,10 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
       await loadAll();
       Alert.alert('Bulk import', result.message || 'Import complete.');
     } catch (err: any) {
-      Alert.alert('Bulk import failed', err?.message || 'Could not import.');
+      Alert.alert(
+        'Bulk import failed',
+        err?.friendlyMessage || err?.message || 'Could not import.',
+      );
     } finally {
       setImportLoading(false);
     }
@@ -387,10 +401,10 @@ const styles = StyleSheet.create({
   linkBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
   linkBtnText: { color: '#6d28d9', fontWeight: '700', fontSize: 13 },
   statsRow: { flexDirection: 'row', gap: 10 },
-  statCard: { flex: 1, backgroundColor: 'rgba(255,255,255,0.48)', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#e2e8f0' },
+  statCard: { flex: 1, backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#e2e8f0' },
   statLabel: { fontSize: 11, color: '#64748b', textTransform: 'uppercase' },
   statValue: { fontSize: 22, fontWeight: '800', color: '#0f172a', marginTop: 4 },
-  section: { backgroundColor: 'rgba(255,255,255,0.48)', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#e2e8f0', gap: 10 },
+  section: { backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#e2e8f0', gap: 10 },
   sectionTitle: { fontSize: 16, fontWeight: '800', color: '#0f172a' },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
   toggleText: { color: '#059669', fontWeight: '600', fontSize: 13 },
@@ -406,10 +420,10 @@ const styles = StyleSheet.create({
   actionBtnText: { color: '#1d4ed8', fontWeight: '700', fontSize: 12 },
   actionBtnDanger: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: '#fef2f2' },
   actionBtnDangerText: { color: '#b91c1c', fontWeight: '700', fontSize: 12 },
-  input: { borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, backgroundColor: 'rgba(255,255,255,0.48)' },
+  input: { borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, backgroundColor: '#FFFFFF' },
   fieldLabel: { fontSize: 12, fontWeight: '700', color: '#475569' },
   chipRow: { flexGrow: 0 },
-  chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: '#cbd5e1', marginRight: 8, backgroundColor: 'rgba(255,255,255,0.48)' },
+  chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: '#cbd5e1', marginRight: 8, backgroundColor: '#FFFFFF' },
   chipActive: { backgroundColor: '#ede9fe', borderColor: '#8b5cf6' },
   chipText: { fontSize: 12, color: '#475569', fontWeight: '600' },
   chipTextActive: { color: '#5b21b6' },

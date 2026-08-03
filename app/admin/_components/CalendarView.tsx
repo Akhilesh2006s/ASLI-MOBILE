@@ -82,7 +82,7 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const EVENT_COLORS = ['#10b981', '#6366F1', '#ec4899', '#8b5cf6', '#f59e0b', '#ef4444'];
+const EVENT_COLORS = ['#10b981', '#06B6D4', '#ec4899', '#818CF8', '#14B8A6', '#ef4444'];
 
 export default function CalendarView() {
   const { colors, spacing, radius } = useAdminTheme();

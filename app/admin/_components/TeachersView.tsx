@@ -616,7 +616,7 @@ export default function TeachersView() {
       onRefresh={onRefresh}
       nestedScrollEnabled
       keyboardShouldPersistTaps="handled"
-      contentContainerStyle={{ paddingBottom: 88 }}
+      contentContainerStyle={{ paddingBottom: 140 }}
     >
       <View style={styles.innerShell}>
       <AdminSectionHeader
@@ -1257,7 +1257,7 @@ const styles = StyleSheet.create({
     paddingLeft: 30,
   },
   kvValueMuted: {
-    color: '#4F46E5',
+    color: '#0F766E',
     fontWeight: '600',
   },
   assignedClassesBlock: {
@@ -1350,7 +1350,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 4,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
@@ -1369,7 +1369,7 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   modalContent: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     width: '100%',
     maxHeight: '78%',
@@ -1445,7 +1445,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   assignModalCard: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     width: '100%',
     maxWidth: 420,
@@ -1509,7 +1509,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   assignRowInList: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 8,
     marginBottom: 6,
     borderBottomWidth: 0,

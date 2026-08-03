@@ -16,6 +16,7 @@ import { router } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../../src/services/api/api';
+import { SUPER_ADMIN_FLOATING_TAB_BAR_PAD } from '../../../src/lib/responsive-layout';
 import { parseClassBoardLabel } from '../../../src/lib/board-label';
 import {
   getCurriculumClassLabels,
@@ -1096,7 +1097,7 @@ export default function SubjectContentManagementView() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scroll: { padding: 16, paddingBottom: 100, gap: 12 },
+  scroll: { padding: 16, paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD, gap: 12 },
   pageTitle: { fontSize: 24, fontWeight: '800', color: '#0f172a' },
   pageSubtitle: { fontSize: 13, color: '#64748b', marginBottom: 8 },
   errorText: { color: '#dc2626', fontSize: 12, marginBottom: 8 },
@@ -1232,12 +1233,12 @@ const styles = StyleSheet.create({
   openBtnText: { color: '#0284c7', fontSize: 12, fontWeight: '700' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   modalSheet: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     padding: 16,
   },
-  formModal: { flex: 1, backgroundColor: 'rgba(255,255,255,0.48)' },
+  formModal: { flex: 1, backgroundColor: '#FFFFFF' },
   formHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1289,7 +1290,7 @@ const styles = StyleSheet.create({
   saveBtn: { flex: 1, padding: 14, borderRadius: 10, backgroundColor: '#f97316', alignItems: 'center' },
   saveBtnText: { fontWeight: '700', color: '#fff' },
   pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  pickerSheet: { backgroundColor: 'rgba(255,255,255,0.48)', borderTopLeftRadius: 16, padding: 16, maxHeight: '70%' },
+  pickerSheet: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 16, padding: 16, maxHeight: '70%' },
   pickerTitle: { fontSize: 18, fontWeight: '800', marginBottom: 12 },
   pickerItem: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   pickerItemText: { fontSize: 15, color: '#0f172a' },

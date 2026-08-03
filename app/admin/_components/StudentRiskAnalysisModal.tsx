@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
   },
   sheet: {
     width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     overflow: 'hidden',
   },
   header: {
@@ -559,7 +559,7 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     borderRadius: 14,
     padding: 14,
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     gap: 10,
   },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },

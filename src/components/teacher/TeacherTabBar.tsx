@@ -38,16 +38,10 @@ function TabButton({
   active: boolean;
   onPress: () => void;
 }) {
-  const bounce = useSharedValue(1);
-  const bounceStyle = useAnimatedStyle(() => ({ transform: [{ scale: bounce.value }] }));
   const iconName = active ? tab.activeIcon : tab.icon;
 
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    bounce.value = withSpring(1.3, { damping: 8, stiffness: 400 });
-    setTimeout(() => {
-      bounce.value = withSpring(1, { damping: 12, stiffness: 300 });
-    }, 120);
     onPress();
   };
 
@@ -59,17 +53,13 @@ function TabButton({
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
     >
-      {active ? (
-        <View style={styles.iconGlow}>
-          <Animated.View style={bounceStyle}>
-            <Ionicons name={iconName} size={20} color={TEACHER.navActiveText} />
-          </Animated.View>
-        </View>
-      ) : (
-        <Animated.View style={bounceStyle}>
-          <Ionicons name={iconName} size={20} color={TEACHER.navInactive} />
-        </Animated.View>
-      )}
+      <View style={[styles.iconSlot, active && styles.iconGlow]}>
+        <Ionicons
+          name={iconName}
+          size={20}
+          color={active ? TEACHER.navActiveText : TEACHER.navInactive}
+        />
+      </View>
       <Text style={[styles.label, active ? styles.labelActive : styles.labelInactive]} numberOfLines={1}>
         {tab.label}
       </Text>
@@ -177,6 +167,12 @@ const styles = StyleSheet.create({
     paddingVertical: TEACHER_SPACING.xs,
     gap: 2,
     zIndex: 1,
+  },
+  iconSlot: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   iconGlow: {
     shadowColor: TEACHER.primary,

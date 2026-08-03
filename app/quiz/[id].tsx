@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   questionCard: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     margin: 20,
     marginBottom: 16,
     borderRadius: 16,
@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   optionCard: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     borderWidth: 2,

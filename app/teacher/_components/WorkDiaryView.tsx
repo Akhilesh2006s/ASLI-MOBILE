@@ -419,6 +419,9 @@ export default function WorkDiaryView() {
         onChangeText={(t) => setForm((f) => ({ ...f, date: t }))}
         placeholder="YYYY-MM-DD"
         placeholderTextColor={TEACHER.textMuted}
+        cursorColor={TEACHER.primary}
+        selectionColor={TEACHER.primaryLight}
+        caretHidden={false}
       />
 
       <Text style={styles.label}>Title (optional)</Text>
@@ -428,6 +431,9 @@ export default function WorkDiaryView() {
         onChangeText={(t) => setForm((f) => ({ ...f, title: t }))}
         placeholder="e.g. Algebra — quadratic equations"
         placeholderTextColor={TEACHER.textMuted}
+        cursorColor={TEACHER.primary}
+        selectionColor={TEACHER.primaryLight}
+        caretHidden={false}
       />
 
       <Text style={styles.label}>Today&apos;s work</Text>
@@ -439,6 +445,10 @@ export default function WorkDiaryView() {
         placeholderTextColor={TEACHER.textMuted}
         multiline
         numberOfLines={5}
+        cursorColor={TEACHER.primary}
+        selectionColor={TEACHER.primaryLight}
+        caretHidden={false}
+        textAlignVertical="top"
       />
 
       <Pressable onPress={submit} disabled={saving || !form.classId}>
@@ -619,7 +629,7 @@ const styles = StyleSheet.create({
     borderRadius: TEACHER_RADIUS.md,
     padding: 14,
     color: TEACHER.text,
-    backgroundColor: TEACHER.surfaceElevated,
+    backgroundColor: '#FFFFFF',
   },
   textArea: { minHeight: 120, textAlignVertical: 'top' },
   saveBtn: {
@@ -725,6 +735,7 @@ const styles = StyleSheet.create({
   readMoreText: { fontSize: 11, fontWeight: '600', color: TEACHER.primaryLight },
   pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'flex-end' },
   pickerSheet: {
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
@@ -739,6 +750,7 @@ const styles = StyleSheet.create({
   pickerItemTextActive: { fontWeight: '700', color: TEACHER.primaryLight },
   detailOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'flex-end' },
   detailCard: {
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,

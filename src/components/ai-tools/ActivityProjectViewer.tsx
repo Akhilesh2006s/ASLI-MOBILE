@@ -534,17 +534,13 @@ export default function ActivityProjectViewer({
         </ScrollView>
       ) : null}
 
-      <ScrollView
-        style={[styles.scrollBody, vt('scrollBody')]}
-        nestedScrollEnabled
-        showsVerticalScrollIndicator={false}
-      >
+      <View style={[styles.scrollBody, vt('scrollBody')]}>
         {isTeacher ? (
           <TeacherActivityCard activity={current} heroIcon={heroIcon} />
         ) : (
           <StudentActivityCard activity={current} heroIcon={heroIcon} />
         )}
-      </ScrollView>
+      </View>
     </View>
     </ViewerTabletContext.Provider>
   );
@@ -554,97 +550,95 @@ const M = AI_TOOL_OUTPUT_MOBILE;
 
 const styles = StyleSheet.create({
   shell: {
-    borderRadius: 20,
+    borderRadius: 14,
     borderWidth: 1,
     overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.42)',
+    backgroundColor: '#FFFFFF',
   },
-  shellTeacher: { borderColor: '#c7d2fe' },
-  shellStudent: { borderColor: '#fed7aa' },
+  shellTeacher: { borderColor: '#E2E8F0' },
+  shellStudent: { borderColor: '#E2E8F0' },
   shellHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
-  shellHeaderTeacher: { backgroundColor: '#eef2ff', borderBottomWidth: 1, borderBottomColor: '#c7d2fe' },
-  shellHeaderStudent: { backgroundColor: 'rgba(255,247,237,0.55)', borderBottomWidth: 1, borderBottomColor: '#fed7aa' },
+  shellHeaderTeacher: { backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  shellHeaderStudent: { backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
   shellHeaderIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.85)',
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
   },
   shellEyebrow: {
     fontSize: 10,
     fontWeight: '700',
-    letterSpacing: 1,
+    letterSpacing: 0.6,
     textTransform: 'uppercase',
     color: '#64748b',
   },
   shellTitle: { fontSize: M.shellTitle, fontWeight: '800', color: '#0f172a', marginTop: 2 },
-  tabScroll: { maxHeight: 44, backgroundColor: '#eef2ff' },
-  tabRow: { paddingHorizontal: 10, paddingVertical: 8, gap: 8 },
+  tabScroll: { maxHeight: 40, backgroundColor: '#F8FAFC' },
+  tabRow: { paddingHorizontal: 8, paddingVertical: 6, gap: 6 },
   tab: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
     borderRadius: 999,
-    backgroundColor: 'rgba(79,70,229,0.12)',
-  },
-  tabActive: { backgroundColor: 'rgba(255,255,255,0.48)' },
-  tabText: { fontSize: M.tab, fontWeight: '700', color: '#4f46e5', maxWidth: 140 },
-  tabTextActive: { color: '#312e81' },
-  scrollBody: { maxHeight: 720 },
-  activityBody: { padding: 2, gap: 10 },
-  sectionsWrap: { gap: 10 },
-  heroCard: {
-    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#c7d2fe',
-    backgroundColor: 'rgba(255,255,255,0.48)',
-    padding: 16,
-    shadowColor: '#6366f1',
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
+    borderColor: '#E2E8F0',
   },
-  heroCardStudent: { borderColor: '#fed7aa', shadowColor: '#f97316' },
-  heroRow: { flexDirection: 'row', gap: 14 },
+  tabActive: { backgroundColor: '#F1F5F9', borderColor: '#CBD5E1' },
+  tabText: { fontSize: M.tab, fontWeight: '700', color: '#64748B', maxWidth: 140 },
+  tabTextActive: { color: '#0F172A' },
+  scrollBody: { width: '100%' },
+  activityBody: { padding: 0, gap: 8 },
+  sectionsWrap: { gap: 8 },
+  heroCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+  },
+  heroCardStudent: { borderColor: '#E2E8F0' },
+  heroRow: { flexDirection: 'row', gap: 10 },
   heroIconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    backgroundColor: '#e0e7ff',
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroIconWrapStudent: { backgroundColor: '#ffedd5' },
+  heroIconWrapStudent: { backgroundColor: '#F1F5F9' },
   heroContent: { flex: 1 },
   sectionsBadge: {
     alignSelf: 'flex-start',
     borderWidth: 1,
-    borderColor: '#c7d2fe',
+    borderColor: '#E2E8F0',
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    marginBottom: 6,
+    marginBottom: 4,
+    backgroundColor: '#F8FAFC',
   },
-  sectionsBadgeText: { fontSize: 10, fontWeight: '700', color: '#4338ca' },
+  sectionsBadgeText: { fontSize: 10, fontWeight: '700', color: '#64748B' },
   heroEyebrow: {
     fontSize: M.heroEyebrow,
-    fontWeight: '800',
-    letterSpacing: 0.8,
+    fontWeight: '700',
+    letterSpacing: 0.6,
     textTransform: 'uppercase',
-    color: '#4f46e5',
-    marginBottom: 4,
+    color: '#64748B',
+    marginBottom: 2,
   },
-  heroEyebrowStudent: { color: '#ea580c' },
-  heroTitle: { fontSize: M.heroTitle, fontWeight: '800', color: '#0f172a', lineHeight: M.heroTitle + 6 },
-  progressWrap: { marginTop: 14 },
+  heroEyebrowStudent: { color: '#64748B' },
+  heroTitle: { fontSize: M.heroTitle, fontWeight: '800', color: '#0f172a', lineHeight: M.heroTitle + 4 },
+  progressWrap: { marginTop: 10 },
   progressLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
   progressLabel: { fontSize: M.caption, fontWeight: '600', color: '#64748b' },
   progressTrack: { height: 8, borderRadius: 999, backgroundColor: '#e0e7ff', overflow: 'hidden' },

@@ -130,7 +130,7 @@ function getExamGridLayout(screenWidth: number, itemCount: number) {
   const maxCols =
     screenWidth >= EXAMS_WIDE_MIN_WIDTH ? 3 : isTablet ? 2 : 1;
   const columns = itemCount <= 1 ? 1 : Math.min(maxCols, itemCount);
-  const listWidth = screenWidth - STUDENT_SPACING.lg * 2;
+  const listWidth = screenWidth - 24;
 
   if (!isTablet) {
     return { columns: 1, cardWidth: undefined as number | undefined, isGrid: false };
@@ -1298,7 +1298,7 @@ const styles = StyleSheet.create({
     borderRadius: STUDENT_RADIUS.md,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
   },
   calendarFocusDismissText: {
     fontSize: 12,
@@ -1723,7 +1723,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   attemptPickerSheet: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     paddingHorizontal: 16,

@@ -22,7 +22,7 @@ export default function AdminModalShell({ visible, title, onClose, children, foo
   const sheetStyle = [
     styles.sheet,
     {
-      backgroundColor: colors.surface,
+      backgroundColor: '#FFFFFF',
       borderTopLeftRadius: radius.xl,
       borderTopRightRadius: radius.xl,
       paddingBottom: Math.max(insets.bottom, 16),
@@ -39,10 +39,10 @@ export default function AdminModalShell({ visible, title, onClose, children, foo
       <View style={styles.root}>
         <Pressable style={[styles.backdrop, { backgroundColor: colors.overlay }]} onPress={onClose} />
         <SheetWrapper {...sheetProps} style={sheetStyle}>
-          <View style={[styles.handle, { backgroundColor: colors.bgElevated }]} />
+          <View style={[styles.handle, { backgroundColor: '#E2E8F0' }]} />
           <View style={[styles.header, { borderBottomColor: colors.surfaceBorder }]}>
             <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-            <AdminScalePressable onPress={onClose} style={[styles.closeBtn, { backgroundColor: colors.bg }]}>
+            <AdminScalePressable onPress={onClose} style={[styles.closeBtn, { backgroundColor: '#F1F5F9' }]}>
               <Ionicons name="close" size={20} color={colors.textSecondary} />
             </AdminScalePressable>
           </View>

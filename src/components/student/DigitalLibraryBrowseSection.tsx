@@ -44,8 +44,7 @@ export default function DigitalLibraryBrowseSection({
         const { data } = await api.get('/api/student/asli-prep-content');
         if (cancelled) return;
         setAllContent(prepareLibraryContents(data?.data || data || [], isAsliPrepExclusive));
-      } catch (error) {
-        console.error('Failed to load digital library counts:', error);
+      } catch {
         if (!cancelled) setAllContent([]);
       } finally {
         if (!cancelled) setIsLoadingContent(false);

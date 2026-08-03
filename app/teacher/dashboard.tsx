@@ -319,6 +319,10 @@ export default function TeacherDashboard() {
             initialSubTab={navTarget.studentsSub}
             progressClassFilter={navTarget.progressClassFilter}
             progressStudentId={navTarget.progressStudentId}
+            onCloseStudentAnalysis={() => {
+              setNavTarget({});
+              setActiveTab('dashboard');
+            }}
           />
         );
       case 'eduott':
@@ -370,20 +374,33 @@ export default function TeacherDashboard() {
         ? 'Profile'
         : TAB_PAGE_TITLES[activeTab];
 
+  const homeHeader = (
+    <TeacherHeader
+      variant="home"
+      glass={vidyaGlass}
+      displayName={resolveTeacherDisplayName(user)}
+      user={user}
+      subjects={subjects}
+      nextClassLabel={nextClass?.label}
+      countdown={nextClass?.countdown}
+      onLogout={handleLogout}
+    />
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
-      <TeacherHeader
-        variant={showHomeHeader ? 'home' : 'compact'}
-        title={headerTitle}
-        glass={vidyaGlass}
-        displayName={resolveTeacherDisplayName(user)}
-        user={user}
-        subjects={showHomeHeader ? subjects : []}
-        nextClassLabel={showHomeHeader ? nextClass?.label : undefined}
-        countdown={showHomeHeader ? nextClass?.countdown : undefined}
-        onLogout={handleLogout}
-      />
+      {/* Compact headers stay fixed; home header scrolls with dashboard content. */}
+      {!showHomeHeader ? (
+        <TeacherHeader
+          variant="compact"
+          title={headerTitle}
+          glass={vidyaGlass}
+          displayName={resolveTeacherDisplayName(user)}
+          user={user}
+          onLogout={handleLogout}
+        />
+      ) : null}
 
       {refreshing ? (
         <Animated.Text entering={FadeIn.duration(200)} style={styles.syncingText}>
@@ -436,10 +453,14 @@ export default function TeacherDashboard() {
           <ScrollView
             ref={scrollRef}
             style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[
+              styles.scrollContent,
+              showHomeHeader && styles.scrollContentWithHomeHeader,
+            ]}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={TEACHER.primary} />}
             showsVerticalScrollIndicator={false}
           >
+            {showHomeHeader ? homeHeader : null}
             {renderTab()}
           </ScrollView>
         )}
@@ -518,6 +539,7 @@ const styles = StyleSheet.create({
   fullTabPane: { flex: 1, minHeight: 0 },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 120, paddingTop: TEACHER_SPACING.sm },
+  scrollContentWithHomeHeader: { paddingTop: 0 },
   syncingText: {
     fontSize: 11,
     color: TEACHER.textMuted,

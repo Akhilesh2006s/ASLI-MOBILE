@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.28)',
   },
   cellFilled: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
   },
   cellCurrentDay: {
     backgroundColor: 'rgba(109,91,208,0.12)',

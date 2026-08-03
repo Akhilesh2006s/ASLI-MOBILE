@@ -442,7 +442,7 @@ const styles = StyleSheet.create({
   youtubeText: { fontSize: 12, fontWeight: '600', color: TEACHER.danger },
   statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   statusText: { fontSize: 14, fontWeight: '600' },
-  modalContainer: { flex: 1, backgroundColor: TEACHER.bg, paddingTop: 20 },
+  modalContainer: { flex: 1, backgroundColor: '#FFFFFF', paddingTop: 20 },
   modalHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     padding: 16, paddingTop: 20, borderBottomWidth: 1, borderBottomColor: TEACHER.surfaceBorder,

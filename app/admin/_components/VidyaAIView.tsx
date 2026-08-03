@@ -1,21 +1,34 @@
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeIn } from 'react-native-reanimated';
 import authService from '../../../src/services/api/authService';
 import AdminVidyaChatPanel from './AdminVidyaChatPanel';
 import { AdminSkeletonList, useAdminTheme } from '../_ui';
 
-export default function VidyaAIView() {
+type Props = {
+  adminId?: string | null;
+  adminName?: string;
+};
+
+export default function VidyaAIView({ adminId: adminIdProp, adminName: adminNameProp }: Props) {
   const { colors } = useAdminTheme();
-  const [adminId, setAdminId] = useState<string | null>(null);
-  const [adminName, setAdminName] = useState('Admin');
-  const [loadingUser, setLoadingUser] = useState(true);
+  const [adminId, setAdminId] = useState<string | null>(adminIdProp || null);
+  const [adminName, setAdminName] = useState(adminNameProp || 'Admin');
+  const [loadingUser, setLoadingUser] = useState(!adminIdProp);
 
   useEffect(() => {
+    if (adminIdProp) {
+      setAdminId(adminIdProp);
+      if (adminNameProp) setAdminName(adminNameProp);
+      setLoadingUser(false);
+      return;
+    }
+
+    let cancelled = false;
     authService
       .me()
       .then((data) => {
+        if (cancelled) return;
         const user = data?.user;
         if (user) {
           setAdminId(String(user._id || user.id || ''));
@@ -25,8 +38,13 @@ export default function VidyaAIView() {
         }
       })
       .catch(() => null)
-      .finally(() => setLoadingUser(false));
-  }, []);
+      .finally(() => {
+        if (!cancelled) setLoadingUser(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [adminIdProp, adminNameProp]);
 
   if (loadingUser) {
     return (
@@ -39,12 +57,12 @@ export default function VidyaAIView() {
 
   if (!adminId) {
     return (
-      <Animated.View entering={FadeIn.duration(400)} style={styles.loadingWrap}>
+      <View style={styles.loadingWrap}>
         <View style={[styles.emptyIcon, { backgroundColor: colors.primaryMuted }]}>
           <Ionicons name="chatbubbles-outline" size={40} color={colors.primary} />
         </View>
         <Text style={[styles.loadingText, { color: colors.textMuted }]}>Sign in to use Vidya AI</Text>
-      </Animated.View>
+      </View>
     );
   }
 

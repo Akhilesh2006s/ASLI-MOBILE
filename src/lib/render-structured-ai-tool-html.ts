@@ -451,7 +451,7 @@ function renderQuickAssignmentHtml(content: string, rawContent: unknown): string
       body: assignment.conceptQuestions
         .map(
           (q, i) =>
-            `<div class="mb-2 rounded-lg border border-orange-100 bg-orange-50/50 px-3 py-2 text-sm"><span class="font-bold text-orange-800">Q${i + 1}. </span>${escapeHtml(q.question)}</div>`
+            `<div class="mb-2 rounded-lg border border-orange-100 bg-orange-50/50 px-3 py-2 text-sm"><strong class="ai-q-label">Q${i + 1}.</strong> ${escapeHtml(q.question)}</div>`
         )
         .join(''),
     });
@@ -475,8 +475,7 @@ function renderMockTestHtml(content: string, rawContent: unknown): string | null
       .map(
         (q, i) =>
           `<div class="rounded-lg border border-violet-100 bg-violet-50/40 px-3 py-2 mb-2">
-            <p class="text-xs font-bold text-violet-800">Q${i + 1}${q.marks ? ` (${q.marks} marks)` : ''}</p>
-            <p class="text-sm text-slate-800 mt-1">${escapeHtml(q.question || '')}</p>
+            <p class="text-sm text-slate-800 mt-1"><strong class="ai-q-label">Q${i + 1}${q.marks ? ` · ${q.marks}M` : ''}.</strong> ${escapeHtml(q.question || '')}</p>
           </div>`
       )
       .join('');

@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(251, 146, 60, 0.35)',
     overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
   },
   headerRow: {
     flexDirection: 'row',

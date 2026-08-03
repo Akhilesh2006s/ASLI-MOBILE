@@ -92,8 +92,13 @@ const TOOL_SHELLS: Record<string, ToolShell> = {
   },
   'exam-question-paper-generator': {
     label: 'Exam Question Paper',
-    wrapperClass: 'rounded-2xl border border-slate-300/90 p-3',
-    wrapperStyle: 'background:linear-gradient(to bottom,#f8fafc,#fff,#f1f5f9)',
+    wrapperClass: 'rounded-2xl border border-slate-300/90 p-2',
+    wrapperStyle: 'background:#ffffff',
+  },
+  'mock-test-builder': {
+    label: 'Mock Test',
+    wrapperClass: 'rounded-2xl border border-indigo-200/80 p-2',
+    wrapperStyle: 'background:#ffffff',
   },
   'story-passage-creator': {
     label: 'Story & Passage Creator',

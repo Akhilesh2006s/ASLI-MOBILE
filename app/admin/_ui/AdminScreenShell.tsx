@@ -1,12 +1,12 @@
 import React, { ReactNode } from 'react';
 import {
+  Platform,
   RefreshControl,
   ScrollView,
   ScrollViewProps,
   StyleSheet,
+  View,
 } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
-import AdminGridBackground from './AdminGridBackground';
 import { useAdminTheme } from './useAdminTheme';
 import { useAdminResponsiveLayout } from './useAdminResponsiveLayout';
 
@@ -15,29 +15,34 @@ type Props = ScrollViewProps & {
   refreshing?: boolean;
   onRefresh?: () => void;
   noPadding?: boolean;
+  /** @deprecated Grid SVG is intentionally unused — kept for API compatibility. */
   showGrid?: boolean;
 };
 
+/**
+ * Admin scroll shell — opaque, no enter animations, no BlurView.
+ * Transparent shells over AppBackground + spring enters are a major FPS cliff.
+ */
 export default function AdminScreenShell({
   children,
   refreshing,
   onRefresh,
   noPadding,
-  showGrid = false,
+  showGrid: _showGrid,
   contentContainerStyle,
   style,
+  nestedScrollEnabled = false,
   ...rest
 }: Props) {
   const { colors, spacing } = useAdminTheme();
   const { shellPaddingBottom, isPhone } = useAdminResponsiveLayout();
-  const defaultBottomPad = isPhone ? spacing.xxl + 56 : spacing.lg + 16;
+  const defaultBottomPad = isPhone ? spacing.xl : spacing.lg + 16;
 
   return (
-    <Animated.View entering={FadeInDown.duration(350).springify()} style={styles.flex}>
-      {showGrid ? <AdminGridBackground /> : null}
+    <View style={[styles.flex, { backgroundColor: colors.bgElevated }]}>
       <ScrollView
         {...rest}
-        style={[styles.flex, styles.transparent, style]}
+        style={[styles.flex, { backgroundColor: colors.bgElevated }, style]}
         contentContainerStyle={[
           !noPadding && {
             padding: spacing.md,
@@ -46,7 +51,10 @@ export default function AdminScreenShell({
           contentContainerStyle,
         ]}
         showsVerticalScrollIndicator={false}
-        nestedScrollEnabled
+        nestedScrollEnabled={nestedScrollEnabled}
+        removeClippedSubviews={Platform.OS === 'android'}
+        overScrollMode="never"
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           onRefresh ? (
             <RefreshControl
@@ -60,11 +68,10 @@ export default function AdminScreenShell({
       >
         {children}
       </ScrollView>
-    </Animated.View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1, minHeight: 0 },
-  transparent: { backgroundColor: 'transparent' },
 });

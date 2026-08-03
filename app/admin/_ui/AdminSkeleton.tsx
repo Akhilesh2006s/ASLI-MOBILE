@@ -1,11 +1,5 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { StyleSheet, View, ViewStyle } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-} from 'react-native-reanimated';
 import { useAdminTheme } from './useAdminTheme';
 
 type Props = {
@@ -15,26 +9,20 @@ type Props = {
   borderRadius?: number;
 };
 
+/** Static skeleton — no Reanimated (avoids Animated import crashes / scroll jank). */
 export function AdminSkeletonBox({ width = '100%', height = 16, style, borderRadius = 8 }: Props) {
   const { colors } = useAdminTheme();
-  const opacity = useSharedValue(0.4);
-
-  useEffect(() => {
-    opacity.value = withRepeat(withTiming(1, { duration: 900 }), -1, true);
-  }, [opacity]);
-
-  const animStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
   return (
-    <Animated.View
+    <View
       style={[
         {
           width,
           height,
           borderRadius,
           backgroundColor: colors.skeleton,
+          opacity: 0.7,
         },
-        animStyle,
         style,
       ]}
     />
@@ -44,7 +32,7 @@ export function AdminSkeletonBox({ width = '100%', height = 16, style, borderRad
 export function AdminSkeletonStats() {
   const { spacing } = useAdminTheme();
   return (
-    <View style={{ gap: spacing.sm, padding: spacing.md }}>
+    <View style={{ gap: spacing.sm, padding: spacing.md, backgroundColor: '#F4F7F2', flex: 1 }}>
       <View style={{ flexDirection: 'row', gap: spacing.sm }}>
         <AdminSkeletonBox height={96} style={{ flex: 1 }} borderRadius={20} />
         <AdminSkeletonBox height={96} style={{ flex: 1 }} borderRadius={20} />

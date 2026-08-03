@@ -55,14 +55,14 @@ export function useAiToolTabletLayout() {
   const splitMaxWidth = Math.min(width, AI_TOOL_SPLIT_MAX_WIDTH);
   // Stacked form → output on tablet; split panes stay off for readability on boards.
   const useSplitLayout = false;
-  /** Full-bleed output: % width + negative margins only shifts left and leaves a right gutter. */
   const pagePad = isTablet ? AI_TOOL_PAGE_PAD_TABLET : AI_TOOL_PAGE_PAD_MOBILE;
+  /** Full-bleed output — pull both sides so no side gutters remain. */
   const outputBleedStyle = {
     marginLeft: -pagePad,
-    marginRight: 0,
+    marginRight: -pagePad,
     width,
     maxWidth: width,
-    alignSelf: 'flex-start' as const,
+    alignSelf: 'stretch' as const,
   };
   return { isTablet, isDigitalBoard, useSplitLayout, splitMaxWidth, pagePad, outputBleedStyle };
 }
@@ -198,7 +198,7 @@ export const aiToolViewerTabletStyles = StyleSheet.create({
   shellEyebrow: outputType(tablet(M.shellEyebrow)),
   shellTitle: outputType(tablet(M.shellTitle), tablet(26)),
   tabText: { ...outputType(tablet(M.tab)), maxWidth: 200 },
-  scrollBody: { maxHeight: 960 },
+  scrollBody: { width: '100%' },
   activityBody: { padding: 8, gap: 12 },
   heroCard: { padding: 14 },
   heroTitle: outputType(tablet(M.heroTitle), tablet(30)),

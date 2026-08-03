@@ -786,7 +786,7 @@ export default function ClassesView() {
       onRefresh={onRefresh}
       nestedScrollEnabled
       keyboardShouldPersistTaps="handled"
-      contentContainerStyle={{ paddingBottom: 88 }}
+      contentContainerStyle={{ paddingBottom: 140 }}
     >
       <View style={styles.innerShell}>
       <AdminSectionHeader
@@ -1408,7 +1408,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#e2e8f0',
     borderRadius: 12,
@@ -1620,10 +1620,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 2,
     borderColor: '#e5e7eb',
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     marginBottom: 8,
   },
-  subjectPickRowActive: { borderColor: '#4F46E5', backgroundColor: 'rgba(79, 70, 229, 0.08)' },
+  subjectPickRowActive: { borderColor: '#0F766E', backgroundColor: 'rgba(15, 118, 110, 0.08)' },
   subjectPickText: { flex: 1 },
   subjectPickName: { fontSize: 15, fontWeight: '700', color: '#0f172a' },
   subjectPickMeta: { fontSize: 12, color: '#64748b', marginTop: 2 },
@@ -1684,7 +1684,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 2,
     borderColor: '#e5e7eb',
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     marginBottom: 8,
     marginLeft: 8,
   },
@@ -1702,14 +1702,15 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   pickerSheet: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     padding: 16,
-    maxHeight: '60%',
+    paddingBottom: 28,
+    maxHeight: '70%',
   },
   pickerTitle: { fontSize: 17, fontWeight: '800', color: '#0f172a', marginBottom: 12 },
-  pickerList: { maxHeight: 320 },
+  pickerList: { maxHeight: 360 },
   pickerItem: {
     paddingVertical: 14,
     paddingHorizontal: 12,
@@ -1717,9 +1718,9 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     backgroundColor: '#f8fafc',
   },
-  pickerItemActive: { backgroundColor: 'rgba(79, 70, 229, 0.12)' },
+  pickerItemActive: { backgroundColor: 'rgba(15, 118, 110, 0.12)' },
   pickerItemText: { fontSize: 15, fontWeight: '600', color: '#334155' },
-  pickerItemTextActive: { color: '#4F46E5' },
+  pickerItemTextActive: { color: '#0F766E' },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -1727,7 +1728,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   modalContent: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     overflow: 'hidden',
     maxHeight: '80%',

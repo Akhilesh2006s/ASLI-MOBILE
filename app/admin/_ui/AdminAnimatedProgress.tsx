@@ -1,10 +1,5 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
 import { useAdminTheme } from './useAdminTheme';
 
 type Props = {
@@ -16,6 +11,7 @@ type Props = {
   height?: number;
 };
 
+/** Lightweight static progress — no Reanimated (safer under scroll). */
 export default function AdminAnimatedProgress({
   label,
   value,
@@ -26,19 +22,7 @@ export default function AdminAnimatedProgress({
 }: Props) {
   const { colors, radius } = useAdminTheme();
   const fillColor = color ?? colors.primary;
-  const pct = Math.min(Math.max(value / max, 0), 1);
-  const widthAnim = useSharedValue(0);
-
-  useEffect(() => {
-    widthAnim.value = withTiming(pct, { duration: 900 });
-  }, [pct, widthAnim]);
-
-  const fillStyle = useAnimatedStyle(() => ({
-    flex: widthAnim.value,
-  }));
-  const emptyStyle = useAnimatedStyle(() => ({
-    flex: 1 - widthAnim.value,
-  }));
+  const pct = Math.min(Math.max((value / max) * 100, 0), 100);
 
   return (
     <View style={styles.wrap}>
@@ -57,21 +41,17 @@ export default function AdminAnimatedProgress({
             height,
             borderRadius: radius.full,
             backgroundColor: colors.bgElevated,
-            flexDirection: 'row',
-            overflow: 'hidden',
           },
         ]}
       >
-        <Animated.View
-          style={[
-            fillStyle,
-            {
-              height: '100%',
-              backgroundColor: fillColor,
-            },
-          ]}
+        <View
+          style={{
+            width: `${pct}%`,
+            height: '100%',
+            backgroundColor: fillColor,
+            borderRadius: radius.full,
+          }}
         />
-        <Animated.View style={emptyStyle} />
       </View>
     </View>
   );
@@ -98,5 +78,6 @@ const styles = StyleSheet.create({
   },
   track: {
     overflow: 'hidden',
+    width: '100%',
   },
 });

@@ -19,6 +19,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { GlassPanel } from '../../src/components/ui';
+import AppBackground from '../../src/components/ui/AppBackground';
 import {
   ACADEMIC_YEAR,
   CATEGORY_OPTIONS,
@@ -344,56 +345,62 @@ export default function CreateOrderScreen() {
 
   if (loadingInit) {
     return (
-      <SafeAreaView style={s.safe}>
-        <View style={s.loadingBox}>
-          <ActivityIndicator size="large" color="#ea580c" />
-          <Text style={s.loadingText}>Loading order…</Text>
-        </View>
-      </SafeAreaView>
+      <View style={s.root}>
+        <AppBackground>
+          <SafeAreaView style={s.safe}>
+            <View style={s.loadingBox}>
+              <ActivityIndicator size="large" color="#ea580c" />
+              <Text style={s.loadingText}>Loading order…</Text>
+            </View>
+          </SafeAreaView>
+        </AppBackground>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <GlassPanel style={s.topBar} radius={0} tone="medium" bordered={false}>
-          <View style={s.topBarInner}>
-            <TouchableOpacity
-              style={s.backBtn}
-              onPress={() => (step > 1 ? setStep(step - 1) : router.back())}
-              accessibilityRole="button"
-              accessibilityLabel={step > 1 ? 'Go to previous step' : 'Go back'}
-            >
-              <Ionicons name="arrow-back" size={22} color="#111827" />
-            </TouchableOpacity>
-            <Text style={s.topTitle}>{editingOrderId ? 'Edit Order' : 'Create Order'}</Text>
-            <TouchableOpacity
-              onPress={() => router.back()}
-              accessibilityRole="button"
-              accessibilityLabel={editingOrderId ? 'Close edit order' : 'Close create order'}
-            >
-              <Ionicons name="close" size={24} color="#6b7280" />
-            </TouchableOpacity>
-          </View>
-        </GlassPanel>
-
-        <GlassPanel style={s.stepper} radius={0} tone="medium" bordered={false}>
-          <View style={s.stepperInner}>
-            {WIZARD_STEPS.map((st) => (
-              <View key={st.id} style={s.stepItem}>
-                <View style={[s.stepDot, step >= st.id && s.stepDotActive]}>
-                  <Text style={[s.stepDotText, step >= st.id && s.stepDotTextActive]}>{st.id}</Text>
-                </View>
-                <Text style={[s.stepLabel, step === st.id && s.stepLabelActive]}>{st.label}</Text>
+    <View style={s.root}>
+      <AppBackground>
+        <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
+            <GlassPanel style={s.topBar} radius={0} tone="medium" bordered={false}>
+              <View style={s.topBarInner}>
+                <TouchableOpacity
+                  style={s.backBtn}
+                  onPress={() => (step > 1 ? setStep(step - 1) : router.back())}
+                  accessibilityRole="button"
+                  accessibilityLabel={step > 1 ? 'Go to previous step' : 'Go back'}
+                >
+                  <Ionicons name="arrow-back" size={22} color="#111827" />
+                </TouchableOpacity>
+                <Text style={s.topTitle}>{editingOrderId ? 'Edit Order' : 'Create Order'}</Text>
+                <TouchableOpacity
+                  onPress={() => router.back()}
+                  accessibilityRole="button"
+                  accessibilityLabel={editingOrderId ? 'Close edit order' : 'Close create order'}
+                >
+                  <Ionicons name="close" size={24} color="#6b7280" />
+                </TouchableOpacity>
               </View>
-            ))}
-          </View>
-        </GlassPanel>
+            </GlassPanel>
 
-        <ScrollView style={s.body} contentContainerStyle={s.bodyContent} keyboardShouldPersistTaps="handled">
+            <GlassPanel style={s.stepper} radius={0} tone="medium" bordered={false}>
+              <View style={s.stepperInner}>
+                {WIZARD_STEPS.map((st) => (
+                  <View key={st.id} style={s.stepItem}>
+                    <View style={[s.stepDot, step >= st.id && s.stepDotActive]}>
+                      <Text style={[s.stepDotText, step >= st.id && s.stepDotTextActive]}>{st.id}</Text>
+                    </View>
+                    <Text style={[s.stepLabel, step === st.id && s.stepLabelActive]}>{st.label}</Text>
+                  </View>
+                ))}
+              </View>
+            </GlassPanel>
+
+            <ScrollView style={s.body} contentContainerStyle={s.bodyContent} keyboardShouldPersistTaps="handled">
           {step === 1 && (
             <>
               <Text style={s.sectionTitle}>Select School</Text>
@@ -763,13 +770,16 @@ export default function CreateOrderScreen() {
           onSelect={(v) => setFinancial((f) => ({ ...f, category: v as FinancialDetails['category'] }))}
           onClose={() => setCategoryPicker(false)}
         />
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </AppBackground>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
-  // Transparent: the shared app background artwork shows through.
+  // Solid shell so the previous Subscriptions route cannot show through.
+  root: { flex: 1, backgroundColor: '#EEF2FF' },
   safe: { flex: 1, backgroundColor: 'transparent' },
   loadingBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: 12, color: '#6b7280' },
@@ -813,7 +823,7 @@ const s = StyleSheet.create({
   bodyContent: { padding: 16, paddingBottom: 32 },
   sectionTitle: { fontSize: 17, fontWeight: '800', color: '#111827', marginBottom: 12 },
   input: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#e5e7eb',
     borderRadius: 10,
@@ -895,7 +905,7 @@ const s = StyleSheet.create({
     borderColor: '#fed7aa',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
   },
   qtyText: { fontSize: 16, fontWeight: '700', minWidth: 28, textAlign: 'center' },
   lineTotal: { marginLeft: 'auto', fontWeight: '700', color: '#ea580c' },
@@ -920,7 +930,7 @@ const s = StyleSheet.create({
     backgroundColor: '#f9fafb',
   },
   selectField: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#e5e7eb',
     borderRadius: 10,
@@ -984,7 +994,7 @@ const s = StyleSheet.create({
     borderRadius: 8,
     textAlign: 'right',
     paddingHorizontal: 8,
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     fontSize: 14,
   },
   reviewCard: {
@@ -1028,7 +1038,7 @@ const s = StyleSheet.create({
   btnOutlineText: { color: '#ea580c', fontWeight: '700' },
   btnDisabled: { opacity: 0.5 },
   pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  pickerSheet: { backgroundColor: 'rgba(255,255,255,0.48)', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16 },
+  pickerSheet: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16 },
   pickerTitle: { fontSize: 18, fontWeight: '800', marginBottom: 12 },
   pickerItem: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
   pickerItemText: { fontSize: 16, color: '#111827' },

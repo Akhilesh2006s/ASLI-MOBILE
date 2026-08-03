@@ -1,7 +1,7 @@
 import api from '../services/api/api';
 import type { GeminiCostEstimate, TokenUsageSnapshot } from './gemini-token-cost';
 import type { BookBasedToolId } from './book-based-tools';
-import type { GroupedTool } from './ai-generator';
+import { dedupeGroupedTools, type GroupedTool } from './ai-generator';
 
 export type BookGeneratorBatchResult = {
   success: boolean;
@@ -66,8 +66,9 @@ export async function fetchBookGeneratorRecords(boardFilter?: string) {
     message?: string;
   }>('/api/book-generator/records', { params });
   if (!res.data?.success) throw new Error(res.data?.message || 'Failed to load records');
+  const grouped = Array.isArray(res.data.data?.grouped) ? res.data.data.grouped : [];
   return {
-    grouped: Array.isArray(res.data.data?.grouped) ? res.data.data.grouped : [],
+    grouped: dedupeGroupedTools(grouped),
     total: Number(res.data.data?.total || 0),
     loadedCount: Number(res.data.data?.loadedCount || 0),
     truncated: Boolean(res.data.data?.truncated),

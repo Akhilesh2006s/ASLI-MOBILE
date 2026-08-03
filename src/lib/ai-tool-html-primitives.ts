@@ -400,10 +400,10 @@ export function heroTitleCardHtml(opts: {
       : '';
 
   return `
-<div class="relative overflow-hidden rounded-2xl border ${t.border} bg-white shadow-lg ${t.shadow} mb-3 ai-tool-hero-card">
+<div class="relative overflow-hidden rounded-2xl border ${t.border} bg-white shadow-lg ${t.shadow} mb-2 ai-tool-hero-card">
   <div class="absolute inset-0" style="background:${t.gradient}"></div>
-  <div class="relative flex flex-col gap-4 p-5">
-    <div class="flex items-start gap-4">
+  <div class="relative flex flex-col gap-3 p-4">
+    <div class="flex items-start gap-3">
       ${iconHtml}
       <div class="min-w-0 flex-1">
         ${opts.badge ? `<span class="inline-flex items-center rounded-md border ${t.badge} text-[10px] font-semibold px-2 py-0.5 mb-2">${escapeHtml(formatAiToolText(opts.badge))}</span>` : ''}

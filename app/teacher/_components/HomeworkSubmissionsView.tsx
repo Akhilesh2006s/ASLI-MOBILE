@@ -299,49 +299,55 @@ export default function HomeworkSubmissionsView() {
 
       <Modal visible={showCreate} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <ScrollView contentContainerStyle={styles.modalCard}>
-            <Text style={styles.modalTitle}>Create Homework</Text>
-            <Text style={styles.label}>Title</Text>
-            <TextInput style={styles.input} value={form.title} onChangeText={(t) => setForm((f) => ({ ...f, title: t }))}             placeholderTextColor={TEACHER.textMuted} />
-            <Text style={styles.label}>Class</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-              {classes.map((c) => {
-                const num = String(c.classNumber || c.name);
-                const sel = form.classNumber === num;
-                return (
-                  <Pressable key={c._id || c.id} style={[styles.chip, sel && styles.chipActive]} onPress={() => setForm((f) => ({ ...f, classNumber: num }))}>
-                    <Text style={[styles.chipText, sel && styles.chipTextActive]}>{num}</Text>
-                  </Pressable>
-                );
-              })}
+          <View style={styles.modalCard}>
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.modalCardContent}
+            >
+              <Text style={styles.modalTitle}>Create Homework</Text>
+              <Text style={styles.label}>Title</Text>
+              <TextInput style={styles.input} value={form.title} onChangeText={(t) => setForm((f) => ({ ...f, title: t }))}             placeholderTextColor={TEACHER.textMuted} />
+              <Text style={styles.label}>Class</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+                {classes.map((c) => {
+                  const num = String(c.classNumber || c.name);
+                  const sel = form.classNumber === num;
+                  return (
+                    <Pressable key={c._id || c.id} style={[styles.chip, sel && styles.chipActive]} onPress={() => setForm((f) => ({ ...f, classNumber: num }))}>
+                      <Text style={[styles.chipText, sel && styles.chipTextActive]}>{num}</Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+              <Text style={styles.label}>Subject</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+                {subjects.map((s) => {
+                  const name = s.name;
+                  const sel = form.subject === name;
+                  return (
+                    <Pressable key={s._id || s.id} style={[styles.chip, sel && styles.chipActive]} onPress={() => setForm((f) => ({ ...f, subject: name }))}>
+                      <Text style={[styles.chipText, sel && styles.chipTextActive]}>{name}</Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+              <Text style={styles.label}>Topic</Text>
+              <TextInput style={styles.input} value={form.topic} onChangeText={(t) => setForm((f) => ({ ...f, topic: t }))}             placeholderTextColor={TEACHER.textMuted} />
+              <Text style={styles.label}>Deadline (YYYY-MM-DD)</Text>
+              <TextInput style={styles.input} value={form.deadline} onChangeText={(t) => setForm((f) => ({ ...f, deadline: t }))}             placeholderTextColor={TEACHER.textMuted} />
+              <Text style={styles.label}>Description</Text>
+              <TextInput style={[styles.input, styles.area]} value={form.description} onChangeText={(t) => setForm((f) => ({ ...f, description: t }))} multiline             placeholderTextColor={TEACHER.textMuted} />
+              <Pressable onPress={submitHomework}>
+                <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.saveBtn}>
+                  <Text style={styles.saveBtnText}>Create</Text>
+                </LinearGradient>
+              </Pressable>
+              <Pressable style={styles.cancelBtn} onPress={() => setShowCreate(false)}>
+                <Text style={styles.cancelText}>Cancel</Text>
+              </Pressable>
             </ScrollView>
-            <Text style={styles.label}>Subject</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-              {subjects.map((s) => {
-                const name = s.name;
-                const sel = form.subject === name;
-                return (
-                  <Pressable key={s._id || s.id} style={[styles.chip, sel && styles.chipActive]} onPress={() => setForm((f) => ({ ...f, subject: name }))}>
-                    <Text style={[styles.chipText, sel && styles.chipTextActive]}>{name}</Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-            <Text style={styles.label}>Topic</Text>
-            <TextInput style={styles.input} value={form.topic} onChangeText={(t) => setForm((f) => ({ ...f, topic: t }))}             placeholderTextColor={TEACHER.textMuted} />
-            <Text style={styles.label}>Deadline (YYYY-MM-DD)</Text>
-            <TextInput style={styles.input} value={form.deadline} onChangeText={(t) => setForm((f) => ({ ...f, deadline: t }))}             placeholderTextColor={TEACHER.textMuted} />
-            <Text style={styles.label}>Description</Text>
-            <TextInput style={[styles.input, styles.area]} value={form.description} onChangeText={(t) => setForm((f) => ({ ...f, description: t }))} multiline             placeholderTextColor={TEACHER.textMuted} />
-            <Pressable onPress={submitHomework}>
-              <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.saveBtn}>
-                <Text style={styles.saveBtnText}>Create</Text>
-              </LinearGradient>
-            </Pressable>
-            <Pressable style={styles.cancelBtn} onPress={() => setShowCreate(false)}>
-              <Text style={styles.cancelText}>Cancel</Text>
-            </Pressable>
-          </ScrollView>
+          </View>
         </View>
       </Modal>
 
@@ -410,8 +416,20 @@ const styles = StyleSheet.create({
   classTitle: { flex: 1, fontSize: 16, fontWeight: '700', color: TEACHER.text },
   classCount: { fontSize: 11, color: TEACHER.textMuted },
   studentSubBlock: { marginLeft: 24, paddingBottom: 10, borderLeftWidth: 2, borderLeftColor: TEACHER.surfaceBorder, paddingLeft: 12 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'flex-end' },
-  modalCard: { backgroundColor: TEACHER.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, borderTopWidth: 1, borderColor: TEACHER.surfaceBorder },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.45)', justifyContent: 'flex-end' },
+  modalCard: {
+    backgroundColor: TEACHER.cardGradient[0],
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    borderTopWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
+    maxHeight: '92%',
+    overflow: 'hidden',
+  },
+  modalCardContent: {
+    paddingBottom: 12,
+  },
   modalTitle: { ...TEACHER_TYPO.section, fontSize: 20, color: TEACHER.text, marginBottom: 12 },
   label: { fontSize: 12, fontWeight: '700', color: TEACHER.textMuted, marginTop: 8, marginBottom: 6 },
   input: { borderWidth: 1, borderColor: TEACHER.surfaceBorder, borderRadius: TEACHER_RADIUS.md, padding: 12, color: TEACHER.text, backgroundColor: TEACHER.surfaceElevated },

@@ -227,7 +227,7 @@ export default function StudentDashboard() {
               style={[
                 styles.scroll,
                 styles.examsPane,
-                { paddingHorizontal: pad.paddingHorizontal, paddingTop: pad.paddingTop },
+                { paddingHorizontal: 12, paddingTop: pad.paddingTop },
               ]}
             >
               <ExamsTabView

@@ -19,6 +19,7 @@ import {
   type BranchItem,
   type RecordRow,
   buildExportText,
+  dedupeBranchItems,
   deleteDocument,
   fetchBoardOptions,
   fetchBranch,
@@ -830,7 +831,7 @@ export default function AiToolGenerationsView() {
       ]);
       setMetaTotal(meta.data.total);
       setMetaTopicsCount(meta.data.topicsCount ?? 0);
-      setTools(branch.data.items || []);
+      setTools(dedupeBranchItems(branch.data.items || []));
       setBoards(boardList);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load');
@@ -1353,7 +1354,7 @@ const styles = StyleSheet.create({
   },
   // The same card is reused inside a native Modal, where the app background —
   // and therefore the glass blur — does not render. Keep that copy opaque.
-  mcqCardOpaque: { backgroundColor: 'rgba(255,255,255,0.48)' },
+  mcqCardOpaque: { backgroundColor: '#FFFFFF' },
   mcqHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
   mcqQuestion: { flex: 1, fontSize: 13, fontWeight: '600', color: '#0f172a', lineHeight: 20 },
   mcqOption: { fontSize: 12, color: '#334155', marginTop: 6, lineHeight: 18 },
@@ -1390,7 +1391,7 @@ const styles = StyleSheet.create({
   pageBtnDisabled: { opacity: 0.4 },
   pageBtnText: { fontSize: 12, color: '#334155', fontWeight: '600' },
   pageInfo: { fontSize: 12, color: '#64748b' },
-  fullModal: { flex: 1, backgroundColor: 'rgba(255,255,255,0.48)' },
+  fullModal: { flex: 1, backgroundColor: '#FFFFFF' },
   fullModalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1432,7 +1433,7 @@ const styles = StyleSheet.create({
   saveBtnText: { fontSize: 14, color: '#fff', fontWeight: '700' },
   pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   pickerSheet: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     padding: 16,

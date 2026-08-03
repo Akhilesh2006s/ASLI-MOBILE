@@ -1,10 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import { GlassPanel } from '../../../src/components/ui';
 import { useAdminTheme } from './useAdminTheme';
 import type { AdminNavView } from '../_components/AdminNavDrawer';
 
@@ -26,57 +23,46 @@ const TABS: Tab[] = [
   { id: 'vidya-ai', label: 'Vidya AI', icon: 'sparkles-outline', activeIcon: 'sparkles' },
 ];
 
-const SPRING = { damping: 15, stiffness: 260 };
-
 type Props = {
   activeView: AdminNavView;
   onTabChange: (id: AdminNavView) => void;
 };
 
+/**
+ * Fixed footer tab bar — lives in dashboard layout flow (not absolute),
+ * so scrolling content above it cannot move this bar.
+ */
 export default function AdminTabBar({ activeView, onTabChange }: Props) {
   const { colors } = useAdminTheme();
   const insets = useSafeAreaInsets();
-  const [barWidth, setBarWidth] = useState(0);
-
-  const activeIndex = TAB_BAR_VIEWS.includes(activeView as AdminTabBarView)
-    ? TAB_BAR_VIEWS.indexOf(activeView as AdminTabBarView)
-    : -1;
-
-  const tabWidth = barWidth > 0 ? barWidth / TABS.length : 0;
-  const indicatorX = useSharedValue(-1);
-
-  useEffect(() => {
-    indicatorX.value = withSpring(activeIndex, SPRING);
-  }, [activeIndex, indicatorX]);
-
-  const slideStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: Math.max(0, indicatorX.value) * tabWidth }],
-    width: Math.max(tabWidth - 8, 0),
-    opacity: activeIndex >= 0 ? 1 : 0,
-  }));
 
   return (
-    <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-      {/* Frosted pill floating over the app artwork; `strong` keeps the small
-          tab labels legible against whatever is scrolling underneath. */}
-      <GlassPanel style={styles.bar} radius={9999} tone="strong">
-        <View
-          style={styles.barInner}
-          onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}
-        >
-        {tabWidth > 0 && (
-          <Animated.View style={[styles.indicator, slideStyle, { left: 4, backgroundColor: colors.primaryMuted }]} />
-        )}
+    <View
+      style={[
+        styles.wrap,
+        {
+          paddingBottom: Math.max(insets.bottom, 8),
+          backgroundColor: '#EEF2E3',
+          borderTopColor: colors.surfaceBorder,
+        },
+      ]}
+    >
+      <View
+        style={[
+          styles.bar,
+          {
+            backgroundColor: '#FFFFFF',
+            borderColor: colors.surfaceBorder,
+          },
+        ]}
+      >
         {TABS.map((tab) => {
           const active = tab.id === activeView;
           return (
             <Pressable
               key={tab.id}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                onTabChange(tab.id);
-              }}
-              style={styles.tab}
+              onPress={() => onTabChange(tab.id)}
+              style={[styles.tab, active && { backgroundColor: colors.primaryMuted }]}
               accessibilityLabel={tab.label}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
@@ -92,48 +78,34 @@ export default function AdminTabBar({ activeView, onTabChange }: Props) {
             </Pressable>
           );
         })}
-        </View>
-      </GlassPanel>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: 12,
-    zIndex: 50,
+    flexShrink: 0,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
   bar: {
     borderRadius: 9999,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  // Row layout lives on the inner view so GlassPanel's content wrapper doesn't
-  // flatten the tabs into a column.
-  barInner: {
+    borderWidth: 1,
+    overflow: 'hidden',
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 6,
     paddingHorizontal: 4,
-  },
-  indicator: {
-    position: 'absolute',
-    top: 6,
-    bottom: 6,
-    borderRadius: 9999,
   },
   tab: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 52,
-    zIndex: 1,
+    borderRadius: 9999,
+    marginHorizontal: 2,
     gap: 2,
   },
   label: {

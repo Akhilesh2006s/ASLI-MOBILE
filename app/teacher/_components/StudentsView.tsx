@@ -32,13 +32,19 @@ type Props = {
   initialSubTab?: StudentsSubTab;
   progressClassFilter?: string;
   progressStudentId?: string;
+  onCloseStudentAnalysis?: () => void;
 };
 
 interface Student extends StudentRow {
   performance?: StudentRow['performance'];
 }
 
-export default function StudentsView({ initialSubTab, progressClassFilter, progressStudentId }: Props) {
+export default function StudentsView({
+  initialSubTab,
+  progressClassFilter,
+  progressStudentId,
+  onCloseStudentAnalysis,
+}: Props) {
   const [activeSubTab, setActiveSubTab] = useState<StudentsSubTab>(initialSubTab || 'list');
   const [assignedClassRows, setAssignedClassRows] = useState<AssignedClassRow[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -239,18 +245,22 @@ export default function StudentsView({ initialSubTab, progressClassFilter, progr
     );
   };
 
+  const analysisOnly = Boolean(progressStudentId);
+
   return (
     <View style={styles.container}>
-      <View style={styles.subNavBar}>
-        <SubNavChips
-          items={STUDENT_SUB_TABS}
-          active={activeSubTab}
-          onChange={(id) => setActiveSubTab(id as StudentsSubTab)}
-          variant="students"
-        />
-      </View>
+      {!analysisOnly ? (
+        <View style={styles.subNavBar}>
+          <SubNavChips
+            items={STUDENT_SUB_TABS}
+            active={activeSubTab}
+            onChange={(id) => setActiveSubTab(id as StudentsSubTab)}
+            variant="students"
+          />
+        </View>
+      ) : null}
 
-      {activeSubTab === 'list' ? (
+      {activeSubTab === 'list' && !analysisOnly ? (
         <ScrollView
           style={styles.list}
           contentContainerStyle={styles.listContent}
@@ -283,10 +293,12 @@ export default function StudentsView({ initialSubTab, progressClassFilter, progr
         </ScrollView>
       ) : (
         <View style={styles.subTabBody}>
-          {activeSubTab === 'track-progress' && (
+          {(activeSubTab === 'track-progress' || analysisOnly) && (
             <TrackProgressView
               initialClassFilter={progressClassFilter}
               initialStudentId={progressStudentId}
+              analysisOnly={analysisOnly}
+              onCloseAnalysis={onCloseStudentAnalysis}
             />
           )}
           {activeSubTab === 'submissions' && <HomeworkSubmissionsView />}
@@ -518,24 +530,24 @@ const styles = StyleSheet.create({
   classRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderTopWidth: 1,
     borderTopColor: TEACHER.surfaceBorder,
   },
   classRowActive: { backgroundColor: TEACHER.navActiveBg },
-  classRowLabel: { flex: 1, fontSize: 18, fontWeight: '800', color: TEACHER.text },
-  classRowCount: { fontSize: 13, color: TEACHER.textMuted },
+  classRowLabel: { flex: 1, fontSize: 16, fontWeight: '800', color: TEACHER.text },
+  classRowCount: { fontSize: 12, color: TEACHER.textMuted },
   classBody: {
-    paddingHorizontal: 8,
-    paddingBottom: 8,
+    paddingHorizontal: 6,
+    paddingBottom: 6,
     backgroundColor: 'rgba(99,102,241,0.04)',
     borderTopWidth: 1,
     borderTopColor: TEACHER.surfaceBorder,
   },
   sectionBlock: {
-    marginTop: 6,
+    marginTop: 4,
     borderRadius: TEACHER_RADIUS.md,
     overflow: 'hidden',
     borderWidth: 1,
@@ -544,17 +556,17 @@ const styles = StyleSheet.create({
   sectionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
   },
   sectionRowActive: { backgroundColor: TEACHER.navActiveBg },
-  sectionRowLabel: { flex: 1, fontSize: 15, fontWeight: '700', color: TEACHER.text },
-  sectionRowCount: { fontSize: 12, color: TEACHER.textMuted },
+  sectionRowLabel: { flex: 1, fontSize: 14, fontWeight: '700', color: TEACHER.text },
+  sectionRowCount: { fontSize: 11, color: TEACHER.textMuted },
   sectionBody: {
     paddingHorizontal: 4,
-    paddingBottom: 8,
-    gap: 12,
+    paddingBottom: 4,
+    gap: 6,
     borderTopWidth: 1,
     borderTopColor: TEACHER.surfaceBorder,
     backgroundColor: 'rgba(99,102,241,0.03)',
@@ -716,6 +728,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '90%',

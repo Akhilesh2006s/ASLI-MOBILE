@@ -1262,7 +1262,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#fef2f2',
   },
-  fullModal: { flex: 1, backgroundColor: 'rgba(255,255,255,0.48)' },
+  fullModal: { flex: 1, backgroundColor: '#FFFFFF' },
   fullModalHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -1283,7 +1283,7 @@ const styles = StyleSheet.create({
   mcqAnswer: { fontSize: 12, color: '#047857', marginTop: 8, backgroundColor: '#ecfdf5', padding: 6, borderRadius: 6 },
   pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   pickerSheet: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     padding: 16,

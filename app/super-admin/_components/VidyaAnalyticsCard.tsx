@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
   analyticsCard: {
     marginHorizontal: 16,
     marginBottom: 12,
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 10,
     padding: 14,
     borderWidth: 1,

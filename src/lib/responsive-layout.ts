@@ -10,6 +10,8 @@ export const GRID_4_COLUMNS_MIN = 1280;
 
 export const ADMIN_GRID_GAP = 12;
 export const ADMIN_FLOATING_TAB_BAR_PAD = 100;
+/** Super-admin floating pill tab bar — use on ScrollView content, not the shell. */
+export const SUPER_ADMIN_FLOATING_TAB_BAR_PAD = 100;
 export const ADMIN_SHELL_PAD_COMPACT = 24;
 export const EDUOTT_TAB_BAR_SCROLL_PAD = 88;
 /** Student dashboard floating tab bar — keep list above the pill. */

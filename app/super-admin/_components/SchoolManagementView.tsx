@@ -20,6 +20,7 @@ import api from '../../../src/services/api/api';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { AdminGridList, useAdminListLayout } from '../../admin/_ui';
 import { GlassPanel } from '../../../src/components/ui';
+import { SUPER_ADMIN_FLOATING_TAB_BAR_PAD } from '../../../src/lib/responsive-layout';
 import {
   type SchoolAdmin,
   type SchoolFormState,
@@ -599,7 +600,7 @@ export default function SchoolManagementView() {
 
 const styles = StyleSheet.create({
   content: { flex: 1 },
-  scrollContent: { paddingBottom: 100 },
+  scrollContent: { paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD },
   header: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12 },
   headerTitle: { fontSize: 26, fontWeight: '800', color: '#0f172a', letterSpacing: -0.5 },
   headerSubtitle: { fontSize: 14, color: '#64748b', marginTop: 4, marginBottom: 14 },
@@ -709,7 +710,7 @@ const styles = StyleSheet.create({
   dateText: { fontSize: 11, color: '#5B6779' },
   actions: { flexDirection: 'row', gap: 4 },
   iconBtn: { padding: 8 },
-  formModalWrap: { flex: 1, backgroundColor: 'rgba(255,255,255,0.48)' },
+  formModalWrap: { flex: 1, backgroundColor: '#FFFFFF' },
   formModalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#e2e8f0', paddingTop: 48 },
   formModalTitle: { fontSize: 20, fontWeight: '800', color: '#0f172a' },
   formScroll: { flex: 1, paddingHorizontal: 16 },
@@ -753,7 +754,7 @@ const styles = StyleSheet.create({
   saveBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#f97316', alignItems: 'center' },
   saveBtnText: { fontWeight: '700', color: '#fff' },
   pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  pickerSheet: { backgroundColor: 'rgba(255,255,255,0.48)', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, maxHeight: '70%' },
+  pickerSheet: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, maxHeight: '70%' },
   pickerTitle: { fontSize: 18, fontWeight: '800', marginBottom: 12, color: '#0f172a' },
   pickerItem: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   pickerItemText: { fontSize: 15, color: '#0f172a' },

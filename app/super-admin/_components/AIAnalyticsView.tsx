@@ -24,6 +24,7 @@ import {
   getPerformanceBarColor,
   getScoreColor,
 } from '../../../src/lib/super-admin-analytics';
+import { SUPER_ADMIN_FLOATING_TAB_BAR_PAD } from '../../../src/lib/responsive-layout';
 
 type TabType =
   | 'admin-comparison'
@@ -158,6 +159,7 @@ export default function AIAnalyticsView({
   return (
     <ScrollView
       style={styles.content}
+      contentContainerStyle={styles.scrollContent}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} />}
     >
       <View style={styles.header}>
@@ -760,7 +762,7 @@ const pickerStyles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     padding: 16,
@@ -776,6 +778,7 @@ const pickerStyles = StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#f3f4f6',
+    backgroundColor: '#FFFFFF',
   },
   itemText: {
     fontSize: 15,
@@ -785,7 +788,7 @@ const pickerStyles = StyleSheet.create({
     marginTop: 12,
     paddingVertical: 12,
     alignItems: 'center',
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#F3F4F6',
     borderRadius: 8,
   },
   closeText: {
@@ -797,6 +800,7 @@ const pickerStyles = StyleSheet.create({
 
 const styles = StyleSheet.create({
   content: { flex: 1 },
+  scrollContent: { paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD },
   header: {
     paddingHorizontal: 16,
     paddingTop: 8,
@@ -838,7 +842,7 @@ const styles = StyleSheet.create({
   filtersCard: {
     marginHorizontal: 16,
     marginBottom: 16,
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
@@ -925,7 +929,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#14b8a6',
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
   },
   backAllButtonText: {
     fontSize: 13,
@@ -1150,7 +1154,7 @@ const styles = StyleSheet.create({
   scorerCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
@@ -1213,7 +1217,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   difficultyCard: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 20,
     shadowColor: '#000',
@@ -1305,7 +1309,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   distributionCard: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 20,
     marginBottom: 16,
@@ -1343,7 +1347,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   subjectCard: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 20,
     shadowColor: '#000',

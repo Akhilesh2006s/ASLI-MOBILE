@@ -46,7 +46,8 @@ if (__DEV__) {
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 20000,
+  // Emulators / slow mobile networks often need more than 20s for authenticated routes.
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
@@ -89,16 +90,57 @@ api.interceptors.response.use(
       }
     }
 
+    const data = error?.response?.data;
+    const baseMessage =
+      (typeof data?.message === 'string' && data.message) ||
+      (typeof data?.error === 'string' && data.error) ||
+      null;
+
+    let detailMessage = '';
+    const errors = data?.errors;
+    if (Array.isArray(errors) && errors.length > 0) {
+      detailMessage = errors
+        .map((item) => {
+          if (typeof item === 'string') return item;
+          if (item && typeof item === 'object') {
+            return item.message || item.msg || null;
+          }
+          return null;
+        })
+        .filter(Boolean)
+        .join('\n');
+    } else if (errors && typeof errors === 'object') {
+      detailMessage = Object.entries(errors)
+        .map(([key, value]) => {
+          const text = Array.isArray(value) ? value.join(', ') : String(value);
+          return text ? `${key}: ${text}` : null;
+        })
+        .filter(Boolean)
+        .join('\n');
+    }
+
+    // Prefer concrete field errors over the generic "Validation failed" label.
+    const isTimeout =
+      error?.code === 'ECONNABORTED' ||
+      String(error?.message || '').toLowerCase().includes('timeout');
+    const isNetwork =
+      error?.code === 'ERR_NETWORK' ||
+      String(error?.message || '').toLowerCase().includes('network error');
+
     const message =
-      error?.response?.data?.message ||
-      error?.response?.data?.error ||
-      (error?.code === 'ECONNABORTED' ? 'Request timeout. Please try again.' : null) ||
-      (error?.message?.includes('Network Error') ? `Unable to connect to server (${API_BASE_URL}).` : null) ||
+      detailMessage ||
+      baseMessage ||
+      (isTimeout ? 'Request timed out. Pull to refresh and try again.' : null) ||
+      (isNetwork
+        ? `Unable to connect to server (${API_BASE_URL}). Check Wi‑Fi/data and try again.`
+        : null) ||
       'Something went wrong. Please try again.';
 
     return Promise.reject({
       ...error,
       friendlyMessage: message,
+      isTimeout,
+      isNetworkError: isNetwork,
     });
   }
 );

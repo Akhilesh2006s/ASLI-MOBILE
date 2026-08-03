@@ -125,6 +125,26 @@ export type GroupedSubject = { subjectName: string; topics: GroupedTopic[] };
 export type GroupedClass = { className: string; boardName?: string; subjects: GroupedSubject[] };
 export type GroupedTool = { toolName: string; toolSlug: string; classes: GroupedClass[] };
 
+/** Merge API groups that share the same toolSlug so React list keys stay unique. */
+export function dedupeGroupedTools(grouped: GroupedTool[]): GroupedTool[] {
+  const bySlug = new Map<string, GroupedTool>();
+  for (const node of grouped) {
+    const slug = String(node.toolSlug || node.toolName || '').trim();
+    if (!slug) continue;
+    const existing = bySlug.get(slug);
+    if (!existing) {
+      bySlug.set(slug, {
+        toolName: node.toolName,
+        toolSlug: slug,
+        classes: [...(node.classes || [])],
+      });
+      continue;
+    }
+    existing.classes = [...existing.classes, ...(node.classes || [])];
+  }
+  return Array.from(bySlug.values());
+}
+
 export function toDisplayPlainText(content: string) {
   return toEditablePlainText(content);
 }
@@ -210,8 +230,9 @@ export async function fetchGeneratorRecords(boardFilter: string) {
   if (!response.data?.success) {
     throw new Error(response.data?.message || 'Failed to load records');
   }
+  const grouped = Array.isArray(response.data.data?.grouped) ? response.data.data.grouped : [];
   return {
-    grouped: Array.isArray(response.data.data?.grouped) ? response.data.data.grouped : [],
+    grouped: dedupeGroupedTools(grouped),
     total: Number(response.data.data?.total || 0),
   };
 }

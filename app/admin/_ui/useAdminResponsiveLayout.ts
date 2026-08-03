@@ -5,7 +5,7 @@ import { useIsTablet } from '../../../src/hooks/useIsTablet';
 /** Horizontal padding in AdminScreenShell (spacing.md × 2). */
 export const ADMIN_SHELL_PADDING = 32;
 export const ADMIN_GRID_GAP = 12;
-export const ADMIN_TAB_BAR_CLEARANCE_PHONE = 100;
+export const ADMIN_TAB_BAR_CLEARANCE_PHONE = 88;
 export const ADMIN_TAB_BAR_CLEARANCE_TABLET = 24;
 
 export type AdminLayoutTier = 'phone' | 'tablet' | 'wide';
@@ -44,7 +44,7 @@ export function useAdminResponsiveLayout() {
   const compactStats = isTablet;
   const modalMaxWidth = isPhone ? undefined : Math.min(560, width - 48);
   const contentPaddingBottom = showBottomTabBar
-    ? ADMIN_TAB_BAR_CLEARANCE_PHONE
+    ? 16
     : ADMIN_TAB_BAR_CLEARANCE_TABLET;
 
   const statsRowStyle = useMemo(

@@ -1,7 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeIn } from 'react-native-reanimated';
 import { useAdminTheme } from './useAdminTheme';
 
 type Props = {
@@ -20,7 +19,7 @@ export default function AdminEmptyState({
   const { colors, radius, spacing } = useAdminTheme();
 
   return (
-    <Animated.View entering={FadeIn.duration(400)} style={styles.wrap}>
+    <View style={styles.wrap}>
       <View
         style={[
           styles.iconCircle,
@@ -37,7 +36,7 @@ export default function AdminEmptyState({
         {message}
       </Text>
       {action ? <View style={{ marginTop: spacing.md }}>{action}</View> : null}
-    </Animated.View>
+    </View>
   );
 }
 

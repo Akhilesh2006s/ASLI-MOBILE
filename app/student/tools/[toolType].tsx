@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, type ReactNode } from 'react';
 import {
   View,
   Text,
@@ -104,6 +104,78 @@ function mergeSelectedIntoOptions(options: string[], selected: unknown): string[
   if (!v) return options;
   if (options.includes(v)) return options;
   return [v, ...options];
+}
+
+/**
+ * Local draft while typing so parent (cascade + result UI) does not re-render every keystroke.
+ * Commits to form state on blur / end editing, and keeps a live ref for Generate.
+ */
+function DeferredToolTextInput({
+  value,
+  onCommit,
+  style,
+  multiline,
+  ...rest
+}: {
+  value: string;
+  onCommit: (next: string) => void;
+  style?: any;
+  multiline?: boolean;
+  placeholder?: string;
+  numberOfLines?: number;
+  textAlignVertical?: 'top' | 'center' | 'bottom' | 'auto';
+  placeholderTextColor?: string;
+  keyboardType?: 'default' | 'numeric' | 'email-address' | 'phone-pad';
+}) {
+  const [draft, setDraft] = useState(value || '');
+  const draftRef = useRef(draft);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  draftRef.current = draft;
+
+  useEffect(() => {
+    setDraft(value || '');
+  }, [value]);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  const commit = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    const next = draftRef.current;
+    if (next !== (value || '')) onCommit(next);
+  }, [onCommit, value]);
+
+  const onChangeText = useCallback(
+    (text: string) => {
+      setDraft(text);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        timerRef.current = null;
+        onCommit(text);
+      }, 180);
+    },
+    [onCommit]
+  );
+
+  return (
+    <TextInput
+      {...rest}
+      style={style}
+      multiline={multiline}
+      value={draft}
+      onChangeText={onChangeText}
+      onBlur={commit}
+      onEndEditing={commit}
+      cursorColor={AI.primary}
+      selectionColor={`${AI.primary}40`}
+    />
+  );
 }
 
 const HEADER_COLLAPSE_DISTANCE = 72;
@@ -847,11 +919,11 @@ export default function StudentToolPage() {
               {field.required ? <Text style={styles.required}> *</Text> : null}
           </Text>
           </View>
-          <TextInput
+          <DeferredToolTextInput
             style={[styles.textArea, styles.textInput, isTablet && aiToolTabletPageStyles.textInput]}
             placeholder={field.placeholder}
             value={value}
-            onChangeText={(text) => handleInputChange(field.name, text)}
+            onCommit={(text) => handleInputChange(field.name, text)}
             multiline
             numberOfLines={4}
             textAlignVertical="top"
@@ -872,11 +944,11 @@ export default function StudentToolPage() {
             {field.required ? <Text style={styles.required}> *</Text> : null}
           </Text>
         </View>
-        <TextInput
+        <DeferredToolTextInput
           style={[styles.textInput, isTablet && aiToolTabletPageStyles.textInput]}
           placeholder={field.placeholder}
           value={value}
-          onChangeText={(text) => handleInputChange(field.name, text)}
+          onCommit={(text) => handleInputChange(field.name, text)}
           keyboardType={field.type === 'number' ? 'numeric' : 'default'}
           placeholderTextColor={STUDENT.navInactive}
         />
@@ -1088,6 +1160,38 @@ export default function StudentToolPage() {
     </View>
   );
 
+  const generateButton = (
+    <TouchableOpacity
+      style={[styles.generateBtn, isGenerating && styles.generateBtnDisabled]}
+      onPress={handleGenerate}
+      disabled={isGenerating}
+      activeOpacity={0.9}
+    >
+      <LinearGradient
+        colors={[AI.primary, AI.primaryPressed]}
+        style={[styles.generateBtnGradient, isTablet && aiToolTabletPageStyles.generateBtnGradient]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+      >
+        {isGenerating ? (
+          <>
+            <ActivityIndicator size="small" color={STUDENT.textOnPrimary} />
+            <Text style={[styles.generateBtnText, isTablet && aiToolTabletPageStyles.generateBtnText]}>
+              Generating...
+            </Text>
+          </>
+        ) : (
+          <>
+            <AiGenerateIcon size={isTablet ? 22 : 20} color={STUDENT.textOnPrimary} />
+            <Text style={[styles.generateBtnText, isTablet && aiToolTabletPageStyles.generateBtnText]}>
+              Generate with AI
+            </Text>
+          </>
+        )}
+      </LinearGradient>
+    </TouchableOpacity>
+  );
+
   return (
     <SafeAreaView style={pageBgStyle} edges={['top', 'bottom']}>
       <StatusBar style="light" />
@@ -1143,6 +1247,11 @@ export default function StudentToolPage() {
               nestedScrollEnabled
             >
               {outputPanel}
+              {generatedContent ? (
+                <View style={[styles.footer, styles.footerAfterResult, isTablet && aiToolTabletPageStyles.footer]}>
+                  {generateButton}
+                </View>
+              ) : null}
             </ScrollView>
           </View>
         ) : (
@@ -1152,7 +1261,7 @@ export default function StudentToolPage() {
           contentContainerStyle={[
             styles.scrollContent,
             isTablet && aiToolTabletPageStyles.scrollContent,
-            { paddingBottom: 100 },
+            { paddingBottom: generatedContent ? 16 : 28 },
           ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -1162,36 +1271,19 @@ export default function StudentToolPage() {
         >
           {formPanel}
           {outputPanel}
+          {generatedContent ? (
+            <View style={[styles.footer, styles.footerAfterResult, isTablet && aiToolTabletPageStyles.footer]}>
+              {generateButton}
+            </View>
+          ) : null}
         </AnimatedScrollView>
         )}
 
-        <View style={[styles.footer, isTablet && aiToolTabletPageStyles.footer]}>
-        <TouchableOpacity
-            style={[styles.generateBtn, isGenerating && styles.generateBtnDisabled]}
-          onPress={handleGenerate}
-          disabled={isGenerating}
-            activeOpacity={0.9}
-        >
-          <LinearGradient
-              colors={[AI.primary, AI.primaryPressed]}
-              style={[styles.generateBtnGradient, isTablet && aiToolTabletPageStyles.generateBtnGradient]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-          >
-            {isGenerating ? (
-                <>
-              <ActivityIndicator size="small" color={STUDENT.textOnPrimary} />
-                  <Text style={[styles.generateBtnText, isTablet && aiToolTabletPageStyles.generateBtnText]}>Generating...</Text>
-                </>
-            ) : (
-              <>
-                <AiGenerateIcon size={isTablet ? 22 : 20} color={STUDENT.textOnPrimary} />
-                  <Text style={[styles.generateBtnText, isTablet && aiToolTabletPageStyles.generateBtnText]}>Generate with AI</Text>
-              </>
-            )}
-          </LinearGradient>
-        </TouchableOpacity>
-        </View>
+        {!generatedContent ? (
+          <View style={[styles.footer, isTablet && aiToolTabletPageStyles.footer]}>
+            {generateButton}
+          </View>
+        ) : null}
       </KeyboardAvoidingView>
 
       <AiToolOptionPicker
@@ -1216,7 +1308,7 @@ const styles = StyleSheet.create({
   containerPremium: { flex: 1, backgroundColor: 'transparent' },
   flex: { flex: 1 },
   outputSection: { alignSelf: 'stretch' },
-  outputWrap: { width: '100%', minHeight: 240 },
+  outputWrap: { width: '100%' },
   resultActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1371,9 +1463,9 @@ const styles = StyleSheet.create({
   textInput: {
     minHeight: 52,
     borderRadius: STUDENT_RADIUS.md,
-    borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
-    backgroundColor: 'rgba(255,255,255,0.36)',
+    borderWidth: 1.5,
+    borderColor: AI.primaryBorder,
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 14,
     ...AI_TYPE.body,
     color: AI.text,
@@ -1405,7 +1497,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -1431,6 +1523,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderTopWidth: 1,
     borderTopColor: AI.border,
+  },
+  footerAfterResult: {
+    marginTop: 8,
+    paddingHorizontal: 0,
+    paddingTop: 8,
+    borderTopWidth: 0,
   },
   generateBtn: { borderRadius: AI_RADIUS.md, overflow: 'hidden', ...AI_SHADOW },
   generateBtnDisabled: { opacity: 0.7 },

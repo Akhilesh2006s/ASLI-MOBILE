@@ -15,6 +15,7 @@ import VidyaAvatar from '../../../src/components/vidya/VidyaAvatar';
 import VidyaAnalyticsCard from './VidyaAnalyticsCard';
 import type { SuperAdminView } from './SuperAdminNavDrawer';
 import type { DashboardStats, RealtimeAnalytics } from '../../../src/lib/super-admin-dashboard';
+import { SUPER_ADMIN_FLOATING_TAB_BAR_PAD } from '../../../src/lib/responsive-layout';
 
 type Props = {
   stats: DashboardStats;
@@ -419,7 +420,7 @@ export default function SuperAdminOverviewView({
 
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
-  content: { paddingBottom: 24 },
+  content: { paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD },
   welcomeHeader: {
     paddingHorizontal: 16,
     paddingTop: 14,
@@ -714,7 +715,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#D1D5DB',
     borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
   },
   realtimeRefreshText: {
     fontSize: 12,
@@ -837,7 +838,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     padding: 12,
     borderRadius: 8,
     borderWidth: 1,

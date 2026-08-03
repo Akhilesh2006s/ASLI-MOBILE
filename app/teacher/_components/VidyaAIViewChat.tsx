@@ -147,6 +147,7 @@ export default function VidyaAIViewChat({
   const [teachingTab, setTeachingTab] = useState<TeachingTab>('lesson');
   const [subjectPickerOpen, setSubjectPickerOpen] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+  const inputRef = useRef<TextInput>(null);
 
   const chatContext = useMemo<AIChatContext>(
     () => ({
@@ -306,12 +307,14 @@ export default function VidyaAIViewChat({
                   >
                     <Text style={[styles.bubbleText, styles.bubbleTextUser]}>
                       {model.formatMessage(msg.content)}
+                      {'\u200A'}
                     </Text>
                   </LinearGradient>
                 ) : (
                   <GlassPanel style={[styles.bubble, styles.bubbleAssistant]} radius={16} tone="strong">
                     <Text style={styles.bubbleText}>
                       {model.formatMessage(msg.content)}
+                      {'\u200A'}
                     </Text>
                   </GlassPanel>
                 )}
@@ -354,6 +357,7 @@ export default function VidyaAIViewChat({
             />
           </Pressable>
           <TextInput
+            ref={inputRef}
             style={styles.input}
             value={model.message}
             onChangeText={model.setMessage}
@@ -362,13 +366,17 @@ export default function VidyaAIViewChat({
             multiline
             maxLength={2000}
             editable={!model.isPending}
+            textAlignVertical="center"
             onFocus={() => {
               setTimeout(() => scrollToBottom(true), 120);
             }}
           />
           <SendButton
             disabled={model.isPending || !model.message.trim()}
-            onPress={model.handleSendMessage}
+            onPress={() => {
+              inputRef.current?.blur();
+              model.handleSendMessage();
+            }}
           />
         </View>
       </View>
@@ -627,6 +635,7 @@ const styles = StyleSheet.create({
     maxWidth: '78%',
     paddingHorizontal: 14,
     paddingVertical: 10,
+    paddingRight: 18,
     borderRadius: 16,
   },
   bubbleUser: {
@@ -645,8 +654,9 @@ const styles = StyleSheet.create({
   },
   bubbleText: {
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 22,
     color: TEACHER.text,
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}),
   },
   bubbleTextUser: {
     color: TEACHER.textOnPrimary,

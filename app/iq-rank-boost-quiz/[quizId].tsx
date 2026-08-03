@@ -426,7 +426,7 @@ const styles = StyleSheet.create({
   optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     padding: 16,
     borderRadius: 12,
     borderWidth: 2,

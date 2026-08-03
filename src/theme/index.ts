@@ -20,12 +20,12 @@ export const COLORS = {
 
   student: '#10B981',
   teacher: '#F59E0B',
-  admin: '#3B82F6',
+  admin: '#0F766E',
   superAdmin: '#8B5CF6',
 
   bg: '#F4F7FB',
-  card: 'rgba(255,255,255,0.48)',
-  border: 'rgba(255,255,255,0.65)',
+  card: '#FFFFFF',
+  border: '#E2E8F0',
   divider: 'rgba(237,242,248,0.55)',
 
   text: '#0F172A',

@@ -58,8 +58,20 @@ function bodyLinesToHtml(lines: string[]): string {
     .map((line) => {
       const t = line.trim();
       if (!t) return '';
-      if (/^\*\*Q\d+\.\*\*/i.test(t) || /^Q\d+\./i.test(t)) {
-        return `<p class="text-sm font-medium text-slate-900 mb-2">${formatInlineMarkdown(t)}</p>`;
+      if (/^\*\*Q\d+\.\*\*/i.test(t) || /^Q\d+\./i.test(t) || /^\*\*Q\d+/i.test(t)) {
+        const qMatch = t.match(/^(?:\*\*)?(Q\d+)\.?(?:\*\*)?\s*(.*)$/i);
+        if (qMatch) {
+          const label = qMatch[1].replace(/^q/i, 'Q');
+          const rest = formatInlineMarkdown(qMatch[2] || '');
+          return (
+            `<p class="text-sm text-slate-900 mb-2">` +
+            `<strong class="ai-q-label">${label}.</strong>${rest ? ` ${rest}` : ''}` +
+            `</p>`
+          );
+        }
+      }
+      if (/^###\s+Section\s*[A-G]/i.test(t)) {
+        return `<h4 class="ai-section-subhead mt-3 mb-2">${formatInlineMarkdown(t.replace(/^###\s+/, ''))}</h4>`;
       }
       if (/^[A-D][\).]\s+/i.test(t)) {
         return `<p class="text-sm text-slate-700 mb-1 pl-4">${formatInlineMarkdown(t)}</p>`;

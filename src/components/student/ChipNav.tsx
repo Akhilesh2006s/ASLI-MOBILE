@@ -37,28 +37,23 @@ export default function ChipNav({ chips, active, onChange }: Props) {
               styles.tab,
               isMobile && styles.tabMobile,
               scrollable && styles.tabCompact,
-              isActive && styles.tabActive,
             ]}
             accessibilityRole="tab"
             accessibilityState={{ selected: isActive }}
             accessibilityLabel={chip.label}
           >
-            {isActive ? (
-              <View style={styles.activePill}>
-                <Text style={styles.tabTextActive} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-                  {caption}
-                </Text>
-              </View>
-            ) : (
+            <View style={[styles.pill, isActive && styles.pillActive]}>
               <Text
-                style={[styles.tabText, isMobile && styles.tabTextMobile]}
+                style={[
+                  styles.tabText,
+                  isMobile && styles.tabTextMobile,
+                  isActive && styles.tabTextActive,
+                ]}
                 numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.8}
               >
                 {caption}
               </Text>
-            )}
+            </View>
           </Pressable>
         );
       })}
@@ -109,43 +104,44 @@ const styles = StyleSheet.create({
     minWidth: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 2,
   },
   tabMobile: {
-    paddingVertical: 8,
+    paddingVertical: 4,
   },
   tabCompact: {
     flex: 0,
     minWidth: 100,
-    paddingHorizontal: 6,
+    paddingHorizontal: 4,
   },
-  tabActive: {},
-  activePill: {
-    backgroundColor: GLASS_ROW.fillStrong,
-    borderRadius: STUDENT_RADIUS.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(109,91,208,0.35)',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+  pill: {
     width: '100%',
     alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: STUDENT_RADIUS.md,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    backgroundColor: 'transparent',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+  },
+  pillActive: {
+    backgroundColor: GLASS_ROW.fillStrong,
+    borderColor: 'rgba(109,91,208,0.35)',
   },
   tabText: {
     fontSize: 13,
     fontWeight: '600',
     color: STUDENT.textMuted,
     textAlign: 'center',
-    paddingVertical: 10,
   },
   tabTextMobile: {
     fontSize: 14,
     fontWeight: '700',
   },
   tabTextActive: {
-    fontSize: 13,
     color: STUDENT.primaryDark,
     fontWeight: '800',
-    textAlign: 'center',
   },
 });

@@ -1017,7 +1017,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   welcomeButton: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 8,
@@ -1521,7 +1521,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   pathTabActive: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#e5e7eb',
   },
@@ -1545,7 +1545,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 10,
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
   },
   miniLibraryIcon: {
     width: 36,
@@ -1569,7 +1569,7 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
     borderRadius: 12,
     padding: 12,
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
   },
   recommendedTitle: {
     fontSize: 15,

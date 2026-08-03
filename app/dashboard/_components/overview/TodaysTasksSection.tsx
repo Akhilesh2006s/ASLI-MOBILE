@@ -12,8 +12,7 @@ import {
   getVideoDisplayTitle,
   isVideoContentType,
 } from '../../../../src/lib/video-chapter-schedule';
-import { GlassPanel } from '../../../../src/components/ui';
-import { STUDENT, STUDENT_RADIUS, STUDENT_TYPO, SUBJECT_COLORS } from '../../../../src/theme/student';
+import { STUDENT, STUDENT_TYPO, SUBJECT_COLORS, STUDENT_SKY } from '../../../../src/theme/student';
 
 type Props = {
   incompleteQuizzes: any[];
@@ -52,11 +51,17 @@ function TodaysTasksSectionComponent({
   ];
 
   return (
-    <GlassPanel style={styles.card} radius={STUDENT_RADIUS.card} tone="strong">
+    <LinearGradient
+      colors={[...STUDENT_SKY.gradient]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.skyShell}
+    >
+      <View style={styles.skyInner}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <LinearGradient
-            colors={[STUDENT.primary, STUDENT.primaryDark]}
+            colors={[STUDENT_SKY.accent, STUDENT_SKY.accentDark]}
             style={styles.headerIcon}
           >
             <Ionicons name="checkmark-circle-outline" size={20} color={STUDENT.textOnPrimary} />
@@ -68,12 +73,12 @@ function TodaysTasksSectionComponent({
 
       {isLoading ? (
         <View style={styles.center}>
-          <ActivityIndicator color={STUDENT.primary} />
+          <ActivityIndicator color={STUDENT_SKY.accent} />
           <Text style={styles.loadingText}>Loading Schedule...</Text>
         </View>
       ) : incompleteQuizzes.length === 0 && incompleteContent.length === 0 ? (
         <View style={styles.center}>
-          <Ionicons name="checkmark-circle" size={44} color={STUDENT.primary} />
+          <Ionicons name="checkmark-circle" size={44} color={STUDENT_SKY.accent} />
           <Text style={styles.emptyTitle}>All Caught Up!</Text>
           <Text style={styles.emptySub}>No Pending Content Or Quizzes</Text>
         </View>
@@ -175,7 +180,7 @@ function TodaysTasksSectionComponent({
                       </View>
                     ) : isVideo ? (
                       <View style={styles.playCircle}>
-                        <Ionicons name="play" size={12} color={STUDENT.accent} />
+                        <Ionicons name="play" size={12} color={STUDENT_SKY.accent} />
                       </View>
                     ) : (
                       <View style={styles.checkEmpty} />
@@ -212,19 +217,26 @@ function TodaysTasksSectionComponent({
           })}
         </View>
       )}
-    </GlassPanel>
+      </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    // Frosted over the app background artwork instead of a solid fill.
-    backgroundColor: 'transparent',
-    borderRadius: STUDENT_RADIUS.card,
+  skyShell: {
+    borderRadius: 28,
     padding: 14,
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
-    ...STUDENT.shadow.sm,
+    borderColor: STUDENT_SKY.shellBorder,
+    ...STUDENT.shadow.md,
+  },
+  skyInner: {
+    backgroundColor: STUDENT_SKY.innerBg,
+    borderRadius: 20,
+    padding: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: STUDENT_SKY.innerBorder,
   },
   header: {
     flexDirection: 'row',
@@ -243,13 +255,13 @@ const styles = StyleSheet.create({
   headerTitle: {
     ...STUDENT_TYPO.caption,
     fontWeight: '800',
-    color: STUDENT.text,
+    color: STUDENT_SKY.title,
     letterSpacing: 0.3,
   },
-  headerDate: { fontSize: 12, color: STUDENT.textMuted, fontWeight: '600' },
+  headerDate: { fontSize: 12, color: STUDENT_SKY.accentDark, fontWeight: '600' },
   center: { alignItems: 'center', paddingVertical: 24, gap: 8 },
   loadingText: { fontSize: 13, color: STUDENT.textMuted },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: STUDENT.text },
+  emptyTitle: { fontSize: 16, fontWeight: '700', color: STUDENT_SKY.title },
   emptySub: { fontSize: 13, color: STUDENT.textMuted },
   list: { gap: 0 },
   row: {
@@ -258,11 +270,11 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: STUDENT.surfaceBorder,
+    borderBottomColor: STUDENT_SKY.divider,
     borderLeftWidth: 3,
     paddingLeft: 9,
   },
-  rowDone: { backgroundColor: STUDENT.bgAccent },
+  rowDone: { backgroundColor: STUDENT_SKY.chipBg },
   rowOverdue: { backgroundColor: `${STUDENT.danger}0f` },
   checkWrap: { padding: 2 },
   checkEmpty: {
@@ -270,13 +282,13 @@ const styles = StyleSheet.create({
     height: 26,
     borderRadius: 13,
     borderWidth: 2,
-    borderColor: STUDENT.surfaceBorder,
+    borderColor: STUDENT_SKY.divider,
   },
   checkDone: {
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: STUDENT.primary,
+    backgroundColor: STUDENT_SKY.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -285,8 +297,8 @@ const styles = StyleSheet.create({
     height: 26,
     borderRadius: 13,
     borderWidth: 2,
-    borderColor: STUDENT.accent,
-    backgroundColor: STUDENT.accentSoft,
+    borderColor: STUDENT_SKY.accent,
+    backgroundColor: STUDENT_SKY.chipBg,
     alignItems: 'center',
     justifyContent: 'center',
     paddingLeft: 2,
@@ -297,25 +309,25 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 4 },
   metaText: { fontSize: 11, color: STUDENT.textMuted, maxWidth: '45%' },
   typePill: {
-    backgroundColor: STUDENT.surfaceHover,
+    backgroundColor: STUDENT_SKY.chipBg,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,
   },
-  typePillText: { fontSize: 10, fontWeight: '600', color: STUDENT.textSecondary },
+  typePillText: { fontSize: 10, fontWeight: '600', color: STUDENT_SKY.accentDark },
   duePill: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
   duePillOverdue: { backgroundColor: `${STUDENT.danger}18` },
   dueText: { fontSize: 10, fontWeight: '600', color: STUDENT.danger },
   dueTextOverdue: { color: STUDENT.danger },
   timePill: {
     borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
-    backgroundColor: 'rgba(255,255,255,0.42)',
+    borderColor: STUDENT_SKY.cardBorder,
+    backgroundColor: STUDENT_SKY.cardBg,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 20,
   },
-  timePillText: { fontSize: 11, fontWeight: '600', color: STUDENT.textSecondary },
+  timePillText: { fontSize: 11, fontWeight: '600', color: STUDENT_SKY.accentDark },
 });
 
 export default memo(TodaysTasksSectionComponent);

@@ -191,7 +191,7 @@ function ViewTab({
     return (
       <AdminScalePressable onPress={onPress}>
         <LinearGradient
-          colors={['#EA580C', '#F59E0B']}
+          colors={['#14B8A6', '#0F766E']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.viewTabActive}
@@ -515,7 +515,7 @@ export default function TimetableView() {
           style={[
             styles.pickerSheet,
             {
-              backgroundColor: colors.surface,
+              backgroundColor: '#FFFFFF',
               borderTopLeftRadius: radius.xl,
               borderTopRightRadius: radius.xl,
             },
@@ -631,7 +631,7 @@ export default function TimetableView() {
                 </AdminScalePressable>
                 <AdminScalePressable onPress={() => openAdd()} style={styles.addBtnWrap}>
                   <LinearGradient
-                    colors={['#EA580C', '#F59E0B']}
+                    colors={['#14B8A6', '#0F766E']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.addBtn}
@@ -771,7 +771,7 @@ export default function TimetableView() {
               disabled={!csvFile || saving}
               style={{ flex: 1, opacity: !csvFile || saving ? 0.5 : 1 }}
             >
-              <LinearGradient colors={['#EA580C', '#F59E0B']} style={styles.addBtn}>
+              <LinearGradient colors={['#14B8A6', '#0F766E']} style={styles.addBtn}>
                 <Text style={styles.addBtnText}>{saving ? 'Uploading…' : 'Upload'}</Text>
               </LinearGradient>
             </AdminScalePressable>
@@ -821,7 +821,7 @@ export default function TimetableView() {
               </View>
             ) : null}
             <AdminScalePressable onPress={handleSave} disabled={saving} style={{ opacity: saving ? 0.6 : 1 }}>
-              <LinearGradient colors={['#EA580C', '#F59E0B']} style={styles.addBtn}>
+              <LinearGradient colors={['#14B8A6', '#0F766E']} style={styles.addBtn}>
                 <Text style={styles.addBtnText}>{saving ? 'Saving…' : 'Save'}</Text>
               </LinearGradient>
             </AdminScalePressable>
