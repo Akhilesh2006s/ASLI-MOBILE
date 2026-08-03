@@ -1098,6 +1098,38 @@ export default function TeacherToolPage() {
     </View>
   );
 
+  const generateButton = (
+    <TouchableOpacity
+      style={[styles.generateBtn, isGenerating && styles.generateBtnDisabled]}
+      onPress={handleGenerate}
+      disabled={isGenerating}
+      activeOpacity={0.9}
+    >
+      <LinearGradient
+        colors={[AI.primary, AI.primaryPressed]}
+        style={[styles.generateBtnGradient, isTablet && aiToolTabletPageStyles.generateBtnGradient]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+      >
+        {isGenerating ? (
+          <>
+            <ActivityIndicator size="small" color={TEACHER.textOnPrimary} />
+            <Text style={[styles.generateBtnText, isTablet && aiToolTabletPageStyles.generateBtnText]}>
+              Generating...
+            </Text>
+          </>
+        ) : (
+          <>
+            <Ionicons name="sparkles" size={isTablet ? 22 : 20} color={TEACHER.textOnPrimary} />
+            <Text style={[styles.generateBtnText, isTablet && aiToolTabletPageStyles.generateBtnText]}>
+              Generate with AI
+            </Text>
+          </>
+        )}
+      </LinearGradient>
+    </TouchableOpacity>
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" />
@@ -1147,6 +1179,11 @@ export default function TeacherToolPage() {
               nestedScrollEnabled
             >
               {outputPanel}
+              {generatedContent ? (
+                <View style={[styles.footer, styles.footerAfterResult, isTablet && aiToolTabletPageStyles.footer]}>
+                  {generateButton}
+                </View>
+              ) : null}
             </ScrollView>
           </View>
         ) : (
@@ -1156,7 +1193,7 @@ export default function TeacherToolPage() {
           contentContainerStyle={[
             styles.scrollContent,
             isTablet && aiToolTabletPageStyles.scrollContent,
-            { paddingBottom: 100 },
+            { paddingBottom: generatedContent ? 16 : 28 },
           ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -1166,36 +1203,19 @@ export default function TeacherToolPage() {
         >
           {formPanel}
           {outputPanel}
+          {generatedContent ? (
+            <View style={[styles.footer, styles.footerAfterResult, isTablet && aiToolTabletPageStyles.footer]}>
+              {generateButton}
+            </View>
+          ) : null}
         </AnimatedScrollView>
         )}
 
-        <View style={[styles.footer, isTablet && aiToolTabletPageStyles.footer]}>
-          <TouchableOpacity
-            style={[styles.generateBtn, isGenerating && styles.generateBtnDisabled]}
-            onPress={handleGenerate}
-            disabled={isGenerating}
-            activeOpacity={0.9}
-          >
-            <LinearGradient
-              colors={[AI.primary, AI.primaryPressed]}
-              style={[styles.generateBtnGradient, isTablet && aiToolTabletPageStyles.generateBtnGradient]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            >
-              {isGenerating ? (
-                <>
-                  <ActivityIndicator size="small" color={TEACHER.textOnPrimary} />
-                  <Text style={[styles.generateBtnText, isTablet && aiToolTabletPageStyles.generateBtnText]}>Generating...</Text>
-                </>
-              ) : (
-                <>
-                  <Ionicons name="sparkles" size={isTablet ? 22 : 20} color={TEACHER.textOnPrimary} />
-                  <Text style={[styles.generateBtnText, isTablet && aiToolTabletPageStyles.generateBtnText]}>Generate with AI</Text>
-                </>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
+        {!generatedContent ? (
+          <View style={[styles.footer, isTablet && aiToolTabletPageStyles.footer]}>
+            {generateButton}
+          </View>
+        ) : null}
       </KeyboardAvoidingView>
 
       <AiToolOptionPicker
@@ -1219,7 +1239,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: 'transparent' },
   flex: { flex: 1 },
   outputSection: { alignSelf: 'stretch' },
-  outputWrap: { width: '100%', minHeight: 240 },
+  outputWrap: { width: '100%' },
   resultActionStack: { width: '100%', gap: AI_SPACING.sm },
   resultActions: { flexDirection: 'row', flexWrap: 'wrap', gap: AI_SPACING.sm },
   actionBtn: {
@@ -1407,6 +1427,12 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: AI.border,
   },
+  footerAfterResult: {
+    marginTop: 8,
+    paddingHorizontal: 0,
+    paddingTop: 8,
+    borderTopWidth: 0,
+  },
   generateBtn: { borderRadius: AI_RADIUS.md, overflow: 'hidden', ...AI_SHADOW },
   generateBtnDisabled: { opacity: 0.7 },
   generateBtnGradient: {
@@ -1428,7 +1454,7 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: TEACHER_SPACING.lg,

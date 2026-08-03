@@ -45,5 +45,5 @@ export default function AiToolRecordPreview({ toolType, content, metadata }: Pro
 }
 
 const styles = StyleSheet.create({
-  wrap: { width: '100%', minHeight: 320 },
+  wrap: { width: '100%' },
 });

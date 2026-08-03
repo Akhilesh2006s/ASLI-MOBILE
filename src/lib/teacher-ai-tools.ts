@@ -41,7 +41,7 @@ export const TEACHER_AI_TOOLS: TeacherAiTool[] = [
     id: 'lesson-planner',
     title: 'Lesson Planner',
     description: 'Plan structured lessons with objectives and activities.',
-    icon: 'calendar',
+    icon: 'clipboard',
     color: '#d97706',
     route: '/teacher/tools/lesson-planner',
   },
@@ -99,8 +99,16 @@ export const TEACHER_AI_TOOLS_SUBTITLE =
   'Select a tool to get started. All tools use Gemini AI to generate content based on your input.';
 
 export function filterVisibleTeacherTools(subjectNames: string[]): TeacherAiTool[] {
-  return TEACHER_AI_TOOLS.filter(
-    (tool) =>
-      tool.id === 'story-passage-creator' || isAiToolVisibleForSubjects(tool.id, subjectNames),
-  );
+  const seen = new Set<string>();
+  return TEACHER_AI_TOOLS.filter((tool) => {
+    if (seen.has(tool.id)) return false;
+    if (
+      tool.id !== 'story-passage-creator' &&
+      !isAiToolVisibleForSubjects(tool.id, subjectNames)
+    ) {
+      return false;
+    }
+    seen.add(tool.id);
+    return true;
+  });
 }

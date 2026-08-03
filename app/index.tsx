@@ -3,9 +3,13 @@ import { View, StyleSheet } from 'react-native';
 import { useAuth } from '../src/context/AuthContext';
 
 function getDashboardByRole(role: string | null) {
-  if (role === 'super-admin') return '/super-admin-dashboard';
-  if (role === 'admin') return '/admin/dashboard';
-  if (role === 'teacher') return '/teacher/dashboard';
+  const normalized = String(role || '')
+    .trim()
+    .toLowerCase()
+    .replace(/_/g, '-');
+  if (normalized === 'super-admin') return '/super-admin-dashboard';
+  if (normalized === 'admin') return '/admin/dashboard';
+  if (normalized === 'teacher') return '/teacher/dashboard';
   return '/dashboard';
 }
 

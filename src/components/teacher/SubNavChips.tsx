@@ -31,27 +31,6 @@ function Segment({
 }) {
   const caption = item.shortLabel ?? item.label;
 
-  const content = (
-    <>
-      {item.icon ? (
-        <Ionicons
-          name={item.icon}
-          size={17}
-          color={selected ? TEACHER.textOnPrimary : TEACHER.primaryLight}
-        />
-      ) : null}
-      <Text
-        style={[
-          selected ? styles.segmentLabelActive : styles.segmentLabel,
-          !selected && studentsStyle && styles.segmentLabelStudents,
-        ]}
-        numberOfLines={1}
-      >
-        {caption}
-      </Text>
-    </>
-  );
-
   return (
     <Pressable
       onPress={() => onChange(item.id)}
@@ -59,18 +38,32 @@ function Segment({
       accessibilityRole="tab"
       accessibilityState={{ selected }}
     >
-      {selected ? (
-        <LinearGradient
-          colors={[TEACHER.primary, TEACHER.primaryDark]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.segmentInner}
+      <View style={[styles.segmentInner, selected ? styles.segmentInnerActive : styles.segmentInnerIdle]}>
+        {selected ? (
+          <LinearGradient
+            colors={[TEACHER.primary, TEACHER.primaryDark]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+        ) : null}
+        {item.icon ? (
+          <Ionicons
+            name={item.icon}
+            size={17}
+            color={selected ? TEACHER.textOnPrimary : TEACHER.primaryLight}
+          />
+        ) : null}
+        <Text
+          style={[
+            selected ? styles.segmentLabelActive : styles.segmentLabel,
+            !selected && studentsStyle && styles.segmentLabelStudents,
+          ]}
+          numberOfLines={1}
         >
-          {content}
-        </LinearGradient>
-      ) : (
-        <View style={[styles.segmentInner, styles.segmentInnerIdle]}>{content}</View>
-      )}
+          {caption}
+        </Text>
+      </View>
     </Pressable>
   );
 }
@@ -144,9 +137,13 @@ const styles = StyleSheet.create({
     gap: 5,
     paddingHorizontal: 4,
     borderRadius: TEACHER_RADIUS.md,
+    overflow: 'hidden',
+  },
+  segmentInnerActive: {
+    backgroundColor: 'transparent',
   },
   segmentInnerIdle: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
   },
   segmentLabel: {
     fontSize: 11,

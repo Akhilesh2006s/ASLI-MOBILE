@@ -86,7 +86,18 @@ export function normalizeDashboardStats(raw: Record<string, unknown> | null | un
   };
 }
 
-export async function fetchDashboardStats(): Promise<DashboardStats> {
+function isRetryableNetworkError(err: any) {
+  return Boolean(
+    err?.isNetworkError ||
+      err?.isTimeout ||
+      err?.code === 'ERR_NETWORK' ||
+      err?.code === 'ECONNABORTED' ||
+      String(err?.message || '').toLowerCase().includes('network error') ||
+      String(err?.message || '').toLowerCase().includes('timeout'),
+  );
+}
+
+async function getDashboardStatsOnce(): Promise<DashboardStats> {
   try {
     const response = await api.get('/api/super-admin/dashboard/stats');
     const payload = response?.data;
@@ -99,6 +110,20 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
     }
     throw primaryErr;
   }
+}
+
+export async function fetchDashboardStats(): Promise<DashboardStats> {
+  let lastError: any;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await getDashboardStatsOnce();
+    } catch (err: any) {
+      lastError = err;
+      if (!isRetryableNetworkError(err) || attempt === 2) break;
+      await new Promise((resolve) => setTimeout(resolve, 700 * (attempt + 1)));
+    }
+  }
+  throw lastError;
 }
 
 export async function fetchRealtimeAnalytics(): Promise<RealtimeAnalytics | null> {

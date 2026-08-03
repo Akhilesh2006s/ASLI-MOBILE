@@ -12,7 +12,7 @@ type Props = {
 export default function AdminGridBackground({ cellSize = CELL }: Props) {
   const { isDark } = useAdminTheme();
   const { width, height } = Dimensions.get('window');
-  const lineColor = isDark ? 'rgba(148, 163, 184, 0.1)' : 'rgba(203, 213, 225, 0.55)';
+  const lineColor = isDark ? 'rgba(249, 168, 192, 0.12)' : 'rgba(212, 91, 140, 0.14)';
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">

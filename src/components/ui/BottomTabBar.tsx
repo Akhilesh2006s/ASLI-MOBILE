@@ -1,7 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeIn } from 'react-native-reanimated';
 import { COLORS, FONT, RADIUS, SPACING } from '../../theme';
 import { GLASS_RIM, GLASS_ROW, GLASS_SHADOW } from '../../theme/glass';
 import GlassSurface from './GlassSurface';
@@ -38,36 +37,36 @@ export default function BottomTabBar({ tabs, activeTab, onTabChange, roleColor =
               accessibilityRole="tab"
               accessibilityLabel={tab.label}
               accessibilityState={{ selected: active }}
-              style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
+              style={styles.tab}
             >
-              {active ? (
-                <Animated.View
-                  entering={FadeIn.duration(200)}
-                  style={[
-                    styles.activePill,
-                    {
-                      backgroundColor: GLASS_ROW.fillStrong,
-                      borderColor: `${roleColor}55`,
-                    },
-                  ]}
-                >
-                  <Ionicons name={iconName} size={compact ? 18 : 20} color={roleColor} />
-                  {!compact ? (
-                    <Text style={[styles.activeLabel, { color: roleColor }]} numberOfLines={1}>
-                      {tab.label}
-                    </Text>
-                  ) : null}
-                </Animated.View>
-              ) : (
-                <View style={styles.inactive}>
-                  <Ionicons name={iconName} size={compact ? 20 : 22} color={COLORS.textMuted} />
-                  {!compact ? (
-                    <Text style={styles.inactiveLabel} numberOfLines={1}>
-                      {tab.label}
-                    </Text>
-                  ) : null}
-                </View>
-              )}
+              <View
+                style={[
+                  styles.pill,
+                  active && {
+                    backgroundColor: GLASS_ROW.fillStrong,
+                    borderColor: `${roleColor}55`,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name={iconName}
+                  size={compact ? 18 : 20}
+                  color={active ? roleColor : COLORS.textMuted}
+                />
+                {!compact ? (
+                  <Text
+                    style={[
+                      styles.label,
+                      active
+                        ? { color: roleColor, fontWeight: FONT.bold }
+                        : styles.inactiveLabel,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {tab.label}
+                  </Text>
+                ) : null}
+              </View>
             </Pressable>
           );
         })}
@@ -100,7 +99,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 1,
   },
-  activePill: {
+  pill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.xs,
@@ -108,20 +107,14 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.sm,
     borderRadius: RADIUS.full,
     borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'transparent',
+    backgroundColor: 'transparent',
   },
-  inactive: {
-    alignItems: 'center',
-    gap: 2,
-    paddingVertical: SPACING.sm,
-  },
-  activeLabel: {
+  label: {
     fontSize: 12,
-    fontWeight: FONT.bold,
+    fontWeight: FONT.medium,
   },
   inactiveLabel: {
-    fontSize: 11,
-    fontWeight: FONT.medium,
     color: COLORS.textMuted,
   },
-  pressed: { opacity: 0.88 },
 });

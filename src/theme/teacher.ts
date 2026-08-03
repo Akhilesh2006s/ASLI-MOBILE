@@ -1,15 +1,14 @@
 /** Clean Classroom — light teacher portal theme */
 import { Platform } from 'react-native';
-import { GLASS_ROW } from './glass';
 
 export const TEACHER = {
   bg: 'transparent',
-  cardBg: Platform.OS === 'android' ? '#FFFFFF' : 'rgba(255,255,255,0.48)',
-  surface: Platform.OS === 'android' ? '#FFFFFF' : 'rgba(255,255,255,0.48)',
-  surfaceGlass: Platform.OS === 'android' ? '#FFFFFF' : GLASS_ROW.fillStrong,
-  surfaceElevated: Platform.OS === 'android' ? '#FFFFFF' : 'rgba(255,255,255,0.58)',
-  surfaceBorder: Platform.OS === 'android' ? 'rgba(226,232,240,0.95)' : 'rgba(255,255,255,0.65)',
-  surfaceHover: Platform.OS === 'android' ? '#F8FAFC' : 'rgba(238,242,255,0.45)',
+  surface: '#FFFFFF',
+  cardBg: '#FFFFFF',
+  surfaceGlass: '#FFFFFF',
+  surfaceElevated: '#FFFFFF',
+  surfaceBorder: 'rgba(226,232,240,0.95)',
+  surfaceHover: '#F8FAFC',
   primary: '#6366F1',
   primaryDark: '#4F46E5',
   primaryLight: '#818CF8',
@@ -132,7 +131,33 @@ export function teacherSubjectBadgePalette(
   if (n.includes('math')) return TEACHER_SUBJECT_BADGES[3];
   if (n.includes('bio')) return TEACHER_SUBJECT_BADGES[5];
   if (n.includes('english')) return TEACHER_SUBJECT_BADGES[4];
+  if (n.includes('science')) return TEACHER_SUBJECT_BADGES[5];
+  if (n.includes('social') || n.includes('history') || n.includes('civics') || n.includes('geography')) {
+    return TEACHER_SUBJECT_BADGES[2];
+  }
+  if (n.includes('hindi') || n.includes('telugu') || n.includes('language')) {
+    return TEACHER_SUBJECT_BADGES[4];
+  }
   return TEACHER_SUBJECT_BADGES[index % TEACHER_SUBJECT_BADGES.length];
+}
+
+/** Distinct Ionicons per subject for learning-path / catalog cards. */
+export function teacherSubjectIconName(subjectLabel: string): string {
+  const n = subjectLabel.toLowerCase();
+  if (n.includes('bio')) return 'leaf-outline';
+  if (n.includes('chem')) return 'flask-outline';
+  if (n.includes('physics')) return 'nuclear-outline';
+  if (n.includes('math')) return 'calculator-outline';
+  if (n.includes('english')) return 'book-outline';
+  if (n.includes('science')) return 'planet-outline';
+  if (n.includes('social') || n.includes('history') || n.includes('civics') || n.includes('geography')) {
+    return 'globe-outline';
+  }
+  if (n.includes('hindi') || n.includes('telugu') || n.includes('language') || n.includes('sl ') || n.startsWith('sl') || n.includes('tl ') || n.startsWith('tl')) {
+    return 'chatbubbles-outline';
+  }
+  if (n.includes('computer') || n.includes('coding') || n.includes('it')) return 'code-slash-outline';
+  return 'library-outline';
 }
 
 /** Card style for light surfaces */

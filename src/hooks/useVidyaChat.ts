@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
 import { Alert } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as DocumentPicker from 'expo-document-picker';
@@ -75,7 +75,7 @@ export function useVidyaChat({ userId, role, context }: UseVidyaChatOptions): Us
   const isStudentMentorMode = role === 'student';
   const queryClient = useQueryClient();
 
-  const [message, setMessage] = useState('');
+  const [message, setMessageState] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [localMessages, setLocalMessages] = useState<VidyaMessage[]>([]);
   const [todayFocusAction, setTodayFocusAction] = useState('');
@@ -85,21 +85,32 @@ export function useVidyaChat({ userId, role, context }: UseVidyaChatOptions): Us
   const [lastControlLatencyMs, setLastControlLatencyMs] = useState<number | null>(null);
 
   const localMessagesRef = useRef<VidyaMessage[]>([]);
+  const messageRef = useRef('');
   const contextRef = useRef(context);
   const refetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const promptTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sendFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   contextRef.current = context;
 
   useEffect(() => {
     return () => {
       if (refetchTimerRef.current) clearTimeout(refetchTimerRef.current);
       if (promptTimerRef.current) clearTimeout(promptTimerRef.current);
+      if (sendFlushTimerRef.current) clearTimeout(sendFlushTimerRef.current);
     };
   }, []);
 
   useEffect(() => {
     localMessagesRef.current = localMessages;
   }, [localMessages]);
+
+  const setMessage = useCallback((value: SetStateAction<string>) => {
+    setMessageState((prev) => {
+      const next = typeof value === 'function' ? value(prev) : value;
+      messageRef.current = next;
+      return next;
+    });
+  }, []);
 
   const mergedSubjectOptions = useMemo(
     () => mergeSubjectOptions(context?.subjectOptions, context?.currentSubject),
@@ -354,10 +365,18 @@ export function useVidyaChat({ userId, role, context }: UseVidyaChatOptions): Us
     [buildRequestContext, sendMessageMutation, userId]
   );
 
-  const handleSendMessage = useCallback(
-    () => sendSpecificMessage(message),
-    [message, sendSpecificMessage]
-  );
+  /**
+   * Android IME often keeps the last character in composition until blur.
+   * Sending immediately drops it (e.g. "hi" → "h", "how are u" → "how are").
+   * Defer a tick so the final onChangeText can land in messageRef first.
+   */
+  const handleSendMessage = useCallback(() => {
+    if (sendFlushTimerRef.current) clearTimeout(sendFlushTimerRef.current);
+    sendFlushTimerRef.current = setTimeout(() => {
+      sendFlushTimerRef.current = null;
+      sendSpecificMessage(messageRef.current);
+    }, 80);
+  }, [sendSpecificMessage]);
 
   const onPromptClick = useCallback(
     (question: string) => {

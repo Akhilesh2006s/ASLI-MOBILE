@@ -985,7 +985,7 @@ const styles = StyleSheet.create({
   },
   headerSubmitText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   progressTrack: { height: 3, backgroundColor: 'rgba(255,255,255,0.35)', borderRadius: 2, marginTop: 12 },
-  progressFill: { height: '100%', backgroundColor: 'rgba(255,255,255,0.48)', borderRadius: 2 },
+  progressFill: { height: '100%', backgroundColor: '#FFFFFF', borderRadius: 2 },
   exitStrip: {
     backgroundColor: '#c2410c',
     paddingVertical: 7,
@@ -1043,7 +1043,7 @@ const styles = StyleSheet.create({
   statusPillAnswered: { backgroundColor: '#dcfce7' },
   statusPillTextAnswered: { fontSize: 10, fontWeight: '700', color: '#166534' },
   questionCard: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#e5e7eb',
@@ -1107,7 +1107,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9fafb',
   },
   option: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#e0e0e0',
     borderRadius: 16,
@@ -1119,7 +1119,7 @@ const styles = StyleSheet.create({
   optionText: { fontSize: 16, color: '#111827' },
   optionTextSelected: { color: '#c2410c', fontWeight: '700' },
   integerInput: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#e0e0e0',
     borderRadius: 16,
@@ -1165,7 +1165,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     borderColor: '#e5e7eb',
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
   },
   palettePagerBtnActive: {
     backgroundColor: '#ea580c',
@@ -1185,7 +1185,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1.5,
     borderColor: '#e5e7eb',
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -1227,7 +1227,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   dropdownSheet: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingBottom: 24,
@@ -1280,7 +1280,7 @@ const styles = StyleSheet.create({
   modalCard: {
     width: '100%',
     maxWidth: 400,
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 2,
     borderColor: '#fca5a5',

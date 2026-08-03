@@ -783,7 +783,7 @@ export default function AiGeneratorView() {
         <View style={styles.toolsGrid}>
           {studentTools.map((tool) => (
             <GlassPanel
-              key={tool.id}
+              key={`student-${tool.id}`}
               style={[styles.toolCard, selectedTool === tool.id && styles.toolCardActive]}
               radius={12}
               tone="medium"
@@ -803,7 +803,7 @@ export default function AiGeneratorView() {
         <View style={styles.toolsGrid}>
           {teacherTools.map((tool) => (
             <GlassPanel
-              key={tool.id}
+              key={`teacher-${tool.id}`}
               style={[styles.toolCard, selectedTool === tool.id && styles.toolCardActive]}
               radius={12}
               tone="medium"
@@ -1254,7 +1254,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 14,
     color: '#0f172a',
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
   },
   generateBtn: {
     marginTop: 16,
@@ -1351,7 +1351,7 @@ const styles = StyleSheet.create({
   mcqQ: { fontSize: 13, fontWeight: '600', color: '#0f172a', lineHeight: 20 },
   mcqOpt: { fontSize: 12, color: '#334155', marginTop: 6 },
   mcqAnswer: { fontSize: 11, color: '#047857', marginTop: 8, backgroundColor: '#ecfdf5', padding: 6, borderRadius: 6 },
-  fullModal: { flex: 1, backgroundColor: 'rgba(255,255,255,0.48)' },
+  fullModal: { flex: 1, backgroundColor: '#FFFFFF' },
   fullModalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1381,7 +1381,7 @@ const styles = StyleSheet.create({
   saveBtn: { backgroundColor: '#f97316', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 12 },
   saveBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
   pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  pickerSheet: { backgroundColor: 'rgba(255,255,255,0.48)', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16, maxHeight: '70%' },
+  pickerSheet: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16, maxHeight: '70%' },
   pickerTitle: { fontSize: 16, fontWeight: '700', color: '#0f172a', marginBottom: 12 },
   pickerItem: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   pickerItemText: { fontSize: 15, color: '#334155' },

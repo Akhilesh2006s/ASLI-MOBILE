@@ -32,17 +32,41 @@ function formatBodyLine(line: string): string {
   if (/^>\s*/.test(trimmed)) {
     return `<p class="text-xs italic text-indigo-700/90 mb-2">${formatInlineMarkdown(trimmed.replace(/^>\s*/, ''))}</p>`;
   }
-  if (/^\*\*Q\d+/i.test(trimmed)) {
-    return `<div class="rounded-lg border border-indigo-100 bg-gradient-to-br from-white to-indigo-50/40 px-3 py-2 mb-2"><p class="text-sm font-semibold text-slate-900 leading-snug">${formatInlineMarkdown(trimmed)}</p></div>`;
+
+  // Q1 / Q2 labels — stripMarkdown removes ** so wrap the label in <strong> ourselves.
+  const qMatch = trimmed.match(/^(?:\*\*)?(Q\d+)\.?(?:\*\*)?\s*(.*)$/i);
+  if (qMatch && /^Q\d+$/i.test(qMatch[1])) {
+    const label = qMatch[1].toUpperCase().replace(/^q/i, 'Q');
+    const rest = formatInlineMarkdown(qMatch[2] || '');
+    return (
+      `<div class="rounded-lg border border-indigo-100 bg-gradient-to-br from-white to-indigo-50/40 px-3 py-2 mb-2">` +
+      `<p class="text-sm text-slate-900 leading-snug">` +
+      `<strong class="ai-q-label">${label}.</strong>${rest ? ` ${rest}` : ''}` +
+      `</p></div>`
+    );
   }
+
   if (/^###\s+Section\s*[A-E]/i.test(trimmed)) {
-    return `<h4 class="text-sm font-bold text-indigo-800 mt-3 mb-2 pb-1 border-b border-indigo-100">${formatInlineMarkdown(trimmed.replace(/^###\s+/, ''))}</h4>`;
+    return (
+      `<h4 class="ai-section-subhead mt-3 mb-2 pb-1 border-b border-indigo-200">` +
+      `${formatInlineMarkdown(trimmed.replace(/^###\s+/, ''))}` +
+      `</h4>`
+    );
   }
   if (/^###\s+/.test(trimmed)) {
-    return `<h4 class="text-sm font-bold text-indigo-800 mt-2 mb-1">${formatInlineMarkdown(trimmed.replace(/^###\s+/, ''))}</h4>`;
+    return (
+      `<h4 class="ai-section-subhead mt-2 mb-1">` +
+      `${formatInlineMarkdown(trimmed.replace(/^###\s+/, ''))}` +
+      `</h4>`
+    );
   }
   if (/^\d+\.\s+/.test(trimmed)) {
-    return `<p class="text-sm text-slate-800 mb-1 pl-1"><span class="font-semibold text-indigo-700">${trimmed.match(/^\d+/)?.[0]}.</span> ${formatInlineMarkdown(trimmed.replace(/^\d+\.\s+/, ''))}</p>`;
+    return (
+      `<p class="text-sm text-slate-800 mb-1 pl-1">` +
+      `<strong class="ai-q-label">${trimmed.match(/^\d+/)?.[0]}.</strong> ` +
+      `${formatInlineMarkdown(trimmed.replace(/^\d+\.\s+/, ''))}` +
+      `</p>`
+    );
   }
   return `<p class="text-sm text-slate-800 leading-relaxed mb-2">${formatInlineMarkdown(trimmed)}</p>`;
 }

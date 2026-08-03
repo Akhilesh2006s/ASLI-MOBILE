@@ -1,10 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import { GlassPanel } from '../../../src/components/ui';
 import { useSuperAdminTheme } from './useSuperAdminTheme';
 import type { SuperAdminView } from '../_components/SuperAdminNavDrawer';
 
@@ -26,7 +23,6 @@ const TABS: Tab[] = [
   { id: 'settings', label: 'Settings', icon: 'settings-outline', activeIcon: 'settings' },
 ];
 
-const SPRING = { damping: 15, stiffness: 260 };
 const ORANGE = '#F97316';
 const ORANGE_MUTED = 'rgba(249, 115, 22, 0.15)';
 const ORANGE_BORDER = 'rgba(249, 115, 22, 0.22)';
@@ -36,69 +32,45 @@ type Props = {
   onTabChange: (id: SuperAdminView) => void;
 };
 
+/** Solid footer-style tab bar — no BlurView / elevation over scroll. */
 export default function SuperAdminTabBar({ activeView, onTabChange }: Props) {
   const { colors } = useSuperAdminTheme();
   const insets = useSafeAreaInsets();
-  const [barWidth, setBarWidth] = useState(0);
-
-  const activeIndex = TAB_BAR_VIEWS.includes(activeView as SuperAdminTabBarView)
-    ? TAB_BAR_VIEWS.indexOf(activeView as SuperAdminTabBarView)
-    : -1;
-
-  const tabWidth = barWidth > 0 ? barWidth / TABS.length : 0;
-  const indicatorX = useSharedValue(-1);
-
-  useEffect(() => {
-    indicatorX.value = withSpring(activeIndex, SPRING);
-  }, [activeIndex, indicatorX]);
-
-  const slideStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: Math.max(0, indicatorX.value) * tabWidth }],
-    width: Math.max(tabWidth - 8, 0),
-    opacity: activeIndex >= 0 ? 1 : 0,
-  }));
 
   return (
-    <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-      {/* Frosted pill floating over the app artwork; `strong` keeps the small
-          tab labels legible against whatever is scrolling underneath. */}
-      <GlassPanel style={[styles.bar, { borderColor: ORANGE_BORDER }]} radius={9999} tone="strong">
-        <View
-          style={styles.barInner}
-          onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}
-        >
-        {tabWidth > 0 && (
-          <Animated.View style={[styles.indicator, slideStyle, { left: 4, backgroundColor: ORANGE_MUTED }]} />
-        )}
+    <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 12) }]} pointerEvents="box-none">
+      <View
+        style={[
+          styles.bar,
+          {
+            backgroundColor: '#FFFFFF',
+            borderColor: ORANGE_BORDER,
+          },
+        ]}
+      >
         {TABS.map((tab) => {
           const active = tab.id === activeView;
           return (
             <Pressable
               key={tab.id}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                onTabChange(tab.id);
-              }}
-              style={styles.tab}
+              onPress={() => onTabChange(tab.id)}
+              style={[styles.tab, active && { backgroundColor: ORANGE_MUTED }]}
               accessibilityLabel={tab.label}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
             >
-              {active ? (
-                <View style={styles.iconGlow}>
-                  <Ionicons name={tab.activeIcon} size={22} color={ORANGE} />
-                </View>
-              ) : (
-                <Ionicons name={tab.icon} size={22} color={colors.textMuted} />
-              )}
+              <Ionicons
+                name={active ? tab.activeIcon : tab.icon}
+                size={22}
+                color={active ? ORANGE : colors.textMuted}
+              />
               <Text style={[styles.label, { color: active ? ORANGE : colors.textMuted }]}>
                 {tab.label}
               </Text>
             </Pressable>
           );
         })}
-        </View>
-      </GlassPanel>
+      </View>
     </View>
   );
 }
@@ -113,38 +85,21 @@ const styles = StyleSheet.create({
   },
   bar: {
     borderRadius: 9999,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  // Row layout lives on the inner view so GlassPanel's content wrapper doesn't
-  // flatten the tabs into a column.
-  barInner: {
+    borderWidth: 1,
+    overflow: 'hidden',
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 6,
     paddingHorizontal: 4,
-  },
-  indicator: {
-    position: 'absolute',
-    top: 6,
-    bottom: 6,
-    borderRadius: 9999,
   },
   tab: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 52,
-    zIndex: 1,
+    borderRadius: 9999,
+    marginHorizontal: 2,
     gap: 2,
-  },
-  iconGlow: {
-    backgroundColor: ORANGE_MUTED,
-    borderRadius: 12,
-    padding: 6,
   },
   label: {
     fontSize: 10,

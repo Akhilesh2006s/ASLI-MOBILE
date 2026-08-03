@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Keyboard,
+  type TextInput as TextInputType,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -136,6 +138,8 @@ type FieldProps = {
   onTogglePassword?: () => void;
   keyboardType?: 'email-address' | 'default';
   delay?: number;
+  inputRef?: RefObject<TextInputType | null>;
+  onSubmitEditing?: () => void;
 };
 
 function PremiumField({
@@ -149,6 +153,8 @@ function PremiumField({
   onTogglePassword,
   keyboardType = 'default',
   delay = 0,
+  inputRef,
+  onSubmitEditing,
 }: FieldProps) {
   const [focused, setFocused] = useState(false);
   const focusAnim = useSharedValue(0);
@@ -173,6 +179,7 @@ function PremiumField({
           <Ionicons name={icon} size={18} color={focused ? PALETTE.accentText : PALETTE.muted} />
         </LinearGradient>
         <TextInput
+          ref={inputRef}
           style={styles.fieldInput}
           placeholder={placeholder}
           placeholderTextColor={PALETTE.muted}
@@ -182,10 +189,15 @@ function PremiumField({
           onBlur={() => setFocused(false)}
           keyboardType={keyboardType}
           autoCapitalize="none"
+          autoCorrect={false}
           autoComplete={keyboardType === 'email-address' ? 'email' : 'password'}
+          textContentType={keyboardType === 'email-address' ? 'username' : 'password'}
           secureTextEntry={secure && !showPassword}
           underlineColorAndroid="transparent"
           selectionColor={PALETTE.accent}
+          returnKeyType={secure ? 'go' : 'next'}
+          blurOnSubmit={Boolean(secure)}
+          onSubmitEditing={onSubmitEditing}
         />
         {onTogglePassword ? (
           <Pressable
@@ -221,6 +233,20 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const emailInputRef = useRef<TextInputType>(null);
+  const passwordInputRef = useRef<TextInputType>(null);
+  const credentialsRef = useRef({ email: '', password: '' });
+  const submitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    credentialsRef.current = formData;
+  }, [formData]);
+
+  useEffect(() => {
+    return () => {
+      if (submitTimerRef.current) clearTimeout(submitTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!showForm) return;
@@ -229,7 +255,9 @@ export default function Login() {
         const email = await SecureStore.getItemAsync('rememberedEmail');
         const password = await SecureStore.getItemAsync('rememberedPassword');
         if (email && password) {
-          setFormData({ email, password });
+          const next = { email, password };
+          credentialsRef.current = next;
+          setFormData(next);
           setRememberMe(true);
         }
       } catch {
@@ -240,9 +268,13 @@ export default function Login() {
   }, [showForm]);
 
   const redirectByRole = (role: string) => {
-    if (role === 'super-admin') router.replace('/super-admin-dashboard');
-    else if (role === 'admin') router.replace('/admin/dashboard');
-    else if (role === 'teacher') router.replace('/teacher/dashboard');
+    const normalized = String(role || '')
+      .trim()
+      .toLowerCase()
+      .replace(/_/g, '-');
+    if (normalized === 'super-admin') router.replace('/super-admin-dashboard');
+    else if (normalized === 'admin') router.replace('/admin/dashboard');
+    else if (normalized === 'teacher') router.replace('/teacher/dashboard');
     else router.replace('/dashboard');
   };
 
@@ -256,9 +288,12 @@ export default function Login() {
     Alert.alert('Create Account', 'Please contact your school admin to create an account.');
   };
 
-  const handleSubmit = async () => {
+  const submitLogin = async () => {
     setError('');
-    if (!formData.email || !formData.password) {
+    // Prefer live refs so Android IME can flush the last typed character before we read state.
+    const email = credentialsRef.current.email.trim();
+    const password = credentialsRef.current.password;
+    if (!email || !password) {
       setError('Please enter both email and password.');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
@@ -267,10 +302,10 @@ export default function Login() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsSubmitting(true);
     try {
-      const data = await signIn(formData);
+      const data = await signIn({ email, password });
       if (rememberMe) {
-        await SecureStore.setItemAsync('rememberedEmail', formData.email);
-        await SecureStore.setItemAsync('rememberedPassword', formData.password);
+        await SecureStore.setItemAsync('rememberedEmail', email);
+        await SecureStore.setItemAsync('rememberedPassword', password);
       } else {
         await SecureStore.deleteItemAsync('rememberedEmail');
         await SecureStore.deleteItemAsync('rememberedPassword');
@@ -280,10 +315,32 @@ export default function Login() {
     } catch (err: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       const fallback = `Cannot connect to server. Please check network and server status.\n${API_BASE_URL}`;
-      setError(err?.friendlyMessage || err?.message || fallback);
+      const msg = err?.friendlyMessage || err?.message || fallback;
+      setError(msg);
+      // Stale "Remember me" passwords often cause Invalid credentials after a reset.
+      if (/invalid credentials/i.test(String(msg))) {
+        try {
+          await SecureStore.deleteItemAsync('rememberedPassword');
+        } catch {
+          /* ignore */
+        }
+      }
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSubmit = () => {
+    if (isSubmitting) return;
+    // Blur first so Android commits any pending IME composition (last password char).
+    emailInputRef.current?.blur();
+    passwordInputRef.current?.blur();
+    Keyboard.dismiss();
+    if (submitTimerRef.current) clearTimeout(submitTimerRef.current);
+    submitTimerRef.current = setTimeout(() => {
+      submitTimerRef.current = null;
+      void submitLogin();
+    }, 80);
   };
 
   return (
@@ -330,20 +387,30 @@ export default function Login() {
                       icon="mail-outline"
                       placeholder="Enter your email"
                       value={formData.email}
-                      onChangeText={(email) => setFormData((p) => ({ ...p, email }))}
+                      onChangeText={(email) => {
+                        credentialsRef.current = { ...credentialsRef.current, email };
+                        setFormData((p) => ({ ...p, email }));
+                      }}
                       keyboardType="email-address"
                       delay={180}
+                      inputRef={emailInputRef}
+                      onSubmitEditing={() => passwordInputRef.current?.focus()}
                     />
                     <PremiumField
                       label="Password"
                       icon="lock-closed-outline"
                       placeholder="Enter your password"
                       value={formData.password}
-                      onChangeText={(password) => setFormData((p) => ({ ...p, password }))}
+                      onChangeText={(password) => {
+                        credentialsRef.current = { ...credentialsRef.current, password };
+                        setFormData((p) => ({ ...p, password }));
+                      }}
                       secure
                       showPassword={showPassword}
                       onTogglePassword={() => setShowPassword((v) => !v)}
                       delay={260}
+                      inputRef={passwordInputRef}
+                      onSubmitEditing={handleSubmit}
                     />
 
                     <Animated.View entering={FadeInDown.duration(450).delay(340)} style={styles.optionsRow}>
@@ -488,7 +555,7 @@ const styles = StyleSheet.create({
     borderColor: '#D8DEE9',
     height: 56,
     paddingRight: SPACING.md,
-    overflow: 'hidden',
+    // Avoid overflow:'hidden' — clips the last glyph on Android TextInput.
     shadowColor: PALETTE.accent,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 12,
@@ -509,7 +576,8 @@ const styles = StyleSheet.create({
     fontSize: FONT.lg,
     color: COLORS.text,
     paddingVertical: Platform.OS === 'ios' ? 14 : 10,
-    paddingHorizontal: 0,
+    paddingLeft: 0,
+    paddingRight: 8,
     margin: 0,
     backgroundColor: 'transparent',
     includeFontPadding: false,

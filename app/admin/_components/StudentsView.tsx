@@ -25,11 +25,11 @@ import {
   AdminSkeletonList,
   AdminFilterChips,
   AdminScalePressable,
+  AdminHorizontalScroll,
   useAdminTheme,
   AdminStatsRow,
   useAdminResponsiveLayout,
 } from '../_ui';
-import { GlassPanel } from '../../../src/components/ui';
 import StudentRiskAnalysisModal from './StudentRiskAnalysisModal';
 
 interface Student {
@@ -795,7 +795,7 @@ export default function StudentsView() {
                           const isSectionCollapsed = collapsedSections[sectionScopeKey] ?? false;
                           const sectionStudents = classSectionGroups[classKey][sectionKey];
                           return (
-                            <GlassPanel key={sectionScopeKey} style={styles.sectionCard} radius={12} tone="medium">
+                            <View key={sectionScopeKey} style={styles.sectionCard}>
                               <TouchableOpacity
                                 style={styles.sectionHeader}
                                 onPress={() => toggleSectionCollapse(sectionScopeKey)}
@@ -819,7 +819,7 @@ export default function StudentsView() {
                                   {sectionStudents.map((student, idx) => renderStudentCard(student, idx))}
                                 </View>
                               )}
-                            </GlassPanel>
+                            </View>
                           );
                         })}
                     </View>
@@ -869,7 +869,7 @@ export default function StudentsView() {
                       .map((classKey) => {
                         const classStudents = sectionClassGroups[sectionKey][classKey];
                         return (
-                          <GlassPanel key={`${sectionKey}::${classKey}`} style={styles.sectionCard} radius={12} tone="medium">
+                          <View key={`${sectionKey}::${classKey}`} style={styles.sectionCard}>
                             <View style={styles.sectionClassHeader}>
                               <Text style={styles.sectionTitle}>{classKey}</Text>
                               <View style={styles.countBadge}>
@@ -879,7 +879,7 @@ export default function StudentsView() {
                             <View style={styles.sectionStudents}>
                               {classStudents.map((student, idx) => renderStudentCard(student, idx))}
                             </View>
-                          </GlassPanel>
+                          </View>
                         );
                       })}
                   </View>
@@ -909,7 +909,17 @@ export default function StudentsView() {
         ]}
       />
 
-      <AdminGlassCard delay={80} style={{ marginBottom: spacing.md, padding: spacing.md, gap: spacing.sm }}>
+      <View
+        style={[
+          styles.controlsCard,
+          {
+            borderColor: colors.surfaceBorder,
+            marginBottom: spacing.md,
+            padding: spacing.lg,
+            gap: spacing.md,
+          },
+        ]}
+      >
         <View style={styles.filterRow}>
           <TouchableOpacity
             style={[styles.selectTrigger, { borderColor: colors.surfaceBorder, backgroundColor: colors.surface }]}
@@ -953,49 +963,53 @@ export default function StudentsView() {
           onChangeText={setSearchTerm}
         />
 
-        <AdminFilterChips
-          chips={[
-            { id: 'all', label: 'All Students' },
-            { id: 'class-wise', label: 'Class-wise' },
-            { id: 'section-wise', label: 'Section-wise' },
-          ]}
-          selected={studentViewMode}
-          onSelect={(id) => setStudentViewMode(id as ViewMode)}
-        />
+        <View style={styles.viewModeBlock}>
+          <AdminFilterChips
+            chips={[
+              { id: 'all', label: 'All Students' },
+              { id: 'class-wise', label: 'Class-wise' },
+              { id: 'section-wise', label: 'Section-wise' },
+            ]}
+            selected={studentViewMode}
+            onSelect={(id) => setStudentViewMode(id as ViewMode)}
+          />
+        </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={styles.actionButtonsRow}>
-            <AdminScalePressable style={[styles.exportBtn, { backgroundColor: colors.warning }]} onPress={handleExportStudents}>
-              <Ionicons name="download-outline" size={16} color="#fff" />
-              <Text style={styles.actionBtnText}>Export</Text>
-            </AdminScalePressable>
-            <AdminScalePressable
-              style={[styles.uploadBtn, { backgroundColor: colors.success }]}
-              onPress={() => setIsUploadModalVisible(true)}
-            >
-              <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
-              <Text style={styles.actionBtnText}>Upload CSV</Text>
-            </AdminScalePressable>
-            <AdminScalePressable
-              style={[styles.addBtn, { backgroundColor: colors.primary }]}
-              onPress={() => setIsAddModalVisible(true)}
-            >
-              <Ionicons name="person-add" size={16} color="#fff" />
-              <Text style={styles.actionBtnText}>Add Student</Text>
-            </AdminScalePressable>
-            <AdminScalePressable
-              style={[styles.deleteAllBtn, { backgroundColor: colors.danger }]}
-              onPress={() => {
-                setDeleteAllConfirmStep(1);
-                setIsDeleteAllModalVisible(true);
-              }}
-            >
-              <Ionicons name="trash-outline" size={16} color="#fff" />
-              <Text style={styles.actionBtnText}>Delete All</Text>
-            </AdminScalePressable>
-          </View>
-        </ScrollView>
-      </AdminGlassCard>
+        <AdminHorizontalScroll
+          style={styles.actionsBlock}
+          hint="Swipe for more actions"
+          contentContainerStyle={styles.actionButtonsRow}
+        >
+          <AdminScalePressable style={[styles.exportBtn, { backgroundColor: colors.warning }]} onPress={handleExportStudents}>
+            <Ionicons name="download-outline" size={16} color="#fff" />
+            <Text style={styles.actionBtnText}>Export</Text>
+          </AdminScalePressable>
+          <AdminScalePressable
+            style={[styles.uploadBtn, { backgroundColor: colors.success }]}
+            onPress={() => setIsUploadModalVisible(true)}
+          >
+            <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
+            <Text style={styles.actionBtnText}>Upload CSV</Text>
+          </AdminScalePressable>
+          <AdminScalePressable
+            style={[styles.addBtn, { backgroundColor: colors.primary }]}
+            onPress={() => setIsAddModalVisible(true)}
+          >
+            <Ionicons name="person-add" size={16} color="#fff" />
+            <Text style={styles.actionBtnText}>Add Student</Text>
+          </AdminScalePressable>
+          <AdminScalePressable
+            style={[styles.deleteAllBtn, { backgroundColor: colors.danger }]}
+            onPress={() => {
+              setDeleteAllConfirmStep(1);
+              setIsDeleteAllModalVisible(true);
+            }}
+          >
+            <Ionicons name="trash-outline" size={16} color="#fff" />
+            <Text style={styles.actionBtnText}>Delete All</Text>
+          </AdminScalePressable>
+        </AdminHorizontalScroll>
+      </View>
 
       <AdminGlassCard delay={120} style={styles.directoryContainer}>
         <View style={[styles.directoryHeader, { borderBottomColor: colors.surfaceBorder, backgroundColor: colors.bg }]}>
@@ -1470,7 +1484,7 @@ const styles = StyleSheet.create({
   summaryTile: {
     flex: 1,
     minWidth: 0,
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 14,
     paddingVertical: 12,
     paddingHorizontal: 8,
@@ -1478,11 +1492,6 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
     borderLeftWidth: 4,
     alignItems: 'center',
-    shadowColor: '#4F46E5',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
   },
   summaryIconWrap: {
     width: 32,
@@ -1507,28 +1516,28 @@ const styles = StyleSheet.create({
   toolbarCard: {
     marginHorizontal: 16,
     marginBottom: 14,
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 14,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    shadowColor: '#4F46E5',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
     gap: 12,
   },
   filterRow: {
     flexDirection: 'row',
     gap: 10,
   },
+  controlsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+  },
   selectTrigger: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E2E8F0',
     borderRadius: 12,
@@ -1574,7 +1583,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     padding: 4,
     gap: 4,
   },
@@ -1599,16 +1608,25 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
   },
+  viewModeBlock: {
+    marginTop: 2,
+  },
+  actionsBlock: {
+    marginTop: 6,
+    paddingBottom: 4,
+  },
   actionButtonsRow: {
     flexDirection: 'row',
-    gap: 8,
-    paddingVertical: 2,
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 4,
+    paddingRight: 40,
   },
   exportBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#6366F1',
+    backgroundColor: '#14B8A6',
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
@@ -1656,7 +1674,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(79, 70, 229, 0.12)',
+    borderBottomColor: 'rgba(217, 119, 6, 0.12)',
     backgroundColor: '#f8fafc',
     gap: 12,
   },
@@ -1671,7 +1689,7 @@ const styles = StyleSheet.create({
   },
   directorySubtitle: {
     fontSize: 13,
-    color: '#4F46E5',
+    color: '#0F766E',
     marginTop: 4,
     fontWeight: '500',
   },
@@ -1727,7 +1745,7 @@ const styles = StyleSheet.create({
     color: '#0f766e',
   },
   countBadge: {
-    backgroundColor: 'rgba(79, 70, 229, 0.12)',
+    backgroundColor: 'rgba(217, 119, 6, 0.12)',
     borderWidth: 1,
     borderColor: '#E2E8F0',
     borderRadius: 999,
@@ -1747,7 +1765,8 @@ const styles = StyleSheet.create({
   sectionCard: {
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(79, 70, 229, 0.12)',
+    borderColor: 'rgba(15, 118, 110, 0.12)',
+    backgroundColor: '#FFFFFF',
     overflow: 'hidden',
   },
   sectionHeader: {
@@ -1852,7 +1871,7 @@ const styles = StyleSheet.create({
     color: '#64748b',
   },
   classBadge: {
-    backgroundColor: 'rgba(79, 70, 229, 0.12)',
+    backgroundColor: 'rgba(217, 119, 6, 0.12)',
     borderWidth: 1,
     borderColor: '#E2E8F0',
     borderRadius: 8,
@@ -1884,7 +1903,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(79, 70, 229, 0.12)',
+    borderTopColor: 'rgba(217, 119, 6, 0.12)',
     gap: 10,
     width: '100%',
     minWidth: 0,
@@ -1935,7 +1954,7 @@ const styles = StyleSheet.create({
   assignClassBtnText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#4F46E5',
+    color: '#0F766E',
   },
   loadingContainer: {
     justifyContent: 'center',
@@ -1950,7 +1969,7 @@ const styles = StyleSheet.create({
   emptyIcon: {
     width: 80,
     height: 80,
-    backgroundColor: 'rgba(79, 70, 229, 0.12)',
+    backgroundColor: 'rgba(217, 119, 6, 0.12)',
     borderRadius: 40,
     justifyContent: 'center',
     alignItems: 'center',
@@ -1971,7 +1990,7 @@ const styles = StyleSheet.create({
   addFirstButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#0F766E',
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 12,
@@ -1988,11 +2007,12 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   pickerSheet: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     padding: 16,
-    maxHeight: '60%',
+    paddingBottom: 28,
+    maxHeight: '70%',
   },
   pickerTitle: {
     fontSize: 17,
@@ -2001,7 +2021,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   pickerList: {
-    maxHeight: 320,
+    maxHeight: 360,
   },
   pickerItem: {
     flexDirection: 'row',
@@ -2014,17 +2034,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#F1F5F9',
   },
   pickerItemActive: {
-    backgroundColor: 'rgba(79, 70, 229, 0.12)',
+    backgroundColor: 'rgba(15, 118, 110, 0.12)',
     borderWidth: 1,
-    borderColor: '#C7D2FE',
+    borderColor: '#99F6E4',
   },
   pickerItemText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#4338CA',
+    color: '#334155',
   },
   pickerItemTextActive: {
-    color: '#4F46E5',
+    color: '#0F766E',
   },
   modalOverlay: {
     flex: 1,
@@ -2032,7 +2052,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     maxHeight: '88%',
@@ -2043,7 +2063,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 14,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(79, 70, 229, 0.12)',
+    borderBottomColor: 'rgba(217, 119, 6, 0.12)',
   },
   modalTitle: {
     fontSize: 17,
@@ -2084,7 +2104,7 @@ const styles = StyleSheet.create({
   },
   helperText: {
     fontSize: 12,
-    color: '#4F46E5',
+    color: '#0F766E',
     marginTop: 4,
   },
   passwordRow: {
@@ -2097,7 +2117,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 0,
   },
   eyeBtn: {
-    backgroundColor: 'rgba(79, 70, 229, 0.12)',
+    backgroundColor: 'rgba(217, 119, 6, 0.12)',
     borderWidth: 1,
     borderColor: '#E2E8F0',
     borderLeftWidth: 0,
@@ -2138,7 +2158,7 @@ const styles = StyleSheet.create({
   },
   filePickName: {
     fontSize: 13,
-    color: '#4F46E5',
+    color: '#0F766E',
     marginTop: 4,
   },
   warningBox: {
@@ -2168,12 +2188,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     marginBottom: 8,
   },
   classPickItemActive: {
-    backgroundColor: 'rgba(79, 70, 229, 0.12)',
-    borderColor: '#4F46E5',
+    backgroundColor: 'rgba(217, 119, 6, 0.12)',
+    borderColor: '#0F766E',
     borderWidth: 2,
   },
   classPickName: {
@@ -2191,7 +2211,7 @@ const styles = StyleSheet.create({
     gap: 10,
     padding: 14,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(79, 70, 229, 0.12)',
+    borderTopColor: 'rgba(217, 119, 6, 0.12)',
   },
   cancelButton: {
     flex: 1,

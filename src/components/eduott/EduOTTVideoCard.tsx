@@ -26,7 +26,7 @@ export type EduOTTVideoCardProps = {
 function themeFor(variant: 'teacher' | 'student') {
   if (variant === 'teacher') {
     return {
-      cardBg: 'rgba(255,255,255,0.48)',
+      cardBg: '#FFFFFF',
       border: '#E2E8F0',
       title: '#0F172A',
       subjectBg: '#F8FAFC',
@@ -39,7 +39,7 @@ function themeFor(variant: 'teacher' | 'student') {
     };
   }
   return {
-    cardBg: 'rgba(255,255,255,0.48)',
+    cardBg: '#FFFFFF',
     border: '#E2E8F0',
     title: '#0F172A',
     subjectBg: '#F8FAFC',

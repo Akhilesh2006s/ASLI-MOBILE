@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { View, Text, StyleSheet, Pressable, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { formatAiToolText } from '../../lib/title-case';
 import { getAiSectionThemeByNum } from '../../lib/ai-tool-section-palette';
 
@@ -31,7 +30,6 @@ export default function AiToolStackedSection({
   const numLabel = String(num).replace(/^section\s*/i, '').trim() || num;
   const theme = getAiSectionThemeByNum(numLabel);
   const accent = accentColor || theme.hex;
-  const accentDeep = theme.hexDeep;
   const n = parseInt(numLabel.replace(/\D/g, ''), 10);
   const [open, setOpen] = useState(
     typeof defaultOpen === 'boolean' ? defaultOpen : !Number.isFinite(n) || n <= 2,
@@ -44,48 +42,29 @@ export default function AiToolStackedSection({
   };
 
   return (
-    <View style={[styles.card, { borderColor: `${accent}66` }]}>
-      <LinearGradient
-        colors={[theme.glassFrom, theme.glassTo, 'rgba(255,255,255,0.25)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
-      />
+    <View style={[styles.card, { borderColor: '#E2E8F0' }]}>
       <View style={[styles.accentBar, { backgroundColor: accent }]} />
-      <View style={[styles.foil, { backgroundColor: `${accent}22` }]} pointerEvents="none" />
 
-      <Pressable onPress={toggle} accessibilityRole="button" accessibilityState={{ expanded: open }}>
-        <LinearGradient
-          colors={['rgba(255,255,255,0.62)', 'rgba(255,255,255,0.12)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.header}
-        >
-          <LinearGradient colors={[accent, accentDeep]} style={styles.numBadge}>
-            <Text style={styles.numText}>{numLabel.length > 3 ? numLabel.slice(0, 2) : numLabel}</Text>
-          </LinearGradient>
-          <View style={styles.headerText}>
-            <View style={styles.kickerRow}>
-              <View style={[styles.dot, { backgroundColor: accent }]} />
-              <Text style={[styles.sectionLabel, { color: accentDeep }]}>
-                {formatAiToolText('Quest')} {numLabel}
-              </Text>
-            </View>
-            <Text style={styles.title}>{displayTitle}</Text>
-          </View>
-          <View style={[styles.iconWrap, { backgroundColor: `${accent}22`, borderColor: `${accent}44` }]}>
-            <Ionicons name={open ? 'chevron-up' : icon} size={20} color={accent} />
-          </View>
-        </LinearGradient>
+      <Pressable
+        onPress={toggle}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        style={styles.header}
+      >
+        <View style={[styles.numBadge, { backgroundColor: '#F1F5F9' }]}>
+          <Text style={[styles.numText, { color: accent }]}>
+            {numLabel.length > 3 ? numLabel.slice(0, 2) : numLabel}
+          </Text>
+        </View>
+        <View style={styles.headerText}>
+          <Text style={styles.title}>{displayTitle}</Text>
+        </View>
+        <View style={styles.iconWrap}>
+          <Ionicons name={open ? 'chevron-up' : icon} size={18} color="#64748B" />
+        </View>
       </Pressable>
 
-      {open ? <View style={styles.body}>{children}</View> : (
-        <Pressable onPress={toggle} style={styles.lockedHint}>
-          <Text style={[styles.lockedText, { color: accentDeep }]}>
-            {formatAiToolText('Tap to unlock this quest')}
-          </Text>
-        </Pressable>
-      )}
+      {open ? <View style={styles.body}>{children}</View> : null}
     </View>
   );
 }
@@ -95,90 +74,59 @@ export function AiToolStackedList({ children }: { children: ReactNode }) {
 }
 
 const styles = StyleSheet.create({
-  list: { gap: 12 },
+  list: { gap: 8 },
   card: {
-    borderRadius: 22,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
+    borderWidth: 1,
     overflow: 'hidden',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.1,
-    shadowRadius: 24,
-    elevation: 5,
-    marginBottom: 12,
-    backgroundColor: 'rgba(255,255,255,0.28)',
+    marginBottom: 8,
+    backgroundColor: '#FFFFFF',
   },
   accentBar: {
     position: 'absolute',
     left: 0,
     top: 0,
     bottom: 0,
-    width: 7,
+    width: 3,
     zIndex: 2,
-  },
-  foil: {
-    position: 'absolute',
-    right: -24,
-    top: -24,
-    width: 90,
-    height: 90,
-    borderRadius: 28,
-    transform: [{ rotate: '18deg' }],
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    paddingLeft: 18,
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    paddingLeft: 12,
+    backgroundColor: '#FFFFFF',
   },
   numBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  numText: { color: '#fff', fontSize: 15, fontWeight: '900' },
+  numText: { fontSize: 13, fontWeight: '800' },
   headerText: { flex: 1, minWidth: 0 },
-  kickerRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dot: { width: 6, height: 6, borderRadius: 99 },
-  sectionLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
   title: {
-    marginTop: 3,
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 14,
+    fontWeight: '700',
     color: '#0f172a',
-    lineHeight: 22,
+    lineHeight: 18,
   },
   iconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
   },
   body: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    paddingLeft: 18,
-    backgroundColor: 'rgba(255,255,255,0.42)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    paddingLeft: 12,
+    backgroundColor: '#FFFFFF',
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.55)',
-  },
-  lockedHint: {
-    paddingHorizontal: 18,
-    paddingBottom: 14,
-  },
-  lockedText: {
-    fontSize: 12,
-    fontWeight: '700',
+    borderTopColor: '#E2E8F0',
   },
 });

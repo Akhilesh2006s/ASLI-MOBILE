@@ -60,8 +60,6 @@ function TabRow({
                   active && styles.tabTextActive,
                 ]}
                 numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.75}
               >
                 {caption}
               </Text>
@@ -112,7 +110,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
+    paddingVertical: 12,
     paddingHorizontal: 8,
   },
   tabCompact: {

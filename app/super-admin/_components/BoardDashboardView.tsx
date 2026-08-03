@@ -54,8 +54,14 @@ export default function BoardDashboardView({ boardCode = 'ASLI_EXCLUSIVE_SCHOOLS
         setBoardData(data?.data || data || null);
       }
     } catch (err: any) {
-      setError(err?.friendlyMessage || 'Error fetching board dashboard');
-      console.error('Error fetching board dashboard:', err);
+      const isNetwork = err?.code === 'ERR_NETWORK' || err?.message === 'Network Error';
+      setError(
+        err?.friendlyMessage ||
+          (isNetwork
+            ? 'Could not reach the server. Check your connection and try again.'
+            : 'Error fetching board dashboard'),
+      );
+      console.warn('Board dashboard fetch failed:', err?.code || err?.message || err);
     } finally {
       setIsLoading(false);
     }
@@ -119,7 +125,7 @@ export default function BoardDashboardView({ boardCode = 'ASLI_EXCLUSIVE_SCHOOLS
         setComparisonData([]);
       }
     } catch (err: any) {
-      console.error('Error fetching board comparison:', err);
+      console.warn('Board comparison fetch failed:', err?.code || err?.message || err);
     } finally {
       setIsLoadingComparison(false);
     }
@@ -393,7 +399,7 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: '47%',
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 14,
     paddingVertical: 14,
     paddingHorizontal: 14,
@@ -445,7 +451,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   schoolCard: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
@@ -512,7 +518,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#e5e7eb',
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     gap: 6,
   },
   refreshButtonSmallText: {
@@ -521,7 +527,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   summaryCardSingle: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 20,
     marginBottom: 24,
@@ -563,7 +569,7 @@ const styles = StyleSheet.create({
   },
   chartCard: {
     width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -645,7 +651,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   emptyComparisonCard: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 40,
     alignItems: 'center',

@@ -261,7 +261,7 @@ function getExamStatus(exam: Exam) {
 
 const marksToneColors = {
   good: { bg: '#DCFCE7', text: '#166534', border: '#BBF7D0' },
-  mid: { bg: '#FEF3C7', text: '#92400E', border: '#FDE68A' },
+  mid: { bg: '#CFFAFE', text: '#155E75', border: '#A5F3FC' },
   low: { bg: '#FEE2E2', text: '#991B1B', border: '#FECACA' },
 };
 

@@ -6,14 +6,12 @@ import {
   ScrollView,
   TextInput,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useVidyaChat } from '../../../src/hooks/useVidyaChat';
+import { useKeyboardDockLift } from '../../../src/hooks/useKeyboardDockLift';
 import type { AIChatContext } from '../../../src/types/vidya';
 import { useAdminTheme } from '../_ui/useAdminTheme';
 import AdminScalePressable from '../_ui/AdminScalePressable';
@@ -24,12 +22,14 @@ type Props = {
   adminName: string;
 };
 
+/**
+ * Messages scroll; header + composer stay fixed above the in-flow tab bar.
+ */
 export default function AdminVidyaChatPanel({ adminId, adminName }: Props) {
   const { colors, radius, spacing } = useAdminTheme();
-  const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
-  const inputPaddingBottom = Math.max(insets.bottom, 8);
-  const keyboardVerticalOffset = Platform.OS === 'ios' ? insets.top + 120 : 0;
+  const inputRef = useRef<TextInput>(null);
+  const { keyboardLift, keyboardOpen, captureBaseline } = useKeyboardDockLift();
 
   const chatContext = useMemo<AIChatContext>(
     () => ({
@@ -53,7 +53,7 @@ export default function AdminVidyaChatPanel({ adminId, adminName }: Props) {
 
   useEffect(() => {
     scrollToBottom(true);
-  }, [model.displayMessages, model.isPending]);
+  }, [model.displayMessages, model.isPending, keyboardLift]);
 
   if (model.isLoading) {
     return (
@@ -65,10 +65,11 @@ export default function AdminVidyaChatPanel({ adminId, adminName }: Props) {
   }
 
   return (
-    <KeyboardAvoidingView
+    <View
       style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={keyboardVerticalOffset}
+      onLayout={() => {
+        if (!keyboardOpen) captureBaseline();
+      }}
     >
       <View style={[styles.header, { borderBottomColor: colors.surfaceBorder, paddingHorizontal: spacing.md }]}>
         <View style={styles.headerLeft}>
@@ -105,12 +106,12 @@ export default function AdminVidyaChatPanel({ adminId, adminName }: Props) {
         showsVerticalScrollIndicator={false}
       >
         {model.displayMessages.length === 0 ? (
-          <Animated.View entering={FadeInUp.duration(400)} style={styles.emptyBlock}>
+          <View style={styles.emptyBlock}>
             <Text style={[styles.emptyText, { color: colors.textMuted }]}>
               Ask about students, teachers, exams, attendance, or school reports.
             </Text>
             <View style={styles.promptGrid}>
-              {starterPrompts.map((question, idx) => (
+              {starterPrompts.map((question) => (
                 <AdminScalePressable
                   key={question}
                   style={[
@@ -128,12 +129,11 @@ export default function AdminVidyaChatPanel({ adminId, adminName }: Props) {
                 </AdminScalePressable>
               ))}
             </View>
-          </Animated.View>
+          </View>
         ) : (
           model.displayMessages.map((msg, idx) => (
-            <Animated.View
+            <View
               key={`${msg.role}-${idx}`}
-              entering={FadeInUp.delay(idx * 30).duration(300)}
               style={[
                 styles.messageRow,
                 msg.role === 'user' ? styles.messageRowUser : styles.messageRowAssistant,
@@ -145,9 +145,13 @@ export default function AdminVidyaChatPanel({ adminId, adminName }: Props) {
                 </View>
               ) : null}
               {msg.role === 'user' ? (
-                <LinearGradient colors={[...colors.fabGradient]} style={[styles.bubble, styles.bubbleUser, { borderRadius: radius.lg }]}>
+                <LinearGradient
+                  colors={[...colors.fabGradient]}
+                  style={[styles.bubble, styles.bubbleUser, { borderRadius: radius.lg }]}
+                >
                   <Text style={[styles.bubbleText, styles.bubbleTextUser]}>
                     {model.formatMessage(msg.content)}
+                    {'\u200A'}
                   </Text>
                 </LinearGradient>
               ) : (
@@ -164,15 +168,19 @@ export default function AdminVidyaChatPanel({ adminId, adminName }: Props) {
                 >
                   <Text style={[styles.bubbleText, { color: colors.text }]}>
                     {model.formatMessage(msg.content)}
+                    {'\u200A'}
                   </Text>
                 </View>
               )}
               {msg.role === 'user' ? (
-                <LinearGradient colors={[...colors.fabGradient]} style={[styles.avatarUser, { borderRadius: radius.full }]}>
+                <LinearGradient
+                  colors={[...colors.fabGradient]}
+                  style={[styles.avatarUser, { borderRadius: radius.full }]}
+                >
                   <Text style={styles.avatarUserText}>{model.userInitial}</Text>
                 </LinearGradient>
               ) : null}
-            </Animated.View>
+            </View>
           ))
         )}
         {model.isPending ? (
@@ -194,59 +202,75 @@ export default function AdminVidyaChatPanel({ adminId, adminName }: Props) {
         ) : null}
       </ScrollView>
 
+      {/* Docked composer — stays put; tab bar sits below in dashboard layout. */}
       <View
         style={[
-          styles.inputBar,
+          styles.composerDock,
           {
-            paddingBottom: inputPaddingBottom,
             paddingHorizontal: spacing.md,
+            paddingBottom: 8 + keyboardLift,
             borderTopColor: colors.surfaceBorder,
-            backgroundColor: colors.surface,
+            backgroundColor: '#EEF2E3',
           },
         ]}
       >
-        <TextInput
-          style={[
-            styles.input,
-            {
-              backgroundColor: colors.inputBg,
-              borderColor: colors.inputBorder,
-              color: colors.text,
-              borderRadius: radius.md,
-            },
-          ]}
-          value={model.message}
-          onChangeText={model.setMessage}
-          placeholder={model.inputPlaceholder}
-          placeholderTextColor={colors.textMuted}
-          multiline
-          maxLength={2000}
-          editable={!model.isPending}
-          onFocus={() => {
-            setTimeout(() => scrollToBottom(true), 120);
-          }}
-        />
-        <AdminScalePressable
-          style={[
-            styles.sendBtn,
-            {
-              borderRadius: radius.md,
-              backgroundColor: !model.message.trim() || model.isPending ? colors.textMuted : colors.primary,
-            },
-          ]}
-          onPress={model.handleSendMessage}
-          disabled={!model.message.trim() || model.isPending}
-          accessibilityRole="button"
-          accessibilityLabel="Send message"
-        >
-          {model.isPending ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Ionicons name="send" size={18} color="#fff" />
-          )}
-        </AdminScalePressable>
+        <View style={styles.inputBar}>
+          <View
+            style={[
+              styles.inputShell,
+              {
+                backgroundColor: '#FFFFFF',
+                borderColor: colors.inputBorder,
+                borderRadius: radius.md,
+              },
+            ]}
+          >
+            <TextInput
+              ref={inputRef}
+              style={[styles.input, { color: colors.text }]}
+              value={model.message}
+              onChangeText={model.setMessage}
+              placeholder={model.inputPlaceholder}
+              placeholderTextColor={colors.textMuted}
+              multiline
+              maxLength={2000}
+              editable={!model.isPending}
+              cursorColor={colors.primary}
+              selectionColor={`${colors.primary}40`}
+              textAlignVertical="center"
+              underlineColorAndroid="transparent"
+              importantForAutofill="no"
+              onFocus={() => {
+                captureBaseline();
+                setTimeout(() => scrollToBottom(true), 120);
+              }}
+            />
+          </View>
+          <AdminScalePressable
+            style={[
+              styles.sendBtn,
+              {
+                borderRadius: radius.md,
+                backgroundColor: !model.message.trim() || model.isPending ? colors.textMuted : colors.primary,
+              },
+            ]}
+            onPress={() => {
+              inputRef.current?.blur();
+              model.handleSendMessage();
+            }}
+            disabled={!model.message.trim() || model.isPending}
+            accessibilityRole="button"
+            accessibilityLabel="Send message"
+          >
+            {model.isPending ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Ionicons name="send" size={18} color="#fff" />
+            )}
+          </AdminScalePressable>
+        </View>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -264,15 +288,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingBottom: 12,
+    paddingTop: 4,
     borderBottomWidth: 1,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  headerIcon: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   headerTitle: { fontSize: 18, fontWeight: '800' },
   headerSub: { fontSize: 11, marginTop: 1 },
   clearBtn: {
@@ -282,8 +301,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   messagesScroll: { flex: 1, minHeight: 0 },
-  messagesContent: { paddingVertical: 16, paddingBottom: 8, flexGrow: 1 },
-  emptyBlock: { paddingTop: 8 },
+  messagesContent: { paddingVertical: 16, flexGrow: 1 },
+  emptyBlock: { paddingTop: 8, marginBottom: 16 },
   emptyText: {
     fontSize: 14,
     lineHeight: 20,
@@ -301,13 +320,17 @@ const styles = StyleSheet.create({
   messageRow: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 12, gap: 8 },
   messageRowUser: { justifyContent: 'flex-end' },
   messageRowAssistant: { justifyContent: 'flex-start' },
-  bubble: { maxWidth: '78%', paddingHorizontal: 14, paddingVertical: 10 },
+  bubble: { maxWidth: '78%', paddingHorizontal: 14, paddingVertical: 10, paddingRight: 18 },
   bubbleUser: { borderBottomRightRadius: 4 },
   bubbleAssistant: {
     borderWidth: 1,
     borderBottomLeftRadius: 4,
   },
-  bubbleText: { fontSize: 14, lineHeight: 20 },
+  bubbleText: {
+    fontSize: 14,
+    lineHeight: 22,
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}),
+  },
   bubbleTextUser: { color: '#fff' },
   avatarUser: {
     width: 28,
@@ -324,25 +347,38 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   thinkingBubble: { paddingVertical: 14, paddingHorizontal: 18 },
+  composerDock: {
+    flexShrink: 0,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
   inputBar: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     gap: 8,
-    paddingTop: 12,
-    borderTopWidth: 1,
+  },
+  inputShell: {
+    flex: 1,
+    minHeight: 52,
+    maxHeight: 110,
+    borderWidth: 1,
+    justifyContent: 'center',
   },
   input: {
-    flex: 1,
-    minHeight: 44,
-    maxHeight: 100,
-    borderWidth: 1,
+    width: '100%',
+    minHeight: 52,
+    maxHeight: 110,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingTop: Platform.OS === 'android' ? 16 : 14,
+    paddingBottom: Platform.OS === 'android' ? 16 : 14,
+    margin: 0,
     fontSize: 15,
+    lineHeight: 22,
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}),
   },
   sendBtn: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
   },

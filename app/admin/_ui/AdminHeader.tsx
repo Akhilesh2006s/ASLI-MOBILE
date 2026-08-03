@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Image, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,7 +17,7 @@ type Props = {
   onMenu?: () => void;
 };
 
-export default function AdminHeader({ userName, subtitle, schoolUser, showSchoolBrand = false, onMenu }: Props) {
+function AdminHeader({ userName, subtitle, schoolUser, showSchoolBrand = false, onMenu }: Props) {
   const { colors, radius } = useAdminTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -95,11 +95,8 @@ export default function AdminHeader({ userName, subtitle, schoolUser, showSchool
 
 const styles = StyleSheet.create({
   wrap: {
-    shadowColor: '#334155',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    // No elevation/shadow — floating chrome over scrolling content tanks FPS.
+    backgroundColor: 'transparent',
   },
   gradient: {
     paddingHorizontal: 20,
@@ -199,3 +196,5 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.28)',
   },
 });
+
+export default memo(AdminHeader);

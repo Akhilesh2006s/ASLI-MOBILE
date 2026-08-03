@@ -19,7 +19,7 @@ export const ANALYSIS = {
   accent: '#3B82F6',
   accentSoft: '#EFF6FF',
   accentBorder: '#BFDBFE',
-  surface: 'rgba(255,255,255,0.48)',
+  surface: '#FFFFFF',
   canvas: 'transparent',
   correct: '#34D399',
   correctSoft: '#ECFDF5',

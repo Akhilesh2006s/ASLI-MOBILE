@@ -43,7 +43,7 @@ const styles = StyleSheet.create({
     borderRadius: uiTheme.radius.md,
     borderWidth: 1,
     borderColor: uiTheme.colors.border,
-    backgroundColor: 'rgba(255,255,255,0.55)',
+    backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: uiTheme.spacing.md,

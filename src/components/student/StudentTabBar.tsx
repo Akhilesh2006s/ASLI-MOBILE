@@ -75,8 +75,6 @@ export default function StudentTabBar({ tabs, activeTab, onTabChange }: Props) {
               <Text
                 style={[styles.label, active ? styles.labelActive : styles.labelInactive]}
                 numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.75}
               >
                 {tab.label}
               </Text>

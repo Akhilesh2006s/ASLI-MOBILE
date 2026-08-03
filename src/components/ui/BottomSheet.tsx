@@ -50,11 +50,11 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: 'rgba(255,255,255,0.72)',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: RADIUS.xl,
     borderTopRightRadius: RADIUS.xl,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.65)',
+    borderColor: '#E2E8F0',
     overflow: 'hidden',
     paddingTop: SPACING.md,
     paddingBottom: SPACING.xxxl,

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
@@ -117,7 +117,8 @@ export default function SuperAdminDashboard() {
     } catch (error: any) {
       const fallback = `Unable to fetch dashboard stats from ${API_BASE_URL}`;
       setStatsError(error?.friendlyMessage || error?.message || fallback);
-      console.error('Error fetching stats:', error);
+      // Avoid console.error(axios object) — it opens LogBox and dumps the full request config.
+      console.warn('Dashboard stats failed:', error?.friendlyMessage || error?.message || fallback);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -129,8 +130,8 @@ export default function SuperAdminDashboard() {
     try {
       const data = await fetchRealtimeAnalytics();
       setRealtimeAnalytics(data);
-    } catch (error) {
-      console.error('Error fetching realtime analytics:', error);
+    } catch (error: any) {
+      console.warn('Realtime analytics failed:', error?.friendlyMessage || error?.message);
     } finally {
       setIsLoadingAnalytics(false);
     }
@@ -258,11 +259,8 @@ export default function SuperAdminDashboard() {
   const isDashboard = currentView === 'dashboard';
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+    <SafeAreaView style={styles.container} edges={[]}>
+      <View style={{ flex: 1 }}>
         <SuperAdminHeader
           userName={user.fullName}
           subtitle={isDashboard ? 'Aslilearn AI Platform' : superAdminNavLabel(currentView)}
@@ -275,7 +273,7 @@ export default function SuperAdminDashboard() {
             {renderContent()}
           </Animated.View>
         </View>
-      </KeyboardAvoidingView>
+      </View>
 
       <SuperAdminTabBar activeView={currentView} onTabChange={handleViewChange} />
 
@@ -310,6 +308,5 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 0,
     backgroundColor: 'transparent',
-    paddingBottom: 100,
   },
 });

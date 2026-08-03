@@ -29,6 +29,7 @@ import {
   type LiveSessionVisibility,
   type SchoolOption,
 } from '../../../src/lib/live-sessions';
+import { SUPER_ADMIN_FLOATING_TAB_BAR_PAD } from '../../../src/lib/responsive-layout';
 
 type VisibilityPickerProps = {
   visible: boolean;
@@ -578,7 +579,7 @@ const styles = StyleSheet.create({
   searchWrap: {
     marginHorizontal: 16,
     marginVertical: 12,
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#e5e7eb',
@@ -590,9 +591,9 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', padding: 32, gap: 8 },
   emptyTitle: { color: '#4b5563', fontWeight: '700', fontSize: 16 },
   emptySub: { color: '#5B6779', textAlign: 'center', fontSize: 13 },
-  list: { paddingHorizontal: 16, paddingBottom: 24, gap: 12 },
+  list: { paddingHorizontal: 16, paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD, gap: 12 },
   card: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
@@ -624,7 +625,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   actionTxt: { fontSize: 12, fontWeight: '600', color: '#111827' },
-  formModalWrap: { flex: 1, backgroundColor: 'rgba(255,255,255,0.48)' },
+  formModalWrap: { flex: 1, backgroundColor: '#FFFFFF' },
   formModalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -646,7 +647,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 15,
     color: '#111827',
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
   },
   textArea: { minHeight: 80, textAlignVertical: 'top' },
   pickerTrigger: {
@@ -686,7 +687,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   pickerSheet: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     padding: 16,

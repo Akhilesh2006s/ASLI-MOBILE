@@ -1,45 +1,34 @@
 import React, { ReactNode } from 'react';
 import { Pressable, PressableProps, StyleProp, ViewStyle } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 type Props = PressableProps & {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
+  /** Kept for API compatibility — scale animation removed (Reanimated cost in lists). */
   scaleTo?: number;
 };
 
+/**
+ * Plain pressable for admin UI. Reanimated spring scale on every list row
+ * caused shared-value overhead across dozens of cards.
+ */
 export default function AdminScalePressable({
   children,
   style,
-  scaleTo = 0.96,
+  scaleTo: _scaleTo,
   disabled,
   ...rest
 }: Props) {
-  const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
   return (
-    <AnimatedPressable
+    <Pressable
       {...rest}
       disabled={disabled}
-      style={[style, animatedStyle, disabled && { opacity: 0.5 }]}
-      onPressIn={() => {
-        if (!disabled) scale.value = withSpring(scaleTo, { damping: 15, stiffness: 300 });
-      }}
-      onPressOut={() => {
-        scale.value = withSpring(1, { damping: 15, stiffness: 300 });
-      }}
+      style={({ pressed }) => [
+        style,
+        { opacity: disabled ? 0.5 : pressed ? 0.72 : 1 },
+      ]}
     >
       {children}
-    </AnimatedPressable>
+    </Pressable>
   );
 }

@@ -134,7 +134,7 @@ function getVariantStyle(variant: Variant): ViewStyle {
   switch (variant) {
     case 'elevated':
       return {
-        backgroundColor: 'rgba(255,255,255,0.55)',
+        backgroundColor: '#FFFFFF',
         borderWidth: 1,
         borderColor: GLASS_RIM.border,
         ...STUDENT.shadow.soft,
@@ -153,9 +153,8 @@ function getVariantStyle(variant: Variant): ViewStyle {
         ...STUDENT.shadow.soft,
       };
     default:
-      // Default student cards also lean translucent so home stays glass-first.
       return {
-        backgroundColor: 'rgba(255,255,255,0.72)',
+        backgroundColor: '#FFFFFF',
         borderWidth: 1,
         borderColor: GLASS_RIM.border,
         ...GLASS_SHADOW.sm,

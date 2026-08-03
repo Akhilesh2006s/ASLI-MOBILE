@@ -21,6 +21,7 @@ import {
   formatInr,
   getStatusBadgeStyle,
 } from '../../../src/lib/subscription-management';
+import { SUPER_ADMIN_FLOATING_TAB_BAR_PAD } from '../../../src/lib/responsive-layout';
 import SchoolOrdersView from './SchoolOrdersView';
 
 type MainTab = 'school-orders' | 'payments' | 'subscriptions';
@@ -345,7 +346,7 @@ export default function SubscriptionManagementView() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  scrollContent: { paddingBottom: 120, flexGrow: 1 },
+  scrollContent: { paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD, flexGrow: 1 },
   header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 },
   headerTitle: { fontSize: 20, fontWeight: '800', color: '#111827' },
   headerSubtitle: { fontSize: 13, color: '#6b7280', marginTop: 4, lineHeight: 18 },
@@ -386,7 +387,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#e5e7eb',
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
   },
   actionButtonText: { fontSize: 13, fontWeight: '600', color: '#374151' },
   warningAlert: {
@@ -445,7 +446,7 @@ const styles = StyleSheet.create({
   },
   emptyText: { fontSize: 13, color: '#6b7280', textAlign: 'center', lineHeight: 20 },
   rowCard: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 10,
     padding: 14,
     marginBottom: 10,

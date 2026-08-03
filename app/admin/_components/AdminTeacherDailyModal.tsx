@@ -165,7 +165,7 @@ export default function AdminTeacherDailyModal({
           style={[
             styles.sheet,
             {
-              backgroundColor: colors.surface,
+              backgroundColor: '#FFFFFF',
               borderTopLeftRadius: radius.xl,
               borderTopRightRadius: radius.xl,
             },

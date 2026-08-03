@@ -5,7 +5,7 @@ const USER_ROLE_KEY = 'userRole';
 const USER_EMAIL_KEY = 'userEmail';
 
 const persistAuth = async (token, user) => {
-  const role = user?.role || 'student';
+  const role = normalizeRole(user?.role) || 'student';
   const email = user?.email || '';
   await SecureStore.setItemAsync(AUTH_TOKEN_KEY, token);
   // Keep interceptor auth in sync immediately after login.
@@ -21,12 +21,27 @@ const clearAuth = async () => {
   await SecureStore.deleteItemAsync(USER_EMAIL_KEY);
 };
 
+/** Normalize API role variants: super_admin → super-admin */
+const normalizeRole = (role) => {
+  if (!role || typeof role !== 'string') return '';
+  return role.trim().toLowerCase().replace(/_/g, '-');
+};
+
 const login = async ({ email, password }) => {
-  const response = await api.post('/api/auth/login', { email, password });
+  const payload = {
+    email: String(email || '').trim().toLowerCase(),
+    password: String(password || ''),
+  };
+
+  const response = await api.post('/api/auth/login', payload);
   const data = response?.data || {};
 
   if (!data?.token || !data?.user) {
     throw new Error('Invalid login response from server.');
+  }
+
+  if (data.user?.role) {
+    data.user = { ...data.user, role: normalizeRole(data.user.role) || data.user.role };
   }
 
   await persistAuth(data.token, data.user);

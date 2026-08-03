@@ -162,9 +162,13 @@ export function hasNonLanguageSubject(subjects: string[]): boolean {
 }
 
 export function filterVisibleStudentTools(subjectNames: string[]): StudentAiTool[] {
+  const seen = new Set<string>();
   return STUDENT_AI_TOOLS.filter((tool) => {
     if (tool.id === 'ai-chat') return false;
-    return isAiToolVisibleForSubjects(tool.id, subjectNames);
+    if (seen.has(tool.id)) return false;
+    if (!isAiToolVisibleForSubjects(tool.id, subjectNames)) return false;
+    seen.add(tool.id);
+    return true;
   });
 }
 

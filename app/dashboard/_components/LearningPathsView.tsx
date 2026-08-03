@@ -59,6 +59,38 @@ function getSubjectIcon(subjectName: string): keyof typeof Ionicons.glyphMap {
   return 'library-outline';
 }
 
+function parseSubjectsPayload(data: any): any[] {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.subjects)) return data.subjects;
+  if (Array.isArray(data?.data)) return data.data;
+  return [];
+}
+
+/** When /api/student/subjects is down, rebuild a subject list from library content. */
+function subjectsFromPrepContent(raw: any): any[] {
+  const rows = Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : [];
+  const byId = new Map<string, { _id: string; id: string; name: string }>();
+
+  for (const item of rows) {
+    const subj = item?.subject;
+    if (subj == null) continue;
+    const id =
+      typeof subj === 'object'
+        ? String(subj._id || subj.id || '')
+        : String(subj).trim();
+    if (!id || byId.has(id)) continue;
+    const name =
+      typeof subj === 'object'
+        ? String(subj.name || item.subjectName || 'Subject')
+        : String(item.subjectName || 'Subject');
+    byId.set(id, { _id: id, id, name });
+  }
+
+  return Array.from(byId.values()).sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true })
+  );
+}
+
 export default function LearningPathsView({ dark }: { dark?: boolean }) {
   const { width } = useWindowDimensions();
   const compact = width < 380;
@@ -67,6 +99,8 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
   const [quizzes, setQuizzes] = useState<any[]>([]);
   const [isLoadingSubjects, setIsLoadingSubjects] = useState(true);
   const [isLoadingQuizzes, setIsLoadingQuizzes] = useState(true);
+  const [subjectsError, setSubjectsError] = useState<string | null>(null);
+  const [quizzesError, setQuizzesError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSubjects();
@@ -74,24 +108,56 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
   }, []);
 
   const fetchSubjects = async () => {
+    setIsLoadingSubjects(true);
+    setSubjectsError(null);
+
+    let list: any[] = [];
+    let primaryFailed = false;
+
     try {
-      setIsLoadingSubjects(true);
       const { data } = await api.get('/api/student/subjects');
-      setSubjects(data.subjects || data.data || []);
-    } catch (error) {
-      console.error('Failed to fetch subjects:', error);
-    } finally {
-      setIsLoadingSubjects(false);
+      list = parseSubjectsPayload(data);
+    } catch {
+      primaryFailed = true;
     }
+
+    if (list.length === 0) {
+      try {
+        const { data } = await api.get('/api/student/asli-prep-content');
+        list = subjectsFromPrepContent(data);
+      } catch {
+        /* keep list empty */
+      }
+    }
+
+    setSubjects(list);
+    if (list.length === 0 && primaryFailed) {
+      setSubjectsError(
+        'Subjects are temporarily unavailable. Please try again in a moment.'
+      );
+    } else {
+      setSubjectsError(null);
+    }
+    setIsLoadingSubjects(false);
   };
 
   const fetchQuizzes = async () => {
     try {
       setIsLoadingQuizzes(true);
+      setQuizzesError(null);
       const { data } = await api.get('/api/student/quizzes');
-      setQuizzes(data.data || []);
-    } catch (error) {
-      console.error('Failed to fetch quizzes:', error);
+      const list = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+      setQuizzes(list);
+    } catch (error: any) {
+      setQuizzes([]);
+      const status = error?.response?.status;
+      setQuizzesError(
+        status === 500
+          ? 'Quizzes are temporarily unavailable. Please try again in a moment.'
+          : error?.friendlyMessage ||
+              error?.response?.data?.message ||
+              'Could not load quizzes. Try again.'
+      );
     } finally {
       setIsLoadingQuizzes(false);
     }
@@ -150,12 +216,25 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
           ) : subjects.length === 0 ? (
             <GlassPanel tone="medium" radius={STUDENT_RADIUS.card} style={styles.emptyCard} contentStyle={styles.emptyInner}>
               <View style={styles.emptyIcon}>
-                <Ionicons name="book-outline" size={28} color={STUDENT.primary} />
+                <Ionicons
+                  name={subjectsError ? 'cloud-offline-outline' : 'book-outline'}
+                  size={28}
+                  color={STUDENT.primary}
+                />
               </View>
-              <Text style={styles.emptyStateTitle}>No subjects yet</Text>
-              <Text style={styles.emptyStateText}>
-                Subjects for your class will show up here once they are assigned.
+              <Text style={styles.emptyStateTitle}>
+                {subjectsError ? 'Couldn’t load subjects' : 'No subjects yet'}
               </Text>
+              <Text style={styles.emptyStateText}>
+                {subjectsError ||
+                  'Subjects for your class will show up here once they are assigned.'}
+              </Text>
+              {subjectsError ? (
+                <TouchableOpacity style={styles.retryBtn} onPress={fetchSubjects} activeOpacity={0.85}>
+                  <Ionicons name="refresh" size={16} color={STUDENT.textOnPrimary} />
+                  <Text style={styles.retryBtnText}>Try again</Text>
+                </TouchableOpacity>
+              ) : null}
             </GlassPanel>
           ) : (
             <View style={styles.subjectsList}>
@@ -198,7 +277,7 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
             </View>
           )}
 
-          {!isLoadingSubjects && subjects.length > 0 ? (
+          {!isLoadingSubjects ? (
             <GlassPanel
               tone="medium"
               elevated
@@ -222,10 +301,24 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
           ) : quizzes.length === 0 ? (
             <GlassPanel tone="medium" radius={STUDENT_RADIUS.card} style={styles.emptyCard} contentStyle={styles.emptyInner}>
               <View style={styles.emptyIcon}>
-                <Ionicons name="document-text-outline" size={28} color={STUDENT.primary} />
+                <Ionicons
+                  name={quizzesError ? 'cloud-offline-outline' : 'document-text-outline'}
+                  size={28}
+                  color={STUDENT.primary}
+                />
               </View>
-              <Text style={styles.emptyStateTitle}>No quizzes assigned</Text>
-              <Text style={styles.emptyStateText}>Your teacher hasn&apos;t assigned any quizzes yet.</Text>
+              <Text style={styles.emptyStateTitle}>
+                {quizzesError ? 'Couldn’t load quizzes' : 'No quizzes assigned'}
+              </Text>
+              <Text style={styles.emptyStateText}>
+                {quizzesError || "Your teacher hasn't assigned any quizzes yet."}
+              </Text>
+              {quizzesError ? (
+                <TouchableOpacity style={styles.retryBtn} onPress={fetchQuizzes} activeOpacity={0.85}>
+                  <Ionicons name="refresh" size={16} color={STUDENT.textOnPrimary} />
+                  <Text style={styles.retryBtnText}>Try again</Text>
+                </TouchableOpacity>
+              ) : null}
             </GlassPanel>
           ) : (
             <View style={styles.quizzesList}>
@@ -371,6 +464,21 @@ const styles = StyleSheet.create({
     color: STUDENT.textMuted,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  retryBtn: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: STUDENT.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: STUDENT_RADIUS.md,
+  },
+  retryBtnText: {
+    color: STUDENT.textOnPrimary,
+    fontWeight: '700',
+    fontSize: 13,
   },
   subjectsList: {
     gap: 10,

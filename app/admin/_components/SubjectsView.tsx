@@ -891,7 +891,7 @@ const styles = StyleSheet.create({
     paddingLeft: 30,
   },
   kvValueMuted: {
-    color: '#4F46E5',
+    color: '#0F766E',
     fontWeight: '600',
   },
   cardActions: {
@@ -911,7 +911,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
     height: 52,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
@@ -924,7 +924,7 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   modalContent: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     width: '100%',
     maxHeight: '85%',
@@ -1000,7 +1000,7 @@ const styles = StyleSheet.create({
   },
   classPickerEmpty: {
     fontSize: 13,
-    color: '#4F46E5',
+    color: '#0F766E',
     paddingVertical: 8,
   },
   classPickerScroll: {
@@ -1021,7 +1021,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   classPickRowActive: {
-    backgroundColor: 'rgba(79, 70, 229, 0.12)',
+    backgroundColor: 'rgba(217, 119, 6, 0.12)',
   },
   classPickLabel: {
     flex: 1,

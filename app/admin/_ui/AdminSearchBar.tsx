@@ -1,23 +1,27 @@
 import React from 'react';
 import { StyleSheet, TextInput, TextInputProps, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { GlassPanel } from '../../../src/components/ui';
 import { useAdminTheme } from './useAdminTheme';
 
 type Props = TextInputProps & {
   sticky?: boolean;
 };
 
+/** Solid search bar — no BlurView (frosted search over scroll was janky). */
 export default function AdminSearchBar({ sticky, style, ...rest }: Props) {
   const { colors, radius, spacing } = useAdminTheme();
 
   return (
-    // Frosted input surface; the row layout sits on the inner view because
-    // GlassPanel wraps children in its own content view.
-    <GlassPanel
-      style={[styles.wrap, { borderRadius: radius.md }, sticky && styles.sticky]}
-      radius={radius.md}
-      tone="strong"
+    <View
+      style={[
+        styles.wrap,
+        sticky && styles.sticky,
+        {
+          borderRadius: radius.md,
+          backgroundColor: colors.surface,
+          borderColor: colors.surfaceBorder,
+        },
+      ]}
     >
       <View style={[styles.wrapInner, { paddingHorizontal: spacing.md }]}>
         <Ionicons name="search" size={18} color={colors.textMuted} />
@@ -27,13 +31,15 @@ export default function AdminSearchBar({ sticky, style, ...rest }: Props) {
           style={[styles.input, { color: colors.text }, style]}
         />
       </View>
-    </GlassPanel>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: {
     minHeight: 48,
+    borderWidth: 1,
+    overflow: 'hidden',
   },
   wrapInner: {
     flexDirection: 'row',

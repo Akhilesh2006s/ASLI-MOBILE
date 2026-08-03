@@ -17,7 +17,7 @@ import {
   type ExamCalendarEntry,
   type ExamDayRole,
 } from '../../../../src/lib/exam-calendar-entries';
-import { STUDENT, STUDENT_RADIUS } from '../../../../src/theme/student';
+import { STUDENT, STUDENT_RADIUS, STUDENT_SKY } from '../../../../src/theme/student';
 
 type CalendarEntry = {
   id: string;
@@ -39,10 +39,12 @@ const EXAM_MARKER_COLORS = {
   start: '#059669',
   end: '#e11d48',
   middle: '#d97706',
-  single: '#2563eb',
+  single: '#0284c7',
   quiz: '#f59e0b',
-  event: '#7c3aed',
+  event: '#0ea5e9',
 } as const;
+
+const CAL_SKY = STUDENT_SKY;
 
 const WEEKDAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] as const;
 
@@ -65,7 +67,7 @@ function getPrimaryMarkerColor(
   if (dayMarkers?.examSingleCount) return EXAM_MARKER_COLORS.single;
   if (dayMarkers?.quizCount) return EXAM_MARKER_COLORS.quiz;
   if (entries?.some((e) => e.type === 'event')) return EXAM_MARKER_COLORS.event;
-  return STUDENT.primary;
+  return CAL_SKY.accent;
 }
 
 function dayHasExamSpan(dayKey: string, entriesByDate: Record<string, CalendarEntry[]>): boolean {
@@ -247,7 +249,7 @@ function StudyCalendarSectionComponent({
 
   const renderCalendarCard = () => (
       <LinearGradient
-        colors={[...STUDENT.heroGradient]}
+        colors={[...CAL_SKY.gradient]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.calGradientShell, isTablet && styles.calGradientShellTablet]}
@@ -259,13 +261,13 @@ function StudyCalendarSectionComponent({
         <View style={[styles.calInnerBody, isTablet && styles.calInnerBodyTablet]}>
           <View style={styles.monthNavRow}>
             <TouchableOpacity style={styles.navIconBtn} onPress={() => shiftMonth(-1)} hitSlop={8}>
-              <Ionicons name="chevron-back" size={18} color={STUDENT.textSecondary} />
+              <Ionicons name="chevron-back" size={18} color={CAL_SKY.accentDark} />
             </TouchableOpacity>
             <Text style={styles.monthLabelInner}>
               {calendarMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </Text>
             <TouchableOpacity style={styles.navIconBtn} onPress={() => shiftMonth(1)} hitSlop={8}>
-              <Ionicons name="chevron-forward" size={18} color={STUDENT.textSecondary} />
+              <Ionicons name="chevron-forward" size={18} color={CAL_SKY.accentDark} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.todayChip} onPress={goToToday}>
               <Text style={styles.todayChipText}>Today</Text>
@@ -569,6 +571,8 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     padding: 14,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: CAL_SKY.shellBorder,
     ...STUDENT.shadow.md,
   },
   calGradientShellTablet: {
@@ -576,19 +580,19 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   calInnerBody: {
-    backgroundColor: 'rgba(255,255,255,0.42)',
+    backgroundColor: CAL_SKY.innerBg,
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 14,
     marginTop: 4,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.55)',
+    borderColor: CAL_SKY.innerBorder,
   },
   calInnerBodyTablet: {
     flex: 1,
   },
   calHeader: { marginBottom: 8, zIndex: 1 },
-  calTitleOnGradient: { fontSize: 18, fontWeight: '800', color: '#ffffff' },
+  calTitleOnGradient: { fontSize: 18, fontWeight: '800', color: CAL_SKY.title },
   monthNavRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -601,31 +605,31 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: STUDENT.bgAccent,
+    backgroundColor: CAL_SKY.chipBg,
   },
   monthLabelInner: {
     flex: 1,
     fontSize: 15,
     fontWeight: '700',
-    color: STUDENT.text,
+    color: CAL_SKY.title,
     textAlign: 'center',
   },
   todayChip: {
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 999,
-    backgroundColor: STUDENT.primary,
+    backgroundColor: CAL_SKY.accent,
   },
   todayChipText: {
     fontSize: 12,
     fontWeight: '700',
-    color: STUDENT.textOnPrimary,
+    color: '#ffffff',
   },
   weekHead: {
     flexDirection: 'row',
     paddingVertical: 8,
     paddingHorizontal: 4,
-    backgroundColor: STUDENT.bgAccent,
+    backgroundColor: CAL_SKY.weekHead,
     borderTopLeftRadius: STUDENT_RADIUS.inner,
     borderTopRightRadius: STUDENT_RADIUS.inner,
   },
@@ -634,10 +638,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  weekHeadText: { textAlign: 'center', fontSize: 11, fontWeight: '700', color: STUDENT.textMuted },
+  weekHeadText: { textAlign: 'center', fontSize: 11, fontWeight: '700', color: CAL_SKY.accentDark },
   weekHeadDivider: {
     height: 1,
-    backgroundColor: STUDENT.surfaceBorder,
+    backgroundColor: CAL_SKY.divider,
     marginBottom: 8,
   },
   grid: { gap: 2, paddingTop: 2 },
@@ -655,20 +659,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    backgroundColor: 'rgba(255,255,255,0.28)',
+    backgroundColor: CAL_SKY.dayCell,
   },
   dayCellInnerToday: {
     borderWidth: 2,
-    borderColor: STUDENT.primaryLight,
-    backgroundColor: 'rgba(109,91,208,0.14)',
+    borderColor: CAL_SKY.accentSoft,
+    backgroundColor: CAL_SKY.todayBg,
   },
   dayCellInnerSelected: {
-    backgroundColor: STUDENT.primary,
+    backgroundColor: CAL_SKY.accent,
   },
   dayCellInnerTodaySelected: {
-    backgroundColor: STUDENT.primaryDark,
+    backgroundColor: CAL_SKY.accentDark,
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.85)',
+    borderColor: 'rgba(255,255,255,0.9)',
   },
   dayNum: {
     fontSize: 13,
@@ -679,8 +683,8 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
     textAlignVertical: 'center',
   },
-  dayNumToday: { color: STUDENT.primaryDark, fontWeight: '700' },
-  dayNumSelected: { color: STUDENT.textOnPrimary, fontWeight: '700' },
+  dayNumToday: { color: CAL_SKY.accentDark, fontWeight: '700' },
+  dayNumSelected: { color: '#ffffff', fontWeight: '700' },
   dayNumTodaySelected: {
     color: '#ffffff',
     fontWeight: '800',
@@ -717,11 +721,11 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: STUDENT.surfaceBorder,
+    borderTopColor: CAL_SKY.divider,
   },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendText: { fontSize: 11, color: STUDENT.textMuted, fontWeight: '600' },
+  legendText: { fontSize: 11, color: CAL_SKY.legendText, fontWeight: '600' },
   eventsTitle: { fontSize: 16, fontWeight: '800', color: STUDENT.text },
   eventsListTablet: {
     flex: 1,

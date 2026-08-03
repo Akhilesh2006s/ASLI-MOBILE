@@ -114,3 +114,13 @@ export function formatVidyaMessage(text: string): string {
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
   return cleaned.trim();
 }
+
+/**
+ * Android Fabric often measures Text one glyph short inside tight bubbles /
+ * TextInputs. Append a hair-space so the last real character stays visible.
+ */
+export function withAndroidTextSafeEnd(text: string): string {
+  const value = String(text || '');
+  if (!value) return value;
+  return `${value}\u200A`;
+}

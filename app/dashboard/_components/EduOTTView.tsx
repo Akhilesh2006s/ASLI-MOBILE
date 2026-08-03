@@ -70,15 +70,18 @@ function buildStreamsUrl(
   return `${API_BASE_URL}/api/${role}/streams${q ? `?${q}` : ''}`;
 }
 
-async function fetchRoleVideos(token: string, role: EduOTTRole): Promise<VideoItem[]> {
+async function fetchRoleVideos(
+  token: string,
+  role: EduOTTRole
+): Promise<{ list: VideoItem[]; ok: boolean }> {
   const headers = authHeaders(token);
   let response = await fetch(buildVideosUrl(role, null, null), { headers });
   if (role === 'admin' && !response.ok) {
     response = await fetch(`${API_BASE_URL}/api/admin/videos`, { headers });
   }
-  if (!response.ok) return [];
+  if (!response.ok) return { list: [], ok: false };
   const data = await response.json();
-  return mapAndDedupeVideos(data.data || data || []);
+  return { list: mapAndDedupeVideos(data.data || data || []), ok: true };
 }
 
 function matchesClassSubject(
@@ -246,6 +249,7 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
   const [loading, setLoading] = useState(true);
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [videosFetchFailed, setVideosFetchFailed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [sessionSearchTerm, setSessionSearchTerm] = useState('');
   const [visibleCount, setVisibleCount] = useState(10);
@@ -262,12 +266,20 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
       const token = await SecureStore.getItemAsync('authToken');
       if (!token) return;
       try {
-        const [videoList, sRes] = await Promise.all([
-          isAsliPrepExclusive ? fetchRoleVideos(token, role) : Promise.resolve([]),
-          fetch(buildStreamsUrl(role, null, null), { headers: authHeaders(token) }),
-        ]);
+        if (!isAsliPrepExclusive) {
+          if (cancelled) return;
+          setVideoCatalog([]);
+          setVideosFetchFailed(false);
+        } else {
+          const { list: videoList, ok } = await fetchRoleVideos(token, role);
+          if (cancelled) return;
+          setVideoCatalog(videoList);
+          setVideosFetchFailed(!ok);
+        }
+        const sRes = await fetch(buildStreamsUrl(role, null, null), {
+          headers: authHeaders(token),
+        });
         if (cancelled) return;
-        setVideoCatalog(videoList);
         if (sRes.ok) {
           const data = await sRes.json();
           setSessionCatalog(data.data || data || []);
@@ -278,6 +290,7 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
         if (!cancelled) {
           setVideoCatalog([]);
           setSessionCatalog([]);
+          if (isAsliPrepExclusive) setVideosFetchFailed(true);
         }
       }
     }
@@ -324,18 +337,26 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
         if (cancelled) return;
 
         if (useClientSideFilters) {
-          const list = await fetchRoleVideos(token, role);
-          if (!cancelled) setVideos(list);
+          const { list, ok } = await fetchRoleVideos(token, role);
+          if (!cancelled) {
+            setVideos(list);
+            setVideoCatalog(list);
+            setVideosFetchFailed(!ok);
+          }
         } else if (response?.ok) {
           const data = await response.json();
           const videosList = data.data || data || [];
           setVideos(mapAndDedupeVideos(videosList));
+          setVideosFetchFailed(false);
         } else {
           setVideos([]);
+          setVideosFetchFailed(true);
         }
-      } catch (error) {
-        console.error('Failed to fetch videos:', error);
-        if (!cancelled) setVideos([]);
+      } catch {
+        if (!cancelled) {
+          setVideos([]);
+          setVideosFetchFailed(true);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -567,12 +588,10 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
       return;
     }
     try {
-      const [videoList, sRes] = await Promise.all([
-        isAsliPrepExclusive ? fetchRoleVideos(token, role) : Promise.resolve([]),
-        fetch(buildStreamsUrl(role, null, null), { headers: authHeaders(token) }),
-      ]);
       if (isAsliPrepExclusive) {
+        const { list: videoList, ok } = await fetchRoleVideos(token, role);
         setVideoCatalog(videoList);
+        setVideosFetchFailed(!ok);
         if (useClientSideFilters) {
           setVideos(videoList);
         } else {
@@ -582,12 +601,20 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
           if (v2.ok) {
             const data = await v2.json();
             setVideos(mapAndDedupeVideos(data.data || data || []));
+            setVideosFetchFailed(false);
+          } else {
+            setVideos([]);
+            setVideosFetchFailed(true);
           }
         }
       } else {
         setVideoCatalog([]);
         setVideos([]);
+        setVideosFetchFailed(false);
       }
+      const sRes = await fetch(buildStreamsUrl(role, null, null), {
+        headers: authHeaders(token),
+      });
       if (sRes.ok) {
         const data = await sRes.json();
         const allSessions = data.data || data || [];
@@ -636,6 +663,16 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
         onAction: () => setActiveTab('live-sessions'),
       };
     }
+    if (videosFetchFailed) {
+      return {
+        icon: 'cloud-offline-outline' as const,
+        title: 'Couldn’t load videos',
+        subtitle:
+          'The video library is temporarily unavailable. Pull down to refresh, or try again in a moment.',
+        actionLabel: 'Try again',
+        onAction: () => void onRefresh(),
+      };
+    }
     if (searchTerm.trim() && classSubjectFilteredVideos.length > 0) {
       return {
         icon: 'search-outline' as const,
@@ -678,6 +715,7 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
     };
   }, [
     isAsliPrepExclusive,
+    videosFetchFailed,
     searchTerm,
     classSubjectFilteredVideos.length,
     hasVideoFilters,

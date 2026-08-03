@@ -50,22 +50,22 @@ export default function AiToolCard({
           styles.card,
           compact && styles.cardCompact,
           glass && styles.cardGlassShell,
+          { borderColor: accent },
           style,
           animatedStyle,
         ]}
       >
         {glass ? <GlassSurface intensity={55} tone="strong" /> : null}
-        <View style={[styles.accent, { backgroundColor: accent }]} />
         <View
           style={[
             styles.iconBox,
-            { backgroundColor: `${accent}${glass ? '26' : '14'}`, borderColor: `${accent}${glass ? '40' : '28'}` },
+            { backgroundColor: accent, borderColor: accent },
           ]}
         >
-          <Ionicons name={icon} size={compact ? 24 : 26} color={accent} />
+          <Ionicons name={icon} size={compact ? 24 : 26} color="#FFFFFF" />
         </View>
         <View style={styles.content}>
-          <View style={styles.titleRow}>
+          <View style={styles.titleBlock}>
             <Text style={styles.title} numberOfLines={2}>
               {formatAiToolText(title)}
             </Text>
@@ -97,9 +97,10 @@ const styles = StyleSheet.create({
     gap: AI_SPACING.md,
     overflow: 'hidden',
     borderRadius: AI_RADIUS.lg,
-    borderWidth: 1,
+    borderWidth: 4,
     borderColor: 'rgba(255,255,255,0.65)',
     backgroundColor: 'transparent',
+    
     padding: AI_SPACING.lg,
     ...AI_SHADOW,
   },
@@ -109,15 +110,6 @@ const styles = StyleSheet.create({
   },
   cardGlassShell: {
     backgroundColor: 'transparent',
-    borderColor: 'rgba(255,255,255,0.65)',
-  },
-  accent: {
-    position: 'absolute',
-    left: 0,
-    top: 18,
-    bottom: 18,
-    width: 4,
-    borderRadius: AI_RADIUS.full,
   },
   iconBox: {
     width: 54,
@@ -132,15 +124,12 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
-  titleRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: AI_SPACING.sm,
+  titleBlock: {
+    gap: AI_SPACING.xs,
+    alignItems: 'flex-start',
   },
   title: {
     ...AI_TYPE.title,
-    flexShrink: 1,
     color: AI.text,
   },
   description: {

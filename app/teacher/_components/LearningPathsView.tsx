@@ -11,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { TeacherShimmer } from '../../../src/components/teacher';
 import { GlassPanel } from '../../../src/components/ui';
-import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO } from '../../../src/theme/teacher';
+import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, teacherSubjectBadgePalette, teacherSubjectIconName } from '../../../src/theme/teacher';
 import { GLASS_ROW, GLASS_VIOLET } from '../../../src/theme/glass';
 import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
 import {
@@ -48,13 +48,17 @@ function SubjectPathCard({
   subject,
   width,
   listMode,
+  index = 0,
 }: {
   subject: SubjectWithPathContent;
   width: number;
   listMode: boolean;
+  index?: number;
 }) {
   const stats = countLearningPathDisplayStats(subject.asliPrepContent);
   const itemCount = learningPathStatsTotal(stats);
+  const palette = teacherSubjectBadgePalette(subject.name, index);
+  const iconName = teacherSubjectIconName(subject.name) as keyof typeof Ionicons.glyphMap;
 
   if (listMode) {
     return (
@@ -66,11 +70,11 @@ function SubjectPathCard({
       >
         <GlassPanel style={styles.listCard} radius={TEACHER_RADIUS.lg} tone="strong" elevated>
           <View style={styles.listRow}>
-            <View style={styles.listIcon}>
-              <Ionicons name="library-outline" size={22} color={TEACHER.primaryDark} />
+            <View style={[styles.listIcon, { backgroundColor: palette.bg, borderColor: palette.border }]}>
+              <Ionicons name={iconName} size={22} color={palette.border} />
             </View>
             <View style={styles.listMeta}>
-              <Text style={styles.listName} numberOfLines={1}>
+              <Text style={[styles.listName, { color: palette.border }]} numberOfLines={1}>
                 {subject.name}
               </Text>
               <Text style={styles.listHint} numberOfLines={1}>
@@ -99,14 +103,14 @@ function SubjectPathCard({
         elevated
       >
         <View style={styles.cardTop}>
-          <View style={styles.iconWrap}>
-            <Ionicons name="library-outline" size={22} color={TEACHER.primaryDark} />
+          <View style={[styles.iconWrap, { backgroundColor: palette.bg, borderColor: palette.border }]}>
+            <Ionicons name={iconName} size={22} color={palette.border} />
           </View>
           <View style={styles.badge}>
             <Text style={styles.badgeText}>{itemCount} items</Text>
           </View>
         </View>
-        <Text style={styles.name} numberOfLines={2}>
+        <Text style={[styles.name, { color: palette.border }]} numberOfLines={2}>
           {subject.name}
         </Text>
         {subject.description ? (
@@ -212,12 +216,13 @@ export default function LearningPathsView({ refreshKey = 0 }: Props) {
         </GlassPanel>
       ) : (
         <View style={[styles.grid, isGrid && styles.gridMulti, listMode && styles.listStack]}>
-          {subjects.map((subject) => (
+          {subjects.map((subject, index) => (
             <SubjectPathCard
               key={subject.mergedSubjectIds?.join(':') || subject.id}
               subject={subject}
               width={cardWidth}
               listMode={listMode}
+              index={index}
             />
           ))}
         </View>

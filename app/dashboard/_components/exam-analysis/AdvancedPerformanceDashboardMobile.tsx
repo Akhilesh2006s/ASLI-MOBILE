@@ -604,7 +604,7 @@ const styles = StyleSheet.create({
   },
   emptyText: { color: '#5B6779', fontSize: 13, textAlign: 'center' },
   breakdownRow: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#e2e8f0',

@@ -16,6 +16,7 @@ import {
   fetchBoardExportData,
 } from '../../../src/lib/board-comparison';
 import { exportCsvFile } from '../../../src/utils/csvExport';
+import { SUPER_ADMIN_FLOATING_TAB_BAR_PAD } from '../../../src/lib/responsive-layout';
 
 type ChartKey = keyof Pick<
   BoardAnalytics,
@@ -162,6 +163,7 @@ export default function BoardComparisonView() {
   return (
     <ScrollView
       style={styles.content}
+      contentContainerStyle={styles.scrollContent}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} />}
     >
       <View style={styles.header}>
@@ -228,6 +230,7 @@ export default function BoardComparisonView() {
 
 const styles = StyleSheet.create({
   content: { flex: 1 },
+  scrollContent: { paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD },
   loadingContainer: { alignItems: 'center', padding: 40 },
   loadingText: { marginTop: 16, color: '#6b7280', fontSize: 14 },
   header: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12 },
@@ -243,7 +246,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#e5e7eb',
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
   },
   refreshButtonText: { fontSize: 13, fontWeight: '600', color: '#374151' },
   errorText: { color: '#dc2626', paddingHorizontal: 16, marginBottom: 8, fontSize: 13 },
@@ -260,7 +263,7 @@ const styles = StyleSheet.create({
   summaryCard: {
     flex: 1,
     minWidth: '47%',
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 10,
     padding: 14,
     borderLeftWidth: 4,
@@ -279,7 +282,7 @@ const styles = StyleSheet.create({
   chartCard: {
     marginHorizontal: 16,
     marginBottom: 16,
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',

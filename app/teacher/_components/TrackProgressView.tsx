@@ -28,6 +28,9 @@ import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, PERFORMANCE_COL
 type Props = {
   initialClassFilter?: string;
   initialStudentId?: string;
+  /** When true, show only the student analysis screen (no progress class tree). */
+  analysisOnly?: boolean;
+  onCloseAnalysis?: () => void;
 };
 
 type AssignedClassRow = {
@@ -194,7 +197,12 @@ function StudentProgressRow({
   );
 }
 
-export default function TrackProgressView({ initialClassFilter, initialStudentId }: Props) {
+export default function TrackProgressView({
+  initialClassFilter,
+  initialStudentId,
+  analysisOnly = false,
+  onCloseAnalysis,
+}: Props) {
   const [assignedClassRows, setAssignedClassRows] = useState<AssignedClassRow[]>([]);
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [remarks, setRemarks] = useState<any[]>([]);
@@ -556,6 +564,80 @@ export default function TrackProgressView({ initialClassFilter, initialStudentId
 
   if (loading) return <TeacherShimmer variant="list" count={4} />;
 
+  const closeDetail = () => {
+    setDetailStudent(null);
+    setDetailAiText('');
+    if (analysisOnly) onCloseAnalysis?.();
+  };
+
+  const detailBody = detailStudent ? (
+    <>
+      <Text style={styles.modalTitle}>{detailStudent.name}</Text>
+      <Text style={styles.listSub}>{detailStudent.email}</Text>
+      {renderStudentDetail(detailStudent)}
+      <Pressable
+        style={styles.closeBtn}
+        onPress={closeDetail}
+        accessibilityRole="button"
+        accessibilityLabel="Close"
+      >
+        <Text style={styles.closeBtnText}>Close</Text>
+        <Ionicons name="close" size={18} color={TEACHER.danger} />
+      </Pressable>
+    </>
+  ) : null;
+
+  if (analysisOnly) {
+    if (loading && !detailStudent) {
+      return <TeacherShimmer variant="list" count={4} />;
+    }
+
+    const missing =
+      Boolean(initialStudentId) &&
+      !loading &&
+      students.length > 0 &&
+      !students.some((s) => s.id === initialStudentId);
+
+    return (
+      <View style={styles.root}>
+        <Modal
+          visible={!!detailStudent || missing}
+          transparent
+          animationType="slide"
+          onRequestClose={closeDetail}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.modalCardContent}
+                keyboardShouldPersistTaps="handled"
+              >
+                {missing ? (
+                  <>
+                    <Text style={styles.modalTitle}>Student not found</Text>
+                    <Text style={styles.listSub}>This student is not in your assigned classes.</Text>
+                    <Pressable
+                      style={styles.closeBtn}
+                      onPress={() => onCloseAnalysis?.()}
+                      accessibilityRole="button"
+                      accessibilityLabel="Close"
+                    >
+                      <Text style={styles.closeBtnText}>Close</Text>
+                      <Ionicons name="close" size={18} color={TEACHER.danger} />
+                    </Pressable>
+                  </>
+                ) : (
+                  detailBody
+                )}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.root}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -670,22 +752,11 @@ export default function TrackProgressView({ initialClassFilter, initialStudentId
 
       <Modal visible={!!detailStudent} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <GlassPanel style={styles.modalCard} radius={24} tone="strong">
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.modalTitle}>{detailStudent?.name}</Text>
-              <Text style={styles.listSub}>{detailStudent?.email}</Text>
-              {detailStudent ? renderStudentDetail(detailStudent) : null}
-              <Pressable
-                style={styles.closeBtn}
-                onPress={() => {
-                  setDetailStudent(null);
-                  setDetailAiText('');
-                }}
-              >
-                <Text style={styles.closeBtnText}>Close</Text>
-              </Pressable>
+          <View style={styles.modalCard}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalCardContent}>
+              {detailBody}
             </ScrollView>
-          </GlassPanel>
+          </View>
         </View>
       </Modal>
     </View>
@@ -873,15 +944,18 @@ const styles = StyleSheet.create({
   statusText: { fontSize: 11, fontWeight: '700' },
   statusActiveText: { color: '#166534' },
   statusInactiveText: { color: '#991B1B' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'flex-end' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.45)', justifyContent: 'flex-end' },
   modalCard: {
+    backgroundColor: TEACHER.cardGradient[0],
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
     maxHeight: '92%',
     borderTopWidth: 1,
     borderColor: TEACHER.surfaceBorder,
+    overflow: 'hidden',
   },
+  modalCardContent: { paddingBottom: 12 },
   modalTitle: { ...TEACHER_TYPO.section, fontSize: 18, color: TEACHER.text, marginBottom: 4 },
   remarkItem: {
     paddingVertical: 10,
@@ -906,6 +980,19 @@ const styles = StyleSheet.create({
   },
   metricVal: { fontSize: 18, fontWeight: '800', color: TEACHER.primaryLight },
   metricLbl: { fontSize: 11, color: TEACHER.textMuted, marginTop: 4, textAlign: 'center' },
-  closeBtn: { alignItems: 'center', padding: 14 },
-  closeBtnText: { color: TEACHER.textMuted, fontWeight: '600' },
+  closeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    alignSelf: 'center',
+    marginTop: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 999,
+    backgroundColor: 'rgba(239,68,68,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.35)',
+  },
+  closeBtnText: { color: TEACHER.danger, fontWeight: '700' },
 });

@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -12,10 +11,9 @@ import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../../src/lib/api-config';
 import { openContentPreview } from '../../../../src/utils/openContentPreview';
-import GlassCard from '../../../../src/components/student/GlassCard';
 import PremiumSectionHeader from '../../../../src/components/student/PremiumSectionHeader';
 import { ShimmerCard } from '../../../../src/components/student/StudentShimmer';
-import { STUDENT, STUDENT_RADIUS } from '../../../../src/theme/student';
+import { STUDENT, STUDENT_RADIUS, STUDENT_SKY } from '../../../../src/theme/student';
 import { capAdaptiveRecommendationsPerSubject } from '../../../../src/lib/adaptive-learning-helpers';
 
 interface RecommendedItem {
@@ -149,12 +147,18 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
   };
 
   return (
-    <GlassCard variant="glass" padding={14} style={dark ? styles.darkWrap : undefined}>
+    <LinearGradient
+      colors={[...STUDENT_SKY.gradient]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={[styles.skyShell, dark && styles.darkWrap]}
+    >
+      <View style={styles.skyInner}>
       <PremiumSectionHeader
         title="Adaptive Learning"
         subtitle="Personalized Resources From Your Performance — Only Content Available In Your Library"
         icon="bulb-outline"
-        accent={STUDENT.accent}
+        accent={STUDENT_SKY.accent}
         badge="AI Powered"
       />
 
@@ -176,7 +180,7 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
           </Text>
         </View>
       ) : (
-        <ScrollView style={styles.cardsScroll} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+        <View>
           {cards.map((rec) => {
             const examScore = rec.examScorePercent ?? rec.progressPercent;
             const pri = priorityStyle(rec.priority);
@@ -184,7 +188,10 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
             return (
               <View key={rec.subjectId} style={styles.subjectCard}>
                 <View style={styles.subjectTop}>
-                  <LinearGradient colors={[STUDENT.accent, STUDENT.primary]} style={styles.subjectIcon}>
+                  <LinearGradient
+                    colors={[STUDENT_SKY.accent, STUDENT_SKY.accentDark]}
+                    style={styles.subjectIcon}
+                  >
                     <Ionicons name={getSubjectIcon(rec.subjectName)} size={16} color={STUDENT.textOnPrimary} />
                   </LinearGradient>
                   <View style={{ flex: 1 }}>
@@ -225,7 +232,7 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
                           onPress={() => openResource(item)}
                           activeOpacity={0.85}
                         >
-                          <Ionicons name="document-text-outline" size={16} color={STUDENT.accent} />
+                          <Ionicons name="document-text-outline" size={16} color={STUDENT_SKY.accent} />
                           <View style={{ flex: 1 }}>
                             <Text style={styles.recTitle} numberOfLines={2}>
                               {item.title}
@@ -262,35 +269,50 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
               </View>
             );
           })}
-        </ScrollView>
+        </View>
       )}
-    </GlassCard>
+      </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  skyShell: {
+    borderRadius: 28,
+    padding: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: STUDENT_SKY.shellBorder,
+    ...STUDENT.shadow.md,
+  },
+  skyInner: {
+    backgroundColor: STUDENT_SKY.innerBg,
+    borderRadius: 20,
+    padding: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: STUDENT_SKY.innerBorder,
+  },
   darkWrap: { opacity: 0.95 },
   center: { alignItems: 'center', paddingVertical: 20, gap: 8 },
   muted: { fontSize: 13, color: STUDENT.textMuted, textAlign: 'center' },
   mutedSmall: { fontSize: 12, color: STUDENT.textMuted, fontStyle: 'italic' },
   errorText: { fontSize: 13, color: STUDENT.danger, textAlign: 'center' },
-  retry: { fontSize: 13, fontWeight: '700', color: STUDENT.accent },
+  retry: { fontSize: 13, fontWeight: '700', color: STUDENT_SKY.accent },
   emptyBox: {
-    backgroundColor: 'rgba(255,255,255,0.42)',
+    backgroundColor: STUDENT_SKY.cardBg,
     borderRadius: STUDENT_RADIUS.inner,
     padding: 16,
     borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
+    borderColor: STUDENT_SKY.cardBorder,
   },
   emptySub: { fontSize: 12, color: STUDENT.textMuted, textAlign: 'center', marginTop: 6 },
-  cardsScroll: { maxHeight: 420 },
   subjectCard: {
-    backgroundColor: 'rgba(255,255,255,0.42)',
+    backgroundColor: STUDENT_SKY.cardBg,
     borderRadius: STUDENT_RADIUS.inner,
     padding: 12,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
+    borderColor: STUDENT_SKY.cardBorder,
   },
   subjectTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10 },
   subjectIcon: {
@@ -304,14 +326,14 @@ const styles = StyleSheet.create({
   subjectMeta: { fontSize: 11, color: STUDENT.textMuted, marginTop: 2 },
   progressBar: {
     height: 4,
-    backgroundColor: STUDENT.surfaceBorder,
+    backgroundColor: STUDENT_SKY.divider,
     borderRadius: 2,
     marginTop: 6,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: STUDENT.primary,
+    backgroundColor: STUDENT_SKY.accent,
     borderRadius: 2,
   },
   priorityBadge: {
@@ -334,13 +356,13 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: STUDENT.surfaceBorder,
+    borderTopColor: STUDENT_SKY.divider,
   },
   recTitle: { fontSize: 13, fontWeight: '600', color: STUDENT.text },
   recHint: { fontSize: 11, color: STUDENT.textMuted, marginTop: 2 },
   typeBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
   typeBadgeText: { fontSize: 9, fontWeight: '800' },
-  actionLabel: { fontSize: 10, fontWeight: '700', color: STUDENT.accent },
+  actionLabel: { fontSize: 10, fontWeight: '700', color: STUDENT_SKY.accent },
   gapBox: {
     marginTop: 8,
     backgroundColor: `${STUDENT.warning}12`,

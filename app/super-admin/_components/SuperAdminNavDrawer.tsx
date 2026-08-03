@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 10,
     fontWeight: '800',
-    color: 'rgba(255,255,255,0.55)',
+    color: '#FFFFFF',
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 6,
@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   navItemActive: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
   },
   navLabel: {
     flex: 1,

@@ -26,78 +26,54 @@ export const AI_TOOL_QUEST_STYLES = `
   60%{transform:scale(.92) rotate(-8deg);opacity:1}
   100%{transform:scale(1) rotate(-8deg);opacity:1}
 }
-.quest-field{position:relative;isolation:isolate;padding:4px 2px 18px}
-.quest-field::before,.quest-field::after{
-  content:"";position:absolute;inset:-20% -10% auto;height:220px;border-radius:999px;filter:blur(42px);z-index:0;pointer-events:none;animation:quest-aurora 9s ease-in-out infinite
-}
-.quest-field::before{background:radial-gradient(circle,rgba(139,92,246,.45),transparent 68%)}
-.quest-field::after{left:35%;background:radial-gradient(circle,rgba(14,165,233,.38),transparent 70%);animation-delay:-4s}
-.quest-orbit{
-  position:sticky;top:0;z-index:30;display:flex;gap:8px;overflow-x:auto;padding:8px 4px 12px;margin:0 0 10px;
-  -webkit-overflow-scrolling:touch;scrollbar-width:none
-}
-.quest-orbit::-webkit-scrollbar{display:none}
-.quest-orbit-btn{
-  flex:0 0 auto;border:1px solid rgba(255,255,255,.7);
-  background:linear-gradient(135deg,rgba(255,255,255,.85),rgba(255,255,255,.55));
-  color:#0f172a;border-radius:999px;padding:8px 12px;font-size:11px;font-weight:800;letter-spacing:.02em;
-  box-shadow:0 8px 24px rgba(15,23,42,.08);white-space:nowrap
-}
-.quest-orbit-btn.is-active{color:#fff;border-color:transparent;background:linear-gradient(135deg,var(--c,#8b5cf6),#312e81)}
-.quest-stamp{
-  position:absolute;right:10px;top:10px;z-index:5;width:74px;height:74px;border-radius:999px;
-  border:3px dashed var(--quest,#8b5cf6);color:var(--quest,#8b5cf6);
-  display:flex;align-items:center;justify-content:center;text-align:center;font-size:9px;font-weight:900;
-  letter-spacing:.08em;text-transform:uppercase;line-height:1.15;transform:rotate(-8deg);
-  background:rgba(255,255,255,.55);animation:quest-stamp .7s cubic-bezier(.2,1.4,.4,1) both;
-  pointer-events:none
-}
+.quest-field{position:relative;isolation:isolate;padding:0;margin:0}
+.quest-field::before,.quest-field::after{display:none}
+/* Orbit tabs render natively in RN for smooth horizontal scroll — hide any leftover DOM rail. */
+.quest-orbit{display:none!important}
+.quest-orbit-btn{display:none!important}
+.quest-stamp{display:none!important}
 .quest-node{
   --quest:#8b5cf6;--quest-deep:#6d28d9;
-  position:relative;z-index:1;margin:0 0 14px;border-radius:22px;overflow:hidden;
-  border:1px solid rgba(255,255,255,.72);
-  background:
-    linear-gradient(135deg,rgba(255,255,255,.08),transparent 42%),
-    linear-gradient(180deg,rgba(255,255,255,.78),rgba(255,255,255,.42));
-  box-shadow:0 18px 40px rgba(15,23,42,.1), inset 0 1px 0 rgba(255,255,255,.75);
-  transition:transform .22s ease,box-shadow .22s ease
+  position:relative;z-index:1;margin:0 0 6px;border-radius:14px;overflow:hidden;
+  border:1px solid #e2e8f0;
+  background:#ffffff;
+  box-shadow:none;
+  transition:none
 }
-.quest-node[open]{transform:translateY(-1px);box-shadow:0 22px 48px rgba(15,23,42,.14)}
+.quest-node:last-child{margin-bottom:0}
+.quest-node[open]{transform:none;box-shadow:none}
 .quest-node::before{
-  content:"";position:absolute;inset:0 auto 0 0;width:7px;
+  content:"";position:absolute;inset:0 auto 0 0;width:4px;
   background:linear-gradient(180deg,var(--quest),var(--quest-deep));
 }
-.quest-node::after{
-  content:"";position:absolute;inset:0;pointer-events:none;opacity:.35;
-  background:linear-gradient(110deg,transparent 20%,rgba(255,255,255,.55) 48%,transparent 72%);
-  background-size:220% 100%;animation:quest-shimmer 4.8s linear infinite
-}
+.quest-node::after{display:none}
 .quest-summary{
-  list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;
-  padding:14px 16px 14px 18px;user-select:none;-webkit-user-select:none
+  list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;
+  padding:10px 12px 10px 14px;user-select:none;-webkit-user-select:none;
+  background:#ffffff
 }
 .quest-summary::-webkit-details-marker{display:none}
 .quest-orb{
-  width:48px;height:48px;border-radius:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
-  color:#fff;font-weight:900;font-size:15px;letter-spacing:-.02em;
+  width:36px;height:36px;border-radius:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  color:#fff;font-weight:800;font-size:13px;letter-spacing:-.02em;
   background:linear-gradient(145deg,var(--quest),var(--quest-deep));
-  box-shadow:0 10px 22px rgba(15,23,42,.18);animation:quest-pulse 2.8s ease-in-out infinite
+  box-shadow:none;animation:none
 }
 .quest-copy{min-width:0;flex:1}
 .quest-kicker{
-  display:flex;align-items:center;gap:6px;font-size:10px;font-weight:800;letter-spacing:.14em;
-  text-transform:uppercase;color:var(--quest-deep)
+  display:flex;align-items:center;gap:6px;font-size:10px;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;color:#64748b
 }
-.quest-kicker span.dot{width:6px;height:6px;border-radius:99px;background:var(--quest);animation:quest-float 2.2s ease-in-out infinite}
-.quest-title{margin-top:2px;font-size:15px;line-height:1.3;font-weight:800;color:#0f172a}
-.quest-hint{font-size:11px;font-weight:700;color:#64748b;white-space:nowrap}
-.quest-node[open] .quest-hint{color:var(--quest-deep)}
+.quest-kicker span.dot{width:5px;height:5px;border-radius:99px;background:var(--quest);animation:none}
+.quest-title{margin-top:1px;font-size:15px;line-height:1.3;font-weight:800;color:#0f172a}
+.quest-hint{font-size:11px;font-weight:600;color:#64748b;white-space:nowrap}
+.quest-node[open] .quest-hint{color:#475569}
 .quest-body{
-  padding:0 14px 14px 18px;color:#334155;position:relative;z-index:1;
-  border-top:1px solid rgba(255,255,255,.55);
-  background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,.55))
+  padding:0 12px 10px 14px;color:#334155;position:relative;z-index:1;
+  border-top:1px solid #e2e8f0;
+  background:#ffffff
 }
-.quest-body>*:first-child{margin-top:12px}
+.quest-body>*:first-child{margin-top:8px}
 .ai-tool-q-card{
   position:relative;overflow:hidden;border-radius:18px!important;
   background:
@@ -197,7 +173,7 @@ export const AI_TOOL_QUEST_STYLES = `
 }
 .quest-pill-amber{background:#fffbeb;color:#92400e;border-color:#fde68a}
 .quest-pill-violet{background:#f5f3ff;color:#6d28d9;border-color:#ddd6fe}
-.quest-q-prompt,.quest-q-text{margin:0;font-size:15px;line-height:1.45;font-weight:650;color:#0f172a}
+.quest-q-prompt,.quest-q-text{margin:0;font-size:15px;line-height:1.45;font-weight:700;color:#0f172a}
 .quest-options{display:grid;gap:8px;margin-top:12px}
 @media (min-width:640px){.quest-options{grid-template-columns:1fr 1fr}}
 .quest-option{
@@ -278,40 +254,38 @@ export const AI_TOOL_QUEST_BOOTSTRAP = `
     field.className = 'quest-field';
     var first = nodes[0];
     var parent = first.parentNode;
+    // Pull hero / shell headers that sit above the first section into the same
+    // measured box — exam papers & mock tests always have a title card above.
+    var prelude = [];
+    var cursor = parent.firstChild;
+    while (cursor && cursor !== first) {
+      var next = cursor.nextSibling;
+      if (cursor.nodeType === 1 && !cursor.classList.contains('quest-node')) {
+        prelude.push(cursor);
+      }
+      cursor = next;
+    }
     parent.insertBefore(field, first);
+    prelude.forEach(function(el){ field.appendChild(el); });
     nodes.forEach(function(n){ field.appendChild(n); });
 
-    var stamp = document.createElement('div');
-    stamp.className = 'quest-stamp';
-    stamp.style.setProperty('--quest', palette[0]);
-    stamp.innerHTML = 'Portal<br/>Unlocked';
-    field.insertBefore(stamp, field.firstChild);
-
-    var orbit = document.createElement('div');
-    orbit.className = 'quest-orbit';
-    orbit.setAttribute('aria-label','Jump between quests');
     nodes.forEach(function(n, i){
-      var title = (n.querySelector('.quest-title') || {}).textContent || ('Quest '+(i+1));
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'quest-orbit-btn';
-      btn.style.setProperty('--c', getComputedStyle(n).getPropertyValue('--quest').trim() || palette[i%10]);
-      btn.textContent = (i+1)+' · '+String(title).trim().slice(0,22);
-      btn.addEventListener('click', function(){
-        n.open = true;
-        n.scrollIntoView({behavior:'smooth', block:'start'});
-        Array.prototype.forEach.call(orbit.children, function(b){ b.classList.remove('is-active'); });
-        btn.classList.add('is-active');
-      });
-      if(i===0) btn.classList.add('is-active');
-      orbit.appendChild(btn);
+      n.setAttribute('data-quest-idx', String(i));
     });
-    field.insertBefore(orbit, stamp.nextSibling);
+
+    // Hand orbit tabs to React Native for a native horizontal ScrollView (no WebView lag/clip).
+    var tabs = nodes.map(function(n, i){
+      var title = (n.querySelector('.quest-title') || {}).textContent || ('Section '+(i+1));
+      return String(title).trim().slice(0, 28);
+    });
+    if (window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'orbit', tabs: tabs }));
+    }
 
     nodes.forEach(function(n, i){
       n.addEventListener('toggle', function(){
-        if(!n.open) return;
-        Array.prototype.forEach.call(orbit.children, function(b, bi){ b.classList.toggle('is-active', bi===i); });
+        if(!n.open || !window.ReactNativeWebView) return;
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'orbit-active', index: i }));
       });
     });
   }catch(e){}

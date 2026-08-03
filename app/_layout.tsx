@@ -124,7 +124,14 @@ function AuthGate() {
       <Stack.Screen name="exam/[id]" />
       <Stack.Screen name="ai-tutor" />
       <Stack.Screen name="profile" />
-      <Stack.Screen name="admin/dashboard" />
+      <Stack.Screen
+        name="admin/dashboard"
+        options={{
+          // Opaque so AppBackground ImageBackground is fully covered — scrolling
+          // translucent admin UI over a live bitmap is a major FPS cliff.
+          contentStyle: { backgroundColor: '#EEF2E3' },
+        }}
+      />
       <Stack.Screen name="teacher/dashboard" />
       <Stack.Screen
         name="teacher/tools/[toolType]"
@@ -174,7 +181,15 @@ function AuthGate() {
       <Stack.Screen name="super-admin/analytics" />
       <Stack.Screen name="super-admin/detailed-ai-analytics" />
       <Stack.Screen name="super-admin/schools/[id]" />
-      <Stack.Screen name="super-admin/create-order" />
+      <Stack.Screen
+        name="super-admin/create-order"
+        options={{
+          animation: 'slide_from_right',
+          gestureEnabled: true,
+          // Opaque so the Subscriptions list under this route cannot bleed through.
+          contentStyle: { backgroundColor: '#EEF2FF' },
+        }}
+      />
     </Stack>
   );
 }

@@ -105,8 +105,6 @@ export default function TeacherClassCard({
 
   return (
     <Animated.View entering={FadeInUp.duration(350)} style={styles.card}>
-      <View style={styles.leftAccent} />
-
       <View style={styles.headerRow}>
         <View style={styles.headerText}>
           <Text style={styles.className}>{name}</Text>
@@ -236,20 +234,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: TEACHER.surfaceBorder,
     padding: 16,
-    paddingLeft: 18,
     marginBottom: 12,
     overflow: 'hidden',
     position: 'relative',
-  },
-  leftAccent: {
-    position: 'absolute',
-    left: 0,
-    top: 14,
-    bottom: 14,
-    width: 3,
-    borderTopRightRadius: 3,
-    borderBottomRightRadius: 3,
-    backgroundColor: TEACHER.primary,
   },
   headerRow: {
     flexDirection: 'row',
@@ -361,7 +348,7 @@ const styles = StyleSheet.create({
   studentRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E0E7FF',

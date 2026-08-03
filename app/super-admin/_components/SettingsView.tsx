@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchCurrentUser } from '../../../src/lib/vidya-admin';
 import { GlassPanel } from '../../../src/components/ui';
+import { SUPER_ADMIN_FLOATING_TAB_BAR_PAD } from '../../../src/lib/responsive-layout';
 import type { SuperAdminView } from './SuperAdminNavDrawer';
 
 const VIDYA_PREFS_KEY = 'superAdminVidyaPrefs';
@@ -90,7 +91,7 @@ export default function SettingsView({ onNavigate, onLogout }: SettingsViewProps
   }
 
   return (
-    <ScrollView style={styles.content}>
+    <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>System Settings</Text>
         <Text style={styles.headerSubtitle}>
@@ -182,6 +183,7 @@ export default function SettingsView({ onNavigate, onLogout }: SettingsViewProps
 
 const styles = StyleSheet.create({
   content: { flex: 1 },
+  scrollContent: { paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
   header: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12 },
   headerTitle: { fontSize: 22, fontWeight: '800', color: '#111827', marginBottom: 6 },
@@ -270,7 +272,7 @@ const styles = StyleSheet.create({
   },
   logoutText: { fontSize: 15, fontWeight: '700', color: '#ef4444' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: 'rgba(255,255,255,0.48)', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16 },
+  modalSheet: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16 },
   modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 12 },
   modalItem: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
   modalItemText: { fontSize: 15, color: '#111827' },

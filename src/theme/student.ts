@@ -8,18 +8,18 @@
  * primary buttons only reached 2.54:1; this primary holds 5.17:1.
  */
 import { Platform } from 'react-native';
-import { GLASS_ROW, GLASS_VIOLET } from './glass';
+import { GLASS_VIOLET } from './glass';
 
 export const STUDENT = {
   bg: '#f5f3ff',
   bgAccent: '#ede9fe',
-  surface: Platform.OS === 'android' ? '#FFFFFF' : 'rgba(255,255,255,0.48)',
-  surfaceGlass: Platform.OS === 'android' ? '#FFFFFF' : GLASS_ROW.fillStrong,
+  surface: '#FFFFFF',
+  surfaceGlass: '#FFFFFF',
   glassSheen: GLASS_VIOLET,
   surfaceDark: '#0f172a',
-  surfaceElevated: Platform.OS === 'android' ? '#FFFFFF' : 'rgba(255,255,255,0.58)',
-  surfaceBorder: Platform.OS === 'android' ? 'rgba(226,232,240,0.95)' : 'rgba(255,255,255,0.65)',
-  surfaceHover: Platform.OS === 'android' ? '#F8FAFC' : 'rgba(255,255,255,0.36)',
+  surfaceElevated: '#FFFFFF',
+  surfaceBorder: 'rgba(226,232,240,0.95)',
+  surfaceHover: '#F8FAFC',
   primary: '#6d5bd0',
   primaryDark: '#5443b8',
   primaryLight: '#9b8ae6',
@@ -37,7 +37,7 @@ export const STUDENT = {
   headerGradient: ['#4C3BA6', '#5F4CC4', '#7C6BDA'] as const,
   heroGradient: ['#4C3BA6', '#6D5BD0', '#8B7AE0'] as const,
   cardGradient: ['#ede9fe', '#f5f3ff'] as const,
-  tabBarBg: Platform.OS === 'android' ? '#FFFFFF' : 'rgba(255,255,255,0.92)',
+  tabBarBg: '#FFFFFF',
   tabBarBorder: 'rgba(109,91,208,0.20)',
   // Inactive tab labels sit at 9px on a translucent bar — #94a3b8 was unreadable.
   navInactive: '#5b6779',
@@ -85,6 +85,26 @@ export const STUDENT = {
 };
 
 export const STUDENT_SHADOW = STUDENT.shadow;
+
+/** Soft sky-blue shell used on Home sections (calendar, tasks, adaptive). */
+export const STUDENT_SKY = {
+  gradient: ['#7EC8E8', '#A8D8F0', '#C8E8F8'] as const,
+  title: '#0C4A6E',
+  shellBorder: 'rgba(14, 116, 144, 0.18)',
+  innerBg: 'rgba(255,255,255,0.88)',
+  innerBorder: 'rgba(255,255,255,0.95)',
+  chipBg: '#E0F2FE',
+  weekHead: '#E8F4FC',
+  accent: '#0284C7',
+  accentDark: '#0369A1',
+  accentSoft: '#38BDF8',
+  todayBg: 'rgba(14, 165, 233, 0.16)',
+  dayCell: 'rgba(255,255,255,0.72)',
+  legendText: '#0C4A6E',
+  divider: 'rgba(14, 116, 144, 0.14)',
+  cardBg: 'rgba(255,255,255,0.72)',
+  cardBorder: 'rgba(14, 116, 144, 0.16)',
+} as const;
 
 export const STUDENT_SPACING = {
   xs: 4,

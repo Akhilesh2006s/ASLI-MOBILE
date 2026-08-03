@@ -4,6 +4,22 @@ import { stripMarkdownSyntax } from './strip-markdown-syntax';
 
 export type BranchItem = { value: string; count: number };
 
+/** Collapse duplicate branch values (same tool slug) and sum their counts. */
+export function dedupeBranchItems(items: BranchItem[]): BranchItem[] {
+  const byValue = new Map<string, BranchItem>();
+  for (const item of items) {
+    const value = String(item.value || '').trim();
+    if (!value) continue;
+    const existing = byValue.get(value);
+    if (!existing) {
+      byValue.set(value, { value, count: Number(item.count) || 0 });
+      continue;
+    }
+    existing.count += Number(item.count) || 0;
+  }
+  return Array.from(byValue.values());
+}
+
 export type BranchResponse = {
   success: boolean;
   data: {

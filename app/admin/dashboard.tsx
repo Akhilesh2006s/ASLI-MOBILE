@@ -1,12 +1,11 @@
-import { useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
+import { useEffect, useState, startTransition, useCallback } from 'react';
+import { Alert, Keyboard, Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
-import { useVisitedTabs } from '../../src/hooks/useVisitedTabs';
 import { useAuth } from '../../src/context/AuthContext';
 import authService from '../../src/services/api/authService';
-import { LoadingState, VisitedTabPane } from '../../src/components/ui';
+import { LoadingState } from '../../src/components/ui';
 import OverviewView from './_components/OverviewView';
 import AnalyticsDashboardView from './_components/AnalyticsDashboardView';
 import StudentsView from './_components/StudentsView';
@@ -28,18 +27,65 @@ import AdminNavDrawer, { adminNavLabel, type AdminNavView } from './_components/
 import { AdminHeader, AdminTabBar, useAdminTheme } from './_ui';
 import { useAdminResponsiveLayout } from './_ui/useAdminResponsiveLayout';
 
+function renderAdminView(
+  view: AdminNavView,
+  opts: { userName: string; adminId?: string | null; onNavigate: (v: AdminNavView) => void }
+) {
+  switch (view) {
+    case 'overview':
+      return <OverviewView onNavigate={opts.onNavigate} />;
+    case 'analytics':
+      return <AnalyticsDashboardView />;
+    case 'students':
+      return <StudentsView />;
+    case 'classes':
+      return <ClassesView />;
+    case 'teachers':
+      return <TeachersView />;
+    case 'subjects':
+      return <SubjectsView />;
+    case 'exams':
+      return <ExamsView />;
+    case 'assessments':
+      return <AssessmentsView />;
+    case 'quizzes':
+      return <QuizzesView />;
+    case 'learning-paths':
+      return <LearningPathsView />;
+    case 'eduott':
+      return (
+        <EduOTTFilterProvider>
+          <EduOTTView username={opts.userName} />
+        </EduOTTFilterProvider>
+      );
+    case 'videos':
+      return <VideosView />;
+    case 'timetable':
+      return <TimetableView />;
+    case 'calendar':
+      return <CalendarView />;
+    case 'vidya-ai':
+      return <VidyaAIView adminId={opts.adminId} adminName={opts.userName} />;
+    default:
+      return null;
+  }
+}
+
 export default function AdminDashboard() {
   const { signOut, user: authUser } = useAuth();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
-  const { colors, spacing } = useAdminTheme();
+  const { spacing } = useAdminTheme();
   const { shellPaddingBottom, showBottomTabBar } = useAdminResponsiveLayout();
-  const { active: currentView, visited: visitedViews, select: selectView, setActive: setCurrentView } =
-    useVisitedTabs<AdminNavView>('overview');
+  const [currentView, setCurrentView] = useState<AdminNavView>('overview');
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [userName, setUserName] = useState('Admin');
-  const [schoolProfile, setSchoolProfile] = useState<{ schoolName?: string; schoolLogo?: string } | null>(null);
+  const [adminId, setAdminId] = useState<string | null>(null);
+  const [schoolProfile, setSchoolProfile] = useState<{ schoolName?: string; schoolLogo?: string } | null>(
+    null
+  );
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
   const schoolUser =
     authUser?.role === 'admin'
       ? { schoolName: authUser.schoolName, schoolLogo: authUser.schoolLogo }
@@ -47,19 +93,37 @@ export default function AdminDashboard() {
 
   useBackNavigation('/admin/dashboard', true);
 
+  const selectView = useCallback((view: AdminNavView) => {
+    startTransition(() => setCurrentView(view));
+  }, []);
+
+  const openMenu = useCallback(() => setMenuOpen(true), []);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+
   useEffect(() => {
     checkAuth();
   }, []);
 
   useEffect(() => {
-    if (tab === 'overview') setCurrentView('overview');
-    else if (tab === 'students') setCurrentView('students');
-    else if (tab === 'classes') setCurrentView('classes');
-    else if (tab === 'teachers') setCurrentView('teachers');
-    else if (tab === 'vidya-ai') setCurrentView('vidya-ai');
-    else if (tab === 'eduott') setCurrentView('eduott');
-    else if (tab === 'learning-paths') setCurrentView('learning-paths');
-  }, [tab]);
+    if (tab === 'overview') selectView('overview');
+    else if (tab === 'students') selectView('students');
+    else if (tab === 'classes') selectView('classes');
+    else if (tab === 'teachers') selectView('teachers');
+    else if (tab === 'vidya-ai') selectView('vidya-ai');
+    else if (tab === 'eduott') selectView('eduott');
+    else if (tab === 'learning-paths') selectView('learning-paths');
+  }, [tab, selectView]);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const subShow = Keyboard.addListener(showEvent, () => setKeyboardOpen(true));
+    const subHide = Keyboard.addListener(hideEvent, () => setKeyboardOpen(false));
+    return () => {
+      subShow.remove();
+      subHide.remove();
+    };
+  }, []);
 
   const checkAuth = async () => {
     try {
@@ -80,7 +144,8 @@ export default function AdminDashboard() {
       const data = await authService.me();
       if (data?.user?.role === 'admin') {
         setIsAuthenticated(true);
-        setUserName(data.user.fullName || 'Admin');
+        setUserName(data.user.fullName || data.user.schoolName || 'Admin');
+        setAdminId(String(data.user._id || data.user.id || ''));
         setSchoolProfile({
           schoolName: data.user.schoolName,
           schoolLogo: data.user.schoolLogo,
@@ -127,14 +192,14 @@ export default function AdminDashboard() {
     ]);
   };
 
-  const onSelectView = (view: AdminNavView) => {
+  const onSelectView = useCallback((view: AdminNavView) => {
     selectView(view);
     setMenuOpen(false);
-  };
+  }, [selectView]);
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container} edges={['bottom']}>
+      <SafeAreaView style={styles.container} edges={[]}>
         <LoadingState variant="stats" style={{ padding: spacing.lg, flex: 1 }} />
       </SafeAreaView>
     );
@@ -143,130 +208,52 @@ export default function AdminDashboard() {
   if (!isAuthenticated) return null;
 
   const isDashboard = currentView === 'overview';
-
-  const mainColumn = (
-    <KeyboardAvoidingView
-      style={styles.mainColumn}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <AdminHeader
-        userName={userName}
-        schoolUser={schoolUser ?? undefined}
-        showSchoolBrand={isDashboard}
-        subtitle={isDashboard ? 'Dashboard' : adminNavLabel(currentView)}
-        onMenu={() => setMenuOpen(true)}
-      />
-
-      <View
-        style={[
-          // Transparent so the shared app background artwork shows through.
-          styles.contentWrap,
-          { paddingBottom: shellPaddingBottom },
-        ]}
-      >
-        <View style={styles.content}>
-          {visitedViews.has('overview') ? (
-            <VisitedTabPane visible={currentView === 'overview'}>
-              <OverviewView onNavigate={onSelectView} />
-            </VisitedTabPane>
-          ) : null}
-          {visitedViews.has('analytics') ? (
-            <VisitedTabPane visible={currentView === 'analytics'}>
-              <AnalyticsDashboardView />
-            </VisitedTabPane>
-          ) : null}
-          {visitedViews.has('students') ? (
-            <VisitedTabPane visible={currentView === 'students'}>
-              <StudentsView />
-            </VisitedTabPane>
-          ) : null}
-          {visitedViews.has('classes') ? (
-            <VisitedTabPane visible={currentView === 'classes'}>
-              <ClassesView />
-            </VisitedTabPane>
-          ) : null}
-          {visitedViews.has('teachers') ? (
-            <VisitedTabPane visible={currentView === 'teachers'}>
-              <TeachersView />
-            </VisitedTabPane>
-          ) : null}
-          {visitedViews.has('subjects') ? (
-            <VisitedTabPane visible={currentView === 'subjects'}>
-              <SubjectsView />
-            </VisitedTabPane>
-          ) : null}
-          {visitedViews.has('exams') ? (
-            <VisitedTabPane visible={currentView === 'exams'}>
-              <ExamsView />
-            </VisitedTabPane>
-          ) : null}
-          {visitedViews.has('assessments') ? (
-            <VisitedTabPane visible={currentView === 'assessments'}>
-              <AssessmentsView />
-            </VisitedTabPane>
-          ) : null}
-          {visitedViews.has('quizzes') ? (
-            <VisitedTabPane visible={currentView === 'quizzes'}>
-              <QuizzesView />
-            </VisitedTabPane>
-          ) : null}
-          {visitedViews.has('learning-paths') ? (
-            <VisitedTabPane visible={currentView === 'learning-paths'}>
-              <LearningPathsView />
-            </VisitedTabPane>
-          ) : null}
-          {visitedViews.has('eduott') ? (
-            <VisitedTabPane visible={currentView === 'eduott'}>
-              <EduOTTFilterProvider>
-                <EduOTTView username={userName} />
-              </EduOTTFilterProvider>
-            </VisitedTabPane>
-          ) : null}
-          {visitedViews.has('videos') ? (
-            <VisitedTabPane visible={currentView === 'videos'}>
-              <VideosView />
-            </VisitedTabPane>
-          ) : null}
-          {visitedViews.has('timetable') ? (
-            <VisitedTabPane visible={currentView === 'timetable'}>
-              <TimetableView />
-            </VisitedTabPane>
-          ) : null}
-          {visitedViews.has('calendar') ? (
-            <VisitedTabPane visible={currentView === 'calendar'}>
-              <CalendarView />
-            </VisitedTabPane>
-          ) : null}
-          {visitedViews.has('vidya-ai') ? (
-            <VisitedTabPane visible={currentView === 'vidya-ai'}>
-              <VidyaAIView />
-            </VisitedTabPane>
-          ) : null}
-        </View>
-      </View>
-    </KeyboardAvoidingView>
-  );
+  const isVidya = currentView === 'vidya-ai';
+  // Tab bar is in layout flow (not overlay) — content only needs light bottom pad.
+  const contentBottomPad = isVidya ? 0 : shellPaddingBottom;
+  const showTabs = showBottomTabBar && !(isVidya && keyboardOpen);
+  const resolvedAdminId =
+    adminId || (authUser?._id || authUser?.id ? String(authUser._id || authUser.id) : null);
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={[]}>
       <View style={styles.shell}>
-        {mainColumn}
-      </View>
+        <View style={styles.mainColumn}>
+          <AdminHeader
+            userName={userName}
+            schoolUser={schoolUser ?? undefined}
+            showSchoolBrand={isDashboard}
+            subtitle={isDashboard ? 'Dashboard' : adminNavLabel(currentView)}
+            onMenu={openMenu}
+          />
 
-      {showBottomTabBar ? <AdminTabBar activeView={currentView} onTabChange={setCurrentView} /> : null}
+          <View style={[styles.contentWrap, { paddingBottom: contentBottomPad }]}>
+            <View style={styles.content}>
+              {renderAdminView(currentView, {
+                userName,
+                adminId: resolvedAdminId,
+                onNavigate: onSelectView,
+              })}
+            </View>
+          </View>
+
+          {/* In-flow footer — never scrolls with tab content. */}
+          {showTabs ? <AdminTabBar activeView={currentView} onTabChange={selectView} /> : null}
+        </View>
+      </View>
 
       <AdminNavDrawer
         visible={menuOpen}
         activeView={currentView}
         userName={userName}
-        onClose={() => setMenuOpen(false)}
+        onClose={closeMenu}
         onSelect={onSelectView}
         onLogout={handleLogout}
       />
 
       <VidyaAIFloatingAssistant
         role="admin"
-        hidden={currentView === 'vidya-ai'}
+        hidden={isVidya || keyboardOpen}
         onPress={() => onSelectView('vidya-ai')}
       />
     </SafeAreaView>
@@ -274,27 +261,29 @@ export default function AdminDashboard() {
 }
 
 const styles = StyleSheet.create({
-  // Transparent so the shared app background artwork shows through.
-  container: { flex: 1, backgroundColor: 'transparent' },
+  container: { flex: 1, backgroundColor: '#EEF2E3' },
   shell: {
     flex: 1,
     flexDirection: 'row',
     minHeight: 0,
+    backgroundColor: '#EEF2E3',
   },
   mainColumn: {
     flex: 1,
     minWidth: 0,
     minHeight: 0,
+    backgroundColor: '#EEF2E3',
   },
   contentWrap: {
     flex: 1,
     minHeight: 0,
     position: 'relative',
     overflow: 'hidden',
+    backgroundColor: '#EEF2E3',
   },
   content: {
     flex: 1,
     minHeight: 0,
-    backgroundColor: 'transparent',
+    backgroundColor: '#EEF2E3',
   },
 });

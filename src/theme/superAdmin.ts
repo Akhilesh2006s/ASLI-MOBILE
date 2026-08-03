@@ -3,11 +3,11 @@ import type { AdminColorScheme, AdminThemeColors } from './admin';
 
 export const SUPER_ADMIN_LIGHT: AdminThemeColors = {
   bg: 'transparent',
-  bgElevated: 'rgba(255,237,213,0.45)',
-  surface: 'rgba(255,255,255,0.48)',
-  surfaceGlass: 'rgba(255, 255, 255, 0.55)',
-  surfaceBorder: 'rgba(255,255,255,0.65)',
-  surfaceHover: 'rgba(255,247,237,0.45)',
+  bgElevated: '#FFEDD5',
+  surface: '#FFFFFF',
+  surfaceGlass: '#FFFFFF',
+  surfaceBorder: 'rgba(234, 88, 12, 0.14)',
+  surfaceHover: '#FFF7ED',
   primary: '#F97316',
   primaryDark: '#EA580C',
   primaryLight: '#FB923C',

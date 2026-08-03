@@ -157,8 +157,8 @@ const GRADIENT_RULES = `
 
 const BASE_RULES = `
 *,*::before,*::after{box-sizing:border-box}
-html,body{margin:0;padding:0;background:#f7f9ff;-webkit-text-size-adjust:100%}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#334155;line-height:1.6;font-size:17px;padding:12px 10px 18px;background:linear-gradient(165deg,#f4f7ff 0%,#fafbff 48%,#fff8f1 100%);border-radius:16px}
+html,body{margin:0;padding:0;background:#ffffff;-webkit-text-size-adjust:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#334155;line-height:1.6;font-size:17px;padding:8px 8px 10px;background:#ffffff;border-radius:16px}
 .ai-tool-fallback-pre{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px;font-size:15px;line-height:1.6;color:#334155;overflow-x:auto}
 .ai-tool-empty-message{color:#64748b;font-size:15px;text-align:center;padding:24px 12px}
 img{max-width:100%;height:auto}
@@ -206,7 +206,7 @@ pre{white-space:pre-wrap;word-break:break-word}
 .text-left{text-align:left}.text-xs{font-size:.9375rem;line-height:1.35rem}.text-sm{font-size:1rem;line-height:1.5rem}
 .text-base{font-size:1.0625rem;line-height:1.65rem}.text-lg{font-size:1.2rem;line-height:1.8rem}.text-xl{font-size:1.4rem;line-height:1.95rem}
 .text-2xl{font-size:1.65rem;line-height:2.15rem}.text-\\[9px\\],.text-\\[10px\\],.text-\\[11px\\]{font-size:15px;line-height:1.35rem}
-.font-medium{font-weight:500}.font-semibold{font-weight:600}.font-bold{font-weight:700}.font-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.font-medium{font-weight:500}.font-semibold{font-weight:600}.font-bold{font-weight:700}.font-extrabold{font-weight:800}.font-black{font-weight:900}.font-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 .italic{font-style:italic}.uppercase{text-transform:uppercase}
 .leading-tight{line-height:1.25}.leading-snug{line-height:1.375}.leading-relaxed{line-height:1.625}
 .tracking-tight{letter-spacing:-.025em}.tracking-wider{letter-spacing:.05em}.tracking-widest{letter-spacing:.1em}
@@ -217,11 +217,16 @@ pre{white-space:pre-wrap;word-break:break-word}
 .space-y-2>:not([hidden])~:not([hidden]){margin-top:.5rem}
 .space-y-2\\.5>:not([hidden])~:not([hidden]){margin-top:.625rem}
 .prose{color:#334155;max-width:none}.prose-sm{font-size:1rem;line-height:1.55}
-.prose h1,.prose h2,.prose h3,.prose h4{color:#111827;font-weight:700}
-.prose p{margin:.5rem 0}.prose strong{font-weight:600;color:#111827}
+.prose h1,.prose h2,.prose h3,.prose h4{color:#111827;font-weight:800}
+.prose p{margin:.5rem 0}.prose strong{font-weight:800;color:#0f172a}
 .prose code{background:#f3f4f6;padding:.1rem .3rem;border-radius:.25rem;font-size:.85em}
 .prose pre{background:#f3f4f6;padding:1rem;border-radius:.5rem;overflow-x:auto}
 .prose ul,.prose ol{margin:.5rem 0 .5rem 1.25rem}
+/* Exam / mock-test / worksheet labels — must stay heavy after markdown strip */
+.ai-q-label{font-weight:800!important;color:#1e1b4b!important;letter-spacing:.01em}
+.ai-section-subhead{font-size:15px!important;line-height:1.35!important;font-weight:800!important;color:#1e1b4b!important;margin:12px 0 8px;padding-bottom:6px;border-bottom:1px solid #c7d2fe}
+.quest-body .ai-q-label,.quest-body strong{font-weight:800!important;color:#1e1b4b!important}
+.quest-body h3,.quest-body h4,.quest-body .ai-section-subhead{font-weight:800!important;color:#1e1b4b!important}
 .smart-study-guide-markdown,.concept-breakdown-markdown,.chapter-summary-markdown,.key-points-markdown,
 .practice-qa-markdown,.mock-test-markdown,.quick-assignment-markdown{max-width:100%}
 .ai-tool-sections-grid{display:block}

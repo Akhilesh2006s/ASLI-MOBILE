@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeInUp } from 'react-native-reanimated';
 import adminService from '../../../src/services/api/adminService';
 import {
   AdminScreenShell,
@@ -150,9 +149,8 @@ export default function AnalyticsDashboardView() {
       <AdminGlassCard delay={100} style={{ marginTop: spacing.md, padding: spacing.md }}>
         <AdminSectionHeader title="Class Performance" icon="school-outline" />
         {analytics.classPerformance.map((item, idx) => (
-          <Animated.View
+          <View
             key={`${item.classNumber}-${idx}`}
-            entering={FadeInUp.delay(idx * 50).duration(350)}
             style={[styles.rowCard, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder, borderRadius: radius.md }]}
           >
             <View style={{ flex: 1 }}>
@@ -166,7 +164,7 @@ export default function AnalyticsDashboardView() {
               color={colors.primary}
             />
             <Text style={[styles.score, { color: colors.primary }]}>{item.averageScore}%</Text>
-          </Animated.View>
+          </View>
         ))}
       </AdminGlassCard>
 

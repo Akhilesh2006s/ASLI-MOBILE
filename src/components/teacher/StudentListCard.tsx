@@ -96,9 +96,6 @@ export default function StudentListCard({ student, onAddRemark }: Props) {
           {(perf.totalExams ?? 0) > 0 ? (
             <>
               <Text style={styles.metaValue}>{(perf.averageMarks ?? 0).toFixed(1)}</Text>
-              <Text style={styles.metaSub}>
-                {perf.totalExams} exam{(perf.totalExams ?? 0) !== 1 ? 's' : ''}
-              </Text>
             </>
           ) : (
             <Text style={styles.metaMuted}>-</Text>
@@ -107,7 +104,20 @@ export default function StudentListCard({ student, onAddRemark }: Props) {
       </View>
 
       <View style={styles.progressSection}>
-        <Text style={styles.sectionTitle}>Overall Progress</Text>
+        <View style={styles.progressTitleRow}>
+          <View style={styles.progressTitleLeft}>
+            <Text style={styles.sectionTitle}>Overall Progress</Text>
+          </View>
+          <View style={styles.progressTitleRight}>
+            {(perf.totalExams ?? 0) > 0 ? (
+              <Text style={styles.progressNote}>
+                {perf.totalExams} exam{(perf.totalExams ?? 0) !== 1 ? 's' : ''} completed
+              </Text>
+            ) : (
+              <Text style={styles.progressNote}>No exams completed</Text>
+            )}
+          </View>
+        </View>
         {hasOverall ? (
           <>
             <View style={styles.progressHeader}>
@@ -118,11 +128,6 @@ export default function StudentListCard({ student, onAddRemark }: Props) {
               </View>
             </View>
             <ProgressBar value={overall} color={overallColors.bar} />
-            {(perf.totalExams ?? 0) > 0 ? (
-              <Text style={styles.progressNote}>
-                {perf.totalExams} exam{(perf.totalExams ?? 0) !== 1 ? 's' : ''} completed
-              </Text>
-            ) : null}
             {learning > 0 ? (
               <View style={styles.learningBlock}>
                 <View style={styles.progressHeader}>
@@ -138,15 +143,7 @@ export default function StudentListCard({ student, onAddRemark }: Props) {
             ) : null}
           </>
         ) : (
-          <View>
-            <Text style={styles.metaMuted}>No progress data</Text>
-            {(perf.totalExams ?? 0) === 0 ? (
-              <Text style={styles.progressNote}>No exams taken</Text>
-            ) : null}
-            {learning === 0 ? (
-              <Text style={styles.progressNote}>No content completed</Text>
-            ) : null}
-          </View>
+          <Text style={styles.metaMuted}>No progress data</Text>
         )}
       </View>
 
@@ -178,22 +175,23 @@ const styles = StyleSheet.create({
   card: {
     ...glassCard,
     backgroundColor: TEACHER.cardBg,
-    padding: 16,
-    gap: 14,
+    padding: 10,
+    gap: 8,
+    overflow: 'visible',
   },
-  headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   headerText: { flex: 1 },
   name: { fontSize: 16, fontWeight: '800', color: TEACHER.text },
-  email: { fontSize: 13, color: TEACHER.textMuted, marginTop: 2 },
-  statusBadge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1 },
+  email: { fontSize: 13, color: TEACHER.textMuted, marginTop: 1 },
+  statusBadge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3, borderWidth: 1 },
   activeBadge: { backgroundColor: 'rgba(0,214,143,0.15)', borderColor: 'rgba(0,214,143,0.3)' },
   inactiveBadge: { backgroundColor: 'rgba(255,77,106,0.15)', borderColor: 'rgba(255,77,106,0.3)' },
   statusText: { fontSize: 11, fontWeight: '700' },
   activeText: { color: TEACHER.success },
   inactiveText: { color: TEACHER.danger },
-  metaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  metaItem: { width: '47%', gap: 2 },
-  metaLabel: { fontSize: 11, fontWeight: '700', color: TEACHER.textMuted, marginTop: 2 },
+  metaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  metaItem: { width: '47%', gap: 1 },
+  metaLabel: { fontSize: 11, fontWeight: '700', color: TEACHER.textMuted, marginTop: 1 },
   metaValue: { fontSize: 14, fontWeight: '600', color: TEACHER.text },
   metaSub: { fontSize: 11, color: TEACHER.textMuted },
   metaMuted: { fontSize: 13, color: TEACHER.textMuted },
@@ -202,37 +200,63 @@ const styles = StyleSheet.create({
     backgroundColor: TEACHER.surfaceHover,
     borderRadius: 6,
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    marginTop: 2,
+    paddingVertical: 1,
+    marginTop: 1,
   },
   classBadgeText: { fontSize: 12, fontWeight: '700', color: TEACHER.primaryDark },
   progressSection: {
     borderTopWidth: 1,
     borderTopColor: TEACHER.surfaceBorder,
-    paddingTop: 12,
+    paddingTop: 6,
+    gap: 4,
+    overflow: 'visible',
+  },
+  progressTitleRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
+  },
+  progressTitleLeft: {
+    width: '47%',
+  },
+  progressTitleRight: {
+    width: '47%',
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: TEACHER.textMuted,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
     gap: 8,
   },
-  sectionTitle: { fontSize: 12, fontWeight: '800', color: TEACHER.textMuted },
-  progressHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  pill: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
+  pill: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2, flexShrink: 0 },
   pillText: { fontSize: 12, fontWeight: '700' },
   progressTrack: {
-    height: 8,
+    height: 6,
     backgroundColor: TEACHER.surfaceElevated,
     borderRadius: 999,
     overflow: 'hidden',
   },
   progressFill: { height: '100%', borderRadius: 999 },
-  progressNote: { fontSize: 11, color: TEACHER.textMuted },
-  learningBlock: { marginTop: 4, gap: 6 },
-  learningLabel: { fontSize: 12, color: TEACHER.textMuted },
-  remarkBtnWrap: { borderRadius: 12, overflow: 'hidden' },
+  progressNote: {
+    fontSize: 11,
+    color: TEACHER.textMuted,
+    fontWeight: '600',
+  },
+  learningBlock: { marginTop: 2, gap: 4 },
+  learningLabel: { fontSize: 12, color: TEACHER.textMuted, flex: 1 },
+  remarkBtnWrap: { borderRadius: 10, overflow: 'hidden' },
   remarkBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 12,
+    paddingVertical: 8,
   },
   remarkBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });

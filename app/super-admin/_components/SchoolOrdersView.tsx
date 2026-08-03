@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
   },
   statsGrid: {
     flexDirection: 'row',
@@ -411,7 +411,7 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     minWidth: '46%',
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 10,
     padding: 12,
     borderWidth: 1,
@@ -437,7 +437,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#e5e7eb',
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
   emptyBox: {
     alignItems: 'center',
     padding: 32,
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#e5e7eb',
@@ -458,7 +458,7 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 16, fontWeight: '700', color: '#374151', marginTop: 12 },
   emptyDesc: { fontSize: 13, color: '#6b7280', textAlign: 'center', marginTop: 6, lineHeight: 20 },
   orderCard: {
-    backgroundColor: 'rgba(255,255,255,0.48)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 14,
     marginBottom: 10,
@@ -497,7 +497,7 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 11, fontWeight: '700' },
   badgeTextConfirmed: { color: '#047857' },
   badgeTextDraft: { color: '#b45309' },
-  detailModal: { flex: 1, backgroundColor: 'rgba(255,255,255,0.48)' },
+  detailModal: { flex: 1, backgroundColor: '#FFFFFF' },
   detailHeader: {
     flexDirection: 'row',
     alignItems: 'center',

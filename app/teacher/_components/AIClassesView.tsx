@@ -70,7 +70,6 @@ function StatsRibbon({ stats }: { stats: Props['stats'] }) {
     <Animated.View entering={FadeInDown.duration(400)} style={styles.statsWrap}>
       <GlassPanel style={styles.statsRibbon} radius={TEACHER_RADIUS.lg} tone="medium">
         <View style={styles.statsRibbonRow}>
-          <View style={styles.statsGlow} />
           {STAT_ITEMS.map((item, index) => (
             <StatCell key={item.key} item={item} stats={stats} showDivider={index < STAT_ITEMS.length - 1} />
           ))}
@@ -291,15 +290,6 @@ const styles = StyleSheet.create({
   },
   statsRibbonRow: {
     flexDirection: 'row',
-  },
-  statsGlow: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 2,
-    backgroundColor: TEACHER.primaryLight,
-    opacity: 0.5,
   },
   statCell: {
     flex: 1,
