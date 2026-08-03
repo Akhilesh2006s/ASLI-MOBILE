@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { startTransition, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, RefreshControl, ScrollView, StatusBar, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -6,6 +6,7 @@ import authService from '../../src/services/api/authService';
 import { useAuth } from '../../src/context/AuthContext';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import { useVisitedTabs } from '../../src/hooks/useVisitedTabs';
+import { consumeStudentDashboardTabIntent } from '../../src/lib/dashboard-tab-intent';
 import { StudentTabBar, StudentTab } from '../../src/components/student';
 import { LoadingState, VisitedTabPane } from '../../src/components/ui';
 import { STUDENT } from '../../src/theme/student';
@@ -61,14 +62,18 @@ export default function StudentDashboard() {
     checkAuth();
   }, []);
 
+  // One-shot tab intent (back from tools / deep links). Never persist ?tab= across reload.
   useEffect(() => {
-    if (tab === 'home') setActiveTab('home');
-    else if (tab === 'learning') setActiveTab('learning');
-    else if (tab === 'eduott') setActiveTab('eduott');
-    else if (tab === 'exams') setActiveTab('exams');
-    else if (tab === 'vidya') setActiveTab('vidya');
-    else if (tab === 'settings') setActiveTab('settings');
-  }, [tab, user]);
+    const intent = consumeStudentDashboardTabIntent();
+    if (intent) {
+      setActiveTab(intent);
+    }
+    // Clear legacy sticky ?tab= from the URL without reopening that tab on reload.
+    const raw = typeof tab === 'string' ? tab : Array.isArray(tab) ? tab[0] : undefined;
+    if (raw) {
+      router.replace('/dashboard');
+    }
+  }, []);
 
   const firstName = useMemo(() => resolveStudentFirstName(user), [user]);
 
@@ -151,11 +156,16 @@ export default function StudentDashboard() {
       tabScrollRefs[next]?.current?.scrollTo({ y: 0, animated: true });
       return;
     }
-    selectTab(next);
+    // Keep the tab-bar press responsive while heavy panes mount.
+    startTransition(() => {
+      selectTab(next);
+    });
   };
 
   const goToTab = (next: TabId) => {
-    selectTab(next);
+    startTransition(() => {
+      selectTab(next);
+    });
   };
 
   if (isLoading) {
@@ -272,7 +282,9 @@ export default function StudentDashboard() {
           role="student"
           hidden={activeTab === 'vidya'}
           onPress={() => {
-            router.push('/ai-tutor');
+            requestAnimationFrame(() => {
+              router.push('/ai-tutor');
+            });
           }}
         />
       ) : null}

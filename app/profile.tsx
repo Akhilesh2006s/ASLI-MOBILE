@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
+import { setStudentDashboardTabIntent } from '../src/lib/dashboard-tab-intent';
 import { GlassPanel } from '../src/components/ui';
 import { useAuth } from '../src/context/AuthContext';
 import studentService from '../src/services/api/studentService';
@@ -432,7 +433,13 @@ export default function Profile() {
                 </View>
                 <Ionicons name="chevron-forward" size={18} color="#5B6779" />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/dashboard?tab=vidya')}>
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setStudentDashboardTabIntent('vidya');
+                  router.push('/dashboard');
+                }}
+              >
                 <View style={styles.menuLeft}>
                   <View style={styles.menuIcon}>
                     <Ionicons name="sparkles-outline" size={18} color="#8b5cf6" />

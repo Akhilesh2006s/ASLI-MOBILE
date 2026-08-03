@@ -61,7 +61,7 @@ type Props = {
   onLogout: () => void;
 };
 
-const SLIDE_MS = 240;
+const SLIDE_MS = 200;
 const slideEasing = Easing.out(Easing.cubic);
 
 export default function AdminNavDrawer({

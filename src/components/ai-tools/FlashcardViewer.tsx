@@ -464,12 +464,7 @@ function StudentDeckView({ meta, cards }: { meta: StudentDeckMeta; cards: Flashc
   ];
 
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={styles.scrollContent}
-      nestedScrollEnabled
-      showsVerticalScrollIndicator={false}
-    >
+    <View style={styles.scrollContent}>
       <View style={styles.deckShell}>
         <LinearGradient
           colors={['#7c3aed', '#4f46e5', '#9333ea']}
@@ -515,7 +510,7 @@ function StudentDeckView({ meta, cards }: { meta: StudentDeckMeta; cards: Flashc
           ))}
         </View>
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
@@ -667,7 +662,7 @@ function TeacherDeckView({
   ];
 
   return (
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+    <View style={styles.scrollContent}>
       <View style={styles.deckShell}>
         <View style={[styles.hero, styles.heroLight]}>
           <View style={styles.heroIcon}>
@@ -696,7 +691,7 @@ function TeacherDeckView({
           ))}
         </View>
       </View>
-    </ScrollView>
+    </View>
   );
 }
 

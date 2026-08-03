@@ -20,6 +20,11 @@ type Props = {
   content: string;
   rawContent?: unknown;
   variant?: 'student' | 'teacher';
+  /**
+   * When true, WebView fills its parent and scrolls itself.
+   * Use this on phone tool pages so nested parent ScrollView cannot trap gestures.
+   */
+  fill?: boolean;
 };
 
 const MIN_HEIGHT = 80;
@@ -32,10 +37,17 @@ const BOTTOM_PAD = 8;
  * Measure ONLY real content bottom (last quest node / last child).
  * Never use documentElement.scrollHeight — that mirrors the WebView viewport
  * and creates the huge empty region after the last section.
+ * Used when WebView is auto-sized inside a parent ScrollView (scrollEnabled=false).
  */
 function buildHeightScript(): string {
   return `
 (function() {
+  function expandAllSections() {
+    var nodes = document.querySelectorAll('.quest-node, details');
+    for (var i = 0; i < nodes.length; i++) {
+      try { nodes[i].open = true; } catch (e) {}
+    }
+  }
   function measure() {
     var html = document.documentElement;
     var body = document.body;
@@ -45,6 +57,8 @@ function buildHeightScript(): string {
     body.style.minHeight = '0';
     body.style.overflow = 'hidden';
     body.style.margin = '0';
+    // Ensure every section is open so height includes full worksheet content.
+    expandAllSections();
 
     // Measure from the top of the document to the bottom of the last section.
     // Includes exam-paper hero title cards that sit above .quest-node list.
@@ -52,7 +66,9 @@ function buildHeightScript(): string {
     var bottom = bodyTop;
     var nodes = document.querySelectorAll('.quest-node');
     if (nodes.length) {
-      bottom = nodes[nodes.length - 1].getBoundingClientRect().bottom;
+      for (var n = 0; n < nodes.length; n++) {
+        bottom = Math.max(bottom, nodes[n].getBoundingClientRect().bottom);
+      }
     } else {
       var root = document.querySelector('.quest-field') || document.querySelector('.ai-tool-root') || body;
       var kids = root.children;
@@ -84,7 +100,7 @@ function buildHeightScript(): string {
   }
   window.__aiToolSendHeight = sendHeight;
   sendHeight();
-  [60, 200, 500, 1000, 2000].forEach(function(ms) { setTimeout(sendHeight, ms); });
+  [60, 200, 500, 1000, 2000, 3500].forEach(function(ms) { setTimeout(sendHeight, ms); });
   if (!window.__aiToolHeightBound) {
     window.__aiToolHeightBound = true;
     var roTimer = null;
@@ -104,21 +120,72 @@ true;
 `;
 }
 
-function jumpToQuestScript(index: number): string {
+/**
+ * Fill mode: WebView owns scrolling. Must NOT lock overflow:hidden (that is for
+ * auto-height mode). Open all sections and let the native WebView scroll.
+ */
+function buildFillScrollScript(): string {
+  return `
+(function() {
+  function unlockScroll() {
+    var html = document.documentElement;
+    var body = document.body;
+    html.style.height = '100%';
+    html.style.minHeight = '100%';
+    html.style.overflow = 'auto';
+    html.style.overflowY = 'auto';
+    html.style.overflowX = 'hidden';
+    html.style.webkitOverflowScrolling = 'touch';
+    body.style.height = 'auto';
+    body.style.minHeight = '100%';
+    body.style.overflow = 'visible';
+    body.style.overflowY = 'visible';
+    body.style.overflowX = 'hidden';
+    body.style.margin = '0';
+    body.style.webkitOverflowScrolling = 'touch';
+    var nodes = document.querySelectorAll('.quest-node, details');
+    for (var i = 0; i < nodes.length; i++) {
+      try { nodes[i].open = true; } catch (e) {}
+    }
+  }
+  window.__aiToolUnlockScroll = unlockScroll;
+  // Neutralize height-lock helpers if any other script installed them.
+  window.__aiToolSendHeight = function() {};
+  unlockScroll();
+  [50, 150, 400, 900, 1800].forEach(function(ms) { setTimeout(unlockScroll, ms); });
+})();
+true;
+`;
+}
+
+function jumpToQuestScript(index: number, fill: boolean): string {
   return `
 (function(){
   var nodes = document.querySelectorAll('.quest-node');
   var n = nodes[${index}];
   if (!n) return true;
   n.open = true;
-  if (window.__aiToolSendHeight) setTimeout(window.__aiToolSendHeight, 30);
+  if (${fill ? 'true' : 'false'}) {
+    try { n.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {
+      try { n.scrollIntoView(true); } catch (e2) {}
+    }
+    if (window.__aiToolUnlockScroll) setTimeout(window.__aiToolUnlockScroll, 30);
+  } else if (window.__aiToolSendHeight) {
+    setTimeout(window.__aiToolSendHeight, 30);
+  }
   true;
 })();
 true;
 `;
 }
 
-export default function AiToolWebView({ toolType, content, rawContent, variant = 'student' }: Props) {
+export default function AiToolWebView({
+  toolType,
+  content,
+  rawContent,
+  variant = 'student',
+  fill = false,
+}: Props) {
   const mergedRaw = useMemo(() => coalesceAiToolRawContent(content, rawContent), [content, rawContent]);
 
   const html = useMemo(() => {
@@ -139,6 +206,8 @@ export default function AiToolWebView({ toolType, content, rawContent, variant =
   const webViewRef = useRef<WebView>(null);
   const orbitScrollRef = useRef<ScrollView>(null);
   const [height, setHeight] = useState(INITIAL_HEIGHT);
+  /** Explicit pixel viewport for fill mode — Android needs this to enable WebView scroll. */
+  const [fillViewportH, setFillViewportH] = useState(0);
   const [orbitTabs, setOrbitTabs] = useState<string[]>([]);
   const [activeOrbit, setActiveOrbit] = useState(0);
   const heightDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -156,26 +225,41 @@ export default function AiToolWebView({ toolType, content, rawContent, variant =
   }, []);
 
   const webViewHeight = Math.max(height, MIN_HEIGHT);
-  const needsInternalScroll = webViewHeight >= MAX_HEIGHT * 0.95;
   const heightScript = useMemo(() => buildHeightScript(), []);
+  const fillScrollScript = useMemo(() => buildFillScrollScript(), []);
 
   const measureHeight = useCallback(() => {
+    if (fill) return;
     webViewRef.current?.injectJavaScript(heightScript);
-  }, [heightScript]);
+  }, [fill, heightScript]);
+
+  const unlockFillScroll = useCallback(() => {
+    if (!fill) return;
+    webViewRef.current?.injectJavaScript(fillScrollScript);
+  }, [fill, fillScrollScript]);
 
   useEffect(() => {
+    if (fill) {
+      const timers = [80, 300, 800, 1600].map((ms) => setTimeout(unlockFillScroll, ms));
+      return () => {
+        timers.forEach(clearTimeout);
+      };
+    }
     const timers = [80, 300, 800, 1600].map((ms) => setTimeout(measureHeight, ms));
     return () => {
       timers.forEach(clearTimeout);
       if (heightDebounceRef.current) clearTimeout(heightDebounceRef.current);
     };
-  }, [html, measureHeight]);
+  }, [html, fill, measureHeight, unlockFillScroll]);
 
-  const onOrbitPress = useCallback((index: number) => {
-    setActiveOrbit(index);
-    webViewRef.current?.injectJavaScript(jumpToQuestScript(index));
-    orbitScrollRef.current?.scrollTo({ x: Math.max(0, index * 72 - 40), animated: true });
-  }, []);
+  const onOrbitPress = useCallback(
+    (index: number) => {
+      setActiveOrbit(index);
+      webViewRef.current?.injectJavaScript(jumpToQuestScript(index, fill));
+      orbitScrollRef.current?.scrollTo({ x: Math.max(0, index * 72 - 40), animated: true });
+    },
+    [fill],
+  );
 
   const onMessage = useCallback(
     (event: { nativeEvent: { data: string } }) => {
@@ -188,6 +272,11 @@ export default function AiToolWebView({ toolType, content, rawContent, variant =
           index?: number;
         };
         if (msg.type === 'height' && typeof msg.h === 'number' && msg.h > 0) {
+          // Fill mode ignores auto-height — WebView scrolls itself.
+          if (fill) {
+            unlockFillScroll();
+            return;
+          }
           if (heightDebounceRef.current) clearTimeout(heightDebounceRef.current);
           heightDebounceRef.current = setTimeout(() => applyHeight(msg.h as number), 30);
           return;
@@ -195,8 +284,11 @@ export default function AiToolWebView({ toolType, content, rawContent, variant =
         if (msg.type === 'orbit' && Array.isArray(msg.tabs) && msg.tabs.length > 0) {
           setOrbitTabs(msg.tabs.map((t) => String(t || '').trim()).filter(Boolean));
           setActiveOrbit(0);
-          // Orbit means quest DOM is ready — remasure tightly to last section.
-          setTimeout(measureHeight, 40);
+          if (fill) {
+            setTimeout(unlockFillScroll, 40);
+          } else {
+            setTimeout(measureHeight, 40);
+          }
           return;
         }
         if (msg.type === 'orbit-active' && typeof msg.index === 'number') {
@@ -206,47 +298,97 @@ export default function AiToolWebView({ toolType, content, rawContent, variant =
       } catch {
         // Legacy plain-number height
       }
+      if (fill) return;
       const next = Number(raw);
       if (!Number.isFinite(next) || next <= 0) return;
       if (heightDebounceRef.current) clearTimeout(heightDebounceRef.current);
       heightDebounceRef.current = setTimeout(() => applyHeight(next), 30);
     },
-    [applyHeight, measureHeight]
+    [applyHeight, fill, measureHeight, unlockFillScroll],
   );
+
+  const orbitRail =
+    orbitTabs.length > 1 ? (
+      <ScrollView
+        ref={orbitScrollRef}
+        horizontal
+        nestedScrollEnabled
+        directionalLockEnabled
+        showsHorizontalScrollIndicator={false}
+        style={styles.orbitWrap}
+        contentContainerStyle={styles.orbitContent}
+        decelerationRate="fast"
+        keyboardShouldPersistTaps="handled"
+      >
+        {orbitTabs.map((title, index) => {
+          const active = index === activeOrbit;
+          return (
+            <Pressable
+              key={`${index}-${title}`}
+              onPress={() => onOrbitPress(index)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={`Section ${index + 1}: ${title}`}
+              style={[styles.orbitBtn, active && styles.orbitBtnActive]}
+            >
+              <Text style={[styles.orbitBtnText, active && styles.orbitBtnTextActive]} numberOfLines={1}>
+                {index + 1} · {title}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    ) : null;
+
+  // Self-scrolling fill mode: used on phone tool results so the page can keep
+  // params above and the WebView owns vertical scrolling (no nested trap).
+  if (fill) {
+    return (
+      <View style={[styles.root, styles.rootFill]} collapsable={false}>
+        {orbitRail}
+        <View
+          style={styles.wrapFill}
+          collapsable={false}
+          onLayout={(e) => {
+            const next = Math.floor(e.nativeEvent.layout.height);
+            if (next > 0) setFillViewportH((prev) => (Math.abs(prev - next) < 2 ? prev : next));
+          }}
+        >
+          <WebView
+            key={contentKey}
+            ref={webViewRef}
+            originWhitelist={['*']}
+            source={{ html }}
+            style={[
+              styles.webView,
+              fillViewportH > 0 ? { height: fillViewportH, width: '100%' } : styles.webViewFill,
+              Platform.OS === 'android' ? styles.webViewAndroid : null,
+            ]}
+            containerStyle={[styles.webViewContainer, styles.webViewContainerFill]}
+            scrollEnabled
+            nestedScrollEnabled
+            overScrollMode="always"
+            showsVerticalScrollIndicator
+            bounces
+            onMessage={onMessage}
+            onLoadEnd={unlockFillScroll}
+            injectedJavaScript={fillScrollScript}
+            javaScriptEnabled
+            domStorageEnabled
+            mixedContentMode="always"
+            collapsable={false}
+            setBuiltInZoomControls={false}
+            setDisplayZoomControls={false}
+            {...(Platform.OS === 'android' ? { androidLayerType: 'hardware' as const } : null)}
+          />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.root} collapsable={false}>
-      {orbitTabs.length > 1 ? (
-        <ScrollView
-          ref={orbitScrollRef}
-          horizontal
-          nestedScrollEnabled
-          directionalLockEnabled
-          showsHorizontalScrollIndicator={false}
-          style={styles.orbitWrap}
-          contentContainerStyle={styles.orbitContent}
-          decelerationRate="fast"
-          keyboardShouldPersistTaps="handled"
-        >
-          {orbitTabs.map((title, index) => {
-            const active = index === activeOrbit;
-            return (
-              <Pressable
-                key={`${index}-${title}`}
-                onPress={() => onOrbitPress(index)}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: active }}
-                accessibilityLabel={`Section ${index + 1}: ${title}`}
-                style={[styles.orbitBtn, active && styles.orbitBtnActive]}
-              >
-                <Text style={[styles.orbitBtnText, active && styles.orbitBtnTextActive]} numberOfLines={1}>
-                  {index + 1} · {title}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      ) : null}
+      {orbitRail}
 
       <View style={[styles.wrap, { height: webViewHeight }]} collapsable={false}>
         <WebView
@@ -260,11 +402,15 @@ export default function AiToolWebView({ toolType, content, rawContent, variant =
             Platform.OS === 'android' ? styles.webViewAndroid : null,
           ]}
           containerStyle={styles.webViewContainer}
-          scrollEnabled={needsInternalScroll}
-          nestedScrollEnabled={needsInternalScroll}
-          overScrollMode={needsInternalScroll ? 'always' : 'never'}
-          showsVerticalScrollIndicator={needsInternalScroll}
-          bounces={needsInternalScroll}
+          scrollEnabled={false}
+          // Keep false so the parent page ScrollView owns all vertical gestures.
+          nestedScrollEnabled={false}
+          overScrollMode="never"
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+          focusable={false}
+          pointerEvents="auto"
+          {...(Platform.OS === 'android' ? { androidLayerType: 'hardware' as const } : null)}
           onMessage={onMessage}
           onLoadEnd={measureHeight}
           injectedJavaScript={heightScript}
@@ -285,6 +431,22 @@ const WEB_BG = '#FFFFFF';
 const styles = StyleSheet.create({
   root: {
     width: '100%',
+  },
+  rootFill: {
+    flex: 1,
+    minHeight: 0,
+  },
+  wrapFill: {
+    flex: 1,
+    minHeight: 0,
+    borderRadius: 16,
+    backgroundColor: WEB_BG,
+  },
+  webViewFill: {
+    flex: 1,
+  },
+  webViewContainerFill: {
+    flex: 1,
   },
   orbitWrap: {
     width: '100%',

@@ -15,11 +15,29 @@ import {
   progressTier,
   type StudentRow,
 } from '../../lib/students-ui';
-import { TEACHER, glassCard } from '../../theme/teacher';
+import { classGradeAccentIndex } from '../../lib/teacher-text';
+import { TEACHER, TEACHER_RADIUS } from '../../theme/teacher';
+
+/** Same grade palette as TeacherClassCard — one color per class number. */
+const CARD_ACCENTS = [
+  ['#F87171', '#DC2626'] as const, // 1
+  ['#FB923C', '#EA580C'] as const, // 2
+  ['#FBBF24', '#D97706'] as const, // 3
+  ['#FCD34D', '#B45309'] as const, // 4
+  ['#4ADE80', '#16A34A'] as const, // 5
+  ['#34D399', '#059669'] as const, // 6
+  ['#2DD4BF', '#0F766E'] as const, // 7
+  ['#22D3EE', '#0891B2'] as const, // 8
+  ['#38BDF8', '#2563EB'] as const, // 9
+  ['#818CF8', '#4338CA'] as const, // 10
+  ['#A78BFA', '#6D28D9'] as const, // 11
+  ['#E879F9', '#A855F7'] as const, // 12
+] as const;
 
 type Props = {
   student: StudentRow;
   onAddRemark: () => void;
+  accentIndex?: number;
 };
 
 function usePressScale(to = 0.96) {
@@ -38,7 +56,7 @@ function ProgressBar({ value, color }: { value: number; color: string }) {
   );
 }
 
-export default function StudentListCard({ student, onAddRemark }: Props) {
+export default function StudentListCard({ student, onAddRemark, accentIndex }: Props) {
   const press = usePressScale();
   const perf = student.performance || {};
   const classLabel = formatClassBadge(student);
@@ -50,12 +68,25 @@ export default function StudentListCard({ student, onAddRemark }: Props) {
   const overallColors = progressColors(overallTier);
   const learningTier = progressTier(learning);
   const learningColors = progressColors(learningTier);
+  const gradeKey =
+    student.assignedClass?.classNumber ||
+    student.classNumber ||
+    classLabel;
+  const resolvedAccent =
+    accentIndex != null
+      ? accentIndex
+      : classGradeAccentIndex(gradeKey);
+  const accent = CARD_ACCENTS[Math.abs(resolvedAccent) % CARD_ACCENTS.length];
+  const accentColor = accent[1];
 
   return (
-    <Animated.View entering={FadeInDown.duration(350)} style={styles.card}>
+    <Animated.View
+      entering={FadeInDown.duration(350)}
+      style={[styles.card, { borderColor: accentColor }]}
+    >
       <View style={styles.headerRow}>
         <View style={styles.headerText}>
-          <Text style={styles.name}>{student.name}</Text>
+          <Text style={[styles.name, { color: accentColor }]}>{student.name}</Text>
           <Text style={styles.email}>{student.email}</Text>
         </View>
         <View style={[styles.statusBadge, student.isActive !== false ? styles.activeBadge : styles.inactiveBadge]}>
@@ -173,11 +204,15 @@ export default function StudentListCard({ student, onAddRemark }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    ...glassCard,
+    marginBottom: 10,
     backgroundColor: TEACHER.cardBg,
+    borderRadius: TEACHER_RADIUS.lg,
+    borderWidth: 4,
+    borderColor: TEACHER.primary,
     padding: 10,
     gap: 8,
     overflow: 'visible',
+    ...TEACHER.shadow.sm,
   },
   headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   headerText: { flex: 1 },

@@ -104,12 +104,14 @@ export default function LearnTabView({ username }: { username: string }) {
           {TOOLS.map((t) => (
             <Pressable
               key={t.id}
-              onPress={() =>
-                router.push({
-                  pathname: `/student/tools/${t.id}` as any,
-                  params: { returnTab: 'vidya' },
-                })
-              }
+              onPress={() => {
+                requestAnimationFrame(() => {
+                  router.push({
+                    pathname: `/student/tools/${t.id}` as any,
+                    params: { returnTab: 'vidya' },
+                  });
+                });
+              }}
             >
               <GlassPanel radius={14} style={styles.toolRow}>
                 <View style={styles.toolRowInner}>

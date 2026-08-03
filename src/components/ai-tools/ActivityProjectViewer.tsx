@@ -516,7 +516,15 @@ export default function ActivityProjectViewer({
       </View>
 
       {resolved.length > 1 ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabScroll} contentContainerStyle={styles.tabRow}>
+        <ScrollView
+          horizontal
+          nestedScrollEnabled
+          directionalLockEnabled
+          showsHorizontalScrollIndicator={false}
+          style={styles.tabScroll}
+          contentContainerStyle={styles.tabRow}
+          keyboardShouldPersistTaps="handled"
+        >
           {resolved.map((act, idx) => (
             <Pressable
               key={act.sl}

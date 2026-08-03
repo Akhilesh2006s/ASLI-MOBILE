@@ -8,7 +8,12 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { formatPersonName, formatSubjectList, formatTitleCase } from '../../lib/teacher-text';
+import {
+  formatClassSectionLabel,
+  formatPersonName,
+  formatSubjectList,
+  formatTitleCase,
+} from '../../lib/teacher-text';
 import { TEACHER, TEACHER_RADIUS, TEACHER_TYPO } from '../../theme/teacher';
 
 export type ClassCardStudent = {
@@ -28,6 +33,8 @@ type Props = {
   onToggleStudents: () => void;
   students?: ClassCardStudent[];
   onViewStudentAnalysis?: (studentId: string) => void;
+  /** Grade-based accent: 0 = Class 1 … 11 = Class 12 (sections share color). */
+  accentIndex?: number;
 };
 
 function usePressScale(to = 0.96) {
@@ -83,6 +90,22 @@ const AVATAR_TINTS = [
   { bg: '#F5F3FF', text: '#6D28D9' },
 ] as const;
 
+/** Exactly one gradient per grade (index = grade − 1). No extras. */
+const CARD_ACCENTS = [
+  ['#F87171', '#DC2626'] as const, // 1 red
+  ['#FB923C', '#EA580C'] as const, // 2 orange
+  ['#FBBF24', '#D97706'] as const, // 3 amber
+  ['#FCD34D', '#B45309'] as const, // 4 gold
+  ['#4ADE80', '#16A34A'] as const, // 5 green
+  ['#34D399', '#059669'] as const, // 6 emerald
+  ['#2DD4BF', '#0F766E'] as const, // 7 teal
+  ['#22D3EE', '#0891B2'] as const, // 8 cyan
+  ['#38BDF8', '#2563EB'] as const, // 9 blue
+  ['#818CF8', '#4338CA'] as const, // 10 indigo
+  ['#A78BFA', '#6D28D9'] as const, // 11 purple
+  ['#E879F9', '#A855F7'] as const, // 12 violet
+] as const;
+
 function studentInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return '?';
@@ -100,149 +123,169 @@ export default function TeacherClassCard({
   onToggleStudents,
   students = [],
   onViewStudentAnalysis,
+  accentIndex = 0,
 }: Props) {
   const press = usePressScale();
+  const accent = CARD_ACCENTS[Math.abs(accentIndex) % CARD_ACCENTS.length];
+  const accentColor = accent[1];
+  const displayName = formatClassSectionLabel(name) || name;
 
   return (
-    <Animated.View entering={FadeInUp.duration(350)} style={styles.card}>
-      <View style={styles.headerRow}>
-        <View style={styles.headerText}>
-          <Text style={styles.className}>{name}</Text>
-          <View style={styles.subjectRow}>
-            <Ionicons name="book-outline" size={14} color={TEACHER.primary} />
-            <Text style={styles.subjectText} numberOfLines={1}>
-              {formatSubjectList(subject)}
-            </Text>
+    <Animated.View
+      entering={FadeInUp.duration(350)}
+      style={[styles.card, { borderColor: accentColor }]}
+    >
+        <View style={styles.headerRow}>
+          <View style={[styles.iconBox, { backgroundColor: accentColor, borderColor: accentColor }]}>
+            <Ionicons name="school" size={22} color="#FFFFFF" />
+          </View>
+          <View style={styles.headerText}>
+            <Text style={[styles.className, { color: accentColor }]}>{displayName}</Text>
+            <View style={styles.subjectRow}>
+              <Ionicons name="book-outline" size={14} color={accentColor} />
+              <Text style={styles.subjectText} numberOfLines={1}>
+                {formatSubjectList(subject)}
+              </Text>
+            </View>
+          </View>
+          <View style={[styles.activeBadge, { backgroundColor: `${accentColor}18` }]}>
+            <Text style={[styles.activeBadgeText, { color: accentColor }]}>Active</Text>
           </View>
         </View>
-        <View style={styles.activeBadge}>
-          <Text style={styles.activeBadgeText}>Active</Text>
-        </View>
-      </View>
 
-      <View style={styles.divider} />
+        <View style={styles.divider} />
 
-      <View style={styles.infoBlock}>
-        <View style={styles.infoRow}>
-          <View style={styles.infoLabelWrap}>
-            <Ionicons name="people-outline" size={14} color={TEACHER.textMuted} />
-            <Text style={styles.infoLabel}>Students</Text>
+        <View style={styles.infoBlock}>
+          <View style={styles.infoRow}>
+            <View style={styles.infoLabelWrap}>
+              <Ionicons name="people-outline" size={14} color={TEACHER.textMuted} />
+              <Text style={styles.infoLabel}>Students</Text>
+            </View>
+            <Text style={styles.infoValue}>{studentCount}</Text>
           </View>
-          <Text style={styles.infoValue}>{studentCount}</Text>
-        </View>
 
-        <View style={[styles.infoRow, styles.infoRowSchedule]}>
-          <View style={styles.infoLabelWrap}>
-            <Ionicons name="calendar-outline" size={14} color={TEACHER.textMuted} />
-            <Text style={styles.infoLabel}>Schedule</Text>
+          <View style={[styles.infoRow, styles.infoRowSchedule]}>
+            <View style={styles.infoLabelWrap}>
+              <Ionicons name="calendar-outline" size={14} color={TEACHER.textMuted} />
+              <Text style={styles.infoLabel}>Schedule</Text>
+            </View>
+            <ScheduleDisplay schedule={schedule} />
           </View>
-          <ScheduleDisplay schedule={schedule} />
-        </View>
 
-        <View style={styles.infoRow}>
-          <View style={styles.infoLabelWrap}>
-            <Ionicons name="business-outline" size={14} color={TEACHER.textMuted} />
-            <Text style={styles.infoLabel}>Room</Text>
+          <View style={styles.infoRow}>
+            <View style={styles.infoLabelWrap}>
+              <Ionicons name="business-outline" size={14} color={TEACHER.textMuted} />
+              <Text style={styles.infoLabel}>Room</Text>
+            </View>
+            <Text style={styles.infoValue}>{formatRoom(room)}</Text>
           </View>
-          <Text style={styles.infoValue}>{formatRoom(room)}</Text>
         </View>
-      </View>
 
-      {expanded && students.length > 0 ? (
-        <View style={styles.rosterSection}>
-          <Text style={styles.rosterTitle}>Students</Text>
-          <View style={styles.rosterPanel}>
-            <ScrollView style={styles.rosterScroll} nestedScrollEnabled>
-              {students.map((student, index) => {
-                const isActive = (student.status || 'active').toLowerCase() === 'active';
-                const displayName = formatPersonName(student.name);
-                const initials = studentInitials(displayName);
-                const avatarTint = AVATAR_TINTS[index % AVATAR_TINTS.length];
-                return (
-                  <View key={student.id} style={styles.studentRow}>
-                    <View style={[styles.avatar, { backgroundColor: avatarTint.bg }]}>
-                      <Text style={[styles.avatarText, { color: avatarTint.text }]}>{initials}</Text>
-                    </View>
-                    <View style={styles.studentInfo}>
-                      <Text style={styles.studentName} numberOfLines={1}>
-                        {displayName}
-                      </Text>
-                      <Text style={styles.studentEmail} numberOfLines={1}>{student.email}</Text>
-                    </View>
-                    <View style={styles.studentActions}>
-                      {onViewStudentAnalysis ? (
-                        <Pressable
-                          style={styles.analysisBtn}
-                          onPress={() => onViewStudentAnalysis(student.id)}
-                          hitSlop={8}
-                          accessibilityRole="button"
-                          accessibilityLabel={`View analysis for ${displayName}`}
-                        >
-                          <Ionicons
-                            name="bar-chart-outline"
-                            size={14}
-                            color={TEACHER.primaryDark}
-                            accessibilityElementsHidden
-                            importantForAccessibility="no"
-                          />
-                          <Text style={styles.analysisBtnText}>Analysis</Text>
-                        </Pressable>
-                      ) : null}
-                      <View style={[styles.statusBadge, isActive ? styles.statusActive : styles.statusInactive]}>
-                        <Text style={[styles.statusBadgeText, isActive ? styles.statusActiveText : styles.statusInactiveText]}>
-                          {titleCaseStatus(student.status || 'Active')}
+        {expanded && students.length > 0 ? (
+          <View style={styles.rosterSection}>
+            <Text style={styles.rosterTitle}>Students</Text>
+            <View style={styles.rosterPanel}>
+              <ScrollView style={styles.rosterScroll} nestedScrollEnabled>
+                {students.map((student, index) => {
+                  const isActive = (student.status || 'active').toLowerCase() === 'active';
+                  const displayName = formatPersonName(student.name);
+                  const initials = studentInitials(displayName);
+                  const avatarTint = AVATAR_TINTS[index % AVATAR_TINTS.length];
+                  return (
+                    <View key={student.id} style={styles.studentRow}>
+                      <View style={[styles.avatar, { backgroundColor: avatarTint.bg }]}>
+                        <Text style={[styles.avatarText, { color: avatarTint.text }]}>{initials}</Text>
+                      </View>
+                      <View style={styles.studentInfo}>
+                        <Text style={styles.studentName} numberOfLines={1}>
+                          {displayName}
                         </Text>
+                        <Text style={styles.studentEmail} numberOfLines={1}>{student.email}</Text>
+                      </View>
+                      <View style={styles.studentActions}>
+                        {onViewStudentAnalysis ? (
+                          <Pressable
+                            style={styles.analysisBtn}
+                            onPress={() => onViewStudentAnalysis(student.id)}
+                            hitSlop={8}
+                            accessibilityRole="button"
+                            accessibilityLabel={`View analysis for ${displayName}`}
+                          >
+                            <Ionicons
+                              name="bar-chart-outline"
+                              size={14}
+                              color={TEACHER.primaryDark}
+                              accessibilityElementsHidden
+                              importantForAccessibility="no"
+                            />
+                            <Text style={styles.analysisBtnText}>Analysis</Text>
+                          </Pressable>
+                        ) : null}
+                        <View style={[styles.statusBadge, isActive ? styles.statusActive : styles.statusInactive]}>
+                          <Text style={[styles.statusBadgeText, isActive ? styles.statusActiveText : styles.statusInactiveText]}>
+                            {titleCaseStatus(student.status || 'Active')}
+                          </Text>
+                        </View>
                       </View>
                     </View>
-                  </View>
-                );
-              })}
-            </ScrollView>
+                  );
+                })}
+              </ScrollView>
+            </View>
           </View>
-        </View>
-      ) : null}
+        ) : null}
 
-      <Pressable
-        onPress={onToggleStudents}
-        onPressIn={press.onPressIn}
-        onPressOut={press.onPressOut}
-        style={styles.btnWrap}
-        accessibilityRole="button"
-        accessibilityLabel={expanded ? 'Hide students' : 'View students'}
-        accessibilityState={{ expanded }}
-      >
-        <Animated.View style={press.style}>
-          <LinearGradient
-            colors={[TEACHER.primary, TEACHER.primaryDark]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.viewBtn}
-          >
-            <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={18} color={TEACHER.textOnPrimary} />
-            <Text style={styles.viewBtnText}>{expanded ? 'Hide Students' : 'View Students'}</Text>
-          </LinearGradient>
-        </Animated.View>
-      </Pressable>
+        <Pressable
+          onPress={onToggleStudents}
+          onPressIn={press.onPressIn}
+          onPressOut={press.onPressOut}
+          style={styles.btnWrap}
+          accessibilityRole="button"
+          accessibilityLabel={expanded ? 'Hide students' : 'View students'}
+          accessibilityState={{ expanded }}
+        >
+          <Animated.View style={press.style}>
+            <LinearGradient
+              colors={[TEACHER.primary, TEACHER.primaryDark]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.viewBtn}
+            >
+              <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={18} color={TEACHER.textOnPrimary} />
+              <Text style={styles.viewBtnText}>{expanded ? 'Hide Students' : 'View Students'}</Text>
+            </LinearGradient>
+          </Animated.View>
+        </Pressable>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
+    marginBottom: 14,
     backgroundColor: TEACHER.cardBg,
     borderRadius: TEACHER_RADIUS.lg,
-    borderWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
+    borderWidth: 4,
+    borderColor: TEACHER.primary,
     padding: 16,
-    marginBottom: 12,
     overflow: 'hidden',
     position: 'relative',
+    ...TEACHER.shadow.sm,
+  },
+  iconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    gap: 8,
+    gap: 10,
     marginBottom: 12,
   },
   headerText: { flex: 1, minWidth: 0 },

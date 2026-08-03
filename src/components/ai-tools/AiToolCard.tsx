@@ -150,16 +150,21 @@ const styles = StyleSheet.create({
     color: AI.primary,
   },
   badge: {
+    flexShrink: 0,
+    alignSelf: 'flex-start',
     borderRadius: AI_RADIUS.full,
     borderWidth: 1,
     borderColor: AI.primaryBorder,
     backgroundColor: AI.primarySoft,
-    paddingHorizontal: 9,
+    paddingHorizontal: 10,
     paddingVertical: 4,
   },
   badgeText: {
-    ...AI_TYPE.eyebrow,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '800',
     color: AI.primaryPressed,
-    letterSpacing: 0.3,
+    // Avoid large letterSpacing — Android under-measures width and clips "Teacher" → "Teache".
+    letterSpacing: 0.2,
   },
 });

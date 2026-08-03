@@ -20,6 +20,7 @@ import {
   type SavedOrder,
 } from '../../../src/lib/create-order/create-order-api';
 import { formatInr } from '../../../src/lib/create-order/types';
+import { SUPER_ADMIN_FLOATING_TAB_BAR_PAD } from '../../../src/lib/responsive-layout';
 
 type StatusFilter = 'all' | 'confirmed' | 'draft';
 
@@ -446,7 +447,7 @@ const styles = StyleSheet.create({
   searchIcon: { marginRight: 8 },
   searchInput: { flex: 1, height: 44, fontSize: 15, color: '#111827' },
   listScroll: { flex: 1 },
-  listContent: { paddingHorizontal: 16, paddingBottom: 24 },
+  listContent: { paddingHorizontal: 16, paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD + 48 },
   emptyBox: {
     alignItems: 'center',
     padding: 32,

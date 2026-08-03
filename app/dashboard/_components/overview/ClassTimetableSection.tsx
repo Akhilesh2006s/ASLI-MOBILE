@@ -1,7 +1,5 @@
 import React, { memo, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as SecureStore from 'expo-secure-store';
 import { fetchStudentTimetable, timetableEntriesToSlots } from '../../../../src/lib/timetable-helpers';
 import { GlassPanel } from '../../../../src/components/ui';
@@ -20,17 +18,13 @@ type Slot = {
   endTime?: string;
 };
 
-type Props = {
-  schoolName?: string;
-};
-
 function getCurrentDayIndex(): number {
   const day = new Date().getDay();
   if (day === 0) return -1;
   return day - 1;
 }
 
-function ClassTimetableSectionComponent({ schoolName }: Props) {
+function ClassTimetableSectionComponent() {
   const [loading, setLoading] = useState(true);
   const [slots, setSlots] = useState<Slot[]>([]);
   const currentDayIndex = getCurrentDayIndex();
@@ -54,22 +48,6 @@ function ClassTimetableSectionComponent({ schoolName }: Props) {
 
   return (
     <View style={styles.wrap}>
-      <LinearGradient colors={[...STUDENT.cardGradient]} style={styles.headerCard}>
-        <View style={styles.headerRow}>
-          <LinearGradient colors={[...STUDENT.statGradients.study]} style={styles.headerIcon}>
-            <Ionicons name="calendar" size={22} color={STUDENT.textOnPrimary} />
-          </LinearGradient>
-          <View style={{ flex: 1 }}>
-            {schoolName ? <Text style={styles.school}>{schoolName}</Text> : null}
-            <Text style={styles.title}>Class Timetable</Text>
-            <Text style={styles.sub}>Monday – Saturday · same schedule every week</Text>
-          </View>
-          <View style={styles.sessionBadge}>
-            <Text style={styles.sessionBadgeText}>{slots.length} sessions</Text>
-          </View>
-        </View>
-      </LinearGradient>
-
       <GlassPanel style={styles.gridCard} radius={STUDENT_RADIUS.card} tone="strong">
         {loading ? (
           <ActivityIndicator color={STUDENT.accent} style={{ padding: 24 }} />
@@ -140,30 +118,6 @@ function ClassTimetableSectionComponent({ schoolName }: Props) {
 
 const styles = StyleSheet.create({
   wrap: { gap: 8 },
-  headerCard: {
-    borderRadius: STUDENT_RADIUS.card,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
-  },
-  headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  headerIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  school: { fontSize: 10, fontWeight: '700', color: STUDENT.accent, marginBottom: 2 },
-  title: { fontSize: 20, fontWeight: '800', color: STUDENT.text },
-  sub: { fontSize: 12, color: STUDENT.textMuted, marginTop: 2 },
-  sessionBadge: {
-    backgroundColor: STUDENT.accentSoft,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-  },
-  sessionBadgeText: { fontSize: 11, fontWeight: '700', color: STUDENT.accent },
   gridCard: {
     // Frosted over the app background artwork instead of a solid fill.
     backgroundColor: 'transparent',

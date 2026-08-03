@@ -852,7 +852,7 @@ const OverviewView = memo(function OverviewView({
         </>
       )}
 
-      <ClassTimetableSection schoolName={schoolName} />
+      <ClassTimetableSection />
 
       <TodaysTasksSection
         incompleteQuizzes={dailyTasks.quizzes}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, InteractionManager } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import authService from '../../../src/services/api/authService';
 import AdminVidyaChatPanel from './AdminVidyaChatPanel';
@@ -15,6 +15,17 @@ export default function VidyaAIView({ adminId: adminIdProp, adminName: adminName
   const [adminId, setAdminId] = useState<string | null>(adminIdProp || null);
   const [adminName, setAdminName] = useState(adminNameProp || 'Admin');
   const [loadingUser, setLoadingUser] = useState(!adminIdProp);
+  /** Defer chat panel until the tab transition has painted. */
+  const [panelReady, setPanelReady] = useState(false);
+
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => setPanelReady(true));
+    const fallback = setTimeout(() => setPanelReady(true), 220);
+    return () => {
+      task.cancel();
+      clearTimeout(fallback);
+    };
+  }, []);
 
   useEffect(() => {
     if (adminIdProp) {
@@ -46,7 +57,7 @@ export default function VidyaAIView({ adminId: adminIdProp, adminName: adminName
     };
   }, [adminIdProp, adminNameProp]);
 
-  if (loadingUser) {
+  if (loadingUser || !panelReady) {
     return (
       <View style={styles.loadingWrap}>
         <AdminSkeletonList count={3} />

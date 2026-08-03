@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
+import { SUPER_ADMIN_FLOATING_TAB_BAR_PAD } from '../../../src/lib/responsive-layout';
 import { useCurriculumCascade } from '../../../src/hooks/useCurriculumCascade';
 import {
   deleteBookKnowledgeBook,
@@ -211,6 +212,8 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
     <ScrollView
       style={styles.root}
       contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+      nestedScrollEnabled
       refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void loadAll()} />}
     >
       <View style={styles.hero}>
@@ -394,7 +397,7 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  content: { padding: 16, paddingBottom: 40, gap: 16 },
+  content: { padding: 16, paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD + 48, gap: 16, flexGrow: 1 },
   hero: { gap: 8 },
   heroTitle: { fontSize: 22, fontWeight: '800', color: '#0f172a' },
   heroSub: { fontSize: 13, color: '#64748b', lineHeight: 18 },

@@ -600,7 +600,7 @@ export default function SchoolManagementView() {
 
 const styles = StyleSheet.create({
   content: { flex: 1 },
-  scrollContent: { paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD },
+  scrollContent: { paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD + 48 },
   header: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12 },
   headerTitle: { fontSize: 26, fontWeight: '800', color: '#0f172a', letterSpacing: -0.5 },
   headerSubtitle: { fontSize: 14, color: '#64748b', marginTop: 4, marginBottom: 14 },

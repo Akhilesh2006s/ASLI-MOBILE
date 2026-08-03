@@ -11,6 +11,7 @@ import { collectVidyaSubjectLabels } from '../src/lib/vidya-subjects';
 import { API_BASE_URL } from '../src/lib/api-config';
 import * as SecureStore from 'expo-secure-store';
 import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
+import { setStudentDashboardTabIntent } from '../src/lib/dashboard-tab-intent';
 import { resolveStudentDisplayName } from '../src/lib/student-text';
 import { useVidyaChatAccess } from '../src/hooks/useVidyaChatAccess';
 
@@ -32,9 +33,10 @@ export default function AITutor() {
 
   useEffect(() => {
     if (!authLoading && user && !vidyaChatEnabled) {
-      router.replace('/dashboard?tab=vidya');
+      setStudentDashboardTabIntent('vidya');
+      router.replace('/dashboard');
     }
-  }, [authLoading, user, vidyaChatEnabled]);
+  }, [authLoading, user, vidyaChatEnabled, router]);
 
   useEffect(() => {
     let mounted = true;

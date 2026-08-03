@@ -3,7 +3,6 @@ import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { FadeInUp } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import adminService from '../../src/services/api/adminService';
 import { exportCsvFile } from '../../src/utils/csvExport';
@@ -70,8 +69,7 @@ export default function AdminReports() {
         />
 
         {REPORTS.map((r, idx) => (
-          <Animated.View key={r.id} entering={FadeInUp.delay(idx * 80).duration(400)}>
-            <View style={[styles.reportCard, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder, borderRadius: radius.lg }]}>
+            <View key={r.id} style={[styles.reportCard, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder, borderRadius: radius.lg }]}>
               <LinearGradient
                 colors={[...colors.statGradients[idx % colors.statGradients.length]]}
                 style={[styles.reportIcon, { borderRadius: radius.md }]}
@@ -103,7 +101,6 @@ export default function AdminReports() {
                 </AdminScalePressable>
               </View>
             </View>
-          </Animated.View>
         ))}
       </ScrollView>
     </SafeAreaView>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../../src/services/api/api';
+import { SUPER_ADMIN_FLOATING_TAB_BAR_PAD } from '../../../src/lib/responsive-layout';
 
 interface BoardDashboardViewProps {
   boardCode?: string;
@@ -185,7 +186,7 @@ export default function BoardDashboardView({ boardCode = 'ASLI_EXCLUSIVE_SCHOOLS
 
   if (isLoading) {
     return (
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#f97316" />
           <Text style={styles.loadingText}>Loading board data...</Text>
@@ -196,7 +197,7 @@ export default function BoardDashboardView({ boardCode = 'ASLI_EXCLUSIVE_SCHOOLS
 
   if (!boardData) {
     return (
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle" size={64} color="#5B6779" />
           <Text style={styles.errorText}>{error || 'No board data available'}</Text>
@@ -214,7 +215,7 @@ export default function BoardDashboardView({ boardCode = 'ASLI_EXCLUSIVE_SCHOOLS
   }
 
   return (
-    <ScrollView style={styles.content}>
+    <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent} nestedScrollEnabled>
       {/* Title — navigation via dashboard menu / FAB */}
       <View style={styles.header}>
         <View style={styles.headerText}>
@@ -338,6 +339,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
+  scrollContent: { paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD + 48, flexGrow: 1 },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',

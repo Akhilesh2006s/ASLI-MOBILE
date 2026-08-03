@@ -12,6 +12,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { SUPER_ADMIN_FLOATING_TAB_BAR_PAD } from '../../../src/lib/responsive-layout';
 import {
   type TopicFormState,
   type TopicRow,
@@ -424,6 +425,8 @@ export default function AiToolTopicsView() {
   return (
     <ScrollView
       style={styles.content}
+      contentContainerStyle={styles.scrollContent}
+      nestedScrollEnabled
       keyboardShouldPersistTaps="handled"
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#f97316" />}
     >
@@ -754,7 +757,7 @@ export default function AiToolTopicsView() {
         onClose={() => setSubjectPickerOpen(false)}
       />
 
-      <View style={{ height: 32 }} />
+      <View style={{ height: 8 }} />
     </ScrollView>
   );
 }
@@ -762,6 +765,7 @@ export default function AiToolTopicsView() {
 const styles = StyleSheet.create({
   // Transparent: the shared app background artwork shows through.
   content: { flex: 1, backgroundColor: 'transparent' },
+  scrollContent: { paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD + 48, flexGrow: 1 },
   header: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
   headerTitle: { fontSize: 21, fontWeight: '800', color: '#111827' },
   headerSubtitle: { fontSize: 13, color: '#6b7280', marginTop: 4, lineHeight: 20 },

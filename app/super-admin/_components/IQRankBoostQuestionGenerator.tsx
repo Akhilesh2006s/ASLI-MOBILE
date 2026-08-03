@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { GlassPanel } from '../../../src/components/ui';
 import api from '../../../src/services/api/api';
+import { SUPER_ADMIN_FLOATING_TAB_BAR_PAD } from '../../../src/lib/responsive-layout';
 import { extractClassNumberFromSubjectName } from '../../../src/lib/subject-names';
 import {
   IQ_DIFFICULTIES,
@@ -199,7 +200,12 @@ export default function IQRankBoostQuestionGenerator({ classNumber, onBack }: Pr
   };
 
   return (
-    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+      nestedScrollEnabled
+      keyboardShouldPersistTaps="handled"
+    >
       <View style={styles.header}>
         <Pressable style={styles.backBtn} onPress={onBack}>
           <Ionicons name="arrow-back" size={22} color="#111827" />
@@ -396,7 +402,6 @@ export default function IQRankBoostQuestionGenerator({ classNumber, onBack }: Pr
         onClose={() => setDifficultyPickerOpen(false)}
       />
 
-      <View style={{ height: 32 }} />
     </ScrollView>
   );
 }
@@ -404,6 +409,7 @@ export default function IQRankBoostQuestionGenerator({ classNumber, onBack }: Pr
 const styles = StyleSheet.create({
   // Transparent: the shared app background artwork shows through.
   container: { flex: 1, backgroundColor: 'transparent' },
+  scrollContent: { paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD + 48, flexGrow: 1 },
   header: { padding: 20, paddingBottom: 12 },
   backBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
   backText: { fontSize: 16, fontWeight: '600', color: '#111827' },

@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { GlassPanel } from '../../../src/components/ui';
 import api from '../../../src/services/api/api';
+import { SUPER_ADMIN_FLOATING_TAB_BAR_PAD } from '../../../src/lib/responsive-layout';
 import {
   type CalendarEventRecord,
   type CalendarAdmin,
@@ -262,6 +263,8 @@ export default function SuperAdminCalendarView({ onNavigateToExams }: Props) {
   return (
     <ScrollView
       style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+      nestedScrollEnabled
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
       <View style={styles.headerRow}>
@@ -692,7 +695,6 @@ export default function SuperAdminCalendarView({ onNavigateToExams }: Props) {
         onClose={() => setCategoryPickerOpen(false)}
       />
 
-      <View style={{ height: 32 }} />
     </ScrollView>
   );
 }
@@ -700,6 +702,7 @@ export default function SuperAdminCalendarView({ onNavigateToExams }: Props) {
 const styles = StyleSheet.create({
   // Transparent: the shared app background artwork shows through.
   container: { flex: 1, backgroundColor: 'transparent' },
+  scrollContent: { paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD + 48, flexGrow: 1 },
   headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, padding: 20, paddingBottom: 12 },
   title: { fontSize: 28, fontWeight: '800', color: '#111827' },
   subtitle: { fontSize: 14, color: '#6b7280', marginTop: 4 },

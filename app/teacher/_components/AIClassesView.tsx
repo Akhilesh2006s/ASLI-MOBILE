@@ -11,8 +11,13 @@ import {
   TimetableView,
 } from '../../../src/components/teacher';
 import { GlassPanel } from '../../../src/components/ui';
-import { formatPersonName, formatSubjectList } from '../../../src/lib/teacher-text';
-import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO } from '../../../src/theme/teacher';
+import {
+  classGradeAccentIndex,
+  formatClassSectionLabel,
+  formatPersonName,
+  formatSubjectList,
+} from '../../../src/lib/teacher-text';
+import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../../src/theme/teacher';
 import ScheduleCalendarView from './ScheduleCalendarView';
 
 type ClassesSubTab = 'classes' | 'timetable' | 'schedule';
@@ -42,10 +47,38 @@ const SUB_TABS = [
 ];
 
 const STAT_ITEMS = [
-  { key: 'students', label: 'Students', icon: 'people' as const, color: TEACHER.primary, value: (s: Props['stats']) => s.totalStudents },
-  { key: 'classes', label: 'Classes', icon: 'layers' as const, color: TEACHER.secondary, value: (s: Props['stats']) => s.totalClasses },
-  { key: 'videos', label: 'Videos', icon: 'play-circle' as const, color: TEACHER.success, value: (s: Props['stats']) => s.totalVideos },
-  { key: 'grades', label: 'Pending', icon: 'ribbon' as const, color: TEACHER.warning, value: (s: Props['stats']) => s.pendingGrades ?? 0 },
+  {
+    key: 'students',
+    label: 'Students',
+    icon: 'people' as const,
+    color: '#7C3AED',
+    bg: '#F3E8FF',
+    value: (s: Props['stats']) => s.totalStudents,
+  },
+  {
+    key: 'classes',
+    label: 'Classes',
+    icon: 'layers' as const,
+    color: '#EA580C',
+    bg: '#FFEDD5',
+    value: (s: Props['stats']) => s.totalClasses,
+  },
+  {
+    key: 'videos',
+    label: 'Videos',
+    icon: 'play-circle' as const,
+    color: '#059669',
+    bg: '#D1FAE5',
+    value: (s: Props['stats']) => s.totalVideos,
+  },
+  {
+    key: 'grades',
+    label: 'Pending',
+    icon: 'ribbon' as const,
+    color: '#D97706',
+    bg: '#FEF3C7',
+    value: (s: Props['stats']) => s.pendingGrades ?? 0,
+  },
 ];
 
 function useCountUp(target: number, duration = 900) {
@@ -65,16 +98,24 @@ function useCountUp(target: number, duration = 900) {
   return display;
 }
 
+function StatDotGrid({ color }: { color: string }) {
+  return (
+    <View style={styles.statDots} pointerEvents="none">
+      {Array.from({ length: 9 }).map((_, i) => (
+        <View key={i} style={[styles.statDot, { backgroundColor: color }]} />
+      ))}
+    </View>
+  );
+}
+
 function StatsRibbon({ stats }: { stats: Props['stats'] }) {
   return (
     <Animated.View entering={FadeInDown.duration(400)} style={styles.statsWrap}>
-      <GlassPanel style={styles.statsRibbon} radius={TEACHER_RADIUS.lg} tone="medium">
-        <View style={styles.statsRibbonRow}>
-          {STAT_ITEMS.map((item, index) => (
-            <StatCell key={item.key} item={item} stats={stats} showDivider={index < STAT_ITEMS.length - 1} />
-          ))}
-        </View>
-      </GlassPanel>
+      <View style={styles.statsRibbonRow}>
+        {STAT_ITEMS.map((item) => (
+          <StatCell key={item.key} item={item} stats={stats} />
+        ))}
+      </View>
     </Animated.View>
   );
 }
@@ -82,21 +123,19 @@ function StatsRibbon({ stats }: { stats: Props['stats'] }) {
 function StatCell({
   item,
   stats,
-  showDivider,
 }: {
-  item: typeof STAT_ITEMS[number];
+  item: (typeof STAT_ITEMS)[number];
   stats: Props['stats'];
-  showDivider: boolean;
 }) {
   const count = useCountUp(item.value(stats));
   return (
-    <View style={styles.statCell}>
-      <View style={[styles.statIconWrap, { backgroundColor: item.color + '22' }]}>
-        <Ionicons name={item.icon} size={14} color={item.color} />
+    <View style={[styles.statCell, { backgroundColor: item.bg }]}>
+      <StatDotGrid color={`${item.color}33`} />
+      <View style={styles.statIconWrap}>
+        <Ionicons name={item.icon} size={16} color={item.color} />
       </View>
       <Text style={[styles.statValue, { color: item.color }]}>{count}</Text>
       <Text style={styles.statLabel}>{item.label}</Text>
-      {showDivider ? <View style={styles.statDivider} /> : null}
     </View>
   );
 }
@@ -114,10 +153,13 @@ function asText(value: unknown, fallback = 'N/A'): string {
 function formatClassName(cls: any): string {
   const num = cls.classNumber != null ? String(cls.classNumber) : '';
   const sec = cls.section != null ? String(cls.section).trim() : '';
-  if (num && sec) return `${num}${sec}`;
+  if (num && sec) return formatClassSectionLabel(`${num}${sec}`);
   if (cls.name && typeof cls.name === 'string') {
     const n = cls.name.trim();
-    if (/^\d+[A-Za-z]$/.test(n.replace(/\s/g, ''))) return n.replace(/\s/g, '');
+    const compact = n.replace(/\s/g, '');
+    if (/^\d{1,2}[-_']?[A-Za-z]$/i.test(compact) || /^class\s*\d/i.test(n)) {
+      return formatClassSectionLabel(n);
+    }
     return n;
   }
   if (num) return num;
@@ -216,16 +258,6 @@ export default function AIClassesView({ stats, initialSubTab, onOpenProgress }: 
 
     return (
       <View style={styles.classesSection}>
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionTitleRow}>
-            <View style={styles.sectionDot} />
-            <Text style={styles.sectionTitle}>My Classes</Text>
-            <View style={styles.classCountPill}>
-              <Text style={styles.classCountText}>{classes.length}</Text>
-            </View>
-          </View>
-        </View>
-
         {classes.map((cls, index) => (
           <Animated.View
             key={cls.id}
@@ -240,6 +272,7 @@ export default function AIClassesView({ stats, initialSubTab, onOpenProgress }: 
               expanded={expanded.has(cls.id)}
               onToggleStudents={() => toggleExpanded(cls.id)}
               students={cls.students}
+              accentIndex={classGradeAccentIndex(cls.classNumber || cls.name)}
               onViewStudentAnalysis={(studentId) =>
                 onOpenProgress?.(cls.classNumber || cls.name, studentId)
               }
@@ -281,15 +314,9 @@ const styles = StyleSheet.create({
     paddingTop: TEACHER_SPACING.sm,
     paddingBottom: TEACHER_SPACING.md,
   },
-  statsRibbon: {
-    borderRadius: TEACHER_RADIUS.lg,
-    borderWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
-    overflow: 'hidden',
-    paddingVertical: TEACHER_SPACING.lg,
-  },
   statsRibbonRow: {
     flexDirection: 'row',
+    gap: 8,
   },
   statCell: {
     flex: 1,
@@ -297,14 +324,37 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 4,
     position: 'relative',
+    overflow: 'hidden',
+    minHeight: 108,
+    borderRadius: TEACHER_RADIUS.lg,
+    paddingVertical: 14,
+    paddingHorizontal: 6,
+    ...TEACHER.shadow.sm,
+  },
+  statDots: {
+    position: 'absolute',
+    right: 6,
+    bottom: 8,
+    width: 22,
+    height: 22,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 3,
+  },
+  statDot: {
+    width: 3.5,
+    height: 3.5,
+    borderRadius: 2,
   },
   statIconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 2,
+    marginBottom: 4,
+    backgroundColor: '#FFFFFF',
+    ...TEACHER.shadow.sm,
   },
   statValue: {
     fontSize: 22,
@@ -312,53 +362,14 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: TEACHER.textSecondary,
     letterSpacing: 0.1,
   },
-  statDivider: {
-    position: 'absolute',
-    right: 0,
-    top: '15%',
-    bottom: '15%',
-    width: 1,
-    backgroundColor: TEACHER.surfaceBorder,
-  },
   classesSection: {
     paddingHorizontal: TEACHER_SPACING.lg,
     paddingBottom: TEACHER_SPACING.xxl,
-  },
-  sectionHeader: {
-    marginBottom: TEACHER_SPACING.lg,
-  },
-  sectionTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  sectionDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: TEACHER.primary,
-  },
-  sectionTitle: {
-    ...TEACHER_TYPO.section,
-    fontSize: 18,
-    color: TEACHER.text,
-    flex: 1,
-  },
-  classCountPill: {
-    backgroundColor: TEACHER.navActiveBg,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  classCountText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: TEACHER.primaryDark,
   },
   empty: {
     padding: TEACHER_SPACING.xxxl,

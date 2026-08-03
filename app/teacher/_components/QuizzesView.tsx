@@ -35,12 +35,14 @@ export default function QuizzesView() {
     <View style={styles.wrap}>
       <Pressable
         style={styles.createBtn}
-        onPress={() =>
-          router.push({
-            pathname: '/teacher/tools/worksheet-mcq-generator' as any,
-            params: { returnTab: 'dashboard' },
-          })
-        }
+        onPress={() => {
+          requestAnimationFrame(() => {
+            router.push({
+              pathname: '/teacher/tools/worksheet-mcq-generator' as any,
+              params: { returnTab: 'dashboard' },
+            });
+          });
+        }}
       >
         <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.createBtnGrad}>
           <Ionicons name="add-circle" size={20} color={TEACHER.textOnPrimary} />

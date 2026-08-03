@@ -1,11 +1,13 @@
-import { useEffect, useState, startTransition, useCallback } from 'react';
+import { useEffect, useState, startTransition, useCallback, useMemo } from 'react';
 import { Alert, Keyboard, Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
+import { useVisitedTabs } from '../../src/hooks/useVisitedTabs';
+import { consumeAdminDashboardTabIntent } from '../../src/lib/dashboard-tab-intent';
 import { useAuth } from '../../src/context/AuthContext';
 import authService from '../../src/services/api/authService';
-import { LoadingState } from '../../src/components/ui';
+import { LoadingState, VisitedTabPane } from '../../src/components/ui';
 import OverviewView from './_components/OverviewView';
 import AnalyticsDashboardView from './_components/AnalyticsDashboardView';
 import StudentsView from './_components/StudentsView';
@@ -26,6 +28,24 @@ import VidyaAIFloatingAssistant from '../../src/components/vidya/VidyaAIFloating
 import AdminNavDrawer, { adminNavLabel, type AdminNavView } from './_components/AdminNavDrawer';
 import { AdminHeader, AdminTabBar, useAdminTheme } from './_ui';
 import { useAdminResponsiveLayout } from './_ui/useAdminResponsiveLayout';
+
+const ADMIN_VIEWS: AdminNavView[] = [
+  'overview',
+  'analytics',
+  'students',
+  'classes',
+  'teachers',
+  'subjects',
+  'exams',
+  'assessments',
+  'quizzes',
+  'learning-paths',
+  'eduott',
+  'videos',
+  'timetable',
+  'calendar',
+  'vidya-ai',
+];
 
 function renderAdminView(
   view: AdminNavView,
@@ -76,7 +96,12 @@ export default function AdminDashboard() {
   const { tab } = useLocalSearchParams<{ tab?: string }>();
   const { spacing } = useAdminTheme();
   const { shellPaddingBottom, showBottomTabBar } = useAdminResponsiveLayout();
-  const [currentView, setCurrentView] = useState<AdminNavView>('overview');
+  const {
+    active: currentView,
+    visited: visitedViews,
+    select: selectView,
+    setActive: setActiveView,
+  } = useVisitedTabs<AdminNavView>('overview');
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -93,26 +118,45 @@ export default function AdminDashboard() {
 
   useBackNavigation('/admin/dashboard', true);
 
-  const selectView = useCallback((view: AdminNavView) => {
-    startTransition(() => setCurrentView(view));
-  }, []);
-
   const openMenu = useCallback(() => setMenuOpen(true), []);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
+
+  const goToView = useCallback(
+    (view: AdminNavView) => {
+      startTransition(() => {
+        selectView(view);
+      });
+    },
+    [selectView],
+  );
+
+  /** Drawer: close first, then switch — avoids fighting the slide + heavy mount. */
+  const onSelectFromDrawer = useCallback(
+    (view: AdminNavView) => {
+      setMenuOpen(false);
+      requestAnimationFrame(() => {
+        goToView(view);
+      });
+    },
+    [goToView],
+  );
 
   useEffect(() => {
     checkAuth();
   }, []);
 
+  // One-shot tab intent. Never persist ?tab= across reload.
   useEffect(() => {
-    if (tab === 'overview') selectView('overview');
-    else if (tab === 'students') selectView('students');
-    else if (tab === 'classes') selectView('classes');
-    else if (tab === 'teachers') selectView('teachers');
-    else if (tab === 'vidya-ai') selectView('vidya-ai');
-    else if (tab === 'eduott') selectView('eduott');
-    else if (tab === 'learning-paths') selectView('learning-paths');
-  }, [tab, selectView]);
+    const intent = consumeAdminDashboardTabIntent();
+    if (intent) {
+      setActiveView(intent);
+    }
+    // Clear legacy sticky ?tab= from the URL without reopening that tab on reload.
+    const raw = typeof tab === 'string' ? tab : Array.isArray(tab) ? tab[0] : undefined;
+    if (raw) {
+      router.replace('/admin/dashboard');
+    }
+  }, []);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -192,10 +236,17 @@ export default function AdminDashboard() {
     ]);
   };
 
-  const onSelectView = useCallback((view: AdminNavView) => {
-    selectView(view);
-    setMenuOpen(false);
-  }, [selectView]);
+  const resolvedAdminId =
+    adminId || (authUser?._id || authUser?.id ? String(authUser._id || authUser.id) : null);
+
+  const viewOpts = useMemo(
+    () => ({
+      userName,
+      adminId: resolvedAdminId,
+      onNavigate: goToView,
+    }),
+    [userName, resolvedAdminId, goToView],
+  );
 
   if (isLoading) {
     return (
@@ -212,8 +263,6 @@ export default function AdminDashboard() {
   // Tab bar is in layout flow (not overlay) — content only needs light bottom pad.
   const contentBottomPad = isVidya ? 0 : shellPaddingBottom;
   const showTabs = showBottomTabBar && !(isVidya && keyboardOpen);
-  const resolvedAdminId =
-    adminId || (authUser?._id || authUser?.id ? String(authUser._id || authUser.id) : null);
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
@@ -229,16 +278,18 @@ export default function AdminDashboard() {
 
           <View style={[styles.contentWrap, { paddingBottom: contentBottomPad }]}>
             <View style={styles.content}>
-              {renderAdminView(currentView, {
-                userName,
-                adminId: resolvedAdminId,
-                onNavigate: onSelectView,
-              })}
+              {ADMIN_VIEWS.map((view) =>
+                visitedViews.has(view) ? (
+                  <VisitedTabPane key={view} visible={currentView === view}>
+                    {renderAdminView(view, viewOpts)}
+                  </VisitedTabPane>
+                ) : null,
+              )}
             </View>
           </View>
 
           {/* In-flow footer — never scrolls with tab content. */}
-          {showTabs ? <AdminTabBar activeView={currentView} onTabChange={selectView} /> : null}
+          {showTabs ? <AdminTabBar activeView={currentView} onTabChange={goToView} /> : null}
         </View>
       </View>
 
@@ -247,14 +298,14 @@ export default function AdminDashboard() {
         activeView={currentView}
         userName={userName}
         onClose={closeMenu}
-        onSelect={onSelectView}
+        onSelect={onSelectFromDrawer}
         onLogout={handleLogout}
       />
 
       <VidyaAIFloatingAssistant
         role="admin"
         hidden={isVidya || keyboardOpen}
-        onPress={() => onSelectView('vidya-ai')}
+        onPress={() => goToView('vidya-ai')}
       />
     </SafeAreaView>
   );

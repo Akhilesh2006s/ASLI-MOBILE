@@ -2,7 +2,32 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Ellipse, G, Line } from 'react-native-svg';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../theme/teacher';
+
+function ChipSparkleDecor() {
+  return (
+    <Svg
+      width="100%"
+      height="100%"
+      viewBox="0 0 80 64"
+      preserveAspectRatio="xMidYMid slice"
+      style={StyleSheet.absoluteFillObject}
+      pointerEvents="none"
+    >
+      <G opacity={0.35}>
+        <Ellipse cx="40" cy="54" rx="34" ry="10" stroke="#FFFFFF" strokeWidth={1} fill="none" />
+        <Ellipse cx="40" cy="56" rx="24" ry="7" stroke="#FFFFFF" strokeWidth={0.9} fill="none" />
+      </G>
+      <G opacity={0.5} stroke="#FFFFFF" strokeWidth={1.1}>
+        <Line x1="12" y1="12" x2="12" y2="20" />
+        <Line x1="8" y1="16" x2="16" y2="16" />
+        <Line x1="66" y1="14" x2="66" y2="20" />
+        <Line x1="63" y1="17" x2="69" y2="17" />
+      </G>
+    </Svg>
+  );
+}
 
 export type ChipItem = {
   id: string;
@@ -40,16 +65,23 @@ function Segment({
     >
       <View style={[styles.segmentInner, selected ? styles.segmentInnerActive : styles.segmentInnerIdle]}>
         {selected ? (
-          <LinearGradient
-            colors={[TEACHER.primary, TEACHER.primaryDark]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFillObject}
-          />
+          <>
+            <LinearGradient
+              colors={
+                item.id === 'classes'
+                  ? ['#6D28D9', '#A855F7']
+                  : [TEACHER.primary, TEACHER.primaryDark]
+              }
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+            />
+            <ChipSparkleDecor />
+          </>
         ) : null}
         {item.icon ? (
           <Ionicons
-            name={item.icon}
+            name={item.id === 'classes' && selected ? 'school-outline' : item.icon}
             size={17}
             color={selected ? TEACHER.textOnPrimary : TEACHER.primaryLight}
           />

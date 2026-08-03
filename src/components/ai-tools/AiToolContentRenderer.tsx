@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
+import { ScrollView, StyleSheet } from 'react-native';
 import ActivityProjectViewer from './ActivityProjectViewer';
 import FlashcardViewer from './FlashcardViewer';
 import SmartStudyGuideViewer from './SmartStudyGuideViewer';
@@ -14,8 +15,8 @@ import {
   flashcardsHaveVisibleBody,
   resolveFlashcardsFromPayload,
 } from '../../lib/parse-flashcards';
-import { formatAiToolText } from '../../lib/title-case';
 import { resolveAiToolDisplayType } from '../../lib/ai-tool-generate';
+export { getAiToolResultTitle } from '../../lib/ai-tool-result-title';
 
 type Props = {
   toolType: string;
@@ -23,7 +24,24 @@ type Props = {
   rawContent?: unknown;
   accent?: string;
   variant?: 'student' | 'teacher';
+  /** Phone result layout: child owns vertical scroll instead of parent page ScrollView. */
+  fill?: boolean;
 };
+
+function wrapNativeFill(node: ReactNode, fill: boolean) {
+  if (!fill) return node;
+  return (
+    <ScrollView
+      style={styles.fillScroll}
+      contentContainerStyle={styles.fillScrollContent}
+      nestedScrollEnabled
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator
+    >
+      {node}
+    </ScrollView>
+  );
+}
 
 function activitiesFromRaw(rawContent: unknown) {
   if (!rawContent || typeof rawContent !== 'object') return undefined;
@@ -32,39 +50,12 @@ function activitiesFromRaw(rawContent: unknown) {
   return undefined;
 }
 
-export function getAiToolResultTitle(toolType: string, variant: 'student' | 'teacher' = 'student'): string {
-  const displayType = resolveAiToolDisplayType(toolType, variant);
-  const titles: Record<string, string> = {
-    'smart-study-guide-generator': 'Your smart study guide',
-    'concept-breakdown-explainer': 'Your concept breakdown',
-    'smart-qa-practice-generator': 'Your practice Q&A',
-    'chapter-summary-creator': 'Your chapter summary',
-    'key-points-formula-extractor': 'Your key points sheet',
-    'quick-assignment-builder': 'Your assignment',
-    'my-study-decks': 'Your study deck',
-    'mock-test-builder': 'Your mock test',
-    'project-idea-lab': 'Your project idea lab',
-    'reading-practice-room': 'Your reading studio',
-    'study-schedule-maker': 'Your study schedule',
-    'activity-project-generator': 'Your activities & projects',
-    'worksheet-mcq-generator': 'Your worksheet',
-    'concept-mastery-helper': 'Your concept mastery guide',
-    'lesson-planner': 'Your lesson plan',
-    'exam-question-paper-generator': 'Your exam paper',
-    'daily-class-plan-maker': 'Your daily class plan',
-    'homework-creator': 'Your homework',
-    'story-passage-creator': 'Your story & passage',
-    'short-notes-summaries-maker': 'Your short notes',
-    'flashcard-generator': 'Your flashcard deck',
-  };
-  return formatAiToolText(titles[displayType] || 'Generated Content');
-}
-
 export default function AiToolContentRenderer({
   toolType,
   content,
   rawContent,
   variant = 'student',
+  fill = false,
 }: Props) {
   const displayToolType = useMemo(
     () => resolveAiToolDisplayType(toolType, variant),
@@ -124,6 +115,7 @@ export default function AiToolContentRenderer({
         content={cleaned}
         rawContent={mergedRaw}
         variant={variant}
+        fill={fill}
       />
     );
   }
@@ -134,29 +126,32 @@ export default function AiToolContentRenderer({
         content={cleaned}
         rawContent={mergedRaw}
         toolType={displayToolType}
+        fill={fill}
       />
     );
   }
 
   if (useNativeActivity) {
-    return (
+    return wrapNativeFill(
       <ActivityProjectViewer
         content={cleaned}
         rawContent={mergedRaw}
         variant={displayToolType === 'project-idea-lab' ? 'student' : variant}
         toolType={displayToolType}
-      />
+      />,
+      fill,
     );
   }
 
   if (useNativeFlashcard) {
-    return (
+    return wrapNativeFill(
       <FlashcardViewer
         content={cleaned}
         rawContent={mergedRaw}
         variant={isTeacherFlashcards ? 'teacher' : 'student'}
         toolType={displayToolType}
-      />
+      />,
+      fill,
     );
   }
 
@@ -166,6 +161,12 @@ export default function AiToolContentRenderer({
       content={cleaned}
       rawContent={mergedRaw}
       variant={variant}
+      fill={fill}
     />
   );
 }
+
+const styles = StyleSheet.create({
+  fillScroll: { flex: 1, minHeight: 0 },
+  fillScrollContent: { paddingBottom: 12 },
+});

@@ -420,7 +420,7 @@ export default function SuperAdminOverviewView({
 
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
-  content: { paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD },
+  content: { paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD + 48 },
   welcomeHeader: {
     paddingHorizontal: 16,
     paddingTop: 14,

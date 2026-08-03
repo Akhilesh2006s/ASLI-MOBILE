@@ -160,6 +160,8 @@ export default function AIAnalyticsView({
     <ScrollView
       style={styles.content}
       contentContainerStyle={styles.scrollContent}
+      nestedScrollEnabled
+      keyboardShouldPersistTaps="handled"
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} />}
     >
       <View style={styles.header}>
@@ -800,7 +802,7 @@ const pickerStyles = StyleSheet.create({
 
 const styles = StyleSheet.create({
   content: { flex: 1 },
-  scrollContent: { paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD },
+  scrollContent: { paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD + 48, flexGrow: 1 },
   header: {
     paddingHorizontal: 16,
     paddingTop: 8,

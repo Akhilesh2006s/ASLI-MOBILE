@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, ActivityIn
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../../src/services/api/api';
+import { SUPER_ADMIN_FLOATING_TAB_BAR_PAD } from '../../../src/lib/responsive-layout';
 
 interface Content {
   _id: string;
@@ -169,7 +170,7 @@ export default function ContentManagementView() {
   };
 
   return (
-    <ScrollView style={styles.content}>
+    <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent} nestedScrollEnabled>
       {/* Header */}
       <View style={styles.header}>
         <View>
@@ -399,6 +400,7 @@ export default function ContentManagementView() {
 
 const styles = StyleSheet.create({
   content: { flex: 1 },
+  scrollContent: { paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD + 48, flexGrow: 1 },
   header: {
     padding: 20,
     paddingBottom: 16,

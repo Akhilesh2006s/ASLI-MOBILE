@@ -2,10 +2,12 @@ import { useEffect } from 'react';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { setSuperAdminDashboardTabIntent } from '../../src/lib/dashboard-tab-intent';
 
 /** Legacy route — redirects to the main super admin dashboard analytics section. */
 export default function SuperAdminAnalyticsRedirect() {
   useEffect(() => {
+    setSuperAdminDashboardTabIntent('analytics');
     router.replace('/super-admin-dashboard');
   }, []);
 

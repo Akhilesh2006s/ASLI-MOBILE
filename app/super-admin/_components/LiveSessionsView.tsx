@@ -412,6 +412,8 @@ export default function LiveSessionsView() {
   return (
     <ScrollView
       style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+      nestedScrollEnabled
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} />}
       keyboardShouldPersistTaps="handled"
     >
@@ -557,6 +559,7 @@ export default function LiveSessionsView() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  scrollContent: { paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD + 48, flexGrow: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -591,7 +594,7 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', padding: 32, gap: 8 },
   emptyTitle: { color: '#4b5563', fontWeight: '700', fontSize: 16 },
   emptySub: { color: '#5B6779', textAlign: 'center', fontSize: 13 },
-  list: { paddingHorizontal: 16, paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD, gap: 12 },
+  list: { paddingHorizontal: 16, paddingBottom: 12, gap: 12 },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,

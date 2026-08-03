@@ -13,6 +13,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { SUPER_ADMIN_FLOATING_TAB_BAR_PAD } from '../../../src/lib/responsive-layout';
 import {
   BROWSE_STEPS,
   TOOL_LABELS,
@@ -864,6 +865,9 @@ export default function AiToolGenerationsView() {
   return (
     <ScrollView
       style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+      nestedScrollEnabled
+      keyboardShouldPersistTaps="handled"
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#f97316" />}
     >
       {/* Padding lives on heroInner so the full-bleed accent bar is not inset by it. */}
@@ -1003,7 +1007,7 @@ export default function AiToolGenerationsView() {
         onClose={() => setBoardPickerOpen(false)}
       />
 
-      <View style={{ height: 24 }} />
+      <View style={{ height: 8 }} />
     </ScrollView>
   );
 }
@@ -1011,6 +1015,7 @@ export default function AiToolGenerationsView() {
 const styles = StyleSheet.create({
   // Transparent: the shared app background artwork shows through.
   container: { flex: 1, backgroundColor: 'transparent' },
+  scrollContent: { paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD + 48, flexGrow: 1 },
   hero: {
     margin: 16,
     borderRadius: 16,

@@ -39,6 +39,7 @@ import {
   sanitizeGenerationRecordCountInput,
 } from '../../../src/lib/generation-record-count';
 import { filterSubjectsForAiTool, isLanguageExcludedTool, isStoryLanguageTool, isStoryPassageLanguageSubject, LANGUAGE_EXCLUDED_TOOL_ERROR } from '../../../src/lib/student-ai-tools';
+import { SUPER_ADMIN_FLOATING_TAB_BAR_PAD } from '../../../src/lib/responsive-layout';
 
 type Props = {
   onOpenBookKnowledge?: () => void;
@@ -194,6 +195,9 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
     <ScrollView
       style={styles.root}
       contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+      nestedScrollEnabled
+      showsVerticalScrollIndicator
       refreshControl={<RefreshControl refreshing={booksLoading} onRefresh={() => void loadBooks()} />}
     >
       <View style={styles.hero}>
@@ -260,7 +264,13 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
         ) : null}
         <View style={!selectedTool ? { opacity: 0.5 } : undefined} pointerEvents={selectedTool ? 'auto' : 'none'}>
         <Text style={styles.fieldLabel}>Board</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
+        <ScrollView
+          horizontal
+          nestedScrollEnabled
+          showsHorizontalScrollIndicator={false}
+          style={styles.chipRow}
+          keyboardShouldPersistTaps="handled"
+        >
           {boardOptions.map((b) => (
             <Pressable key={b} style={[styles.chip, board === b && styles.chipActive]} onPress={() => setBoard(b)}>
               <Text style={[styles.chipText, board === b && styles.chipTextActive]}>{b}</Text>
@@ -268,7 +278,13 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
           ))}
         </ScrollView>
         <Text style={styles.fieldLabel}>Class</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
+        <ScrollView
+          horizontal
+          nestedScrollEnabled
+          showsHorizontalScrollIndicator={false}
+          style={styles.chipRow}
+          keyboardShouldPersistTaps="handled"
+        >
           {(loadingClasses ? [] : classOptionsForSelect).map((c) => (
             <Pressable key={c} style={[styles.chip, classNumber === c && styles.chipActive]} onPress={() => setClassNumber(c)}>
               <Text style={[styles.chipText, classNumber === c && styles.chipTextActive]}>{c}</Text>
@@ -276,7 +292,13 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
           ))}
         </ScrollView>
         <Text style={styles.fieldLabel}>Subject</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
+        <ScrollView
+          horizontal
+          nestedScrollEnabled
+          showsHorizontalScrollIndicator={false}
+          style={styles.chipRow}
+          keyboardShouldPersistTaps="handled"
+        >
           {(loadingSubjects ? [] : subjectOptionsForSelect).map((s) => (
             <Pressable key={s} style={[styles.chip, subject === s && styles.chipActive]} onPress={() => setSubject(s)}>
               <Text style={[styles.chipText, subject === s && styles.chipTextActive]}>{s}</Text>
@@ -284,7 +306,13 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
           ))}
         </ScrollView>
         <Text style={styles.fieldLabel}>Topic</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
+        <ScrollView
+          horizontal
+          nestedScrollEnabled
+          showsHorizontalScrollIndicator={false}
+          style={styles.chipRow}
+          keyboardShouldPersistTaps="handled"
+        >
           {(loadingTopics ? [] : topics).map((t) => (
             <Pressable key={t} style={[styles.chip, topic === t && styles.chipActive]} onPress={() => setTopic(t)}>
               <Text style={[styles.chipText, topic === t && styles.chipTextActive]}>{t}</Text>
@@ -292,7 +320,13 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
           ))}
         </ScrollView>
         <Text style={styles.fieldLabel}>Sub Topic</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
+        <ScrollView
+          horizontal
+          nestedScrollEnabled
+          showsHorizontalScrollIndicator={false}
+          style={styles.chipRow}
+          keyboardShouldPersistTaps="handled"
+        >
           {(loadingSubtopics ? [] : subtopics).map((st) => (
             <Pressable key={st} style={[styles.chip, subTopic === st && styles.chipActive]} onPress={() => setSubTopic(st)}>
               <Text style={[styles.chipText, subTopic === st && styles.chipTextActive]}>{st}</Text>
@@ -347,7 +381,8 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  content: { padding: 16, paddingBottom: 40, gap: 16 },
+  // Clear the absolute floating tab bar so Generate stays reachable.
+  content: { padding: 16, paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD + 48, gap: 16, flexGrow: 1 },
   hero: { gap: 8 },
   heroTitle: { fontSize: 22, fontWeight: '800', color: '#0f172a' },
   heroSub: { fontSize: 13, color: '#64748b', lineHeight: 18 },
