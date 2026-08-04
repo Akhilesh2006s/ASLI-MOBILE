@@ -1284,7 +1284,7 @@ export default function StudentsView() {
                     accessibilityLabel={showNewStudentPassword ? 'Hide password' : 'Show password'}
                   >
                     <Ionicons
-                      name={showNewStudentPassword ? 'eye-off-outline' : 'eye-outline'}
+                      name={showNewStudentPassword ? 'eye-outline' : 'eye-off-outline'}
                       size={20}
                       color={colors.primary}
                     />

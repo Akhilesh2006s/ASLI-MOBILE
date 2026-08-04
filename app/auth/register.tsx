@@ -102,9 +102,9 @@ export default function Register() {
                 onPress={() => setShowPassword(!showPassword)}
               >
                 {showPassword ? (
-                  <Ionicons name="eye-off" size={20} color="#5B6779" />
-                ) : (
                   <Ionicons name="eye" size={20} color="#5B6779" />
+                ) : (
+                  <Ionicons name="eye-off" size={20} color="#5B6779" />
                 )}
               </TouchableOpacity>
             </View>
@@ -129,9 +129,9 @@ export default function Register() {
                 onPress={() => setShowConfirmPassword(!showConfirmPassword)}
               >
                 {showConfirmPassword ? (
-                  <Ionicons name="eye-off" size={20} color="#5B6779" />
-                ) : (
                   <Ionicons name="eye" size={20} color="#5B6779" />
+                ) : (
+                  <Ionicons name="eye-off" size={20} color="#5B6779" />
                 )}
               </TouchableOpacity>
             </View>
