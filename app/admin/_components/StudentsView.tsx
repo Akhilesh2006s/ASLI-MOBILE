@@ -577,16 +577,11 @@ export default function StudentsView() {
         <View style={styles.studentCardContent}>
           <View style={styles.studentHeader}>
             <View style={styles.studentAvatarContainer}>
-              <LinearGradient
-                colors={[...colors.fabGradient]}
-                style={styles.studentAvatar}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
+              <View style={[styles.studentAvatar, { backgroundColor: colors.primary }]}>
                 <Text style={styles.studentAvatarText}>
                   {(student.name || 'U').charAt(0).toUpperCase()}
                 </Text>
-              </LinearGradient>
+              </View>
               <View
                 style={[
                   styles.statusIndicator,

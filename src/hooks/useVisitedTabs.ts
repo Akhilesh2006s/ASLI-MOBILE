@@ -1,18 +1,31 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+
+type Options = {
+  /** When set, only the most recently used tabs stay mounted (LRU). */
+  maxVisited?: number;
+};
 
 /** Keep tab screens mounted after first visit so switching tabs stays instant. */
-export function useVisitedTabs<T extends string>(initial: T) {
+export function useVisitedTabs<T extends string>(initial: T, options?: Options) {
+  const maxVisited = options?.maxVisited;
   const [active, setActiveState] = useState<T>(initial);
-  const [visited, setVisited] = useState<Set<T>>(() => new Set([initial]));
+  /** Oldest → newest; used for LRU eviction when maxVisited is set. */
+  const [order, setOrder] = useState<T[]>([initial]);
 
-  const markVisited = useCallback((id: T) => {
-    setVisited((prev) => {
-      if (prev.has(id)) return prev;
-      const next = new Set(prev);
-      next.add(id);
-      return next;
-    });
-  }, []);
+  const visited = useMemo(() => new Set(order), [order]);
+
+  const markVisited = useCallback(
+    (id: T) => {
+      setOrder((prev) => {
+        const next = [...prev.filter((x) => x !== id), id];
+        if (maxVisited && next.length > maxVisited) {
+          return next.slice(next.length - maxVisited);
+        }
+        return next;
+      });
+    },
+    [maxVisited],
+  );
 
   const select = useCallback(
     (id: T) => {

@@ -1,7 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useAdminTheme } from './useAdminTheme';
 
 type Props = {
@@ -31,6 +30,8 @@ export default function AdminStatCard({
 }: Props) {
   const { colors, radius, typo } = useAdminTheme();
   const gradient = colors.statGradients[gradientIndex % colors.statGradients.length];
+  // Solid fill — LinearGradient × N stat tiles was a measurable paint cost on tab open.
+  const fill = gradient[1] || gradient[0];
 
   const displayValue = loading ? '—' : value;
   const horizontal = compact || grid;
@@ -43,14 +44,11 @@ export default function AdminStatCard({
         { borderRadius: radius.lg },
       ]}
     >
-      <LinearGradient
-        colors={[...gradient]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+      <View
         style={[
-          styles.gradient,
-          horizontal && styles.gradientHorizontal,
-          { borderRadius: radius.lg },
+          styles.fill,
+          horizontal && styles.fillHorizontal,
+          { borderRadius: radius.lg, backgroundColor: fill },
         ]}
       >
         <View style={styles.compactInner}>
@@ -80,7 +78,7 @@ export default function AdminStatCard({
             ) : null}
           </View>
         </View>
-      </LinearGradient>
+      </View>
     </View>
   );
 }
@@ -95,12 +93,12 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'stretch',
   },
-  gradient: {
+  fill: {
     padding: 14,
     minHeight: 96,
     justifyContent: 'center',
   },
-  gradientHorizontal: {
+  fillHorizontal: {
     minHeight: 92,
     paddingHorizontal: 12,
     paddingVertical: 12,

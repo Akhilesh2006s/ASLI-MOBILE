@@ -1,5 +1,13 @@
-import { useEffect, useState, startTransition, useCallback, useMemo } from 'react';
-import { Alert, Keyboard, Platform, StyleSheet, View } from 'react-native';
+import React, {
+  Suspense,
+  lazy,
+  useEffect,
+  useState,
+  startTransition,
+  useCallback,
+  useMemo,
+} from 'react';
+import { Alert, InteractionManager, Keyboard, Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
@@ -8,26 +16,30 @@ import { consumeAdminDashboardTabIntent } from '../../src/lib/dashboard-tab-inte
 import { useAuth } from '../../src/context/AuthContext';
 import authService from '../../src/services/api/authService';
 import { LoadingState, VisitedTabPane } from '../../src/components/ui';
-import OverviewView from './_components/OverviewView';
-import AnalyticsDashboardView from './_components/AnalyticsDashboardView';
-import StudentsView from './_components/StudentsView';
-import ClassesView from './_components/ClassesView';
-import TeachersView from './_components/TeachersView';
-import SubjectsView from './_components/SubjectsView';
-import ExamsView from './_components/ExamsView';
-import AssessmentsView from './_components/AssessmentsView';
-import QuizzesView from './_components/QuizzesView';
-import LearningPathsView from './_components/LearningPathsView';
-import EduOTTView from './_components/EduOTTView';
 import { EduOTTFilterProvider } from '../../src/contexts/edu-ott-filter-context';
-import VideosView from './_components/VideosView';
-import TimetableView from './_components/TimetableView';
-import CalendarView from './_components/CalendarView';
-import VidyaAIView from './_components/VidyaAIView';
 import VidyaAIFloatingAssistant from '../../src/components/vidya/VidyaAIFloatingAssistant';
 import AdminNavDrawer, { adminNavLabel, type AdminNavView } from './_components/AdminNavDrawer';
 import { AdminHeader, AdminTabBar, useAdminTheme } from './_ui';
 import { useAdminResponsiveLayout } from './_ui/useAdminResponsiveLayout';
+
+const OverviewView = lazy(() => import('./_components/OverviewView'));
+const AnalyticsDashboardView = lazy(() => import('./_components/AnalyticsDashboardView'));
+const StudentsView = lazy(() => import('./_components/StudentsView'));
+const ClassesView = lazy(() => import('./_components/ClassesView'));
+const TeachersView = lazy(() => import('./_components/TeachersView'));
+const SubjectsView = lazy(() => import('./_components/SubjectsView'));
+const ExamsView = lazy(() => import('./_components/ExamsView'));
+const AssessmentsView = lazy(() => import('./_components/AssessmentsView'));
+const QuizzesView = lazy(() => import('./_components/QuizzesView'));
+const LearningPathsView = lazy(() => import('./_components/LearningPathsView'));
+const EduOTTView = lazy(() => import('./_components/EduOTTView'));
+const VideosView = lazy(() => import('./_components/VideosView'));
+const TimetableView = lazy(() => import('./_components/TimetableView'));
+const CalendarView = lazy(() => import('./_components/CalendarView'));
+const VidyaAIView = lazy(() => import('./_components/VidyaAIView'));
+
+/** Keep overview + a couple recent tabs mounted; unmount older ones to cut lag. */
+const MAX_VISITED_TABS = 3;
 
 const ADMIN_VIEWS: AdminNavView[] = [
   'overview',
@@ -91,6 +103,11 @@ function renderAdminView(
   }
 }
 
+function TabFallback() {
+  const { spacing } = useAdminTheme();
+  return <LoadingState variant="stats" style={{ padding: spacing.lg, flex: 1 }} />;
+}
+
 export default function AdminDashboard() {
   const { signOut, user: authUser } = useAuth();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
@@ -101,7 +118,7 @@ export default function AdminDashboard() {
     visited: visitedViews,
     select: selectView,
     setActive: setActiveView,
-  } = useVisitedTabs<AdminNavView>('overview');
+  } = useVisitedTabs<AdminNavView>('overview', { maxVisited: MAX_VISITED_TABS });
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -130,11 +147,11 @@ export default function AdminDashboard() {
     [selectView],
   );
 
-  /** Drawer: close first, then switch — avoids fighting the slide + heavy mount. */
+  /** Close drawer first, then switch after interactions — avoids animation + mount fighting. */
   const onSelectFromDrawer = useCallback(
     (view: AdminNavView) => {
       setMenuOpen(false);
-      requestAnimationFrame(() => {
+      InteractionManager.runAfterInteractions(() => {
         goToView(view);
       });
     },
@@ -281,7 +298,9 @@ export default function AdminDashboard() {
               {ADMIN_VIEWS.map((view) =>
                 visitedViews.has(view) ? (
                   <VisitedTabPane key={view} visible={currentView === view}>
-                    {renderAdminView(view, viewOpts)}
+                    <Suspense fallback={<TabFallback />}>
+                      {renderAdminView(view, viewOpts)}
+                    </Suspense>
                   </VisitedTabPane>
                 ) : null,
               )}

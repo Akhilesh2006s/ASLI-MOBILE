@@ -1,7 +1,6 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAdminTheme } from '../_ui/useAdminTheme';
 import { ADMIN_NAV_ITEMS, type AdminNavView } from './AdminNavDrawer';
@@ -19,9 +18,7 @@ export default function AdminNavPanel({ activeView, userName, onSelect, onLogout
   const { colors } = useAdminTheme();
 
   return (
-    <View style={styles.root}>
-      <LinearGradient colors={[...colors.drawerGradient]} style={StyleSheet.absoluteFill} />
-
+    <View style={[styles.root, { backgroundColor: colors.drawerBg }]}>
       {!compact ? (
         <View style={[styles.logoSection, { borderBottomColor: colors.drawerBorder, paddingTop: insets.top + 12 }]}>
           <View style={[styles.logoBadge, { backgroundColor: colors.drawerSurface }]}>
