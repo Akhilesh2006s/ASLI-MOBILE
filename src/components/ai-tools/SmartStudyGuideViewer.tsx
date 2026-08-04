@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, Text, StyleSheet, Platform, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import AiToolWebView from './AiToolWebView';
@@ -28,6 +28,7 @@ type Props = {
   content: string;
   rawContent?: unknown;
   toolType?: string;
+  fill?: boolean;
 };
 
 function BulletList({
@@ -264,6 +265,7 @@ export default function SmartStudyGuideViewer({
   content,
   rawContent,
   toolType = 'smart-study-guide-generator',
+  fill = false,
 }: Props) {
   const { isTablet, isDigitalBoard } = useAiToolTabletLayout();
   const payload = useMemo(
@@ -282,12 +284,13 @@ export default function SmartStudyGuideViewer({
 
   if (markdownFallback) {
     return (
-      <View style={styles.markdownWrap}>
+      <View style={[styles.markdownWrap, fill && styles.markdownWrapFill]}>
         <AiToolWebView
           toolType="smart-study-guide-generator"
           content={payload.content}
           rawContent={payload.rawContent}
           variant="student"
+          fill={fill}
         />
       </View>
     );
@@ -311,8 +314,8 @@ export default function SmartStudyGuideViewer({
 
   const mcqCount = guide.practiceQuestions.filter((q) => q.type === 'objective' && q.options.length >= 2).length;
 
-  return (
-    <View style={styles.root}>
+  const body = (
+    <>
       {!complete && missingSections.length > 0 ? (
         <View style={styles.incompleteBanner}>
           <Text style={styles.incompleteBannerTitle}>Some sections are incomplete</Text>
@@ -335,8 +338,24 @@ export default function SmartStudyGuideViewer({
 
         <TabletSectionsLayout sections={bodySections} isTablet={isTablet} style={styles.guideBody} />
       </View>
-    </View>
+    </>
   );
+
+  if (fill) {
+    return (
+      <ScrollView
+        style={styles.fillScroll}
+        contentContainerStyle={styles.root}
+        nestedScrollEnabled
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator
+      >
+        {body}
+      </ScrollView>
+    );
+  }
+
+  return <View style={styles.root}>{body}</View>;
 }
 
 function LinearGuideHeader({
@@ -381,7 +400,9 @@ const M = AI_TOOL_OUTPUT_MOBILE;
 
 const styles = StyleSheet.create({
   root: { gap: 10 },
+  fillScroll: { flex: 1, minHeight: 0 },
   markdownWrap: { borderRadius: 18, overflow: 'hidden' },
+  markdownWrapFill: { flex: 1, minHeight: 0 },
   warningBox: {
     borderRadius: 14,
     borderWidth: 1,

@@ -48,6 +48,51 @@ export function formatSubjectLabel(name: string): string {
   return formatTitleCase(displaySubjectName(name));
 }
 
+/**
+ * Display class + section as 8'A (apostrophe between grade and section).
+ * Accepts "8A", "8 A", "8-A", "Class 8A", "8'A".
+ */
+export function formatClassSectionLabel(raw: string): string {
+  const trimmed = String(raw || '').trim();
+  if (!trimmed) return trimmed;
+  const withoutClass = trimmed.replace(/^class\s+/i, '').trim();
+  const compact = withoutClass.replace(/\s+/g, '');
+  const match = compact.match(/^(\d{1,2})[-_']?([A-Za-z])$/i);
+  if (match) return `${match[1]}'${match[2].toUpperCase()}`;
+  return withoutClass;
+}
+
+/** Pull grade number from "8", "8A", "8'A", "Class 8", etc. */
+export function parseClassGradeNumber(raw: string | number | null | undefined): number | null {
+  if (raw == null || raw === '') return null;
+  const compact = String(raw)
+    .trim()
+    .replace(/^class\s+/i, '')
+    .replace(/\s+/g, '');
+  const match = compact.match(/^(\d{1,2})/);
+  if (!match) return null;
+  const grade = parseInt(match[1], 10);
+  if (!Number.isFinite(grade) || grade < 1 || grade > 12) return null;
+  return grade;
+}
+
+/**
+ * One accent per grade (6→one color, 7→another…).
+ * Sections of the same grade (8'A, 8'B) share the same color — no doubles.
+ */
+export function classGradeAccentIndex(classNumberOrLabel: string | number | null | undefined): number {
+  const grade = parseClassGradeNumber(classNumberOrLabel);
+  if (grade == null) return 0;
+  return grade - 1; // 1→0 … 12→11
+}
+
+/** @deprecated Use classGradeAccentIndex — kept for older call sites. */
+export function classAccentIndex(key: string, paletteSize: number): number {
+  const gradeIndex = classGradeAccentIndex(key);
+  if (paletteSize <= 0) return 0;
+  return gradeIndex % paletteSize;
+}
+
 /** Comma-separated subjects → "Biology, English, Maths, SL Hindi". */
 export function formatSubjectList(raw: string): string {
   const trimmed = String(raw || '').trim();

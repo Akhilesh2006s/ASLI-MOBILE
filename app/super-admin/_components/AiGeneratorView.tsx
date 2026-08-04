@@ -12,6 +12,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { SUPER_ADMIN_FLOATING_TAB_BAR_PAD } from '../../../src/lib/responsive-layout';
 import { useCurriculumCascade } from '../../../src/hooks/useCurriculumCascade';
 import {
   AI_GENERATOR_TOOLS,
@@ -774,6 +775,8 @@ export default function AiGeneratorView() {
   return (
     <ScrollView
       style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+      nestedScrollEnabled
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#f97316" />}
       keyboardShouldPersistTaps="handled"
     >
@@ -1163,7 +1166,6 @@ export default function AiGeneratorView() {
         onClose={() => setDifficultyPickerOpen(false)}
       />
 
-      <View style={{ height: 32 }} />
     </ScrollView>
   );
 }
@@ -1171,6 +1173,7 @@ export default function AiGeneratorView() {
 const styles = StyleSheet.create({
   // Transparent: the shared app background artwork shows through.
   container: { flex: 1, backgroundColor: 'transparent' },
+  scrollContent: { paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD + 48, flexGrow: 1 },
   section: {
     margin: 16,
     marginBottom: 0,

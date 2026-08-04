@@ -1,31 +1,63 @@
-import { useEffect, useState, startTransition, useCallback } from 'react';
-import { Alert, Keyboard, Platform, StyleSheet, View } from 'react-native';
+import React, {
+  Suspense,
+  lazy,
+  useEffect,
+  useState,
+  startTransition,
+  useCallback,
+  useMemo,
+} from 'react';
+import { Alert, InteractionManager, Keyboard, Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
+import { useVisitedTabs } from '../../src/hooks/useVisitedTabs';
+import { consumeAdminDashboardTabIntent } from '../../src/lib/dashboard-tab-intent';
 import { useAuth } from '../../src/context/AuthContext';
 import authService from '../../src/services/api/authService';
-import { LoadingState } from '../../src/components/ui';
-import OverviewView from './_components/OverviewView';
-import AnalyticsDashboardView from './_components/AnalyticsDashboardView';
-import StudentsView from './_components/StudentsView';
-import ClassesView from './_components/ClassesView';
-import TeachersView from './_components/TeachersView';
-import SubjectsView from './_components/SubjectsView';
-import ExamsView from './_components/ExamsView';
-import AssessmentsView from './_components/AssessmentsView';
-import QuizzesView from './_components/QuizzesView';
-import LearningPathsView from './_components/LearningPathsView';
-import EduOTTView from './_components/EduOTTView';
+import { LoadingState, VisitedTabPane } from '../../src/components/ui';
 import { EduOTTFilterProvider } from '../../src/contexts/edu-ott-filter-context';
-import VideosView from './_components/VideosView';
-import TimetableView from './_components/TimetableView';
-import CalendarView from './_components/CalendarView';
-import VidyaAIView from './_components/VidyaAIView';
 import VidyaAIFloatingAssistant from '../../src/components/vidya/VidyaAIFloatingAssistant';
 import AdminNavDrawer, { adminNavLabel, type AdminNavView } from './_components/AdminNavDrawer';
 import { AdminHeader, AdminTabBar, useAdminTheme } from './_ui';
 import { useAdminResponsiveLayout } from './_ui/useAdminResponsiveLayout';
+
+const OverviewView = lazy(() => import('./_components/OverviewView'));
+const AnalyticsDashboardView = lazy(() => import('./_components/AnalyticsDashboardView'));
+const StudentsView = lazy(() => import('./_components/StudentsView'));
+const ClassesView = lazy(() => import('./_components/ClassesView'));
+const TeachersView = lazy(() => import('./_components/TeachersView'));
+const SubjectsView = lazy(() => import('./_components/SubjectsView'));
+const ExamsView = lazy(() => import('./_components/ExamsView'));
+const AssessmentsView = lazy(() => import('./_components/AssessmentsView'));
+const QuizzesView = lazy(() => import('./_components/QuizzesView'));
+const LearningPathsView = lazy(() => import('./_components/LearningPathsView'));
+const EduOTTView = lazy(() => import('./_components/EduOTTView'));
+const VideosView = lazy(() => import('./_components/VideosView'));
+const TimetableView = lazy(() => import('./_components/TimetableView'));
+const CalendarView = lazy(() => import('./_components/CalendarView'));
+const VidyaAIView = lazy(() => import('./_components/VidyaAIView'));
+
+/** Keep overview + a couple recent tabs mounted; unmount older ones to cut lag. */
+const MAX_VISITED_TABS = 3;
+
+const ADMIN_VIEWS: AdminNavView[] = [
+  'overview',
+  'analytics',
+  'students',
+  'classes',
+  'teachers',
+  'subjects',
+  'exams',
+  'assessments',
+  'quizzes',
+  'learning-paths',
+  'eduott',
+  'videos',
+  'timetable',
+  'calendar',
+  'vidya-ai',
+];
 
 function renderAdminView(
   view: AdminNavView,
@@ -71,12 +103,22 @@ function renderAdminView(
   }
 }
 
+function TabFallback() {
+  const { spacing } = useAdminTheme();
+  return <LoadingState variant="stats" style={{ padding: spacing.lg, flex: 1 }} />;
+}
+
 export default function AdminDashboard() {
   const { signOut, user: authUser } = useAuth();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
   const { spacing } = useAdminTheme();
   const { shellPaddingBottom, showBottomTabBar } = useAdminResponsiveLayout();
-  const [currentView, setCurrentView] = useState<AdminNavView>('overview');
+  const {
+    active: currentView,
+    visited: visitedViews,
+    select: selectView,
+    setActive: setActiveView,
+  } = useVisitedTabs<AdminNavView>('overview', { maxVisited: MAX_VISITED_TABS });
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -93,26 +135,45 @@ export default function AdminDashboard() {
 
   useBackNavigation('/admin/dashboard', true);
 
-  const selectView = useCallback((view: AdminNavView) => {
-    startTransition(() => setCurrentView(view));
-  }, []);
-
   const openMenu = useCallback(() => setMenuOpen(true), []);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
+
+  const goToView = useCallback(
+    (view: AdminNavView) => {
+      startTransition(() => {
+        selectView(view);
+      });
+    },
+    [selectView],
+  );
+
+  /** Close drawer first, then switch after interactions — avoids animation + mount fighting. */
+  const onSelectFromDrawer = useCallback(
+    (view: AdminNavView) => {
+      setMenuOpen(false);
+      InteractionManager.runAfterInteractions(() => {
+        goToView(view);
+      });
+    },
+    [goToView],
+  );
 
   useEffect(() => {
     checkAuth();
   }, []);
 
+  // One-shot tab intent. Never persist ?tab= across reload.
   useEffect(() => {
-    if (tab === 'overview') selectView('overview');
-    else if (tab === 'students') selectView('students');
-    else if (tab === 'classes') selectView('classes');
-    else if (tab === 'teachers') selectView('teachers');
-    else if (tab === 'vidya-ai') selectView('vidya-ai');
-    else if (tab === 'eduott') selectView('eduott');
-    else if (tab === 'learning-paths') selectView('learning-paths');
-  }, [tab, selectView]);
+    const intent = consumeAdminDashboardTabIntent();
+    if (intent) {
+      setActiveView(intent);
+    }
+    // Clear legacy sticky ?tab= from the URL without reopening that tab on reload.
+    const raw = typeof tab === 'string' ? tab : Array.isArray(tab) ? tab[0] : undefined;
+    if (raw) {
+      router.replace('/admin/dashboard');
+    }
+  }, []);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -192,10 +253,17 @@ export default function AdminDashboard() {
     ]);
   };
 
-  const onSelectView = useCallback((view: AdminNavView) => {
-    selectView(view);
-    setMenuOpen(false);
-  }, [selectView]);
+  const resolvedAdminId =
+    adminId || (authUser?._id || authUser?.id ? String(authUser._id || authUser.id) : null);
+
+  const viewOpts = useMemo(
+    () => ({
+      userName,
+      adminId: resolvedAdminId,
+      onNavigate: goToView,
+    }),
+    [userName, resolvedAdminId, goToView],
+  );
 
   if (isLoading) {
     return (
@@ -212,8 +280,6 @@ export default function AdminDashboard() {
   // Tab bar is in layout flow (not overlay) — content only needs light bottom pad.
   const contentBottomPad = isVidya ? 0 : shellPaddingBottom;
   const showTabs = showBottomTabBar && !(isVidya && keyboardOpen);
-  const resolvedAdminId =
-    adminId || (authUser?._id || authUser?.id ? String(authUser._id || authUser.id) : null);
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
@@ -229,16 +295,20 @@ export default function AdminDashboard() {
 
           <View style={[styles.contentWrap, { paddingBottom: contentBottomPad }]}>
             <View style={styles.content}>
-              {renderAdminView(currentView, {
-                userName,
-                adminId: resolvedAdminId,
-                onNavigate: onSelectView,
-              })}
+              {ADMIN_VIEWS.map((view) =>
+                visitedViews.has(view) ? (
+                  <VisitedTabPane key={view} visible={currentView === view}>
+                    <Suspense fallback={<TabFallback />}>
+                      {renderAdminView(view, viewOpts)}
+                    </Suspense>
+                  </VisitedTabPane>
+                ) : null,
+              )}
             </View>
           </View>
 
           {/* In-flow footer — never scrolls with tab content. */}
-          {showTabs ? <AdminTabBar activeView={currentView} onTabChange={selectView} /> : null}
+          {showTabs ? <AdminTabBar activeView={currentView} onTabChange={goToView} /> : null}
         </View>
       </View>
 
@@ -247,14 +317,14 @@ export default function AdminDashboard() {
         activeView={currentView}
         userName={userName}
         onClose={closeMenu}
-        onSelect={onSelectView}
+        onSelect={onSelectFromDrawer}
         onLogout={handleLogout}
       />
 
       <VidyaAIFloatingAssistant
         role="admin"
         hidden={isVidya || keyboardOpen}
-        onPress={() => onSelectView('vidya-ai')}
+        onPress={() => goToView('vidya-ai')}
       />
     </SafeAreaView>
   );

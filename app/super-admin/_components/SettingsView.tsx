@@ -183,7 +183,7 @@ export default function SettingsView({ onNavigate, onLogout }: SettingsViewProps
 
 const styles = StyleSheet.create({
   content: { flex: 1 },
-  scrollContent: { paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD },
+  scrollContent: { paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD + 48 },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
   header: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12 },
   headerTitle: { fontSize: 22, fontWeight: '800', color: '#111827', marginBottom: 6 },

@@ -1,4 +1,4 @@
-import { formatPersonName } from './teacher-text';
+import { formatClassSectionLabel, formatPersonName } from './teacher-text';
 
 export const STUDENTS_UI = {
   emerald: '#059669',
@@ -54,9 +54,12 @@ export function formatClassBadge(student: StudentRow): string {
   if (student.assignedClass) {
     const num = student.assignedClass.classNumber || student.classNumber;
     const sec = student.assignedClass.section || '';
-    return `${num}${sec}`;
+    const raw = `${num || ''}${sec || ''}`.trim();
+    if (!raw) return 'N/A';
+    return formatClassSectionLabel(raw);
   }
-  return student.classNumber || 'N/A';
+  if (!student.classNumber) return 'N/A';
+  return formatClassSectionLabel(student.classNumber);
 }
 
 export function formatLastLogin(lastLogin?: string | null): { date: string; time: string } | null {

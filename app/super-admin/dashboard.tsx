@@ -6,6 +6,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
+import { consumeSuperAdminDashboardTabIntent } from '../../src/lib/dashboard-tab-intent';
 import { API_BASE_URL } from '../../src/services/api/api';
 import { useAuth } from '../../src/context/AuthContext';
 import AdminsView from './_components/AdminsView';
@@ -86,13 +87,17 @@ export default function SuperAdminDashboard() {
 
   useBackNavigation('/super-admin-dashboard', true);
 
+  // One-shot tab intent. Never persist ?tab= across reload (was reopening Vidya).
   useEffect(() => {
-    if (tab === 'dashboard') setCurrentView('dashboard');
-    else if (tab === 'admins') setCurrentView('admins');
-    else if (tab === 'analytics') setCurrentView('analytics');
-    else if (tab === 'vidya-ai') setCurrentView('vidya-ai');
-    else if (tab === 'settings') setCurrentView('settings');
-  }, [tab]);
+    const intent = consumeSuperAdminDashboardTabIntent();
+    if (intent) {
+      setCurrentView(intent as SuperAdminView);
+    }
+    const raw = typeof tab === 'string' ? tab : Array.isArray(tab) ? tab[0] : undefined;
+    if (raw) {
+      router.replace('/super-admin-dashboard');
+    }
+  }, []);
 
   const fetchUserInfo = async () => {
     try {

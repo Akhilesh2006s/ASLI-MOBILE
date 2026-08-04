@@ -15,6 +15,7 @@ import teacherService, { type BackendStatus } from '../../src/services/api/teach
 import { useTeacherBackendStatus } from '../../src/hooks/useTeacherBackendStatus';
 import { useAuth } from '../../src/context/AuthContext';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
+import { consumeTeacherDashboardTabIntent } from '../../src/lib/dashboard-tab-intent';
 import { TeacherTabBar, TeacherHeader, TeacherShimmer } from '../../src/components/teacher';
 import { BottomSheet, GlassPanel } from '../../src/components/ui';
 import type { TeacherTab } from '../../src/components/teacher';
@@ -124,13 +125,18 @@ export default function TeacherDashboard() {
     loadData();
   }, []);
 
+  // One-shot tab intent (back from tools / deep links). Never persist ?tab= across reload.
   useEffect(() => {
-    if (tab === 'eduott') setActiveTab('eduott');
-    else if (tab === 'learning-paths') setActiveTab('learning-paths');
-    else if (tab === 'vidya-ai') setActiveTab('vidya-ai');
-    else if (tab === 'students') setActiveTab('students');
-    else if (tab === 'dashboard') setActiveTab('dashboard');
-  }, [tab, user]);
+    const intent = consumeTeacherDashboardTabIntent();
+    if (intent) {
+      setActiveTab(intent);
+    }
+    // Clear legacy sticky ?tab= from the URL without reopening that tab on reload.
+    const raw = typeof tab === 'string' ? tab : Array.isArray(tab) ? tab[0] : undefined;
+    if (raw) {
+      router.replace('/teacher/dashboard');
+    }
+  }, []);
 
   const vidyaChatEnabled = useVidyaChatAccess(user);
 

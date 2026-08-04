@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../../src/services/api/api';
+import { SUPER_ADMIN_FLOATING_TAB_BAR_PAD } from '../../../src/lib/responsive-layout';
 import IQRankBoostQuestionGenerator from './IQRankBoostQuestionGenerator';
 import {
   type IQActivity,
@@ -61,6 +62,8 @@ export default function IQRankBoostView() {
   return (
     <ScrollView
       style={styles.content}
+      contentContainerStyle={styles.scrollContent}
+      nestedScrollEnabled
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
       <View style={styles.header}>
@@ -129,7 +132,6 @@ export default function IQRankBoostView() {
         </View>
       )}
 
-      <View style={{ height: 24 }} />
     </ScrollView>
   );
 }
@@ -137,6 +139,7 @@ export default function IQRankBoostView() {
 const styles = StyleSheet.create({
   // Transparent: the shared app background artwork shows through.
   content: { flex: 1, backgroundColor: 'transparent' },
+  scrollContent: { paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD + 48, flexGrow: 1 },
   header: { padding: 20, paddingBottom: 12 },
   headerTitle: { fontSize: 28, fontWeight: '800', color: '#111827', marginBottom: 4 },
   headerSubtitle: { fontSize: 16, color: '#6b7280' },

@@ -231,7 +231,9 @@ export const AI_TOOL_QUEST_BOOTSTRAP = `
         details.className = 'quest-node';
         details.style.setProperty('--quest', palette[i%10]);
         details.style.setProperty('--quest-deep', deep[i%10]);
-        if(i < 2) details.open = true;
+        // Keep every section open on mobile so parent ScrollView can size to
+        // full content — collapsed details made the WebView too short and locked scrolling.
+        details.open = true;
         var summary = document.createElement('summary');
         summary.className = 'quest-summary';
         summary.innerHTML = '<div class="quest-orb">'+(i+1)+'</div><div class="quest-copy"><div class="quest-kicker"><span class="dot"></span>'+(labelEl?labelEl.textContent:'Quest')+'</div><div class="quest-title">'+(titleEl?titleEl.textContent:'Section')+'</div></div><div class="quest-hint">Tap</div>';
@@ -271,6 +273,7 @@ export const AI_TOOL_QUEST_BOOTSTRAP = `
 
     nodes.forEach(function(n, i){
       n.setAttribute('data-quest-idx', String(i));
+      n.open = true;
     });
 
     // Hand orbit tabs to React Native for a native horizontal ScrollView (no WebView lag/clip).

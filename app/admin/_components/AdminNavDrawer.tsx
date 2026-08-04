@@ -61,7 +61,7 @@ type Props = {
   onLogout: () => void;
 };
 
-const SLIDE_MS = 240;
+const SLIDE_MS = 200;
 const slideEasing = Easing.out(Easing.cubic);
 
 export default function AdminNavDrawer({
@@ -99,7 +99,9 @@ export default function AdminNavDrawer({
         if (finished) runOnJS(setMounted)(false);
       }
     );
-  }, [visible, drawerWidth, mounted, translateX, backdropOpacity]);
+    // Intentionally omit `mounted` — including it restarts the open animation after setMounted(true).
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mounted only gates close path
+  }, [visible, drawerWidth, translateX, backdropOpacity]);
 
   const drawerStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],

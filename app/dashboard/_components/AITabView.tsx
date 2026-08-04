@@ -2,7 +2,6 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
-  FadeInDown,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -10,7 +9,6 @@ import Animated, {
 import { router } from 'expo-router';
 import {
   STUDENT,
-  STUDENT_ANIMATION,
   STUDENT_RADIUS,
   STUDENT_SPACING,
   STUDENT_TYPO,
@@ -36,17 +34,20 @@ export default function AITabView({ chatEnabled = true }: { chatEnabled?: boolea
 
   return (
     <View style={styles.wrap}>
-      <Animated.View entering={FadeInDown.duration(STUDENT_ANIMATION.normal)} style={styles.vidyaHeader}>
+      <View style={styles.vidyaHeader}>
         <Text style={styles.vidyaTitle}>Vidya AI</Text>
         <Text style={styles.vidyaSubtitle}>
           {chatEnabled ? 'Your AI Study Buddy — Tools & Chat' : 'Your AI Study Tools'}
         </Text>
-      </Animated.View>
+      </View>
 
       {chatEnabled ? (
-      <Animated.View entering={FadeInDown.duration(STUDENT_ANIMATION.normal).delay(30)}>
         <Pressable
-          onPress={() => router.push('/ai-tutor')}
+          onPress={() => {
+            requestAnimationFrame(() => {
+              router.push('/ai-tutor');
+            });
+          }}
           onPressIn={chatPress.onPressIn}
           onPressOut={chatPress.onPressOut}
         >
@@ -63,7 +64,6 @@ export default function AITabView({ chatEnabled = true }: { chatEnabled?: boolea
             </GlassPanel>
           </Animated.View>
         </Pressable>
-      </Animated.View>
       ) : null}
 
       <VidyaAIView />

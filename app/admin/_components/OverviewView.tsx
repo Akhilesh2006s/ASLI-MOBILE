@@ -271,13 +271,29 @@ export default function OverviewView({ onNavigate }: Props) {
 
   const loadAll = useCallback(async () => {
     setIsLoadingStats(true);
-    await Promise.all([fetchAdminStats(), fetchStudentAnalytics()]);
+    await fetchAdminStats();
     setIsLoadingStats(false);
+    await fetchStudentAnalytics();
   }, [fetchAdminStats, fetchStudentAnalytics]);
 
   useEffect(() => {
-    loadAll();
-  }, [loadAll]);
+    let cancelled = false;
+    let deferTimer: ReturnType<typeof setTimeout> | null = null;
+    (async () => {
+      setIsLoadingStats(true);
+      await fetchAdminStats();
+      if (cancelled) return;
+      setIsLoadingStats(false);
+      // Defer analytics so the stats shell paints first (Hermes-safe; no InteractionManager).
+      deferTimer = setTimeout(() => {
+        if (!cancelled) void fetchStudentAnalytics();
+      }, 0);
+    })();
+    return () => {
+      cancelled = true;
+      if (deferTimer) clearTimeout(deferTimer);
+    };
+  }, [fetchAdminStats, fetchStudentAnalytics]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

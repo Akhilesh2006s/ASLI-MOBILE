@@ -3,6 +3,14 @@ import { BackHandler } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
+import {
+  setAdminDashboardTabIntent,
+  setStudentDashboardTabIntent,
+  setTeacherDashboardTabIntent,
+  type AdminDashboardTabIntent,
+  type StudentDashboardTabIntent,
+  type TeacherDashboardTabIntent,
+} from '../lib/dashboard-tab-intent';
 
 function useInterceptedDashboardBack(navigate: () => void) {
   const handlingBack = useRef(false);
@@ -80,7 +88,7 @@ export function useBackNavigation(dashboardPath: string, preventBack: boolean = 
 
 export type ContentReturnTarget = 'eduott' | 'learning';
 
-export type StudentDashboardTab = 'home' | 'learning' | 'eduott' | 'exams' | 'vidya' | 'settings';
+export type StudentDashboardTab = StudentDashboardTabIntent;
 
 const STUDENT_DASHBOARD_TABS: StudentDashboardTab[] = [
   'home',
@@ -95,28 +103,22 @@ export function parseStudentDashboardTab(value?: string): StudentDashboardTab {
   if (value && STUDENT_DASHBOARD_TABS.includes(value as StudentDashboardTab)) {
     return value as StudentDashboardTab;
   }
-  return 'vidya';
+  return 'home';
 }
 
-/** Back from student AI tool screens → dashboard Vidya / AI Tools tab. */
-export function useStudentDashboardBack(returnTab: StudentDashboardTab = 'vidya') {
+/** Back from student AI tool screens → dashboard (default home; tools pass Vidya). */
+export function useStudentDashboardBack(returnTab: StudentDashboardTab = 'home') {
   const router = useRouter();
   const navigate = useCallback(() => {
-    router.replace({
-      pathname: '/dashboard',
-      params: { tab: returnTab },
-    });
+    // Memory intent only — never stick ?tab= in the URL (reload would reopen Vidya).
+    setStudentDashboardTabIntent(returnTab);
+    router.replace('/dashboard');
   }, [returnTab, router]);
 
   return useInterceptedDashboardBack(navigate);
 }
 
-export type TeacherDashboardTab =
-  | 'dashboard'
-  | 'students'
-  | 'eduott'
-  | 'learning-paths'
-  | 'vidya-ai';
+export type TeacherDashboardTab = TeacherDashboardTabIntent;
 
 const TEACHER_DASHBOARD_TABS: TeacherDashboardTab[] = [
   'dashboard',
@@ -130,21 +132,21 @@ export function parseTeacherDashboardTab(value?: string): TeacherDashboardTab {
   if (value && TEACHER_DASHBOARD_TABS.includes(value as TeacherDashboardTab)) {
     return value as TeacherDashboardTab;
   }
-  return 'vidya-ai';
+  return 'dashboard';
 }
 
-/** Back from teacher tool screens → dashboard tab (default Vidya AI tools list). */
-export function useTeacherDashboardBack(returnTab: TeacherDashboardTab = 'vidya-ai') {
+/** Back from teacher tool screens → dashboard (default home; tools pass Vidya AI). */
+export function useTeacherDashboardBack(returnTab: TeacherDashboardTab = 'dashboard') {
   const router = useRouter();
   const navigate = useCallback(() => {
-    router.replace({
-      pathname: '/teacher/dashboard',
-      params: { tab: returnTab },
-    });
+    setTeacherDashboardTabIntent(returnTab);
+    router.replace('/teacher/dashboard');
   }, [returnTab, router]);
 
   return useInterceptedDashboardBack(navigate);
 }
+
+export type AdminDashboardTab = AdminDashboardTabIntent;
 
 function dashboardPathForRole(role: string | null): string {
   if (role === 'admin') return '/admin/dashboard';
@@ -163,17 +165,21 @@ export async function navigateToDashboardSection(
 ) {
   const role = await SecureStore.getItemAsync('userRole');
   const pathname = dashboardPathForRole(role);
-  const tab =
-    returnTo === 'eduott'
-      ? 'eduott'
-      : role === 'student'
-        ? 'learning'
-        : 'learning-paths';
-  const target = { pathname, params: { tab } };
+  if (returnTo === 'eduott') {
+    if (role === 'student') setStudentDashboardTabIntent('eduott');
+    else if (role === 'teacher') setTeacherDashboardTabIntent('eduott');
+    else if (role === 'admin') setAdminDashboardTabIntent('eduott');
+  } else if (role === 'student') {
+    setStudentDashboardTabIntent('learning');
+  } else if (role === 'teacher') {
+    setTeacherDashboardTabIntent('learning-paths');
+  } else if (role === 'admin') {
+    setAdminDashboardTabIntent('learning-paths');
+  }
   if (method === 'replace') {
-    router.replace(target);
+    router.replace(pathname);
   } else {
-    router.navigate(target);
+    router.navigate(pathname);
   }
 }
 

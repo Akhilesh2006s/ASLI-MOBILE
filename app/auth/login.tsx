@@ -208,7 +208,7 @@ function PremiumField({
             accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
           >
             <Ionicons
-              name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+              name={showPassword ? 'eye-outline' : 'eye-off-outline'}
               size={20}
               color={PALETTE.muted}
             />

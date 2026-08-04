@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { LoadingState } from '../src/components/ui';
@@ -114,15 +115,45 @@ function AuthGate() {
       <Stack.Screen name="index" />
       <Stack.Screen name="auth/login" />
       <Stack.Screen name="auth/register" />
-      <Stack.Screen name="dashboard/index" />
+      <Stack.Screen
+        name="dashboard/index"
+        options={{
+          // Freeze under pushed student routes so tool/quiz opens stay smooth.
+          freezeOnBlur: true,
+        }}
+      />
       <Stack.Screen name="attendance" />
       <Stack.Screen name="assignments" />
       <Stack.Screen name="staff/dashboard" />
       <Stack.Screen name="learning-paths" />
       <Stack.Screen name="subject/[id]" />
-      <Stack.Screen name="quiz/[id]" />
-      <Stack.Screen name="exam/[id]" />
-      <Stack.Screen name="ai-tutor" />
+      <Stack.Screen
+        name="quiz/[id]"
+        options={{
+          gestureEnabled: true,
+          animation: 'slide_from_right',
+          animationDuration: 220,
+          contentStyle: { backgroundColor: '#F4F7FB' },
+        }}
+      />
+      <Stack.Screen
+        name="exam/[id]"
+        options={{
+          gestureEnabled: true,
+          animation: 'slide_from_right',
+          animationDuration: 220,
+          contentStyle: { backgroundColor: '#F4F7FB' },
+        }}
+      />
+      <Stack.Screen
+        name="ai-tutor"
+        options={{
+          gestureEnabled: true,
+          animation: 'slide_from_right',
+          animationDuration: 220,
+          contentStyle: { backgroundColor: '#F4F7FB' },
+        }}
+      />
       <Stack.Screen name="profile" />
       <Stack.Screen
         name="admin/dashboard"
@@ -130,18 +161,65 @@ function AuthGate() {
           // Opaque so AppBackground ImageBackground is fully covered — scrolling
           // translucent admin UI over a live bitmap is a major FPS cliff.
           contentStyle: { backgroundColor: '#EEF2E3' },
+          freezeOnBlur: true,
         }}
       />
-      <Stack.Screen name="teacher/dashboard" />
+      <Stack.Screen
+        name="admin/reports"
+        options={{
+          gestureEnabled: true,
+          animation: 'slide_from_right',
+          animationDuration: 220,
+          contentStyle: { backgroundColor: '#EEF2E3' },
+        }}
+      />
+      <Stack.Screen
+        name="admin/school-settings"
+        options={{
+          gestureEnabled: true,
+          animation: 'slide_from_right',
+          animationDuration: 220,
+          contentStyle: { backgroundColor: '#EEF2E3' },
+        }}
+      />
+      <Stack.Screen
+        name="teacher/dashboard"
+        options={{
+          freezeOnBlur: true,
+        }}
+      />
       <Stack.Screen
         name="teacher/tools/[toolType]"
-        options={{ gestureEnabled: true }}
+        options={{
+          gestureEnabled: true,
+          animation: 'slide_from_right',
+          animationDuration: 220,
+          // Opaque so the dashboard under this route doesn't composite during push.
+          contentStyle: { backgroundColor: '#F4F7FB' },
+        }}
       />
-      <Stack.Screen name="super-admin-dashboard" />
-      <Stack.Screen name="super-admin/dashboard" />
+      <Stack.Screen
+        name="super-admin-dashboard"
+        options={{
+          freezeOnBlur: true,
+          contentStyle: { backgroundColor: '#EEF2FF' },
+        }}
+      />
+      <Stack.Screen
+        name="super-admin/dashboard"
+        options={{
+          freezeOnBlur: true,
+          contentStyle: { backgroundColor: '#EEF2FF' },
+        }}
+      />
       <Stack.Screen
         name="student/tools/[toolType]"
-        options={{ gestureEnabled: true }}
+        options={{
+          gestureEnabled: true,
+          animation: 'slide_from_right',
+          animationDuration: 220,
+          contentStyle: { backgroundColor: '#F4F7FB' },
+        }}
       />
       <Stack.Screen name="student-exams" />
       <Stack.Screen name="practice-tests" />
@@ -231,22 +309,25 @@ function SplashOverlay() {
 
 export default function RootLayout() {
   return (
-    <SafeAreaProvider>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          {/* Mounted once for the whole app so every route inherits the pastel
-              artwork and glass surfaces always have real colour to blur. */}
-          <AppBackground>
-            <AuthGate />
-          </AppBackground>
-          <SplashOverlay />
-        </AuthProvider>
-      </QueryClientProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={styles.root}>
+      <SafeAreaProvider>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            {/* Mounted once for the whole app so every route inherits the pastel
+                artwork and glass surfaces always have real colour to blur. */}
+            <AppBackground>
+              <AuthGate />
+            </AppBackground>
+            <SplashOverlay />
+          </AuthProvider>
+        </QueryClientProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1 },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',

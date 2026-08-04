@@ -124,8 +124,10 @@ export function useCurriculumCascade(
   gradeLevel: string | undefined,
   subject: string | undefined,
   topic: string | undefined,
-  board: string | undefined = undefined
+  board: string | undefined = undefined,
+  options?: { enabled?: boolean },
 ) {
+  const enabled = options?.enabled !== false;
   const gradeForApi = normalizeGradeForCurriculum(gradeLevel);
   const [classRows, setClassRows] = useState<CurriculumRow[]>([]);
   const [subjects, setSubjects] = useState<string[]>([]);
@@ -137,6 +139,7 @@ export function useCurriculumCascade(
   const [loadingSubtopics, setLoadingSubtopics] = useState(false);
 
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     (async () => {
       setLoadingClasses(true);
@@ -157,10 +160,11 @@ export function useCurriculumCascade(
     return () => {
       cancelled = true;
     };
-  }, [board]);
+  }, [board, enabled]);
 
   useEffect(() => {
     let cancelled = false;
+    if (!enabled) return;
     if (!gradeLevel || !gradeForApi) {
       setSubjects([]);
       setLoadingSubjects(false);
@@ -191,10 +195,11 @@ export function useCurriculumCascade(
     return () => {
       cancelled = true;
     };
-  }, [gradeLevel, gradeForApi, board]);
+  }, [gradeLevel, gradeForApi, board, enabled]);
 
   useEffect(() => {
     let cancelled = false;
+    if (!enabled) return;
     if (!gradeLevel || !gradeForApi || !subject) {
       setTopics([]);
       setLoadingTopics(false);
@@ -227,10 +232,11 @@ export function useCurriculumCascade(
     return () => {
       cancelled = true;
     };
-  }, [gradeLevel, gradeForApi, subject, board]);
+  }, [gradeLevel, gradeForApi, subject, board, enabled]);
 
   useEffect(() => {
     let cancelled = false;
+    if (!enabled) return;
     if (!gradeLevel || !gradeForApi || !subject || !topic) {
       setSubtopics([]);
       setLoadingSubtopics(false);
@@ -264,7 +270,7 @@ export function useCurriculumCascade(
     return () => {
       cancelled = true;
     };
-  }, [gradeLevel, gradeForApi, subject, topic, board]);
+  }, [gradeLevel, gradeForApi, subject, topic, board, enabled]);
 
   const classOptions = useMemo(() => {
     if (classRows.length === 0) return [];

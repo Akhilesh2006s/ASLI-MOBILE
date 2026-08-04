@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Text, StyleSheet, ScrollView, Pressable, View, useWindowDimensions } from 'react-native';
+import {
+  Text,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  View,
+  useWindowDimensions,
+  InteractionManager,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   useAnimatedStyle,
@@ -68,6 +76,14 @@ export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: bool
     })();
   }, []);
 
+  // Warm the generate module while browsing tools so open/generate feels snappier.
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => {
+      void import('../../../src/lib/ai-tool-generate');
+    });
+    return () => task.cancel();
+  }, []);
+
   const visibleTools = useMemo(
     () => filterVisibleTeacherTools(subjectNames),
     [subjectNames],
@@ -125,12 +141,15 @@ export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: bool
                   badge="Teacher"
                   compact={isGrid}
                   glass
-                  onPress={() =>
-                    router.push({
-                      pathname: tool.route as any,
-                      params: { returnTab: 'vidya-ai' },
-                    })
-                  }
+                  onPress={() => {
+                    // Let the press spring paint, then navigate — avoids a stuck frame.
+                    requestAnimationFrame(() => {
+                      router.push({
+                        pathname: tool.route as any,
+                        params: { returnTab: 'vidya-ai' },
+                      });
+                    });
+                  }}
                 />
               </View>
             ))}

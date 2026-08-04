@@ -1,4 +1,4 @@
-import type { AiToolGenerationMeta } from './ai-tool-generate';
+type RenderKeyMeta = { selectedIndex?: number } | null | undefined;
 
 export function simpleContentFingerprint(text: string): string {
   let hash = 0;
@@ -12,7 +12,7 @@ export function simpleContentFingerprint(text: string): string {
 export function buildAiToolContentRenderKey(
   toolType: string,
   content: string,
-  meta?: AiToolGenerationMeta | null
+  meta?: RenderKeyMeta
 ): string {
   const idx = meta?.selectedIndex ?? -1;
   return `${toolType}:${idx}:${simpleContentFingerprint(content)}`;

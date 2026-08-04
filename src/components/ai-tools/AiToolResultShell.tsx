@@ -9,7 +9,7 @@ import {
 } from '../../lib/ai-tool-result-theme';
 import { AI, AI_RADIUS, AI_SPACING, AI_TYPE } from '../../theme/ai';
 import { formatAiToolText } from '../../lib/title-case';
-import { getAiToolResultTitle } from './AiToolContentRenderer';
+import { getAiToolResultTitle } from '../../lib/ai-tool-result-title';
 
 type MetaChipProps = {
   icon: keyof typeof Ionicons.glyphMap;
@@ -48,6 +48,8 @@ type Props = {
   children?: ReactNode;
   accent?: string;
   variant?: 'student' | 'teacher';
+  /** Fill remaining screen height so child WebView can own vertical scroll. */
+  fill?: boolean;
 };
 
 /** Compact AI tool result chrome — white surfaces, no stamps, tight spacing. */
@@ -63,6 +65,7 @@ export default function AiToolResultShell({
   children,
   accent,
   variant = 'student',
+  fill = false,
 }: Props) {
   const theme = getAiToolResultTheme(toolType);
   const heroColor = accent || theme.badgeText;
@@ -78,7 +81,7 @@ export default function AiToolResultShell({
   const resultTitle = formatAiToolText(getAiToolResultTitle(toolType, variant));
 
   return (
-    <View style={styles.outer}>
+    <View style={[styles.outer, fill && styles.outerFill]}>
       <View style={styles.header}>
         <View style={styles.headerMain}>
           <View style={[styles.iconBox, { borderColor: `${heroColor}44` }]}>
@@ -115,9 +118,12 @@ export default function AiToolResultShell({
       {hasMeta && (hasResult || (!children && !isLoading)) ? (
         <ScrollView
           horizontal
+          nestedScrollEnabled
+          directionalLockEnabled
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.metaOrbit}
           style={styles.metaOrbitWrap}
+          keyboardShouldPersistTaps="handled"
         >
           <MetaChip icon="school-outline" label="Board" value={board} {...theme} />
           <MetaChip icon="people-outline" label="Class" value={classLabel} {...theme} />
@@ -127,7 +133,7 @@ export default function AiToolResultShell({
         </ScrollView>
       ) : null}
 
-      <View style={styles.contentArea}>
+      <View style={[styles.contentArea, fill && styles.contentAreaFill]}>
         {isLoading ? (
           <View style={styles.loadingBox} accessibilityRole="progressbar" accessibilityLiveRegion="polite">
             <AiToolPremiumIcon name={getAiToolIonicon(toolType)} color={heroColor} size={64} iconSize={28} />
@@ -135,7 +141,7 @@ export default function AiToolResultShell({
             <Text style={styles.loadingSub}>{formatAiToolText('Please wait a moment.')}</Text>
           </View>
         ) : children ? (
-          <View style={styles.resultBody}>{children}</View>
+          <View style={[styles.resultBody, fill && styles.resultBodyFill]}>{children}</View>
         ) : (
           empty || (
             <View style={styles.emptyBox} accessibilityLiveRegion="polite">
@@ -159,6 +165,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
     overflow: 'hidden',
+  },
+  outerFill: {
+    flex: 1,
+    minHeight: 0,
+    overflow: 'visible',
   },
   header: {
     paddingHorizontal: 12,
@@ -239,10 +250,18 @@ const styles = StyleSheet.create({
   },
   chipValue: { fontSize: 12, lineHeight: 14, fontWeight: '700', flexShrink: 1 },
   contentArea: { paddingVertical: 4, paddingHorizontal: 0 },
+  contentAreaFill: {
+    flex: 1,
+    minHeight: 0,
+  },
   resultBody: {
     width: '100%',
     paddingHorizontal: 4,
     paddingVertical: 4,
+  },
+  resultBodyFill: {
+    flex: 1,
+    minHeight: 0,
   },
   loadingBox: {
     alignItems: 'center',

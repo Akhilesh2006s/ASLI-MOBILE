@@ -12,7 +12,9 @@ import {
   Platform,
   StatusBar,
   Share,
+  InteractionManager,
 } from 'react-native';
+import { ScrollView as GHScrollView } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -31,8 +33,8 @@ import {
   parseTeacherDashboardTab,
   useTeacherDashboardBack,
 } from '../../../src/hooks/useBackNavigation';
-import AiToolContentRenderer from '../../../src/components/ai-tools/AiToolContentRenderer';
-import AiToolDownloadBar from '../../../src/components/ai-tools/AiToolDownloadBar';
+import AiToolContentRendererLazy from '../../../src/components/ai-tools/AiToolContentRendererLazy';
+import AiToolDownloadBarLazy from '../../../src/components/ai-tools/AiToolDownloadBarLazy';
 import AiToolParamsGrid from '../../../src/components/ai-tools/AiToolParamsGrid';
 import AiToolResultShell from '../../../src/components/ai-tools/AiToolResultShell';
 import AiToolOptionPicker from '../../../src/components/ai-tools/AiToolOptionPicker';
@@ -46,18 +48,7 @@ import {
   useAiToolOutputScroll,
   useQueueAiToolScrollOnGenerate,
 } from '../../../src/components/ai-tools/useAiToolOutputScroll';
-import {
-  validateAiToolForm,
-  executeAiToolGenerate,
-  buildTeacherAiRequestBody,
-  storeAiToolSuccessPayload,
-  validateActivityToolDisplay,
-  fetchAiToolGeneratedContentFallback,
-  isAiToolClientValidationError,
-  isAiToolInlineOnlyError,
-  resolveAiToolApiInlineMessage,
-  type AiToolGenerationMeta,
-} from '../../../src/lib/ai-tool-generate';
+import type { AiToolGenerationMeta } from '../../../src/lib/ai-tool-generate';
 import {
   buildAiToolContentRenderKey,
 } from '../../../src/lib/ai-tool-rotation-label';
@@ -239,6 +230,8 @@ export default function TeacherToolPage() {
   const [fallbackEmptyMessage, setFallbackEmptyMessage] = useState('');
   const [fromAiFailure, setFromAiFailure] = useState(false);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
+  /** Wait for the stack transition before heavy form/network work. */
+  const [uiReady, setUiReady] = useState(false);
   const scrollY = useSharedValue(0);
   const { isTablet, useSplitLayout, outputBleedStyle } = useAiToolTabletLayout();
   const { scrollRef, onOutputLayout, queueScrollToOutput, resetOutputScroll } =
@@ -264,7 +257,8 @@ export default function TeacherToolPage() {
     formParams.gradeLevel,
     formParams.subject,
     cascadeTopic,
-    selectedBoard
+    selectedBoard,
+    { enabled: uiReady },
   );
 
   const classSelectOptions =
@@ -311,8 +305,10 @@ export default function TeacherToolPage() {
     [selectedBoard, formParams]
   );
 
-  const showCollapsedParams = !!generatedContent && !isGenerating;
-  const showParameterForms = !showCollapsedParams;
+  // Keep params collapsed whenever a result is on screen (including regenerate)
+  // so the phone fill layout isn't crushed by the full form.
+  const showCollapsedParams = !!generatedContent;
+  const showParameterForms = !generatedContent;
 
   useQueueAiToolScrollOnGenerate(
     generatedContent,
@@ -393,9 +389,23 @@ export default function TeacherToolPage() {
   const goBack = useTeacherDashboardBack(returnTab);
 
   useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => {
+      setUiReady(true);
+    });
+    const fallback = setTimeout(() => setUiReady(true), 280);
+    return () => {
+      task.cancel();
+      clearTimeout(fallback);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!uiReady) return;
+    let cancelled = false;
     (async () => {
       try {
         const meRes = await teacherService.me();
+        if (cancelled) return;
         const user = meRes.data?.user ?? meRes.data ?? meRes.user;
         const exclusive = resolveIsAsliPrepExclusive(user);
         setIsAsliPrepExclusive(exclusive);
@@ -420,11 +430,12 @@ export default function TeacherToolPage() {
       } catch (error) {
         console.error('Failed to fetch teacher profile:', error);
       } finally {
-        setIsLoadingUser(false);
+        if (!cancelled) setIsLoadingUser(false);
       }
 
       try {
         const subsRes = await teacherService.subjects();
+        if (cancelled) return;
         const rows = asArray<any>(subsRes.data ?? subsRes);
         const names = rows
           .map((subj: any) => String(subj?.name || subj?.displayName || '').trim())
@@ -434,7 +445,10 @@ export default function TeacherToolPage() {
         console.error('Failed to fetch teacher assigned subjects:', error);
       }
     })();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [uiReady, toolType]);
 
   useEffect(() => {
     if (isLoadingUser || !formParams.board) return;
@@ -666,6 +680,19 @@ export default function TeacherToolPage() {
 
   const handleGenerate = async () => {
     if (!config || !toolType) return;
+
+    // Load heavy generate/HTML helpers only when the user taps Generate.
+    const {
+      validateAiToolForm,
+      executeAiToolGenerate,
+      buildTeacherAiRequestBody,
+      storeAiToolSuccessPayload,
+      validateActivityToolDisplay,
+      fetchAiToolGeneratedContentFallback,
+      isAiToolClientValidationError,
+      isAiToolInlineOnlyError,
+      resolveAiToolApiInlineMessage,
+    } = await import('../../../src/lib/ai-tool-generate');
 
     const validationError = validateAiToolForm({
       config,
@@ -996,12 +1023,14 @@ export default function TeacherToolPage() {
     </>
   );
 
-  const outputPanel = (
+  const renderOutputPanel = (fill: boolean) => (
     <View
-      style={[styles.outputSection, outputBleedStyle]}
+      style={[styles.outputSection, fill && styles.outputSectionFill, outputBleedStyle]}
       collapsable={false}
       onLayout={
-        !isGenerating && (generatedContent || fallbackEmptyMessage) ? onOutputLayout : undefined
+        !fill && !isGenerating && (generatedContent || fallbackEmptyMessage)
+          ? onOutputLayout
+          : undefined
       }
     >
       <AiToolResultShell
@@ -1010,6 +1039,7 @@ export default function TeacherToolPage() {
         toolDescription={config?.description}
         accent={accent}
         variant="teacher"
+        fill={fill}
         meta={{
           board: selectedBoard || formParams.board || '',
           classLabel: String(formParams.gradeLevel || ''),
@@ -1021,7 +1051,7 @@ export default function TeacherToolPage() {
         actions={
           generatedContent ? (
             <View style={styles.resultActionStack}>
-              <AiToolDownloadBar
+              <AiToolDownloadBarLazy
                 toolType={toolType}
                 toolLabel={config?.name || 'AI Tool'}
                 content={generatedContent}
@@ -1083,14 +1113,15 @@ export default function TeacherToolPage() {
         }
       >
         {generatedContent ? (
-          <View style={styles.outputWrap} collapsable={false}>
-            <AiToolContentRenderer
+          <View style={[styles.outputWrap, fill && styles.outputWrapFill]} collapsable={false}>
+            <AiToolContentRendererLazy
               key={contentRenderKey}
               toolType={toolType}
               content={generatedContent}
               rawContent={rawGeneratedContent}
               accent={accent}
               variant="teacher"
+              fill={fill}
             />
           </View>
         ) : null}
@@ -1161,7 +1192,11 @@ export default function TeacherToolPage() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
       >
-        {useSplitLayout ? (
+        {!uiReady ? (
+          <View style={styles.bootPlaceholder}>
+            <ActivityIndicator size="small" color={AI.primary} />
+          </View>
+        ) : useSplitLayout ? (
           <View style={aiToolTabletStyles.tabletSplit}>
             <ScrollView
               style={aiToolTabletStyles.tabletFormPane}
@@ -1178,7 +1213,7 @@ export default function TeacherToolPage() {
               keyboardShouldPersistTaps="handled"
               nestedScrollEnabled
             >
-              {outputPanel}
+              {renderOutputPanel(false)}
               {generatedContent ? (
                 <View style={[styles.footer, styles.footerAfterResult, isTablet && aiToolTabletPageStyles.footer]}>
                   {generateButton}
@@ -1186,6 +1221,29 @@ export default function TeacherToolPage() {
               ) : null}
             </ScrollView>
           </View>
+        ) : generatedContent ? (
+          // Phone + result: gesture-handler ScrollView owns vertical scroll with
+          // an auto-height (non-scrolling) WebView — works both down and back up.
+          <GHScrollView
+            style={styles.scroll}
+            contentContainerStyle={[
+              styles.scrollContent,
+              isTablet && aiToolTabletPageStyles.scrollContent,
+              { paddingBottom: 16 },
+            ]}
+            showsVerticalScrollIndicator
+            keyboardShouldPersistTaps="handled"
+            nestedScrollEnabled
+            bounces
+            overScrollMode="always"
+            removeClippedSubviews={false}
+          >
+            {formPanel}
+            {renderOutputPanel(false)}
+            <View style={[styles.footer, styles.footerAfterResult, isTablet && aiToolTabletPageStyles.footer]}>
+              {generateButton}
+            </View>
+          </GHScrollView>
         ) : (
         <AnimatedScrollView
           ref={scrollRef}
@@ -1193,7 +1251,7 @@ export default function TeacherToolPage() {
           contentContainerStyle={[
             styles.scrollContent,
             isTablet && aiToolTabletPageStyles.scrollContent,
-            { paddingBottom: generatedContent ? 16 : 28 },
+            { paddingBottom: 28 },
           ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -1202,16 +1260,11 @@ export default function TeacherToolPage() {
           scrollEventThrottle={16}
         >
           {formPanel}
-          {outputPanel}
-          {generatedContent ? (
-            <View style={[styles.footer, styles.footerAfterResult, isTablet && aiToolTabletPageStyles.footer]}>
-              {generateButton}
-            </View>
-          ) : null}
+          {renderOutputPanel(false)}
         </AnimatedScrollView>
         )}
 
-        {!generatedContent ? (
+        {uiReady && !generatedContent ? (
           <View style={[styles.footer, isTablet && aiToolTabletPageStyles.footer]}>
             {generateButton}
           </View>
@@ -1238,8 +1291,28 @@ const styles = StyleSheet.create({
   // Transparent so AppBackground's artwork shows through.
   container: { flex: 1, backgroundColor: 'transparent' },
   flex: { flex: 1 },
+  bootPlaceholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+  },
+  paramsPeek: {
+    paddingHorizontal: AI_SPACING.lg,
+    paddingTop: AI_SPACING.md,
+    paddingBottom: AI_SPACING.sm,
+    gap: AI_SPACING.sm,
+  },
+  resultFillHost: {
+    flex: 1,
+    minHeight: 0,
+    paddingHorizontal: AI_SPACING.lg,
+    gap: AI_SPACING.sm,
+  },
   outputSection: { alignSelf: 'stretch' },
+  outputSectionFill: { flex: 1, minHeight: 0 },
   outputWrap: { width: '100%' },
+  outputWrapFill: { flex: 1, minHeight: 0 },
   resultActionStack: { width: '100%', gap: AI_SPACING.sm },
   resultActions: { flexDirection: 'row', flexWrap: 'wrap', gap: AI_SPACING.sm },
   actionBtn: {

@@ -1097,7 +1097,7 @@ export default function SubjectContentManagementView() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scroll: { padding: 16, paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD, gap: 12 },
+  scroll: { padding: 16, paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD + 48, gap: 12 },
   pageTitle: { fontSize: 24, fontWeight: '800', color: '#0f172a' },
   pageSubtitle: { fontSize: 13, color: '#64748b', marginBottom: 8 },
   errorText: { color: '#dc2626', fontSize: 12, marginBottom: 8 },

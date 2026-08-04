@@ -24,6 +24,7 @@ import { EXAM_CALENDAR_PREFILL_KEY } from '../../../src/lib/super-admin-calendar
 import { getExamClassStrings } from '../../../src/lib/exam-classes';
 import { GlassPanel } from '../../../src/components/ui';
 import DateTimePickerField, { parseDateTimeLocal } from '../../../src/components/shared/DateTimePickerField';
+import { SUPER_ADMIN_FLOATING_TAB_BAR_PAD } from '../../../src/lib/responsive-layout';
 import {
   type Exam,
   type SchoolOption,
@@ -943,6 +944,8 @@ export default function ExamManagementView() {
   return (
     <ScrollView
       style={styles.content}
+      contentContainerStyle={styles.scrollContent}
+      nestedScrollEnabled
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
       <View style={[styles.header, isTablet && styles.headerTablet]}>
@@ -1567,7 +1570,6 @@ export default function ExamManagementView() {
         onClose={() => setBoardPickerOpen(false)}
       />
 
-      <View style={{ height: 32 }} />
     </ScrollView>
   );
 }
@@ -1575,6 +1577,7 @@ export default function ExamManagementView() {
 const styles = StyleSheet.create({
   // Transparent: the shared app background artwork shows through.
   content: { flex: 1, backgroundColor: 'transparent' },
+  scrollContent: { paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD + 48, flexGrow: 1 },
   header: { padding: 20, paddingBottom: 12 },
   headerTablet: {
     flexDirection: 'row',

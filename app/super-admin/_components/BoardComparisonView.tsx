@@ -230,7 +230,7 @@ export default function BoardComparisonView() {
 
 const styles = StyleSheet.create({
   content: { flex: 1 },
-  scrollContent: { paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD },
+  scrollContent: { paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD + 48, flexGrow: 1 },
   loadingContainer: { alignItems: 'center', padding: 40 },
   loadingText: { marginTop: 16, color: '#6b7280', fontSize: 14 },
   header: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12 },

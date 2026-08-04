@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-nat
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../../src/services/api/api';
 import { GlassPanel } from '../../../src/components/ui';
+import { SUPER_ADMIN_FLOATING_TAB_BAR_PAD } from '../../../src/lib/responsive-layout';
 
 interface ListViewProps {
   title: string;
@@ -36,7 +37,7 @@ export default function ListView({ title, endpoint, icon }: ListViewProps) {
   };
 
   return (
-    <ScrollView style={styles.content}>
+    <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{title}</Text>
       </View>
@@ -71,6 +72,7 @@ export default function ListView({ title, endpoint, icon }: ListViewProps) {
 
 const styles = StyleSheet.create({
   content: { flex: 1 },
+  scrollContent: { paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD + 48, flexGrow: 1 },
   header: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
   headerTitle: { fontSize: 21, fontWeight: '800', color: '#111827' },
   errorText: { color: '#dc2626', paddingHorizontal: 16, marginBottom: 8, fontSize: 13 },

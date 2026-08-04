@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
+import { SUPER_ADMIN_FLOATING_TAB_BAR_PAD } from '../../../src/lib/responsive-layout';
 import { useCurriculumCascade } from '../../../src/hooks/useCurriculumCascade';
 import {
   AI_PDF_MAX_BYTES,
@@ -694,6 +695,9 @@ export default function AiPdfView() {
   return (
     <ScrollView
       style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+      nestedScrollEnabled
+      keyboardShouldPersistTaps="handled"
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563eb" />}
     >
       <GlassPanel style={styles.section} radius={14} tone="strong">
@@ -1025,7 +1029,7 @@ export default function AiPdfView() {
         onClose={() => setToolPickerOpen(false)}
       />
 
-      <View style={{ height: 32 }} />
+      <View style={{ height: 8 }} />
     </ScrollView>
   );
 }
@@ -1033,6 +1037,7 @@ export default function AiPdfView() {
 const styles = StyleSheet.create({
   // Transparent: the shared app background artwork shows through.
   container: { flex: 1, backgroundColor: 'transparent' },
+  scrollContent: { paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD + 48, flexGrow: 1 },
   section: {
     margin: 16,
     marginBottom: 0,
