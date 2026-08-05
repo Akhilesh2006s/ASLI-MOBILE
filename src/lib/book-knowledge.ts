@@ -30,7 +30,7 @@ export type ImportableContentRow = {
   bookChunkCount?: number;
 };
 
-const IMPORT_TIMEOUT_MS = 120_000;
+const IMPORT_TIMEOUT_MS = 60_000;
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)
