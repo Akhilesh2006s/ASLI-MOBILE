@@ -149,7 +149,12 @@ export async function importBookFromContent(contentId: string) {
   if (!id) throw new Error('Missing content id for import.');
 
   try {
-    const res = await api.post<{ success: boolean; message?: string; data?: BookRow }>(
+    const res = await api.post<{
+      success: boolean;
+      message?: string;
+      alreadyImported?: boolean;
+      data?: BookRow & { title?: string };
+    }>(
       '/api/book-knowledge/books/import-from-content',
       // Send common aliases — backends vary on the field name.
       { contentId: id, content_id: id, id },
@@ -173,6 +178,12 @@ export async function importBooksFromContentBulk(contentIds: string[]) {
       success: boolean;
       message?: string;
       summary?: { imported?: number; skipped?: number; failed?: number };
+      data?: Array<{
+        success?: boolean;
+        title?: string;
+        contentId?: string;
+        message?: string;
+      }>;
     }>(
       '/api/book-knowledge/books/import-from-content/bulk',
       { contentIds: ids, content_ids: ids, ids },
@@ -202,11 +213,11 @@ export async function uploadBookKnowledgePdf(formData: FormData) {
 }
 
 export async function reindexBookKnowledgeBook(id: string) {
-  const res = await api.post<{ success: boolean; message?: string }>(
-    `/api/book-knowledge/books/${id}/reindex`,
-    undefined,
-    { timeout: IMPORT_TIMEOUT_MS },
-  );
+  const res = await api.post<{
+    success: boolean;
+    message?: string;
+    data?: { chunkCount?: number };
+  }>(`/api/book-knowledge/books/${id}/reindex`, undefined, { timeout: IMPORT_TIMEOUT_MS });
   if (!res.data?.success) throw new Error(res.data?.message || 'Reindex failed');
   return res.data;
 }

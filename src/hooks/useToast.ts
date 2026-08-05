@@ -27,9 +27,9 @@ export function useToast() {
 
   const toastFn = useCallback(
     (options: { title?: string; description?: string; variant?: 'default' | 'destructive' }) => {
-      const message = options.description || options.title || '';
-      const type = options.variant === 'destructive' ? 'error' : 'info';
-      showToast(message, type);
+      const message = [options.title, options.description].filter(Boolean).join(' — ');
+      const type = options.variant === 'destructive' ? 'error' : 'success';
+      showToast(message || 'Done', type);
     },
     [showToast]
   );

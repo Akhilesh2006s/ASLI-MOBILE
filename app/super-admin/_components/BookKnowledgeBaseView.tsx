@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
+import Toast from '../../../src/components/Toast';
+import { useToast } from '../../../src/hooks/useToast';
 import { SUPER_ADMIN_FLOATING_TAB_BAR_PAD } from '../../../src/lib/responsive-layout';
 import { useCurriculumCascade } from '../../../src/hooks/useCurriculumCascade';
 import {
@@ -34,12 +36,10 @@ type Props = {
 const INDEX_POLL_MS = 4500;
 const INDEX_POLL_MAX_MS = 3 * 60 * 1000;
 
+/** Match web: show raw processingStatus badge text. */
 function statusLabel(status?: string, indexed?: boolean) {
-  if (indexed || status === 'indexed') return 'Ready';
-  if (status === 'processing' || status === 'pending') return 'Indexing…';
-  if (status === 'needs_ocr') return 'Needs OCR';
-  if (status === 'failed') return 'Failed';
-  return 'Pending';
+  if (indexed && !status) return 'indexed';
+  return String(status || 'pending');
 }
 
 function isBookStillIndexing(book: BookRow) {
@@ -48,6 +48,7 @@ function isBookStillIndexing(book: BookRow) {
 }
 
 export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Props) {
+  const { toast, toastState, hideToast } = useToast();
   const [books, setBooks] = useState<BookRow[]>([]);
   const [importable, setImportable] = useState<ImportableContentRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,23 +106,35 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
     }, INDEX_POLL_MS);
   }, [loadBooksOnly, stopIndexPolling]);
 
+  const refreshLists = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      const silent = opts?.silent === true;
+      if (!silent) setLoading(true);
+      try {
+        const [bookRows, importRows] = await Promise.all([
+          fetchBookKnowledgeBooks(),
+          fetchImportableContent(),
+        ]);
+        setBooks(bookRows);
+        setImportable(importRows);
+        if (bookRows.some(isBookStillIndexing)) startIndexPolling();
+        else stopIndexPolling();
+      } catch (err: any) {
+        toast({
+          title: 'Load failed',
+          description: err?.friendlyMessage || err?.message || 'Could not load book knowledge data.',
+          variant: 'destructive',
+        });
+      } finally {
+        if (!silent) setLoading(false);
+      }
+    },
+    [startIndexPolling, stopIndexPolling, toast],
+  );
+
   const loadAll = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [bookRows, importRows] = await Promise.all([fetchBookKnowledgeBooks(), fetchImportableContent()]);
-      setBooks(bookRows);
-      setImportable(importRows);
-      if (bookRows.some(isBookStillIndexing)) startIndexPolling();
-      else stopIndexPolling();
-    } catch (err: any) {
-      Alert.alert(
-        'Load failed',
-        err?.friendlyMessage || err?.message || 'Could not load book knowledge data.',
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [startIndexPolling, stopIndexPolling]);
+    await refreshLists({ silent: false });
+  }, [refreshLists]);
 
   useEffect(() => {
     void loadAll();
@@ -138,20 +151,24 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
   const handleImportOne = async (contentId: string) => {
     const id = String(contentId || '').trim();
     if (!id) {
-      Alert.alert('Import failed', 'This content item is missing an id.');
+      toast({ title: 'Import failed', description: 'This content item is missing an id.', variant: 'destructive' });
       return;
     }
     setImportingIds((prev) => new Set(prev).add(id));
     try {
-      await importBookFromContent(id);
-      await loadAll();
+      const result = await importBookFromContent(id);
+      toast({
+        title: result.alreadyImported ? 'Already linked' : 'Imported',
+        description: result.message || `${result.data?.title || 'Book'} is ready for indexing.`,
+      });
+      await refreshLists({ silent: true });
       startIndexPolling();
-      Alert.alert('Imported', 'Book linked. Indexing continues in the background — watch status under Indexed Books.');
     } catch (err: any) {
-      Alert.alert(
-        'Import failed',
-        err?.friendlyMessage || err?.message || 'Could not import content.',
-      );
+      toast({
+        title: 'Import failed',
+        description: err?.friendlyMessage || err?.message || 'Could not import content.',
+        variant: 'destructive',
+      });
     } finally {
       setImportingIds((prev) => {
         const next = new Set(prev);
@@ -164,21 +181,42 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
   const handleBulkImport = async () => {
     const ids = [...selectedImportIds].map((id) => String(id || '').trim()).filter(Boolean);
     if (!ids.length) {
-      Alert.alert('Select items', 'Choose at least one content item to import.');
+      toast({ title: 'Select items', description: 'Choose at least one content item to import.', variant: 'destructive' });
       return;
     }
     setImportLoading(true);
     try {
       const result = await importBooksFromContentBulk(ids);
+      const failedCount = Number(result.summary?.failed || 0);
+      toast({
+        title: 'Bulk import complete',
+        description: result.message || `Imported ${result.summary?.imported || 0} books.`,
+        variant: failedCount > 0 ? 'destructive' : undefined,
+      });
+      const failures = Array.isArray(result.data)
+        ? result.data.filter((r) => !r.success).slice(0, 5)
+        : [];
+      if (failures.length) {
+        const detail = failures
+          .map((r) => `${r.title || r.contentId || 'item'}: ${r.message || 'failed'}`)
+          .join(' · ');
+        setTimeout(() => {
+          toast({
+            title: 'Why some imports failed',
+            description: detail + (failedCount > 5 ? ' · …' : ''),
+            variant: 'destructive',
+          });
+        }, 2800);
+      }
       setSelectedImportIds(new Set());
-      await loadAll();
+      await refreshLists({ silent: true });
       startIndexPolling();
-      Alert.alert('Bulk import', result.message || 'Books linked. Indexing continues in the background.');
     } catch (err: any) {
-      Alert.alert(
-        'Bulk import failed',
-        err?.friendlyMessage || err?.message || 'Could not import.',
-      );
+      toast({
+        title: 'Bulk import failed',
+        description: err?.friendlyMessage || err?.message || 'Could not import.',
+        variant: 'destructive',
+      });
     } finally {
       setImportLoading(false);
     }
@@ -186,7 +224,11 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
 
   const handleUpload = async () => {
     if (!title.trim() || !board || !classLabel || !subject) {
-      Alert.alert('Missing fields', 'Title, board, class, and subject are required.');
+      toast({
+        title: 'Missing fields',
+        description: 'Title, board, class, and subject are required.',
+        variant: 'destructive',
+      });
       return;
     }
     const picked = await DocumentPicker.getDocumentAsync({
@@ -209,13 +251,16 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
         name: asset.name || 'book.pdf',
         type: asset.mimeType || 'application/pdf',
       } as any);
-      await uploadBookKnowledgePdf(formData);
+      const result = await uploadBookKnowledgePdf(formData);
       setTitle('');
-      await loadAll();
+      toast({
+        title: 'Book uploaded',
+        description: result.message || 'Indexing started.',
+      });
+      await refreshLists({ silent: true });
       startIndexPolling();
-      Alert.alert('Uploaded', 'Book uploaded. Indexing continues in the background.');
     } catch (err: any) {
-      Alert.alert('Upload failed', err?.message || 'Could not upload book.');
+      toast({ title: 'Upload failed', description: err?.message || 'Could not upload book.', variant: 'destructive' });
     } finally {
       setUploading(false);
     }
@@ -224,12 +269,15 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
   const handleReindex = async (id: string) => {
     setReindexingId(id);
     try {
-      await reindexBookKnowledgeBook(id);
-      await loadAll();
+      const result = await reindexBookKnowledgeBook(id);
+      toast({
+        title: 'Reindexed',
+        description: `${result.data?.chunkCount || 0} chunks indexed.`,
+      });
+      await refreshLists({ silent: true });
       startIndexPolling();
-      Alert.alert('Reindex', 'Indexing restarted in the background.');
     } catch (err: any) {
-      Alert.alert('Reindex failed', err?.message || 'Could not reindex.');
+      toast({ title: 'Reindex failed', description: err?.message || 'Could not reindex.', variant: 'destructive' });
     } finally {
       setReindexingId(null);
     }
@@ -259,6 +307,14 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
   const visibleImportRows = importable.filter((row) => (showImported ? true : !row.imported));
 
   return (
+    <View style={styles.root}>
+    <Toast
+      visible={toastState.visible}
+      message={toastState.message}
+      type={toastState.type}
+      onHide={hideToast}
+      duration={4200}
+    />
     <ScrollView
       style={styles.root}
       contentContainerStyle={styles.content}
@@ -310,7 +366,7 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
         {visibleImportRows.length === 0 ? (
           <Text style={styles.emptyText}>No importable content found.</Text>
         ) : (
-          visibleImportRows.slice(0, 40).map((row) => (
+          visibleImportRows.map((row) => (
             <View key={row.contentId} style={styles.card}>
               <View style={styles.cardTop}>
                 {!row.imported ? (
@@ -415,7 +471,7 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Indexed Books</Text>
+        <Text style={styles.sectionTitle}>Uploaded Books</Text>
         {books.length === 0 ? (
           <Text style={styles.emptyText}>No books yet.</Text>
         ) : (
@@ -442,6 +498,7 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
         )}
       </View>
     </ScrollView>
+    </View>
   );
 }
 

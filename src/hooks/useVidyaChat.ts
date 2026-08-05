@@ -28,10 +28,10 @@ const QUICK_QUESTIONS_BY_ROLE: Record<
   string[]
 > = {
   student: [
-    'Explain this topic simply',
-    'Help me solve this problem',
-    'Give me a quiz',
-    'Summarize this chapter',
+    'What is my learning progress?',
+    'What videos have I watched?',
+    'What is my exam status — did I improve?',
+    'Where am I weak and what should I study?',
   ],
   teacher: [
     'Give me 10 MCQs on [current topic]',
@@ -58,7 +58,7 @@ const INPUT_PLACEHOLDER_BY_ROLE: Record<
   'student' | 'teacher' | 'admin' | 'super_admin',
   string
 > = {
-  student: 'Type your question or upload a problem...',
+  student: 'Ask Vidya or upload a photo…',
   teacher: 'Ask about teaching, lessons, or doubts...',
   admin: 'Ask about school management...',
   super_admin: 'Ask about system analytics, AI monitoring...',
@@ -277,10 +277,25 @@ export function useVidyaChat({ userId, role, context }: UseVidyaChatOptions): Us
           message: data.message,
           studentId: userId,
         });
-        if (result.message) {
+        const replyText = String(
+          result?.message ||
+            result?.reply ||
+            result?.data?.message ||
+            result?.data?.reply ||
+            ''
+        ).trim();
+        if (replyText) {
           const aiMessage: VidyaMessage = {
             role: 'assistant',
-            content: result.message,
+            content: replyText,
+            timestamp: new Date(),
+          };
+          setLocalMessages((prev) => [...prev, aiMessage]);
+        } else {
+          const aiMessage: VidyaMessage = {
+            role: 'assistant',
+            content:
+              'I could not generate a reply just now. Please try asking again in a moment.',
             timestamp: new Date(),
           };
           setLocalMessages((prev) => [...prev, aiMessage]);

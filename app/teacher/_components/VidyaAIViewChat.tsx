@@ -25,6 +25,7 @@ import { useVidyaChat } from '../../../src/hooks/useVidyaChat';
 import { useKeyboardDockLift } from '../../../src/hooks/useKeyboardDockLift';
 import SubjectPickerModal from '../../../src/components/vidya/SubjectPickerModal';
 import VidyaAvatar from '../../../src/components/vidya/VidyaAvatar';
+import VidyaChatMessageText from '../../../src/components/vidya/VidyaChatMessageText';
 import type { AIChatContext, TeachingTab } from '../../../src/types/vidya';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, glassCard } from '../../../src/theme/teacher';
 import { GlassPanel } from '../../../src/components/ui';
@@ -285,17 +286,19 @@ export default function VidyaAIViewChat({
                     end={{ x: 1, y: 1 }}
                     style={[styles.bubble, styles.bubbleUser]}
                   >
-                    <Text style={[styles.bubbleText, styles.bubbleTextUser]}>
-                      {model.formatMessage(msg.content)}
-                      {'\u200A'}
-                    </Text>
+                    <VidyaChatMessageText
+                      text={model.formatMessage(msg.content)}
+                      tone="user"
+                      style={styles.bubbleTextUser}
+                    />
                   </LinearGradient>
                 ) : (
                   <GlassPanel style={[styles.bubble, styles.bubbleAssistant]} radius={16} tone="strong">
-                    <Text style={styles.bubbleText}>
-                      {model.formatMessage(msg.content)}
-                      {'\u200A'}
-                    </Text>
+                    <VidyaChatMessageText
+                      text={model.formatMessage(msg.content)}
+                      tone="assistant"
+                      style={styles.bubbleText}
+                    />
                   </GlassPanel>
                 )}
                 {msg.role === 'user' ? (
@@ -359,8 +362,10 @@ export default function VidyaAIViewChat({
             <SendButton
               disabled={model.isPending || !model.message.trim()}
               onPress={() => {
+                // Commit composing glyph on Android before reading draft
                 inputRef.current?.blur();
-                model.handleSendMessage();
+                const delay = Platform.OS === 'android' ? 120 : 0;
+                setTimeout(() => model.handleSendMessage(), delay);
               }}
             />
           </View>
@@ -590,10 +595,11 @@ const styles = StyleSheet.create({
   },
   bubble: {
     maxWidth: '78%',
-    paddingHorizontal: 14,
     paddingVertical: 10,
-    paddingRight: 18,
+    paddingLeft: 14,
+    paddingRight: 20,
     borderRadius: 16,
+    overflow: 'visible',
   },
   bubbleUser: {
     borderBottomRightRadius: 4,
@@ -613,7 +619,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
     color: TEACHER.text,
-    ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}),
   },
   bubbleTextUser: {
     color: TEACHER.textOnPrimary,
