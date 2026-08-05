@@ -104,10 +104,17 @@ export type PlanQueueItem = { id: string; minutes: number; title: string; tier: 
 
 export function normalizeMongoId(value: unknown): string {
   if (value == null) return '';
-  if (typeof value === 'object' && value !== null && '_id' in (value as object)) {
-    return normalizeMongoId((value as { _id?: unknown })._id);
+  if (typeof value === 'object' && value !== null) {
+    const o = value as Record<string, unknown>;
+    // Extended JSON / populated docs
+    if ('$oid' in o) return normalizeMongoId(o.$oid);
+    if ('_id' in o) return normalizeMongoId(o._id);
+    if ('id' in o && (typeof o.id === 'string' || typeof o.id === 'number')) {
+      return String(o.id).trim();
+    }
   }
-  return String(value).trim();
+  const s = String(value).trim();
+  return s === '[object Object]' ? '' : s;
 }
 
 export function formatExamTime(seconds: number): string {
@@ -504,17 +511,19 @@ export function resolveSingleAnswerText(question: any, rawAnswer: unknown): stri
     if (idx >= 1 && idx <= options.length) return options[idx - 1].text;
   }
 
+  type QuestionOption = { text: string; rawText: string; id: string; index: number; letter: string };
+
   if (/^[a-z]$/i.test(rawText)) {
     const letter = rawText.toUpperCase();
-    const byLetter = options.find((o) => o.letter === letter);
+    const byLetter = options.find((o: QuestionOption) => o.letter === letter);
     if (byLetter) return byLetter.text;
   }
 
-  const byId = options.find((o) => o.id && o.id === rawText);
+  const byId = options.find((o: QuestionOption) => o.id && o.id === rawText);
   if (byId) return byId.text;
-  const byRaw = options.find((o) => o.rawText && o.rawText === rawText);
+  const byRaw = options.find((o: QuestionOption) => o.rawText && o.rawText === rawText);
   if (byRaw) return byRaw.text;
-  const byNormalized = options.find((o) => o.text === normalizedRaw);
+  const byNormalized = options.find((o: QuestionOption) => o.text === normalizedRaw);
   if (byNormalized) return byNormalized.text;
 
   return normalizedRaw;
@@ -617,7 +626,7 @@ export function getQuestionAnalysisBlocks(
 }
 
 export function compareAnswers(question: any, userAnswer: unknown, correctAnswer: unknown): boolean {
-  if (userAnswer == null && userAnswer !== 0) return false;
+  if (userAnswer == null) return false;
   const type = question?.questionType;
   if (type === 'multiple') {
     const correct = Array.isArray(correctAnswer) ? correctAnswer : [correctAnswer];

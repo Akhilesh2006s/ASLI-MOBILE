@@ -157,21 +157,21 @@ export function sectionCardHtml(opts: {
     return byNum;
   })();
   const numMatch = String(opts.sectionNum).match(/(\d+)/);
-  const idx = numMatch ? Math.max(0, parseInt(numMatch[1], 10) - 1) : 0;
-  const openAttr = idx < 2 ? ' open' : '';
   const label = formatAiToolText(opts.sectionNum);
   const title = formatAiToolText(opts.title);
   const orb = numMatch ? numMatch[1] : '✦';
 
+  // Always start open — Android WebView often fails to toggle <details> on first paint,
+  // which left later sections stuck on "Unlock" with no way to open them.
   return `
-<details class="quest-node"${openAttr} style="--quest:${theme.hex};--quest-deep:${theme.hexDeep}" id="quest-${orb}">
+<details class="quest-node" open style="--quest:${theme.hex};--quest-deep:${theme.hexDeep}" id="quest-${orb}">
   <summary class="quest-summary">
     <div class="quest-orb" aria-hidden="true">${escapeHtml(orb)}</div>
     <div class="quest-copy">
       <div class="quest-kicker"><span class="dot"></span>${escapeHtml(label)}</div>
       <div class="quest-title">${escapeHtml(title)}</div>
     </div>
-    <div class="quest-hint">${idx < 2 ? 'Open' : 'Unlock'}</div>
+    <div class="quest-hint">Close</div>
   </summary>
   <div class="quest-body">${opts.body}</div>
 </details>`;

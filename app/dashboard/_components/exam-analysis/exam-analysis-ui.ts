@@ -53,8 +53,8 @@ export const analysisStyles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: ANALYSIS.accentBorder,
     zIndex: 20,
-    elevation: 20,
     ...SHADOW.sm,
+    elevation: 20,
   },
   headerTop: {
     flexDirection: 'row',

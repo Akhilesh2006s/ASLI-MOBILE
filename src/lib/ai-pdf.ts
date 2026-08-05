@@ -39,6 +39,7 @@ export type PdfItem = {
   processingStatus: 'pending' | 'processing' | 'processed' | 'failed';
   approvalStatus?: 'pending' | 'approved' | 'rejected';
   toolType?: string;
+  toolName?: string;
   topic?: string;
   subTopic?: string;
   contentType?: string;

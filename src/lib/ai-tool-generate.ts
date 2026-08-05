@@ -27,6 +27,8 @@ export type AiToolGenerationMeta = {
   selectedIndex?: number;
   aiUnavailable?: boolean;
   chunksUsed?: number;
+  structuredContent?: unknown;
+  renderContent?: unknown;
   citations?: Array<{
     index: number;
     subject: string;
@@ -143,6 +145,8 @@ function parseResponseBody(responseText: string): {
   data?: {
     content?: string;
     rawData?: unknown;
+    structuredContent?: unknown;
+    renderContent?: unknown;
     metadata?: AiToolGenerationMeta;
   };
   content?: string;

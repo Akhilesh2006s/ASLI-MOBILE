@@ -28,6 +28,7 @@ export type TimetableEntryLike = {
   section?: string;
   sectionId?: string;
   classId?: string | { _id?: string; classNumber?: string | number; section?: string };
+  teacherId?: string | { _id?: string; fullName?: string; name?: string };
   room?: string;
   status?: string;
   sessionType?: string;

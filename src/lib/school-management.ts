@@ -15,6 +15,7 @@ export type SchoolDetailsForm = {
 
 export type SchoolAdmin = {
   id: string;
+  _id?: string;
   schoolId?: string;
   name: string;
   email: string;

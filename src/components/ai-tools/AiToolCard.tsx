@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { AI, AI_RADIUS, AI_SHADOW, AI_SPACING, AI_TYPE } from '../../theme/ai';
 import { formatAiToolText } from '../../lib/title-case';
@@ -71,7 +71,19 @@ export default function AiToolCard({
             </Text>
             {badge ? (
               <View style={styles.badge}>
-                <Text style={styles.badgeText}>{formatAiToolText(badge)}</Text>
+                {/*
+                  Keep badge raw (no title-case transform). Android often under-measures
+                  bold + letterSpacing and clips "Teacher" → "Teache"; trailing NBSP +
+                  zero letterSpacing fixes the layout width.
+                */}
+                <Text
+                  style={styles.badgeText}
+                  numberOfLines={1}
+                  ellipsizeMode="clip"
+                  android_hyphenationFrequency="none"
+                >
+                  {`${String(badge).trim()}\u00A0`}
+                </Text>
               </View>
             ) : null}
           </View>
@@ -100,7 +112,6 @@ const styles = StyleSheet.create({
     borderWidth: 4,
     borderColor: 'rgba(255,255,255,0.65)',
     backgroundColor: 'transparent',
-    
     padding: AI_SPACING.lg,
     ...AI_SHADOW,
   },
@@ -150,21 +161,22 @@ const styles = StyleSheet.create({
     color: AI.primary,
   },
   badge: {
+    flexGrow: 0,
     flexShrink: 0,
     alignSelf: 'flex-start',
     borderRadius: AI_RADIUS.full,
     borderWidth: 1,
     borderColor: AI.primaryBorder,
     backgroundColor: AI.primarySoft,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
   },
   badgeText: {
     fontSize: 12,
     lineHeight: 16,
-    fontWeight: '800',
+    fontWeight: '700',
     color: AI.primaryPressed,
-    // Avoid large letterSpacing — Android under-measures width and clips "Teacher" → "Teache".
-    letterSpacing: 0.2,
+    letterSpacing: 0,
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
   },
 });

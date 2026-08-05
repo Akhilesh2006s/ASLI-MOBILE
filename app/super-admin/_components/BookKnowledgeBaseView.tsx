@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -31,12 +31,20 @@ type Props = {
   onOpenBookBasedGenerator?: () => void;
 };
 
+const INDEX_POLL_MS = 4500;
+const INDEX_POLL_MAX_MS = 3 * 60 * 1000;
+
 function statusLabel(status?: string, indexed?: boolean) {
   if (indexed || status === 'indexed') return 'Ready';
-  if (status === 'processing') return 'Indexing…';
+  if (status === 'processing' || status === 'pending') return 'Indexing…';
   if (status === 'needs_ocr') return 'Needs OCR';
   if (status === 'failed') return 'Failed';
   return 'Pending';
+}
+
+function isBookStillIndexing(book: BookRow) {
+  const status = String(book.processingStatus || '').toLowerCase();
+  return status === 'pending' || status === 'processing';
 }
 
 export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Props) {
@@ -57,11 +65,45 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
   const [topic, setTopic] = useState('');
   const [subTopic, setSubTopic] = useState('');
   const [showImported, setShowImported] = useState(false);
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollStartedAtRef = useRef<number>(0);
 
   const { classOptions, subjects, topics, subtopics, loadingClasses, loadingSubjects, loadingTopics, loadingSubtopics } =
     useCurriculumCascade(classLabel || undefined, subject || undefined, topic || undefined, board || undefined);
 
   const pendingImportable = useMemo(() => importable.filter((r) => !r.imported), [importable]);
+
+  const stopIndexPolling = useCallback(() => {
+    if (pollTimerRef.current) {
+      clearInterval(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+    pollStartedAtRef.current = 0;
+  }, []);
+
+  const loadBooksOnly = useCallback(async () => {
+    const bookRows = await fetchBookKnowledgeBooks();
+    setBooks(bookRows);
+    return bookRows;
+  }, []);
+
+  const startIndexPolling = useCallback(() => {
+    stopIndexPolling();
+    pollStartedAtRef.current = Date.now();
+    pollTimerRef.current = setInterval(() => {
+      void (async () => {
+        try {
+          const bookRows = await loadBooksOnly();
+          const stillIndexing = bookRows.some(isBookStillIndexing);
+          const timedOut = Date.now() - pollStartedAtRef.current > INDEX_POLL_MAX_MS;
+          if (!stillIndexing || timedOut) stopIndexPolling();
+        } catch {
+          /* keep polling until timeout */
+          if (Date.now() - pollStartedAtRef.current > INDEX_POLL_MAX_MS) stopIndexPolling();
+        }
+      })();
+    }, INDEX_POLL_MS);
+  }, [loadBooksOnly, stopIndexPolling]);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -69,6 +111,8 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
       const [bookRows, importRows] = await Promise.all([fetchBookKnowledgeBooks(), fetchImportableContent()]);
       setBooks(bookRows);
       setImportable(importRows);
+      if (bookRows.some(isBookStillIndexing)) startIndexPolling();
+      else stopIndexPolling();
     } catch (err: any) {
       Alert.alert(
         'Load failed',
@@ -77,7 +121,7 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [startIndexPolling, stopIndexPolling]);
 
   useEffect(() => {
     void loadAll();
@@ -89,6 +133,8 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
     });
   }, [loadAll]);
 
+  useEffect(() => () => stopIndexPolling(), [stopIndexPolling]);
+
   const handleImportOne = async (contentId: string) => {
     const id = String(contentId || '').trim();
     if (!id) {
@@ -99,7 +145,8 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
     try {
       await importBookFromContent(id);
       await loadAll();
-      Alert.alert('Imported', 'Book linked and indexing started.');
+      startIndexPolling();
+      Alert.alert('Imported', 'Book linked. Indexing continues in the background — watch status under Indexed Books.');
     } catch (err: any) {
       Alert.alert(
         'Import failed',
@@ -125,7 +172,8 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
       const result = await importBooksFromContentBulk(ids);
       setSelectedImportIds(new Set());
       await loadAll();
-      Alert.alert('Bulk import', result.message || 'Import complete.');
+      startIndexPolling();
+      Alert.alert('Bulk import', result.message || 'Books linked. Indexing continues in the background.');
     } catch (err: any) {
       Alert.alert(
         'Bulk import failed',
@@ -164,7 +212,8 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
       await uploadBookKnowledgePdf(formData);
       setTitle('');
       await loadAll();
-      Alert.alert('Uploaded', 'Book uploaded and indexing started.');
+      startIndexPolling();
+      Alert.alert('Uploaded', 'Book uploaded. Indexing continues in the background.');
     } catch (err: any) {
       Alert.alert('Upload failed', err?.message || 'Could not upload book.');
     } finally {
@@ -177,7 +226,8 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
     try {
       await reindexBookKnowledgeBook(id);
       await loadAll();
-      Alert.alert('Reindexed', 'Book indexing completed.');
+      startIndexPolling();
+      Alert.alert('Reindex', 'Indexing restarted in the background.');
     } catch (err: any) {
       Alert.alert('Reindex failed', err?.message || 'Could not reindex.');
     } finally {

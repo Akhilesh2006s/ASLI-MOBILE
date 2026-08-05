@@ -3,6 +3,8 @@
  * Replaces Tailwind CDN — external scripts often fail in React Native WebView.
  */
 
+import { AI_TOOL_SELECTION_GUARD_CSS } from './ai-tool-selection-guard';
+
 const PALETTE: Record<string, Partial<Record<number | string, string>>> = {
   slate: { 50: '#f8fafc', 200: '#e2e8f0', 300: '#cbd5e1', 400: '#94a3b8', 500: '#64748b', 700: '#334155', 800: '#1e293b', 900: '#0f172a' },
   gray: { 50: '#f9fafb', 100: '#f3f4f6', 200: '#e5e7eb', 300: '#d1d5db', 700: '#374151', 800: '#1f2937', 900: '#111827' },
@@ -159,6 +161,7 @@ const BASE_RULES = `
 *,*::before,*::after{box-sizing:border-box}
 html,body{margin:0;padding:0;background:#ffffff;-webkit-text-size-adjust:100%}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#334155;line-height:1.6;font-size:17px;padding:8px 8px 10px;background:#ffffff;border-radius:16px}
+${AI_TOOL_SELECTION_GUARD_CSS}
 .ai-tool-fallback-pre{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px;font-size:15px;line-height:1.6;color:#334155;overflow-x:auto}
 .ai-tool-empty-message{color:#64748b;font-size:15px;text-align:center;padding:24px 12px}
 img{max-width:100%;height:auto}

@@ -78,7 +78,7 @@ function SubjectPathCard({
                 {subject.name}
               </Text>
               <Text style={styles.listHint} numberOfLines={1}>
-                {itemCount} items · open chapters & materials
+                {itemCount} {itemCount === 1 ? 'item' : 'items'}
               </Text>
             </View>
             <View style={styles.listChevron}>

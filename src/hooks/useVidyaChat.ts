@@ -291,7 +291,7 @@ export function useVidyaChat({ userId, role, context }: UseVidyaChatOptions): Us
       const result = await vidyaService.aiChat({
         userId,
         message: data.message,
-        context: buildRequestContext(data.context),
+        context: buildRequestContext(data.context) as Record<string, unknown>,
       });
 
       if (result.session?.messages) {

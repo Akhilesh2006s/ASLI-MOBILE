@@ -13,7 +13,7 @@ export function dedupeStudentExamResults(
       new Date(b?.completedAt || 0).getTime() - new Date(a?.completedAt || 0).getTime()
   );
 
-  let list = sorted;
+  let list: any[] = sorted;
 
   const idSeen = new Set<string>();
   list = list.filter((r: any) => {

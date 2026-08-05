@@ -55,6 +55,34 @@ export type LibraryContentRow = {
   views?: number;
 };
 
+/**
+ * Normalize API payloads that wrap lists under data / contents / videos / etc.
+ */
+export function extractLibraryContentList(payload: unknown): LibraryContentRow[] {
+  if (Array.isArray(payload)) return payload as LibraryContentRow[];
+  if (!payload || typeof payload !== 'object') return [];
+  const obj = payload as Record<string, unknown>;
+  for (const key of ['data', 'contents', 'content', 'videos', 'items', 'results', 'rows']) {
+    const value = obj[key];
+    if (Array.isArray(value)) return value as LibraryContentRow[];
+  }
+  if (obj.data && typeof obj.data === 'object' && !Array.isArray(obj.data)) {
+    return extractLibraryContentList(obj.data);
+  }
+  return [];
+}
+
+export function isLibraryVideoRow(row: LibraryContentRow | null | undefined): boolean {
+  if (!row) return false;
+  const t = String(row.type || '')
+    .trim()
+    .toLowerCase();
+  if (t === 'video' || t === 'youtube' || t === 'lecture') return true;
+  // Dedicated /videos endpoints sometimes omit type.
+  if (!t && (row.videoUrl || row.youtubeUrl || row.fileUrl || row.driveLink)) return true;
+  return false;
+}
+
 function normalizeUrl(value: unknown): string {
   return String(value || '')
     .trim()
@@ -110,8 +138,14 @@ function rowRichness(row: LibraryContentRow): number {
 /**
  * Remove duplicate library rows (same video/file uploaded under sibling subjects or twice).
  * Keeps the row with the richest metadata when keys collide.
+ *
+ * Pass 1: media URL / id / meta slot
+ * Pass 2: visible display title + type (catches re-uploads with different CDN URLs)
  */
-export function dedupeLibraryContents<T extends LibraryContentRow>(rows: T[]): T[] {
+export function dedupeLibraryContents<T extends LibraryContentRow>(
+  rows: T[],
+  options?: { collapseAcrossSubjects?: boolean },
+): T[] {
   if (!Array.isArray(rows) || rows.length < 2) return rows || [];
 
   const byId = new Map<string, T>();
@@ -137,8 +171,36 @@ export function dedupeLibraryContents<T extends LibraryContentRow>(rows: T[]): T
     }
   }
 
-  const kept = new Set(byKey.values());
-  return rows.filter((row) => kept.has(row));
+  const keptByUrl = new Set(byKey.values());
+  const afterUrlPass = rows.filter((row) => keptByUrl.has(row));
+
+  if (afterUrlPass.length < 2) return afterUrlPass;
+
+  const collapseAcrossSubjects = Boolean(options?.collapseAcrossSubjects);
+  const byTitle = new Map<string, T>();
+  for (const row of afterUrlPass) {
+    const type = String(row.type || '')
+      .trim()
+      .toLowerCase();
+    const title = getLibraryContentDisplayTitle(row)
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ');
+    // Subject detail / merged catalog group: collapse identical visible titles.
+    // Global multi-subject lists: keep Biology vs Chemistry titles separate.
+    const titleKey = title
+      ? collapseAcrossSubjects
+        ? `title:${type}|${title}`
+        : `title:${type}|${title}|${subjectKey(row)}`
+      : `keep:${String(row._id || Math.random())}`;
+    const prev = byTitle.get(titleKey);
+    if (!prev || rowRichness(row) > rowRichness(prev)) {
+      byTitle.set(titleKey, row);
+    }
+  }
+
+  const keptTitles = new Set(byTitle.values());
+  return afterUrlPass.filter((row) => keptTitles.has(row));
 }
 
 export type PrepareLibraryContentsOptions = {
@@ -157,10 +219,19 @@ export function prepareLibraryContents<T extends LibraryContentRow>(
 ): T[] {
   let list = filterContentsBySchoolProgram(Array.isArray(rows) ? rows : [], isAsliPrepExclusive);
   if (options?.schoolIitCategories?.length) {
-    list = filterByProductCategory(list, options.schoolIitCategories);
+    list = filterByProductCategory(
+      list as Array<{
+        productCategory?: string | null;
+        subject?: { productCategory?: string | null } | null;
+      }>,
+      options.schoolIitCategories,
+    ) as T[];
   }
   if (options?.subjectSlot) {
     list = filterLibraryContentsForSubjectSlot(list, options.subjectSlot);
   }
-  return dedupeLibraryContents(list);
+  // Subject detail screens: collapse identical titles even when CDN URLs differ.
+  return dedupeLibraryContents(list, {
+    collapseAcrossSubjects: Boolean(options?.subjectSlot),
+  });
 }

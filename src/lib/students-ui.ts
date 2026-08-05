@@ -34,7 +34,7 @@ export type StudentRow = {
   phone?: string;
   isActive?: boolean;
   lastLogin?: string | null;
-  assignedClass?: { classNumber?: string; section?: string };
+  assignedClass?: { _id?: string; classNumber?: string; section?: string };
   performance?: StudentPerformance;
 };
 
