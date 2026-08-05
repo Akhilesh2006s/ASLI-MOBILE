@@ -6,7 +6,6 @@ import {
   ScrollView,
   TextInput,
   Pressable,
-  KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
 } from 'react-native';
@@ -23,10 +22,11 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useVidyaChat } from '../../../src/hooks/useVidyaChat';
+import { useKeyboardDockLift } from '../../../src/hooks/useKeyboardDockLift';
 import SubjectPickerModal from '../../../src/components/vidya/SubjectPickerModal';
 import VidyaAvatar from '../../../src/components/vidya/VidyaAvatar';
 import type { AIChatContext, TeachingTab } from '../../../src/types/vidya';
-import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../../src/theme/teacher';
+import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, glassCard } from '../../../src/theme/teacher';
 import { GlassPanel } from '../../../src/components/ui';
 
 function ThinkingDots() {
@@ -92,34 +92,22 @@ const TEACHING_MODES: Record<
   TeachingTab,
   {
     label: string;
-    title: string;
-    subtitle: string;
-    icon: keyof typeof Ionicons.glyphMap;
     quickA: { label: string; prompt: string };
     quickB: { label: string; prompt: string };
   }
 > = {
   lesson: {
     label: 'Lesson',
-    title: 'Lesson Planner AI',
-    subtitle: 'Plan outcomes, flow, and classroom activities.',
-    icon: 'book-outline',
     quickA: { label: 'Plan Lesson', prompt: 'Create a 45-minute lesson plan with learning outcomes and activities.' },
     quickB: { label: 'Explain Topic', prompt: 'Explain this topic with examples and misconceptions to avoid.' },
   },
   quiz: {
     label: 'Quiz',
-    title: 'Assessment Builder AI',
-    subtitle: 'Generate quizzes, MCQs, and rubric-ready sets.',
-    icon: 'help-circle-outline',
     quickA: { label: 'Create Quiz', prompt: 'Generate 10 MCQs with answers, bloom level, and difficulty tags.' },
     quickB: { label: 'Worksheet', prompt: 'Create a worksheet with 3 easy, 3 medium, and 2 challenge questions.' },
   },
   help: {
     label: 'Help',
-    title: 'Classroom Mentor AI',
-    subtitle: 'Get support for classroom management and teaching decisions.',
-    icon: 'bulb-outline',
     quickA: { label: 'Engagement', prompt: 'Suggest practical strategies to improve classroom engagement.' },
     quickB: { label: 'Mixed Ability', prompt: 'How should I support mixed-ability learners in this lesson?' },
   },
@@ -146,8 +134,10 @@ export default function VidyaAIViewChat({
   const insets = useSafeAreaInsets();
   const [teachingTab, setTeachingTab] = useState<TeachingTab>('lesson');
   const [subjectPickerOpen, setSubjectPickerOpen] = useState(false);
+  const [composerHeight, setComposerHeight] = useState(64);
   const scrollViewRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
+  const { keyboardLift, keyboardOpen, captureBaseline } = useKeyboardDockLift();
 
   const chatContext = useMemo<AIChatContext>(
     () => ({
@@ -166,7 +156,7 @@ export default function VidyaAIViewChat({
   });
 
   const mode = TEACHING_MODES[teachingTab];
-  const inputPaddingBottom = Math.max(insets.bottom, TEACHER_SPACING.sm);
+  const composerBottomPad = keyboardOpen ? 8 : Math.max(insets.bottom, TEACHER_SPACING.sm);
   const showSubjectPicker = model.subjectOptions.length > 1;
 
   const scrollToBottom = (animated = true) => {
@@ -175,7 +165,7 @@ export default function VidyaAIViewChat({
 
   useEffect(() => {
     scrollToBottom(true);
-  }, [model.displayMessages, model.isPending]);
+  }, [model.displayMessages, model.isPending, keyboardLift]);
 
   if (model.isLoading) {
     return (
@@ -185,31 +175,21 @@ export default function VidyaAIViewChat({
     );
   }
 
-  const content = (
-    <View style={[styles.chatRoot, fullPage && styles.chatRootFull]}>
+  return (
+    <View style={[styles.chatRoot, fullPage && styles.chatRootFull, standalone && styles.chatRootStandalone]}>
       <ScrollView
         ref={scrollViewRef}
         style={styles.mainScroll}
-        contentContainerStyle={styles.mainScrollContent}
+        contentContainerStyle={[
+          styles.mainScrollContent,
+          { paddingBottom: composerHeight + keyboardLift + 16 },
+        ]}
         showsVerticalScrollIndicator={false}
         nestedScrollEnabled
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         bounces
       >
-        <GlassPanel
-          style={[styles.modeHeader, fullPage && styles.modeHeaderFull]}
-          radius={0}
-          tone="medium"
-          bordered={false}
-        >
-          <View style={styles.modeHeaderRow}>
-            <Ionicons name={mode.icon} size={18} color={TEACHER.primaryLight} />
-            <Text style={styles.modeTitle}>{mode.title}</Text>
-          </View>
-          <Text style={styles.modeSubtitle}>{mode.subtitle}</Text>
-        </GlassPanel>
-
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -340,44 +320,50 @@ export default function VidyaAIViewChat({
         </View>
       </ScrollView>
 
-      <View style={[styles.inputBar, { paddingBottom: inputPaddingBottom }]}>
-        <View style={styles.inputWrap}>
-          <Pressable style={styles.iconBtn} onPress={model.pickAndAnalyzeImage} disabled={model.isPending}>
-            <Ionicons name="image-outline" size={20} color={TEACHER.textMuted} />
-          </Pressable>
-          <Pressable
-            style={styles.iconBtn}
-            onPress={model.handleVoiceInput}
-            disabled={model.isPending || model.isListening}
-          >
-            <Ionicons
-              name="mic-outline"
-              size={20}
-              color={model.isListening ? '#ef4444' : TEACHER.textMuted}
+      <View
+        style={[styles.composerDock, { bottom: keyboardLift }]}
+        onLayout={(e) => setComposerHeight(Math.ceil(e.nativeEvent.layout.height))}
+      >
+        <View style={[styles.inputBar, { paddingBottom: composerBottomPad }]}>
+          <View style={styles.inputWrap}>
+            <Pressable style={styles.iconBtn} onPress={model.pickAndAnalyzeImage} disabled={model.isPending}>
+              <Ionicons name="image-outline" size={20} color={TEACHER.textMuted} />
+            </Pressable>
+            <Pressable
+              style={styles.iconBtn}
+              onPress={model.handleVoiceInput}
+              disabled={model.isPending || model.isListening}
+            >
+              <Ionicons
+                name="mic-outline"
+                size={20}
+                color={model.isListening ? '#ef4444' : TEACHER.textMuted}
+              />
+            </Pressable>
+            <TextInput
+              ref={inputRef}
+              style={styles.input}
+              value={model.message}
+              onChangeText={model.setMessage}
+              placeholder={model.inputPlaceholder}
+              placeholderTextColor={TEACHER.textMuted}
+              multiline
+              maxLength={2000}
+              editable={!model.isPending}
+              textAlignVertical="center"
+              onFocus={() => {
+                captureBaseline();
+                setTimeout(() => scrollToBottom(true), 120);
+              }}
             />
-          </Pressable>
-          <TextInput
-            ref={inputRef}
-            style={styles.input}
-            value={model.message}
-            onChangeText={model.setMessage}
-            placeholder={model.inputPlaceholder}
-            placeholderTextColor={TEACHER.textMuted}
-            multiline
-            maxLength={2000}
-            editable={!model.isPending}
-            textAlignVertical="center"
-            onFocus={() => {
-              setTimeout(() => scrollToBottom(true), 120);
-            }}
-          />
-          <SendButton
-            disabled={model.isPending || !model.message.trim()}
-            onPress={() => {
-              inputRef.current?.blur();
-              model.handleSendMessage();
-            }}
-          />
+            <SendButton
+              disabled={model.isPending || !model.message.trim()}
+              onPress={() => {
+                inputRef.current?.blur();
+                model.handleSendMessage();
+              }}
+            />
+          </View>
         </View>
       </View>
 
@@ -390,28 +376,6 @@ export default function VidyaAIViewChat({
         accentColor={TEACHER.primaryLight}
       />
     </View>
-  );
-
-  if (standalone) {
-    return (
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
-      >
-        {content}
-      </KeyboardAvoidingView>
-    );
-  }
-
-  return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? (fullPage ? 64 : 120) : 0}
-    >
-      {content}
-    </KeyboardAvoidingView>
   );
 }
 
@@ -435,6 +399,7 @@ const styles = StyleSheet.create({
     borderColor: TEACHER.surfaceBorder,
     // Transparent so AppBackground's artwork shows through.
     backgroundColor: 'transparent',
+    overflow: 'hidden',
   },
   chatRootFull: {
     marginHorizontal: 0,
@@ -442,37 +407,28 @@ const styles = StyleSheet.create({
     marginBottom: 0,
     borderRadius: 0,
     borderWidth: 0,
-    backgroundColor: 'transparent',
   },
-  modeHeader: {
-    ...glassCard,
-    backgroundColor: 'transparent',
+  chatRootStandalone: {
+    marginHorizontal: 0,
+    marginTop: 0,
+    marginBottom: 0,
     borderRadius: 0,
     borderWidth: 0,
-    borderBottomWidth: 1,
-    paddingHorizontal: TEACHER_SPACING.lg,
-    paddingTop: TEACHER_SPACING.lg,
-    paddingBottom: TEACHER_SPACING.sm,
   },
-  modeHeaderFull: {
-    paddingTop: TEACHER_SPACING.md,
-    paddingBottom: TEACHER_SPACING.xs,
+  composerDock: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 20,
+    elevation: 20,
+    backgroundColor: TEACHER.bg,
   },
-  modeHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  modeTitle: {
-    ...TEACHER_TYPO.section,
-    fontSize: 16,
-    color: TEACHER.text,
-  },
-  modeSubtitle: {
-    marginTop: 4,
-    fontSize: 12,
-    color: TEACHER.textMuted,
-    lineHeight: 17,
+  inputBar: {
+    borderTopWidth: 1,
+    borderTopColor: TEACHER.surfaceBorder,
+    backgroundColor: TEACHER.bg,
+    paddingHorizontal: TEACHER_SPACING.md,
+    paddingTop: TEACHER_SPACING.sm,
   },
   modeTabsScroll: {
     flexGrow: 0,
@@ -485,6 +441,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: TEACHER_SPACING.lg,
     paddingVertical: TEACHER_SPACING.sm,
+    paddingTop: TEACHER_SPACING.md,
   },
   modeTab: {
     paddingHorizontal: 14,
@@ -677,13 +634,6 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: TEACHER.primaryLight,
-  },
-  inputBar: {
-    borderTopWidth: 1,
-    borderTopColor: TEACHER.surfaceBorder,
-    backgroundColor: TEACHER.bg,
-    paddingHorizontal: TEACHER_SPACING.md,
-    paddingTop: TEACHER_SPACING.sm,
   },
   inputWrap: {
     flexDirection: 'row',

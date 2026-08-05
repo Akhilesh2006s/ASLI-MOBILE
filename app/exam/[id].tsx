@@ -22,10 +22,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { usePreventRemove } from '@react-navigation/native';
 import { API_BASE_URL } from '../../src/lib/api-config';
 import * as SecureStore from 'expo-secure-store';
+import api from '../../src/services/api/api';
 import { getDashboardPath } from '../../src/hooks/useBackNavigation';
 import ExamResultsView from '../../src/components/student/ExamResultsView';
 import { GlassPanel } from '../../src/components/ui';
-import { ExamAnalysisResult } from '../../src/lib/exam-analysis-helpers';
+import { ExamAnalysisResult, normalizeMongoId } from '../../src/lib/exam-analysis-helpers';
 import { normalizeAndFormatExamDisplayText } from '../../src/lib/exam-text-normalize';
 
 const MAX_EXIT_ATTEMPTS = 5;
@@ -40,12 +41,16 @@ type Question = {
   questionType?: 'mcq' | 'multiple' | 'integer' | string;
   options?: Array<string | { text: string; isCorrect?: boolean }>;
   marks?: number;
+  negativeMarks?: number;
   subject?: string;
+  correctAnswer?: unknown;
 };
 
-function answerKey(question: Question | null | undefined): string {
-  if (!question?._id) return '';
-  return String(question._id);
+/** Normalize question id so answer map keys always match (mixed `_id` / `id` shapes). */
+function answerKey(question: Question | string | null | undefined): string {
+  if (question == null) return '';
+  if (typeof question === 'string') return String(question).trim();
+  return String(question._id || (question as { id?: string }).id || '').trim();
 }
 
 function isAnswerProvided(question: Question, raw: unknown): boolean {
@@ -68,6 +73,160 @@ type Exam = {
   endDate?: string;
   questions: Question[];
 };
+
+function normalizeQuestion(raw: any, index: number): Question {
+  const id = String(raw?._id || raw?.id || `q-${index + 1}`).trim();
+  return {
+    ...raw,
+    _id: id,
+    marks: Number(raw?.marks) || 0,
+    negativeMarks: Number(raw?.negativeMarks) || 0,
+  };
+}
+
+function sanitizeAnswersForSubmit(
+  exam: Exam,
+  answers: Record<string, unknown>
+): Record<string, unknown> {
+  const allowed = new Set(exam.questions.map((q) => answerKey(q)).filter(Boolean));
+  const out: Record<string, unknown> = {};
+  for (const [rawKey, value] of Object.entries(answers || {})) {
+    const key = String(rawKey).trim();
+    if (!key || !allowed.has(key) || value === undefined) continue;
+    out[key] = value;
+  }
+  return out;
+}
+
+function sanitizeTimingsForSubmit(
+  exam: Exam,
+  timings: Record<string, number>
+): Record<string, number> {
+  const allowed = new Set(exam.questions.map((q) => answerKey(q)).filter(Boolean));
+  const out: Record<string, number> = {};
+  for (const [rawKey, value] of Object.entries(timings || {})) {
+    const key = String(rawKey).trim();
+    const n = Number(value);
+    if (!key || !allowed.has(key) || !Number.isFinite(n) || n < 0) continue;
+    out[key] = Math.round(n);
+  }
+  return out;
+}
+
+function buildLocalExamResult(
+  exam: Exam,
+  answers: Record<string, unknown>,
+  timeTaken: number,
+  questionTimings: Record<string, number>
+) {
+  const safeAnswers = sanitizeAnswersForSubmit(exam, answers);
+  const safeTimings = sanitizeTimingsForSubmit(exam, questionTimings);
+  let correctAnswers = 0;
+  let wrongAnswers = 0;
+  let totalMarks = 0;
+  let obtainedMarks = 0;
+  const subjectWiseScore = {
+    maths: { correct: 0, total: 0, marks: 0 },
+    physics: { correct: 0, total: 0, marks: 0 },
+    chemistry: { correct: 0, total: 0, marks: 0 },
+  };
+
+  for (const question of exam.questions) {
+    const qid = answerKey(question);
+    const userAnswer = qid ? safeAnswers[qid] : undefined;
+    const answered = isAnswerProvided(question, userAnswer);
+    const marks = Number(question.marks) || 0;
+    totalMarks += marks;
+
+    const normalizedSubject = String(question.subject || '').toLowerCase();
+    const tracked =
+      normalizedSubject === 'maths' ||
+      normalizedSubject === 'physics' ||
+      normalizedSubject === 'chemistry';
+    if (tracked) {
+      subjectWiseScore[normalizedSubject as keyof typeof subjectWiseScore].total += 1;
+    }
+
+    // Server re-grades with the real key; local estimate is only a payload fallback
+    // when correctAnswer is hidden from the student exam payload.
+    const correct = question.correctAnswer;
+    let isCorrect = false;
+    if (answered && correct != null && correct !== '') {
+      if ((question.questionType || 'mcq') === 'multiple') {
+        const correctArr = Array.isArray(correct) ? correct : [correct];
+        const userArr = Array.isArray(userAnswer) ? userAnswer : [userAnswer];
+        const norm = (arr: unknown[]) =>
+          arr.map((a) => String(a).toLowerCase().trim()).sort().join('|');
+        isCorrect = norm(correctArr) === norm(userArr);
+      } else {
+        isCorrect =
+          String(Array.isArray(userAnswer) ? userAnswer[0] : userAnswer)
+            .toLowerCase()
+            .trim() ===
+          String(Array.isArray(correct) ? correct[0] : correct)
+            .toLowerCase()
+            .trim();
+      }
+    }
+
+    if (isCorrect) {
+      correctAnswers += 1;
+      obtainedMarks += marks;
+      if (tracked) {
+        const bucket = subjectWiseScore[normalizedSubject as keyof typeof subjectWiseScore];
+        bucket.correct += 1;
+        bucket.marks += marks;
+      }
+    } else if (answered) {
+      wrongAnswers += 1;
+      obtainedMarks -= Number(question.negativeMarks) || 0;
+    }
+  }
+
+  const totalQuestions = exam.questions.length;
+  const unattempted = Math.max(0, totalQuestions - correctAnswers - wrongAnswers);
+  const percentage = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
+  const examId = normalizeMongoId(exam._id);
+
+  return {
+    examId,
+    examTitle: String(exam.title || 'Exam'),
+    totalQuestions,
+    correctAnswers,
+    wrongAnswers,
+    unattempted,
+    totalMarks,
+    obtainedMarks,
+    percentage: Number.isFinite(percentage) ? percentage : 0,
+    timeTaken: Math.max(0, Math.round(Number(timeTaken) || 0)),
+    subjectWiseScore,
+    answers: safeAnswers,
+    questionTimings: safeTimings,
+  };
+}
+
+function extractSubmitErrorMessage(err: unknown, fallback = 'Failed to save result'): string {
+  const ax = err as {
+    response?: { status?: number; data?: { message?: string; error?: string } };
+    message?: string;
+  };
+  const data = ax?.response?.data;
+  const msg = String(data?.message || data?.error || ax?.message || '').trim();
+  const status = ax?.response?.status;
+  if (msg && status) return `${msg} (HTTP ${status})`;
+  if (msg) return msg;
+  if (status) return `${fallback} (HTTP ${status})`;
+  return fallback;
+}
+
+async function postExamResult(payload: Record<string, unknown>) {
+  // Prefer axios (same token resolution as the rest of the app).
+  const { data, status } = await api.post('/api/student/exam-results', payload, {
+    timeout: 60_000,
+    validateStatus: () => true,
+  });
+  return { data, status, ok: status >= 200 && status < 300 };
+}
 
 function mergeExamResult(
   exam: Exam,
@@ -148,6 +307,10 @@ export default function ExamPage() {
   const submitExamRef = useRef<() => Promise<void>>(async () => {});
   const questionEnterTimestampRef = useRef<number>(Date.now());
   const lastTrackedQuestionIdRef = useRef<string | null>(null);
+  const answersRef = useRef(answers);
+  const timeLeftRef = useRef(timeLeft);
+  answersRef.current = answers;
+  timeLeftRef.current = timeLeft;
 
   const examInProgress = !!exam && !submittedRef.current && !isLoading && !examResult;
 
@@ -212,7 +375,7 @@ export default function ExamPage() {
       if (!exam?.questions?.length) return baseTimings;
       const now = Date.now();
       const current = exam.questions[currentIndex];
-      const currentId = current?._id ? String(current._id) : null;
+      const currentId = answerKey(current) || null;
       if (!currentId) return baseTimings;
 
       if (!lastTrackedQuestionIdRef.current) {
@@ -241,9 +404,10 @@ export default function ExamPage() {
   useEffect(() => {
     if (!exam?.questions?.length || examResult) return;
     const current = exam.questions[currentIndex];
-    if (!current?._id) return;
+    const currentId = answerKey(current);
+    if (!currentId) return;
     if (!lastTrackedQuestionIdRef.current) {
-      lastTrackedQuestionIdRef.current = String(current._id);
+      lastTrackedQuestionIdRef.current = currentId;
       questionEnterTimestampRef.current = Date.now();
       return;
     }
@@ -259,65 +423,151 @@ export default function ExamPage() {
     setShowExitWarning(false);
     setShowQuestionDropdown(false);
 
+    const latestAnswers = answersRef.current;
+    const latestTimeLeft = timeLeftRef.current;
     const finalTimings = recordCurrentQuestionDuration();
-    const timeTaken = Math.max(0, exam.duration * 60 - timeLeft);
-    const payload = {
-      examId: exam._id,
-      examTitle: exam.title,
-      timeTaken,
-      answers,
-      questionTimings: finalTimings,
-    };
+    const timeTaken = Math.max(0, (Number(exam.duration) || 60) * 60 - latestTimeLeft);
+    const localPayload = buildLocalExamResult(exam, latestAnswers, timeTaken, finalTimings);
+
+    if (!localPayload.examId) {
+      submittedRef.current = false;
+      autoSubmitTriggeredRef.current = false;
+      Alert.alert('Submit Failed', 'This exam is missing a valid id. Please reopen it from Exams.', [
+        { text: 'Go to Dashboard', onPress: () => router.replace(dashboardPath) },
+      ]);
+      submitInFlightRef.current = false;
+      setIsGrading(false);
+      setIsSubmitting(false);
+      return;
+    }
+
+    const attempts: Record<string, unknown>[] = [
+      { ...localPayload },
+      {
+        examId: localPayload.examId,
+        examTitle: localPayload.examTitle,
+        timeTaken: localPayload.timeTaken,
+        answers: localPayload.answers,
+        questionTimings: localPayload.questionTimings,
+        totalQuestions: localPayload.totalQuestions,
+        correctAnswers: localPayload.correctAnswers,
+        wrongAnswers: localPayload.wrongAnswers,
+        unattempted: localPayload.unattempted,
+        totalMarks: localPayload.totalMarks,
+        obtainedMarks: localPayload.obtainedMarks,
+        percentage: localPayload.percentage,
+      },
+      {
+        examId: localPayload.examId,
+        examTitle: localPayload.examTitle,
+        timeTaken: localPayload.timeTaken,
+        answers: localPayload.answers,
+        questionTimings: localPayload.questionTimings,
+      },
+      {
+        examId: localPayload.examId,
+        answers: localPayload.answers,
+        timeTaken: localPayload.timeTaken,
+      },
+    ];
+
+    let lastError = 'Failed to save result';
+    let savedServer: Record<string, unknown> | null = null;
 
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 45_000);
-      const response = await fetch(`${API_BASE_URL}/api/student/exam-results`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+      for (const body of attempts) {
+        try {
+          const { data, status, ok } = await postExamResult(body);
+          if (ok) {
+            savedServer = (data?.data || data || {}) as Record<string, unknown>;
+            break;
+          }
+          lastError = extractSubmitErrorMessage(
+            { response: { status, data } },
+            'Failed to save result'
+          );
+          if (status === 401 || status === 403) break;
+        } catch (err) {
+          lastError = extractSubmitErrorMessage(err);
+        }
+      }
 
-      const json = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        submittedRef.current = false;
-        autoSubmitTriggeredRef.current = false;
-        Alert.alert('Submit Failed', json?.message || 'Could not save exam result.', [
-          { text: 'Go to Dashboard', onPress: () => router.replace(dashboardPath) },
-        ]);
+      if (savedServer) {
+        setExamResult(
+          mergeExamResult(
+            exam,
+            localPayload.answers,
+            timeTaken,
+            savedServer,
+            localPayload.questionTimings
+          )
+        );
         return;
       }
 
-      const server = (json?.data || {}) as Record<string, unknown>;
-      const merged = mergeExamResult(exam, answers, timeTaken, server, finalTimings);
-      setExamResult(merged);
-    } catch (error: unknown) {
-      const aborted = error instanceof Error && error.name === 'AbortError';
+      // Match web recovery: never strand the student after finishing an exam.
       submittedRef.current = false;
       autoSubmitTriggeredRef.current = false;
-      if (aborted) {
-        Alert.alert(
-          'Grading is taking longer than usual',
-          'Your result may appear under Attempted Exams shortly. You can check back from the dashboard.',
-          [{ text: 'OK', onPress: () => router.replace(dashboardPath) }]
-        );
-      } else {
-        Alert.alert('Error', 'Failed to submit exam. Please try again.', [
+      Alert.alert(
+        'Submit Failed',
+        `${lastError}\n\nTry again, or view a local score now. Check Attempted Exams later if sync is still failing.`,
+        [
+          { text: 'Try Again', onPress: () => void submitExamRef.current() },
+          {
+            text: 'View Local Results',
+            onPress: () => {
+              submittedRef.current = true;
+              setExamResult(
+                mergeExamResult(
+                  exam,
+                  localPayload.answers,
+                  timeTaken,
+                  {
+                    examId: localPayload.examId,
+                    examTitle: localPayload.examTitle,
+                    totalQuestions: localPayload.totalQuestions,
+                    correctAnswers: localPayload.correctAnswers,
+                    wrongAnswers: localPayload.wrongAnswers,
+                    unattempted: localPayload.unattempted,
+                    totalMarks: localPayload.totalMarks,
+                    obtainedMarks: localPayload.obtainedMarks,
+                    percentage: localPayload.percentage,
+                    timeTaken: localPayload.timeTaken,
+                    subjectWiseScore: localPayload.subjectWiseScore,
+                    answers: localPayload.answers,
+                    questionTimings: localPayload.questionTimings,
+                  },
+                  localPayload.questionTimings
+                )
+              );
+            },
+          },
+          { text: 'Go to Dashboard', style: 'cancel', onPress: () => router.replace(dashboardPath) },
+        ]
+      );
+    } catch (error: unknown) {
+      const aborted =
+        (error instanceof Error && error.name === 'AbortError') ||
+        String((error as any)?.code || '').includes('ECONNABORTED') ||
+        String((error as any)?.message || '').toLowerCase().includes('timeout');
+      submittedRef.current = false;
+      autoSubmitTriggeredRef.current = false;
+      Alert.alert(
+        aborted ? 'Grading is taking longer than usual' : 'Submit Failed',
+        aborted
+          ? 'Your result may appear under Attempted Exams shortly. You can try submitting again.'
+          : extractSubmitErrorMessage(error),
+        [
+          { text: 'Try Again', onPress: () => void submitExamRef.current() },
           { text: 'Go to Dashboard', onPress: () => router.replace(dashboardPath) },
-        ]);
-      }
+        ]
+      );
     } finally {
       submitInFlightRef.current = false;
       setIsGrading(false);
       setIsSubmitting(false);
     }
-  }, [exam, timeLeft, answers, dashboardPath, router, recordCurrentQuestionDuration]);
+  }, [exam, dashboardPath, router, recordCurrentQuestionDuration]);
 
   submitExamRef.current = submitExam;
 
@@ -343,14 +593,14 @@ export default function ExamPage() {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          void submitExam();
+          void submitExamRef.current();
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [exam, timeLeft, submitExam]);
+  }, [exam, timeLeft]);
 
   const fetchExam = async () => {
     try {
@@ -372,15 +622,24 @@ export default function ExamPage() {
 
       const data = await response.json();
       const examData = data.data || data;
-      const questions = Array.isArray(examData.questions) ? examData.questions : [];
-      if (!questions.length) {
+      const rawQuestions = Array.isArray(examData.questions) ? examData.questions : [];
+      if (!rawQuestions.length) {
         Alert.alert('Unavailable', 'No questions uploaded for this exam.', [
           { text: 'OK', onPress: () => router.back() },
         ]);
         return;
       }
 
-      setExam({ ...examData, questions });
+      const questions = rawQuestions.map((q: any, index: number) => normalizeQuestion(q, index));
+      const examId = normalizeMongoId(examData._id || examData.id || id);
+      if (!examId) {
+        Alert.alert('Unavailable', 'This exam is missing an id.', [
+          { text: 'OK', onPress: () => router.back() },
+        ]);
+        return;
+      }
+
+      setExam({ ...examData, _id: examId, questions });
       setTimeLeft((Number(examData.duration) || 60) * 60);
     } catch {
       Alert.alert('Error', 'Failed to load exam.');
@@ -736,17 +995,18 @@ export default function ExamPage() {
                 keyboardType="numeric"
                 placeholder="Enter your answer"
                 placeholderTextColor="#9ca3af"
-                value={String(answers[currentQuestion._id] ?? '')}
+                value={String(answers[currentQid] ?? '')}
                 onChangeText={(t) => {
+                  if (!currentQid) return;
                   if (!t.trim()) {
                     setAnswers((prev) => {
                       const next = { ...prev };
-                      delete next[currentQuestion._id];
+                      delete next[currentQid];
                       return next;
                     });
                     return;
                   }
-                  handleSelect(currentQuestion._id, t);
+                  handleSelect(currentQid, t);
                 }}
               />
             ) : (
@@ -755,14 +1015,13 @@ export default function ExamPage() {
                 const displayLabel = normalizeExamText(label, currentQuestion.subject);
                 const selected =
                   qType === 'multiple'
-                    ? Array.isArray(answers[currentQuestion._id]) &&
-                      answers[currentQuestion._id].includes(label)
-                    : answers[currentQuestion._id] === label;
+                    ? Array.isArray(answers[currentQid]) && answers[currentQid].includes(label)
+                    : answers[currentQid] === label;
                 return (
                   <TouchableOpacity
-                    key={`${currentQuestion._id}-${index}`}
+                    key={`${currentQid || 'q'}-${index}`}
                     style={[styles.option, selected && styles.optionSelected]}
-                    onPress={() => handleSelect(currentQuestion._id, label, qType === 'multiple')}
+                    onPress={() => currentQid && handleSelect(currentQid, label, qType === 'multiple')}
                     activeOpacity={0.7}
                   >
                     <Text style={[styles.optionText, selected && styles.optionTextSelected]}>

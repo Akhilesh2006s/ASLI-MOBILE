@@ -8,7 +8,7 @@ import { Text as RNText, StyleSheet, type TextProps } from 'react-native';
 export const CapitalizedText = React.forwardRef<React.ComponentRef<typeof RNText>, TextProps>(
   function CapitalizedText(props, ref) {
     const style = StyleSheet.flatten([{ textTransform: 'capitalize' }, props.style]);
-    return React.createElement(RNText, { ...props, ref, style });
+    return React.createElement(RNText, { ...props, ref, style } as TextProps & { ref: typeof ref });
   },
 );
 

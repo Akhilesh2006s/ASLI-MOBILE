@@ -17,7 +17,16 @@ export function useSchoolProgram() {
       .me()
       .then((data) => {
         if (!mounted) return;
-        setIsAsliPrepExclusive(resolveIsAsliPrepExclusive(data?.user));
+        const user =
+          data?.user ??
+          data?.data?.user ??
+          (data?.data && typeof data.data === 'object' && !Array.isArray(data.data)
+            ? data.data
+            : null) ??
+          (data && typeof data === 'object' && (data.isAsliPrepExclusive != null || data.board)
+            ? data
+            : null);
+        setIsAsliPrepExclusive(resolveIsAsliPrepExclusive(user));
       })
       .catch(() => {
         if (mounted) setIsAsliPrepExclusive(false);

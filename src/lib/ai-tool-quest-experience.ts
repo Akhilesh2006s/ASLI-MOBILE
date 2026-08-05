@@ -3,6 +3,8 @@
  * holographic quest nodes, orbit rail, aurora field, interactive unlocks.
  */
 
+import { AI_TOOL_SELECTION_GUARD_JS } from './ai-tool-selection-guard';
+
 export const AI_TOOL_QUEST_STYLES = `
 @keyframes quest-aurora{
   0%{transform:translate3d(-6%,-4%,0) scale(1);opacity:.55}
@@ -50,7 +52,8 @@ export const AI_TOOL_QUEST_STYLES = `
 .quest-summary{
   list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;
   padding:10px 12px 10px 14px;user-select:none;-webkit-user-select:none;
-  background:#ffffff
+  -webkit-tap-highlight-color:rgba(139,92,246,.12);
+  touch-action:manipulation;background:#ffffff
 }
 .quest-summary::-webkit-details-marker{display:none}
 .quest-orb{
@@ -215,10 +218,39 @@ export const AI_TOOL_QUEST_STYLES = `
 `;
 
 export const AI_TOOL_QUEST_BOOTSTRAP = `
+${AI_TOOL_SELECTION_GUARD_JS}
 (function(){
   try{
     var palette = ['#8b5cf6','#0ea5e9','#f59e0b','#f43f5e','#6366f1','#06b6d4','#f97316','#d946ef','#3b82f6','#14b8a6'];
     var deep = ['#6d28d9','#0369a1','#b45309','#be123c','#4338ca','#0e7490','#c2410c','#a21caf','#1d4ed8','#0f766e'];
+
+    function syncHint(n){
+      var h = n.querySelector('.quest-hint');
+      if (h) h.textContent = n.open ? 'Close' : 'Open';
+    }
+
+    function wireQuestNode(n, i){
+      n.setAttribute('data-quest-idx', String(i));
+      n.open = true;
+      syncHint(n);
+      if (n.getAttribute('data-quest-wired') === '1') return;
+      n.setAttribute('data-quest-wired', '1');
+      var summary = n.querySelector('.quest-summary');
+      if (!summary) return;
+      // Android WebView often ignores native <details> toggles — drive open state ourselves.
+      summary.addEventListener('click', function(e){
+        try { e.preventDefault(); } catch (err) {}
+        try { e.stopPropagation(); } catch (err2) {}
+        n.open = !n.open;
+        syncHint(n);
+        if (window.__aiToolSendHeight) setTimeout(window.__aiToolSendHeight, 40);
+        if (window.__aiToolUnlockScroll) setTimeout(window.__aiToolUnlockScroll, 40);
+        if (n.open && window.ReactNativeWebView) {
+          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'orbit-active', index: i }));
+        }
+      }, true);
+    }
+
     var nodes = Array.prototype.slice.call(document.querySelectorAll('.quest-node'));
     if(!nodes.length){
       var legacy = Array.prototype.slice.call(document.querySelectorAll('section.ai-tool-section-card'));
@@ -231,12 +263,10 @@ export const AI_TOOL_QUEST_BOOTSTRAP = `
         details.className = 'quest-node';
         details.style.setProperty('--quest', palette[i%10]);
         details.style.setProperty('--quest-deep', deep[i%10]);
-        // Keep every section open on mobile so parent ScrollView can size to
-        // full content — collapsed details made the WebView too short and locked scrolling.
         details.open = true;
         var summary = document.createElement('summary');
         summary.className = 'quest-summary';
-        summary.innerHTML = '<div class="quest-orb">'+(i+1)+'</div><div class="quest-copy"><div class="quest-kicker"><span class="dot"></span>'+(labelEl?labelEl.textContent:'Quest')+'</div><div class="quest-title">'+(titleEl?titleEl.textContent:'Section')+'</div></div><div class="quest-hint">Tap</div>';
+        summary.innerHTML = '<div class="quest-orb">'+(i+1)+'</div><div class="quest-copy"><div class="quest-kicker"><span class="dot"></span>'+(labelEl?labelEl.textContent:'Quest')+'</div><div class="quest-title">'+(titleEl?titleEl.textContent:'Section')+'</div></div><div class="quest-hint">Close</div>';
         var bodyWrap = document.createElement('div');
         bodyWrap.className = 'quest-body';
         var kids = sec.children;
@@ -271,10 +301,7 @@ export const AI_TOOL_QUEST_BOOTSTRAP = `
     prelude.forEach(function(el){ field.appendChild(el); });
     nodes.forEach(function(n){ field.appendChild(n); });
 
-    nodes.forEach(function(n, i){
-      n.setAttribute('data-quest-idx', String(i));
-      n.open = true;
-    });
+    nodes.forEach(function(n, i){ wireQuestNode(n, i); });
 
     // Hand orbit tabs to React Native for a native horizontal ScrollView (no WebView lag/clip).
     var tabs = nodes.map(function(n, i){
@@ -284,13 +311,6 @@ export const AI_TOOL_QUEST_BOOTSTRAP = `
     if (window.ReactNativeWebView) {
       window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'orbit', tabs: tabs }));
     }
-
-    nodes.forEach(function(n, i){
-      n.addEventListener('toggle', function(){
-        if(!n.open || !window.ReactNativeWebView) return;
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'orbit-active', index: i }));
-      });
-    });
   }catch(e){}
 })();
 `;

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Pressable,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -20,12 +21,31 @@ import {
 } from '../../src/lib/learningPathContent';
 import { useSchoolProgram } from '../../src/hooks/useSchoolProgram';
 import { prepareLibraryContents, getLibraryContentDisplayTitle } from '../../src/lib/dedupe-library-content';
+import { groupContentsByType } from '../../src/lib/learning-path-content-groups';
 import { GlassPanel } from '../../src/components/ui';
 
 function pickParam(v: string | string[] | undefined): string {
   if (v == null) return '';
   const s = Array.isArray(v) ? v[0] : v;
   return typeof s === 'string' ? s : '';
+}
+
+function iconForType(type: string): keyof typeof Ionicons.glyphMap {
+  switch (type) {
+    case 'Video':
+      return 'videocam';
+    case 'TextBook':
+    case 'Workbook':
+      return 'book';
+    case 'Material':
+      return 'document-text';
+    case 'Audio':
+      return 'headset';
+    case 'Homework':
+      return 'clipboard';
+    default:
+      return 'document';
+  }
 }
 
 export default function SubjectContent() {
@@ -40,6 +60,7 @@ export default function SubjectContent() {
   const [subject, setSubject] = useState<any>(null);
   const [content, setContent] = useState<LearningPathContentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [expandedTypes, setExpandedTypes] = useState<Record<string, boolean>>({});
   const goBack = useContentViewerBack(returnTo || undefined);
 
   const fetchSubjectData = useCallback(async () => {
@@ -87,9 +108,27 @@ export default function SubjectContent() {
     void fetchSubjectData();
   }, [id, programLoading, fetchSubjectData]);
 
+  const typeSections = useMemo(
+    () =>
+      groupContentsByType(
+        content.map((item, index) => ({
+          ...item,
+          _id: String(item._id || item.id || index),
+          type: String(item.type || 'Content'),
+        }))
+      ),
+    [content]
+  );
+
   const openContentItem = (item: LearningPathContentItem) => {
     const previewOpts = returnTo === 'learning' ? { returnTo: 'learning' as const } : undefined;
     openContentPreview(router, item, previewOpts);
+  };
+
+  const isSectionOpen = (type: string) => expandedTypes[type] ?? true;
+
+  const toggleSection = (type: string) => {
+    setExpandedTypes((prev) => ({ ...prev, [type]: !(prev[type] ?? true) }));
   };
 
   if (isLoading || programLoading) {
@@ -112,61 +151,86 @@ export default function SubjectContent() {
           </TouchableOpacity>
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>{subject?.name || 'Subject'}</Text>
-            <Text style={styles.headerSubtitle}>{subject?.description || 'Learning content'}</Text>
+            <Text style={styles.headerSubtitle}>
+              {content.length > 0
+                ? `${content.length} ${content.length === 1 ? 'item' : 'items'}`
+                : subject?.description || 'Learning content'}
+            </Text>
           </View>
         </View>
       </GlassPanel>
 
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {content.length === 0 ? (
+        {typeSections.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="book" size={64} color="#5B6779" />
             <Text style={styles.emptyText}>No content available</Text>
           </View>
         ) : (
-          content.map((item, index) => (
-            <TouchableOpacity
-              key={String(item._id || item.id || index)}
-              onPress={() => openContentItem(item)}
-              activeOpacity={0.7}
-            >
-              <GlassPanel style={styles.contentCard} radius={16}>
-                <View style={styles.contentHeader}>
-                  <View
-                    style={[
-                      styles.contentIcon,
-                      { backgroundColor: isVideoContent(item) ? '#dbeafe' : '#e8e3fa' },
-                    ]}
-                  >
-                    {isVideoContent(item) ? (
-                      <Ionicons name="videocam" size={24} color="#3b82f6" />
-                    ) : (
-                      <Ionicons name="document-text" size={24} color="#6d5bd0" />
-                    )}
-                  </View>
-                  <View style={styles.contentInfo}>
-                    <Text style={styles.contentTitle}>
-                      {getLibraryContentDisplayTitle(item) || 'Content'}
-                    </Text>
-                    <Text style={styles.contentDescription} numberOfLines={2}>
-                      {item.description || 'Learn more about this topic'}
-                    </Text>
-                  </View>
-                  {item.completed && (
-                    <Ionicons name="checkmark-circle" size={24} color="#10b981" />
-                  )}
+          typeSections.map((section) => (
+            <View key={section.type} style={styles.typeSection}>
+              <Pressable style={styles.typeHeader} onPress={() => toggleSection(section.type)}>
+                <Text style={styles.typeTitle}>{section.type}</Text>
+                <View style={styles.typeHeaderRight}>
+                  <Text style={styles.typeCount}>{section.items.length}</Text>
+                  <Ionicons
+                    name={isSectionOpen(section.type) ? 'chevron-up' : 'chevron-down'}
+                    size={18}
+                    color="#6b7280"
+                  />
                 </View>
-                {item.duration ? (
-                  <View style={styles.contentMeta}>
-                    <Text style={styles.metaText}>{String(item.duration)}</Text>
-                  </View>
-                ) : null}
-              </GlassPanel>
-            </TouchableOpacity>
+              </Pressable>
+              {isSectionOpen(section.type)
+                ? section.items.map((item, index) => {
+                    const video = isVideoContent(item);
+                    return (
+                      <TouchableOpacity
+                        key={String(item._id || index)}
+                        onPress={() => openContentItem(item)}
+                        activeOpacity={0.7}
+                      >
+                        <GlassPanel style={styles.contentCard} radius={16}>
+                          <View style={styles.contentHeader}>
+                            <View
+                              style={[
+                                styles.contentIcon,
+                                { backgroundColor: video ? '#dbeafe' : '#e8e3fa' },
+                              ]}
+                            >
+                              <Ionicons
+                                name={iconForType(item.type)}
+                                size={24}
+                                color={video ? '#3b82f6' : '#6d5bd0'}
+                              />
+                            </View>
+                            <View style={styles.contentInfo}>
+                              <Text style={styles.contentTitle}>
+                                {getLibraryContentDisplayTitle(item) || 'Content'}
+                              </Text>
+                              <Text style={styles.contentDescription} numberOfLines={2}>
+                                {item.description || 'Learn more about this topic'}
+                              </Text>
+                            </View>
+                            {item.completed ? (
+                              <Ionicons name="checkmark-circle" size={24} color="#10b981" />
+                            ) : null}
+                          </View>
+                          {item.duration ? (
+                            <View style={styles.contentMeta}>
+                              <Text style={styles.metaText}>{String(item.duration)}</Text>
+                            </View>
+                          ) : null}
+                        </GlassPanel>
+                      </TouchableOpacity>
+                    );
+                  })
+                : null}
+            </View>
           ))
         )}
       </ScrollView>
@@ -214,9 +278,39 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 28,
+  },
+  typeSection: {
+    marginTop: 8,
+  },
+  typeHeader: {
+    marginHorizontal: 20,
+    marginTop: 12,
+    marginBottom: 4,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  typeTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  typeHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  typeCount: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#6b7280',
+  },
   contentCard: {
     marginHorizontal: 20,
-    marginTop: 16,
+    marginTop: 10,
     borderRadius: 16,
     padding: 20,
     shadowColor: '#000',

@@ -30,9 +30,9 @@ export default function AiToolStackedSection({
   const numLabel = String(num).replace(/^section\s*/i, '').trim() || num;
   const theme = getAiSectionThemeByNum(numLabel);
   const accent = accentColor || theme.hex;
-  const n = parseInt(numLabel.replace(/\D/g, ''), 10);
   const [open, setOpen] = useState(
-    typeof defaultOpen === 'boolean' ? defaultOpen : !Number.isFinite(n) || n <= 2,
+    // All generator sections start expanded so nothing is stuck behind "Unlock".
+    typeof defaultOpen === 'boolean' ? defaultOpen : true,
   );
   const displayTitle = formatAiToolText(title);
 
@@ -49,6 +49,7 @@ export default function AiToolStackedSection({
         onPress={toggle}
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
+        hitSlop={8}
         style={styles.header}
       >
         <View style={[styles.numBadge, { backgroundColor: '#F1F5F9' }]}>

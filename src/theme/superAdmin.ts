@@ -41,6 +41,8 @@ export const SUPER_ADMIN_LIGHT: AdminThemeColors = {
   headerGradient: ['#FB923C', '#F97316', '#EA580C'] as const,
   drawerGradient: ['#FB923C', '#F97316'] as const,
   navActiveColor: '#F97316',
+  navActiveBg: 'rgba(249, 115, 22, 0.12)',
+  navActiveText: '#EA580C',
   cardGradient: ['#FFF7ED', '#FFFFFF'] as const,
   fabGradient: ['#F97316', '#EA580C'] as const,
   statGradients: [
@@ -50,6 +52,12 @@ export const SUPER_ADMIN_LIGHT: AdminThemeColors = {
     ['#FBBF24', '#F59E0B'],
     ['#34D399', '#10B981'],
     ['#60A5FA', '#3B82F6'],
+  ] as const,
+  dashboardStatCards: [
+    { bg: '#FFEDD5', accent: '#C2410C', iconBg: '#FED7AA' },
+    { bg: '#E0F2FE', accent: '#0369A1', iconBg: '#BAE6FD' },
+    { bg: '#CCFBF1', accent: '#0F766E', iconBg: '#99F6E4' },
+    { bg: '#FEF3C7', accent: '#B45309', iconBg: '#FDE68A' },
   ] as const,
 };
 
@@ -91,6 +99,8 @@ export const SUPER_ADMIN_DARK: AdminThemeColors = {
   headerGradient: ['#7C2D12', '#C2410C', '#EA580C'] as const,
   drawerGradient: ['#431407', '#7C2D12'] as const,
   navActiveColor: '#FB923C',
+  navActiveBg: 'rgba(251, 146, 60, 0.18)',
+  navActiveText: '#FED7AA',
   cardGradient: ['#292524', '#1C1917'] as const,
   fabGradient: ['#F97316', '#FB923C'] as const,
   statGradients: [
@@ -100,6 +110,12 @@ export const SUPER_ADMIN_DARK: AdminThemeColors = {
     ['#D97706', '#B45309'],
     ['#059669', '#047857'],
     ['#2563EB', '#1D4ED8'],
+  ] as const,
+  dashboardStatCards: [
+    { bg: '#7C2D12', accent: '#FDBA74', iconBg: 'rgba(253, 186, 116, 0.2)' },
+    { bg: '#0C4A6E', accent: '#7DD3FC', iconBg: 'rgba(125, 211, 252, 0.2)' },
+    { bg: '#134E4A', accent: '#5EEAD4', iconBg: 'rgba(94, 234, 212, 0.2)' },
+    { bg: '#78350F', accent: '#FCD34D', iconBg: 'rgba(252, 211, 77, 0.2)' },
   ] as const,
 };
 

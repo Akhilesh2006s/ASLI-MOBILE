@@ -269,7 +269,8 @@ function SectionCard({
 
 function CheckList({ items }: { items: string[] }) {
   const { isTablet, isDigitalBoard } = useViewerTablet();
-  const vt = (key: keyof typeof aiToolViewerTabletStyles) => viewerTabletStyle(isTablet, key, isDigitalBoard);
+  const vt = <K extends keyof typeof aiToolViewerTabletStyles>(key: K) =>
+    viewerTabletStyle(isTablet, key, isDigitalBoard);
   return (
     <View style={styles.checkList}>
       {items.map((line, i) => (
@@ -284,7 +285,8 @@ function CheckList({ items }: { items: string[] }) {
 
 function BulletList({ items }: { items: string[] }) {
   const { isTablet, isDigitalBoard } = useViewerTablet();
-  const vt = (key: keyof typeof aiToolViewerTabletStyles) => viewerTabletStyle(isTablet, key, isDigitalBoard);
+  const vt = <K extends keyof typeof aiToolViewerTabletStyles>(key: K) =>
+    viewerTabletStyle(isTablet, key, isDigitalBoard);
   return (
     <View style={styles.bulletList}>
       {items.map((line, i) => (
@@ -299,7 +301,8 @@ function BulletList({ items }: { items: string[] }) {
 
 function NumberedMaterials({ items }: { items: string[] }) {
   const { isTablet, isDigitalBoard } = useViewerTablet();
-  const vt = (key: keyof typeof aiToolViewerTabletStyles) => viewerTabletStyle(isTablet, key, isDigitalBoard);
+  const vt = <K extends keyof typeof aiToolViewerTabletStyles>(key: K) =>
+    viewerTabletStyle(isTablet, key, isDigitalBoard);
   return (
     <View style={styles.matList}>
       {items.map((m, i) => (
@@ -316,7 +319,8 @@ function NumberedMaterials({ items }: { items: string[] }) {
 
 function NumberedSteps({ items, color }: { items: string[]; color: string }) {
   const { isTablet, isDigitalBoard } = useViewerTablet();
-  const vt = (key: keyof typeof aiToolViewerTabletStyles) => viewerTabletStyle(isTablet, key, isDigitalBoard);
+  const vt = <K extends keyof typeof aiToolViewerTabletStyles>(key: K) =>
+    viewerTabletStyle(isTablet, key, isDigitalBoard);
   return (
     <View style={styles.stepList}>
       {items.map((step, i) => (
@@ -399,7 +403,8 @@ function StudentActivityCard({
   heroIcon: keyof typeof Ionicons.glyphMap;
 }) {
   const { isTablet, isDigitalBoard } = useViewerTablet();
-  const vt = (key: keyof typeof aiToolViewerTabletStyles) => viewerTabletStyle(isTablet, key, isDigitalBoard);
+  const vt = <K extends keyof typeof aiToolViewerTabletStyles>(key: K) =>
+    viewerTabletStyle(isTablet, key, isDigitalBoard);
   return (
     <View style={[styles.activityBody, vt('activityBody')]}>
       <View style={[styles.heroCard, styles.heroCardStudent, vt('heroCard')]}>
@@ -428,7 +433,8 @@ function TeacherActivityCard({
   heroIcon: keyof typeof Ionicons.glyphMap;
 }) {
   const { isTablet, isDigitalBoard } = useViewerTablet();
-  const vt = (key: keyof typeof aiToolViewerTabletStyles) => viewerTabletStyle(isTablet, key, isDigitalBoard);
+  const vt = <K extends keyof typeof aiToolViewerTabletStyles>(key: K) =>
+    viewerTabletStyle(isTablet, key, isDigitalBoard);
   return (
     <View style={[styles.activityBody, vt('activityBody')]}>
       <View style={[styles.heroCard, vt('heroCard')]}>
@@ -490,7 +496,8 @@ export default function ActivityProjectViewer({
   }
 
   const isTeacher = mode === 'teacher';
-  const vt = (key: keyof typeof aiToolViewerTabletStyles) => viewerTabletStyle(isTablet, key, isDigitalBoard);
+  const vt = <K extends keyof typeof aiToolViewerTabletStyles>(key: K) =>
+    viewerTabletStyle(isTablet, key, isDigitalBoard);
 
   return (
     <ViewerTabletContext.Provider value={{ isTablet, isDigitalBoard }}>

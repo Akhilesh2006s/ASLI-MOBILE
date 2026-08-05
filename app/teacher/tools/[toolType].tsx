@@ -406,7 +406,7 @@ export default function TeacherToolPage() {
       try {
         const meRes = await teacherService.me();
         if (cancelled) return;
-        const user = meRes.data?.user ?? meRes.data ?? meRes.user;
+        const user = meRes.data?.user ?? meRes.data;
         const exclusive = resolveIsAsliPrepExclusive(user);
         setIsAsliPrepExclusive(exclusive);
         const curriculumBoard = resolveCurriculumBoardForAiTools(user);

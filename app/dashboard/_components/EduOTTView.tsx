@@ -20,7 +20,12 @@ import SearchBar from './eduott/SearchBar';
 import StudentFilterDropdown from '../../../src/components/student/StudentFilterDropdown';
 import EduOTTVideoCard from '../../../src/components/eduott/EduOTTVideoCard';
 import { resolveContentDurationSeconds, canJoinLiveSession } from '../../../src/utils/eduottVideoUtils';
-import { dedupeLibraryContents } from '../../../src/lib/dedupe-library-content';
+import {
+  dedupeLibraryContents,
+  extractLibraryContentList,
+  isLibraryVideoRow,
+  type LibraryContentRow,
+} from '../../../src/lib/dedupe-library-content';
 import { getVideoDisplayTitle } from '../../../src/lib/video-chapter-schedule';
 import {
   extractPlainSubjectName,
@@ -70,18 +75,93 @@ function buildStreamsUrl(
   return `${API_BASE_URL}/api/${role}/streams${q ? `?${q}` : ''}`;
 }
 
+function buildVideosFallbackUrl(role: EduOTTRole): string {
+  return `${API_BASE_URL}/api/${role}/videos`;
+}
+
+function buildAllContentUrl(role: EduOTTRole): string {
+  return `${API_BASE_URL}/api/${role}/asli-prep-content`;
+}
+
+async function fetchJsonPayload(
+  url: string,
+  headers: Record<string, string>
+): Promise<{ ok: boolean; payload: unknown }> {
+  try {
+    const response = await fetch(url, { headers });
+    if (!response.ok) return { ok: false, payload: null };
+    return { ok: true, payload: await response.json() };
+  } catch {
+    return { ok: false, payload: null };
+  }
+}
+
+function rowsFromVideoPayload(payload: unknown, assumeVideoType: boolean): LibraryContentRow[] {
+  const rows = extractLibraryContentList(payload).map((row) =>
+    assumeVideoType && !row.type ? { ...row, type: 'Video' } : row
+  );
+  return rows.filter(isLibraryVideoRow);
+}
+
 async function fetchRoleVideos(
   token: string,
   role: EduOTTRole
 ): Promise<{ list: VideoItem[]; ok: boolean }> {
   const headers = authHeaders(token);
-  let response = await fetch(buildVideosUrl(role, null, null), { headers });
-  if (role === 'admin' && !response.ok) {
-    response = await fetch(`${API_BASE_URL}/api/admin/videos`, { headers });
+  const attempts: Array<{ url: string; assumeVideoType: boolean }> = [
+    { url: buildVideosUrl(role, null, null), assumeVideoType: false },
+    { url: buildAllContentUrl(role), assumeVideoType: false },
+    { url: buildVideosFallbackUrl(role), assumeVideoType: true },
+  ];
+  if (role === 'admin') {
+    attempts.push({ url: `${API_BASE_URL}/api/admin/videos`, assumeVideoType: true });
   }
-  if (!response.ok) return { list: [], ok: false };
-  const data = await response.json();
-  return { list: mapAndDedupeVideos(data.data || data || []), ok: true };
+
+  let anyOk = false;
+  let best: LibraryContentRow[] = [];
+
+  for (const attempt of attempts) {
+    const { ok, payload } = await fetchJsonPayload(attempt.url, headers);
+    if (!ok) continue;
+    anyOk = true;
+    const rows = rowsFromVideoPayload(payload, attempt.assumeVideoType);
+    if (rows.length > best.length) best = rows;
+    if (best.length > 0) break;
+  }
+
+  return { list: mapAndDedupeVideos(best), ok: anyOk };
+}
+
+async function fetchFilteredStudentVideos(
+  token: string,
+  role: EduOTTRole,
+  selectedClass: string | null,
+  selectedSubject: string | null
+): Promise<{ list: VideoItem[]; ok: boolean }> {
+  const headers = authHeaders(token);
+  // Prefer filtered prep endpoint, then fall back to full catalog (+ client filters).
+  const primary = await fetchJsonPayload(
+    buildVideosUrl(role, selectedClass, selectedSubject),
+    headers
+  );
+  if (primary.ok) {
+    const rows = rowsFromVideoPayload(primary.payload, false);
+    if (rows.length > 0) {
+      return { list: mapAndDedupeVideos(rows), ok: true };
+    }
+  }
+
+  const fallback = await fetchRoleVideos(token, role);
+  if (!fallback.ok) {
+    return primary.ok ? { list: [], ok: true } : fallback;
+  }
+  if (!selectedClass && !selectedSubject) {
+    return fallback;
+  }
+  const filtered = fallback.list.filter((video) =>
+    matchesClassSubject(video.subjectName, video.classNumber, selectedClass, selectedSubject)
+  );
+  return { list: filtered, ok: true };
 }
 
 function matchesClassSubject(
@@ -200,7 +280,8 @@ function mapContentToVideoItem(content: any): VideoItem {
 }
 
 function mapAndDedupeVideos(list: unknown[]): VideoItem[] {
-  return dedupeLibraryContents(Array.isArray(list) ? list : []).map(mapContentToVideoItem);
+  const rows = extractLibraryContentList(list).filter(isLibraryVideoRow);
+  return dedupeLibraryContents(rows).map(mapContentToVideoItem);
 }
 
 const EDUOTT_EDGE_PAD = STUDENT_SPACING.sm;
@@ -308,6 +389,9 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
   );
 
   useEffect(() => {
+    if (programLoading) {
+      return;
+    }
     if (activeTab !== 'videos') {
       setLoading(false);
       return;
@@ -328,12 +412,6 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
           return;
         }
 
-        const response = useClientSideFilters
-          ? null
-          : await fetch(buildVideosUrl(role, selectedClass, selectedSubject), {
-              headers: authHeaders(token),
-            });
-
         if (cancelled) return;
 
         if (useClientSideFilters) {
@@ -343,14 +421,20 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
             setVideoCatalog(list);
             setVideosFetchFailed(!ok);
           }
-        } else if (response?.ok) {
-          const data = await response.json();
-          const videosList = data.data || data || [];
-          setVideos(mapAndDedupeVideos(videosList));
-          setVideosFetchFailed(false);
         } else {
-          setVideos([]);
-          setVideosFetchFailed(true);
+          const { list, ok } = await fetchFilteredStudentVideos(
+            token,
+            role,
+            selectedClass,
+            selectedSubject
+          );
+          if (!cancelled) {
+            setVideos(list);
+            if (!selectedClass && !selectedSubject) {
+              setVideoCatalog(list);
+            }
+            setVideosFetchFailed(!ok);
+          }
         }
       } catch {
         if (!cancelled) {
@@ -369,6 +453,7 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
   }, [
     activeTab,
     isAsliPrepExclusive,
+    programLoading,
     role,
     useClientSideFilters,
     listEpoch,
@@ -595,17 +680,14 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
         if (useClientSideFilters) {
           setVideos(videoList);
         } else {
-          const v2 = await fetch(buildVideosUrl(role, selectedClass, selectedSubject), {
-            headers: authHeaders(token),
-          });
-          if (v2.ok) {
-            const data = await v2.json();
-            setVideos(mapAndDedupeVideos(data.data || data || []));
-            setVideosFetchFailed(false);
-          } else {
-            setVideos([]);
-            setVideosFetchFailed(true);
-          }
+          const { list, ok: filteredOk } = await fetchFilteredStudentVideos(
+            token,
+            role,
+            selectedClass,
+            selectedSubject
+          );
+          setVideos(list);
+          setVideosFetchFailed(!filteredOk);
         }
       } else {
         setVideoCatalog([]);
@@ -642,7 +724,7 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
     }
   }, [visibleCount, filteredVideos.length]);
 
-  const clearAllFilters = useCallback(() => {
+  const clearAllFilters = useCallback((): void => {
     setSelectedClass(null);
     setSelectedSubject(null);
     setSearchTerm('');
@@ -652,7 +734,15 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
   const hasVideoFilters = Boolean(selectedClass || selectedSubject || searchTerm.trim());
   const hasSessionFilters = Boolean(selectedClass || selectedSubject || sessionSearchTerm.trim());
 
-  const videoEmptyContent = useMemo(() => {
+  type EmptyStateContent = {
+    icon: keyof typeof Ionicons.glyphMap;
+    title: string;
+    subtitle: string;
+    actionLabel?: string;
+    onAction?: () => void;
+  };
+
+  const videoEmptyContent = useMemo((): EmptyStateContent => {
     if (!isAsliPrepExclusive) {
       return {
         icon: 'school-outline' as const,
@@ -670,7 +760,9 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
         subtitle:
           'The video library is temporarily unavailable. Pull down to refresh, or try again in a moment.',
         actionLabel: 'Try again',
-        onAction: () => void onRefresh(),
+        onAction: (): void => {
+          void onRefresh();
+        },
       };
     }
     if (searchTerm.trim() && classSubjectFilteredVideos.length > 0) {

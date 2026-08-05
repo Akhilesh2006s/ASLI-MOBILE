@@ -62,7 +62,7 @@ export async function fetchBookGeneratorRecords(boardFilter?: string) {
   if (boardFilter && boardFilter !== '__all__') params.board = boardFilter;
   const res = await api.get<{
     success: boolean;
-    data?: { grouped?: GroupedTool[]; total?: number };
+    data?: { grouped?: GroupedTool[]; total?: number; loadedCount?: number; truncated?: boolean };
     message?: string;
   }>('/api/book-generator/records', { params });
   if (!res.data?.success) throw new Error(res.data?.message || 'Failed to load records');

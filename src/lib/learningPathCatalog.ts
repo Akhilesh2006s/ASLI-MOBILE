@@ -12,7 +12,7 @@ import {
   isSoftDeletedSubjectName,
   subjectCatalogGroupKey,
 } from './subject-names';
-import { prepareLibraryContents } from './dedupe-library-content';
+import { prepareLibraryContents, dedupeLibraryContents } from './dedupe-library-content';
 
 export type LearningPathRole = 'admin' | 'teacher' | 'student';
 
@@ -157,7 +157,9 @@ async function loadTeacherLearningPathCatalog(
 
   const rows: SubjectWithPathContent[] = [];
   for (const [key, meta] of Array.from(groupMeta.entries())) {
-    const asliPrepContent = contentByKey.get(key) || [];
+    const asliPrepContent = dedupeLibraryContents(contentByKey.get(key) || [], {
+      collapseAcrossSubjects: true,
+    });
     if (asliPrepContent.length === 0) continue;
     const subjectId = meta.subjectIds[0];
     rows.push({
@@ -210,7 +212,9 @@ export async function loadLearningPathCatalog(
   for (const subject of subjects) {
     const subjectId = String(subject._id || subject.id || '');
     if (!subjectId) continue;
-    const asliPrepContent = sortContentNewestFirst(bySubjectId.get(subjectId) || []);
+    const asliPrepContent = sortContentNewestFirst(
+      dedupeLibraryContents(bySubjectId.get(subjectId) || [], { collapseAcrossSubjects: true }),
+    );
     consumedIds.add(subjectId);
     merged.push({
       _id: subjectId,
@@ -226,7 +230,9 @@ export async function loadLearningPathCatalog(
 
   bySubjectId.forEach((items, subjectId) => {
     if (consumedIds.has(subjectId)) return;
-    const sorted = sortContentNewestFirst(items);
+    const sorted = sortContentNewestFirst(
+      dedupeLibraryContents(items, { collapseAcrossSubjects: true }),
+    );
     const first = sorted[0];
     const populated = first?.subject;
     const nameFromPopulate =

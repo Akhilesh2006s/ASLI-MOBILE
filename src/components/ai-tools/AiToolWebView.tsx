@@ -14,6 +14,7 @@ import { AI_TOOL_OUTPUT_STYLES } from '../../lib/ai-tool-output-styles';
 import { AI_TOOL_QUEST_STYLES, wrapQuestExperience } from '../../lib/ai-tool-quest-experience';
 import { renderMarkdown } from '../../lib/render-teacher-markdown';
 import { simpleContentFingerprint } from '../../lib/ai-tool-rotation-label';
+import { AI_TOOL_SELECTION_GUARD_JS } from '../../lib/ai-tool-selection-guard';
 
 type Props = {
   toolType: string;
@@ -41,14 +42,20 @@ const BOTTOM_PAD = 8;
  */
 function buildHeightScript(): string {
   return `
+${AI_TOOL_SELECTION_GUARD_JS}
 (function() {
+  function syncHint(n){
+    var h = n.querySelector && n.querySelector('.quest-hint');
+    if (h) h.textContent = n.open ? 'Close' : 'Open';
+  }
   function expandAllSections() {
     var nodes = document.querySelectorAll('.quest-node, details');
     for (var i = 0; i < nodes.length; i++) {
       try { nodes[i].open = true; } catch (e) {}
+      syncHint(nodes[i]);
     }
   }
-  function measure() {
+  function measure(forceExpand) {
     var html = document.documentElement;
     var body = document.body;
     html.style.height = 'auto';
@@ -57,11 +64,9 @@ function buildHeightScript(): string {
     body.style.minHeight = '0';
     body.style.overflow = 'hidden';
     body.style.margin = '0';
-    // Ensure every section is open so height includes full worksheet content.
-    expandAllSections();
+    // First paint only — forcing open on every remasure fights user toggles.
+    if (forceExpand) expandAllSections();
 
-    // Measure from the top of the document to the bottom of the last section.
-    // Includes exam-paper hero title cards that sit above .quest-node list.
     var bodyTop = body.getBoundingClientRect().top;
     var bottom = bodyTop;
     var nodes = document.querySelectorAll('.quest-node');
@@ -92,28 +97,29 @@ function buildHeightScript(): string {
     }
     return h;
   }
-  function sendHeight() {
-    var h = measure();
+  function sendHeight(forceExpand) {
+    var h = measure(forceExpand === true);
     if (window.ReactNativeWebView && h > 0) {
       window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'height', h: h }));
     }
   }
-  window.__aiToolSendHeight = sendHeight;
-  sendHeight();
-  [60, 200, 500, 1000, 2000, 3500].forEach(function(ms) { setTimeout(sendHeight, ms); });
+  window.__aiToolSendHeight = function() { sendHeight(false); };
+  // Initial expand + measure so every generator section is visible.
+  sendHeight(true);
+  [60, 200, 500, 1000, 2000, 3500].forEach(function(ms) { setTimeout(function(){ sendHeight(false); }, ms); });
   if (!window.__aiToolHeightBound) {
     window.__aiToolHeightBound = true;
     var roTimer = null;
     if (typeof ResizeObserver !== 'undefined') {
       var ro = new ResizeObserver(function() {
         if (roTimer) clearTimeout(roTimer);
-        roTimer = setTimeout(sendHeight, 80);
+        roTimer = setTimeout(function(){ sendHeight(false); }, 80);
       });
       ro.observe(document.body);
       var field = document.querySelector('.quest-field');
       if (field) ro.observe(field);
     }
-    document.addEventListener('toggle', function() { setTimeout(sendHeight, 30); }, true);
+    document.addEventListener('toggle', function() { setTimeout(function(){ sendHeight(false); }, 30); }, true);
   }
 })();
 true;
@@ -126,8 +132,13 @@ true;
  */
 function buildFillScrollScript(): string {
   return `
+${AI_TOOL_SELECTION_GUARD_JS}
 (function() {
-  function unlockScroll() {
+  function syncHint(n){
+    var h = n.querySelector && n.querySelector('.quest-hint');
+    if (h) h.textContent = n.open ? 'Close' : 'Open';
+  }
+  function unlockScroll(forceOpen) {
     var html = document.documentElement;
     var body = document.body;
     html.style.height = '100%';
@@ -143,16 +154,18 @@ function buildFillScrollScript(): string {
     body.style.overflowX = 'hidden';
     body.style.margin = '0';
     body.style.webkitOverflowScrolling = 'touch';
-    var nodes = document.querySelectorAll('.quest-node, details');
-    for (var i = 0; i < nodes.length; i++) {
-      try { nodes[i].open = true; } catch (e) {}
+    if (forceOpen) {
+      var nodes = document.querySelectorAll('.quest-node, details');
+      for (var i = 0; i < nodes.length; i++) {
+        try { nodes[i].open = true; } catch (e) {}
+        syncHint(nodes[i]);
+      }
     }
   }
-  window.__aiToolUnlockScroll = unlockScroll;
-  // Neutralize height-lock helpers if any other script installed them.
+  window.__aiToolUnlockScroll = function() { unlockScroll(false); };
   window.__aiToolSendHeight = function() {};
-  unlockScroll();
-  [50, 150, 400, 900, 1800].forEach(function(ms) { setTimeout(unlockScroll, ms); });
+  unlockScroll(true);
+  [50, 150, 400].forEach(function(ms) { setTimeout(function(){ unlockScroll(true); }, ms); });
 })();
 true;
 `;
@@ -165,6 +178,8 @@ function jumpToQuestScript(index: number, fill: boolean): string {
   var n = nodes[${index}];
   if (!n) return true;
   n.open = true;
+  var h = n.querySelector('.quest-hint');
+  if (h) h.textContent = 'Close';
   if (${fill ? 'true' : 'false'}) {
     try { n.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {
       try { n.scrollIntoView(true); } catch (e2) {}
@@ -408,7 +423,6 @@ export default function AiToolWebView({
           overScrollMode="never"
           showsVerticalScrollIndicator={false}
           bounces={false}
-          focusable={false}
           pointerEvents="auto"
           {...(Platform.OS === 'android' ? { androidLayerType: 'hardware' as const } : null)}
           onMessage={onMessage}

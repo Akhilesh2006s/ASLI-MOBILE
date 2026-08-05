@@ -18,6 +18,11 @@ import { ShimmerCard } from '../../../src/components/student/StudentShimmer';
 import GlassPanel from '../../../src/components/ui/GlassPanel';
 import { GLASS_ROW, GLASS_VIOLET } from '../../../src/theme/glass';
 import {
+  prepareLibraryContents,
+  type LibraryContentRow,
+} from '../../../src/lib/dedupe-library-content';
+import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
+import {
   STUDENT,
   STUDENT_ANIMATION,
   STUDENT_RADIUS,
@@ -66,23 +71,29 @@ function parseSubjectsPayload(data: any): any[] {
   return [];
 }
 
+function subjectIdFromContentRow(item: LibraryContentRow): string {
+  const sub = item.subjectId ?? item.subject;
+  if (sub == null) return '';
+  if (typeof sub === 'string') return sub.trim();
+  return String(sub._id || '').trim();
+}
+
 /** When /api/student/subjects is down, rebuild a subject list from library content. */
-function subjectsFromPrepContent(raw: any): any[] {
-  const rows = Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : [];
+function subjectsFromPrepContent(rows: LibraryContentRow[]): any[] {
   const byId = new Map<string, { _id: string; id: string; name: string }>();
 
   for (const item of rows) {
-    const subj = item?.subject;
+    const subj = item?.subjectId ?? item?.subject;
     if (subj == null) continue;
     const id =
       typeof subj === 'object'
-        ? String(subj._id || subj.id || '')
+        ? String(subj._id || '')
         : String(subj).trim();
     if (!id || byId.has(id)) continue;
     const name =
       typeof subj === 'object'
-        ? String(subj.name || item.subjectName || 'Subject')
-        : String(item.subjectName || 'Subject');
+        ? String(subj.name || (item as { subjectName?: string }).subjectName || 'Subject')
+        : String((item as { subjectName?: string }).subjectName || 'Subject');
     byId.set(id, { _id: id, id, name });
   }
 
@@ -91,11 +102,23 @@ function subjectsFromPrepContent(raw: any): any[] {
   );
 }
 
+function countItemsBySubject(rows: LibraryContentRow[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const item of rows) {
+    const id = subjectIdFromContentRow(item);
+    if (!id) continue;
+    counts[id] = (counts[id] || 0) + 1;
+  }
+  return counts;
+}
+
 export default function LearningPathsView({ dark }: { dark?: boolean }) {
   const { width } = useWindowDimensions();
   const compact = width < 380;
+  const { isAsliPrepExclusive, loading: programLoading } = useSchoolProgram();
   const [activeTab, setActiveTab] = useState<'subjects' | 'quizzes'>('subjects');
   const [subjects, setSubjects] = useState<any[]>([]);
+  const [itemCounts, setItemCounts] = useState<Record<string, number>>({});
   const [quizzes, setQuizzes] = useState<any[]>([]);
   const [isLoadingSubjects, setIsLoadingSubjects] = useState(true);
   const [isLoadingQuizzes, setIsLoadingQuizzes] = useState(true);
@@ -103,9 +126,10 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
   const [quizzesError, setQuizzesError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchSubjects();
-    fetchQuizzes();
-  }, []);
+    if (programLoading) return;
+    void fetchSubjects();
+    void fetchQuizzes();
+  }, [programLoading, isAsliPrepExclusive]);
 
   const fetchSubjects = async () => {
     setIsLoadingSubjects(true);
@@ -113,6 +137,7 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
 
     let list: any[] = [];
     let primaryFailed = false;
+    let prepared: LibraryContentRow[] = [];
 
     try {
       const { data } = await api.get('/api/student/subjects');
@@ -121,13 +146,16 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
       primaryFailed = true;
     }
 
-    if (list.length === 0) {
-      try {
-        const { data } = await api.get('/api/student/asli-prep-content');
-        list = subjectsFromPrepContent(data);
-      } catch {
-        /* keep list empty */
+    try {
+      const { data } = await api.get('/api/student/asli-prep-content');
+      const raw = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+      prepared = prepareLibraryContents(raw, isAsliPrepExclusive);
+      setItemCounts(countItemsBySubject(prepared));
+      if (list.length === 0) {
+        list = subjectsFromPrepContent(prepared);
       }
+    } catch {
+      setItemCounts({});
     }
 
     setSubjects(list);
@@ -189,7 +217,7 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
               </Text>
               <Text style={styles.bannerSub}>
                 {activeTab === 'subjects'
-                  ? 'Open a subject for chapters, topics, and practice materials.'
+                  ? 'Open a subject for textbooks, materials, and videos.'
                   : 'Short checks assigned by your teacher to lock in what you studied.'}
               </Text>
             </View>
@@ -242,6 +270,12 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
               {subjects.map((subject: any, index: number) => {
                 const iconName = getSubjectIcon(subject.name);
                 const color = SUBJECT_COLORS[index % SUBJECT_COLORS.length];
+                const subjectId = String(subject._id || subject.id || '');
+                const count = itemCounts[subjectId];
+                const hint =
+                  typeof count === 'number'
+                    ? `${count} ${count === 1 ? 'item' : 'items'}`
+                    : 'View content';
                 return (
                   <GlassCard
                     key={subject._id || subject.id}
@@ -253,7 +287,7 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
                     onPress={() =>
                       router.push({
                         pathname: '/subject/[id]',
-                        params: { id: String(subject._id || subject.id), returnTo: 'learning' },
+                        params: { id: subjectId, returnTo: 'learning' },
                       })
                     }
                   >
@@ -265,7 +299,7 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
                         <Text style={styles.subjectName} numberOfLines={2}>
                           {subject.name}
                         </Text>
-                        <Text style={styles.subjectHint}>Open chapters & materials</Text>
+                        <Text style={styles.subjectHint}>{hint}</Text>
                       </View>
                       <View style={styles.subjectChevron}>
                         <Ionicons name="chevron-forward" size={16} color={STUDENT.textMuted} />

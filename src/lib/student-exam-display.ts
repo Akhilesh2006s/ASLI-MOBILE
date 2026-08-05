@@ -130,5 +130,9 @@ export function buildExamAttemptCounts(results: unknown[]): Record<string, numbe
 }
 
 export function getExamClassLabels(exam: StudentExamLike, studentClassNumber?: string | number | null) {
-  return getExamClassLabelsForStudent(exam, studentClassNumber);
+  const classLabel =
+    studentClassNumber == null || studentClassNumber === ''
+      ? undefined
+      : String(studentClassNumber);
+  return getExamClassLabelsForStudent(exam, classLabel);
 }

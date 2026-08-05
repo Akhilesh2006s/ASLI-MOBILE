@@ -44,8 +44,8 @@ export function getExamDayRole(day: Date, start: Date, end: Date): ExamDayRole {
 
 export function isDateWithinExamWindow(day: Date, exam: any): boolean {
   const start = parseCalendarDate(exam?.startDate);
-  const end = parseCalendarDate(exam?.endDate) || start;
   if (!start) return false;
+  const end = parseCalendarDate(exam?.endDate) ?? start;
   const key = formatCalendarDateKey(day);
   const startKey = formatCalendarDateKey(start);
   const endKey = formatCalendarDateKey(end);
