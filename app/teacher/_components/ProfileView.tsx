@@ -104,7 +104,9 @@ function MenuRow({
               >
                 <Ionicons name={item.icon} size={18} color={TEACHER.primaryLight} />
               </LinearGradient>
-              <Text style={styles.menuLabel}>{item.label}</Text>
+              <View style={styles.menuLabelWrap}>
+                <Text style={styles.menuLabel}>{item.label}</Text>
+              </View>
               <Ionicons name="chevron-forward" size={18} color={TEACHER.textMuted} />
             </View>
           </GlassPanel>
@@ -333,7 +335,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  menuLabel: { flex: 1, fontSize: 15, fontWeight: '700', color: TEACHER.text },
+  menuLabelWrap: { flex: 1, minWidth: 0 },
+  menuLabel: { fontSize: 15, fontWeight: '700', color: TEACHER.text },
   logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -1379,7 +1379,6 @@ const panelStyles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 999,
     textTransform: 'uppercase',
-    overflow: 'hidden',
   },
   optionText: { fontSize: 14, color: '#111827' },
   modalBadgeRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },

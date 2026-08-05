@@ -433,13 +433,15 @@ export default function TeachersView() {
             {label}
           </Text>
         </View>
-        <Text
-          style={[styles.kvValue, isTablet && styles.kvValueTablet, valueMuted && styles.kvValueMuted]}
-          numberOfLines={isTablet ? 2 : 1}
-          ellipsizeMode="tail"
-        >
-          {value}
-        </Text>
+        <View style={[styles.kvValueWrap, isTablet && styles.kvValueWrapTablet]}>
+          <Text
+            style={[styles.kvValue, isTablet && styles.kvValueTablet, valueMuted && styles.kvValueMuted]}
+            numberOfLines={isTablet ? 2 : 1}
+            ellipsizeMode="tail"
+          >
+            {value}
+          </Text>
+        </View>
       </View>
     );
 
@@ -1243,15 +1245,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#64748b',
   },
-  kvValue: {
+  kvValueWrap: {
     flex: 1,
+    minWidth: 0,
+  },
+  kvValueWrapTablet: {
+    flex: 0,
+    width: '100%',
+  },
+  kvValue: {
     fontSize: 13,
     fontWeight: '600',
     color: '#0f172a',
     textAlign: 'right',
   },
   kvValueTablet: {
-    flex: 0,
     width: '100%',
     textAlign: 'left',
     paddingLeft: 30,
@@ -1408,7 +1416,7 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   formTextArea: {
-    height: 72,
+    minHeight: 72,
     textAlignVertical: 'top',
   },
   modalFooter: {

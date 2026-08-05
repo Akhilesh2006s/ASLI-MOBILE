@@ -169,9 +169,11 @@ function SubtopicSection({
     <GlassPanel style={styles.nestedBlock} radius={10} tone="medium">
       <Pressable style={styles.nestedTrigger} onPress={() => setOpen((v) => !v)}>
         <Text style={styles.nestedLabel}>Subtopic</Text>
-        <Text style={styles.nestedTitle} numberOfLines={2}>
-          {node.subtopic}
-        </Text>
+        <View style={styles.nestedTitleWrap}>
+          <Text style={styles.nestedTitle} numberOfLines={2}>
+            {node.subtopic}
+          </Text>
+        </View>
         <View style={styles.countPill}>
           <Text style={styles.countPillText}>{node.records.length}</Text>
         </View>
@@ -235,7 +237,9 @@ function TopicSection({
     <GlassPanel style={styles.nestedBlock} radius={10} tone="medium">
       <Pressable style={styles.nestedTrigger} onPress={() => setOpen((v) => !v)}>
         <Text style={styles.nestedLabel}>Topic</Text>
-        <Text style={styles.nestedTitle}>{node.topic}</Text>
+        <View style={styles.nestedTitleWrap}>
+          <Text style={styles.nestedTitle}>{node.topic}</Text>
+        </View>
         <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#5B6779" />
       </Pressable>
       {open ? (
@@ -284,7 +288,9 @@ function SubjectSection({
     <GlassPanel style={styles.nestedBlock} radius={10} tone="medium">
       <Pressable style={styles.nestedTrigger} onPress={() => setOpen((v) => !v)}>
         <Text style={styles.nestedLabel}>Subject</Text>
-        <Text style={styles.nestedTitle}>{node.subject}</Text>
+        <View style={styles.nestedTitleWrap}>
+          <Text style={styles.nestedTitle}>{node.subject}</Text>
+        </View>
         <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#5B6779" />
       </Pressable>
       {open ? (
@@ -332,7 +338,9 @@ function ClassSection({
     <GlassPanel style={styles.nestedBlock} radius={10} tone="medium">
       <Pressable style={styles.nestedTrigger} onPress={() => setOpen((v) => !v)}>
         <Text style={styles.nestedLabel}>Class</Text>
-        <Text style={styles.nestedTitle}>{node.classLabel}</Text>
+        <View style={styles.nestedTitleWrap}>
+          <Text style={styles.nestedTitle}>{node.classLabel}</Text>
+        </View>
         <View style={styles.boardChip}>
           <Text style={styles.boardChipText}>{node.board || '-'}</Text>
         </View>
@@ -706,7 +714,9 @@ export default function AiPdfView() {
         <Text style={styles.fieldLabel}>Upload PDF file *</Text>
         <Pressable style={styles.fileBtn} onPress={pickPdf} disabled={isUploading}>
           <Ionicons name="document-outline" size={20} color="#2563eb" />
-          <Text style={styles.fileBtnText}>{pdfFile ? pdfFile.name : 'Choose PDF file'}</Text>
+          <View style={styles.fileBtnTextWrap}>
+            <Text style={styles.fileBtnText}>{pdfFile ? pdfFile.name : 'Choose PDF file'}</Text>
+          </View>
         </Pressable>
         {pdfFile ? (
           <Text style={styles.fileHint}>
@@ -741,7 +751,9 @@ export default function AiPdfView() {
 
         <Text style={styles.fieldLabel}>Board *</Text>
         <Pressable style={styles.selectField} onPress={() => setBoardPickerOpen(true)}>
-          <Text style={styles.selectText}>{board || 'Select board'}</Text>
+          <View style={styles.selectTextWrap}>
+            <Text style={styles.selectText}>{board || 'Select board'}</Text>
+          </View>
           <Ionicons name="chevron-down" size={16} color="#64748b" />
         </Pressable>
 
@@ -750,9 +762,11 @@ export default function AiPdfView() {
           style={[styles.selectField, (!board || loadingClasses) && styles.selectDisabled]}
           onPress={() => board && !loadingClasses && setClassPickerOpen(true)}
         >
-          <Text style={styles.selectText}>
-            {!board ? 'Select board first' : loadingClasses ? 'Loading classes…' : classLabel || 'Select class'}
-          </Text>
+          <View style={styles.selectTextWrap}>
+            <Text style={styles.selectText}>
+              {!board ? 'Select board first' : loadingClasses ? 'Loading classes…' : classLabel || 'Select class'}
+            </Text>
+          </View>
           <Ionicons name="chevron-down" size={16} color="#64748b" />
         </Pressable>
 
@@ -761,9 +775,11 @@ export default function AiPdfView() {
           style={[styles.selectField, (!classLabel || loadingSubjects) && styles.selectDisabled]}
           onPress={() => classLabel && !loadingSubjects && setSubjectPickerOpen(true)}
         >
-          <Text style={styles.selectText}>
-            {!classLabel ? 'Select class first' : loadingSubjects ? 'Loading subjects…' : subject || 'Select subject'}
-          </Text>
+          <View style={styles.selectTextWrap}>
+            <Text style={styles.selectText}>
+              {!classLabel ? 'Select class first' : loadingSubjects ? 'Loading subjects…' : subject || 'Select subject'}
+            </Text>
+          </View>
           <Ionicons name="chevron-down" size={16} color="#64748b" />
         </Pressable>
 
@@ -772,9 +788,11 @@ export default function AiPdfView() {
           style={[styles.selectField, (!subject || loadingTopics) && styles.selectDisabled]}
           onPress={() => subject && !loadingTopics && setTopicPickerOpen(true)}
         >
-          <Text style={styles.selectText}>
-            {!subject ? 'Select class & subject first' : loadingTopics ? 'Loading topics…' : topic || 'Select topic'}
-          </Text>
+          <View style={styles.selectTextWrap}>
+            <Text style={styles.selectText}>
+              {!subject ? 'Select class & subject first' : loadingTopics ? 'Loading topics…' : topic || 'Select topic'}
+            </Text>
+          </View>
           <Ionicons name="chevron-down" size={16} color="#64748b" />
         </Pressable>
 
@@ -783,15 +801,19 @@ export default function AiPdfView() {
           style={[styles.selectField, (!topic || loadingSubtopics) && styles.selectDisabled]}
           onPress={() => topic && !loadingSubtopics && setSubTopicPickerOpen(true)}
         >
-          <Text style={styles.selectText}>
-            {!topic ? 'Select topic first' : loadingSubtopics ? 'Loading sub topics…' : subTopic || 'Select sub topic'}
-          </Text>
+          <View style={styles.selectTextWrap}>
+            <Text style={styles.selectText}>
+              {!topic ? 'Select topic first' : loadingSubtopics ? 'Loading sub topics…' : subTopic || 'Select sub topic'}
+            </Text>
+          </View>
           <Ionicons name="chevron-down" size={16} color="#64748b" />
         </Pressable>
 
         <Text style={styles.fieldLabel}>Tool *</Text>
         <Pressable style={styles.selectField} onPress={() => setToolPickerOpen(true)}>
-          <Text style={styles.selectText}>{toolType ? getToolLabel(toolType) : 'Select tool'}</Text>
+          <View style={styles.selectTextWrap}>
+            <Text style={styles.selectText}>{toolType ? getToolLabel(toolType) : 'Select tool'}</Text>
+          </View>
           <Ionicons name="chevron-down" size={16} color="#64748b" />
         </Pressable>
         {isStoryLanguageTool(toolType) ? (
@@ -818,7 +840,9 @@ export default function AiPdfView() {
         {uploadStep !== 'idle' && uploadStep !== 'done' && uploadStep !== 'error' ? (
           <View style={styles.stepBox}>
             <ActivityIndicator color="#2563eb" size="small" />
-            <Text style={styles.stepText}>{UPLOAD_STEP_MESSAGES[uploadStep]}</Text>
+            <View style={styles.stepTextWrap}>
+              <Text style={styles.stepText}>{UPLOAD_STEP_MESSAGES[uploadStep]}</Text>
+            </View>
           </View>
         ) : null}
 
@@ -872,9 +896,11 @@ export default function AiPdfView() {
 
         <Text style={styles.fieldLabel}>Filter by board</Text>
         <Pressable style={styles.selectField} onPress={() => setRecordsBoardPickerOpen(true)}>
-          <Text style={styles.selectText}>
-            {recordsBoardFilter === '__all__' ? 'All boards' : recordsBoardFilter}
-          </Text>
+          <View style={styles.selectTextWrap}>
+            <Text style={styles.selectText}>
+              {recordsBoardFilter === '__all__' ? 'All boards' : recordsBoardFilter}
+            </Text>
+          </View>
           <Ionicons name="chevron-down" size={16} color="#64748b" />
         </Pressable>
 
@@ -1059,7 +1085,8 @@ const styles = StyleSheet.create({
     padding: 12,
     backgroundColor: '#eff6ff',
   },
-  fileBtnText: { flex: 1, fontSize: 14, color: '#1d4ed8', fontWeight: '600' },
+  fileBtnTextWrap: { flex: 1, minWidth: 0 },
+  fileBtnText: { fontSize: 14, color: '#1d4ed8', fontWeight: '600' },
   fileHint: { fontSize: 12, color: '#64748b', marginTop: 6, lineHeight: 18 },
   analysisLoading: { fontSize: 12, color: '#1d4ed8', marginTop: 8 },
   analysisBox: {
@@ -1085,7 +1112,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
   },
   selectDisabled: { opacity: 0.55 },
-  selectText: { fontSize: 14, color: '#0f172a', flex: 1, paddingRight: 8 },
+  selectTextWrap: { flex: 1, minWidth: 0 },
+  selectText: { fontSize: 14, color: '#0f172a', paddingRight: 8 },
   infoBanner: {
     marginTop: 8,
     fontSize: 12,
@@ -1119,7 +1147,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 10,
   },
-  stepText: { fontSize: 13, color: '#1d4ed8', flex: 1 },
+  stepTextWrap: { flex: 1, minWidth: 0 },
+  stepText: { fontSize: 13, color: '#1d4ed8' },
   successBox: {
     marginTop: 12,
     backgroundColor: '#ecfdf5',
@@ -1189,7 +1218,8 @@ const styles = StyleSheet.create({
     color: '#5B6779',
     textTransform: 'uppercase',
   },
-  nestedTitle: { flex: 1, fontSize: 13, fontWeight: '600', color: '#0f172a' },
+  nestedTitleWrap: { flex: 1, minWidth: 0 },
+  nestedTitle: { fontSize: 13, fontWeight: '600', color: '#0f172a' },
   boardChip: {
     backgroundColor: '#f1f5f9',
     borderRadius: 6,

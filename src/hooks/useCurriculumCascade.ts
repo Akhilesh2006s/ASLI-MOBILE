@@ -7,6 +7,11 @@ type CurriculumRow = { id: string; name: string; label: string };
 
 const responseCache = new Map<string, unknown>();
 
+/** Drop in-memory curriculum API responses (called on app background). */
+export function clearCurriculumResponseCache() {
+  responseCache.clear();
+}
+
 function cacheGet<T>(key: string): T | undefined {
   return responseCache.get(key) as T | undefined;
 }

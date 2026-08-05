@@ -434,7 +434,9 @@ export default function SuperAdminCalendarView({ onNavigateToExams }: Props) {
                     return (
                       <Pressable key={event.id} style={styles.listEvent} onPress={() => handleViewEvent(event)}>
                         <View style={styles.listEventTop}>
-                          <Text style={styles.listEventTitle} numberOfLines={2}>{event.title}</Text>
+                          <View style={styles.listEventTitleWrap}>
+                            <Text style={styles.listEventTitle} numberOfLines={2}>{event.title}</Text>
+                          </View>
                           <View style={[styles.typeBadge, { backgroundColor: style.dot }]}>
                             <Text style={styles.typeBadgeText}>{style.label}</Text>
                           </View>
@@ -461,7 +463,9 @@ export default function SuperAdminCalendarView({ onNavigateToExams }: Props) {
                     {/* Padding rides on the Pressable so the tap target stays the full card. */}
                     <Pressable style={styles.flatEventInner} onPress={() => handleViewEvent(event)}>
                       <View style={styles.listEventTop}>
-                        <Text style={styles.listEventTitle} numberOfLines={2}>{event.title}</Text>
+                        <View style={styles.listEventTitleWrap}>
+                          <Text style={styles.listEventTitle} numberOfLines={2}>{event.title}</Text>
+                        </View>
                         <View style={[styles.typeBadge, { backgroundColor: style.dot }]}>
                           <Text style={styles.typeBadgeText}>{style.label}</Text>
                         </View>
@@ -754,7 +758,8 @@ const styles = StyleSheet.create({
   dayGroupTitle: { fontSize: 12, fontWeight: '700', color: '#0369a1', marginBottom: 8 },
   listEvent: { backgroundColor: '#f0f9ff', borderRadius: 8, padding: 10, marginBottom: 6 },
   listEventTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 8, alignItems: 'flex-start' },
-  listEventTitle: { flex: 1, fontSize: 14, fontWeight: '600', color: '#0c4a6e' },
+  listEventTitleWrap: { flex: 1, minWidth: 0 },
+  listEventTitle: { fontSize: 14, fontWeight: '600', color: '#0c4a6e' },
   typeBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   typeBadgeText: { fontSize: 10, fontWeight: '700', color: '#fff' },
   flatEvent: { borderRadius: 10, borderWidth: 1, borderColor: '#e0f2fe', marginBottom: 8 },

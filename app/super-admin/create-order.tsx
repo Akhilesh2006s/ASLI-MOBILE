@@ -376,7 +376,9 @@ export default function CreateOrderScreen() {
                 >
                   <Ionicons name="arrow-back" size={22} color="#111827" />
                 </TouchableOpacity>
-                <Text style={s.topTitle}>{editingOrderId ? 'Edit Order' : 'Create Order'}</Text>
+                <View style={s.topTitleWrap}>
+                  <Text style={s.topTitle}>{editingOrderId ? 'Edit Order' : 'Create Order'}</Text>
+                </View>
                 <TouchableOpacity
                   onPress={() => router.back()}
                   accessibilityRole="button"
@@ -529,9 +531,11 @@ export default function CreateOrderScreen() {
               {selectedProducts.map((p) => (
                 <GlassPanel key={p.id} style={s.finProductRow} radius={8} tone="strong">
                   <View style={s.finProductRowInner}>
-                    <Text style={s.finProductName} numberOfLines={1}>
-                      {p.name} × {p.qty}
-                    </Text>
+                    <View style={s.finProductNameWrap}>
+                      <Text style={s.finProductName} numberOfLines={1}>
+                        {p.name} × {p.qty}
+                      </Text>
+                    </View>
                     <TextInput
                       style={s.compInput}
                       keyboardType="numeric"
@@ -601,9 +605,11 @@ export default function CreateOrderScreen() {
                 <GlassPanel style={s.docRow} radius={10} tone="medium">
                   <View style={s.docRowInner}>
                     <Ionicons name="document-text-outline" size={24} color="#ea580c" />
-                    <Text style={s.docName} numberOfLines={2}>
-                      {financial.documentName}
-                    </Text>
+                    <View style={s.docNameWrap}>
+                      <Text style={s.docName} numberOfLines={2}>
+                        {financial.documentName}
+                      </Text>
+                    </View>
                     <TouchableOpacity
                       onPress={() =>
                         setFinancial((f) => ({
@@ -796,7 +802,8 @@ const s = StyleSheet.create({
     gap: 12,
   },
   backBtn: { padding: 4 },
-  topTitle: { flex: 1, fontSize: 18, fontWeight: '800', color: '#111827' },
+  topTitleWrap: { flex: 1, minWidth: 0 },
+  topTitle: { fontSize: 18, fontWeight: '800', color: '#111827' },
   stepper: {
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -919,7 +926,8 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  finProductName: { flex: 1, fontSize: 13, fontWeight: '600' },
+  finProductNameWrap: { flex: 1, minWidth: 0 },
+  finProductName: { fontSize: 13, fontWeight: '600' },
   compInput: {
     width: 56,
     height: 40,
@@ -928,6 +936,8 @@ const s = StyleSheet.create({
     borderRadius: 8,
     textAlign: 'center',
     backgroundColor: '#f9fafb',
+    paddingHorizontal: 6,
+    paddingRight: 8,
   },
   selectField: {
     backgroundColor: '#FFFFFF',
@@ -953,7 +963,8 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  docName: { flex: 1, fontSize: 13, color: '#374151' },
+  docNameWrap: { flex: 1, minWidth: 0 },
+  docName: { fontSize: 13, color: '#374151' },
   uploadBtn: {
     alignItems: 'center',
     justifyContent: 'center',

@@ -54,7 +54,9 @@ export default function QuizzesView() {
         <Animated.View key={quiz._id || quiz.id} entering={FadeInDown.duration(350).delay(Math.min(index * 60, 480))}>
           <GlassPanel style={styles.card} radius={TEACHER_RADIUS.lg} tone="medium">
             <View style={styles.cardHeader}>
-              <Text style={styles.title}>{quiz.title || 'Untitled Quiz'}</Text>
+              <View style={styles.quizTitleWrap}>
+                <Text style={styles.quizTitle}>{quiz.title || 'Untitled Quiz'}</Text>
+              </View>
               <View style={[styles.badge, quiz.isActive !== false && styles.badgeActive]}>
                 <Text style={styles.badgeText}>{quiz.isActive !== false ? 'Active' : 'Inactive'}</Text>
               </View>
@@ -100,7 +102,8 @@ const styles = StyleSheet.create({
     marginBottom: TEACHER_SPACING.sm,
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  title: { flex: 1, fontSize: 16, fontWeight: '800', color: TEACHER.text },
+  quizTitleWrap: { flex: 1, minWidth: 0 },
+  quizTitle: { fontSize: 16, fontWeight: '800', color: TEACHER.text },
   badge: {
     backgroundColor: TEACHER.surfaceElevated,
     paddingHorizontal: 8,

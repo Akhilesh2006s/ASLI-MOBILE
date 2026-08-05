@@ -877,9 +877,11 @@ export default function ExamsView({
                           style={styles.attemptPickerTrigger}
                           onPress={() => setAttemptPickerExamId(examIdStr)}
                         >
-                          <Text style={styles.attemptPickerValue} numberOfLines={1}>
-                            {formatAttemptHistoryLabel(displayResult, totalMarksDisplay)}
-                          </Text>
+                          <View style={styles.attemptPickerValueWrap}>
+                            <Text style={styles.attemptPickerValue} numberOfLines={1}>
+                              {formatAttemptHistoryLabel(displayResult, totalMarksDisplay)}
+                            </Text>
+                          </View>
                           <Ionicons name="chevron-down" size={18} color={STUDENT.textMuted} />
                         </TouchableOpacity>
                       </View>
@@ -915,27 +917,35 @@ export default function ExamsView({
 
                       <View style={[styles.attemptedStatsList, isTablet && styles.attemptedStatsListGrid]}>
                         <View style={[styles.attemptedStatsRow, isTablet && styles.attemptedStatsRowTablet]}>
-                          <Text style={styles.attemptedStatsLabel} numberOfLines={1}>
-                            Correct
-                          </Text>
+                          <View style={styles.attemptedStatsLabelWrap}>
+                            <Text style={styles.attemptedStatsLabel} numberOfLines={1}>
+                              Correct
+                            </Text>
+                          </View>
                           <Text style={styles.attemptedStatsValue}>{displayResult.correctAnswers || 0}</Text>
                         </View>
                         <View style={[styles.attemptedStatsRow, isTablet && styles.attemptedStatsRowTablet]}>
-                          <Text style={styles.attemptedStatsLabel} numberOfLines={1}>
-                            Wrong
-                          </Text>
+                          <View style={styles.attemptedStatsLabelWrap}>
+                            <Text style={styles.attemptedStatsLabel} numberOfLines={1}>
+                              Wrong
+                            </Text>
+                          </View>
                           <Text style={styles.attemptedStatsValue}>{displayResult.wrongAnswers || 0}</Text>
                         </View>
                         <View style={[styles.attemptedStatsRow, isTablet && styles.attemptedStatsRowTablet]}>
-                          <Text style={styles.attemptedStatsLabel} numberOfLines={1}>
-                            Unattempted
-                          </Text>
+                          <View style={styles.attemptedStatsLabelWrap}>
+                            <Text style={styles.attemptedStatsLabel} numberOfLines={1}>
+                              Unattempted
+                            </Text>
+                          </View>
                           <Text style={styles.attemptedStatsValue}>{displayResult.unattempted || 0}</Text>
                         </View>
                         <View style={[styles.attemptedStatsRow, isTablet && styles.attemptedStatsRowTablet]}>
-                          <Text style={styles.attemptedStatsLabel} numberOfLines={1}>
-                            Time
-                          </Text>
+                          <View style={styles.attemptedStatsLabelWrap}>
+                            <Text style={styles.attemptedStatsLabel} numberOfLines={1}>
+                              Time
+                            </Text>
+                          </View>
                           <Text style={styles.attemptedStatsValue} numberOfLines={1}>
                             {displayResult.timeTaken
                               ? `${Math.floor(displayResult.timeTaken / 60)}m ${displayResult.timeTaken % 60}s`
@@ -1627,9 +1637,12 @@ const styles = StyleSheet.create({
     minHeight: 38,
     alignItems: 'center',
   },
-  attemptedStatsLabel: {
+  attemptedStatsLabelWrap: {
     flex: 1,
     flexShrink: 1,
+    minWidth: 0,
+  },
+  attemptedStatsLabel: {
     fontSize: 12,
     color: STUDENT.textSecondary,
     fontWeight: '500',
@@ -1668,7 +1681,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 12,
     marginTop: 2,
-    overflow: 'hidden',
   },
   attemptedDetailsButtonTablet: {
     flex: 1,
@@ -1711,8 +1723,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  attemptPickerValue: {
+  attemptPickerValueWrap: {
     flex: 1,
+    minWidth: 0,
+  },
+  attemptPickerValue: {
     fontSize: 12,
     fontWeight: '600',
     color: STUDENT.text,

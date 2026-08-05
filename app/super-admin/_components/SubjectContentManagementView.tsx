@@ -1223,7 +1223,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 8,
-    overflow: 'hidden',
   },
   contentBody: { flex: 1, padding: 10 },
   contentTitle: { fontWeight: '700', fontSize: 13, color: '#0f172a' },

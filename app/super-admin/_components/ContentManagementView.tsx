@@ -456,9 +456,11 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
+    minWidth: 0,
     fontSize: 16,
     color: '#111827',
     paddingVertical: 12,
+    paddingRight: 8,
   },
   clearButton: {
     padding: 4,

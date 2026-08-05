@@ -37,7 +37,7 @@ export default function StudentDashboard() {
   const { signOut } = useAuth();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
   const { active: activeTab, visited: visitedTabs, select: selectTab, setActive: setActiveTab } =
-    useVisitedTabs<TabId>('home');
+    useVisitedTabs<TabId>('home', { maxVisited: 3 });
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<any>(null);

@@ -846,10 +846,12 @@ export default function TeacherToolPage() {
           <View style={[styles.fieldIconWrap, { backgroundColor: `${accent}22` }]}>
             <Ionicons name={icon} size={16} color={accent} />
           </View>
-          <Text style={[styles.fieldLabel, isTablet && aiToolTabletPageStyles.fieldLabel]}>
-            {label.replace(' *', '')}
-            {required ? <Text style={styles.required}> *</Text> : null}
-          </Text>
+          <View style={styles.fieldLabelWrap}>
+            <Text style={[styles.fieldLabel, isTablet && aiToolTabletPageStyles.fieldLabel]}>
+              {label.replace(' *', '')}
+              {required ? <Text style={styles.required}> *</Text> : null}
+            </Text>
+          </View>
           {loading ? <ActivityIndicator size="small" color={accent} style={styles.fieldSpinner} /> : null}
         </View>
         <TouchableOpacity
@@ -858,12 +860,14 @@ export default function TeacherToolPage() {
           activeOpacity={0.75}
           disabled={disabled}
         >
-          <Text
-            style={[styles.dropdownValue, isPlaceholder && styles.dropdownPlaceholder, isTablet && aiToolTabletPageStyles.dropdownValue]}
-            numberOfLines={2}
-          >
-            {display}
-          </Text>
+          <View style={styles.dropdownValueWrap}>
+            <Text
+              style={[styles.dropdownValue, isPlaceholder && styles.dropdownPlaceholder, isTablet && aiToolTabletPageStyles.dropdownValue]}
+              numberOfLines={2}
+            >
+              {display}
+            </Text>
+          </View>
           <Ionicons name="chevron-down" size={18} color={disabled ? TEACHER.navInactive : TEACHER.textMuted} />
         </TouchableOpacity>
       </View>
@@ -908,10 +912,12 @@ export default function TeacherToolPage() {
             <View style={[styles.fieldIconWrap, { backgroundColor: `${accent}22` }]}>
               <Ionicons name={FIELD_ICONS[field.name] || 'create-outline'} size={16} color={accent} />
             </View>
-            <Text style={[styles.fieldLabel, isTablet && aiToolTabletPageStyles.fieldLabel]}>
-              {formatAiToolText(field.label.replace(' *', ''))}
-              {field.required ? <Text style={styles.required}> *</Text> : null}
-            </Text>
+            <View style={styles.fieldLabelWrap}>
+              <Text style={[styles.fieldLabel, isTablet && aiToolTabletPageStyles.fieldLabel]}>
+                {formatAiToolText(field.label.replace(' *', ''))}
+                {field.required ? <Text style={styles.required}> *</Text> : null}
+              </Text>
+            </View>
           </View>
           <TextInput
             style={[styles.textArea, styles.textInput, isTablet && aiToolTabletPageStyles.textInput]}
@@ -933,10 +939,12 @@ export default function TeacherToolPage() {
           <View style={[styles.fieldIconWrap, { backgroundColor: `${accent}22` }]}>
             <Ionicons name={FIELD_ICONS[field.name] || 'options-outline'} size={16} color={accent} />
           </View>
-          <Text style={[styles.fieldLabel, isTablet && aiToolTabletPageStyles.fieldLabel]}>
-            {formatAiToolText(field.label.replace(' *', ''))}
-            {field.required ? <Text style={styles.required}> *</Text> : null}
-          </Text>
+          <View style={styles.fieldLabelWrap}>
+            <Text style={[styles.fieldLabel, isTablet && aiToolTabletPageStyles.fieldLabel]}>
+              {formatAiToolText(field.label.replace(' *', ''))}
+              {field.required ? <Text style={styles.required}> *</Text> : null}
+            </Text>
+          </View>
         </View>
         <TextInput
           style={[styles.textInput, isTablet && aiToolTabletPageStyles.textInput]}
@@ -992,17 +1000,21 @@ export default function TeacherToolPage() {
             {isStoryLanguageTool(toolType) ? (
               <View style={styles.infoBanner}>
                 <Ionicons name="information-circle" size={18} color={TEACHER.primaryLight} />
-                <Text style={[styles.infoBannerText, isTablet && aiToolTabletPageStyles.infoBannerText]}>
-                  English, Hindi, and Telugu subjects only for this tool.
-                </Text>
+                <View style={styles.infoBannerTextWrap}>
+                  <Text style={[styles.infoBannerText, isTablet && aiToolTabletPageStyles.infoBannerText]}>
+                    English, Hindi, and Telugu subjects only for this tool.
+                  </Text>
+                </View>
               </View>
             ) : null}
             {isLanguageExcludedTool(toolType) ? (
               <View style={[styles.infoBanner, styles.infoBannerWarning]}>
                 <Ionicons name="alert-circle" size={18} color="#b45309" />
-                <Text style={[styles.infoBannerText, styles.infoBannerWarningText, isTablet && aiToolTabletPageStyles.infoBannerText]}>
-                  Not available for English, Hindi, or Telugu subjects.
-                </Text>
+                <View style={styles.infoBannerTextWrap}>
+                  <Text style={[styles.infoBannerText, styles.infoBannerWarningText, isTablet && aiToolTabletPageStyles.infoBannerText]}>
+                    Not available for English, Hindi, or Telugu subjects.
+                  </Text>
+                </View>
               </View>
             ) : null}
           </FormSection>
@@ -1180,9 +1192,11 @@ export default function TeacherToolPage() {
           <Pressable onPress={goBack} style={styles.backBtn} hitSlop={8}>
             <Ionicons name="arrow-back" size={22} color={TEACHER.text} />
           </Pressable>
-          <Text style={[styles.compactHeaderTitle, isTablet && aiToolTabletPageStyles.compactHeaderTitle]} numberOfLines={1}>
-            {formatAiToolText(config.name)}
-          </Text>
+          <View style={styles.compactHeaderTitleWrap}>
+            <Text style={[styles.compactHeaderTitle, isTablet && aiToolTabletPageStyles.compactHeaderTitle]} numberOfLines={1}>
+              {formatAiToolText(config.name)}
+            </Text>
+          </View>
           <View style={styles.headerSpacer} />
         </View>
       </Animated.View>
@@ -1373,8 +1387,8 @@ const styles = StyleSheet.create({
     paddingVertical: TEACHER_SPACING.sm,
     gap: TEACHER_SPACING.md,
   },
+  compactHeaderTitleWrap: { flex: 1, minWidth: 0 },
   compactHeaderTitle: {
-    flex: 1,
     ...TEACHER_TYPO.body,
     fontWeight: '800',
     color: AI.text,
@@ -1408,7 +1422,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  fieldLabel: { flex: 1, ...AI_TYPE.body, fontWeight: '700', color: AI.textSecondary },
+  fieldLabelWrap: { flex: 1, minWidth: 0 },
+  fieldLabel: { ...AI_TYPE.body, fontWeight: '700', color: AI.textSecondary },
   fieldSpinner: { marginLeft: 'auto' },
   required: { color: AI.orange },
   dropdownTrigger: {
@@ -1424,7 +1439,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   dropdownTriggerDisabled: { opacity: 0.55, backgroundColor: AI.surfaceMuted },
-  dropdownValue: { flex: 1, ...AI_TYPE.body, fontWeight: '600', color: AI.text },
+  dropdownValueWrap: { flex: 1, minWidth: 0 },
+  dropdownValue: { ...AI_TYPE.body, fontWeight: '600', color: AI.text },
   dropdownPlaceholder: { color: AI.textMuted, fontWeight: '500' },
   textInput: {
     minHeight: 52,
@@ -1447,7 +1463,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: TEACHER.surfaceBorder,
   },
-  infoBannerText: { flex: 1, ...TEACHER_TYPO.caption, color: TEACHER.primaryLight, lineHeight: 18 },
+  infoBannerTextWrap: { flex: 1, minWidth: 0 },
+  infoBannerText: { ...TEACHER_TYPO.caption, color: TEACHER.primaryLight, lineHeight: 18 },
   infoBannerWarning: {
     backgroundColor: 'rgba(255,251,235,0.55)',
     borderColor: '#fcd34d',

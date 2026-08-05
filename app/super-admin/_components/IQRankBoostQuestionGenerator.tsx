@@ -339,9 +339,11 @@ export default function IQRankBoostQuestionGenerator({ classNumber, onBack }: Pr
           {generatedQuestions.map((question, index) => (
             <GlassPanel key={index} style={styles.questionCard} radius={12} tone="strong">
               <View style={styles.questionHeader}>
-                <Text style={styles.questionText} numberOfLines={4}>
-                  Q{index + 1}. {question.questionText || question.question}
-                </Text>
+                <View style={styles.questionTextWrap}>
+                  <Text style={styles.questionText} numberOfLines={4}>
+                    Q{index + 1}. {question.questionText || question.question}
+                  </Text>
+                </View>
                 <View style={styles.difficultyChip}>
                   <Text style={styles.difficultyChipText}>
                     {question.difficulty || form.difficulty}
@@ -360,7 +362,9 @@ export default function IQRankBoostQuestionGenerator({ classNumber, onBack }: Pr
                         style={[styles.optionRow, isCorrect && styles.optionRowCorrect]}
                       >
                         <Text style={styles.optionLabel}>{String.fromCharCode(65 + optIndex)}.</Text>
-                        <Text style={styles.optionText}>{label}</Text>
+                        <View style={styles.optionTextWrap}>
+                          <Text style={styles.optionText}>{label}</Text>
+                        </View>
                         {isCorrect && <Text style={styles.correctMark}>✓</Text>}
                       </View>
                     );
@@ -447,14 +451,16 @@ const styles = StyleSheet.create({
   previewDesc: { fontSize: 13, color: '#6b7280', marginTop: 4, marginBottom: 12 },
   questionCard: { backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', borderLeftWidth: 4, borderLeftColor: '#3b82f6', padding: 14, marginBottom: 12 },
   questionHeader: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
-  questionText: { flex: 1, fontSize: 14, fontWeight: '600', color: '#111827' },
+  questionTextWrap: { flex: 1, minWidth: 0 },
+  questionText: { fontSize: 14, fontWeight: '600', color: '#111827' },
   difficultyChip: { backgroundColor: '#f3f4f6', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   difficultyChipText: { fontSize: 11, fontWeight: '600', color: '#374151', textTransform: 'capitalize' },
   optionsList: { marginTop: 10, gap: 6 },
   optionRow: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#f9fafb', padding: 10, borderRadius: 8 },
   optionRowCorrect: { backgroundColor: '#dcfce7', borderWidth: 1, borderColor: '#86efac' },
   optionLabel: { fontWeight: '700', color: '#374151' },
-  optionText: { flex: 1, fontSize: 13, color: '#374151' },
+  optionTextWrap: { flex: 1, minWidth: 0 },
+  optionText: { fontSize: 13, color: '#374151' },
   correctMark: { color: '#16a34a', fontWeight: '800' },
   explanationBox: { marginTop: 10, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', borderRadius: 8, padding: 10 },
   explanationText: { fontSize: 13, color: '#374151' },

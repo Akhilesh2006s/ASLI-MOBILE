@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
   timeHeadText: { fontSize: 10, fontWeight: '700', color: STUDENT.accent },
   dayLabel: {
     width: 52,
-    height: 64,
+    minHeight: 64,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
   dayLabelText: { fontSize: 10, fontWeight: '800', color: STUDENT.navActiveText },
   cell: {
     width: CELL_W,
-    height: 64,
+    minHeight: 64,
     borderWidth: 1,
     borderColor: STUDENT.surfaceBorder,
     padding: 6,

@@ -283,8 +283,11 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
+    minWidth: 0,
     fontSize: 16,
     color: '#111827',
+    paddingVertical: 0,
+    paddingRight: 12,
   },
   filterScroll: {
     marginBottom: 8,

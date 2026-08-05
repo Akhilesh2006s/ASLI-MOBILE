@@ -445,7 +445,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   searchIcon: { marginRight: 8 },
-  searchInput: { flex: 1, height: 44, fontSize: 15, color: '#111827' },
+  searchInput: { flex: 1, minWidth: 0, height: 44, fontSize: 15, color: '#111827', paddingRight: 8 },
   listScroll: { flex: 1 },
   listContent: { paddingHorizontal: 16, paddingBottom: SUPER_ADMIN_FLOATING_TAB_BAR_PAD + 48 },
   emptyBox: {

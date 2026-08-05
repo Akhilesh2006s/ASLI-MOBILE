@@ -139,7 +139,9 @@ export default function SettingsView({ onNavigate, onLogout }: SettingsViewProps
                 onPress={() => onNavigate(link.view)}
               >
                 <Ionicons name={link.icon} size={18} color="#374151" />
-                <Text style={styles.linkButtonText}>{link.label}</Text>
+                <View style={styles.linkButtonTextWrap}>
+                  <Text style={styles.linkButtonText}>{link.label}</Text>
+                </View>
               </TouchableOpacity>
             ))}
           </View>
@@ -250,7 +252,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e5e7eb',
   },
-  linkButtonText: { fontSize: 14, fontWeight: '600', color: '#374151', flex: 1 },
+  linkButtonTextWrap: { flex: 1, minWidth: 0 },
+  linkButtonText: { fontSize: 14, fontWeight: '600', color: '#374151' },
   envNote: {
     fontSize: 12,
     color: '#5B6779',

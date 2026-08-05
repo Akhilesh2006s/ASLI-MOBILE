@@ -486,9 +486,11 @@ export default function CalendarView() {
                   <View style={[styles.agendaStripe, { backgroundColor: getEventColor(event, idx) }]} />
                   <View style={styles.agendaItemBody}>
                     <View style={styles.agendaItemTop}>
-                      <Text style={[styles.agendaItemTitle, { color: colors.text }]} numberOfLines={2}>
-                        {event.type === 'exam' ? `Exam: ${event.name}` : event.name}
-                      </Text>
+                      <View style={styles.agendaItemTitleWrap}>
+                        <Text style={[styles.agendaItemTitle, { color: colors.text }]} numberOfLines={2}>
+                          {event.type === 'exam' ? `Exam: ${event.name}` : event.name}
+                        </Text>
+                      </View>
                       <View
                         style={[
                           styles.typeBadge,
@@ -711,11 +713,12 @@ const styles = StyleSheet.create({
   emptyAddBtnText: { fontWeight: '700' },
   agendaDayGroup: { gap: 8 },
   agendaDayLabel: { fontSize: 13, fontWeight: '700', marginTop: 4 },
-  agendaItem: { flexDirection: 'row', borderWidth: 1, overflow: 'hidden' },
+  agendaItem: { flexDirection: 'row', borderWidth: 1 },
   agendaStripe: { width: 4 },
-  agendaItemBody: { flex: 1, padding: 12, gap: 4 },
+  agendaItemBody: { flex: 1, minWidth: 0, padding: 12, gap: 4 },
   agendaItemTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
-  agendaItemTitle: { flex: 1, fontSize: 15, fontWeight: '700' },
+  agendaItemTitleWrap: { flex: 1, minWidth: 0 },
+  agendaItemTitle: { fontSize: 15, fontWeight: '700' },
   typeBadge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
   typeBadgeText: { fontSize: 11, fontWeight: '700' },
   agendaItemDesc: { fontSize: 13, lineHeight: 18 },

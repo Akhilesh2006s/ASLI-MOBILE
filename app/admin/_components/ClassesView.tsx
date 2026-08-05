@@ -1053,10 +1053,12 @@ export default function ClassesView() {
 
           <View style={styles.infoBox}>
             <Ionicons name="warning-outline" size={20} color="#2563eb" />
-            <Text style={styles.infoBoxText}>
-              Select classes to promote. All students in selected classes move to the new class. This
-              cannot be undone.
-            </Text>
+            <View style={styles.infoBoxTextWrap}>
+              <Text style={styles.infoBoxText}>
+                Select classes to promote. All students in selected classes move to the new class. This
+                cannot be undone.
+              </Text>
+            </View>
           </View>
 
           <ScrollView style={styles.promoteScroll} nestedScrollEnabled>
@@ -1659,7 +1661,8 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 12,
   },
-  infoBoxText: { flex: 1, fontSize: 13, color: '#1e40af', lineHeight: 18 },
+  infoBoxTextWrap: { flex: 1, minWidth: 0 },
+  infoBoxText: { fontSize: 13, color: '#1e40af', lineHeight: 18 },
   promoteScroll: { maxHeight: 360 },
   promoteGrid: {
     gap: 0,
@@ -1762,7 +1765,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#111827',
   },
-  formTextArea: { height: 72, textAlignVertical: 'top' },
+  formTextArea: { minHeight: 72, textAlignVertical: 'top' },
   modalFooter: { flexDirection: 'row', gap: 10, padding: 14, borderTopWidth: 1, borderTopColor: '#e5e7eb' },
   cancelButton: {
     flex: 1,

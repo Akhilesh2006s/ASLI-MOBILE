@@ -305,9 +305,11 @@ function RecordsSection({ parents }: { parents: Record<string, string> }) {
                       tone="strong"
                     >
                       <View style={styles.mcqHeader}>
-                        <Text style={styles.mcqQuestion}>
-                          Q{qIdx + 1}. {q.question}
-                        </Text>
+                        <View style={styles.mcqQuestionWrap}>
+                          <Text style={styles.mcqQuestion}>
+                            Q{qIdx + 1}. {q.question}
+                          </Text>
+                        </View>
                         <Pressable
                           onPress={() => removeQuestionFromRecord(row, qIdx)}
                           disabled={deletingQuestionKey === `${row._id}:${qIdx}`}
@@ -394,9 +396,11 @@ function RecordsSection({ parents }: { parents: Record<string, string> }) {
             ) : viewMcqQs.length > 0 ? (
               viewMcqQs.map((q, idx) => (
                 <View key={`dlg-q-${idx}`} style={[styles.mcqCard, styles.mcqCardOpaque]}>
-                  <Text style={styles.mcqQuestion}>
-                    Q{idx + 1}. {q.question}
-                  </Text>
+                  <View style={styles.mcqQuestionWrap}>
+                    <Text style={styles.mcqQuestion}>
+                      Q{idx + 1}. {q.question}
+                    </Text>
+                  </View>
                   {q.options.map((opt, j) => (
                     <Text key={j} style={styles.mcqOption}>
                       ○ {opt}
@@ -489,9 +493,11 @@ function SubtopicLeafRow({
         <View style={styles.subtopicLeafLeft}>
           <Ionicons name="git-branch-outline" size={14} color="#d97706" />
           <Text style={styles.subtopicLabel}>Subtopic</Text>
-          <Text style={styles.subtopicValue} numberOfLines={1}>
-            {labelEmpty(item.value)}
-          </Text>
+          <View style={styles.subtopicValueWrap}>
+            <Text style={styles.subtopicValue} numberOfLines={1}>
+              {labelEmpty(item.value)}
+            </Text>
+          </View>
         </View>
         <View style={styles.subtopicLeafRight}>
           <View style={styles.countPill}>
@@ -551,9 +557,11 @@ function TopicRow({
     <GlassPanel style={styles.topicCard} radius={10} tone="medium">
       <Pressable style={styles.topicTrigger} onPress={() => setOpen((v) => !v)}>
         <Ionicons name="bookmark-outline" size={16} color="#0d9488" />
-        <Text style={styles.topicTitle} numberOfLines={1}>
-          {label}
-        </Text>
+        <View style={styles.topicTitleWrap}>
+          <Text style={styles.topicTitle} numberOfLines={1}>
+            {label}
+          </Text>
+        </View>
         <View style={styles.levelBadge}>
           <Text style={styles.levelBadgeText}>Topic</Text>
         </View>
@@ -623,9 +631,11 @@ function SubjectRow({
     <GlassPanel style={styles.subjectCard} radius={10} tone="medium">
       <Pressable style={styles.subjectTrigger} onPress={() => setOpen((v) => !v)}>
         <Ionicons name="book-outline" size={16} color="#6366f1" />
-        <Text style={styles.subjectTitle} numberOfLines={1}>
-          {label}
-        </Text>
+        <View style={styles.subjectTitleWrap}>
+          <Text style={styles.subjectTitle} numberOfLines={1}>
+            {label}
+          </Text>
+        </View>
         <View style={styles.levelBadge}>
           <Text style={styles.levelBadgeText}>Subject</Text>
         </View>
@@ -689,9 +699,11 @@ function ClassBlock({
         <View style={styles.classBadge}>
           <Text style={styles.classBadgeText}>Class</Text>
         </View>
-        <Text style={styles.classTitle} numberOfLines={1}>
-          {classTitle}
-        </Text>
+        <View style={styles.classTitleWrap}>
+          <Text style={styles.classTitle} numberOfLines={1}>
+            {classTitle}
+          </Text>
+        </View>
         <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#5B6779" />
       </Pressable>
       {open ? (
@@ -742,7 +754,9 @@ function ClassSection({ toolName, board }: { toolName: string; board?: string })
       <GlassPanel style={styles.classSectionTrigger} radius={10} tone="medium">
         <Pressable style={styles.classSectionTriggerInner} onPress={() => setOpen((v) => !v)}>
           <Ionicons name="school-outline" size={18} color="#475569" />
-          <Text style={styles.classSectionTitle}>Classes in this tool</Text>
+          <View style={styles.classSectionTitleWrap}>
+            <Text style={styles.classSectionTitle}>Classes in this tool</Text>
+          </View>
           <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#5B6779" />
         </Pressable>
       </GlassPanel>
@@ -953,9 +967,11 @@ export default function AiToolGenerationsView() {
         {/* Padding moved to the inner Pressable so the tap target stays the full button. */}
         <GlassPanel style={styles.boardBtn} radius={10} tone="medium">
           <Pressable style={styles.boardBtnInner} onPress={() => setBoardPickerOpen(true)}>
-            <Text style={styles.boardBtnText} numberOfLines={1}>
-              {board || 'All boards'}
-            </Text>
+            <View style={styles.boardBtnTextWrap}>
+              <Text style={styles.boardBtnText} numberOfLines={1}>
+                {board || 'All boards'}
+              </Text>
+            </View>
             <Ionicons name="chevron-down" size={14} color="#475569" />
           </Pressable>
         </GlassPanel>
@@ -1121,7 +1137,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
-  boardBtnText: { fontSize: 13, color: '#334155', flex: 1 },
+  boardBtnTextWrap: { flex: 1, minWidth: 0 },
+  boardBtnText: { fontSize: 13, color: '#334155' },
   toolsCard: {
     marginHorizontal: 16,
     borderRadius: 14,
@@ -1186,18 +1203,19 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 10,
   },
-  classSectionTitle: { flex: 1, fontSize: 13, fontWeight: '600', color: '#334155' },
+  classSectionTitleWrap: { flex: 1, minWidth: 0 },
+  classSectionTitle: { fontSize: 13, fontWeight: '600', color: '#334155' },
   classSectionBody: { gap: 10, marginTop: 8 },
   classBlock: {
     borderWidth: 1,
     borderColor: '#fed7aa',
     borderRadius: 12,
-    overflow: 'hidden',
   },
   classTrigger: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12 },
   classBadge: { backgroundColor: '#1e293b', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
   classBadgeText: { fontSize: 9, fontWeight: '700', color: '#fff', textTransform: 'uppercase' },
-  classTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: '#0f172a' },
+  classTitleWrap: { flex: 1, minWidth: 0 },
+  classTitle: { fontSize: 14, fontWeight: '700', color: '#0f172a' },
   classBody: { borderTopWidth: 1, borderTopColor: '#ffedd5', padding: 8, gap: 8, backgroundColor: '#fffaf5' },
   subjectCard: {
     borderWidth: 1,
@@ -1206,7 +1224,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   subjectTrigger: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10 },
-  subjectTitle: { flex: 1, fontSize: 13, fontWeight: '600', color: '#1e293b' },
+  subjectTitleWrap: { flex: 1, minWidth: 0 },
+  subjectTitle: { fontSize: 13, fontWeight: '600', color: '#1e293b' },
   levelBadge: {
     borderWidth: 1,
     borderColor: '#e2e8f0',
@@ -1223,14 +1242,14 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   topicTrigger: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10 },
-  topicTitle: { flex: 1, fontSize: 13, fontWeight: '600', color: '#1e293b' },
+  topicTitleWrap: { flex: 1, minWidth: 0 },
+  topicTitle: { fontSize: 13, fontWeight: '600', color: '#1e293b' },
   topicBody: { borderTopWidth: 1, borderTopColor: '#f1f5f9', padding: 8, gap: 8 },
   subtopicLeaf: {
     borderWidth: 1,
     borderStyle: 'dashed',
     borderColor: '#e2e8f0',
     borderRadius: 8,
-    overflow: 'hidden',
     backgroundColor: '#f8fafc',
   },
   subtopicLeafTrigger: {
@@ -1242,7 +1261,8 @@ const styles = StyleSheet.create({
   },
   subtopicLeafLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
   subtopicLabel: { fontSize: 10, fontWeight: '600', color: '#64748b', textTransform: 'uppercase' },
-  subtopicValue: { flex: 1, fontSize: 13, fontWeight: '600', color: '#0f172a' },
+  subtopicValueWrap: { flex: 1, minWidth: 0 },
+  subtopicValue: { fontSize: 13, fontWeight: '600', color: '#0f172a' },
   subtopicLeafRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   countPill: { backgroundColor: '#f1f5f9', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
   countPillText: { fontSize: 10, fontWeight: '600', color: '#475569' },
@@ -1361,7 +1381,8 @@ const styles = StyleSheet.create({
   // and therefore the glass blur — does not render. Keep that copy opaque.
   mcqCardOpaque: { backgroundColor: '#FFFFFF' },
   mcqHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
-  mcqQuestion: { flex: 1, fontSize: 13, fontWeight: '600', color: '#0f172a', lineHeight: 20 },
+  mcqQuestionWrap: { flex: 1, minWidth: 0 },
+  mcqQuestion: { fontSize: 13, fontWeight: '600', color: '#0f172a', lineHeight: 20 },
   mcqOption: { fontSize: 12, color: '#334155', marginTop: 6, lineHeight: 18 },
   mcqAnswer: {
     fontSize: 11,

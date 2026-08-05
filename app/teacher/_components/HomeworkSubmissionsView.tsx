@@ -269,7 +269,9 @@ export default function HomeworkSubmissionsView() {
                 <View key={classNum} style={styles.classBlock}>
                   <Pressable style={styles.classHeader} onPress={() => toggleClass(classNum)}>
                     <Ionicons name={open ? 'chevron-down' : 'chevron-forward'} size={16} color={TEACHER.primaryLight} />
-                    <Text style={styles.classTitle}>{classNum}</Text>
+                    <View style={styles.classTitleWrap}>
+                      <Text style={styles.classTitle}>{classNum}</Text>
+                    </View>
                     <Text style={styles.classCount}>{rows.length} student{rows.length !== 1 ? 's' : ''}</Text>
                   </Pressable>
                   {open ? (
@@ -413,7 +415,8 @@ const styles = StyleSheet.create({
   gradeBtnText: { fontSize: 12, fontWeight: '700', color: TEACHER.primaryLight },
   classBlock: { borderBottomWidth: 1, borderBottomColor: TEACHER.surfaceBorder },
   classHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12 },
-  classTitle: { flex: 1, fontSize: 16, fontWeight: '700', color: TEACHER.text },
+  classTitleWrap: { flex: 1, minWidth: 0 },
+  classTitle: { fontSize: 16, fontWeight: '700', color: TEACHER.text },
   classCount: { fontSize: 11, color: TEACHER.textMuted },
   studentSubBlock: { marginLeft: 24, paddingBottom: 10, borderLeftWidth: 2, borderLeftColor: TEACHER.surfaceBorder, paddingLeft: 12 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.45)', justifyContent: 'flex-end' },

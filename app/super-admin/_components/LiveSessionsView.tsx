@@ -590,7 +590,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
   },
-  searchInput: { flex: 1, paddingVertical: 10, marginLeft: 8, color: '#111827' },
+  searchInput: { flex: 1, minWidth: 0, paddingVertical: 10, paddingRight: 8, marginLeft: 8, color: '#111827' },
   center: { alignItems: 'center', padding: 32, gap: 8 },
   emptyTitle: { color: '#4b5563', fontWeight: '700', fontSize: 16 },
   emptySub: { color: '#5B6779', textAlign: 'center', fontSize: 13 },

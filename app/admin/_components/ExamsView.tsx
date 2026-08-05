@@ -692,12 +692,14 @@ export default function ExamsView() {
                         </View>
                         <View style={{ flex: 1 }}>
                           <View style={styles.nameAttemptRow}>
-                            <Text
-                              style={[styles.resultName, { color: colors.text, flexShrink: 1 }]}
-                              numberOfLines={2}
-                            >
-                              {result.userId?.fullName || 'Student'}
-                            </Text>
+                            <View style={styles.resultNameWrap}>
+                              <Text
+                                style={[styles.resultName, { color: colors.text }]}
+                                numberOfLines={2}
+                              >
+                                {result.userId?.fullName || 'Student'}
+                              </Text>
+                            </View>
                             <View
                               style={[
                                 styles.attemptBadge,
@@ -894,7 +896,9 @@ export default function ExamsView() {
                             key={s.subject}
                             style={[styles.subjectRow, { borderColor: colors.surfaceBorder }]}
                           >
-                            <Text style={[styles.subjectRowName, { color: colors.text }]}>{s.subject}</Text>
+                            <View style={styles.subjectRowNameWrap}>
+                              <Text style={[styles.subjectRowName, { color: colors.text }]}>{s.subject}</Text>
+                            </View>
                             <Text style={[styles.subjectRowMeta, { color: colors.textMuted }]}>
                               {s.marks}m · {s.correct}/{s.total} correct
                             </Text>
@@ -1195,6 +1199,7 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 2,
   },
+  resultNameWrap: { flex: 1, minWidth: 0, flexShrink: 1 },
   attemptBadge: {
     borderWidth: 1,
     borderRadius: 8,
@@ -1260,7 +1265,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderBottomWidth: 1,
   },
-  subjectRowName: { fontSize: 13, fontWeight: '700', flex: 1 },
+  subjectRowNameWrap: { flex: 1, minWidth: 0 },
+  subjectRowName: { fontSize: 13, fontWeight: '700' },
   subjectRowMeta: { fontSize: 12 },
   detailMetaRow: {
     flexDirection: 'row',

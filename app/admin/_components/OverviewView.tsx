@@ -178,7 +178,9 @@ function AnalysisPanel({
         <View style={[styles.panelIcon, { backgroundColor: `${iconColor}22` }]}>
           <Ionicons name={icon} size={16} color={iconColor} />
         </View>
-        <Text style={[styles.panelTitle, { color: DASH.skyInk }]}>{title}</Text>
+        <View style={styles.panelTitleWrap}>
+          <Text style={[styles.panelTitle, { color: DASH.skyInk }]}>{title}</Text>
+        </View>
       </View>
       {children}
     </View>
@@ -200,9 +202,11 @@ function SubjectBar({
   return (
     <View style={styles.barWrap}>
       <View style={styles.barLabelRow}>
-        <Text style={[styles.barLabel, { color: DASH.skyMuted }]} numberOfLines={1}>
-          {label}
-        </Text>
+        <View style={styles.barLabelWrap}>
+          <Text style={[styles.barLabel, { color: DASH.skyMuted }]} numberOfLines={1}>
+            {label}
+          </Text>
+        </View>
         <Text style={[styles.barValue, { color: DASH.skyInk }]}>{Math.round(pct)}%</Text>
       </View>
       <View style={[styles.barTrack, { backgroundColor: DASH.soft }]}>
@@ -410,9 +414,11 @@ export default function OverviewView({ onNavigate }: Props) {
                         idx < topClassDistribution.length - 1 && styles.rowDivider,
                       ]}
                     >
-                      <Text style={[styles.rowLabel, { color: DASH.skyInk }]}>
-                        {item.className || item.class || 'Unknown'}
-                      </Text>
+                      <View style={styles.rowLabelWrap}>
+                        <Text style={[styles.rowLabel, { color: DASH.skyInk }]}>
+                          {item.className || item.class || 'Unknown'}
+                        </Text>
+                      </View>
                       <View style={[styles.countBadge, { backgroundColor: badge.bg }]}>
                         <Text style={[styles.countText, { color: badge.text }]}>{item.count || 0}</Text>
                       </View>
@@ -432,13 +438,17 @@ export default function OverviewView({ onNavigate }: Props) {
               borderColor={ANALYSIS_ACCENTS.performance.border}
             >
               <View style={styles.rowItem}>
-                <Text style={[styles.rowLabel, { color: DASH.skyMuted }]}>Average Score</Text>
+                <View style={styles.rowLabelWrap}>
+                  <Text style={[styles.rowLabel, { color: DASH.skyMuted }]}>Average Score</Text>
+                </View>
                 <Text style={[styles.metricHighlight, { color: ANALYSIS_ACCENTS.performance.accent }]}>
                   {studentAnalytics.performanceMetrics?.averageScore || 0}%
                 </Text>
               </View>
               <View style={styles.rowItem}>
-                <Text style={[styles.rowLabel, { color: DASH.skyMuted }]}>Total Exams Taken</Text>
+                <View style={styles.rowLabelWrap}>
+                  <Text style={[styles.rowLabel, { color: DASH.skyMuted }]}>Total Exams Taken</Text>
+                </View>
                 <Text style={[styles.metricHighlight, { color: ANALYSIS_ACCENTS.class.accent }]}>
                   {studentAnalytics.performanceMetrics?.totalExamsTaken || 0}
                 </Text>
@@ -635,7 +645,6 @@ const styles = StyleSheet.create({
     padding: 14,
     paddingTop: 16,
     gap: 8,
-    overflow: 'hidden',
   },
   panelAccent: {
     position: 'absolute',
@@ -657,7 +666,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  panelTitle: { fontSize: 14, fontWeight: '700', flex: 1 },
+  panelTitleWrap: { flex: 1, minWidth: 0 },
+  panelTitle: { fontSize: 14, fontWeight: '700' },
   rowItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -669,7 +679,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(14, 116, 144, 0.15)',
   },
-  rowLabel: { flex: 1, fontSize: 13, fontWeight: '600' },
+  rowLabelWrap: { flex: 1, minWidth: 0 },
+  rowLabel: { fontSize: 13, fontWeight: '600' },
   countBadge: {
     minWidth: 36,
     paddingHorizontal: 10,
@@ -691,7 +702,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  barLabel: { flex: 1, fontSize: 12, fontWeight: '600' },
+  barLabelWrap: { flex: 1, minWidth: 0 },
+  barLabel: { fontSize: 12, fontWeight: '600' },
   barValue: { fontSize: 12, fontWeight: '700' },
   barTrack: {
     height: 6,

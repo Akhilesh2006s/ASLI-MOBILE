@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Modal,
   Platform,
@@ -142,19 +142,27 @@ export default function SuperAdminNavDrawer({
   const translateX = useSharedValue(-drawerWidth);
   const backdropOpacity = useSharedValue(0);
 
+  // The modal window re-measures after it mounts on Android, so `drawerWidth`
+  // must not drive the effect or the slide-in replays from the left.
+  const drawerWidthRef = useRef(drawerWidth);
+  drawerWidthRef.current = drawerWidth;
+  const wasVisible = useRef(false);
+
   useEffect(() => {
+    if (visible === wasVisible.current) return;
+    wasVisible.current = visible;
+    const offscreen = -drawerWidthRef.current;
+
     if (visible) {
       setMounted(true);
-      translateX.value = -drawerWidth;
+      translateX.value = offscreen;
       backdropOpacity.value = 0;
       translateX.value = withTiming(0, { duration: SLIDE_MS, easing: slideEasing });
       backdropOpacity.value = withTiming(1, { duration: SLIDE_MS, easing: slideEasing });
       return;
     }
 
-    if (!mounted) return;
-
-    translateX.value = withTiming(-drawerWidth, { duration: SLIDE_MS, easing: slideEasing });
+    translateX.value = withTiming(offscreen, { duration: SLIDE_MS, easing: slideEasing });
     backdropOpacity.value = withTiming(
       0,
       { duration: SLIDE_MS, easing: slideEasing },
@@ -162,7 +170,7 @@ export default function SuperAdminNavDrawer({
         if (finished) runOnJS(setMounted)(false);
       }
     );
-  }, [visible, drawerWidth, mounted, translateX, backdropOpacity]);
+  }, [visible, translateX, backdropOpacity]);
 
   const drawerStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],

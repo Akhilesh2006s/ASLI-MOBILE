@@ -609,6 +609,8 @@ const styles = StyleSheet.create({
   bubble: {
     alignSelf: 'flex-start',
     maxWidth: '100%',
+    flexShrink: 1,
+    minWidth: 44,
     // Extra right padding — Android OEM fonts clip the last glyph in hug-fit bubbles
     paddingVertical: 10,
     paddingLeft: 14,
@@ -665,7 +667,9 @@ const styles = StyleSheet.create({
     paddingVertical: Platform.OS === 'ios' ? 10 : 8,
     paddingLeft: 6,
     // Room so placeholder / last typed char is not clipped beside the send button
-    paddingRight: 12,
+    paddingRight: 16,
+    backgroundColor: 'transparent',
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}),
   },
   sendButton: {
     width: 36,

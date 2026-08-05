@@ -201,7 +201,9 @@ function SubtopicBlock({
     <GlassPanel style={styles.nestedBlock} radius={10} tone="medium">
       <Pressable style={styles.nestedTrigger} onPress={() => setOpen((v) => !v)}>
         <Text style={styles.nestedLabel}>SUBTOPIC</Text>
-        <Text style={styles.nestedTitle}>{node.subtopicName}</Text>
+        <View style={styles.nestedTitleWrap}>
+          <Text style={styles.nestedTitle}>{node.subtopicName}</Text>
+        </View>
         <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#5B6779" />
       </Pressable>
       {open ? (
@@ -249,7 +251,9 @@ function TopicBlock({
     <GlassPanel style={styles.nestedBlock} radius={10} tone="medium">
       <Pressable style={styles.nestedTrigger} onPress={() => setOpen((v) => !v)}>
         <Text style={styles.nestedLabel}>TOPIC</Text>
-        <Text style={styles.nestedTitle}>{node.topicName || 'General'}</Text>
+        <View style={styles.nestedTitleWrap}>
+          <Text style={styles.nestedTitle}>{node.topicName || 'General'}</Text>
+        </View>
         <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#5B6779" />
       </Pressable>
       {open ? (
@@ -294,7 +298,9 @@ function SubjectBlock({
     <GlassPanel style={styles.nestedBlock} radius={10} tone="medium">
       <Pressable style={styles.nestedTrigger} onPress={() => setOpen((v) => !v)}>
         <Text style={styles.nestedLabel}>SUBJECT</Text>
-        <Text style={styles.nestedTitle}>{node.subjectName}</Text>
+        <View style={styles.nestedTitleWrap}>
+          <Text style={styles.nestedTitle}>{node.subjectName}</Text>
+        </View>
         <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#5B6779" />
       </Pressable>
       {open ? (
@@ -339,10 +345,12 @@ function ClassBlock({
     <GlassPanel style={styles.nestedBlock} radius={10} tone="medium">
       <Pressable style={styles.nestedTrigger} onPress={() => setOpen((v) => !v)}>
         <Text style={styles.nestedLabel}>CLASS</Text>
-        <Text style={styles.nestedTitle}>
-          {node.className}
-          {node.boardName ? ` (${node.boardName})` : ''}
-        </Text>
+        <View style={styles.nestedTitleWrap}>
+          <Text style={styles.nestedTitle}>
+            {node.className}
+            {node.boardName ? ` (${node.boardName})` : ''}
+          </Text>
+        </View>
         <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#5B6779" />
       </Pressable>
       {open ? (
@@ -841,7 +849,9 @@ export default function AiGeneratorView() {
 
         <Text style={styles.fieldLabel}>Board</Text>
         <Pressable style={styles.selectField} onPress={() => setBoardPickerOpen(true)}>
-          <Text style={styles.selectText}>{board || 'Select board'}</Text>
+          <View style={styles.selectTextWrap}>
+            <Text style={styles.selectText}>{board || 'Select board'}</Text>
+          </View>
           <Ionicons name="chevron-down" size={16} color="#64748b" />
         </Pressable>
 
@@ -850,9 +860,11 @@ export default function AiGeneratorView() {
           style={[styles.selectField, (!board || loadingClasses) && styles.selectDisabled]}
           onPress={() => board && !loadingClasses && setClassPickerOpen(true)}
         >
-          <Text style={styles.selectText}>
-            {!board ? 'Select board first' : loadingClasses ? 'Loading classes…' : classNumber || 'Select class'}
-          </Text>
+          <View style={styles.selectTextWrap}>
+            <Text style={styles.selectText}>
+              {!board ? 'Select board first' : loadingClasses ? 'Loading classes…' : classNumber || 'Select class'}
+            </Text>
+          </View>
           <Ionicons name="chevron-down" size={16} color="#64748b" />
         </Pressable>
 
@@ -861,17 +873,19 @@ export default function AiGeneratorView() {
           style={[styles.selectField, (!classNumber || loadingSubjects) && styles.selectDisabled]}
           onPress={() => classNumber && !loadingSubjects && setSubjectPickerOpen(true)}
         >
-          <Text style={styles.selectText}>
-            {!classNumber
-              ? 'Select class first'
-              : loadingSubjects
-                ? 'Loading subjects…'
-                : isStoryLanguageTool(selectedTool) && subjectsForTool.length === 0
-                  ? 'English, Hindi, or Telugu only'
-                  : isLanguageExcludedTool(selectedTool) && subjectsForTool.length === 0
-                    ? 'Not available for English, Hindi, or Telugu'
-                    : subject || 'Select subject'}
-          </Text>
+          <View style={styles.selectTextWrap}>
+            <Text style={styles.selectText}>
+              {!classNumber
+                ? 'Select class first'
+                : loadingSubjects
+                  ? 'Loading subjects…'
+                  : isStoryLanguageTool(selectedTool) && subjectsForTool.length === 0
+                    ? 'English, Hindi, or Telugu only'
+                    : isLanguageExcludedTool(selectedTool) && subjectsForTool.length === 0
+                      ? 'Not available for English, Hindi, or Telugu'
+                      : subject || 'Select subject'}
+            </Text>
+          </View>
           <Ionicons name="chevron-down" size={16} color="#64748b" />
         </Pressable>
 
@@ -880,9 +894,11 @@ export default function AiGeneratorView() {
           style={[styles.selectField, (!subject || loadingTopics) && styles.selectDisabled]}
           onPress={() => subject && !loadingTopics && setTopicPickerOpen(true)}
         >
-          <Text style={styles.selectText}>
-            {!subject ? 'Select class & subject first' : loadingTopics ? 'Loading topics…' : topic || 'Select topic'}
-          </Text>
+          <View style={styles.selectTextWrap}>
+            <Text style={styles.selectText}>
+              {!subject ? 'Select class & subject first' : loadingTopics ? 'Loading topics…' : topic || 'Select topic'}
+            </Text>
+          </View>
           <Ionicons name="chevron-down" size={16} color="#64748b" />
         </Pressable>
 
@@ -891,9 +907,11 @@ export default function AiGeneratorView() {
           style={[styles.selectField, (!topic || loadingSubtopics) && styles.selectDisabled]}
           onPress={() => topic && !loadingSubtopics && setSubTopicPickerOpen(true)}
         >
-          <Text style={styles.selectText}>
-            {!topic ? 'Select topic first' : loadingSubtopics ? 'Loading sub topics…' : subTopic || 'Select sub topic'}
-          </Text>
+          <View style={styles.selectTextWrap}>
+            <Text style={styles.selectText}>
+              {!topic ? 'Select topic first' : loadingSubtopics ? 'Loading sub topics…' : subTopic || 'Select sub topic'}
+            </Text>
+          </View>
           <Ionicons name="chevron-down" size={16} color="#64748b" />
         </Pressable>
 
@@ -901,7 +919,9 @@ export default function AiGeneratorView() {
           <>
             <Text style={styles.fieldLabel}>Question Type</Text>
             <Pressable style={styles.selectField} onPress={() => setQuestionTypePickerOpen(true)}>
-              <Text style={styles.selectText}>{questionType}</Text>
+              <View style={styles.selectTextWrap}>
+                <Text style={styles.selectText}>{questionType}</Text>
+              </View>
               <Ionicons name="chevron-down" size={16} color="#64748b" />
             </Pressable>
             <Text style={styles.fieldLabel}>Questions per worksheet</Text>
@@ -925,7 +945,9 @@ export default function AiGeneratorView() {
             />
             <Text style={styles.fieldLabel}>Difficulty</Text>
             <Pressable style={styles.selectField} onPress={() => setDifficultyPickerOpen(true)}>
-              <Text style={styles.selectText}>{difficulty}</Text>
+              <View style={styles.selectTextWrap}>
+                <Text style={styles.selectText}>{difficulty}</Text>
+              </View>
               <Ionicons name="chevron-down" size={16} color="#64748b" />
             </Pressable>
           </>
@@ -952,7 +974,9 @@ export default function AiGeneratorView() {
         />
         <Pressable style={styles.forceRow} onPress={() => setForceGenerateNew((v) => !v)}>
           <Ionicons name={forceGenerateNew ? 'checkbox' : 'square-outline'} size={20} color="#2563eb" />
-          <Text style={styles.forceText}>Force generate new (even when topic has 1000+ records)</Text>
+          <View style={styles.forceTextWrap}>
+            <Text style={styles.forceText}>Force generate new (even when topic has 1000+ records)</Text>
+          </View>
         </Pressable>
 
         <Pressable
@@ -1002,9 +1026,11 @@ export default function AiGeneratorView() {
         </View>
         <Text style={styles.fieldLabel}>Filter by board</Text>
         <Pressable style={styles.selectField} onPress={() => setRecordsBoardPickerOpen(true)}>
-          <Text style={styles.selectText}>
-            {recordsBoardFilter === '__all__' ? 'All boards' : recordsBoardFilter}
-          </Text>
+          <View style={styles.selectTextWrap}>
+            <Text style={styles.selectText}>
+              {recordsBoardFilter === '__all__' ? 'All boards' : recordsBoardFilter}
+            </Text>
+          </View>
           <Ionicons name="chevron-down" size={16} color="#64748b" />
         </Pressable>
         <Text style={styles.recordsHint}>
@@ -1248,7 +1274,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
   },
   selectDisabled: { opacity: 0.55 },
-  selectText: { fontSize: 14, color: '#0f172a', flex: 1, paddingRight: 8 },
+  selectTextWrap: { flex: 1, minWidth: 0 },
+  selectText: { fontSize: 14, color: '#0f172a', paddingRight: 8 },
   input: {
     borderWidth: 1,
     borderColor: '#e2e8f0',
@@ -1269,7 +1296,8 @@ const styles = StyleSheet.create({
   generateBtnDisabled: { opacity: 0.55 },
   generateBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
   forceRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
-  forceText: { flex: 1, fontSize: 12, color: '#475569' },
+  forceTextWrap: { flex: 1, minWidth: 0 },
+  forceText: { fontSize: 12, color: '#475569' },
   lockBtn: {
     marginTop: 8,
     borderWidth: 1,
@@ -1328,7 +1356,8 @@ const styles = StyleSheet.create({
   },
   nestedTrigger: { flexDirection: 'row', alignItems: 'center', padding: 10, gap: 8 },
   nestedLabel: { fontSize: 10, fontWeight: '700', color: '#5B6779' },
-  nestedTitle: { flex: 1, fontSize: 13, fontWeight: '600', color: '#0f172a' },
+  nestedTitleWrap: { flex: 1, minWidth: 0 },
+  nestedTitle: { fontSize: 13, fontWeight: '600', color: '#0f172a' },
   nestedBody: { borderTopWidth: 1, borderTopColor: '#f1f5f9', padding: 8 },
   recordsCount: { fontSize: 12, fontWeight: '600', color: '#334155', marginBottom: 8 },
   recordCard: {

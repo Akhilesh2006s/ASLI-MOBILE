@@ -199,6 +199,11 @@ function cachePdfBytes(key: string, bytes: Uint8Array) {
   pdfBytesCache.set(key, { bytes, at: Date.now() });
 }
 
+/** Drop in-memory PDF byte buffers (called on app background). */
+export function clearPdfBytesCache() {
+  pdfBytesCache.clear();
+}
+
 function racePdfAttempts<T>(attempts: Promise<T | null>[]): Promise<T | null> {
   if (attempts.length === 0) return Promise.resolve(null);
   return new Promise((resolve) => {

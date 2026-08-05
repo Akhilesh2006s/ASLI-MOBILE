@@ -112,7 +112,8 @@ const styles = StyleSheet.create({
     paddingVertical: TEACHER_SPACING.md,
     borderBottomWidth: 1,
     borderBottomColor: TEACHER.surfaceBorder,
-    overflow: 'hidden',
+    // The gradient is absoluteFill so it needs no clipping, and overflow:'hidden'
+    // here clips the last glyph of the flex:1 title on Android.
   },
   backBtn: {
     width: 40,

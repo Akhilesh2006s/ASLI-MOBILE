@@ -39,7 +39,6 @@ const styles = StyleSheet.create({
   wrap: {
     minHeight: 48,
     borderWidth: 1,
-    overflow: 'hidden',
   },
   wrapInner: {
     flexDirection: 'row',
@@ -52,8 +51,10 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    minWidth: 0,
     fontSize: 15,
     fontWeight: '500',
     paddingVertical: 10,
+    paddingRight: 16,
   },
 });

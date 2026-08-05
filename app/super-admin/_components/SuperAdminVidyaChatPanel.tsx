@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useVidyaChat } from '../../../src/hooks/useVidyaChat';
 import { useKeyboardDockLift } from '../../../src/hooks/useKeyboardDockLift';
+import { withAndroidTextSafeEnd } from '../../../src/lib/vidya-subjects';
 import type { AIChatContext } from '../../../src/types/vidya';
 import VidyaAvatar from '../../../src/components/vidya/VidyaAvatar';
 
@@ -153,8 +154,7 @@ export default function SuperAdminVidyaChatPanel({ userId = 'super-admin' }: Pro
                   ]}
                 >
                   {/* Trailing hair-space: Android otherwise clips the last glyph. */}
-                  {model.formatMessage(msg.content)}
-                  {'\u200A'}
+                  {withAndroidTextSafeEnd(model.formatMessage(msg.content))}
                 </Text>
               </View>
             </View>
@@ -318,10 +318,14 @@ const styles = StyleSheet.create({
   avatarTextAssistant: { color: '#c2410c', fontSize: 11, fontWeight: '700' },
   bubble: {
     maxWidth: '78%',
+    flexShrink: 1,
+    minWidth: 44,
     borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 10,
+    // Extra right pad so Fabric does not clip the last glyph on short bubbles.
     paddingRight: 18,
+    overflow: 'visible',
   },
   bubbleUser: { backgroundColor: '#334155', borderBottomRightRadius: 4 },
   bubbleAssistant: {

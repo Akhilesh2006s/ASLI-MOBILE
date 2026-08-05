@@ -1000,7 +1000,9 @@ export default function ExamManagementView() {
           <GlassPanel style={styles.filterSelect} radius={8} tone="medium">
             <Pressable style={styles.filterSelectInner} onPress={() => setQuickAddPickerOpen(true)}>
               <Ionicons name="help-circle-outline" size={16} color="#6b7280" />
-              <Text style={styles.filterSelectText}>Quick Add Questions</Text>
+              <View style={styles.filterSelectTextWrap}>
+                <Text style={styles.filterSelectText}>Quick Add Questions</Text>
+              </View>
               <Ionicons name="chevron-down" size={16} color="#5B6779" />
             </Pressable>
           </GlassPanel>
@@ -1008,18 +1010,22 @@ export default function ExamManagementView() {
         <GlassPanel style={styles.filterSelect} radius={8} tone="medium">
           <Pressable style={styles.filterSelectInner} onPress={() => setSchoolPickerOpen(true)}>
             <Ionicons name="school-outline" size={16} color="#6b7280" />
-            <Text style={styles.filterSelectText} numberOfLines={1}>
-              {schoolFilterOptions.find((o) => o.value === selectedSchool)?.label || 'All Schools'}
-            </Text>
+            <View style={styles.filterSelectTextWrap}>
+              <Text style={styles.filterSelectText} numberOfLines={1}>
+                {schoolFilterOptions.find((o) => o.value === selectedSchool)?.label || 'All Schools'}
+              </Text>
+            </View>
             <Ionicons name="chevron-down" size={16} color="#5B6779" />
           </Pressable>
         </GlassPanel>
         <GlassPanel style={styles.filterSelect} radius={8} tone="medium">
           <Pressable style={styles.filterSelectInner} onPress={() => setClassPickerOpen(true)}>
             <Ionicons name="school" size={16} color="#6b7280" />
-            <Text style={styles.filterSelectText}>
-              {classFilterOptions.find((o) => o.value === selectedClass)?.label || 'All Classes'}
-            </Text>
+            <View style={styles.filterSelectTextWrap}>
+              <Text style={styles.filterSelectText}>
+                {classFilterOptions.find((o) => o.value === selectedClass)?.label || 'All Classes'}
+              </Text>
+            </View>
             <Ionicons name="chevron-down" size={16} color="#5B6779" />
           </Pressable>
         </GlassPanel>
@@ -1646,7 +1652,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  filterSelectText: { flex: 1, fontSize: 14, color: '#111827' },
+  filterSelectTextWrap: { flex: 1, minWidth: 0 },
+  filterSelectText: { fontSize: 14, color: '#111827' },
   countBadge: { alignSelf: 'flex-start', borderRadius: 8, borderWidth: 1, borderColor: '#d1d5db', paddingHorizontal: 10, paddingVertical: 6 },
   countBadgeText: { fontSize: 12, color: '#374151', fontWeight: '600' },
   searchContainer: { paddingHorizontal: 20, marginBottom: 16 },
@@ -1661,7 +1668,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   searchIcon: { marginRight: 12 },
-  searchInput: { flex: 1, fontSize: 16, color: '#111827', paddingVertical: 12 },
+  searchInput: { flex: 1, minWidth: 0, fontSize: 16, color: '#111827', paddingVertical: 12, paddingRight: 8 },
   clearButton: { padding: 4 },
   classSection: { paddingHorizontal: 20, marginBottom: 24 },
   classSectionTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 12, borderBottomWidth: 1, borderBottomColor: '#e5e7eb', paddingBottom: 8 },

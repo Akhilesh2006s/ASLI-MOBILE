@@ -11,6 +11,7 @@ import { usePathname, useRouter } from 'expo-router';
 import { queryClient } from '../src/lib/queryClient';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
 import { AppSplash, SPLASH_DURATION_MS, SPLASH_EXIT_DURATION_MS } from '../src/components/AppSplash';
+import { useMemoryCleanup } from '../src/hooks/useMemoryCleanup';
 
 void SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -307,11 +308,17 @@ function SplashOverlay() {
   );
 }
 
+function MemoryCleanupHost() {
+  useMemoryCleanup();
+  return null;
+}
+
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
+          <MemoryCleanupHost />
           <AuthProvider>
             {/* Mounted once for the whole app so every route inherits the pastel
                 artwork and glass surfaces always have real colour to blur. */}

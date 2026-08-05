@@ -140,10 +140,12 @@ export default function LearningPathsView() {
                     {classTitle}
                   </Text>
                 </View>
-                <Text style={[styles.classMeta, { color: colors.textSecondary }]}>
-                  {group.subjects.length} subject{group.subjects.length === 1 ? '' : 's'} ·{' '}
-                  {classContentCount} item{classContentCount === 1 ? '' : 's'}
-                </Text>
+                <View style={styles.classMetaWrap}>
+                  <Text style={[styles.classMeta, { color: colors.textSecondary }]}>
+                    {group.subjects.length} subject{group.subjects.length === 1 ? '' : 's'} ·{' '}
+                    {classContentCount} item{classContentCount === 1 ? '' : 's'}
+                  </Text>
+                </View>
                 <Ionicons
                   name={isClassExpanded ? 'chevron-up' : 'chevron-down'}
                   size={20}
@@ -289,10 +291,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
+  classMetaWrap: {
+    flexShrink: 1,
+    minWidth: 0,
+  },
   classMeta: {
     fontSize: 12,
     fontWeight: '600',
-    flexShrink: 1,
     textAlign: 'right',
   },
   pathHeaderRow: { borderRadius: 8 },

@@ -420,7 +420,9 @@ export default function StudentRiskAnalysisModal({
                       return (
                         <View key={subject} style={styles.subjectCard}>
                           <View style={styles.subjectHeader}>
-                            <Text style={styles.subjectName}>{subject}</Text>
+                            <View style={styles.subjectNameWrap}>
+                              <Text style={styles.subjectName}>{subject}</Text>
+                            </View>
                             <View style={styles.subjectMeta}>
                               <TrendIcon trend={subjectData.trend} />
                               <View style={[styles.perfBadge, { backgroundColor: perf.bg }]}>
@@ -621,7 +623,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   subjectHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
-  subjectName: { flex: 1, fontSize: 14, fontWeight: '700', color: '#0f172a' },
+  subjectNameWrap: { flex: 1, minWidth: 0 },
+  subjectName: { fontSize: 14, fontWeight: '700', color: '#0f172a' },
   subjectMeta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   perfBadge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
   perfBadgeText: { fontSize: 11, fontWeight: '700', textTransform: 'capitalize' },
@@ -662,7 +665,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 14,
   },
-  primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 13, flexShrink: 1 },
+  primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 13, textAlign: 'center' },
   refreshBtn: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -263,9 +263,11 @@ function StudyCalendarSectionComponent({
             <TouchableOpacity style={styles.navIconBtn} onPress={() => shiftMonth(-1)} hitSlop={8}>
               <Ionicons name="chevron-back" size={18} color={CAL_SKY.accentDark} />
             </TouchableOpacity>
-            <Text style={styles.monthLabelInner}>
-              {calendarMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-            </Text>
+            <View style={styles.monthLabelWrap}>
+              <Text style={styles.monthLabelInner}>
+                {calendarMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              </Text>
+            </View>
             <TouchableOpacity style={styles.navIconBtn} onPress={() => shiftMonth(1)} hitSlop={8}>
               <Ionicons name="chevron-forward" size={18} color={CAL_SKY.accentDark} />
             </TouchableOpacity>
@@ -607,8 +609,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: CAL_SKY.chipBg,
   },
-  monthLabelInner: {
+  monthLabelWrap: {
     flex: 1,
+    minWidth: 0,
+  },
+  monthLabelInner: {
     fontSize: 15,
     fontWeight: '700',
     color: CAL_SKY.title,

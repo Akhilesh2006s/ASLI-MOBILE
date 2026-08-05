@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useVidyaChat } from '../../../src/hooks/useVidyaChat';
 import { useKeyboardDockLift } from '../../../src/hooks/useKeyboardDockLift';
+import { withAndroidTextSafeEnd } from '../../../src/lib/vidya-subjects';
 import type { AIChatContext } from '../../../src/types/vidya';
 import { useAdminTheme } from '../_ui/useAdminTheme';
 import AdminScalePressable from '../_ui/AdminScalePressable';
@@ -150,8 +151,7 @@ export default function AdminVidyaChatPanel({ adminId, adminName }: Props) {
                   style={[styles.bubble, styles.bubbleUser, { borderRadius: radius.lg }]}
                 >
                   <Text style={[styles.bubbleText, styles.bubbleTextUser]}>
-                    {model.formatMessage(msg.content)}
-                    {'\u200A'}
+                    {withAndroidTextSafeEnd(model.formatMessage(msg.content))}
                   </Text>
                 </LinearGradient>
               ) : (
@@ -167,8 +167,7 @@ export default function AdminVidyaChatPanel({ adminId, adminName }: Props) {
                   ]}
                 >
                   <Text style={[styles.bubbleText, { color: colors.text }]}>
-                    {model.formatMessage(msg.content)}
-                    {'\u200A'}
+                    {withAndroidTextSafeEnd(model.formatMessage(msg.content))}
                   </Text>
                 </View>
               )}
@@ -237,7 +236,7 @@ export default function AdminVidyaChatPanel({ adminId, adminName }: Props) {
               editable={!model.isPending}
               cursorColor={colors.primary}
               selectionColor={`${colors.primary}40`}
-              textAlignVertical="center"
+              textAlignVertical="top"
               underlineColorAndroid="transparent"
               importantForAutofill="no"
               onFocus={() => {
@@ -320,7 +319,16 @@ const styles = StyleSheet.create({
   messageRow: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 12, gap: 8 },
   messageRowUser: { justifyContent: 'flex-end' },
   messageRowAssistant: { justifyContent: 'flex-start' },
-  bubble: { maxWidth: '78%', paddingHorizontal: 14, paddingVertical: 10, paddingRight: 18 },
+  bubble: {
+    maxWidth: '78%',
+    flexShrink: 1,
+    minWidth: 44,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    // Extra right pad so Fabric does not clip the last glyph on short bubbles.
+    paddingRight: 18,
+    overflow: 'visible',
+  },
   bubbleUser: { borderBottomRightRadius: 4 },
   bubbleAssistant: {
     borderWidth: 1,
@@ -359,21 +367,26 @@ const styles = StyleSheet.create({
   },
   inputShell: {
     flex: 1,
+    minWidth: 0,
     minHeight: 52,
     maxHeight: 110,
     borderWidth: 1,
     justifyContent: 'center',
+    overflow: 'visible',
   },
   input: {
     width: '100%',
     minHeight: 52,
     maxHeight: 110,
     paddingHorizontal: 14,
+    // Extra right pad so the caret + last glyph are never clipped.
+    paddingRight: 22,
     paddingTop: Platform.OS === 'android' ? 16 : 14,
     paddingBottom: Platform.OS === 'android' ? 16 : 14,
     margin: 0,
     fontSize: 15,
     lineHeight: 22,
+    backgroundColor: 'transparent',
     ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}),
   },
   sendBtn: {

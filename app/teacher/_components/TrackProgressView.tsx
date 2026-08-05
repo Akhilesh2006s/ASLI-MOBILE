@@ -677,7 +677,9 @@ export default function TrackProgressView({
                       size={18}
                       color={TEACHER.primary}
                     />
-                    <Text style={styles.classRowLabel}>{group.classNumber}</Text>
+                    <View style={styles.classRowLabelWrap}>
+                      <Text style={styles.classRowLabel}>{group.classNumber}</Text>
+                    </View>
                     <Text style={styles.classRowCount}>
                       {group.totalStudents} student{group.totalStudents !== 1 ? 's' : ''}
                     </Text>
@@ -704,9 +706,11 @@ export default function TrackProgressView({
                                 size={16}
                                 color={TEACHER.primaryLight}
                               />
-                              <Text style={styles.sectionRowLabel}>
-                                {sectionDisplayLabel(section.section)}
-                              </Text>
+                              <View style={styles.sectionRowLabelWrap}>
+                                <Text style={styles.sectionRowLabel}>
+                                  {sectionDisplayLabel(section.section)}
+                                </Text>
+                              </View>
                               <Text style={styles.sectionRowCount}>
                                 {section.students.length} student
                                 {section.students.length !== 1 ? 's' : ''}
@@ -815,7 +819,8 @@ const styles = StyleSheet.create({
     borderTopColor: TEACHER.surfaceBorder,
   },
   classRowActive: { backgroundColor: TEACHER.navActiveBg },
-  classRowLabel: { flex: 1, fontSize: 18, fontWeight: '800', color: TEACHER.text },
+  classRowLabelWrap: { flex: 1, minWidth: 0 },
+  classRowLabel: { fontSize: 18, fontWeight: '800', color: TEACHER.text },
   classRowCount: { fontSize: 13, color: TEACHER.textMuted },
   classBody: {
     paddingHorizontal: 8,
@@ -839,7 +844,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   sectionRowActive: { backgroundColor: TEACHER.navActiveBg },
-  sectionRowLabel: { flex: 1, fontSize: 15, fontWeight: '700', color: TEACHER.text },
+  sectionRowLabelWrap: { flex: 1, minWidth: 0 },
+  sectionRowLabel: { fontSize: 15, fontWeight: '700', color: TEACHER.text },
   sectionRowCount: { fontSize: 12, color: TEACHER.textMuted },
   sectionBody: {
     paddingHorizontal: 8,

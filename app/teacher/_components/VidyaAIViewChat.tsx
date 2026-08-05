@@ -159,6 +159,8 @@ export default function VidyaAIViewChat({
   const mode = TEACHING_MODES[teachingTab];
   const composerBottomPad = keyboardOpen ? 8 : Math.max(insets.bottom, TEACHER_SPACING.sm);
   const showSubjectPicker = model.subjectOptions.length > 1;
+  /** The opaque dock rounds itself instead of the card clipping it. */
+  const cardRadius = fullPage || standalone ? 0 : TEACHER_RADIUS.lg;
 
   const scrollToBottom = (animated = true) => {
     scrollViewRef.current?.scrollToEnd({ animated });
@@ -324,7 +326,14 @@ export default function VidyaAIViewChat({
       </ScrollView>
 
       <View
-        style={[styles.composerDock, { bottom: keyboardLift }]}
+        style={[
+          styles.composerDock,
+          {
+            bottom: keyboardLift,
+            borderBottomLeftRadius: keyboardLift > 0 ? 0 : cardRadius,
+            borderBottomRightRadius: keyboardLift > 0 ? 0 : cardRadius,
+          },
+        ]}
         onLayout={(e) => setComposerHeight(Math.ceil(e.nativeEvent.layout.height))}
       >
         <View style={[styles.inputBar, { paddingBottom: composerBottomPad }]}>
@@ -353,7 +362,8 @@ export default function VidyaAIViewChat({
               multiline
               maxLength={2000}
               editable={!model.isPending}
-              textAlignVertical="center"
+              textAlignVertical="top"
+              underlineColorAndroid="transparent"
               onFocus={() => {
                 captureBaseline();
                 setTimeout(() => scrollToBottom(true), 120);
@@ -404,7 +414,8 @@ const styles = StyleSheet.create({
     borderColor: TEACHER.surfaceBorder,
     // Transparent so AppBackground's artwork shows through.
     backgroundColor: 'transparent',
-    overflow: 'hidden',
+    // No overflow:'hidden' — it clips the last glyph in bubbles/inputs on Android
+    // and eats the composer's elevation shadow. The dock rounds its own corners.
   },
   chatRootFull: {
     marginHorizontal: 0,
@@ -595,6 +606,8 @@ const styles = StyleSheet.create({
   },
   bubble: {
     maxWidth: '78%',
+    flexShrink: 1,
+    minWidth: 44,
     paddingVertical: 10,
     paddingLeft: 14,
     paddingRight: 20,
@@ -651,6 +664,7 @@ const styles = StyleSheet.create({
     paddingLeft: 4,
     paddingRight: 6,
     paddingVertical: 6,
+    overflow: 'visible',
   },
   iconBtn: {
     width: 36,
@@ -660,11 +674,17 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    minWidth: 0,
     minHeight: 40,
     maxHeight: 100,
     fontSize: 15,
+    lineHeight: 22,
     color: TEACHER.text,
     paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingRight: 16,
+    backgroundColor: 'transparent',
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : {}),
   },
   sendButton: {
     width: 44,

@@ -221,6 +221,33 @@ const teacherService = {
     const keys = await AsyncStorage.getAllKeys();
     await AsyncStorage.multiRemove(keys.filter((k) => k.startsWith(CACHE_PREFIX)));
   },
+
+  /** Remove teacher_cache entries past TTL; returns how many keys were deleted. */
+  pruneStaleCache: async (): Promise<number> => {
+    try {
+      const keys = (await AsyncStorage.getAllKeys()).filter((k) => k.startsWith(CACHE_PREFIX));
+      if (keys.length === 0) return 0;
+      const pairs = await AsyncStorage.multiGet(keys);
+      const stale: string[] = [];
+      const now = Date.now();
+      for (const [key, raw] of pairs) {
+        if (!raw) {
+          stale.push(key);
+          continue;
+        }
+        try {
+          const entry = JSON.parse(raw) as CacheEntry<unknown>;
+          if (!entry?.ts || now - entry.ts > CACHE_TTL_MS) stale.push(key);
+        } catch {
+          stale.push(key);
+        }
+      }
+      if (stale.length > 0) await AsyncStorage.multiRemove(stale);
+      return stale.length;
+    } catch {
+      return 0;
+    }
+  },
 };
 
 export default teacherService;

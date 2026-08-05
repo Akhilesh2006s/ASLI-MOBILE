@@ -146,7 +146,9 @@ export default function ClassDashboardView() {
               <View style={styles.avatar}>
                 <Text style={styles.avatarText}>{name.charAt(0).toUpperCase()}</Text>
               </View>
-              <Text style={styles.studentName}>{name}</Text>
+              <View style={styles.studentNameWrap}>
+                <Text style={styles.studentName}>{name}</Text>
+              </View>
               <Pressable
                 style={[styles.toggle, status === 'present' ? styles.togglePresent : styles.toggleAbsent]}
                 onPress={() => toggleAttendance(id)}
@@ -241,7 +243,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarText: { color: TEACHER.textOnPrimary, fontWeight: '800' },
-  studentName: { flex: 1, fontSize: 14, fontWeight: '600', color: TEACHER.text },
+  studentNameWrap: { flex: 1, minWidth: 0 },
+  studentName: { fontSize: 14, fontWeight: '600', color: TEACHER.text },
   toggle: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
   togglePresent: { backgroundColor: 'rgba(0,214,143,0.2)' },
   toggleAbsent: { backgroundColor: 'rgba(255,77,106,0.2)' },

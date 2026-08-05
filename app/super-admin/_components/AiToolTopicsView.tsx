@@ -558,14 +558,26 @@ export default function AiToolTopicsView() {
 
       <View style={styles.tableSection}>
         <View style={styles.tableHeader}>
-          <Text style={styles.tableHeaderCell}>Board</Text>
-          <Text style={styles.tableHeaderCell}>Class</Text>
-          <Text style={[styles.tableHeaderCell, { flex: 1.2 }]}>Subject</Text>
+          <View style={styles.tableHeaderCell}>
+            <Text style={styles.tableHeaderCellText}>Board</Text>
+          </View>
+          <View style={styles.tableHeaderCell}>
+            <Text style={styles.tableHeaderCellText}>Class</Text>
+          </View>
+          <View style={[styles.tableHeaderCell, { flex: 1.2 }]}>
+            <Text style={styles.tableHeaderCellText}>Subject</Text>
+          </View>
         </View>
         <View style={styles.tableHeader}>
-          <Text style={[styles.tableHeaderCell, { flex: 1.4 }]}>Topic Name</Text>
-          <Text style={[styles.tableHeaderCell, { flex: 1.2 }]}>Sub Topic</Text>
-          <Text style={[styles.tableHeaderCell, { width: 72 }]}>Actions</Text>
+          <View style={[styles.tableHeaderCell, { flex: 1.4 }]}>
+            <Text style={styles.tableHeaderCellText}>Topic Name</Text>
+          </View>
+          <View style={[styles.tableHeaderCell, { flex: 1.2 }]}>
+            <Text style={styles.tableHeaderCellText}>Sub Topic</Text>
+          </View>
+          <View style={[styles.tableHeaderCell, { width: 72 }]}>
+            <Text style={styles.tableHeaderCellText}>Actions</Text>
+          </View>
         </View>
 
         {isLoadingRows ? (
@@ -887,7 +899,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   tableHeader: { flexDirection: 'row', backgroundColor: '#f8fafc', borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
-  tableHeaderCell: { flex: 1, padding: 10, fontSize: 11, fontWeight: '700', color: '#64748b', textTransform: 'uppercase' },
+  tableHeaderCell: { flex: 1, padding: 10, minWidth: 0 },
+  tableHeaderCellText: { fontSize: 11, fontWeight: '700', color: '#64748b', textTransform: 'uppercase' },
   tablePlaceholder: { textAlign: 'center', color: '#64748b', fontSize: 13, padding: 24 },
   tableRow: {
     borderBottomWidth: 1,

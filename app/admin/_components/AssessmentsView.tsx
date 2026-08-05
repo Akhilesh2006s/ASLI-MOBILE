@@ -483,7 +483,7 @@ const styles = StyleSheet.create({
   inputContainer: { marginBottom: 16 },
   inputLabel: { fontSize: 14, fontWeight: '600', marginBottom: 8 },
   input: { borderWidth: 1, borderRadius: 12, padding: 12, fontSize: 16 },
-  textArea: { height: 100, textAlignVertical: 'top' },
+  textArea: { minHeight: 100, textAlignVertical: 'top' },
   inputRow: { flexDirection: 'row', gap: 16 },
   createButton: { padding: 16, alignItems: 'center', marginTop: 8, marginBottom: 16 },
   createButtonText: { fontSize: 16, fontWeight: '700' },
