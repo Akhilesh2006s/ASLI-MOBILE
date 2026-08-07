@@ -779,7 +779,8 @@ export default function TimetableView() {
         }
       >
         <Text style={[styles.uploadHint, { color: colors.textMuted }]}>
-          Upload a CSV or Excel file to bulk import schedule entries.
+          Class + Section must already exist in School Management (e.g. Class 10, Section A). Subject and
+          Teacher names must match this school.
         </Text>
         <AdminScalePressable
           onPress={pickCsvFile}
