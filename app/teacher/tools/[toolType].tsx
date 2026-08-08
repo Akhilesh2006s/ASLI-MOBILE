@@ -113,7 +113,11 @@ const FIELD_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   date: 'calendar-outline',
   timeSlots: 'time-outline',
   className: 'people-outline',
+  batch: 'ribbon-outline',
 };
+
+/** IIT-only batch tiers shown as an extra selector when Board is IIT. */
+const BATCH_OPTIONS = ['Alpha', 'Beta', 'Gamma'];
 
 type DropdownState = {
   fieldName: string;
@@ -272,6 +276,7 @@ export default function TeacherToolPage() {
 
   const boardOptions = getAiToolBoardOptions(isAsliPrepExclusive, schoolBoardName);
   const selectedBoard = formParams.board || getDefaultAiToolBoard(isAsliPrepExclusive, schoolBoardName);
+  const isIitBoard = String(selectedBoard || '').toUpperCase().replace(/[\s/\\-]+/g, '').includes('IIT');
   const cascadeTopic = formParams.topic || formParams.chapter || '';
 
   const cascade = useCurriculumCascade(
@@ -542,6 +547,9 @@ export default function TeacherToolPage() {
         delete newParams.concept;
         delete newParams.chapter;
         delete newParams.projectTopic;
+        if (!String(value).toUpperCase().includes('IIT')) {
+          delete newParams.batch;
+        }
         if (String(value).toUpperCase() === 'IIT') {
           const iitClass = cascade.classOptions.find((c) => /iit/i.test(c)) || 'Class 6';
           newParams.gradeLevel = iitClass;
@@ -992,6 +1000,24 @@ export default function TeacherToolPage() {
       onPress: () =>
         openDropdown('board', 'Board', mergeSelectedIntoOptions(boardOptions, selectedBoard), selectedBoard, isLoadingUser),
     },
+    ...(isIitBoard
+      ? [
+          {
+            icon: 'ribbon-outline' as const,
+            label: 'Batch',
+            value: String(formParams.batch || ''),
+            disabled: false,
+            onPress: () =>
+              openDropdown(
+                'batch',
+                'Batch',
+                mergeSelectedIntoOptions(BATCH_OPTIONS, formParams.batch),
+                String(formParams.batch || ''),
+                false,
+              ),
+          },
+        ]
+      : []),
     {
       icon: 'people-outline' as const,
       label: 'Class',
@@ -1069,6 +1095,18 @@ export default function TeacherToolPage() {
               false,
               true
             )}
+            {isIitBoard
+              ? renderDropdownTrigger(
+                  'batch',
+                  'Batch',
+                  String(formParams.batch || ''),
+                  'Select batch',
+                  BATCH_OPTIONS,
+                  false,
+                  false,
+                  false
+                )
+              : null}
             {curriculumFields.map(renderField)}
             {isStoryLanguageTool(toolType) ? (
               <View style={styles.infoBanner}>

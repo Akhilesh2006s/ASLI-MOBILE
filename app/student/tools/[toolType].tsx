@@ -186,7 +186,11 @@ const FIELD_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   duration: 'time-outline',
   focusAreas: 'telescope-outline',
   assignmentType: 'clipboard-outline',
+  batch: 'ribbon-outline',
 };
+
+/** IIT-only batch tiers shown as an extra selector when Board is IIT. */
+const BATCH_OPTIONS = ['Alpha', 'Beta', 'Gamma'];
 
 type DropdownState = {
   fieldName: string;
@@ -272,6 +276,7 @@ export default function StudentToolPage() {
 
   const boardOptions = getAiToolBoardOptions(isAsliPrepExclusive, schoolBoardName);
   const selectedBoard = formParams.board || getDefaultAiToolBoard(isAsliPrepExclusive, schoolBoardName);
+  const isIitBoard = String(selectedBoard || '').toUpperCase().replace(/[\s/\\-]+/g, '').includes('IIT');
 
   // Keep params collapsed whenever a result is on screen (including regenerate)
   // so the phone fill layout isn't crushed by the full form.
@@ -517,6 +522,9 @@ export default function StudentToolPage() {
         delete newParams.concept;
         delete newParams.chapter;
         delete newParams.projectTopic;
+        if (!String(value).toUpperCase().includes('IIT')) {
+          delete newParams.batch;
+        }
         if (assignedGradeLevel) {
           newParams.gradeLevel = assignedGradeLevel;
         }
@@ -1006,6 +1014,24 @@ export default function StudentToolPage() {
       onPress: () =>
         openDropdown('board', 'Board', mergeSelectedIntoOptions(boardOptions, selectedBoard), selectedBoard, isLoadingUser),
     },
+    ...(isIitBoard
+      ? [
+          {
+            icon: 'ribbon-outline' as const,
+            label: 'Batch',
+            value: String(formParams.batch || ''),
+            disabled: false,
+            onPress: () =>
+              openDropdown(
+                'batch',
+                'Batch',
+                mergeSelectedIntoOptions(BATCH_OPTIONS, formParams.batch),
+                String(formParams.batch || ''),
+                false,
+              ),
+          },
+        ]
+      : []),
     {
       icon: 'people-outline' as const,
       label: 'Class',
@@ -1089,6 +1115,18 @@ export default function StudentToolPage() {
               false,
               true
             )}
+            {isIitBoard
+              ? renderDropdownTrigger(
+                  'batch',
+                  'Batch',
+                  String(formParams.batch || ''),
+                  'Select batch',
+                  BATCH_OPTIONS,
+                  false,
+                  false,
+                  false
+                )
+              : null}
             {curriculumFields.map(renderField)}
             {isReadingPractice ? (
               <View style={styles.infoBanner}>
