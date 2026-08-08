@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { STUDENT, STUDENT_RADIUS, STUDENT_TYPO } from '../../theme/student';
 import { AI, AI_RADIUS, AI_TYPE } from '../../theme/ai';
@@ -16,6 +17,8 @@ type Props = {
   /** Larger title/subtitle on tablet tool screens */
   tabletUi?: boolean;
   variant?: 'default' | 'ai';
+  /** Optional tool icon shown as a gradient chip (AI variant only). */
+  icon?: keyof typeof Ionicons.glyphMap;
 };
 
 /** Shared liquid-glass header for student tool pages (all AI tools). */
@@ -27,6 +30,7 @@ export default function StudentScreenHeader({
   subtitle,
   tabletUi,
   variant = 'default',
+  icon,
 }: Props) {
   const isAi = variant === 'ai';
   return (
@@ -49,17 +53,17 @@ export default function StudentScreenHeader({
           >
             <Ionicons name="chevron-back" size={tabletUi ? 26 : 24} color={isAi ? AI.primary : STUDENT.primaryDark} />
           </Pressable>
-          <View style={styles.titleWrap}>
+          <View style={[styles.titleWrap, isAi && icon && styles.titleWrapAi]}>
             <Text
-              style={[styles.title, isAi && styles.titleAi, tabletUi && styles.titleTablet]}
-              numberOfLines={1}
+              style={[styles.title, isAi && styles.titleAi, isAi && icon && styles.titleAiLeft, tabletUi && styles.titleTablet]}
+              numberOfLines={2}
             >
               {title}
             </Text>
             {subtitle ? (
               <Text
-                style={[styles.subtitle, isAi && styles.subtitleAi, tabletUi && styles.subtitleTablet]}
-                numberOfLines={tabletUi ? 2 : 1}
+                style={[styles.subtitle, isAi && styles.subtitleAi, isAi && icon && styles.subtitleAiLeft, tabletUi && styles.subtitleTablet]}
+                numberOfLines={2}
               >
                 {subtitle}
               </Text>
@@ -69,6 +73,17 @@ export default function StudentScreenHeader({
             <Pressable style={styles.rightBtn} onPress={onRightPress} accessibilityRole="button">
               <Text style={styles.rightText}>{rightLabel}</Text>
             </Pressable>
+          ) : isAi && icon ? (
+            <View style={styles.headerIconWrap}>
+              <LinearGradient
+                colors={[AI.primary, AI.primaryPressed]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.headerIconGradient}
+              >
+                <Ionicons name={icon} size={tabletUi ? 30 : 26} color="#FFFFFF" />
+              </LinearGradient>
+            </View>
           ) : (
             <View style={styles.rightPlaceholder} />
           )}
@@ -118,6 +133,10 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
   },
+  titleWrapAi: {
+    alignItems: 'flex-start',
+    paddingLeft: 12,
+  },
   title: {
     ...STUDENT_TYPO.section,
     color: STUDENT.text,
@@ -130,6 +149,29 @@ const styles = StyleSheet.create({
   titleAi: {
     ...AI_TYPE.title,
     color: AI.text,
+  },
+  titleAiLeft: {
+    textAlign: 'left',
+    fontSize: 20,
+    lineHeight: 26,
+  },
+  subtitleAiLeft: {
+    textAlign: 'left',
+  },
+  headerIconWrap: {
+    borderRadius: AI_RADIUS.md,
+    shadowColor: AI.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  headerIconGradient: {
+    width: 52,
+    height: 52,
+    borderRadius: AI_RADIUS.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   subtitle: {
     ...STUDENT_TYPO.caption,

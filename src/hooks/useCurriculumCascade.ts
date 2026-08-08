@@ -39,6 +39,47 @@ function rowsToNames(rows: CurriculumRow[] | undefined): string[] {
   return rows.map((r) => r.name || r.label || r.id).filter(Boolean);
 }
 
+const normalizeLabelKey = (value: string) =>
+  String(value).trim().toLowerCase().replace(/\s+/g, ' ');
+
+/**
+ * Clean up subtopic options coming from the curriculum API.
+ * - Trims whitespace and removes case-insensitive duplicates.
+ * - Drops "clustered" entries: a single option that is really every other
+ *   subtopic concatenated with commas (bad backend data). Such an entry is
+ *   removed only when all of its comma-separated parts already exist as their
+ *   own options, so legitimate names that contain a comma are preserved.
+ */
+function sanitizeSubtopicOptions(options: string[]): string[] {
+  const cleaned = options.map((o) => String(o ?? '').trim()).filter(Boolean);
+
+  const seen = new Set<string>();
+  const deduped: string[] = [];
+  for (const option of cleaned) {
+    const key = normalizeLabelKey(option);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(option);
+  }
+
+  const singleKeys = new Set(
+    deduped
+      .filter((o) => !o.includes(','))
+      .map((o) => normalizeLabelKey(o))
+  );
+
+  return deduped.filter((option) => {
+    if (!option.includes(',')) return true;
+    const parts = option
+      .split(',')
+      .map((p) => normalizeLabelKey(p))
+      .filter(Boolean);
+    if (parts.length < 2) return true;
+    const allPartsExistSeparately = parts.every((p) => singleKeys.has(p));
+    return !allPartsExistSeparately;
+  });
+}
+
 function normalizeSubjectKey(value: string): string {
   const compact = String(value).toLowerCase().replace(/[^a-z0-9]/g, '');
   if (compact === 'maths' || compact === 'math') return 'mathematics';
@@ -265,7 +306,11 @@ export function useCurriculumCascade(
         if (cancelled) return;
         const curriculumSubtopics = rowsToNames((data as { data?: CurriculumRow[] }).data);
         const managedSubtopics = (managed as { data?: { subTopics?: string[] } })?.data?.subTopics || [];
-        setSubtopics(mergePreservingPrimaryOrder(managedSubtopics, curriculumSubtopics));
+        setSubtopics(
+          sanitizeSubtopicOptions(
+            mergePreservingPrimaryOrder(managedSubtopics, curriculumSubtopics)
+          )
+        );
       } catch {
         if (!cancelled) setSubtopics([]);
       } finally {

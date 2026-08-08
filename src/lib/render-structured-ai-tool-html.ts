@@ -449,9 +449,13 @@ function renderQuickAssignmentHtml(content: string, rawContent: unknown): string
       iconWrap: 'bg-violet-100 text-violet-800',
       iconSvg: '<span>❓</span>',
       body: assignment.conceptQuestions
-        .map(
-          (q, i) =>
-            `<div class="mb-2 rounded-lg border border-orange-100 bg-orange-50/50 px-3 py-2 text-sm"><strong class="ai-q-label">Q${i + 1}.</strong> ${escapeHtml(q.question)}</div>`
+        .map((q, i) =>
+          colorfulExamStyleCard(
+            i,
+            q.question,
+            (q as { options?: string[] }).options,
+            (q as { marks?: number | null }).marks,
+          ),
         )
         .join(''),
     });
@@ -472,11 +476,8 @@ function renderMockTestHtml(content: string, rawContent: unknown): string | null
     const qs = section.questions || [];
     if (!qs.length) continue;
     const body = qs
-      .map(
-        (q, i) =>
-          `<div class="rounded-lg border border-violet-100 bg-violet-50/40 px-3 py-2 mb-2">
-            <p class="text-sm text-slate-800 mt-1"><strong class="ai-q-label">Q${i + 1}${q.marks ? ` · ${q.marks}M` : ''}.</strong> ${escapeHtml(q.question || '')}</p>
-          </div>`
+      .map((q, i) =>
+        colorfulExamStyleCard(i, q.question || '', (q as { options?: string[] }).options, q.marks),
       )
       .join('');
     html += sectionCardHtml({
@@ -499,6 +500,55 @@ const EXAM_LETTER_SECTION_TITLES = [
   'Section E: Case-based / Competency Questions',
 ] as const;
 
+/**
+ * Shared colorful question card used across every generator (exam paper, mock
+ * test, quick assignment, etc.) so all tools share one polished style: a
+ * colored Q-badge, circled A/B/C/D option chips, and a marks pill.
+ */
+function colorfulExamStyleCard(
+  index: number,
+  question: string,
+  options?: string[],
+  marks?: number | null,
+  extra?: { badgeSuffix?: string; answer?: string; explanation?: string; typeLabel?: string },
+): string {
+  const t = getAiSectionTheme(index);
+  const rawOptions = (options || []).map((opt) => String(opt || '').trim()).filter(Boolean);
+  const opts = rawOptions.length
+    ? `<div class="quest-options">${rawOptions
+        .map((opt) => {
+          const label = opt.match(/^\(?([A-Da-d])[).]/)?.[1]?.toUpperCase() || '';
+          const text = opt.replace(/^\(?[A-Da-d][).]\s*/, '').trim();
+          return `<div class="quest-option" style="--quest:${t.hex};--quest-deep:${t.hexDeep}">
+            ${label ? `<span class="quest-option-letter">${label}</span>` : ''}
+            <span class="quest-option-text">${escapeHtml(text || opt)}</span>
+          </div>`;
+        })
+        .join('')}</div>`
+    : '';
+  const meta = [
+    extra?.typeLabel ? `<span class="quest-pill quest-pill-violet">${escapeHtml(extra.typeLabel)}</span>` : '',
+    marks != null && Number.isFinite(Number(marks))
+      ? `<span class="quest-pill quest-pill-amber">${escapeHtml(String(marks))} mark${Number(marks) === 1 ? '' : 's'}</span>`
+      : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+  const ans = extra?.answer
+    ? `<div class="quest-answer" style="--quest:${t.hex};--quest-deep:${t.hexDeep}"><span class="quest-answer-label">Answer</span><p>${escapeHtml(extra.answer)}</p></div>`
+    : '';
+  const expl = extra?.explanation
+    ? `<div class="quest-explain"><span class="quest-explain-label">Why</span><p>${escapeHtml(extra.explanation)}</p></div>`
+    : '';
+  return colorfulQuestionCardHtml({
+    index,
+    badge: `Q${index + 1}${extra?.badgeSuffix || ''}`,
+    metaHtml: meta,
+    questionHtml: `<p class="quest-q-text">${escapeHtml(question || '')}</p>`,
+    extraHtml: `${opts}${ans}${expl}`,
+  });
+}
+
 function renderExamQuestionCards(
   questions: Array<{ question?: string; options?: string[]; marks?: number | null; answer?: string }>,
 ): string {
@@ -506,26 +556,7 @@ function renderExamQuestionCards(
     return emptySectionPlaceholderHtml('No questions in this section yet.');
   }
   return questions
-    .map((q, i) => {
-      const options = (q.options || [])
-        .map((opt) => String(opt || '').trim())
-        .filter(Boolean)
-        .map(
-          (opt) =>
-            `<p class="text-sm text-slate-700 pl-2">${escapeHtml(opt)}</p>`,
-        )
-        .join('');
-      const marks =
-        q.marks != null && Number.isFinite(Number(q.marks))
-          ? `<p class="text-xs font-semibold text-blue-700 mt-1">Marks: ${escapeHtml(String(q.marks))}</p>`
-          : '';
-      return `<div class="rounded-lg border border-blue-100 bg-blue-50/40 px-3 py-2 mb-2">
-            <p class="text-xs font-bold text-blue-800">Q${i + 1}</p>
-            <p class="text-sm text-slate-800 mt-1">${escapeHtml(q.question || '')}</p>
-            ${options}
-            ${marks}
-          </div>`;
-    })
+    .map((q, i) => colorfulExamStyleCard(i, q.question || '', q.options, q.marks))
     .join('');
 }
 
@@ -1332,25 +1363,13 @@ function homeworkPracticeQuestionsHtml(
 ): string {
   if (!questions.length) return emptySectionPlaceholderHtml();
   return questions
-    .map((q, i) => {
-      const num = q.questionNumber ?? i + 1;
-      const opts = worksheetOptionsHtml(q.options || []);
-      const meta = [q.type, q.marks != null ? `${q.marks} marks` : '']
-        .filter(Boolean)
-        .map((t) => `<span class="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-900 mr-1">${escapeHtml(String(t))}</span>`)
-        .join('');
-      const answer = q.answer
-        ? `<p class="mt-2 text-xs text-violet-700 font-semibold">Answer: ${escapeHtml(q.answer)}</p>`
-        : '';
-      const explanation = q.explanation
-        ? `<p class="mt-1 text-xs text-slate-600">Explanation: ${escapeHtml(q.explanation)}</p>`
-        : '';
-      return `<div class="mb-3 rounded-lg border border-orange-100 bg-orange-50/40 px-3 py-2">
-        <p class="text-xs font-bold text-orange-800">Q${num}</p>
-        <p class="text-sm text-slate-800 mt-1">${escapeHtml(q.question || '')}</p>
-        ${meta ? `<div class="mt-1">${meta}</div>` : ''}${opts}${answer}${explanation}
-      </div>`;
-    })
+    .map((q, i) =>
+      colorfulExamStyleCard(i, q.question || '', q.options, q.marks, {
+        typeLabel: q.type ? String(q.type) : undefined,
+        answer: q.answer || undefined,
+        explanation: q.explanation || undefined,
+      }),
+    )
     .join('');
 }
 

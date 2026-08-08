@@ -52,6 +52,7 @@ import type { AiToolGenerationMeta } from '../../../src/lib/ai-tool-generate';
 import {
   buildAiToolContentRenderKey,
 } from '../../../src/lib/ai-tool-rotation-label';
+import { getAiToolIonicon } from '../../../src/lib/ai-tool-icons';
 import {
   filterSubjectsForAiTool,
   isLanguageExcludedTool,
@@ -149,19 +150,23 @@ function FormSection({
   title,
   subtitle,
   accent,
+  icon,
   children,
   tabletUi,
 }: {
   title: string;
   subtitle?: string;
   accent: string;
+  icon?: keyof typeof Ionicons.glyphMap;
   children: ReactNode;
   tabletUi?: boolean;
 }) {
   return (
     <GlassPanel style={styles.sectionCard} radius={AI_RADIUS.lg} tone="strong" elevated>
       <View style={styles.sectionHeader}>
-        <View style={[styles.sectionAccent, { backgroundColor: accent }]} />
+        <View style={[styles.sectionIcon, { backgroundColor: `${accent}18`, borderColor: `${accent}33` }]}>
+          <Ionicons name={icon || 'sparkles'} size={18} color={accent} />
+        </View>
         <View style={[styles.sectionHeaderText, tabletUi && aiToolTabletPageStyles.sectionHeaderText]}>
           <Text style={[styles.sectionTitle, tabletUi && aiToolTabletPageStyles.sectionTitle]}>
             {formatAiToolText(title)}
@@ -183,15 +188,22 @@ function TeacherToolHeader({
   subtitle,
   onBack,
   tabletUi,
+  toolIcon,
 }: {
   title: string;
   subtitle?: string;
   onBack: () => void;
   tabletUi?: boolean;
+  toolIcon?: keyof typeof Ionicons.glyphMap;
 }) {
   return (
     <View style={[styles.header, tabletUi && styles.headerTablet]}>
-      <GlassSurface intensity={55} tone="strong" colors={['rgba(238,242,255,0.58)', 'rgba(255,255,255,0.28)']} />
+      <LinearGradient
+        colors={['#EEF0FF', '#F5F3FF', '#FFFFFF']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
       <Pressable
         onPress={onBack}
         style={styles.backBtn}
@@ -199,19 +211,28 @@ function TeacherToolHeader({
         accessibilityRole="button"
         accessibilityLabel="Go back"
       >
-        <Ionicons name="arrow-back" size={tabletUi ? 24 : 22} color={TEACHER.text} />
+        <Ionicons name="arrow-back" size={tabletUi ? 24 : 22} color={AI.primary} />
       </Pressable>
       <View style={styles.headerText}>
-        <Text style={[styles.headerTitle, tabletUi && styles.headerTitleTablet]} numberOfLines={1}>
+        <Text style={[styles.headerTitle, tabletUi && styles.headerTitleTablet]} numberOfLines={2}>
           {formatAiToolText(title)}
         </Text>
         {subtitle ? (
-          <Text style={[styles.headerSubtitle, tabletUi && styles.headerSubtitleTablet]} numberOfLines={tabletUi ? 2 : 2}>
+          <Text style={[styles.headerSubtitle, tabletUi && styles.headerSubtitleTablet]} numberOfLines={2}>
             {formatAiToolText(subtitle)}
           </Text>
         ) : null}
       </View>
-      <View style={styles.headerSpacer} />
+      <View style={styles.headerIconWrap}>
+        <LinearGradient
+          colors={[AI.primary, AI.primaryPressed]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.headerIconGradient}
+        >
+          <Ionicons name={toolIcon || 'sparkles'} size={tabletUi ? 30 : 26} color="#FFFFFF" />
+        </LinearGradient>
+      </View>
     </View>
   );
 }
@@ -294,17 +315,6 @@ export default function TeacherToolPage() {
     [toolType, availableSubjects]
   );
 
-  const paramItems = useMemo(
-    () => [
-      { icon: 'school-outline' as const, label: 'Board', value: String(selectedBoard || '') },
-      { icon: 'people-outline' as const, label: 'Class', value: String(formParams.gradeLevel || '') },
-      { icon: 'book-outline' as const, label: 'Subject', value: String(formParams.subject || '') },
-      { icon: 'document-text-outline' as const, label: 'Chapter', value: String(formParams.topic || formParams.chapter || '') },
-      { icon: 'list-outline' as const, label: 'Subtopic', value: String(formParams.subTopic || '') },
-    ],
-    [selectedBoard, formParams]
-  );
-
   // Keep params collapsed whenever a result is on screen (including regenerate)
   // so the phone fill layout isn't crushed by the full form.
   const showCollapsedParams = !!generatedContent;
@@ -326,8 +336,8 @@ export default function TeacherToolPage() {
 
   const headerAnimatedStyle = useAnimatedStyle(() => ({
     maxHeight: isTablet
-      ? 120
-      : interpolate(scrollY.value, [0, HEADER_COLLAPSE_DISTANCE], [120, 0], Extrapolation.CLAMP),
+      ? 140
+      : interpolate(scrollY.value, [0, HEADER_COLLAPSE_DISTANCE], [140, 0], Extrapolation.CLAMP),
     opacity: isTablet
       ? 1
       : interpolate(scrollY.value, [0, HEADER_COLLAPSE_DISTANCE * 0.65], [1, 0], Extrapolation.CLAMP),
@@ -841,36 +851,35 @@ export default function TeacherToolPage() {
     const isPlaceholder = !value;
 
     return (
-      <View style={styles.fieldBlock}>
-        <View style={styles.labelRow}>
-          <View style={[styles.fieldIconWrap, { backgroundColor: `${accent}22` }]}>
-            <Ionicons name={icon} size={16} color={accent} />
-          </View>
-          <View style={styles.fieldLabelWrap}>
-            <Text style={[styles.fieldLabel, isTablet && aiToolTabletPageStyles.fieldLabel]}>
-              {label.replace(' *', '')}
-              {required ? <Text style={styles.required}> *</Text> : null}
-            </Text>
-          </View>
-          {loading ? <ActivityIndicator size="small" color={accent} style={styles.fieldSpinner} /> : null}
+      <TouchableOpacity
+        style={[styles.fieldCard, disabled && styles.fieldCardDisabled]}
+        onPress={() => openDropdown(fieldName, label.replace(' *', ''), options, value, disabled)}
+        activeOpacity={0.8}
+        disabled={disabled}
+      >
+        <View style={[styles.fieldIconChip, { backgroundColor: `${accent}14`, borderColor: `${accent}2e` }]}>
+          <Ionicons name={icon} size={18} color={accent} />
         </View>
-        <TouchableOpacity
-          style={[styles.dropdownTrigger, disabled && styles.dropdownTriggerDisabled]}
-          onPress={() => openDropdown(fieldName, label.replace(' *', ''), options, value, disabled)}
-          activeOpacity={0.75}
-          disabled={disabled}
-        >
-          <View style={styles.dropdownValueWrap}>
-            <Text
-              style={[styles.dropdownValue, isPlaceholder && styles.dropdownPlaceholder, isTablet && aiToolTabletPageStyles.dropdownValue]}
-              numberOfLines={2}
-            >
-              {display}
-            </Text>
+        <View style={styles.fieldCardText}>
+          <Text style={[styles.fieldCardLabel, isTablet && aiToolTabletPageStyles.fieldLabel]} numberOfLines={1}>
+            {label.replace(' *', '')}
+            {required ? <Text style={styles.required}> *</Text> : null}
+          </Text>
+          <Text
+            style={[styles.fieldCardValue, isPlaceholder && styles.fieldCardPlaceholder, isTablet && aiToolTabletPageStyles.dropdownValue]}
+            numberOfLines={2}
+          >
+            {display}
+          </Text>
+        </View>
+        {loading ? (
+          <ActivityIndicator size="small" color={accent} />
+        ) : (
+          <View style={[styles.fieldChevron, disabled && styles.fieldChevronDisabled]}>
+            <Ionicons name="chevron-down" size={16} color={disabled ? TEACHER.navInactive : accent} />
           </View>
-          <Ionicons name="chevron-down" size={18} color={disabled ? TEACHER.navInactive : TEACHER.textMuted} />
-        </TouchableOpacity>
-      </View>
+        )}
+      </TouchableOpacity>
     );
   };
 
@@ -907,17 +916,15 @@ export default function TeacherToolPage() {
 
     if (field.type === 'textarea') {
       return (
-        <View key={field.name} style={styles.fieldBlock}>
-          <View style={styles.labelRow}>
-            <View style={[styles.fieldIconWrap, { backgroundColor: `${accent}22` }]}>
-              <Ionicons name={FIELD_ICONS[field.name] || 'create-outline'} size={16} color={accent} />
+        <View key={field.name} style={styles.fieldInputCard}>
+          <View style={styles.fieldInputHeader}>
+            <View style={[styles.fieldIconChipSm, { backgroundColor: `${accent}14`, borderColor: `${accent}2e` }]}>
+              <Ionicons name={FIELD_ICONS[field.name] || 'create-outline'} size={15} color={accent} />
             </View>
-            <View style={styles.fieldLabelWrap}>
-              <Text style={[styles.fieldLabel, isTablet && aiToolTabletPageStyles.fieldLabel]}>
-                {formatAiToolText(field.label.replace(' *', ''))}
-                {field.required ? <Text style={styles.required}> *</Text> : null}
-              </Text>
-            </View>
+            <Text style={[styles.fieldCardLabel, isTablet && aiToolTabletPageStyles.fieldLabel]}>
+              {formatAiToolText(field.label.replace(' *', ''))}
+              {field.required ? <Text style={styles.required}> *</Text> : null}
+            </Text>
           </View>
           <TextInput
             style={[styles.textArea, styles.textInput, isTablet && aiToolTabletPageStyles.textInput]}
@@ -934,17 +941,15 @@ export default function TeacherToolPage() {
     }
 
     return (
-      <View key={field.name} style={styles.fieldBlock}>
-        <View style={styles.labelRow}>
-          <View style={[styles.fieldIconWrap, { backgroundColor: `${accent}22` }]}>
-            <Ionicons name={FIELD_ICONS[field.name] || 'options-outline'} size={16} color={accent} />
+      <View key={field.name} style={styles.fieldInputCard}>
+        <View style={styles.fieldInputHeader}>
+          <View style={[styles.fieldIconChipSm, { backgroundColor: `${accent}14`, borderColor: `${accent}2e` }]}>
+            <Ionicons name={FIELD_ICONS[field.name] || 'options-outline'} size={15} color={accent} />
           </View>
-          <View style={styles.fieldLabelWrap}>
-            <Text style={[styles.fieldLabel, isTablet && aiToolTabletPageStyles.fieldLabel]}>
-              {formatAiToolText(field.label.replace(' *', ''))}
-              {field.required ? <Text style={styles.required}> *</Text> : null}
-            </Text>
-          </View>
+          <Text style={[styles.fieldCardLabel, isTablet && aiToolTabletPageStyles.fieldLabel]}>
+            {formatAiToolText(field.label.replace(' *', ''))}
+            {field.required ? <Text style={styles.required}> *</Text> : null}
+          </Text>
         </View>
         <TextInput
           style={[styles.textInput, isTablet && aiToolTabletPageStyles.textInput]}
@@ -977,15 +982,83 @@ export default function TeacherToolPage() {
     );
   }
 
+  const chapterValue = String(formParams.topic || formParams.chapter || '');
+  const editableParamItems = [
+    {
+      icon: 'school-outline' as const,
+      label: 'Board',
+      value: String(selectedBoard || ''),
+      disabled: isLoadingUser,
+      onPress: () =>
+        openDropdown('board', 'Board', mergeSelectedIntoOptions(boardOptions, selectedBoard), selectedBoard, isLoadingUser),
+    },
+    {
+      icon: 'people-outline' as const,
+      label: 'Class',
+      value: String(formParams.gradeLevel || ''),
+      disabled: cascade.loadingClasses && classSelectOptions.length === 0,
+      onPress: () =>
+        openDropdown(
+          'gradeLevel',
+          'Class',
+          mergeSelectedIntoOptions(classSelectOptions, formParams.gradeLevel),
+          String(formParams.gradeLevel || ''),
+          cascade.loadingClasses && classSelectOptions.length === 0,
+        ),
+    },
+    {
+      icon: 'book-outline' as const,
+      label: 'Subject',
+      value: String(formParams.subject || ''),
+      disabled: !formParams.gradeLevel || cascade.loadingSubjects,
+      onPress: () =>
+        openDropdown(
+          'subject',
+          'Subject',
+          mergeSelectedIntoOptions(subjectsForTool, formParams.subject),
+          String(formParams.subject || ''),
+          !formParams.gradeLevel || cascade.loadingSubjects,
+        ),
+    },
+    {
+      icon: 'document-text-outline' as const,
+      label: 'Chapter',
+      value: chapterValue,
+      disabled: !formParams.subject || cascade.loadingTopics,
+      onPress: () =>
+        openDropdown(
+          'topic',
+          'Chapter',
+          mergeSelectedIntoOptions(availableNCERTTopics, chapterValue),
+          chapterValue,
+          !formParams.subject || cascade.loadingTopics,
+        ),
+    },
+    {
+      icon: 'list-outline' as const,
+      label: 'Subtopic',
+      value: String(formParams.subTopic || ''),
+      disabled: !chapterValue || cascade.loadingSubtopics,
+      onPress: () =>
+        openDropdown(
+          'subTopic',
+          'Sub Topic',
+          mergeSelectedIntoOptions(cascade.subtopics, formParams.subTopic),
+          String(formParams.subTopic || ''),
+          !chapterValue || cascade.loadingSubtopics,
+        ),
+    },
+  ];
+
   const formPanel = (
     <>
       {showCollapsedParams ? (
-        <AiToolParamsGrid items={paramItems} accent={accent} tabletUi={isTablet} />
+        <AiToolParamsGrid items={editableParamItems} accent={accent} tabletUi={isTablet} editable />
       ) : null}
 
       {showParameterForms ? (
         <>
-          <FormSection title="Tool Parameters" subtitle="Board and class details" accent={accent} tabletUi={isTablet}>
+          <FormSection title="Configure Your Tool" subtitle="Fill in the details to generate" accent={accent} icon="options-outline" tabletUi={isTablet}>
             {renderDropdownTrigger(
               'board',
               'Board',
@@ -1024,6 +1097,7 @@ export default function TeacherToolPage() {
               title="Topic details"
               subtitle="Pick chapter and sub-topic from syllabus"
               accent={accent}
+              icon="book-outline"
               tabletUi={isTablet}
             >
               {topicFields.map(renderField)}
@@ -1183,6 +1257,7 @@ export default function TeacherToolPage() {
           subtitle={config.description}
           onBack={goBack}
           tabletUi={isTablet}
+          toolIcon={getAiToolIonicon(toolType)}
         />
       </Animated.View>
 
@@ -1360,21 +1435,36 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
   },
   backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: AI_RADIUS.sm,
+    width: 42,
+    height: 42,
+    borderRadius: AI_RADIUS.md,
     borderWidth: 1,
     borderColor: AI.primaryBorder,
-    backgroundColor: AI.surface,
+    backgroundColor: 'rgba(255,255,255,0.85)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerText: { flex: 1 },
-  headerTitle: { ...AI_TYPE.title, color: AI.text },
+  headerText: { flex: 1, minWidth: 0 },
+  headerTitle: { ...AI_TYPE.title, fontSize: 20, lineHeight: 26, color: AI.text },
   headerTitleTablet: { fontSize: 24, lineHeight: 30 },
-  headerSubtitle: { ...AI_TYPE.caption, color: AI.textSecondary, marginTop: 3 },
+  headerSubtitle: { ...AI_TYPE.caption, fontSize: 13, lineHeight: 18, color: AI.textSecondary, marginTop: 3 },
   headerSubtitleTablet: { fontSize: 14, lineHeight: 20 },
   headerSpacer: { width: 40 },
+  headerIconWrap: {
+    borderRadius: AI_RADIUS.md,
+    shadowColor: AI.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  headerIconGradient: {
+    width: 52,
+    height: 52,
+    borderRadius: AI_RADIUS.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   compactHeader: {
     borderBottomWidth: 1,
     borderBottomColor: AI.primaryBorder,
@@ -1404,55 +1494,91 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     flexDirection: 'row',
-    alignItems: 'stretch',
+    alignItems: 'center',
+    gap: TEACHER_SPACING.md,
+    paddingHorizontal: AI_SPACING.lg,
+    paddingVertical: AI_SPACING.md,
     borderBottomWidth: 1,
     borderBottomColor: AI.border,
   },
-  sectionAccent: { width: 4 },
-  sectionHeaderText: { flex: 1, paddingHorizontal: AI_SPACING.lg, paddingVertical: AI_SPACING.md },
-  sectionTitle: { ...AI_TYPE.title, color: AI.text },
-  sectionSubtitle: { ...AI_TYPE.caption, color: AI.textMuted, marginTop: 3 },
-  sectionBody: { padding: AI_SPACING.lg, gap: AI_SPACING.md },
-  fieldBlock: { gap: TEACHER_SPACING.sm },
-  labelRow: { flexDirection: 'row', alignItems: 'center', gap: TEACHER_SPACING.sm },
-  fieldIconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: TEACHER_RADIUS.sm,
+  sectionIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: AI_RADIUS.md,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  fieldLabelWrap: { flex: 1, minWidth: 0 },
-  fieldLabel: { ...AI_TYPE.body, fontWeight: '700', color: AI.textSecondary },
-  fieldSpinner: { marginLeft: 'auto' },
+  sectionHeaderText: { flex: 1, minWidth: 0 },
+  sectionTitle: { ...AI_TYPE.title, fontSize: 18, lineHeight: 24, color: AI.text },
+  sectionSubtitle: { ...AI_TYPE.caption, fontSize: 13, lineHeight: 18, color: AI.textMuted, marginTop: 2 },
+  sectionBody: { padding: AI_SPACING.lg, gap: TEACHER_SPACING.md },
   required: { color: AI.orange },
-  dropdownTrigger: {
-    minHeight: 52,
+  fieldCard: {
+    minHeight: 62,
     borderRadius: AI_RADIUS.md,
     borderWidth: 1,
     borderColor: AI.border,
     backgroundColor: AI.surface,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
+    gap: 12,
   },
-  dropdownTriggerDisabled: { opacity: 0.55, backgroundColor: AI.surfaceMuted },
-  dropdownValueWrap: { flex: 1, minWidth: 0 },
-  dropdownValue: { ...AI_TYPE.body, fontWeight: '600', color: AI.text },
-  dropdownPlaceholder: { color: AI.textMuted, fontWeight: '500' },
-  textInput: {
-    minHeight: 52,
+  fieldCardDisabled: { opacity: 0.55, backgroundColor: AI.surfaceMuted },
+  fieldIconChip: {
+    width: 40,
+    height: 40,
+    borderRadius: AI_RADIUS.sm,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fieldIconChipSm: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fieldCardText: { flex: 1, minWidth: 0, gap: 2 },
+  fieldCardLabel: { fontSize: 12, lineHeight: 16, fontWeight: '700', color: AI.textMuted, letterSpacing: 0.2 },
+  fieldCardValue: { fontSize: 16, lineHeight: 21, fontWeight: '700', color: AI.text },
+  fieldCardPlaceholder: { color: AI.textMuted, fontWeight: '500' },
+  fieldChevron: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: AI.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fieldChevronDisabled: { backgroundColor: 'transparent' },
+  fieldInputCard: {
     borderRadius: AI_RADIUS.md,
     borderWidth: 1,
     borderColor: AI.border,
     backgroundColor: AI.surface,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 12,
+    gap: 8,
+  },
+  fieldInputHeader: { flexDirection: 'row', alignItems: 'center', gap: TEACHER_SPACING.sm },
+  textInput: {
+    minHeight: 48,
+    borderRadius: AI_RADIUS.sm,
+    borderWidth: 1,
+    borderColor: AI.border,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
     ...AI_TYPE.body,
+    fontSize: 16,
     color: AI.text,
   },
-  textArea: { minHeight: 110, paddingTop: 14, paddingBottom: 14 },
+  textArea: { minHeight: 104, paddingTop: 12, paddingBottom: 12 },
   infoBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1523,17 +1649,25 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     borderTopWidth: 0,
   },
-  generateBtn: { borderRadius: AI_RADIUS.md, overflow: 'hidden', ...AI_SHADOW },
+  generateBtn: {
+    borderRadius: AI_RADIUS.full,
+    overflow: 'hidden',
+    shadowColor: AI.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.32,
+    shadowRadius: 16,
+    elevation: 8,
+  },
   generateBtnDisabled: { opacity: 0.7 },
   generateBtnGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: TEACHER_SPACING.sm,
-    minHeight: 56,
+    minHeight: 58,
     paddingVertical: AI_SPACING.md,
   },
-  generateBtnText: { fontSize: 17, lineHeight: 22, fontWeight: '800', color: '#FFFFFF' },
+  generateBtnText: { fontSize: 17, lineHeight: 22, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.2 },
   errorContainer: {
     flex: 1,
     alignItems: 'center',

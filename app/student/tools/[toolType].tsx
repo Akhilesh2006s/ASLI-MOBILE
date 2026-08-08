@@ -200,19 +200,23 @@ function FormSection({
   title,
   subtitle,
   accent,
+  icon,
   children,
   tabletUi,
 }: {
   title: string;
   subtitle?: string;
   accent: string;
+  icon?: keyof typeof Ionicons.glyphMap;
   children: ReactNode;
   tabletUi?: boolean;
 }) {
   return (
     <GlassPanel style={styles.formCard} radius={AI_RADIUS.lg} tone="strong" elevated>
       <View style={styles.sectionHeader}>
-        <View style={[styles.sectionAccent, { backgroundColor: accent }]} />
+        <View style={[styles.sectionIcon, { backgroundColor: `${accent}18`, borderColor: `${accent}33` }]}>
+          <Ionicons name={icon || 'sparkles'} size={18} color={accent} />
+        </View>
         <View style={[styles.sectionHeaderText, tabletUi && aiToolTabletPageStyles.sectionHeaderText]}>
           <Text style={[styles.sectionTitle, tabletUi && aiToolTabletPageStyles.sectionTitle]}>
             {formatAiToolText(title)}
@@ -268,17 +272,6 @@ export default function StudentToolPage() {
 
   const boardOptions = getAiToolBoardOptions(isAsliPrepExclusive, schoolBoardName);
   const selectedBoard = formParams.board || getDefaultAiToolBoard(isAsliPrepExclusive, schoolBoardName);
-
-  const paramItems = useMemo(
-    () => [
-      { icon: 'school-outline' as const, label: 'Board', value: String(selectedBoard || '') },
-      { icon: 'people-outline' as const, label: 'Class', value: String(formParams.gradeLevel || '') },
-      { icon: 'book-outline' as const, label: 'Subject', value: String(formParams.subject || '') },
-      { icon: 'document-text-outline' as const, label: 'Chapter', value: String(formParams.topic || formParams.chapter || '') },
-      { icon: 'list-outline' as const, label: 'Subtopic', value: String(formParams.subTopic || '') },
-    ],
-    [selectedBoard, formParams]
-  );
 
   // Keep params collapsed whenever a result is on screen (including regenerate)
   // so the phone fill layout isn't crushed by the full form.
@@ -848,32 +841,35 @@ export default function StudentToolPage() {
     const isPlaceholder = !value;
 
     return (
-      <View style={styles.fieldBlock}>
-        <View style={styles.labelRow}>
-          <View style={[styles.fieldIconWrap, { backgroundColor: `${accent}18` }]}>
-            <AiToolFieldIcon name={icon} accent={accent} />
-          </View>
-          <Text style={[styles.fieldLabel, isTablet && aiToolTabletPageStyles.fieldLabel]}>
+      <TouchableOpacity
+        style={[styles.fieldCard, disabled && styles.fieldCardDisabled]}
+        onPress={() => openDropdown(fieldName, label.replace(' *', ''), options, value, disabled)}
+        activeOpacity={0.8}
+        disabled={disabled}
+      >
+        <View style={[styles.fieldIconChip, { backgroundColor: `${accent}14`, borderColor: `${accent}2e` }]}>
+          <AiToolFieldIcon name={icon} accent={accent} />
+        </View>
+        <View style={styles.fieldCardText}>
+          <Text style={[styles.fieldCardLabel, isTablet && aiToolTabletPageStyles.fieldLabel]} numberOfLines={1}>
             {label.replace(' *', '')}
             {required ? <Text style={styles.required}> *</Text> : null}
           </Text>
-          {loading ? <ActivityIndicator size="small" color={accent} style={styles.fieldSpinner} /> : null}
-        </View>
-          <TouchableOpacity
-          style={[styles.dropdownTrigger, disabled && styles.dropdownTriggerDisabled]}
-          onPress={() => openDropdown(fieldName, label.replace(' *', ''), options, value, disabled)}
-          activeOpacity={0.75}
-          disabled={disabled}
-        >
           <Text
-            style={[styles.dropdownValue, isPlaceholder && styles.dropdownPlaceholder, isTablet && aiToolTabletPageStyles.dropdownValue]}
+            style={[styles.fieldCardValue, isPlaceholder && styles.fieldCardPlaceholder, isTablet && aiToolTabletPageStyles.dropdownValue]}
             numberOfLines={2}
           >
             {display}
           </Text>
-          <Ionicons name="chevron-down" size={18} color={disabled ? STUDENT.navInactive : STUDENT.textMuted} />
-          </TouchableOpacity>
         </View>
+        {loading ? (
+          <ActivityIndicator size="small" color={accent} />
+        ) : (
+          <View style={[styles.fieldChevron, disabled && styles.fieldChevronDisabled]}>
+            <Ionicons name="chevron-down" size={16} color={disabled ? STUDENT.navInactive : accent} />
+          </View>
+        )}
+      </TouchableOpacity>
     );
   };
 
@@ -883,19 +879,19 @@ export default function StudentToolPage() {
 
     if (field.name === 'gradeLevel' && assignedGradeLevel) {
       return (
-        <View key={field.name} style={styles.fieldBlock}>
-          <View style={styles.labelRow}>
-            <View style={[styles.fieldIconWrap, { backgroundColor: `${accent}18` }]}>
-              <AiToolFieldIcon name="layers-outline" accent={accent} />
-            </View>
-            <Text style={[styles.fieldLabel, isTablet && aiToolTabletPageStyles.fieldLabel]}>Class</Text>
+        <View key={field.name} style={[styles.fieldCard, styles.fieldCardDisabled]}>
+          <View style={[styles.fieldIconChip, { backgroundColor: `${accent}14`, borderColor: `${accent}2e` }]}>
+            <AiToolFieldIcon name="layers-outline" accent={accent} />
           </View>
-          <View style={styles.lockedField}>
-            <Text style={[styles.lockedValue, isTablet && aiToolTabletPageStyles.lockedValue]}>{assignedGradeLevel}</Text>
-            <View style={styles.lockedBadge}>
-              <Ionicons name="lock-closed" size={12} color={STUDENT.textMuted} />
-              <Text style={styles.lockedBadgeText}>Assigned</Text>
-            </View>
+          <View style={styles.fieldCardText}>
+            <Text style={[styles.fieldCardLabel, isTablet && aiToolTabletPageStyles.fieldLabel]}>Class</Text>
+            <Text style={[styles.fieldCardValue, isTablet && aiToolTabletPageStyles.lockedValue]} numberOfLines={1}>
+              {assignedGradeLevel}
+            </Text>
+          </View>
+          <View style={styles.lockedBadge}>
+            <Ionicons name="lock-closed" size={12} color={STUDENT.textMuted} />
+            <Text style={styles.lockedBadgeText}>Assigned</Text>
           </View>
         </View>
       );
@@ -930,15 +926,15 @@ export default function StudentToolPage() {
 
     if (field.type === 'textarea') {
       return (
-        <View key={field.name} style={styles.fieldBlock}>
-          <View style={styles.labelRow}>
-            <View style={[styles.fieldIconWrap, { backgroundColor: `${accent}18` }]}>
+        <View key={field.name} style={styles.fieldInputCard}>
+          <View style={styles.fieldInputHeader}>
+            <View style={[styles.fieldIconChipSm, { backgroundColor: `${accent}14`, borderColor: `${accent}2e` }]}>
               <AiToolFieldIcon name={FIELD_ICONS[field.name] || 'create-outline'} accent={accent} />
             </View>
-            <Text style={[styles.fieldLabel, isTablet && aiToolTabletPageStyles.fieldLabel]}>
+            <Text style={[styles.fieldCardLabel, isTablet && aiToolTabletPageStyles.fieldLabel]}>
               {formatAiToolText(field.label.replace(' *', ''))}
               {field.required ? <Text style={styles.required}> *</Text> : null}
-          </Text>
+            </Text>
           </View>
           <DeferredToolTextInput
             style={[styles.textArea, styles.textInput, isTablet && aiToolTabletPageStyles.textInput]}
@@ -953,14 +949,14 @@ export default function StudentToolPage() {
         </View>
       );
     }
-      
-      return (
-      <View key={field.name} style={styles.fieldBlock}>
-        <View style={styles.labelRow}>
-          <View style={[styles.fieldIconWrap, { backgroundColor: `${accent}18` }]}>
+
+    return (
+      <View key={field.name} style={styles.fieldInputCard}>
+        <View style={styles.fieldInputHeader}>
+          <View style={[styles.fieldIconChipSm, { backgroundColor: `${accent}14`, borderColor: `${accent}2e` }]}>
             <AiToolFieldIcon name={FIELD_ICONS[field.name] || 'options-outline'} accent={accent} />
           </View>
-          <Text style={[styles.fieldLabel, isTablet && aiToolTabletPageStyles.fieldLabel]}>
+          <Text style={[styles.fieldCardLabel, isTablet && aiToolTabletPageStyles.fieldLabel]}>
             {formatAiToolText(field.label.replace(' *', ''))}
             {field.required ? <Text style={styles.required}> *</Text> : null}
           </Text>
@@ -999,18 +995,88 @@ export default function StudentToolPage() {
   const parameterTitle = 'Choose what to generate';
   const pageBgStyle = styles.container;
 
+  const chapterValue = String(formParams.topic || formParams.chapter || '');
+  const classLocked = !!assignedGradeLevel;
+  const editableParamItems = [
+    {
+      icon: 'school-outline' as const,
+      label: 'Board',
+      value: String(selectedBoard || ''),
+      disabled: isLoadingUser,
+      onPress: () =>
+        openDropdown('board', 'Board', mergeSelectedIntoOptions(boardOptions, selectedBoard), selectedBoard, isLoadingUser),
+    },
+    {
+      icon: 'people-outline' as const,
+      label: 'Class',
+      value: String(formParams.gradeLevel || assignedGradeLevel || ''),
+      disabled: classLocked || (cascade.loadingClasses && classSelectOptions.length === 0),
+      onPress: () =>
+        openDropdown(
+          'gradeLevel',
+          'Class',
+          mergeSelectedIntoOptions(classSelectOptions, formParams.gradeLevel),
+          String(formParams.gradeLevel || ''),
+          classLocked || (cascade.loadingClasses && classSelectOptions.length === 0),
+        ),
+    },
+    {
+      icon: 'book-outline' as const,
+      label: 'Subject',
+      value: String(formParams.subject || ''),
+      disabled: !formParams.gradeLevel || cascade.loadingSubjects,
+      onPress: () =>
+        openDropdown(
+          'subject',
+          'Subject',
+          mergeSelectedIntoOptions(subjectsForTool, formParams.subject),
+          String(formParams.subject || ''),
+          !formParams.gradeLevel || cascade.loadingSubjects,
+        ),
+    },
+    {
+      icon: 'document-text-outline' as const,
+      label: 'Chapter',
+      value: chapterValue,
+      disabled: !formParams.subject || cascade.loadingTopics,
+      onPress: () =>
+        openDropdown(
+          'topic',
+          'Chapter',
+          mergeSelectedIntoOptions(availableNCERTTopics, chapterValue),
+          chapterValue,
+          !formParams.subject || cascade.loadingTopics,
+        ),
+    },
+    {
+      icon: 'list-outline' as const,
+      label: 'Subtopic',
+      value: String(formParams.subTopic || ''),
+      disabled: !chapterValue || cascade.loadingSubtopics,
+      onPress: () =>
+        openDropdown(
+          'subTopic',
+          'Sub Topic',
+          mergeSelectedIntoOptions(cascade.subtopics, formParams.subTopic),
+          String(formParams.subTopic || ''),
+          !chapterValue || cascade.loadingSubtopics,
+        ),
+    },
+  ];
+
   const formPanel = (
     <>
       {showCollapsedParams ? (
-        <AiToolParamsGrid items={paramItems} accent={accent} tabletUi={isTablet} />
+        <AiToolParamsGrid items={editableParamItems} accent={accent} tabletUi={isTablet} editable />
       ) : null}
 
       {showParameterForms ? (
         <>
           <FormSection
             title={parameterTitle}
-              subtitle="Start with your board and class details"
+            subtitle="Start with your board and class details"
             accent={accent}
+            icon="sparkles"
             tabletUi={isTablet}
           >
             {renderDropdownTrigger(
@@ -1047,6 +1113,7 @@ export default function StudentToolPage() {
               title="Topic details"
               subtitle="Pick chapter and sub-topic from syllabus"
               accent={accent}
+              icon="book-outline"
               tabletUi={isTablet}
             >
               {topicFields.map(renderField)}
@@ -1228,6 +1295,7 @@ export default function StudentToolPage() {
           onBack={goBack}
           tabletUi={isTablet}
           variant="ai"
+          icon={getAiToolIonicon(toolType || '')}
         />
       </Animated.View>
 
@@ -1470,53 +1538,68 @@ const styles = StyleSheet.create({
   compactHeaderSpacer: { width: 40 },
   sectionHeader: {
     flexDirection: 'row',
-    alignItems: 'stretch',
+    alignItems: 'center',
+    gap: STUDENT_SPACING.md,
+    paddingHorizontal: AI_SPACING.lg,
+    paddingVertical: AI_SPACING.md,
     borderBottomWidth: 1,
     borderBottomColor: AI.border,
   },
-  sectionAccent: { width: 4 },
-  sectionHeaderText: { flex: 1, paddingHorizontal: AI_SPACING.lg, paddingVertical: AI_SPACING.md },
-  sectionTitle: { ...AI_TYPE.title, color: AI.text },
-  sectionSubtitle: { ...AI_TYPE.caption, color: AI.textMuted, marginTop: 3 },
-  sectionBody: { padding: AI_SPACING.lg, gap: AI_SPACING.md },
-  fieldBlock: { gap: STUDENT_SPACING.sm },
-  labelRow: { flexDirection: 'row', alignItems: 'center', gap: STUDENT_SPACING.sm },
-  fieldIconWrap: {
-    width: 28,
-    height: 28,
+  sectionIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: AI_RADIUS.md,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  fieldLabel: { flex: 1, ...AI_TYPE.body, fontWeight: '700', color: AI.textSecondary },
-  fieldSpinner: { marginLeft: 'auto' },
+  sectionHeaderText: { flex: 1, minWidth: 0 },
+  sectionTitle: { ...AI_TYPE.title, fontSize: 18, lineHeight: 24, color: AI.text },
+  sectionSubtitle: { ...AI_TYPE.caption, fontSize: 13, lineHeight: 18, color: AI.textMuted, marginTop: 2 },
+  sectionBody: { padding: AI_SPACING.lg, gap: STUDENT_SPACING.md },
   required: { color: AI.orange },
-  dropdownTrigger: {
-    minHeight: 52,
+  fieldCard: {
+    minHeight: 62,
     borderRadius: AI_RADIUS.md,
     borderWidth: 1,
     borderColor: AI.border,
     backgroundColor: AI.surface,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
+    gap: 12,
   },
-  dropdownTriggerDisabled: { opacity: 0.55, backgroundColor: AI.surfaceMuted },
-  dropdownValue: { flex: 1, ...AI_TYPE.body, fontWeight: '600', color: AI.text },
-  dropdownPlaceholder: { color: AI.textMuted, fontWeight: '500' },
-  lockedField: {
-    minHeight: 52,
-    borderRadius: AI_RADIUS.md,
+  fieldCardDisabled: { opacity: 0.55, backgroundColor: AI.surfaceMuted },
+  fieldIconChip: {
+    width: 40,
+    height: 40,
+    borderRadius: AI_RADIUS.sm,
     borderWidth: 1,
-    borderColor: AI.border,
-    backgroundColor: AI.surface,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
   },
-  lockedValue: { ...STUDENT_TYPO.body, fontWeight: '700', color: STUDENT.text },
+  fieldIconChipSm: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fieldCardText: { flex: 1, minWidth: 0, gap: 2 },
+  fieldCardLabel: { fontSize: 12, lineHeight: 16, fontWeight: '700', color: AI.textMuted, letterSpacing: 0.2 },
+  fieldCardValue: { fontSize: 16, lineHeight: 21, fontWeight: '700', color: AI.text },
+  fieldCardPlaceholder: { color: AI.textMuted, fontWeight: '500' },
+  fieldChevron: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: AI.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fieldChevronDisabled: { backgroundColor: 'transparent' },
   lockedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1527,17 +1610,29 @@ const styles = StyleSheet.create({
     borderRadius: STUDENT_RADIUS.sm,
   },
   lockedBadgeText: { ...STUDENT_TYPO.label, color: STUDENT.textMuted },
+  fieldInputCard: {
+    borderRadius: AI_RADIUS.md,
+    borderWidth: 1,
+    borderColor: AI.border,
+    backgroundColor: AI.surface,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 12,
+    gap: 8,
+  },
+  fieldInputHeader: { flexDirection: 'row', alignItems: 'center', gap: STUDENT_SPACING.sm },
   textInput: {
-    minHeight: 52,
-    borderRadius: STUDENT_RADIUS.md,
+    minHeight: 48,
+    borderRadius: AI_RADIUS.sm,
     borderWidth: 1.5,
     borderColor: AI.primaryBorder,
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     ...AI_TYPE.body,
+    fontSize: 16,
     color: AI.text,
   },
-  textArea: { minHeight: 110, paddingTop: 14, paddingBottom: 14 },
+  textArea: { minHeight: 104, paddingTop: 12, paddingBottom: 12 },
   infoBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1597,17 +1692,25 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     borderTopWidth: 0,
   },
-  generateBtn: { borderRadius: AI_RADIUS.md, overflow: 'hidden', ...AI_SHADOW },
+  generateBtn: {
+    borderRadius: AI_RADIUS.full,
+    overflow: 'hidden',
+    shadowColor: AI.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.32,
+    shadowRadius: 16,
+    elevation: 8,
+  },
   generateBtnDisabled: { opacity: 0.7 },
   generateBtnGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: STUDENT_SPACING.sm,
-    minHeight: 56,
+    minHeight: 58,
     paddingVertical: AI_SPACING.md,
   },
-  generateBtnText: { fontSize: 17, lineHeight: 22, fontWeight: '800', color: '#FFFFFF' },
+  generateBtnText: { fontSize: 17, lineHeight: 22, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.2 },
   errorContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: STUDENT_SPACING.xxxl },
   errorIconWrap: {
     width: 88,

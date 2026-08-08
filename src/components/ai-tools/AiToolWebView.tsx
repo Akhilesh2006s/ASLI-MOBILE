@@ -1,12 +1,5 @@
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Platform,
-  ScrollView,
-  Pressable,
-} from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { renderAiToolOutputHtml } from '../../lib/render-ai-tool-output-html';
 import { resolveRichDisplayContent, coalesceAiToolRawContent } from '../../lib/ai-tool-display-content';
@@ -171,29 +164,6 @@ true;
 `;
 }
 
-function jumpToQuestScript(index: number, fill: boolean): string {
-  return `
-(function(){
-  var nodes = document.querySelectorAll('.quest-node');
-  var n = nodes[${index}];
-  if (!n) return true;
-  n.open = true;
-  var h = n.querySelector('.quest-hint');
-  if (h) h.textContent = 'Close';
-  if (${fill ? 'true' : 'false'}) {
-    try { n.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {
-      try { n.scrollIntoView(true); } catch (e2) {}
-    }
-    if (window.__aiToolUnlockScroll) setTimeout(window.__aiToolUnlockScroll, 30);
-  } else if (window.__aiToolSendHeight) {
-    setTimeout(window.__aiToolSendHeight, 30);
-  }
-  true;
-})();
-true;
-`;
-}
-
 export default function AiToolWebView({
   toolType,
   content,
@@ -219,19 +189,14 @@ export default function AiToolWebView({
   }, [toolType, content, mergedRaw, html]);
 
   const webViewRef = useRef<WebView>(null);
-  const orbitScrollRef = useRef<ScrollView>(null);
   const [height, setHeight] = useState(INITIAL_HEIGHT);
   /** Explicit pixel viewport for fill mode — Android needs this to enable WebView scroll. */
   const [fillViewportH, setFillViewportH] = useState(0);
-  const [orbitTabs, setOrbitTabs] = useState<string[]>([]);
-  const [activeOrbit, setActiveOrbit] = useState(0);
   const heightDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     // Always start short — never seed with a content-length guess (that was the empty gap).
     setHeight(INITIAL_HEIGHT);
-    setOrbitTabs([]);
-    setActiveOrbit(0);
   }, [contentKey]);
 
   const applyHeight = useCallback((next: number) => {
@@ -267,15 +232,6 @@ export default function AiToolWebView({
     };
   }, [html, fill, measureHeight, unlockFillScroll]);
 
-  const onOrbitPress = useCallback(
-    (index: number) => {
-      setActiveOrbit(index);
-      webViewRef.current?.injectJavaScript(jumpToQuestScript(index, fill));
-      orbitScrollRef.current?.scrollTo({ x: Math.max(0, index * 72 - 40), animated: true });
-    },
-    [fill],
-  );
-
   const onMessage = useCallback(
     (event: { nativeEvent: { data: string } }) => {
       const raw = event.nativeEvent.data;
@@ -296,18 +252,14 @@ export default function AiToolWebView({
           heightDebounceRef.current = setTimeout(() => applyHeight(msg.h as number), 30);
           return;
         }
-        if (msg.type === 'orbit' && Array.isArray(msg.tabs) && msg.tabs.length > 0) {
-          setOrbitTabs(msg.tabs.map((t) => String(t || '').trim()).filter(Boolean));
-          setActiveOrbit(0);
+        if (msg.type === 'orbit') {
+          // Section-tab rail removed from the UI; still re-measure so all
+          // expanded sections are sized correctly.
           if (fill) {
             setTimeout(unlockFillScroll, 40);
           } else {
             setTimeout(measureHeight, 40);
           }
-          return;
-        }
-        if (msg.type === 'orbit-active' && typeof msg.index === 'number') {
-          setActiveOrbit(msg.index);
           return;
         }
       } catch {
@@ -322,45 +274,11 @@ export default function AiToolWebView({
     [applyHeight, fill, measureHeight, unlockFillScroll],
   );
 
-  const orbitRail =
-    orbitTabs.length > 1 ? (
-      <ScrollView
-        ref={orbitScrollRef}
-        horizontal
-        nestedScrollEnabled
-        directionalLockEnabled
-        showsHorizontalScrollIndicator={false}
-        style={styles.orbitWrap}
-        contentContainerStyle={styles.orbitContent}
-        decelerationRate="fast"
-        keyboardShouldPersistTaps="handled"
-      >
-        {orbitTabs.map((title, index) => {
-          const active = index === activeOrbit;
-          return (
-            <Pressable
-              key={`${index}-${title}`}
-              onPress={() => onOrbitPress(index)}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: active }}
-              accessibilityLabel={`Section ${index + 1}: ${title}`}
-              style={[styles.orbitBtn, active && styles.orbitBtnActive]}
-            >
-              <Text style={[styles.orbitBtnText, active && styles.orbitBtnTextActive]} numberOfLines={1}>
-                {index + 1} · {title}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-    ) : null;
-
   // Self-scrolling fill mode: used on phone tool results so the page can keep
   // params above and the WebView owns vertical scrolling (no nested trap).
   if (fill) {
     return (
       <View style={[styles.root, styles.rootFill]} collapsable={false}>
-        {orbitRail}
         <View
           style={styles.wrapFill}
           collapsable={false}
@@ -403,8 +321,6 @@ export default function AiToolWebView({
 
   return (
     <View style={styles.root} collapsable={false}>
-      {orbitRail}
-
       <View style={[styles.wrap, { height: webViewHeight }]} collapsable={false}>
         <WebView
           key={contentKey}
@@ -461,42 +377,6 @@ const styles = StyleSheet.create({
   },
   webViewContainerFill: {
     flex: 1,
-  },
-  orbitWrap: {
-    width: '100%',
-    maxHeight: 44,
-    marginBottom: 8,
-  },
-  orbitContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingLeft: 2,
-    paddingRight: 20,
-    paddingVertical: 2,
-  },
-  orbitBtn: {
-    flexShrink: 0,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    maxWidth: 220,
-  },
-  orbitBtnActive: {
-    borderColor: '#CBD5E1',
-    backgroundColor: '#F8FAFC',
-  },
-  orbitBtnText: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.2,
-    color: '#0F172A',
-  },
-  orbitBtnTextActive: {
-    color: '#0F172A',
   },
   wrap: {
     width: '100%',
