@@ -29,6 +29,7 @@ const ClassesView = lazy(() => import('./_components/ClassesView'));
 const TeachersView = lazy(() => import('./_components/TeachersView'));
 const SubjectsView = lazy(() => import('./_components/SubjectsView'));
 const ExamsView = lazy(() => import('./_components/ExamsView'));
+const OmrResultsView = lazy(() => import('./_components/OmrResultsView'));
 const AssessmentsView = lazy(() => import('./_components/AssessmentsView'));
 const QuizzesView = lazy(() => import('./_components/QuizzesView'));
 const LearningPathsView = lazy(() => import('./_components/LearningPathsView'));
@@ -49,6 +50,7 @@ const ADMIN_VIEWS: AdminNavView[] = [
   'teachers',
   'subjects',
   'exams',
+  'omr-results',
   'assessments',
   'quizzes',
   'learning-paths',
@@ -78,6 +80,8 @@ function renderAdminView(
       return <SubjectsView />;
     case 'exams':
       return <ExamsView />;
+    case 'omr-results':
+      return <OmrResultsView />;
     case 'assessments':
       return <AssessmentsView />;
     case 'quizzes':

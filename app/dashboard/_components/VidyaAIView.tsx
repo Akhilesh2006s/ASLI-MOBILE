@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, useWindowDimensions, InteractionManager } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
@@ -15,6 +16,12 @@ const TOOLS_TABLET_MIN_WIDTH = 768;
 const TOOLS_WIDE_MIN_WIDTH = 1024;
 const STUDENT_TOOLS_SUBTITLE =
   'Choose a tool, add your curriculum details, and generate clear study content with Vidya AI.';
+
+const HERO_STAT_CHIPS: { icon: keyof typeof Ionicons.glyphMap; title: string; copy: string }[] = [
+  { icon: 'time-outline', title: 'Save Time', copy: 'Automate revision & notes' },
+  { icon: 'bulb-outline', title: 'Practice Smarter', copy: 'Questions built for you' },
+  { icon: 'trending-up-outline', title: 'Better Outcomes', copy: 'Track progress & improve' },
+];
 
 export default function VidyaAIView() {
   const { width: screenWidth } = useWindowDimensions();
@@ -107,6 +114,19 @@ export default function VidyaAIView() {
         </View>
         <Text style={styles.sectionTitle}>What would you like to learn?</Text>
         <Text style={styles.sectionSubtitle}>{STUDENT_TOOLS_SUBTITLE}</Text>
+        <View style={styles.heroStatsRow}>
+          {HERO_STAT_CHIPS.map((stat) => (
+            <View key={stat.title} style={[styles.heroStatChip, isTablet && styles.heroStatChipWide]}>
+              <View style={styles.heroStatIcon}>
+                <Ionicons name={stat.icon} size={18} color={AI.primary} />
+              </View>
+              <View style={styles.heroStatText}>
+                <Text style={styles.heroStatTitle}>{stat.title}</Text>
+                <Text style={styles.heroStatCopy}>{stat.copy}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
       </GlassPanel>
 
       {!ready || isLoading ? (
@@ -136,7 +156,8 @@ export default function VidyaAIView() {
                 description={tool.description}
                 icon={tool.icon as any}
                 accent={tool.color || AI.primary}
-                badge="Student"
+                badge="AI Powered"
+                ctaText="Get Started"
                 compact={gridColumns > 1}
                 glass
                 onPress={() => openTool(tool)}
@@ -180,6 +201,49 @@ const styles = StyleSheet.create({
   },
   sectionSubtitle: {
     ...AI_TYPE.body,
+    color: AI.textSecondary,
+  },
+  heroStatsRow: {
+    marginTop: AI_SPACING.lg,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: AI_SPACING.sm,
+  },
+  heroStatChip: {
+    flexGrow: 1,
+    flexBasis: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: AI_SPACING.sm,
+    borderRadius: AI_RADIUS.md,
+    borderWidth: 1,
+    borderColor: AI.primaryBorder,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    paddingHorizontal: AI_SPACING.md,
+    paddingVertical: AI_SPACING.sm,
+  },
+  heroStatChipWide: {
+    flexBasis: '31%',
+  },
+  heroStatIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: AI_RADIUS.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: AI.primarySoft,
+  },
+  heroStatText: { flex: 1, minWidth: 0 },
+  heroStatTitle: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '800',
+    color: AI.text,
+  },
+  heroStatCopy: {
+    marginTop: 1,
+    fontSize: 12,
+    lineHeight: 16,
     color: AI.textSecondary,
   },
   toolsList: {

@@ -48,20 +48,10 @@ export const STUDENT_AI_TOOLS: StudentAiTool[] = [
     icon: 'document-text-outline',
     color: '#3b82f6',
   },
-  {
-    id: 'key-points-formula-extractor',
-    name: 'Key Points Extractor',
-    description: 'Extract Key Points From Any Topic',
-    icon: 'key-outline',
-    color: '#14b8a6',
-  },
-  {
-    id: 'quick-assignment-builder',
-    name: 'Quick Assignment Builder',
-    description: 'Build Structured Assignments Quickly And Efficiently',
-    icon: 'clipboard-outline',
-    color: '#fb923c',
-  },
+  // Key Points Extractor and Quick Assignment Builder are retired — kept out
+  // of the grid (matching asli-frontend/src/pages/ai-tutor.tsx) so students
+  // can't generate into a discontinued tool. Their configs/themes/renderers
+  // stay in place for existing generated content, same as web.
   {
     id: 'my-study-decks',
     name: 'My Study Decks',

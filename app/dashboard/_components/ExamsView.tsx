@@ -37,6 +37,7 @@ import {
 import { dedupeStudentExamResults } from '../../../src/lib/dedupe-exam-results';
 import ExamResultsView from '../../../src/components/student/ExamResultsView';
 import RankingsTab from './RankingsTab';
+import OmrResultsView from './OmrResultsView';
 import DonutChart from '../../../src/components/ui/charts/DonutChart';
 import {
   ExamAnalysisResult,
@@ -82,7 +83,7 @@ interface ExamResult {
 
 type ExamsViewProps = {
   dark?: boolean;
-  initialTab?: 'available' | 'attempted' | 'ranking' | 'upcoming';
+  initialTab?: 'available' | 'attempted' | 'ranking' | 'upcoming' | 'omr';
   focusExamId?: string | null;
   onFocusExamHandled?: () => void;
 };
@@ -153,7 +154,7 @@ export default function ExamsView({
   const { width } = useWindowDimensions();
   const compact = width < 380;
   const isTablet = width >= EXAMS_TABLET_MIN_WIDTH;
-  const [activeTab, setActiveTab] = useState<'available' | 'attempted' | 'ranking' | 'upcoming'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'available' | 'attempted' | 'ranking' | 'upcoming' | 'omr'>(initialTab);
   const [exams, setExams] = useState<Exam[]>([]);
   const [results, setResults] = useState<any[]>([]);
   const [rankings, setRankings] = useState<any[]>([]);
@@ -645,6 +646,7 @@ export default function ExamsView({
       { id: 'attempted', label: 'Attempted Exams', shortLabel: 'Attempted' },
       { id: 'ranking', label: 'My Rankings', shortLabel: 'Rankings' },
       { id: 'upcoming', label: 'Upcoming Exams', shortLabel: 'Upcoming' },
+      { id: 'omr', label: 'OMR Results', shortLabel: 'OMR' },
     ],
     []
   );
@@ -1041,6 +1043,13 @@ export default function ExamsView({
               })}
             </View>
           )}
+        </View>
+      )}
+
+      {/* OMR Results Tab */}
+      {activeTab === 'omr' && (
+        <View style={styles.content}>
+          <OmrResultsView />
         </View>
       )}
     </ScrollView>

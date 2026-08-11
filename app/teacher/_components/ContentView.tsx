@@ -5,14 +5,16 @@ import TeacherAssessmentsView from './AssessmentsView';
 import TeacherVideosView from './VideosView';
 import HomeworkCreatorView from './HomeworkCreatorView';
 import QuizzesView from './QuizzesView';
+import OmrResultsView from './OmrResultsView';
 
-type ContentSubTab = 'assessments' | 'videos' | 'homework' | 'quizzes';
+type ContentSubTab = 'assessments' | 'videos' | 'homework' | 'quizzes' | 'omr';
 
 const SUB_TABS = [
   { id: 'assessments', label: 'Assessments', shortLabel: 'Assess' },
   { id: 'videos', label: 'Videos', shortLabel: 'Videos' },
   { id: 'homework', label: 'Homework', shortLabel: 'Homework' },
   { id: 'quizzes', label: 'Quizzes', shortLabel: 'Quizzes' },
+  { id: 'omr', label: 'OMR Results', shortLabel: 'OMR' },
 ];
 
 type Props = { initialSubTab?: ContentSubTab };
@@ -32,6 +34,7 @@ export default function ContentView({ initialSubTab }: Props) {
       {subTab === 'videos' && <TeacherVideosView />}
       {subTab === 'homework' && <HomeworkCreatorView />}
       {subTab === 'quizzes' && <QuizzesView />}
+      {subTab === 'omr' && <OmrResultsView />}
     </View>
   );
 }

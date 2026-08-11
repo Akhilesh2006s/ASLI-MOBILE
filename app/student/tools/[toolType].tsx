@@ -359,22 +359,10 @@ export default function StudentToolPage() {
 
   const { curriculumFields, topicFields, extraFields } = useMemo(() => {
     if (!config) return { curriculumFields: [], topicFields: [], extraFields: [] };
-    const HIDDEN_EXTRA = new Set([
-      'questionCount',
-      'difficulty',
-      'duration',
-      'length',
-      'countMcq',
-      'countVsaq',
-      'countSaq',
-      'countLaq',
-      'countFib',
-    ]);
     const curriculum: StudentToolFieldConfig[] = [];
     const topic: StudentToolFieldConfig[] = [];
     const extra: StudentToolFieldConfig[] = [];
     for (const field of config.fields) {
-      if (HIDDEN_EXTRA.has(field.name)) continue;
       if (field.name === 'gradeLevel' || field.name === 'subject') {
         curriculum.push(field);
       } else if (field.isNCERT || field.isCascadeSubtopic) {

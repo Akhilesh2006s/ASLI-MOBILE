@@ -110,6 +110,11 @@ const FIELD_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   focusAreas: 'telescope-outline',
   questionType: 'help-circle-outline',
   length: 'resize-outline',
+  countMcq: 'checkbox-outline',
+  countVsaq: 'reader-outline',
+  countSaq: 'create-outline',
+  countLaq: 'document-outline',
+  countFib: 'ellipsis-horizontal-outline',
   date: 'calendar-outline',
   timeSlots: 'time-outline',
   className: 'people-outline',
@@ -371,22 +376,10 @@ export default function TeacherToolPage() {
 
   const { curriculumFields, topicFields, extraFields } = useMemo(() => {
     if (!config) return { curriculumFields: [], topicFields: [], extraFields: [] };
-    const HIDDEN_EXTRA = new Set([
-      'questionCount',
-      'difficulty',
-      'duration',
-      'length',
-      'countMcq',
-      'countVsaq',
-      'countSaq',
-      'countLaq',
-      'countFib',
-    ]);
     const curriculum: TeacherToolFieldConfig[] = [];
     const topic: TeacherToolFieldConfig[] = [];
     const extra: TeacherToolFieldConfig[] = [];
     for (const field of config.fields) {
-      if (HIDDEN_EXTRA.has(field.name)) continue;
       if (field.name === 'gradeLevel' || field.name === 'subject') {
         curriculum.push(field);
       } else if (field.isNCERT || field.isCascadeSubtopic) {

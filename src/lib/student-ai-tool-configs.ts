@@ -27,7 +27,7 @@ const cascadeFields = (extra: StudentToolFieldConfig[] = []): StudentToolFieldCo
   { name: 'gradeLevel', label: 'Class *', type: 'select', required: true, options: CLASS_OPTIONS },
   { name: 'subject', label: 'Subject *', type: 'select', required: true, dependsOn: 'gradeLevel' },
   { name: 'topic', label: 'Topic *', type: 'select', required: true, placeholder: 'Select topic', isNCERT: true },
-  { name: 'subTopic', label: 'Sub Topic *', type: 'select', required: true, placeholder: 'Select subtopic', isCascadeSubtopic: true },
+  { name: 'subTopic', label: 'Sub Topic (Optional)', type: 'select', required: false, placeholder: 'Whole chapter', isCascadeSubtopic: true },
   ...extra,
 ];
 
@@ -51,7 +51,10 @@ export const STUDENT_TOOL_CONFIGS: Record<string, StudentToolConfig> = {
     description: 'Generate practice questions with detailed answers',
     icon: 'help-circle',
     color: '#fb923c',
-    fields: cascadeFields(),
+    fields: cascadeFields([
+      { name: 'questionCount', label: 'Number of Questions', type: 'number', placeholder: '10' },
+      { name: 'difficulty', label: 'Difficulty', type: 'select', options: ['easy', 'medium', 'hard'] },
+    ]),
   },
   'chapter-summary-creator': {
     name: 'Chapter Summary Creator',
@@ -62,7 +65,7 @@ export const STUDENT_TOOL_CONFIGS: Record<string, StudentToolConfig> = {
       { name: 'gradeLevel', label: 'Class *', type: 'select', required: true, options: CLASS_OPTIONS },
       { name: 'subject', label: 'Subject *', type: 'select', required: true, dependsOn: 'gradeLevel' },
       { name: 'chapter', label: 'Chapter/Topic *', type: 'select', required: true, placeholder: 'Select chapter/topic', isNCERT: true },
-      { name: 'subTopic', label: 'Sub Topic *', type: 'select', required: true, placeholder: 'Select subtopic', isCascadeSubtopic: true },
+      { name: 'subTopic', label: 'Sub Topic (Optional)', type: 'select', required: false, placeholder: 'Whole chapter', isCascadeSubtopic: true },
     ],
   },
   'key-points-formula-extractor': {
@@ -86,37 +89,20 @@ export const STUDENT_TOOL_CONFIGS: Record<string, StudentToolConfig> = {
     color: '#ec4899',
     fields: cascadeFields(),
   },
-  'flashcard-generator': {
-    name: 'My Study Decks',
-    description: 'Legacy route — same as My Study Decks',
-    icon: 'albums',
-    color: '#ec4899',
-    fields: cascadeFields(),
-  },
   'mock-test-builder': {
     name: 'Mock Test Builder',
     description: '12-section mock tests with question paper, answer key, solutions, and remedial guidance',
     icon: 'checkmark-circle',
     color: '#6366f1',
-    fields: cascadeFields(),
-  },
-  'exam-question-paper-generator': {
-    name: 'Exam Question Paper Generator',
-    description: '6-section exam papers: instructions plus sections A–E',
-    icon: 'document-text',
-    color: '#2563eb',
-    fields: cascadeFields(),
+    fields: cascadeFields([
+      { name: 'questionCount', label: 'Number of Questions', type: 'number', placeholder: '20' },
+      { name: 'duration', label: 'Test Duration (minutes)', type: 'number', placeholder: '90' },
+      { name: 'difficulty', label: 'Difficulty Mix', type: 'select', options: ['easy', 'medium', 'hard', 'mixed'] },
+    ]),
   },
   'project-idea-lab': {
     name: 'Project Idea Lab',
     description: 'Discover student project ideas with safety, observation, and self-assessment sections',
-    icon: 'grid',
-    color: '#eab308',
-    fields: cascadeFields(),
-  },
-  'activity-project-generator': {
-    name: 'Project Idea Lab',
-    description: 'Discover student project ideas (legacy route)',
     icon: 'grid',
     color: '#eab308',
     fields: cascadeFields(),
@@ -128,13 +114,6 @@ export const STUDENT_TOOL_CONFIGS: Record<string, StudentToolConfig> = {
     color: '#3b82f6',
     fields: cascadeFields(),
   },
-  'story-passage-creator': {
-    name: 'Reading Practice Room',
-    description: 'Legacy route — same as Reading Practice Room',
-    icon: 'document-text',
-    color: '#3b82f6',
-    fields: cascadeFields(),
-  },
   'study-schedule-maker': {
     name: 'Study Schedule Maker',
     description: 'Build a timed study schedule with concept slots, practice, and self-checkpoints',
@@ -142,14 +121,14 @@ export const STUDENT_TOOL_CONFIGS: Record<string, StudentToolConfig> = {
     color: '#8b5cf6',
     fields: cascadeFields(),
   },
-  'lesson-planner': {
-    name: 'Study Schedule Maker',
-    description: 'Legacy route — same as Study Schedule Maker',
-    icon: 'calendar',
-    color: '#8b5cf6',
-    fields: cascadeFields(),
-  },
 };
+
+// Legacy route ids resolve to their canonical config via
+// resolveStudentToolConfigKey() (src/lib/student-ai-tools.ts) before this
+// lookup ever runs, so 'flashcard-generator', 'activity-project-generator',
+// 'story-passage-creator', 'lesson-planner', and 'exam-question-paper-generator'
+// never need — and must not have — their own entries above (they'd be dead
+// code, unreachable and easy to let drift out of sync).
 
 export function getStudentToolConfig(toolType: string): StudentToolConfig | undefined {
   return STUDENT_TOOL_CONFIGS[toolType];

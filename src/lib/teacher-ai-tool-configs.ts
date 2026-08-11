@@ -23,21 +23,20 @@ export interface TeacherToolConfig {
   fields: TeacherToolFieldConfig[];
 }
 
-const cascadeFields = (extra: TeacherToolFieldConfig[] = [], opts?: { optionalSubtopic?: boolean }): TeacherToolFieldConfig[] => [
+const cascadeFields = (extra: TeacherToolFieldConfig[] = []): TeacherToolFieldConfig[] => [
   { name: 'gradeLevel', label: 'Class *', type: 'select', required: true, options: CLASS_OPTIONS },
   { name: 'subject', label: 'Subject *', type: 'select', required: true, dependsOn: 'gradeLevel' },
   { name: 'topic', label: 'Topic *', type: 'select', required: true, placeholder: 'Select topic', isNCERT: true },
-  {
-    name: 'subTopic',
-    label: opts?.optionalSubtopic
-      ? 'Sub Topic (optional — leave empty for whole chapter)'
-      : 'Sub Topic *',
-    type: 'select',
-    required: !opts?.optionalSubtopic,
-    placeholder: opts?.optionalSubtopic ? 'Whole chapter' : 'Select subtopic',
-    isCascadeSubtopic: true,
-  },
+  { name: 'subTopic', label: 'Sub Topic (Optional)', type: 'select', required: false, placeholder: 'Whole chapter', isCascadeSubtopic: true },
   ...extra,
+];
+
+const WORKSHEET_COMPOSITION_FIELDS: TeacherToolFieldConfig[] = [
+  { name: 'countMcq', label: 'MCQs', type: 'number', required: false, placeholder: '5' },
+  { name: 'countVsaq', label: 'VSAQs', type: 'number', required: false, placeholder: '3' },
+  { name: 'countSaq', label: 'SAQs', type: 'number', required: false, placeholder: '3' },
+  { name: 'countLaq', label: 'LAQs', type: 'number', required: false, placeholder: '1' },
+  { name: 'countFib', label: 'Fill Blanks', type: 'number', required: false, placeholder: '2' },
 ];
 
 const TEACHER_TOOL_CONFIGS: Record<string, Omit<TeacherToolConfig, 'icon' | 'color'>> = {
@@ -52,7 +51,7 @@ const TEACHER_TOOL_CONFIGS: Record<string, Omit<TeacherToolConfig, 'icon' | 'col
   'worksheet-mcq-generator': {
     name: 'Worksheet & MCQ Generator',
     description: 'Design custom worksheets and MCQs with various question types',
-    fields: cascadeFields([], { optionalSubtopic: true }),
+    fields: cascadeFields(WORKSHEET_COMPOSITION_FIELDS),
   },
   'concept-mastery-helper': {
     name: 'Concept Mastery Helper',
@@ -67,12 +66,16 @@ const TEACHER_TOOL_CONFIGS: Record<string, Omit<TeacherToolConfig, 'icon' | 'col
   'homework-creator': {
     name: 'Homework Creator',
     description: 'Generate meaningful homework assignments',
-    fields: cascadeFields(),
+    fields: cascadeFields([
+      { name: 'duration', label: 'Duration (Minutes)', type: 'number', placeholder: '30' },
+    ]),
   },
   'story-passage-creator': {
     name: 'Story & Passage Creator',
     description: 'Generate engaging stories and reading passages (English, Hindi & Telugu only)',
-    fields: cascadeFields(),
+    fields: cascadeFields([
+      { name: 'length', label: 'Length', type: 'select', options: ['short', 'medium', 'long'] },
+    ]),
   },
   'short-notes-summaries-maker': {
     name: 'Short Notes & Summaries Maker',
@@ -96,7 +99,7 @@ const TEACHER_TOOL_CONFIGS: Record<string, Omit<TeacherToolConfig, 'icon' | 'col
   'exam-question-paper-generator': {
     name: 'Exam Question Paper Generator',
     description: 'Create comprehensive exam papers with varying difficulty',
-    fields: cascadeFields([], { optionalSubtopic: true }),
+    fields: cascadeFields(WORKSHEET_COMPOSITION_FIELDS),
   },
 };
 

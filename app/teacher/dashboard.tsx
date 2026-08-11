@@ -56,7 +56,7 @@ type NavTarget = {
   tab?: TabId;
   studentsSub?: 'list' | 'track-progress' | 'submissions' | 'daily' | 'remarks';
   dashboardSub?: 'classes' | 'timetable' | 'schedule';
-  contentSub?: 'assessments' | 'videos' | 'homework' | 'quizzes';
+  contentSub?: 'assessments' | 'videos' | 'homework' | 'quizzes' | 'omr';
   progressClassFilter?: string;
   progressStudentId?: string;
 };

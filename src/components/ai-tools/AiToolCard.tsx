@@ -14,6 +14,8 @@ type Props = {
   compact?: boolean;
   /** Frosted-glass card: translucent + blurred instead of a solid white surface. */
   glass?: boolean;
+  /** Trailing action label, e.g. "Get Started" (web's ai-tutor.tsx wording). */
+  ctaText?: string;
   onPress: () => void;
   style?: ViewStyle;
 };
@@ -26,6 +28,7 @@ export default function AiToolCard({
   badge,
   compact,
   glass = true,
+  ctaText = 'Open Tool',
   onPress,
   style,
 }: Props) {
@@ -91,7 +94,7 @@ export default function AiToolCard({
             {formatAiToolText(description)}
           </Text>
           <View style={styles.actionRow}>
-            <Text style={styles.actionText}>{formatAiToolText('Open Tool')}</Text>
+            <Text style={styles.actionText}>{formatAiToolText(ctaText)}</Text>
             <Ionicons name="arrow-forward" size={18} color={AI.primary} />
           </View>
         </View>
