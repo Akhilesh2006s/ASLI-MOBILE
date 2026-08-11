@@ -25,9 +25,32 @@ export type TimetableSlot = {
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+function rawRefName(v: string | { name?: string; fullName?: string } | undefined): string {
+  if (!v || typeof v === 'string') return typeof v === 'string' ? v.trim() : '';
+  return String(v.name || v.fullName || '').trim();
+}
+
+function isDeletedSubjectName(raw: string): boolean {
+  const s = String(raw || '').trim();
+  if (!s) return false;
+  if (/__deleted__/i.test(s)) return true;
+  if (/__dele[a-z]*$/i.test(s)) return true;
+  if (/_deleted?$/i.test(s)) return true;
+  return false;
+}
+
+function cleanSubjectDisplayName(raw: string): string {
+  let s = String(raw || '').trim();
+  if (!s) return '';
+  const cut = s.search(/__deleted__/i);
+  if (cut >= 0) s = s.slice(0, cut);
+  s = s.replace(/__dele[a-z]*$/i, '');
+  s = s.replace(/_deleted?$/i, '');
+  return s.replace(/_+$/g, '').trim();
+}
+
 function refName(v: string | { name?: string; fullName?: string } | undefined): string {
-  if (!v || typeof v === 'string') return '';
-  return v.name || v.fullName || '';
+  return cleanSubjectDisplayName(rawRefName(v));
 }
 
 function entryWeekdayIndex(entry: TimetableEntry): number | null {
@@ -53,23 +76,51 @@ function getSlotHour(startTime?: string): number | null {
   return hour;
 }
 
+export function sanitizeTimetableEntries(entries: TimetableEntry[]): TimetableEntry[] {
+  const cleaned: TimetableEntry[] = [];
+  for (const entry of entries || []) {
+    if (!entry || entry.status === 'Cancelled') continue;
+    const raw = rawRefName(entry.subjectId as any);
+    if (isDeletedSubjectName(raw)) continue;
+    const display = cleanSubjectDisplayName(raw);
+    if (typeof entry.subjectId === 'object' && entry.subjectId && display && display !== raw) {
+      cleaned.push({ ...entry, subjectId: { ...entry.subjectId, name: display } });
+    } else {
+      cleaned.push(entry);
+    }
+  }
+
+  const seen = new Set<string>();
+  const out: TimetableEntry[] = [];
+  for (const entry of cleaned) {
+    const dayIndex = entryWeekdayIndex(entry);
+    const subject = refName(entry.subjectId as any).toLowerCase() || 'class';
+    const key = `${dayIndex}|${entry.startTime}|${entry.endTime}|${subject}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(entry);
+  }
+  return out;
+}
+
 export function timetableEntriesToSlots(entries: TimetableEntry[]): TimetableSlot[] {
   const seen = new Set<string>();
   const slots: TimetableSlot[] = [];
 
-  for (const entry of entries) {
+  for (const entry of sanitizeTimetableEntries(entries)) {
     const dayIndex = entryWeekdayIndex(entry);
     const slotHour = getSlotHour(entry.startTime);
     if (dayIndex === null || slotHour === null) continue;
 
-    const dedupeKey = `${dayIndex}-${slotHour}-${entry.startTime}`;
+    const subject = refName(entry.subjectId as any) || 'Class';
+    const dedupeKey = `${dayIndex}-${slotHour}-${entry.startTime}-${subject.toLowerCase()}`;
     if (seen.has(dedupeKey)) continue;
     seen.add(dedupeKey);
 
     slots.push({
       day: DAY_LABELS[dayIndex],
       period: slotHour - 8,
-      subject: refName(entry.subjectId as any) || 'Class',
+      subject,
       teacher: refName(entry.teacherId as any),
       startTime: entry.startTime,
       endTime: entry.endTime,

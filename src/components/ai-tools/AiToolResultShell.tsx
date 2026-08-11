@@ -7,7 +7,7 @@ import {
   getAiToolResultTheme,
   type AiToolResultMeta,
 } from '../../lib/ai-tool-result-theme';
-import { AI, AI_RADIUS, AI_SPACING, AI_TYPE } from '../../theme/ai';
+import { AI, AI_RADIUS, AI_TYPE } from '../../theme/ai';
 import { formatAiToolText } from '../../lib/title-case';
 import { getAiToolResultTitle } from '../../lib/ai-tool-result-title';
 
@@ -52,7 +52,7 @@ type Props = {
   fill?: boolean;
 };
 
-/** Compact AI tool result chrome — white surfaces, no stamps, tight spacing. */
+/** Compact AI tool result chrome — sky/teal surfaces, clearer hierarchy. */
 export default function AiToolResultShell({
   toolType = '',
   toolName,
@@ -68,7 +68,7 @@ export default function AiToolResultShell({
   fill = false,
 }: Props) {
   const theme = getAiToolResultTheme(toolType);
-  const heroColor = accent || theme.badgeText;
+  const heroColor = accent || theme.badgeText || '#0369A1';
   const board = String(meta?.board || '').trim();
   const classLabel = String(meta?.classLabel || '').trim();
   const subject = String(meta?.subject || '').trim();
@@ -84,7 +84,7 @@ export default function AiToolResultShell({
     <View style={[styles.outer, fill && styles.outerFill]}>
       <View style={styles.header}>
         <View style={styles.headerMain}>
-          <View style={[styles.iconBox, { borderColor: `${heroColor}44` }]}>
+          <View style={[styles.iconBox, { borderColor: `${heroColor}44`, backgroundColor: '#F0F9FF' }]}>
             <AiToolPremiumIcon
               name={getAiToolIonicon(toolType)}
               color={heroColor}
@@ -97,10 +97,14 @@ export default function AiToolResultShell({
               <Text style={styles.toolName} numberOfLines={2}>
                 {hasResult ? resultTitle : displayToolName}
               </Text>
-              <View style={[styles.badge, { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' }]}>
-                <Ionicons name={hasResult ? 'document-text-outline' : 'sparkles'} size={12} color={AI.textMuted} />
-                <Text style={[styles.badgeText, { color: AI.textMuted }]}>
-                  {formatAiToolText(hasResult ? 'Result' : 'AI Powered')}
+              <View style={[styles.badge, { backgroundColor: '#F0F9FF', borderColor: '#BAE6FD' }]}>
+                <Ionicons
+                  name={hasResult ? 'checkmark-circle' : 'sparkles'}
+                  size={12}
+                  color="#0369A1"
+                />
+                <Text style={[styles.badgeText, { color: '#0369A1' }]}>
+                  {formatAiToolText(hasResult ? 'Ready' : 'AI Powered')}
                 </Text>
               </View>
             </View>
@@ -137,17 +141,19 @@ export default function AiToolResultShell({
         {isLoading ? (
           <View style={styles.loadingBox} accessibilityRole="progressbar" accessibilityLiveRegion="polite">
             <AiToolPremiumIcon name={getAiToolIonicon(toolType)} color={heroColor} size={64} iconSize={28} />
-            <Text style={styles.loadingTitle}>{formatAiToolText('Generating…')}</Text>
-            <Text style={styles.loadingSub}>{formatAiToolText('Please wait a moment.')}</Text>
+            <Text style={styles.loadingTitle}>{formatAiToolText('Creating your content')}</Text>
+            <Text style={styles.loadingSub}>
+              {formatAiToolText('Organising each section for a clear, classroom-ready result.')}
+            </Text>
           </View>
         ) : children ? (
           <View style={[styles.resultBody, fill && styles.resultBodyFill]}>{children}</View>
         ) : (
           empty || (
             <View style={styles.emptyBox} accessibilityLiveRegion="polite">
-              <Text style={styles.emptyTitle}>{formatAiToolText('Ready to generate')}</Text>
+              <Text style={styles.emptyTitle}>{formatAiToolText('Ready when you are')}</Text>
               <Text style={styles.emptyText}>
-                {formatAiToolText('Fill the form and tap Generate.')}
+                {formatAiToolText('Choose curriculum filters above, then generate.')}
               </Text>
             </View>
           )
@@ -163,8 +169,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: AI_RADIUS.lg,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#E0F2FE',
     overflow: 'hidden',
+    shadowColor: '#0EA5E9',
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   outerFill: {
     flex: 1,
@@ -172,32 +183,31 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
   header: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E2E8F0',
-    backgroundColor: '#FFFFFF',
-    gap: 8,
+    borderBottomColor: '#E0F2FE',
+    backgroundColor: '#F8FCFF',
+    gap: 10,
   },
   headerMain: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
+    gap: 12,
   },
   iconBox: {
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
     padding: 4,
-    backgroundColor: '#F8FAFC',
   },
   headerText: { flex: 1, minWidth: 0 },
   titleRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
-  toolName: { ...AI_TYPE.title, fontSize: 17, lineHeight: 22, color: AI.text, flexShrink: 1 },
+  toolName: { ...AI_TYPE.title, fontSize: 18, lineHeight: 24, color: AI.text, flexShrink: 1 },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -205,7 +215,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 4,
   },
   badgeText: {
     fontSize: 10,
@@ -214,30 +224,30 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
-  description: { marginTop: 2, ...AI_TYPE.body, fontSize: 13, color: AI.textSecondary },
+  description: { marginTop: 4, ...AI_TYPE.body, fontSize: 13, color: AI.textSecondary },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   metaOrbitWrap: {
-    maxHeight: 44,
+    maxHeight: 48,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E2E8F0',
-    backgroundColor: '#F8FAFC',
+    borderBottomColor: '#E0F2FE',
+    backgroundColor: '#F0F9FF',
   },
   metaOrbit: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 8,
     alignItems: 'center',
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    borderRadius: 999,
+    gap: 5,
+    borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
-    minHeight: 28,
+    minHeight: 30,
     paddingHorizontal: 10,
-    paddingVertical: 4,
-    maxWidth: 200,
+    paddingVertical: 5,
+    maxWidth: 220,
     backgroundColor: '#FFFFFF',
   },
   chipLabel: {
@@ -249,36 +259,50 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   chipValue: { fontSize: 12, lineHeight: 14, fontWeight: '700', flexShrink: 1 },
-  contentArea: { paddingVertical: 4, paddingHorizontal: 0 },
+  contentArea: {
+    paddingVertical: 8,
+    paddingHorizontal: 0,
+    backgroundColor: '#F8FAFC',
+  },
   contentAreaFill: {
     flex: 1,
     minHeight: 0,
   },
   resultBody: {
     width: '100%',
-    paddingHorizontal: 4,
-    paddingVertical: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 8,
+    marginBottom: 8,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#E2E8F0',
   },
   resultBodyFill: {
     flex: 1,
     minHeight: 0,
+    marginHorizontal: 0,
+    marginBottom: 0,
+    borderRadius: 0,
+    borderWidth: 0,
   },
   loadingBox: {
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 180,
-    paddingVertical: 28,
-    paddingHorizontal: 16,
-    gap: 8,
+    minHeight: 200,
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+    gap: 10,
   },
-  loadingTitle: { ...AI_TYPE.title, color: AI.text },
-  loadingSub: { ...AI_TYPE.caption, color: AI.textMuted, textAlign: 'center' },
+  loadingTitle: { ...AI_TYPE.title, color: AI.text, textAlign: 'center' },
+  loadingSub: { ...AI_TYPE.caption, color: AI.textMuted, textAlign: 'center', lineHeight: 18 },
   emptyBox: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 28,
-    paddingHorizontal: 16,
+    paddingVertical: 32,
+    paddingHorizontal: 20,
   },
-  emptyTitle: { ...AI_TYPE.title, marginBottom: 4, color: AI.text, textAlign: 'center' },
+  emptyTitle: { ...AI_TYPE.title, marginBottom: 6, color: AI.text, textAlign: 'center' },
   emptyText: { ...AI_TYPE.body, color: AI.textMuted, textAlign: 'center' },
 });

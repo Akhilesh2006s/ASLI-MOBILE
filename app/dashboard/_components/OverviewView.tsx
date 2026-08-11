@@ -924,9 +924,9 @@ const OverviewView = memo(function OverviewView({
         subjectProgress={subjectProgress}
       />
 
-      <WeeklyDigestCard apiBase="/api/student" />
-
       <AdaptiveLearningModule />
+
+      <WeeklyDigestCard apiBase="/api/student" />
     </View>
   );
 });

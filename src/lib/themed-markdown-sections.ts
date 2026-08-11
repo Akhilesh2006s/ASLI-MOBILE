@@ -74,8 +74,8 @@ export function themedNumberedSectionCardHtml(opts: {
     title: label,
     stripe: opts.border.includes('border-')
       ? opts.border.replace('/80', '').replace('-200', '-500')
-      : 'border-violet-500',
-    iconWrap: 'bg-violet-100 text-violet-800',
+      : 'border-sky-500',
+    iconWrap: 'bg-sky-100 text-sky-800',
     iconSvg: sectionIconSvg('sparkles'),
     borderColor: opts.border,
     bg: opts.bg,
@@ -96,8 +96,8 @@ export function themedSection1TitleCardHtmlPremium(opts: {
 }): string {
   const safeTitle = stripAiToolGenerationLabel(opts.title, 'Untitled');
   return (
-    `<section class="relative mb-2 overflow-hidden rounded-xl border border-indigo-200 bg-white shadow-sm ai-tool-section-card ai-tool-section-full">` +
-    `<div class="absolute inset-0 bg-gradient-to-br from-indigo-50/90 via-white to-cyan-50/40"></div>` +
+    `<section class="relative mb-2 overflow-hidden rounded-xl border border-sky-200 bg-white shadow-sm ai-tool-section-card ai-tool-section-full">` +
+    `<div class="absolute inset-0 bg-gradient-to-br from-sky-50/90 via-white to-teal-50/40"></div>` +
     `<div class="relative px-3 py-3 sm:px-4 sm:py-3.5">` +
     `<p class="mb-0.5 text-[9px] font-bold uppercase tracking-wider ${opts.labelClass}">Section 1</p>` +
     `<span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${opts.badgeClass}">${opts.badge}</span>` +

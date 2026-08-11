@@ -8,8 +8,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
-import { API_BASE_URL } from '../../../../src/lib/api-config';
+import api from '../../../../src/services/api/api';
 import { openContentPreview } from '../../../../src/utils/openContentPreview';
 import PremiumSectionHeader from '../../../../src/components/student/PremiumSectionHeader';
 import { ShimmerCard } from '../../../../src/components/student/StudentShimmer';
@@ -95,24 +94,16 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
     try {
       setLoading(true);
       setError(null);
-      const token = await SecureStore.getItemAsync('authToken');
-      if (!token) {
-        setCards([]);
-        setError('Sign in to load adaptive recommendations.');
-        return;
-      }
-      const response = await fetch(`${API_BASE_URL}/api/student/adaptive-learning`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      if (!response.ok) throw new Error('Failed to load adaptive learning');
-      const json = await response.json();
+      const { data: json } = await api.get('/api/student/adaptive-learning');
       const payload = parseAdaptivePayload(json);
       setCards(payload.cards);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load recommendations');
+    } catch (e: any) {
+      const status = e?.response?.status;
+      if (status === 401 || status === 403) {
+        setError('Sign in to load adaptive recommendations.');
+      } else {
+        setError(e instanceof Error ? e.message : 'Could not load recommendations');
+      }
       setCards([]);
     } finally {
       setLoading(false);

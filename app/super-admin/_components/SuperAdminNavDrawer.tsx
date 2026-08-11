@@ -77,7 +77,7 @@ const NAV_SECTIONS: NavSection[] = [
       { id: 'subjects-and-content', label: 'Subject & Content', icon: 'list-outline' },
       { id: 'edu-ott-live', label: 'Edu OTT Live', icon: 'radio-outline' },
       { id: 'exams', label: 'Exam Management', icon: 'document-text-outline' },
-      { id: 'iq-rank-boost', label: 'IQ/Rank Boost Activities', icon: 'trophy-outline' },
+      { id: 'iq-rank-boost', label: 'Quiz', icon: 'trophy-outline' },
       { id: 'calendar', label: 'School Calendar', icon: 'calendar-outline' },
     ],
   },

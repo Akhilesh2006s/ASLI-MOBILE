@@ -35,7 +35,7 @@ export const AI_TOOL_QUEST_STYLES = `
 .quest-orbit-btn{display:none!important}
 .quest-stamp{display:none!important}
 .quest-node{
-  --quest:#8b5cf6;--quest-deep:#6d28d9;--quest-pastel:#f8fafc;--quest-pastel-border:#e2e8f0;
+  --quest:#0ea5e9;--quest-deep:#0f766e;--quest-pastel:#f8fafc;--quest-pastel-border:#e2e8f0;
   position:relative;z-index:1;margin:0 0 10px;border-radius:16px;overflow:hidden;
   border:1.5px solid var(--quest-pastel-border);
   background:var(--quest-pastel);
@@ -52,7 +52,7 @@ export const AI_TOOL_QUEST_STYLES = `
 .quest-summary{
   list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;
   padding:10px 12px 10px 14px;user-select:none;-webkit-user-select:none;
-  -webkit-tap-highlight-color:rgba(139,92,246,.12);
+  -webkit-tap-highlight-color:rgba(14,165,233,.12);
   touch-action:manipulation;background:#ffffff
 }
 .quest-summary::-webkit-details-marker{display:none}
@@ -82,7 +82,7 @@ export const AI_TOOL_QUEST_STYLES = `
 .ai-tool-q-card{
   position:relative;overflow:hidden;border-radius:18px!important;
   background:
-    radial-gradient(120px 80px at 0% 0%,rgba(139,92,246,.18),transparent 70%),
+    radial-gradient(120px 80px at 0% 0%,rgba(14,165,233,.18),transparent 70%),
     linear-gradient(160deg,rgba(255,255,255,.82),rgba(255,255,255,.42))!important;
   box-shadow:0 12px 28px rgba(15,23,42,.08)!important
 }
@@ -94,7 +94,7 @@ export const AI_TOOL_QUEST_STYLES = `
   border-radius:26px!important;overflow:hidden!important;
   border:1px solid rgba(255,255,255,.7)!important;
   background:
-    radial-gradient(circle at 12% 18%,rgba(139,92,246,.22),transparent 42%),
+    radial-gradient(circle at 12% 18%,rgba(14,165,233,.22),transparent 42%),
     radial-gradient(circle at 88% 0%,rgba(14,165,233,.18),transparent 40%),
     linear-gradient(145deg,rgba(255,255,255,.86),rgba(255,255,255,.42))!important;
   box-shadow:0 24px 50px rgba(15,23,42,.12)!important
@@ -113,26 +113,26 @@ export const AI_TOOL_QUEST_STYLES = `
 }
 .quest-bullet-orb{
   width:10px;height:10px;margin-top:6px;border-radius:99px;flex-shrink:0;
-  background:var(--quest,#8b5cf6);box-shadow:0 0 0 4px rgba(139,92,246,.12)
+  background:var(--quest,#0ea5e9);box-shadow:0 0 0 4px rgba(14,165,233,.12)
 }
 .quest-bullet-text{flex:1;min-width:0;color:#1e293b;font-weight:500;white-space:pre-wrap}
 .quest-check{
   display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border-radius:14px;
   background:linear-gradient(135deg,rgba(255,255,255,.82),rgba(255,255,255,.45));
-  border:1px solid rgba(255,255,255,.8);border-left:4px solid var(--quest,#8b5cf6)
+  border:1px solid rgba(255,255,255,.8);border-left:4px solid var(--quest,#0ea5e9)
 }
 .quest-check-mark{
   width:22px;height:22px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
-  background:linear-gradient(145deg,var(--quest,#8b5cf6),var(--quest-deep,#6d28d9));color:#fff;font-size:12px;font-weight:900
+  background:linear-gradient(145deg,var(--quest,#0ea5e9),var(--quest-deep,#0f766e));color:#fff;font-size:12px;font-weight:900
 }
 .quest-step{display:flex;gap:12px;align-items:flex-start;position:relative;padding:4px 0 10px 2px}
 .quest-step:not(:last-child)::before{
   content:"";position:absolute;left:15px;top:34px;bottom:0;width:2px;
-  background:linear-gradient(180deg,var(--quest,#8b5cf6),rgba(148,163,184,.25))
+  background:linear-gradient(180deg,var(--quest,#0ea5e9),rgba(148,163,184,.25))
 }
 .quest-step-num{
   width:30px;height:30px;border-radius:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
-  background:linear-gradient(145deg,var(--quest,#8b5cf6),var(--quest-deep,#6d28d9));
+  background:linear-gradient(145deg,var(--quest,#0ea5e9),var(--quest-deep,#0f766e));
   color:#fff;font-size:12px;font-weight:900;z-index:1;box-shadow:0 8px 16px rgba(15,23,42,.12)
 }
 .quest-step-text{flex:1;padding-top:5px;color:#334155;font-weight:500}
@@ -152,15 +152,15 @@ export const AI_TOOL_QUEST_STYLES = `
 }
 .quest-term::before{
   content:"";position:absolute;left:0;top:0;bottom:0;width:5px;
-  background:linear-gradient(180deg,var(--quest,#8b5cf6),var(--quest-deep,#6d28d9))
+  background:linear-gradient(180deg,var(--quest,#0ea5e9),var(--quest-deep,#0f766e))
 }
 .quest-term-title{margin:0;padding-left:8px;font-size:14px;font-weight:800;color:#0f172a}
 .quest-term-body{margin:6px 0 0;padding-left:8px;font-size:13px;line-height:1.5;color:#475569}
 .quest-q{
-  --quest:#8b5cf6;--quest-deep:#6d28d9;
+  --quest:#0ea5e9;--quest-deep:#0f766e;
   position:relative;overflow:hidden;border-radius:18px;margin:0 0 12px;padding:14px;
   background:
-    radial-gradient(120px 70px at 0% 0%,rgba(139,92,246,.16),transparent 70%),
+    radial-gradient(120px 70px at 0% 0%,rgba(14,165,233,.16),transparent 70%),
     linear-gradient(160deg,rgba(255,255,255,.9),rgba(255,255,255,.5));
   border:1px solid rgba(255,255,255,.85);border-left:5px solid var(--quest);
   box-shadow:0 12px 28px rgba(15,23,42,.07)
@@ -177,7 +177,7 @@ export const AI_TOOL_QUEST_STYLES = `
   font-size:10px;font-weight:800;background:rgba(241,245,249,.95);color:#475569;border:1px solid rgba(226,232,240,.9)
 }
 .quest-pill-amber{background:#fffbeb;color:#92400e;border-color:#fde68a}
-.quest-pill-violet{background:#f5f3ff;color:#6d28d9;border-color:#ddd6fe}
+.quest-pill-violet{background:#f0f9ff;color:#0369a1;border-color:#bae6fd}
 .quest-q-prompt,.quest-q-text{margin:0;font-size:15px;line-height:1.45;font-weight:700;color:#0f172a}
 .quest-options{display:grid;gap:8px;margin-top:12px}
 @media (min-width:640px){.quest-options{grid-template-columns:1fr 1fr}}
@@ -188,7 +188,7 @@ export const AI_TOOL_QUEST_STYLES = `
 }
 .quest-option-letter{
   width:26px;height:26px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
-  background:linear-gradient(145deg,var(--quest,#8b5cf6),var(--quest-deep,#6d28d9));
+  background:linear-gradient(145deg,var(--quest,#0ea5e9),var(--quest-deep,#0f766e));
   color:#fff;font-size:11px;font-weight:900
 }
 .quest-option-text{flex:1;min-width:0;padding-top:3px;font-size:13px;line-height:1.4;color:#334155;font-weight:500}
@@ -199,7 +199,7 @@ export const AI_TOOL_QUEST_STYLES = `
 }
 .quest-answer-label,.quest-explain-label{
   display:inline-block;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;
-  color:var(--quest-deep,#6d28d9);margin-bottom:4px
+  color:var(--quest-deep,#0f766e);margin-bottom:4px
 }
 .quest-answer p,.quest-explain p{margin:0;font-size:13px;line-height:1.45;color:#1e293b;font-weight:600}
 .quest-explain{
@@ -221,8 +221,8 @@ export const AI_TOOL_QUEST_STYLES = `
 /* —— Tap-to-reveal (answers/solutions) and tap-to-check (checklists/materials) —— */
 .quest-reveal-btn{
   display:inline-flex;align-items:center;gap:6px;margin:6px 0 2px;
-  padding:9px 16px;border-radius:999px;border:1.5px solid var(--quest,#8b5cf6);
-  background:#fff;color:var(--quest-deep,#6d28d9);font-size:12px;font-weight:800;
+  padding:9px 16px;border-radius:999px;border:1.5px solid var(--quest,#0ea5e9);
+  background:#fff;color:var(--quest-deep,#0f766e);font-size:12px;font-weight:800;
   cursor:pointer;-webkit-tap-highlight-color:transparent
 }
 .quest-reveal-hidden{display:none!important}
@@ -248,10 +248,10 @@ export const AI_TOOL_QUEST_BOOTSTRAP = `
 ${AI_TOOL_SELECTION_GUARD_JS}
 (function(){
   try{
-    var palette = ['#8b5cf6','#0ea5e9','#f59e0b','#f43f5e','#6366f1','#06b6d4','#f97316','#d946ef','#3b82f6','#14b8a6'];
-    var deep = ['#6d28d9','#0369a1','#b45309','#be123c','#4338ca','#0e7490','#c2410c','#a21caf','#1d4ed8','#0f766e'];
-    var pastel = ['#f5f3ff','#f0f9ff','#fffbeb','#fff1f2','#eef2ff','#ecfeff','#fff7ed','#fdf4ff','#eff6ff','#f0fdfa'];
-    var pastelBorder = ['#ddd6fe','#bae6fd','#fde68a','#fecdd3','#c7d2fe','#a5f3fc','#fed7aa','#f5d0fe','#bfdbfe','#99f6e4'];
+    var palette = ['#0ea5e9','#14b8a6','#f59e0b','#f43f5e','#0284c7','#06b6d4','#f97316','#0891b2','#3b82f6','#0d9488'];
+    var deep = ['#0369a1','#0f766e','#b45309','#be123c','#075985','#0e7490','#c2410c','#155e75','#1d4ed8','#115e59'];
+    var pastel = ['#f0f9ff','#f0fdfa','#fffbeb','#fff1f2','#eef2ff','#ecfeff','#fff7ed','#fdf4ff','#eff6ff','#f0fdfa'];
+    var pastelBorder = ['#bae6fd','#99f6e4','#fde68a','#fecdd3','#c7d2fe','#a5f3fc','#fed7aa','#f5d0fe','#bfdbfe','#99f6e4'];
 
     function syncHint(n){
       var h = n.querySelector('.quest-hint');
@@ -362,7 +362,7 @@ function applyQuestRevealGates(){
         if (!explainEl || !explainEl.classList || !explainEl.classList.contains('quest-explain')) explainEl = null;
         ansEl.classList.add('quest-reveal-hidden');
         if (explainEl) explainEl.classList.add('quest-reveal-hidden');
-        var accent = ansEl.style.getPropertyValue('--quest') || '#8b5cf6';
+        var accent = ansEl.style.getPropertyValue('--quest') || '#0ea5e9';
         var btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'quest-reveal-btn';
@@ -396,7 +396,7 @@ function applyQuestRevealGates(){
         if (!bodyEl || !bodyEl.children.length) return;
         // Already handled per-item above — don't double-gate.
         if (bodyEl.querySelector('.quest-answer')) return;
-        var accent = node.style.getPropertyValue('--quest') || '#8b5cf6';
+        var accent = node.style.getPropertyValue('--quest') || '#0ea5e9';
         var inner = document.createElement('div');
         inner.className = 'quest-reveal-hidden';
         while (bodyEl.firstChild) inner.appendChild(bodyEl.firstChild);

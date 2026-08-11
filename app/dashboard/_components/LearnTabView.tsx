@@ -13,7 +13,7 @@ const CHIPS = [
   { id: 'paths', label: 'Learning Paths' },
   { id: 'eduott', label: 'EduOTT' },
   { id: 'prep', label: 'Prep Content' },
-  { id: 'iq', label: 'IQ Boost' },
+  { id: 'iq', label: 'Quiz' },
   { id: 'videos', label: 'Video Lectures' },
   { id: 'tools', label: 'AI Tools' },
 ];
@@ -77,8 +77,8 @@ export default function LearnTabView({ username }: { username: string }) {
             <View style={styles.linkCardRow}>
               <Ionicons name="trophy-outline" size={28} color={STUDENT.accent} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.linkTitle}>IQ / Rank Boost</Text>
-                <Text style={styles.linkSub}>Gamified quizzes with XP & badges</Text>
+                <Text style={styles.linkTitle}>Quiz</Text>
+                <Text style={styles.linkSub}>Daily and weekly quizzes assigned to you</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={STUDENT.textMuted} />
             </View>

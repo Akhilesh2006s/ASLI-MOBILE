@@ -1,5 +1,13 @@
-import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,15 +21,12 @@ interface Quiz {
   _id: string;
   title: string;
   description?: string;
-  subject: {
-    _id: string;
-    name: string;
-  };
-  classNumber: string;
-  difficulty: string;
-  totalQuestions: number;
-  isCompleted?: boolean;
-  createdAt: string;
+  subject: { _id: string; name: string } | string;
+  classNumber?: string;
+  difficulty?: string;
+  totalQuestions?: number;
+  scheduleType?: string;
+  createdAt?: string;
 }
 
 interface SubjectWithQuizzes {
@@ -32,32 +37,30 @@ interface SubjectWithQuizzes {
   totalQuestions: number;
   difficulties: string[];
   latestScore?: number;
-  latestCompletedAt?: string;
 }
 
 export default function IQRankBoostSubjects() {
   const [subjects, setSubjects] = useState<SubjectWithQuizzes[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [studentClass, setStudentClass] = useState<string | null>(null);
-  const [quizResultsMap, setQuizResultsMap] = useState<Map<string, { score: number; completedAt: string }>>(new Map());
   const [dashboardPath, setDashboardPath] = useState<string>('/dashboard');
 
   useEffect(() => {
-    fetchStudentClassAndQuizzes();
-    getDashboardPath().then(path => {
+    void load();
+    getDashboardPath().then((path) => {
       if (path) setDashboardPath(path);
     });
   }, []);
 
   useBackNavigation(dashboardPath, false);
 
-  const fetchStudentClassAndQuizzes = async () => {
+  const load = useCallback(async () => {
     try {
       setIsLoading(true);
       const token = await SecureStore.getItemAsync('authToken');
-      
-      const [questionsResponse, resultsResponse] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/student/iq-rank-questions`, {
+      const [quizzesResponse, resultsResponse] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/student/iq-rank-quizzes`, {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
@@ -71,103 +74,81 @@ export default function IQRankBoostSubjects() {
         }),
       ]);
 
-      const quizResultsMapLocal = new Map<string, { score: number; completedAt: string }>();
+      const scoreByQuiz = new Map<string, number>();
+      const scoreBySubject = new Map<string, number>();
       if (resultsResponse.ok) {
         const resultsData = await resultsResponse.json();
         const results = resultsData.data || [];
         results.forEach((result: any) => {
-          const key = result.subjectId;
-          if (key) {
-            quizResultsMapLocal.set(key.toString(), {
-              score: result.score,
-              completedAt: result.completedAt,
-            });
-          }
+          if (result.quizId) scoreByQuiz.set(String(result.quizId), Number(result.score) || 0);
+          if (result.subjectId) scoreBySubject.set(String(result.subjectId), Number(result.score) || 0);
         });
       }
-      setQuizResultsMap(quizResultsMapLocal);
 
-      if (questionsResponse.ok) {
-        const questionsData = await questionsResponse.json();
-        const questions: any[] = questionsData.data || questionsData.questions || [];
+      if (!quizzesResponse.ok) {
+        setSubjects([]);
+        return;
+      }
 
-        if (questionsData.classNumber) {
-          setStudentClass(questionsData.classNumber);
+      const quizzesData = await quizzesResponse.json();
+      const quizzes: Quiz[] = Array.isArray(quizzesData.data) ? quizzesData.data : [];
+      if (quizzesData.classNumber) setStudentClass(String(quizzesData.classNumber));
+
+      const subjectMap = new Map<string, SubjectWithQuizzes>();
+      for (const quiz of quizzes) {
+        const subjectId =
+          typeof quiz.subject === 'object' ? String(quiz.subject?._id || '') : String(quiz.subject || '');
+        const subjectName =
+          typeof quiz.subject === 'object' ? String(quiz.subject?.name || 'Subject') : 'Subject';
+        if (!subjectId) continue;
+        if (!subjectMap.has(subjectId)) {
+          subjectMap.set(subjectId, {
+            _id: subjectId,
+            name: subjectName,
+            quizzes: [],
+            totalQuizzes: 0,
+            totalQuestions: 0,
+            difficulties: [],
+            latestScore: scoreBySubject.get(subjectId),
+          });
         }
-
-        const subjectMap = new Map<
-          string,
-          { name: string; questions: any[]; difficulties: Set<string> }
-        >();
-
-        questions.forEach((q: any) => {
-          const subjectId =
-            typeof q.subject === 'object' ? q.subject?._id : q.subject;
-          const subjectName =
-            typeof q.subject === 'object' ? q.subject?.name : 'Unknown Subject';
-          if (!subjectId) return;
-
-          if (!subjectMap.has(subjectId)) {
-            subjectMap.set(subjectId, {
-              name: subjectName,
-              questions: [],
-              difficulties: new Set(),
-            });
-          }
-          const subjectData = subjectMap.get(subjectId)!;
-          subjectData.questions.push(q);
-          if (q.difficulty) subjectData.difficulties.add(q.difficulty);
-        });
-
-        const subjectsArray: SubjectWithQuizzes[] = Array.from(subjectMap.entries()).map(
-          ([id, data]) => {
-            const result = quizResultsMapLocal.get(id);
-            const pseudoQuiz: Quiz = {
-              _id: id,
-              title: `${data.name} IQ Quiz`,
-              subject: { _id: id, name: data.name },
-              classNumber: questionsData.classNumber || '',
-              difficulty: Array.from(data.difficulties)[0] || 'medium',
-              totalQuestions: data.questions.length,
-              createdAt: new Date().toISOString(),
-            };
-            return {
-              _id: id,
-              name: data.name,
-              quizzes: [pseudoQuiz],
-              totalQuizzes: 1,
-              totalQuestions: data.questions.length,
-              difficulties: Array.from(data.difficulties),
-              latestScore: result?.score,
-              latestCompletedAt: result?.completedAt,
-            };
-          }
-        );
-
-        setSubjects(subjectsArray);
+        const bucket = subjectMap.get(subjectId)!;
+        bucket.quizzes.push(quiz);
+        bucket.totalQuizzes += 1;
+        bucket.totalQuestions += Number(quiz.totalQuestions || 0);
+        if (quiz.difficulty && !bucket.difficulties.includes(quiz.difficulty)) {
+          bucket.difficulties.push(quiz.difficulty);
+        }
+        const quizScore = scoreByQuiz.get(String(quiz._id));
+        if (quizScore != null) bucket.latestScore = quizScore;
       }
+
+      setSubjects(Array.from(subjectMap.values()));
     } catch (error) {
       console.error('Failed to fetch quizzes:', error);
+      setSubjects([]);
     } finally {
       setIsLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty.toLowerCase()) {
-      case 'easy': return '#10b981';
-      case 'medium': return '#f59e0b';
-      case 'hard': return '#ef4444';
-      default: return '#6b7280';
+      case 'easy':
+        return '#10b981';
+      case 'medium':
+        return '#f59e0b';
+      case 'hard':
+        return '#ef4444';
+      default:
+        return '#6b7280';
     }
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <LinearGradient
-        colors={['#8b5cf6', '#7c3aed']}
-        style={styles.header}
-      >
+      <LinearGradient colors={['#0284c7', '#0d9488']} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => router.replace(dashboardPath)} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="#fff" />
@@ -175,96 +156,108 @@ export default function IQRankBoostSubjects() {
           <View style={styles.headerText}>
             <View style={styles.headerTitleRow}>
               <Ionicons name="trophy" size={28} color="#fff" />
-              <Text style={styles.headerTitle}>IQ/Rank Boost</Text>
+              <Text style={styles.headerTitle}>Quiz</Text>
             </View>
             <Text style={styles.headerSubtitle}>
-              {studentClass ? `Class ${studentClass}` : 'Boost your IQ and Rank'}
+              {studentClass ? `Class ${studentClass}` : 'Daily and weekly quizzes'}
             </Text>
           </View>
         </View>
       </LinearGradient>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              void load();
+            }}
+          />
+        }
+      >
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#8b5cf6" />
-            <Text style={styles.loadingText}>Loading subjects...</Text>
+            <ActivityIndicator size="large" color="#0284c7" />
+            <Text style={styles.loadingText}>Loading quizzes...</Text>
           </View>
         ) : subjects.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="book-outline" size={64} color="#5B6779" />
-            <Text style={styles.emptyText}>No subjects available</Text>
-            <Text style={styles.emptySubtext}>IQ/Rank Boost quizzes will appear here</Text>
+            <Ionicons name="trophy-outline" size={64} color="#5B6779" />
+            <Text style={styles.emptyText}>No quizzes available</Text>
+            <Text style={styles.emptySubtext}>Quizzes assigned to you will appear here</Text>
           </View>
         ) : (
           <View style={styles.subjectsList}>
             {subjects.map((subject) => (
-              <TouchableOpacity
-                key={subject._id}
-                style={styles.subjectCard}
-                onPress={() => {
-                  if (subject.quizzes.length > 0) {
-                    router.push({
-                      pathname: '/iq-rank-boost-quiz/[quizId]',
-                      params: { quizId: subject.quizzes[0]._id }
-                    });
-                  }
-                }}
-                activeOpacity={0.7}
-              >
-                {/* the touchable stays for hit area; the glass card carries the padding */}
-                <GlassPanel style={styles.subjectCardInner} radius={12} tone="medium">
-                  <View style={styles.subjectHeader}>
-                    <View style={styles.subjectIcon}>
-                      <Ionicons name="book" size={24} color="#8b5cf6" />
-                    </View>
-                    <View style={styles.subjectInfo}>
-                      <Text style={styles.subjectName}>{subject.name}</Text>
-                      <Text style={styles.subjectStats}>
-                        {subject.totalQuizzes} quizzes • {subject.totalQuestions} questions
-                      </Text>
-                    </View>
-                    {subject.latestScore !== undefined && (
-                      <View style={styles.scoreBadge}>
-                        <Ionicons name="trophy" size={16} color="#f59e0b" />
-                        <Text style={styles.scoreText}>{subject.latestScore}%</Text>
-                      </View>
-                    )}
+              <GlassPanel key={subject._id} style={styles.subjectCardInner} radius={12} tone="medium">
+                <View style={styles.subjectHeader}>
+                  <View style={styles.subjectIcon}>
+                    <Ionicons name="book" size={24} color="#0284c7" />
                   </View>
-
-                  {subject.difficulties.length > 0 && (
-                    <View style={styles.difficultiesRow}>
-                      {subject.difficulties.map((diff) => (
-                        <View
-                          key={diff}
-                          style={[styles.difficultyBadge, { backgroundColor: getDifficultyColor(diff) + '20' }]}
-                        >
-                          <Text style={[styles.difficultyText, { color: getDifficultyColor(diff) }]}>
-                            {diff}
-                          </Text>
-                        </View>
-                      ))}
+                  <View style={styles.subjectInfo}>
+                    <Text style={styles.subjectName}>{subject.name}</Text>
+                    <Text style={styles.subjectStats}>
+                      {subject.totalQuizzes} quizzes • {subject.totalQuestions} questions
+                    </Text>
+                  </View>
+                  {subject.latestScore !== undefined ? (
+                    <View style={styles.scoreBadge}>
+                      <Ionicons name="trophy" size={16} color="#f59e0b" />
+                      <Text style={styles.scoreText}>{subject.latestScore}%</Text>
                     </View>
-                  )}
+                  ) : null}
+                </View>
 
-                  <TouchableOpacity
-                    style={styles.startButton}
-                    onPress={() => {
-                      if (subject.quizzes.length > 0) {
+                {subject.difficulties.length > 0 ? (
+                  <View style={styles.difficultiesRow}>
+                    {subject.difficulties.map((diff) => (
+                      <View
+                        key={diff}
+                        style={[styles.difficultyBadge, { backgroundColor: getDifficultyColor(diff) + '20' }]}
+                      >
+                        <Text style={[styles.difficultyText, { color: getDifficultyColor(diff) }]}>
+                          {diff}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+
+                <View style={{ gap: 8, marginTop: 10 }}>
+                  {subject.quizzes.map((quiz) => (
+                    <TouchableOpacity
+                      key={quiz._id}
+                      style={styles.quizItem}
+                      activeOpacity={0.75}
+                      onPress={() =>
                         router.push({
                           pathname: '/iq-rank-boost-quiz/[quizId]',
-                          params: { quizId: subject.quizzes[0]._id }
-                        });
+                          params: { quizId: quiz._id },
+                        })
                       }
-                    }}
-                  >
-                    <Ionicons name="play" size={20} color="#fff" />
-                    <Text style={styles.startButtonText}>
-                      {subject.quizzes.length > 0 ? 'Start Quiz' : 'No Quizzes'}
-                    </Text>
-                  </TouchableOpacity>
-                </GlassPanel>
-              </TouchableOpacity>
+                    >
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={styles.quizItemTitle} numberOfLines={1}>
+                          {quiz.title}
+                        </Text>
+                        <Text style={styles.quizItemMeta} numberOfLines={1}>
+                          {[
+                            quiz.scheduleType && quiz.scheduleType !== 'once' ? quiz.scheduleType : null,
+                            quiz.difficulty,
+                            quiz.totalQuestions != null ? `${quiz.totalQuestions} Q` : null,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </GlassPanel>
             ))}
           </View>
         )}
@@ -274,156 +267,65 @@ export default function IQRankBoostSubjects() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    // transparent so the app-wide pastel artwork shows through the glass cards
-    backgroundColor: 'transparent',
-  },
-  header: {
-    paddingTop: 50,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
+  container: { flex: 1, backgroundColor: '#f8fafc' },
+  header: { paddingHorizontal: 16, paddingBottom: 18, paddingTop: 8 },
+  headerContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   backButton: {
-    marginRight: 12,
-    padding: 4,
-  },
-  headerText: {
-    flex: 1,
-  },
-  headerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-    gap: 12,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#fff',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
-    marginLeft: 40,
-  },
-  content: {
-    flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 64,
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#6b7280',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 64,
-  },
-  emptyText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#6b7280',
-    textAlign: 'center',
-  },
-  subjectsList: {
-    padding: 16,
-  },
-  subjectCard: {
+    width: 40,
+    height: 40,
     borderRadius: 12,
-    marginBottom: 12,
-  },
-  subjectCardInner: {
-    borderRadius: 12,
-    padding: 16,
-  },
-  subjectHeader: {
-    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
-    marginBottom: 12,
+    justifyContent: 'center',
   },
+  headerText: { flex: 1 },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: '#fff' },
+  headerSubtitle: { marginTop: 2, fontSize: 13, color: 'rgba(255,255,255,0.9)' },
+  content: { flex: 1 },
+  loadingContainer: { alignItems: 'center', padding: 40 },
+  loadingText: { marginTop: 12, color: '#64748b' },
+  emptyContainer: { alignItems: 'center', padding: 48 },
+  emptyText: { marginTop: 12, fontSize: 16, fontWeight: '700', color: '#334155' },
+  emptySubtext: { marginTop: 4, fontSize: 13, color: '#64748b' },
+  subjectsList: { padding: 16, gap: 12 },
+  subjectCardInner: { padding: 14 },
+  subjectHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   subjectIcon: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     borderRadius: 12,
-    backgroundColor: '#f3e8ff',
-    justifyContent: 'center',
+    backgroundColor: '#e0f2fe',
     alignItems: 'center',
-    marginRight: 12,
+    justifyContent: 'center',
   },
-  subjectInfo: {
-    flex: 1,
-  },
-  subjectName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  subjectStats: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
+  subjectInfo: { flex: 1, minWidth: 0 },
+  subjectName: { fontSize: 16, fontWeight: '800', color: '#0f172a' },
+  subjectStats: { fontSize: 12, color: '#64748b', marginTop: 2 },
   scoreBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fef3c7',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
     gap: 4,
+    backgroundColor: '#fffbeb',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
-  scoreText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#d97706',
-  },
-  difficultiesRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 12,
-  },
-  difficultyBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  difficultyText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  startButton: {
+  scoreText: { fontSize: 12, fontWeight: '700', color: '#b45309' },
+  difficultiesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
+  difficultyBadge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
+  difficultyText: { fontSize: 11, fontWeight: '700', textTransform: 'capitalize' },
+  quizItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#8b5cf6',
-    paddingVertical: 12,
-    borderRadius: 8,
     gap: 8,
+    backgroundColor: '#f8fafc',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
-  startButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  quizItemTitle: { fontSize: 14, fontWeight: '700', color: '#0f172a' },
+  quizItemMeta: { fontSize: 11, color: '#64748b', marginTop: 2, textTransform: 'capitalize' },
 });
-
-

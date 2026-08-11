@@ -144,9 +144,63 @@ export interface GridPlacement {
   slotHour: number;
 }
 
+export function rawRefName(v: string | { name?: string; fullName?: string } | undefined): string {
+  if (!v || typeof v === 'string') return typeof v === 'string' ? v.trim() : '';
+  return String(v.name || v.fullName || '').trim();
+}
+
+export function isDeletedSubjectName(raw: string): boolean {
+  const s = String(raw || '').trim();
+  if (!s) return false;
+  if (/__deleted__/i.test(s)) return true;
+  if (/__dele[a-z]*$/i.test(s)) return true;
+  if (/_deleted?$/i.test(s)) return true;
+  return false;
+}
+
+export function cleanSubjectDisplayName(raw: string): string {
+  let s = String(raw || '').trim();
+  if (!s) return '';
+  const cut = s.search(/__deleted__/i);
+  if (cut >= 0) s = s.slice(0, cut);
+  s = s.replace(/__dele[a-z]*$/i, '');
+  s = s.replace(/_deleted?$/i, '');
+  return s.replace(/_+$/g, '').trim();
+}
+
 export function refName(v: string | { name?: string; fullName?: string } | undefined): string {
-  if (!v || typeof v === 'string') return v || '';
-  return v.name || v.fullName || '';
+  return cleanSubjectDisplayName(rawRefName(v));
+}
+
+export function sanitizeTimetableEntries(entries: TimetableEntryLike[]): TimetableEntryLike[] {
+  const cleaned: TimetableEntryLike[] = [];
+  for (const entry of entries || []) {
+    if (!entry || entry.status === 'Cancelled') continue;
+    const rawSubject = rawRefName(entry.subjectId as any) || String(entry.subject || '');
+    if (isDeletedSubjectName(rawSubject)) continue;
+    const display = cleanSubjectDisplayName(rawSubject);
+    let next = entry;
+    if (typeof entry.subjectId === 'object' && entry.subjectId && display && display !== rawSubject) {
+      next = { ...entry, subjectId: { ...entry.subjectId, name: display }, subject: display };
+    } else if (display && entry.subject && display !== entry.subject) {
+      next = { ...entry, subject: display };
+    }
+    cleaned.push(next);
+  }
+
+  const seen = new Set<string>();
+  const out: TimetableEntryLike[] = [];
+  for (const entry of cleaned) {
+    const dayIndex = entryWeekdayIndex(entry);
+    const subject =
+      (refName(entry.subjectId as any) || cleanSubjectDisplayName(String(entry.subject || ''))).toLowerCase() ||
+      'class';
+    const key = `${dayIndex}|${entry.startTime}|${entry.endTime}|${subject}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(entry);
+  }
+  return out;
 }
 
 export function parseTimeToMinutes(time: string): number {
@@ -210,7 +264,7 @@ export function getSlotHour(startTime: string): number | null {
 export function buildWeekdayPlacements(entries: TimetableEntryLike[]): GridPlacement[] {
   const seen = new Set<string>();
   const placements: GridPlacement[] = [];
-  for (const entry of entries) {
+  for (const entry of sanitizeTimetableEntries(entries)) {
     if (!entry) continue;
     const dayIndex = entryWeekdayIndex(entry);
     const slotHour = getSlotHour(entry.startTime);
@@ -219,7 +273,8 @@ export function buildWeekdayPlacements(entries: TimetableEntryLike[]): GridPlace
       entry.classId != null && typeof entry.classId === 'object'
         ? String(entry.classId._id || entry.classId.classNumber || '')
         : String(entry.classId || entry.classNumber || '');
-    const dedupeKey = `${dayIndex}-${slotHour}-${entry.startTime}-${classKey}-${entry.sectionId || entry.section || ''}`;
+    const subject = (refName(entry.subjectId as any) || String(entry.subject || 'class')).toLowerCase();
+    const dedupeKey = `${dayIndex}-${slotHour}-${entry.startTime}-${classKey}-${entry.sectionId || entry.section || ''}-${subject}`;
     if (seen.has(dedupeKey)) continue;
     seen.add(dedupeKey);
     placements.push({ entry, dayIndex, slotHour });

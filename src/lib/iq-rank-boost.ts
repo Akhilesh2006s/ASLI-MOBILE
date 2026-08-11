@@ -1,5 +1,12 @@
-export type IQActivityType = 'iq-test' | 'rank-boost' | 'challenge' | 'quiz';
+export type IQActivityType = 'iq-test' | 'rank-boost' | 'challenge' | 'quiz' | 'daily' | 'weekly';
 export type IQDifficulty = 'easy' | 'medium' | 'hard' | 'expert';
+export type QuizScheduleType = 'once' | 'daily' | 'weekly';
+export type QuizAudienceType =
+  | 'all_schools'
+  | 'schools'
+  | 'trial'
+  | 'all_members'
+  | 'specific_members';
 
 export interface IQActivity {
   _id: string;
@@ -14,6 +21,13 @@ export interface IQActivity {
   classNumber?: string;
   questions: number;
   isActive: boolean;
+  trialOnly?: boolean;
+  promptOnLogin?: boolean;
+  scheduleType?: QuizScheduleType;
+  audienceType?: QuizAudienceType;
+  audienceRoles?: Array<'student' | 'teacher'>;
+  targetSchools?: string[];
+  targetUserIds?: string[];
   createdAt?: string;
   updatedAt?: string;
   participants?: number;
@@ -33,6 +47,13 @@ export interface IQActivityFormState {
   classNumber: string;
   questions: number;
   isActive: boolean;
+  scheduleType: QuizScheduleType;
+  audienceType: QuizAudienceType;
+  audienceRoles: Array<'student' | 'teacher'>;
+  targetSchools: string[];
+  targetUserIdsText: string;
+  trialOnly: boolean;
+  promptOnLogin: boolean;
 }
 
 export interface QuestionGeneratorFormState {
@@ -44,10 +65,24 @@ export interface QuestionGeneratorFormState {
 }
 
 export const IQ_ACTIVITY_TYPES = [
-  { value: 'iq-test' as const, label: 'IQ Test' },
-  { value: 'rank-boost' as const, label: 'Rank Boost' },
-  { value: 'challenge' as const, label: 'Challenge' },
   { value: 'quiz' as const, label: 'Quiz' },
+  { value: 'daily' as const, label: 'Daily' },
+  { value: 'weekly' as const, label: 'Weekly' },
+  { value: 'challenge' as const, label: 'Challenge' },
+];
+
+export const QUIZ_SCHEDULE_TYPES = [
+  { value: 'once' as const, label: 'One-time' },
+  { value: 'daily' as const, label: 'Daily quiz' },
+  { value: 'weekly' as const, label: 'Weekly quiz' },
+];
+
+export const QUIZ_AUDIENCE_TYPES = [
+  { value: 'all_schools' as const, label: 'All schools' },
+  { value: 'schools' as const, label: 'Specific school(s)' },
+  { value: 'trial' as const, label: 'Trial members' },
+  { value: 'all_members' as const, label: 'All members' },
+  { value: 'specific_members' as const, label: 'Specific members' },
 ];
 
 export const IQ_DIFFICULTIES = [
@@ -57,20 +92,27 @@ export const IQ_DIFFICULTIES = [
   { value: 'expert' as const, label: 'Expert' },
 ];
 
-export const CLASS_NUMBERS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
+export const CLASS_NUMBERS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 
 export const emptyActivityForm = (): IQActivityFormState => ({
   title: '',
   description: '',
-  type: 'iq-test',
+  type: 'quiz',
   difficulty: 'medium',
   points: 100,
   duration: 30,
   subject: '',
   board: '',
-  classNumber: '',
+  classNumber: 'all',
   questions: 10,
   isActive: true,
+  scheduleType: 'once',
+  audienceType: 'all_schools',
+  audienceRoles: ['student'],
+  targetSchools: [],
+  targetUserIdsText: '',
+  trialOnly: false,
+  promptOnLogin: false,
 });
 
 export const emptyGeneratorForm = (): QuestionGeneratorFormState => ({
@@ -90,13 +132,52 @@ export const activityFormFromActivity = (activity: IQActivity): IQActivityFormSt
   duration: activity.duration,
   subject: activity.subject?._id || '',
   board: activity.board || '',
-  classNumber: activity.classNumber || '',
+  classNumber: activity.classNumber || 'all',
   questions: activity.questions,
   isActive: activity.isActive,
+  scheduleType:
+    activity.scheduleType ||
+    (activity.type === 'daily' ? 'daily' : activity.type === 'weekly' ? 'weekly' : 'once'),
+  audienceType: activity.audienceType || (activity.trialOnly ? 'trial' : 'all_schools'),
+  audienceRoles: activity.audienceRoles?.length ? activity.audienceRoles : ['student'],
+  targetSchools: (activity.targetSchools || []).map(String),
+  targetUserIdsText: (activity.targetUserIds || []).map(String).join(', '),
+  trialOnly: Boolean(activity.trialOnly),
+  promptOnLogin: Boolean(activity.promptOnLogin),
 });
 
+export function buildQuizCreatePayload(form: IQActivityFormState) {
+  const targetUserIds = String(form.targetUserIdsText || '')
+    .split(/[\s,]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return {
+    title: form.title,
+    description: form.description,
+    type:
+      form.scheduleType === 'daily' ? 'daily' : form.scheduleType === 'weekly' ? 'weekly' : 'quiz',
+    difficulty: form.difficulty,
+    points: form.points,
+    duration: form.duration,
+    subject: form.subject,
+    board: form.board,
+    classNumber: form.classNumber || 'all',
+    questions: form.questions,
+    isActive: form.isActive,
+    scheduleType: form.scheduleType,
+    audienceType: form.audienceType,
+    audienceRoles: form.audienceRoles,
+    targetSchools: form.audienceType === 'schools' ? form.targetSchools : [],
+    targetUserIds: form.audienceType === 'specific_members' ? targetUserIds : [],
+    trialOnly: form.audienceType === 'trial',
+    promptOnLogin: form.audienceType === 'trial' ? form.promptOnLogin : false,
+  };
+}
+
 export const getClassStats = (activities: IQActivity[], classNum: number) => {
-  const classActivities = activities.filter((a) => a.classNumber === classNum.toString());
+  const classActivities = activities.filter(
+    (a) => a.classNumber === classNum.toString() && !a.trialOnly,
+  );
   return {
     total: classActivities.length,
     active: classActivities.filter((a) => a.isActive).length,
@@ -107,31 +188,29 @@ export const getClassStats = (activities: IQActivity[], classNum: number) => {
 
 export const getTypeIconName = (type: string): keyof typeof import('@expo/vector-icons').Ionicons.glyphMap => {
   switch (type) {
-    case 'iq-test':
-      return 'bulb';
-    case 'rank-boost':
-      return 'trophy';
+    case 'daily':
+      return 'sunny-outline';
+    case 'weekly':
+      return 'calendar-outline';
     case 'challenge':
       return 'locate-outline';
     case 'quiz':
-      return 'star';
     default:
-      return 'star';
+      return 'trophy-outline';
   }
 };
 
 export const getTypeColorStyle = (type: string) => {
   switch (type) {
-    case 'iq-test':
-      return { bg: '#ede9fe', text: '#6b21a8' };
-    case 'rank-boost':
-      return { bg: '#fef9c3', text: '#a16207' };
+    case 'daily':
+      return { bg: '#ecfeff', text: '#0e7490' };
+    case 'weekly':
+      return { bg: '#f0fdf4', text: '#15803d' };
     case 'challenge':
       return { bg: '#fee2e2', text: '#b91c1c' };
     case 'quiz':
-      return { bg: '#dbeafe', text: '#1d4ed8' };
     default:
-      return { bg: '#f3f4f6', text: '#374151' };
+      return { bg: '#e0f2fe', text: '#0369a1' };
   }
 };
 
@@ -171,23 +250,37 @@ export const normalizeActivitiesResponse = (payload: unknown): IQActivity[] => {
       ? (payload as { data: IQActivity[] }).data
       : [];
   if (!Array.isArray(list)) return [];
-  return list.map((item: any) => ({
-    _id: String(item?._id || ''),
-    title: String(item?.title || ''),
-    description: String(item?.description || ''),
-    type: (item?.type || 'quiz') as IQActivityType,
-    difficulty: (item?.difficulty || 'medium') as IQDifficulty,
-    points: Number(item?.points ?? 0),
-    duration: Number(item?.duration ?? 0),
-    subject: item?.subject,
-    board: item?.board,
-    classNumber: item?.classNumber != null ? String(item.classNumber) : undefined,
-    questions: Number(item?.questions ?? 0),
-    isActive: item?.isActive !== false,
-    createdAt: item?.createdAt,
-    updatedAt: item?.updatedAt,
-    participants: Number(item?.participants ?? 0),
-    averageScore: Number(item?.averageScore ?? 0),
-    completionRate: Number(item?.completionRate ?? 0),
-  })).filter((a) => a._id);
+  return list
+    .map((item: any) => ({
+      _id: String(item?._id || ''),
+      title: String(item?.title || ''),
+      description: String(item?.description || ''),
+      type: (item?.type || 'quiz') as IQActivityType,
+      difficulty: (item?.difficulty || 'medium') as IQDifficulty,
+      points: Number(item?.points ?? 0),
+      duration: Number(item?.duration ?? 0),
+      subject: item?.subject,
+      board: item?.board,
+      classNumber: item?.classNumber != null ? String(item.classNumber) : undefined,
+      questions: Number(item?.questions ?? 0),
+      isActive: item?.isActive !== false,
+      trialOnly: Boolean(item?.trialOnly),
+      promptOnLogin: Boolean(item?.promptOnLogin),
+      scheduleType: (item?.scheduleType || 'once') as QuizScheduleType,
+      audienceType: (item?.audienceType ||
+        (item?.trialOnly ? 'trial' : 'all_schools')) as QuizAudienceType,
+      audienceRoles: Array.isArray(item?.audienceRoles) ? item.audienceRoles : ['student'],
+      targetSchools: Array.isArray(item?.targetSchools)
+        ? item.targetSchools.map((id: any) => String(id?._id || id))
+        : [],
+      targetUserIds: Array.isArray(item?.targetUserIds)
+        ? item.targetUserIds.map((id: any) => String(id?._id || id))
+        : [],
+      createdAt: item?.createdAt,
+      updatedAt: item?.updatedAt,
+      participants: Number(item?.participants ?? 0),
+      averageScore: Number(item?.averageScore ?? 0),
+      completionRate: Number(item?.completionRate ?? 0),
+    }))
+    .filter((a) => a._id);
 };

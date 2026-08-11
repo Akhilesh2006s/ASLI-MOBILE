@@ -33,6 +33,7 @@ const MENU = [
   { id: 'eduott', label: 'EduOTT Library', icon: 'play-circle-outline' as const, tab: 'profile', sub: 'eduott' },
   { id: 'calendar', label: 'Calendar View', icon: 'today-outline' as const, tab: 'profile', sub: 'calendar' },
   { id: 'attendance', label: 'Attendance History', icon: 'checkmark-done-outline' as const, route: '/teacher/attendance' },
+  { id: 'quiz', label: 'Quiz', icon: 'trophy-outline' as const, route: '/teacher/quiz' },
   { id: 'password', label: 'Change Password', icon: 'key-outline' as const, route: '/profile' },
 ];
 

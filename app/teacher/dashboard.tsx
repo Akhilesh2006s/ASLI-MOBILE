@@ -510,6 +510,14 @@ export default function TeacherDashboard() {
           onPress={() => navigate({ tab: 'students', studentsSub: 'daily' })}
         />
         <MenuItem
+          icon="trophy-outline"
+          label="Quiz"
+          onPress={() => {
+            setMenuOpen(false);
+            router.push('/teacher/quiz' as any);
+          }}
+        />
+        <MenuItem
           icon="log-out-outline"
           label="Logout"
           danger

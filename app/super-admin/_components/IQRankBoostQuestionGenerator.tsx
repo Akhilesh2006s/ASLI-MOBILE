@@ -212,7 +212,7 @@ export default function IQRankBoostQuestionGenerator({ classNumber, onBack }: Pr
           <Text style={styles.backText}>Back</Text>
         </Pressable>
         <Text style={styles.title}>Generate Questions for Class {classNumber}</Text>
-        <Text style={styles.subtitle}>Use AI to generate MCQ questions for IQ/Rank Boost activities</Text>
+        <Text style={styles.subtitle}>Use AI to generate MCQ questions for Quiz activities</Text>
       </View>
 
       <GlassPanel style={styles.card} radius={12} tone="strong">

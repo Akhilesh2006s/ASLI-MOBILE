@@ -397,8 +397,17 @@ function renderAiToolOutputHtmlInner(
       inner = structured;
       renderedPath = 'structured-fallback';
     } else {
-      inner = renderMarkdown(display);
-      renderedPath = 'plain-markdown';
+      // Last resort before bare markdown — try the generic numbered-section
+      // parser so content that missed every detection heuristic above still
+      // gets themed section cards (icons + colour) instead of plain prose.
+      const cards = renderNumberedTemplateAsCards(resolvedToolType, display, { premium });
+      if (cards.includes('quest-node') && bodyHasVisibleOutput(cards)) {
+        inner = cards;
+        renderedPath = 'numbered-cards-fallback';
+      } else {
+        inner = renderMarkdown(display);
+        renderedPath = 'plain-markdown';
+      }
     }
   } else if (structured && shouldUseStructuredStudentOutput(resolvedToolType, display, mergedRaw) && !preferMarkdown) {
     inner = structured;
@@ -417,8 +426,15 @@ function renderAiToolOutputHtmlInner(
     inner = structured;
     renderedPath = 'structured-fallback';
   } else {
-    inner = renderMarkdown(display);
-    renderedPath = 'plain-markdown';
+    // Same last-resort recovery as the teacher branch above.
+    const cards = renderNumberedTemplateAsCards(resolvedToolType, display, { premium });
+    if (cards.includes('quest-node') && bodyHasVisibleOutput(cards)) {
+      inner = cards;
+      renderedPath = 'numbered-cards-fallback';
+    } else {
+      inner = renderMarkdown(display);
+      renderedPath = 'plain-markdown';
+    }
   }
 
   if (!bodyHasVisibleOutput(inner)) {
