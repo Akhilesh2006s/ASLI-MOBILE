@@ -5,7 +5,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
   TouchableOpacity,
   Alert,
   Modal,
@@ -18,7 +17,6 @@ import {
   AdminGlassCard,
   AdminEmptyState,
   AdminSkeletonList,
-  AdminFAB,
   AdminScalePressable,
   useAdminTheme,
   useAdminListLayout,
@@ -34,10 +32,8 @@ import {
   SvgIconClose,
   SvgIconEye,
   SvgIconMail,
-  SvgIconPencil,
   SvgIconPeople,
   SvgIconSchool,
-  SvgIconTrash,
 } from './TeachersCardIcons';
 
 const GRID_GAP = ADMIN_LIST_GRID_GAP;
@@ -79,15 +75,34 @@ const toggleClassId = (classIds: string[], classId: string, checked: boolean) =>
   return classIds.filter((id) => id !== classId);
 };
 
-const getClassItemLabel = (c: SubjectClass) => {
-  if (c.className?.trim()) return c.className.trim();
-  const base = c.classNumber ? `Class ${c.classNumber}` : 'Class';
-  return c.section ? `${base}-${c.section}` : base;
+const classNumberSortKey = (value: string) => {
+  const n = parseInt(String(value || '').replace(/[^-\d]/g, ''), 10);
+  return Number.isNaN(n) ? Number.MAX_SAFE_INTEGER : Math.abs(n);
 };
 
+const compareAssignedClasses = (a: SubjectClass, b: SubjectClass) => {
+  const aNum = classNumberSortKey(a.classNumber || a.className || '');
+  const bNum = classNumberSortKey(b.classNumber || b.className || '');
+  if (aNum !== bNum) return aNum - bNum;
+  return String(a.section || '').localeCompare(String(b.section || ''), undefined, {
+    sensitivity: 'base',
+  });
+};
+
+const getClassItemLabel = (c: SubjectClass) => {
+  const label = c.classNumber
+    ? `Class ${c.classNumber}`
+    : c.className?.trim() || 'Class';
+  return c.section ? `${label}-${c.section}` : label;
+};
+
+const sortedAssignedClasses = (subject: Subject) =>
+  [...(subject.classes || [])].sort(compareAssignedClasses);
+
 const formatClassLabels = (subject: Subject) => {
-  if (!subject.classes?.length) return '—';
-  return subject.classes.map(getClassItemLabel).join(', ');
+  const list = sortedAssignedClasses(subject);
+  if (!list.length) return '—';
+  return list.map(getClassItemLabel).join(', ');
 };
 
 export default function SubjectsView() {
@@ -98,25 +113,9 @@ export default function SubjectsView() {
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [isAddModalVisible, setIsAddModalVisible] = useState(false);
-  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
-  const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
-  const [newSubject, setNewSubject] = useState({
-    name: '',
-    code: '',
-    description: '',
-    department: '',
-    grade: '',
-    classIds: [] as string[],
-  });
-  const [editSubject, setEditSubject] = useState({
-    name: '',
-    code: '',
-    description: '',
-    department: '',
-    grade: '',
-    classIds: [] as string[],
-  });
+  const [isAssignModalVisible, setIsAssignModalVisible] = useState(false);
+  const [assigningSubject, setAssigningSubject] = useState<Subject | null>(null);
+  const [assignClassIds, setAssignClassIds] = useState<string[]>([]);
 
   useEffect(() => {
     fetchSubjects();
@@ -129,12 +128,14 @@ export default function SubjectsView() {
       const data = response?.data;
       const classesData = Array.isArray(data) ? data : data?.data || [];
       setClasses(
-        (Array.isArray(classesData) ? classesData : []).map((c: any) => ({
-          id: String(c._id || c.id || ''),
-          classNumber: String(c.classNumber || ''),
-          className: c.name || c.className || `Class ${c.classNumber || ''}`,
-          section: c.section ? String(c.section) : undefined,
-        }))
+        (Array.isArray(classesData) ? classesData : [])
+          .map((c: any) => ({
+            id: String(c._id || c.id || ''),
+            classNumber: String(c.classNumber || ''),
+            className: c.name || c.className || `Class ${c.classNumber || ''}`,
+            section: c.section ? String(c.section) : undefined,
+          }))
+          .sort(compareAssignedClasses)
       );
     } catch (error) {
       console.error('Failed to fetch classes:', error);
@@ -162,12 +163,14 @@ export default function SubjectsView() {
         description: subject.description || '',
         teacher: subject.teacher,
         classes: Array.isArray(subject.classes)
-          ? subject.classes.map((c: any) => ({
-              id: String(c.id || c._id || ''),
-              classNumber: c.classNumber || '',
-              className: c.className || c.name || `Class ${c.classNumber || ''}`,
-              section: c.section,
-            }))
+          ? subject.classes
+              .map((c: any) => ({
+                id: String(c.id || c._id || ''),
+                classNumber: c.classNumber || '',
+                className: c.className || c.name || `Class ${c.classNumber || ''}`,
+                section: c.section,
+              }))
+              .sort(compareAssignedClasses)
           : [],
         classIds: Array.isArray(subject.classIds)
           ? subject.classIds.map(String)
@@ -210,63 +213,24 @@ export default function SubjectsView() {
   const activeSubjects = subjects.filter((s) => s.isActive).length;
   const assignedSubjects = subjects.filter((s) => s.teacher).length;
 
-  const handleAddSubject = async () => {
-    if (!newSubject.name.trim() || !newSubject.code.trim()) {
-      Alert.alert('Error', 'Please fill in all required fields (Name, Code)');
-      return;
-    }
-
-    try {
-      await api.post('/api/admin/subjects', {
-        ...newSubject,
-        classIds: newSubject.classIds,
-      });
-      setNewSubject({
-        name: '',
-        code: '',
-        description: '',
-        department: '',
-        grade: '',
-        classIds: [],
-      });
-      setIsAddModalVisible(false);
-      fetchSubjects();
-      Alert.alert('Success', 'Subject added successfully!');
-    } catch (error: any) {
-      console.error('Failed to add subject:', error);
-      Alert.alert('Error', error?.friendlyMessage || 'Failed to add subject. Please try again.');
-    }
+  const openAssignSubject = (subject: Subject) => {
+    setAssigningSubject(subject);
+    setAssignClassIds(subject.classIds || subject.classes?.map((c) => c.id) || []);
+    setIsAssignModalVisible(true);
   };
 
-  const openEditSubject = (subject: Subject) => {
-    setEditingSubject(subject);
-    setEditSubject({
-      name: subject.name,
-      code: subject.code,
-      description: subject.description || '',
-      department: subject.department || '',
-      grade: subject.grade || '',
-      classIds: subject.classIds || subject.classes?.map((c) => c.id) || [],
-    });
-    setIsEditModalVisible(true);
-  };
-
-  const handleUpdateSubject = async () => {
-    if (!editingSubject || !editSubject.name.trim() || !editSubject.code.trim()) {
-      Alert.alert('Error', 'Name and code are required');
-      return;
-    }
+  const handleSaveAssignments = async () => {
+    if (!assigningSubject) return;
     try {
-      await api.put(`/api/admin/subjects/${editingSubject.id}`, {
-        ...editSubject,
-        classIds: editSubject.classIds,
+      await api.put(`/api/admin/subjects/${assigningSubject.id}`, {
+        classIds: assignClassIds,
       });
-      setIsEditModalVisible(false);
-      setEditingSubject(null);
+      setIsAssignModalVisible(false);
+      setAssigningSubject(null);
       fetchSubjects();
-      Alert.alert('Success', 'Subject updated successfully!');
+      Alert.alert('Success', 'Class assignments updated!');
     } catch (error: any) {
-      Alert.alert('Error', error?.friendlyMessage || 'Failed to update subject.');
+      Alert.alert('Error', error?.friendlyMessage || 'Failed to update assignments.');
     }
   };
 
@@ -283,30 +247,6 @@ export default function SubjectsView() {
         : 'Teacher: Not assigned',
     ];
     Alert.alert(subject.name, lines.join('\n\n'));
-  };
-
-  const handleDeleteSubject = async (subjectId: string, subjectName: string) => {
-    Alert.alert(
-      'Delete Subject',
-      `Are you sure you want to delete ${subjectName}? This action cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(`/api/admin/subjects/${subjectId}`);
-              fetchSubjects();
-              Alert.alert('Success', `${subjectName} has been deleted successfully.`);
-            } catch (error: any) {
-              console.error('Failed to delete subject:', error);
-              Alert.alert('Error', error?.friendlyMessage || 'Failed to delete subject. Please try again.');
-            }
-          },
-        },
-      ],
-    );
   };
 
   const renderClassPicker = (
@@ -461,12 +401,17 @@ export default function SubjectsView() {
         <Text style={styles.assignedClassesTitle}>Assigned Classes:</Text>
         {(subject.classes?.length ?? 0) > 0 ? (
           <AdminCardScrollBox style={styles.assignedClassesScroll}>
-            {subject.classes!.map((cls) => (
+            {sortedAssignedClasses(subject).map((cls) => (
               <View key={cls.id} style={[styles.assignedClassItem, { backgroundColor: colors.primaryMuted, borderColor: colors.surfaceBorder }]}>
                 <View style={[styles.assignedClassIconWrap, { backgroundColor: colors.surface }]}>
                   <SvgIconSchool size={16} color={colors.primary} />
                 </View>
-                <Text style={[styles.assignedClassItemText, { color: colors.text }]}>{getClassItemLabel(cls)}</Text>
+                <Text
+                  style={[styles.assignedClassItemText, { color: colors.text }]}
+                  numberOfLines={1}
+                >
+                  {getClassItemLabel(cls)}
+                </Text>
               </View>
             ))}
           </AdminCardScrollBox>
@@ -487,17 +432,10 @@ export default function SubjectsView() {
         </AdminScalePressable>
         <AdminScalePressable
           style={[styles.squircleBtn, { borderColor: colors.success }]}
-          onPress={() => openEditSubject(subject)}
-          accessibilityLabel="Edit subject"
+          onPress={() => openAssignSubject(subject)}
+          accessibilityLabel="Assign classes"
         >
-          <SvgIconPencil color={colors.success} size={22} />
-        </AdminScalePressable>
-        <AdminScalePressable
-          style={[styles.squircleBtn, { borderColor: colors.danger }]}
-          onPress={() => handleDeleteSubject(subject.id, subject.name)}
-          accessibilityLabel="Delete subject"
-        >
-          <SvgIconTrash color={colors.danger} size={22} />
+          <SvgIconPeople color={colors.success} size={22} />
         </AdminScalePressable>
       </View>
       </View>
@@ -516,7 +454,7 @@ export default function SubjectsView() {
       <View style={styles.innerShell}>
       <AdminSectionHeader
         title="Browse subjects"
-        subtitle="Manage subjects, teachers, and class assignments"
+        subtitle="Assign classes to subjects created by Super Admin"
         icon="book-outline"
       />
 
@@ -541,7 +479,7 @@ export default function SubjectsView() {
       ) : filteredSubjects.length === 0 ? (
         <AdminEmptyState
           title="No subjects found"
-          message="Try a different search or add a new subject."
+          message="Try a different search. Subjects are managed by Super Admin."
           icon="book-outline"
         />
       ) : isTablet ? (
@@ -561,12 +499,12 @@ export default function SubjectsView() {
         </View>
       )}
 
-      {/* Add Subject */}
+      {/* Assign classes — admin cannot edit/delete subject metadata */}
       <Modal
-        visible={isAddModalVisible}
+        visible={isAssignModalVisible}
         animationType="slide"
         transparent
-        onRequestClose={() => setIsAddModalVisible(false)}
+        onRequestClose={() => setIsAssignModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -580,170 +518,34 @@ export default function SubjectsView() {
                 },
               ]}
             >
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Add New Subject</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
+                Assign · {assigningSubject?.name || 'Subject'}
+              </Text>
               <TouchableOpacity
-                onPress={() => setIsAddModalVisible(false)}
+                onPress={() => setIsAssignModalVisible(false)}
                 hitSlop={12}
                 accessibilityRole="button"
-                accessibilityLabel="Close add subject form"
+                accessibilityLabel="Close assign form"
               >
                 <SvgIconClose size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.modalBody} keyboardShouldPersistTaps="handled">
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Name *</Text>
-                <TextInput
-                  style={styles.formInput}
-                  placeholder="e.g. Biology"
-                  value={newSubject.name}
-                  onChangeText={(t) => setNewSubject({ ...newSubject, name: t })}
-                  placeholderTextColor="#5B6779"
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Code *</Text>
-                <TextInput
-                  style={styles.formInput}
-                  placeholder="e.g. BIO101"
-                  value={newSubject.code}
-                  onChangeText={(t) => setNewSubject({ ...newSubject, code: t })}
-                  placeholderTextColor="#5B6779"
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Description</Text>
-                <TextInput
-                  style={[styles.formInput, styles.formTextArea]}
-                  placeholder="Optional"
-                  value={newSubject.description}
-                  onChangeText={(t) => setNewSubject({ ...newSubject, description: t })}
-                  multiline
-                  numberOfLines={3}
-                  placeholderTextColor="#5B6779"
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Department</Text>
-                <TextInput
-                  style={styles.formInput}
-                  value={newSubject.department}
-                  onChangeText={(t) => setNewSubject({ ...newSubject, department: t })}
-                  placeholderTextColor="#5B6779"
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Grade</Text>
-                <TextInput
-                  style={styles.formInput}
-                  value={newSubject.grade}
-                  onChangeText={(t) => setNewSubject({ ...newSubject, grade: t })}
-                  placeholderTextColor="#5B6779"
-                />
-              </View>
-              {renderClassPicker(newSubject.classIds, (classIds) =>
-                setNewSubject({ ...newSubject, classIds })
-              )}
+              <Text style={{ color: colors.textMuted, marginBottom: 12, fontSize: 13 }}>
+                Subjects are created by Super Admin. You can only assign classes.
+              </Text>
+              {renderClassPicker(assignClassIds, setAssignClassIds)}
             </ScrollView>
             <View style={styles.modalFooter}>
-              <TouchableOpacity style={styles.cancelButton} onPress={() => setIsAddModalVisible(false)}>
+              <TouchableOpacity style={styles.cancelButton} onPress={() => setIsAssignModalVisible(false)}>
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.submitButtonSolid, { backgroundColor: colors.primary }]} onPress={handleAddSubject} activeOpacity={0.88}>
-                <Text style={styles.submitButtonSolidText}>Add Subject</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Edit Subject */}
-      <Modal
-        visible={isEditModalVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setIsEditModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View
-              style={[
-                styles.modalHeader,
-                {
-                  backgroundColor: colors.surfaceGlass || colors.surface,
-                  borderBottomWidth: StyleSheet.hairlineWidth,
-                  borderBottomColor: colors.surfaceBorder,
-                },
-              ]}
-            >
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Edit Subject</Text>
               <TouchableOpacity
-                onPress={() => setIsEditModalVisible(false)}
-                hitSlop={12}
-                accessibilityRole="button"
-                accessibilityLabel="Close edit subject form"
+                style={[styles.submitButtonSolid, { backgroundColor: colors.primary }]}
+                onPress={handleSaveAssignments}
+                activeOpacity={0.88}
               >
-                <SvgIconClose size={24} color={colors.text} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.modalBody} keyboardShouldPersistTaps="handled">
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Name *</Text>
-                <TextInput
-                  style={styles.formInput}
-                  value={editSubject.name}
-                  onChangeText={(t) => setEditSubject({ ...editSubject, name: t })}
-                  placeholderTextColor="#5B6779"
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Code *</Text>
-                <TextInput
-                  style={styles.formInput}
-                  value={editSubject.code}
-                  onChangeText={(t) => setEditSubject({ ...editSubject, code: t })}
-                  placeholderTextColor="#5B6779"
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Description</Text>
-                <TextInput
-                  style={[styles.formInput, styles.formTextArea]}
-                  value={editSubject.description}
-                  onChangeText={(t) => setEditSubject({ ...editSubject, description: t })}
-                  multiline
-                  numberOfLines={3}
-                  placeholderTextColor="#5B6779"
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Department</Text>
-                <TextInput
-                  style={styles.formInput}
-                  value={editSubject.department}
-                  onChangeText={(t) => setEditSubject({ ...editSubject, department: t })}
-                  placeholderTextColor="#5B6779"
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Grade</Text>
-                <TextInput
-                  style={styles.formInput}
-                  value={editSubject.grade}
-                  onChangeText={(t) => setEditSubject({ ...editSubject, grade: t })}
-                  placeholderTextColor="#5B6779"
-                />
-              </View>
-              {renderClassPicker(editSubject.classIds, (classIds) =>
-                setEditSubject({ ...editSubject, classIds })
-              )}
-            </ScrollView>
-            <View style={styles.modalFooter}>
-              <TouchableOpacity style={styles.cancelButton} onPress={() => setIsEditModalVisible(false)}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.submitButtonSolid, { backgroundColor: colors.primary }]} onPress={handleUpdateSubject} activeOpacity={0.88}>
-                <Text style={styles.submitButtonSolidText}>Save changes</Text>
+                <Text style={styles.submitButtonSolidText}>Save assignments</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -751,7 +553,6 @@ export default function SubjectsView() {
       </Modal>
       </View>
     </AdminScreenShell>
-    <AdminFAB onPress={() => setIsAddModalVisible(true)} />
     </>
   );
 }

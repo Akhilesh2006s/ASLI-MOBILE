@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -38,6 +38,7 @@ import {
   CLASS_OPTIONS,
   emptyExamForm,
   emptyQuestionForm,
+  questionFormFromExisting,
   normalizeExamFromApi,
   examFormFromExam,
   buildExamSavePayload,
@@ -170,6 +171,7 @@ export default function ExamManagementView() {
   const [questions, setQuestions] = useState<any[]>([]);
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
   const [questionForm, setQuestionForm] = useState<QuestionFormState>(emptyQuestionForm());
+  const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
   const [isAddingQuestion, setIsAddingQuestion] = useState(false);
   const [bulkMode, setBulkMode] = useState<BulkQuestionUploadMode>('csv');
   const [questionCsvFile, setQuestionCsvFile] = useState<{ uri: string; name: string; mimeType?: string } | null>(null);
@@ -188,6 +190,10 @@ export default function ExamManagementView() {
   const [quickAddPickerOpen, setQuickAddPickerOpen] = useState(false);
   const [examTypePickerOpen, setExamTypePickerOpen] = useState(false);
   const [boardPickerOpen, setBoardPickerOpen] = useState(false);
+  const questionsModalScrollRef = useRef<ScrollView>(null);
+  const questionFormOffsetRef = useRef(0);
+  const questionOffsetsRef = useRef<Record<string, number>>({});
+  const pendingScrollQuestionIdRef = useRef<string | null>(null);
 
   const fetchExams = useCallback(async () => {
     try {
@@ -405,8 +411,21 @@ export default function ExamManagementView() {
     }
   };
 
-  const fetchQuestions = async (examId: string) => {
-    setIsLoadingQuestions(true);
+  const scrollQuestionsModalTo = (y: number) => {
+    questionsModalScrollRef.current?.scrollTo({
+      y: Math.max(0, y - 16),
+      animated: true,
+    });
+  };
+
+  const fetchQuestions = async (examId: string, opts?: { silent?: boolean; keepScrollToQuestionId?: string | null }) => {
+    const focusId =
+      opts?.keepScrollToQuestionId != null
+        ? String(opts.keepScrollToQuestionId)
+        : pendingScrollQuestionIdRef.current;
+    if (!opts?.silent) {
+      setIsLoadingQuestions(true);
+    }
     try {
       const response = await api.get(`/api/super-admin/exams/${examId}/questions`);
       const data = response?.data;
@@ -421,16 +440,28 @@ export default function ExamManagementView() {
           setQuestions([]);
         }
       }
+      if (focusId) {
+        requestAnimationFrame(() => {
+          const y = questionOffsetsRef.current[focusId];
+          if (typeof y === 'number') {
+            scrollQuestionsModalTo(y);
+          }
+          pendingScrollQuestionIdRef.current = null;
+        });
+      }
     } catch {
       setQuestions([]);
     } finally {
-      setIsLoadingQuestions(false);
+      if (!opts?.silent) {
+        setIsLoadingQuestions(false);
+      }
     }
   };
 
   const openQuestionsModal = (exam: Exam) => {
     setSelectedExam(exam);
     setQuestionForm(emptyQuestionForm());
+    setEditingQuestionId(null);
     setQuestionCsvFile(null);
     setQuestionPdfFile(null);
     setPdfQuestionRows([]);
@@ -448,11 +479,28 @@ export default function ExamManagementView() {
     setQuestionPdfFile(null);
     setPdfQuestionRows([]);
     setQuestionCsvResults(null);
+    setEditingQuestionId(null);
+    setQuestionForm(emptyQuestionForm());
+  };
+
+  const handleEditQuestion = (q: any) => {
+    if (!q?._id) return;
+    setEditingQuestionId(String(q._id));
+    setQuestionForm(questionFormFromExisting(q));
+    setBulkMode('csv');
+    requestAnimationFrame(() => {
+      scrollQuestionsModalTo(questionFormOffsetRef.current || 0);
+    });
+  };
+
+  const handleCancelEditQuestion = () => {
+    setEditingQuestionId(null);
+    setQuestionForm(emptyQuestionForm());
   };
 
   const handleAddQuestion = async () => {
     if (!selectedExam) return;
-    if (bulkMode === 'pdf' && pdfQuestionRows.length > 0) {
+    if (!editingQuestionId && bulkMode === 'pdf' && pdfQuestionRows.length > 0) {
       await handleUploadExtractedQuestions();
       return;
     }
@@ -462,15 +510,42 @@ export default function ExamManagementView() {
       return;
     }
     setIsAddingQuestion(true);
+    const editingIdSnapshot = editingQuestionId ? String(editingQuestionId) : null;
     try {
       const payload = buildQuestionPayload(questionForm, selectedExam.board, false);
-      const res = await api.post(`/api/super-admin/exams/${selectedExam._id}/questions`, payload);
+      const isEditing = Boolean(editingQuestionId);
+      const res = isEditing
+        ? await api.put(
+            `/api/super-admin/exams/${selectedExam._id}/questions/${editingQuestionId}`,
+            payload
+          )
+        : await api.post(`/api/super-admin/exams/${selectedExam._id}/questions`, payload);
       const data = res?.data;
       if (data?.success) {
         setQuestionForm(emptyQuestionForm());
-        fetchQuestions(selectedExam._id);
+        setEditingQuestionId(null);
+        if (Array.isArray(data.questions)) {
+          setQuestions(data.questions);
+          if (editingIdSnapshot) {
+            requestAnimationFrame(() => {
+              const y = questionOffsetsRef.current[editingIdSnapshot];
+              if (typeof y === 'number') scrollQuestionsModalTo(y);
+            });
+          }
+        } else {
+          pendingScrollQuestionIdRef.current = editingIdSnapshot;
+          fetchQuestions(selectedExam._id, {
+            silent: true,
+            keepScrollToQuestionId: editingIdSnapshot,
+          });
+        }
         fetchExams();
-      } else if (res?.status === 409 && String(data?.message || '').toLowerCase().includes('duplicate')) {
+        Alert.alert('Success', isEditing ? 'Question updated.' : 'Question added.');
+      } else if (
+        !isEditing &&
+        res?.status === 409 &&
+        String(data?.message || '').toLowerCase().includes('duplicate')
+      ) {
         Alert.alert(
           'Duplicate Question',
           'A question with the same text AND image already exists.\n\nReplace will DELETE the existing question. Cancel keeps it.\n\nDifferent image questions are not duplicates.',
@@ -483,17 +558,22 @@ export default function ExamManagementView() {
                 const replacePayload = buildQuestionPayload(questionForm, selectedExam.board, true);
                 await api.post(`/api/super-admin/exams/${selectedExam._id}/questions`, replacePayload);
                 setQuestionForm(emptyQuestionForm());
-                fetchQuestions(selectedExam._id);
+                fetchQuestions(selectedExam._id, { silent: questions.length > 0 });
                 fetchExams();
               },
             },
           ]
         );
       } else {
-        Alert.alert('Error', data?.message || 'Failed to add question.');
+        Alert.alert('Error', data?.message || (isEditing ? 'Failed to update question.' : 'Failed to add question.'));
       }
     } catch (err: any) {
-      Alert.alert('Error', err?.friendlyMessage || err?.response?.data?.message || 'Failed to add question.');
+      Alert.alert(
+        'Error',
+        err?.friendlyMessage ||
+          err?.response?.data?.message ||
+          (editingQuestionId ? 'Failed to update question.' : 'Failed to add question.')
+      );
     } finally {
       setIsAddingQuestion(false);
     }
@@ -609,6 +689,8 @@ export default function ExamManagementView() {
         name: questionPdfFile.name,
         type: questionPdfFile.mimeType || 'application/pdf',
       } as any);
+      formData.append('fastMode', 'true');
+      let usedProtected = false;
       let res;
       try {
         res = await api.post(
@@ -618,6 +700,7 @@ export default function ExamManagementView() {
         );
       } catch (err: any) {
         if (err?.response?.status === 404) {
+          usedProtected = true;
           res = await api.post(
             `/api/super-admin/protected/exams/${selectedExam._id}/questions/pdf-convert`,
             formData,
@@ -627,8 +710,31 @@ export default function ExamManagementView() {
           throw err;
         }
       }
-      const data = res?.data;
-      const rows = data?.data?.rows || data?.rows || [];
+      let data = res?.data;
+
+      // Async job: short POST + poll (avoids nginx 5 min 504)
+      if (data?.async && data?.jobId) {
+        const jobId = String(data.jobId);
+        const jobPath = usedProtected
+          ? `/api/super-admin/protected/exams/${selectedExam._id}/questions/pdf-convert/jobs/${jobId}`
+          : `/api/super-admin/exams/${selectedExam._id}/questions/pdf-convert/jobs/${jobId}`;
+        const deadline = Date.now() + 30 * 60 * 1000;
+        while (Date.now() < deadline) {
+          await new Promise((r) => setTimeout(r, 2500));
+          const pollRes = await api.get(jobPath, { timeout: 30000 });
+          const poll = pollRes?.data;
+          if (poll?.status === 'failed' || poll?.success === false) {
+            Alert.alert('Extraction failed', poll?.message || 'PDF extraction failed.');
+            return;
+          }
+          if (poll?.status === 'completed' && Array.isArray(poll?.data)) {
+            data = poll;
+            break;
+          }
+        }
+      }
+
+      const rows = Array.isArray(data?.data) ? data.data : data?.data?.rows || data?.rows || [];
       if (!data?.success || !Array.isArray(rows) || rows.length === 0) {
         Alert.alert('Extraction failed', data?.message || 'No extractable questions found in PDF.');
         return;
@@ -647,6 +753,8 @@ export default function ExamManagementView() {
       .filter(Boolean);
     const options = optionTexts.map((text) => ({ text, isCorrect: false }));
     const type = row.questionType;
+    const sharedMatterText = String(row.sharedMatterText || row.passageText || '').trim();
+    const sharedMatterId = String(row.sharedMatterId || row.passageId || '').trim();
     const base = {
       questionText: String(row.questionText || '').trim(),
       questionType: type,
@@ -655,6 +763,13 @@ export default function ExamManagementView() {
       negativeMarks: 0,
       explanation: String(row.explanation || '').trim() || undefined,
       board: selectedExam?.board,
+      sharedMatterId: sharedMatterId || undefined,
+      sharedMatterText: sharedMatterText || undefined,
+      sharedMatterKind: row.sharedMatterKind || undefined,
+      assertionText: String(row.assertionText || '').trim() || undefined,
+      reasonText: String(row.reasonText || '').trim() || undefined,
+      matchColumnI: Array.isArray(row.matchColumnI) && row.matchColumnI.length ? row.matchColumnI : undefined,
+      matchColumnII: Array.isArray(row.matchColumnII) && row.matchColumnII.length ? row.matchColumnII : undefined,
     } as Record<string, unknown>;
 
     if (type === 'integer') {
@@ -909,9 +1024,9 @@ export default function ExamManagementView() {
             </GlassPanel>
             <GlassPanel style={[styles.cardActionBtn, isTablet && styles.cardActionBtnTablet]} radius={8} tone="medium">
               <Pressable style={[styles.cardActionBtnInner, isTablet && styles.cardActionBtnInnerTablet]} onPress={() => openQuestionsModal(exam)}>
-                <Ionicons name="help-circle-outline" size={16} color="#374151" />
-                <Text style={styles.cardActionText} numberOfLines={isTablet ? 1 : undefined}>
-                  Add Questions
+                <Ionicons name="add" size={16} color="#0f766e" />
+                <Text style={[styles.cardActionText, { color: '#0f766e' }]} numberOfLines={1}>
+                  Add
                 </Text>
               </Pressable>
             </GlassPanel>
@@ -1270,6 +1385,20 @@ export default function ExamManagementView() {
             <Pressable style={styles.cancelButton} onPress={() => setIsExamModalOpen(false)}>
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </Pressable>
+            {isEditing && editingExamId ? (
+              <Pressable
+                style={[styles.cancelButton, { borderColor: '#99f6e4' }]}
+                onPress={() => {
+                  const exam =
+                    exams.find((e) => String(e._id) === String(editingExamId)) ||
+                    ({ _id: editingExamId, title: examForm.title } as Exam);
+                  setIsExamModalOpen(false);
+                  openQuestionsModal(exam);
+                }}
+              >
+                <Text style={[styles.cancelButtonText, { color: '#0f766e' }]}>Add Questions</Text>
+              </Pressable>
+            ) : null}
             <Pressable style={styles.submitButton} onPress={handleSaveExam} disabled={isSavingExam}>
               {isSavingExam ? <ActivityIndicator color="#fff" /> : (
                 <Text style={styles.submitButtonText}>{isEditing ? 'Update Exam' : 'Create Exam'}</Text>
@@ -1339,6 +1468,7 @@ export default function ExamManagementView() {
             </Pressable>
           </View>
           <ScrollView
+            ref={questionsModalScrollRef}
             style={styles.formModalBody}
             contentContainerStyle={styles.formModalBodyContent}
             keyboardShouldPersistTaps="handled"
@@ -1400,13 +1530,31 @@ export default function ExamManagementView() {
               </View>
             )}
 
-            <View style={styles.divider} />
-            <Text style={styles.sectionTitle}>Add Single Question</Text>
+            <View
+              style={styles.divider}
+              onLayout={(e) => {
+                questionFormOffsetRef.current = e.nativeEvent.layout.y;
+              }}
+            />
+            <Text style={styles.sectionTitle}>
+              {editingQuestionId ? 'Edit Question' : 'Add Single Question'}
+            </Text>
             <View style={styles.formGroup}>
               <Text style={styles.formLabel}>Question Type</Text>
               <View style={styles.segmentRow}>
-                {(['mcq', 'multiple', 'integer'] as const).map((t) => (
-                  <ChipToggle key={t} label={t.toUpperCase()} selected={questionForm.questionType === t} onPress={() => setQuestionForm((p) => ({ ...p, questionType: t }))} />
+                {(['mcq', 'multiple', 'integer', 'assertion_reason', 'match_following'] as const).map((t) => (
+                  <ChipToggle
+                    key={t}
+                    label={
+                      t === 'assertion_reason'
+                        ? 'A/R'
+                        : t === 'match_following'
+                          ? 'MATCH'
+                          : t.toUpperCase()
+                    }
+                    selected={questionForm.questionType === t}
+                    onPress={() => setQuestionForm((p) => ({ ...p, questionType: t }))}
+                  />
                 ))}
               </View>
             </View>
@@ -1430,7 +1578,10 @@ export default function ExamManagementView() {
                 </>
               )}
             </Pressable>
-            {(questionForm.questionType === 'mcq' || questionForm.questionType === 'multiple') && (
+            {(questionForm.questionType === 'mcq' ||
+              questionForm.questionType === 'multiple' ||
+              questionForm.questionType === 'assertion_reason' ||
+              questionForm.questionType === 'match_following') && (
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Options</Text>
                 {questionForm.options.map((opt, idx) => (
@@ -1448,7 +1599,9 @@ export default function ExamManagementView() {
                 ))}
               </View>
             )}
-            {questionForm.questionType === 'mcq' && (
+            {(questionForm.questionType === 'mcq' ||
+              questionForm.questionType === 'assertion_reason' ||
+              questionForm.questionType === 'match_following') && (
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Correct Answer (option text)</Text>
                 <TextInput style={styles.formInput} value={questionForm.correctAnswer} onChangeText={(v) => setQuestionForm((p) => ({ ...p, correctAnswer: v }))} placeholder="Exact option text" />
@@ -1488,10 +1641,19 @@ export default function ExamManagementView() {
             <Pressable style={styles.submitButton} onPress={handleAddQuestion} disabled={isAddingQuestion}>
               {isAddingQuestion ? <ActivityIndicator color="#fff" /> : (
                 <Text style={styles.submitButtonText}>
-                  {bulkMode === 'pdf' && pdfQuestionRows.length > 0 ? 'Upload Extracted Questions' : 'Add Question'}
+                  {editingQuestionId
+                    ? 'Update Question'
+                    : bulkMode === 'pdf' && pdfQuestionRows.length > 0
+                      ? 'Upload Extracted Questions'
+                      : 'Add Question'}
                 </Text>
               )}
             </Pressable>
+            {editingQuestionId ? (
+              <Pressable style={styles.cancelEditButton} onPress={handleCancelEditQuestion}>
+                <Text style={styles.cancelEditText}>Cancel edit</Text>
+              </Pressable>
+            ) : null}
 
             <View style={styles.divider} />
             <View style={styles.questionsHeader}>
@@ -1508,7 +1670,18 @@ export default function ExamManagementView() {
               <Text style={styles.formHint}>No questions yet for this exam.</Text>
             ) : (
               questions.map((q, idx) => (
-                <View key={q._id || idx} style={styles.questionItem}>
+                <View
+                  key={q._id || idx}
+                  style={[
+                    styles.questionItem,
+                    editingQuestionId === String(q._id) ? styles.questionItemEditing : null,
+                  ]}
+                  onLayout={(e) => {
+                    if (q?._id) {
+                      questionOffsetsRef.current[String(q._id)] = e.nativeEvent.layout.y;
+                    }
+                  }}
+                >
                   <View style={{ flex: 1 }}>
                     <Text style={styles.questionIndex}>Q{idx + 1}</Text>
                     <Text style={styles.questionText} numberOfLines={3}>
@@ -1518,15 +1691,32 @@ export default function ExamManagementView() {
                       {q.questionType || 'mcq'} · {q.subject || '—'} · {q.marks ?? 1} marks
                     </Text>
                   </View>
-                  {q._id && (
-                    <Pressable
-                      onPress={() => handleDeleteQuestion(q._id)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Delete question ${idx + 1}`}
-                    >
-                      <Ionicons name="trash-outline" size={18} color="#dc2626" />
-                    </Pressable>
-                  )}
+                  <View style={styles.questionActions}>
+                    {q._id ? (
+                      <Pressable
+                        onPress={() => handleEditQuestion(q)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Edit question ${idx + 1}`}
+                        style={styles.questionActionBtn}
+                      >
+                        <Ionicons
+                          name="create-outline"
+                          size={18}
+                          color={editingQuestionId === String(q._id) ? '#0284c7' : '#334155'}
+                        />
+                      </Pressable>
+                    ) : null}
+                    {q._id ? (
+                      <Pressable
+                        onPress={() => handleDeleteQuestion(q._id)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Delete question ${idx + 1}`}
+                        style={styles.questionActionBtn}
+                      >
+                        <Ionicons name="trash-outline" size={18} color="#dc2626" />
+                      </Pressable>
+                    ) : null}
+                  </View>
                 </View>
               ))
             )}
@@ -1821,7 +2011,25 @@ const styles = StyleSheet.create({
   pdfPreviewMeta: { fontSize: 11, color: '#6b7280', marginTop: 2 },
   questionsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   deleteAllText: { color: '#dc2626', fontWeight: '600', fontSize: 13 },
-  questionItem: { flexDirection: 'row', gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
+  questionItem: { flexDirection: 'row', gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f3f4f6', alignItems: 'center' },
+  questionItemEditing: {
+    backgroundColor: '#e0f2fe',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    borderBottomColor: '#bae6fd',
+  },
+  questionActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  questionActionBtn: { padding: 8 },
+  cancelEditButton: {
+    marginTop: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  cancelEditText: { color: '#334155', fontWeight: '600', fontSize: 14 },
   questionIndex: { fontSize: 11, fontWeight: '700', color: '#5B6779' },
   questionText: { fontSize: 14, color: '#111827', marginTop: 2 },
   questionMeta: { fontSize: 11, color: '#6b7280', marginTop: 4 },

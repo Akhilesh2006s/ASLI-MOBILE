@@ -409,9 +409,9 @@ export default function Profile() {
               <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/student/results')}>
                 <View style={styles.menuLeft}>
                   <View style={styles.menuIcon}>
-                    <Ionicons name="trophy-outline" size={18} color="#f59e0b" />
+                    <Ionicons name="scan-outline" size={18} color="#f59e0b" />
                   </View>
-                  <Text style={styles.menuText}>Exam Results</Text>
+                  <Text style={styles.menuText}>OMR Results</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color="#5B6779" />
               </TouchableOpacity>

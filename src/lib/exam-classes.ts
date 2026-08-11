@@ -78,3 +78,35 @@ export function getExamClassLabelsForStudent(
   if (!c || !examIncludesClass(exam, c)) return [];
   return [c];
 }
+
+export type ExamClassCard<T extends ExamClassLike = ExamClassLike> = T & {
+  viewClassNumber: string;
+  cardKey: string;
+};
+
+/** One card per assigned class for school-admin lists. */
+export function expandExamsByClass<T extends ExamClassLike & { _id?: string }>(
+  exams: T[],
+): ExamClassCard<T>[] {
+  const out: ExamClassCard<T>[] = [];
+  for (const exam of exams || []) {
+    const classes = getExamClassStrings(exam);
+    const examId = String((exam as { _id?: string })._id || '');
+    if (classes.length === 0) {
+      out.push({
+        ...exam,
+        viewClassNumber: '',
+        cardKey: examId || `exam-${out.length}`,
+      });
+      continue;
+    }
+    for (const cl of classes) {
+      out.push({
+        ...exam,
+        viewClassNumber: cl,
+        cardKey: `${examId}::${cl}`,
+      });
+    }
+  }
+  return out;
+}

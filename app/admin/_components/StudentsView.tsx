@@ -332,7 +332,7 @@ export default function StudentsView() {
 
   const handleAddStudent = async () => {
     if (!newStudent.name || !newStudent.email || !newStudent.classNumber || !newStudent.section) {
-      Alert.alert('Error', 'Please fill in Full Name, Email, Class Number, and Section.');
+      Alert.alert('Error', 'Please fill in Full Name, Email/Student ID, Class Number, and Section.');
       return;
     }
     if (!newStudent.password.trim() || newStudent.password.trim().length < 6) {
@@ -340,16 +340,28 @@ export default function StudentsView() {
       return;
     }
 
+    const emailRaw = newStudent.email.trim().toLowerCase().replace(/\s+/g, '');
+    const emailNorm = emailRaw.includes('@')
+      ? emailRaw
+      : /^[a-z0-9._+-]+$/i.test(emailRaw)
+        ? `${emailRaw}@example.com`
+        : emailRaw;
+
     try {
       await api.post('/api/admin/students', {
         fullName: newStudent.name.trim(),
-        email: newStudent.email.trim(),
+        email: emailNorm,
         classNumber: newStudent.classNumber.trim(),
         section: newStudent.section.trim(),
         phone: newStudent.phone.trim(),
         password: newStudent.password.trim(),
       });
-      Alert.alert('Success', 'Student added successfully!');
+      Alert.alert(
+        'Success',
+        emailNorm !== emailRaw
+          ? `Student added. Login email: ${emailNorm}`
+          : 'Student added successfully!',
+      );
       setNewStudent({ name: '', email: '', classNumber: '', section: 'A', phone: '', password: '' });
       setShowNewStudentPassword(false);
       setIsAddModalVisible(false);
@@ -1214,15 +1226,16 @@ export default function StudentsView() {
                 />
               </View>
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Email *</Text>
+                <Text style={styles.label}>Email or Student ID *</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Enter email"
+                  placeholder="name@school.com or 1724"
                   value={newStudent.email}
                   onChangeText={(text) => setNewStudent({ ...newStudent, email: text })}
-                  keyboardType="email-address"
+                  keyboardType="default"
                   autoCapitalize="none"
                 />
+                <Text style={styles.helperText}>Ids like 1724 are saved as 1724@example.com</Text>
               </View>
               <View style={styles.formRow}>
                 <View style={[styles.formGroup, styles.formHalf]}>

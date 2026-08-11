@@ -91,8 +91,8 @@ const TEACHER_TOOL_CONFIGS: Record<string, Omit<TeacherToolConfig, 'icon' | 'col
     name: 'Daily Class Plan Maker',
     description: 'Organize your daily teaching schedule efficiently',
     fields: [
-      { name: 'date', label: 'Date', type: 'text', placeholder: 'e.g., 2025-01-15' },
       ...cascadeFields(),
+      { name: 'date', label: 'Date *', type: 'text', required: true, placeholder: 'YYYY-MM-DD' },
       { name: 'timeSlots', label: 'Time Slots', type: 'text', placeholder: 'e.g., 9:00-10:00, 10:15-11:15' },
     ],
   },

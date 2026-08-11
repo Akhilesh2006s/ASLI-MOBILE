@@ -38,6 +38,8 @@ import {
   curriculumDisplayLabel,
   normalizeCurriculumBoard,
   sanitizePhoneInput,
+  sanitizePincodeInput,
+  schoolAddressFieldError,
 } from '../../../src/lib/school-management';
 
 function resolveLogoUrl(logoUrl?: string): string | null {
@@ -157,7 +159,14 @@ function SchoolFormModal({ visible, mode, form, setForm, submitting, onClose, on
           <TextInput style={styles.input} placeholder="Phone (10 digits)" keyboardType="phone-pad" value={form.phone} onChangeText={(v) => setForm((p) => ({ ...p, phone: sanitizePhoneInput(v) }))} maxLength={10} />
           <TextInput style={styles.input} placeholder="Secondary contact" value={form.secondaryContactPerson} onChangeText={(v) => setForm((p) => ({ ...p, secondaryContactPerson: v }))} />
           <TextInput style={styles.input} placeholder="Secondary phone" keyboardType="phone-pad" value={form.secondaryContactPhone} onChangeText={(v) => setForm((p) => ({ ...p, secondaryContactPhone: sanitizePhoneInput(v) }))} maxLength={10} />
-          <TextInput style={styles.input} placeholder="PIN code" keyboardType="number-pad" value={form.pin} onChangeText={(v) => setForm((p) => ({ ...p, pin: v }))} />
+          <TextInput
+            style={styles.input}
+            placeholder="PIN code (6 digits)"
+            keyboardType="number-pad"
+            maxLength={6}
+            value={form.pin}
+            onChangeText={(v) => setForm((p) => ({ ...p, pin: sanitizePincodeInput(v) }))}
+          />
 
           <Text style={styles.formSection}>Address & details</Text>
           <TextInput style={styles.input} placeholder="Door no." value={form.schoolDetails.doorNo} onChangeText={(v) => setDetail('doorNo', v)} />
@@ -303,6 +312,14 @@ export default function SchoolManagementView() {
   const filteredAdmins = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return admins;
+    const tokens = q
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s@.+_-]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .split(' ')
+      .filter(Boolean);
     return admins.filter((admin) => {
       const blob = [
         admin.schoolName,
@@ -312,12 +329,21 @@ export default function SchoolManagementView() {
         admin.board,
         admin.curriculumBoard,
         curriculumDisplayLabel(admin.curriculumBoard),
+        admin.phone,
+        admin.contactPerson,
+        admin.schoolDetails?.city,
+        admin.schoolDetails?.district,
+        admin.schoolDetails?.area,
         admin.isAsliPrepExclusive ? 'asli prep' : '',
       ]
         .filter(Boolean)
         .join(' ')
-        .toLowerCase();
-      return blob.includes(q);
+        .toLowerCase()
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9\s@.+_-]/g, ' ')
+        .replace(/\s+/g, ' ');
+      return tokens.every((token) => blob.includes(token));
     });
   }, [admins, searchQuery]);
 
@@ -341,6 +367,19 @@ export default function SchoolManagementView() {
     }
     if (!isValidOptionalPhone(form.phone) || !isValidOptionalPhone(form.secondaryContactPhone)) {
       Alert.alert('Invalid phone', 'Phone numbers must be 10 digits or empty.');
+      return false;
+    }
+    const addressError = schoolAddressFieldError({
+      schoolName: form.schoolName,
+      city: sd.city,
+      district: sd.district,
+      pin: form.pin,
+      doorNo: sd.doorNo,
+      street: sd.street,
+      area: sd.area,
+    });
+    if (addressError) {
+      Alert.alert('Invalid school details', addressError);
       return false;
     }
     if (form.accessMode === 'limited' && form.limitedFeatures.length === 0) {

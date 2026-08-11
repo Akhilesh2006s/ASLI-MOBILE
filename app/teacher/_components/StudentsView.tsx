@@ -95,12 +95,19 @@ export default function StudentsView({
   };
 
   const handleAddRemark = async () => {
-    if (!remarkText.trim() || !selectedStudent) return;
+    if (!selectedStudent) {
+      Alert.alert('Validation', 'Please select a student first.');
+      return;
+    }
+    if (!remarkText.trim()) {
+      Alert.alert('Validation', 'Remark is required. Please enter a remark before submitting.');
+      return;
+    }
 
     setIsSubmittingRemark(true);
     try {
       await teacherService.sendRemark(selectedStudent.id, {
-        remark: remarkText,
+        remark: remarkText.trim(),
         subject: selectedSubjectForRemark !== 'general' ? selectedSubjectForRemark : null,
         isPositive: isPositiveRemark,
       });

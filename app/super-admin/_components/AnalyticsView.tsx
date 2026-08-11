@@ -13,10 +13,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import {
   type AdminRecord,
   type DashboardStats,
+  type PlatformAnalytics,
   type SchoolSummary,
   computeTotalContent,
   fetchDashboardStats,
   fetchPlatformAdmins,
+  fetchPlatformAnalytics,
 } from '../../../src/lib/super-admin-analytics';
 import { SUPER_ADMIN_FLOATING_TAB_BAR_PAD } from '../../../src/lib/responsive-layout';
 
@@ -27,6 +29,7 @@ type AnalyticsViewProps = {
 export default function AnalyticsView({ onSelectSchool }: AnalyticsViewProps) {
   const [analytics, setAnalytics] = useState<AdminRecord[]>([]);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
+  const [platformAnalytics, setPlatformAnalytics] = useState<PlatformAnalytics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
@@ -34,12 +37,14 @@ export default function AnalyticsView({ onSelectSchool }: AnalyticsViewProps) {
   const fetchAnalytics = useCallback(async () => {
     try {
       setError('');
-      const [adminsList, stats] = await Promise.all([
+      const [adminsList, stats, platform] = await Promise.all([
         fetchPlatformAdmins(),
         fetchDashboardStats(),
+        fetchPlatformAnalytics(),
       ]);
       setAnalytics(adminsList);
       setDashboardStats(stats);
+      setPlatformAnalytics(platform);
     } catch (err: any) {
       setError(err?.friendlyMessage || 'Failed to fetch analytics.');
       console.error('Failed to fetch analytics:', err);
@@ -60,9 +65,13 @@ export default function AnalyticsView({ onSelectSchool }: AnalyticsViewProps) {
   };
 
   const totalAdmins = analytics.length;
-  const totalStudents = analytics.reduce((sum, admin) => sum + (admin.stats?.students || 0), 0);
+  const schoolStudents =
+    platformAnalytics?.schoolStudents != null
+      ? platformAnalytics.schoolStudents
+      : analytics.reduce((sum, admin) => sum + (admin.stats?.students || 0), 0);
   const totalTeachers = analytics.reduce((sum, admin) => sum + (admin.stats?.teachers || 0), 0);
   const totalContent = computeTotalContent(analytics, dashboardStats);
+  const individual = platformAnalytics?.individual;
 
   if (isLoading) {
     return (
@@ -113,9 +122,9 @@ export default function AnalyticsView({ onSelectSchool }: AnalyticsViewProps) {
           <LinearGradient colors={['#7dd3fc', '#38bdf8']} style={styles.statCardGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
             <View style={styles.statCardContent}>
               <View>
-                <Text style={styles.statCardLabel}>Total Students</Text>
-                <Text style={styles.statCardValue}>{totalStudents}</Text>
-                <Text style={styles.statCardSubtext}>Across all admins</Text>
+                <Text style={styles.statCardLabel}>School Students</Text>
+                <Text style={styles.statCardValue}>{schoolStudents}</Text>
+                <Text style={styles.statCardSubtext}>Excl. individual (B2C)</Text>
               </View>
               <Ionicons name="people" size={48} color="#fff" />
             </View>
@@ -141,13 +150,46 @@ export default function AnalyticsView({ onSelectSchool }: AnalyticsViewProps) {
               <View>
                 <Text style={styles.statCardLabel}>Total Content</Text>
                 <Text style={styles.statCardValue}>{totalContent}</Text>
-                <Text style={styles.statCardSubtext}>Videos, assessments, exams</Text>
+                <Text style={styles.statCardSubtext}>Videos + content + assessments + exams</Text>
               </View>
               <Ionicons name="book" size={48} color="#fff" />
             </View>
           </LinearGradient>
         </View>
       </View>
+
+      {individual ? (
+        <View style={styles.b2cSection}>
+          <Text style={styles.b2cTitle}>Individual trials & subscriptions (B2C)</Text>
+          <View style={styles.b2cGrid}>
+            <View style={styles.b2cCard}>
+              <Text style={styles.b2cLabel}>Total individuals</Text>
+              <Text style={styles.b2cValue}>{individual.total ?? '—'}</Text>
+            </View>
+            <View style={styles.b2cCard}>
+              <Text style={styles.b2cLabel}>On trial</Text>
+              <Text style={styles.b2cValue}>{individual.trialActive ?? '—'}</Text>
+            </View>
+            <View style={styles.b2cCard}>
+              <Text style={styles.b2cLabel}>Converted</Text>
+              <Text style={styles.b2cValue}>{individual.converted ?? '—'}</Text>
+            </View>
+            <View style={styles.b2cCard}>
+              <Text style={styles.b2cLabel}>Conversion</Text>
+              <Text style={styles.b2cValue}>
+                {individual.conversionRate != null ? `${individual.conversionRate}%` : '—'}
+              </Text>
+            </View>
+          </View>
+          {(platformAnalytics?.weeklyActiveStudents != null ||
+            platformAnalytics?.monthlyActiveStudents != null) && (
+            <Text style={styles.b2cFootnote}>
+              Active students · 7d: {platformAnalytics?.weeklyActiveStudents ?? '—'} · 30d:{' '}
+              {platformAnalytics?.monthlyActiveStudents ?? '—'}
+            </Text>
+          )}
+        </View>
+      ) : null}
 
       <View style={styles.performanceSection}>
         <LinearGradient
@@ -406,6 +448,49 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     color: '#111827',
+  },
+  b2cSection: {
+    marginHorizontal: 16,
+    marginBottom: 20,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: '#fff7ed',
+    borderWidth: 1,
+    borderColor: '#fed7aa',
+  },
+  b2cTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#9a3412',
+    marginBottom: 10,
+  },
+  b2cGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  b2cCard: {
+    width: '47%',
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#ffedd5',
+  },
+  b2cLabel: {
+    fontSize: 11,
+    color: '#78716c',
+  },
+  b2cValue: {
+    marginTop: 4,
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  b2cFootnote: {
+    marginTop: 10,
+    fontSize: 11,
+    color: '#78716c',
   },
   loadingContainer: {
     flex: 1,

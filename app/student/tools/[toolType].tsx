@@ -37,6 +37,8 @@ import {
   resolveStudentAiApiToolType,
   resolveStudentToolConfigKey,
   filterSubjectsForAiTool,
+  filterSubjectsForIitBoard,
+  isIitAiToolBoard,
   isLanguageExcludedTool,
   isStoryPassageLanguageSubject,
   READING_PRACTICE_TOOL_ID,
@@ -54,6 +56,7 @@ import {
   resolveIsAsliPrepExclusive,
   resolveStudentCurriculumGradeLevel,
 } from '../../../src/lib/school-program-ai';
+import { resolveSchoolIitCategories, shouldShowIitTrackField } from '../../../src/lib/school-program';
 import {
   useCurriculumCascade,
 } from '../../../src/hooks/useCurriculumCascade';
@@ -77,7 +80,20 @@ import {
   useAiToolOutputScroll,
   useQueueAiToolScrollOnGenerate,
 } from '../../../src/components/ai-tools/useAiToolOutputScroll';
-import type { AiToolGenerationMeta } from '../../../src/lib/ai-tool-generate';
+import {
+  validateAiToolForm,
+  executeStudentAiToolGenerate,
+  fetchAiToolGeneratedContentFallback,
+  storeAiToolSuccessPayload,
+  validateActivityToolDisplay,
+  validateStudyGuideToolDisplay,
+  isAiToolClientValidationError,
+  isAiToolInlineOnlyError,
+  resolveAiToolApiInlineMessage,
+  resolveSubTopicForRequest,
+  WHOLE_CHAPTER_VALUE,
+  type AiToolGenerationMeta,
+} from '../../../src/lib/ai-tool-generate';
 import {
   buildAiToolContentRenderKey,
 } from '../../../src/lib/ai-tool-rotation-label';
@@ -256,6 +272,7 @@ export default function StudentToolPage() {
   const [availableNCERTTopics, setAvailableNCERTTopics] = useState<string[]>([]);
   const [schoolBoardName, setSchoolBoardName] = useState('CBSE');
   const [isAsliPrepExclusive, setIsAsliPrepExclusive] = useState(false);
+  const [schoolIitCategories, setSchoolIitCategories] = useState<string[]>([]);
   const [activeDropdown, setActiveDropdown] = useState<DropdownState | null>(null);
   const [copied, setCopied] = useState(false);
   const scrollY = useSharedValue(0);
@@ -265,6 +282,46 @@ export default function StudentToolPage() {
 
   const configKey = toolType ? resolveStudentToolConfigKey(toolType) : '';
   const config = configKey ? getStudentToolConfig(configKey) || getStudentToolConfig(toolType || '') : null;
+  const boardOptions = getAiToolBoardOptions(isAsliPrepExclusive, schoolBoardName);
+  const selectedBoard = formParams.board || getDefaultAiToolBoard(isAsliPrepExclusive, schoolBoardName);
+  const effectiveConfig = useMemo(() => {
+    if (!config) return config;
+    const showTrack = shouldShowIitTrackField(selectedBoard, schoolIitCategories);
+    if (!showTrack) {
+      if (!config.fields.some((f) => f.name === 'productCategory')) return config;
+      return {
+        ...config,
+        fields: config.fields.filter((f) => f.name !== 'productCategory'),
+      };
+    }
+    if (config.fields.some((f) => f.name === 'productCategory')) return config;
+    const insertAt = Math.min(2, config.fields.length);
+    return {
+      ...config,
+      fields: [
+        ...config.fields.slice(0, insertAt),
+        {
+          name: 'productCategory',
+          label: 'IIT Track (Optional)',
+          type: 'select' as const,
+          required: false,
+          options: ['NONE', ...schoolIitCategories],
+          placeholder: 'General',
+        },
+        ...config.fields.slice(insertAt),
+      ],
+    };
+  }, [config, schoolIitCategories, selectedBoard]);
+
+  useEffect(() => {
+    if (shouldShowIitTrackField(selectedBoard, schoolIitCategories)) return;
+    setFormParams((prev) => {
+      if (!prev.productCategory) return prev;
+      const next = { ...prev };
+      delete next.productCategory;
+      return next;
+    });
+  }, [selectedBoard, schoolIitCategories]);
   const apiToolType = toolType ? resolveStudentAiApiToolType(toolType) : '';
   const contentRenderKey = useMemo(
     () => buildAiToolContentRenderKey(toolType || '', generatedContent, responseMeta),
@@ -274,8 +331,6 @@ export default function StudentToolPage() {
     toolType === READING_PRACTICE_TOOL_ID || toolType === 'story-passage-creator';
   const accent = AI.primary;
 
-  const boardOptions = getAiToolBoardOptions(isAsliPrepExclusive, schoolBoardName);
-  const selectedBoard = formParams.board || getDefaultAiToolBoard(isAsliPrepExclusive, schoolBoardName);
   const isIitBoard = String(selectedBoard || '').toUpperCase().replace(/[\s/\\-]+/g, '').includes('IIT');
 
   // Keep params collapsed whenever a result is on screen (including regenerate)
@@ -356,8 +411,12 @@ export default function StudentToolPage() {
     if (!formParams.gradeLevel) return [];
     const raw = cascade.subjects;
     if (cascade.loadingSubjects && raw.length === 0) return [];
-    return raw.length > 0 ? raw : [];
-  }, [formParams.gradeLevel, cascade.subjects, cascade.loadingSubjects]);
+    if (raw.length === 0) return [];
+    if (isIitAiToolBoard(selectedBoard)) {
+      return filterSubjectsForIitBoard(raw);
+    }
+    return raw;
+  }, [formParams.gradeLevel, cascade.subjects, cascade.loadingSubjects, selectedBoard]);
 
   const subjectsForTool = useMemo(
     () => filterSubjectsForAiTool(apiToolType, availableSubjects),
@@ -365,12 +424,24 @@ export default function StudentToolPage() {
   );
 
   const { curriculumFields, topicFields, extraFields } = useMemo(() => {
-    if (!config) return { curriculumFields: [], topicFields: [], extraFields: [] };
+    if (!effectiveConfig) return { curriculumFields: [], topicFields: [], extraFields: [] };
+    const HIDDEN_EXTRA = new Set([
+      'questionCount',
+      'difficulty',
+      'duration',
+      'length',
+      'countMcq',
+      'countVsaq',
+      'countSaq',
+      'countLaq',
+      'countFib',
+    ]);
     const curriculum: StudentToolFieldConfig[] = [];
     const topic: StudentToolFieldConfig[] = [];
     const extra: StudentToolFieldConfig[] = [];
-    for (const field of config.fields) {
-      if (field.name === 'gradeLevel' || field.name === 'subject') {
+    for (const field of effectiveConfig.fields) {
+      if (HIDDEN_EXTRA.has(field.name)) continue;
+      if (field.name === 'gradeLevel' || field.name === 'subject' || field.name === 'productCategory') {
         curriculum.push(field);
       } else if (field.isNCERT || field.isCascadeSubtopic) {
         topic.push(field);
@@ -379,7 +450,7 @@ export default function StudentToolPage() {
       }
     }
     return { curriculumFields: curriculum, topicFields: topic, extraFields: extra };
-  }, [config]);
+  }, [effectiveConfig]);
 
   const returnTab = parseStudentDashboardTab(
     typeof returnTabRaw === 'string' ? returnTabRaw : Array.isArray(returnTabRaw) ? returnTabRaw[0] : undefined,
@@ -469,6 +540,7 @@ export default function StudentToolPage() {
         const curriculumBoard = resolveCurriculumBoardForAiTools(userData.user);
         const defaultBoard = getDefaultAiToolBoard(exclusive, curriculumBoard);
         setSchoolBoardName(curriculumBoard);
+        setSchoolIitCategories(resolveSchoolIitCategories(userData.user));
         setFormParams((prev) => ({
           ...prev,
           board: prev.board || defaultBoard,
@@ -492,6 +564,16 @@ export default function StudentToolPage() {
     setFormParams((prev) => {
       const newParams = { ...prev, [name]: value };
 
+      if (name === 'productCategory') {
+        const next = value === 'NONE' ? '' : value;
+        newParams.productCategory = next;
+        // Keep subject when changing IIT Track; only reset topic cascade
+        delete newParams.topic;
+        delete newParams.subTopic;
+        delete newParams.concept;
+        delete newParams.chapter;
+        delete newParams.projectTopic;
+      }
       if (name === 'gradeLevel') {
         delete newParams.subject;
         delete newParams.topic;
@@ -547,7 +629,9 @@ export default function StudentToolPage() {
       }
 
       if (field.isCascadeSubtopic && field.name === 'subTopic') {
-        return cascade.subtopics;
+        return !field.required
+          ? [WHOLE_CHAPTER_VALUE, ...cascade.subtopics]
+          : cascade.subtopics;
       }
 
       if (
@@ -696,7 +780,7 @@ export default function StudentToolPage() {
     } = await import('../../../src/lib/ai-tool-generate');
 
     const validationError = validateAiToolForm({
-      config,
+      config: effectiveConfig || config,
       formParams: { ...formParams, board: selectedBoard },
       toolType: apiToolType,
       isReadingPractice,
@@ -792,7 +876,7 @@ export default function StudentToolPage() {
           classLabel: String(selectedClass),
           subject: String(selectedSubject),
           topic: String(mappedTopic),
-          subTopic: String(formParams.subTopic || ''),
+          subTopic: resolveSubTopicForRequest(formParams.subTopic),
           toolType: apiToolType,
         });
 
@@ -847,7 +931,8 @@ export default function StudentToolPage() {
     required?: boolean
   ) => {
     const icon = FIELD_ICONS[fieldName] || 'chevron-down-circle-outline';
-    const display = value || hint;
+    const displayLabel = value === WHOLE_CHAPTER_VALUE ? 'Whole chapter' : value;
+    const display = displayLabel || hint;
     const isPlaceholder = !value;
 
     return (
@@ -884,7 +969,6 @@ export default function StudentToolPage() {
   };
 
   const renderSelectField = (field: StudentToolFieldConfig) => {
-    const value = formParams[field.name] || '';
     const { isDisabled, loading } = getFieldDisabledState(field);
 
     if (field.name === 'gradeLevel' && assignedGradeLevel) {
@@ -910,6 +994,11 @@ export default function StudentToolPage() {
     let fieldOptions = getFieldOptions(field);
     if (field.name === 'gradeLevel') fieldOptions = classSelectOptions;
     else if (field.name === 'subject' && field.dependsOn === 'gradeLevel') fieldOptions = subjectsForTool;
+    const rawValue = formParams[field.name] || '';
+    const value =
+      field.isCascadeSubtopic && !field.required && !rawValue
+        ? WHOLE_CHAPTER_VALUE
+        : rawValue;
     fieldOptions = mergeSelectedIntoOptions(fieldOptions, value);
     const hint = getPlaceholderHint(field, fieldOptions, isDisabled);
 
@@ -1449,7 +1538,13 @@ export default function StudentToolPage() {
         accent={accent}
         onClose={() => setActiveDropdown(null)}
         onSelect={(option) => {
-          if (activeDropdown) handleInputChange(activeDropdown.fieldName, option);
+          if (activeDropdown) {
+            const next =
+              activeDropdown.fieldName === 'subTopic' && option === WHOLE_CHAPTER_VALUE
+                ? ''
+                : option;
+            handleInputChange(activeDropdown.fieldName, next);
+          }
           setActiveDropdown(null);
         }}
       />

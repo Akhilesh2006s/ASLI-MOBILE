@@ -47,6 +47,9 @@ export type StudentExamLike = {
   questions?: unknown[];
   assignedClasses?: string[] | string;
   classNumber?: string;
+  hasInProgressDraft?: boolean;
+  canResumeExam?: boolean;
+  forceSubmitDraft?: boolean;
 };
 
 export function getExamIdFromResult(result: any): string | null {

@@ -285,6 +285,7 @@ export default function AdminDashboard() {
   const contentBottomPad = isVidya ? 0 : shellPaddingBottom;
   const showTabs = showBottomTabBar && !(isVidya && keyboardOpen);
 
+
   return (
     <SafeAreaView style={styles.container} edges={[]}>
       <View style={styles.shell}>

@@ -23,6 +23,10 @@ export type AiSectionTheme = {
   hexDeep: string;
   glassFrom: string;
   glassTo: string;
+  /** Light pastel tint for card/header backgrounds (Tailwind -50) */
+  pastelBg: string;
+  /** Slightly deeper pastel for borders (Tailwind -200) */
+  pastelBorder: string;
 };
 
 /** High-interest student palette — violet → sky → amber → rose → indigo → cyan → orange → fuchsia */
@@ -44,6 +48,8 @@ export const AI_SECTION_RAINBOW: AiSectionTheme[] = [
     hexDeep: '#6d28d9',
     glassFrom: 'rgba(245,243,255,0.88)',
     glassTo: 'rgba(237,233,254,0.42)',
+    pastelBg: '#f5f3ff',
+    pastelBorder: '#ddd6fe',
   },
   {
     key: 'sky',
@@ -62,6 +68,8 @@ export const AI_SECTION_RAINBOW: AiSectionTheme[] = [
     hexDeep: '#0369a1',
     glassFrom: 'rgba(240,249,255,0.88)',
     glassTo: 'rgba(224,242,254,0.42)',
+    pastelBg: '#f0f9ff',
+    pastelBorder: '#bae6fd',
   },
   {
     key: 'amber',
@@ -80,6 +88,8 @@ export const AI_SECTION_RAINBOW: AiSectionTheme[] = [
     hexDeep: '#b45309',
     glassFrom: 'rgba(255,251,235,0.88)',
     glassTo: 'rgba(254,243,199,0.42)',
+    pastelBg: '#fffbeb',
+    pastelBorder: '#fde68a',
   },
   {
     key: 'rose',
@@ -98,6 +108,8 @@ export const AI_SECTION_RAINBOW: AiSectionTheme[] = [
     hexDeep: '#be123c',
     glassFrom: 'rgba(255,241,242,0.88)',
     glassTo: 'rgba(255,228,230,0.42)',
+    pastelBg: '#fff1f2',
+    pastelBorder: '#fecdd3',
   },
   {
     key: 'indigo',
@@ -116,6 +128,8 @@ export const AI_SECTION_RAINBOW: AiSectionTheme[] = [
     hexDeep: '#4338ca',
     glassFrom: 'rgba(238,242,255,0.88)',
     glassTo: 'rgba(224,231,255,0.42)',
+    pastelBg: '#eef2ff',
+    pastelBorder: '#c7d2fe',
   },
   {
     key: 'cyan',
@@ -134,6 +148,8 @@ export const AI_SECTION_RAINBOW: AiSectionTheme[] = [
     hexDeep: '#0e7490',
     glassFrom: 'rgba(236,254,255,0.88)',
     glassTo: 'rgba(207,250,254,0.42)',
+    pastelBg: '#ecfeff',
+    pastelBorder: '#a5f3fc',
   },
   {
     key: 'orange',
@@ -152,6 +168,8 @@ export const AI_SECTION_RAINBOW: AiSectionTheme[] = [
     hexDeep: '#c2410c',
     glassFrom: 'rgba(255,247,237,0.88)',
     glassTo: 'rgba(255,237,213,0.42)',
+    pastelBg: '#fff7ed',
+    pastelBorder: '#fed7aa',
   },
   {
     key: 'fuchsia',
@@ -170,6 +188,8 @@ export const AI_SECTION_RAINBOW: AiSectionTheme[] = [
     hexDeep: '#a21caf',
     glassFrom: 'rgba(253,244,255,0.88)',
     glassTo: 'rgba(250,232,255,0.42)',
+    pastelBg: '#fdf4ff',
+    pastelBorder: '#f5d0fe',
   },
   {
     key: 'blue',
@@ -188,6 +208,8 @@ export const AI_SECTION_RAINBOW: AiSectionTheme[] = [
     hexDeep: '#1d4ed8',
     glassFrom: 'rgba(239,246,255,0.88)',
     glassTo: 'rgba(219,234,254,0.42)',
+    pastelBg: '#eff6ff',
+    pastelBorder: '#bfdbfe',
   },
   {
     key: 'teal',
@@ -206,6 +228,8 @@ export const AI_SECTION_RAINBOW: AiSectionTheme[] = [
     hexDeep: '#0f766e',
     glassFrom: 'rgba(240,253,250,0.88)',
     glassTo: 'rgba(204,251,241,0.42)',
+    pastelBg: '#f0fdfa',
+    pastelBorder: '#99f6e4',
   },
 ];
 

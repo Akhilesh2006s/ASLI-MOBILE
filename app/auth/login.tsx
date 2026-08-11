@@ -196,8 +196,8 @@ function PremiumField({
           keyboardType={keyboardType}
           autoCapitalize="none"
           autoCorrect={false}
-          autoComplete={keyboardType === 'email-address' ? 'email' : 'password'}
-          textContentType={keyboardType === 'email-address' ? 'username' : 'password'}
+          autoComplete={secure ? 'password' : keyboardType === 'email-address' ? 'email' : 'username'}
+          textContentType={secure ? 'password' : 'username'}
           secureTextEntry={secure && !showPassword}
           underlineColorAndroid="transparent"
           selectionColor={PALETTE.accent}
@@ -318,13 +318,23 @@ export default function Login() {
   const submitLogin = async () => {
     setError('');
     // Prefer live refs so Android IME can flush the last typed character before we read state.
-    const email = credentialsRef.current.email.trim();
-    const password = credentialsRef.current.password;
-    if (!email || !password) {
-      setError('Please enter both email and password.');
+    const emailRaw = String(credentialsRef.current.email || formData.email || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '');
+    const password = credentialsRef.current.password || formData.password;
+    if (!emailRaw || !password) {
+      setError('Please enter both email/student ID and password.');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
+
+    // Bare student ids (1724) → 1724@example.com
+    const email = emailRaw.includes('@')
+      ? emailRaw
+      : /^[a-z0-9._+-]+$/i.test(emailRaw)
+        ? `${emailRaw}@example.com`
+        : emailRaw;
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsSubmitting(true);
@@ -430,15 +440,15 @@ export default function Login() {
 
                   <View style={styles.form}>
                     <PremiumField
-                      label="Email Address"
+                      label="Email or Student ID"
                       icon="mail-outline"
-                      placeholder="Enter your email"
+                      placeholder="Email or student ID (e.g. 1724)"
                       value={formData.email}
                       onChangeText={(email) => {
                         credentialsRef.current = { ...credentialsRef.current, email };
                         setFormData((p) => ({ ...p, email }));
                       }}
-                      keyboardType="email-address"
+                      keyboardType="default"
                       delay={180}
                       inputRef={emailInputRef}
                       onFocusField={ensureFieldVisible}

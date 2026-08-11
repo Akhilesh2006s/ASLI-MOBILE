@@ -22,6 +22,7 @@ import {
 } from './ai-tool-tablet-layout';
 import { TabletSectionsLayout } from './TabletSectionsLayout';
 import { AI_SECTION_RAINBOW } from '../../lib/ai-tool-section-palette';
+import { SelfCheckList, TapToMarkItem, CheckableSteps } from '../shared/ai-tool-interactive';
 
 type ViewerOutputCtx = { isTablet: boolean; isDigitalBoard: boolean };
 const ViewerTabletContext = createContext<ViewerOutputCtx>({ isTablet: false, isDigitalBoard: false });
@@ -152,7 +153,7 @@ const TEACHER_SECTIONS: SectionDef[] = [
     icon: 'radio-button-on-outline',
     stripe: '#c4b5fd',
     hasContent: (a) => a.learningObjectives.length > 0,
-    render: (a) => <CheckList items={a.learningObjectives} />,
+    render: (a) => <SelfCheckList items={a.learningObjectives} tone="violet" />,
   },
   {
     num: 4,
@@ -160,7 +161,9 @@ const TEACHER_SECTIONS: SectionDef[] = [
     icon: 'school-outline',
     stripe: '#93c5fd',
     hasContent: (a) => a.ncfAlignment.length > 0,
-    render: (a) => <BulletList items={a.ncfAlignment} />,
+    render: (a) => (
+      <SelfCheckList items={a.ncfAlignment} tone="sky" prompt="Tap each alignment point once reviewed" />
+    ),
   },
   {
     num: 5,
@@ -168,7 +171,13 @@ const TEACHER_SECTIONS: SectionDef[] = [
     icon: 'cube-outline',
     stripe: '#fcd34d',
     hasContent: (a) => a.materials.length > 0,
-    render: (a) => <NumberedMaterials items={a.materials} />,
+    render: (a) => (
+      <View style={styles.checkList}>
+        {a.materials.map((m, i) => (
+          <TapToMarkItem key={`${m}-${i}`} text={m} tone="amber" markedStyle="strike" />
+        ))}
+      </View>
+    ),
   },
   {
     num: 6,
@@ -176,7 +185,7 @@ const TEACHER_SECTIONS: SectionDef[] = [
     icon: 'list-outline',
     stripe: '#6ee7b7',
     hasContent: (a) => a.steps.length > 0,
-    render: (a) => <NumberedSteps items={a.steps} color="#d1fae5" />,
+    render: (a) => <CheckableSteps items={a.steps} tone="emerald" />,
   },
   {
     num: 7,
@@ -184,7 +193,9 @@ const TEACHER_SECTIONS: SectionDef[] = [
     icon: 'people-outline',
     stripe: '#a5b4fc',
     hasContent: (a) => a.teacherInstructions.length > 0,
-    render: (a) => <BulletList items={a.teacherInstructions} />,
+    render: (a) => (
+      <SelfCheckList items={a.teacherInstructions} tone="indigo" prompt="Tap each once covered" />
+    ),
   },
   {
     num: 8,
@@ -192,7 +203,9 @@ const TEACHER_SECTIONS: SectionDef[] = [
     icon: 'school-outline',
     stripe: '#5eead4',
     hasContent: (a) => a.studentInstructions.length > 0,
-    render: (a) => <BulletList items={a.studentInstructions} />,
+    render: (a) => (
+      <SelfCheckList items={a.studentInstructions} tone="teal" prompt="Tap each once done" />
+    ),
   },
   {
     num: 9,
@@ -208,7 +221,9 @@ const TEACHER_SECTIONS: SectionDef[] = [
     icon: 'clipboard-outline',
     stripe: '#fcd34d',
     hasContent: (a) => a.assessmentRubric.length > 0,
-    render: (a) => <BulletList items={a.assessmentRubric} />,
+    render: (a) => (
+      <SelfCheckList items={a.assessmentRubric} tone="rose" prompt="Tap each once assessed" />
+    ),
   },
   {
     num: 11,
@@ -267,74 +282,6 @@ function SectionCard({
   );
 }
 
-function CheckList({ items }: { items: string[] }) {
-  const { isTablet, isDigitalBoard } = useViewerTablet();
-  const vt = <K extends keyof typeof aiToolViewerTabletStyles>(key: K) =>
-    viewerTabletStyle(isTablet, key, isDigitalBoard);
-  return (
-    <View style={styles.checkList}>
-      {items.map((line, i) => (
-        <View key={`${line}-${i}`} style={styles.checkRow}>
-          <Ionicons name="checkmark-circle" size={isTablet ? 18 : 16} color="#7c3aed" style={styles.checkIcon} />
-          <Text style={[styles.checkText, vt('checkText')]}>{line}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
-function BulletList({ items }: { items: string[] }) {
-  const { isTablet, isDigitalBoard } = useViewerTablet();
-  const vt = <K extends keyof typeof aiToolViewerTabletStyles>(key: K) =>
-    viewerTabletStyle(isTablet, key, isDigitalBoard);
-  return (
-    <View style={styles.bulletList}>
-      {items.map((line, i) => (
-        <View key={`${line}-${i}`} style={styles.bulletRow}>
-          <Text style={styles.bulletDot}>•</Text>
-          <Text style={[styles.bulletText, vt('bulletText')]}>{line}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
-function NumberedMaterials({ items }: { items: string[] }) {
-  const { isTablet, isDigitalBoard } = useViewerTablet();
-  const vt = <K extends keyof typeof aiToolViewerTabletStyles>(key: K) =>
-    viewerTabletStyle(isTablet, key, isDigitalBoard);
-  return (
-    <View style={styles.matList}>
-      {items.map((m, i) => (
-        <View key={`${m}-${i}`} style={styles.matRow}>
-          <View style={styles.matBadge}>
-            <Text style={styles.matBadgeText}>{i + 1}</Text>
-          </View>
-          <Text style={[styles.matText, vt('matText')]}>{m}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
-function NumberedSteps({ items, color }: { items: string[]; color: string }) {
-  const { isTablet, isDigitalBoard } = useViewerTablet();
-  const vt = <K extends keyof typeof aiToolViewerTabletStyles>(key: K) =>
-    viewerTabletStyle(isTablet, key, isDigitalBoard);
-  return (
-    <View style={styles.stepList}>
-      {items.map((step, i) => (
-        <View key={`${step}-${i}`} style={styles.stepRow}>
-          <View style={[styles.stepBadge, { backgroundColor: color }]}>
-            <Text style={styles.stepBadgeText}>{i + 1}</Text>
-          </View>
-          <Text style={[styles.stepText, vt('stepText')]}>{step}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
 const TABLET_FULL_WIDTH_SECTION_NUMS = new Set([5, 6, 7, 8, 10, 11, 12, 13]);
 
 function sectionFullWidthOnTablet(sectionNum: number): boolean {
@@ -383,7 +330,7 @@ const STUDENT_SECTIONS: SectionDef[] = [
     icon: 'radio-button-on-outline',
     stripe: '#c4b5fd',
     hasContent: (a) => a.learningObjectives.length > 0,
-    render: (a) => <CheckList items={a.learningObjectives} />,
+    render: (a) => <SelfCheckList items={a.learningObjectives} tone="violet" />,
   },
   {
     num: 6,
@@ -391,7 +338,7 @@ const STUDENT_SECTIONS: SectionDef[] = [
     icon: 'list-outline',
     stripe: '#6ee7b7',
     hasContent: (a) => a.steps.length > 0,
-    render: (a) => <NumberedSteps items={a.steps} color="#d1fae5" />,
+    render: (a) => <CheckableSteps items={a.steps} tone="emerald" />,
   },
 ];
 

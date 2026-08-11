@@ -105,9 +105,13 @@ export default function ClassesView() {
   const [isLoading, setIsLoading] = useState(true);
   const [classCardTabById, setClassCardTabById] = useState<Record<string, 'teachers' | 'students'>>({});
   const [isAddClassModalVisible, setIsAddClassModalVisible] = useState(false);
+  const [isEditClassModalVisible, setIsEditClassModalVisible] = useState(false);
+  const [editingClassId, setEditingClassId] = useState<string | null>(null);
+  const [isSavingClass, setIsSavingClass] = useState(false);
   const [isDeleteAllModalVisible, setIsDeleteAllModalVisible] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [newClass, setNewClass] = useState({ classNumber: '', section: '', description: '' });
+  const [editClass, setEditClass] = useState({ classNumber: '', section: '', description: '' });
 
   const [selectedClassForSubjects, setSelectedClassForSubjects] = useState('');
   const [selectedSectionForSubjects, setSelectedSectionForSubjects] = useState('');
@@ -359,6 +363,47 @@ export default function ClassesView() {
       Alert.alert('Success', 'Class added successfully!');
     } catch (error: any) {
       Alert.alert('Error', error?.friendlyMessage || 'Failed to add class. Please try again.');
+    }
+  };
+
+  const openEditClassModal = (cls: ClassItem) => {
+    setEditingClassId(cls.id);
+    setEditClass({
+      classNumber: String(cls.classNumber || ''),
+      section: String(cls.section || '').toUpperCase(),
+      description: cls.description || '',
+    });
+    setIsEditClassModalVisible(true);
+  };
+
+  const handleEditClass = async () => {
+    if (!editingClassId) return;
+    const sectionValue = editClass.section.trim().toUpperCase();
+    if (!editClass.classNumber.trim() || !sectionValue) {
+      Alert.alert('Error', 'Please fill in Class Number and Section.');
+      return;
+    }
+    if (!/^[A-Z0-9]{1,3}$/i.test(sectionValue)) {
+      Alert.alert('Error', 'Section must be 1–3 letters or numbers (e.g. A, D, E1).');
+      return;
+    }
+
+    setIsSavingClass(true);
+    try {
+      await api.put(`/api/admin/classes/${editingClassId}`, {
+        classNumber: editClass.classNumber.trim(),
+        section: sectionValue,
+        description: editClass.description.trim(),
+      });
+      setEditingClassId(null);
+      setEditClass({ classNumber: '', section: '', description: '' });
+      setIsEditClassModalVisible(false);
+      fetchClasses();
+      Alert.alert('Success', 'Class updated successfully!');
+    } catch (error: any) {
+      Alert.alert('Error', error?.friendlyMessage || 'Failed to update class. Please try again.');
+    } finally {
+      setIsSavingClass(false);
     }
   };
 
@@ -735,17 +780,30 @@ export default function ClassesView() {
           )}
         </View>
 
-        <TouchableOpacity
-          style={[
-            styles.deleteClassBtn,
-            isTablet && styles.deleteClassBtnTablet,
-            { borderColor: colors.dangerMuted, backgroundColor: colors.dangerMuted },
-          ]}
-          onPress={() => handleDeleteClass(cls.id)}
-        >
-          <Ionicons name="trash-outline" size={16} color={colors.danger} />
-          <Text style={[styles.deleteClassBtnText, { color: colors.danger }]}>Delete</Text>
-        </TouchableOpacity>
+        <View style={[styles.classActionsRow, isTablet && styles.classActionsRowTablet]}>
+          <TouchableOpacity
+            style={[
+              styles.editClassBtn,
+              isTablet && styles.editClassBtnTablet,
+              { borderColor: colors.surfaceBorder, backgroundColor: colors.surface },
+            ]}
+            onPress={() => openEditClassModal(cls)}
+          >
+            <Ionicons name="create-outline" size={16} color={colors.primary} />
+            <Text style={[styles.editClassBtnText, { color: colors.primary }]}>Edit</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.deleteClassBtn,
+              isTablet && styles.deleteClassBtnTablet,
+              { borderColor: colors.dangerMuted, backgroundColor: colors.dangerMuted },
+            ]}
+            onPress={() => handleDeleteClass(cls.id)}
+          >
+            <Ionicons name="trash-outline" size={16} color={colors.danger} />
+            <Text style={[styles.deleteClassBtnText, { color: colors.danger }]}>Delete</Text>
+          </TouchableOpacity>
+        </View>
       </AdminGlassCard>
     );
   };
@@ -1308,6 +1366,109 @@ export default function ClassesView() {
           </View>
         </View>
       </Modal>
+
+      <Modal
+        visible={isEditClassModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => {
+          if (!isSavingClass) {
+            setIsEditClassModalVisible(false);
+            setEditingClassId(null);
+          }
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, modalMaxWidth != null && { maxWidth: modalMaxWidth }]}>
+            <View style={[styles.modalHeaderSky, { backgroundColor: colors.primary }]}>
+              <Text style={styles.modalTitleWhite}>Edit Class</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  if (!isSavingClass) {
+                    setIsEditClassModalVisible(false);
+                    setEditingClassId(null);
+                  }
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Close edit class form"
+              >
+                <Ionicons name="close" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalBody}>
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Class Number *</Text>
+                <TextInput
+                  style={styles.formInput}
+                  placeholder="e.g., 6, 7, 10"
+                  value={editClass.classNumber}
+                  onChangeText={(text) => setEditClass({ ...editClass, classNumber: text })}
+                  placeholderTextColor="#5B6779"
+                />
+              </View>
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Section *</Text>
+                <TextInput
+                  style={styles.formInput}
+                  placeholder="A, B, or C"
+                  value={editClass.section}
+                  onChangeText={(text) =>
+                    setEditClass({
+                      ...editClass,
+                      section: text.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 3),
+                    })
+                  }
+                  maxLength={3}
+                  autoCapitalize="characters"
+                  placeholderTextColor="#5B6779"
+                />
+              </View>
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Description</Text>
+                <TextInput
+                  style={[styles.formInput, styles.formTextArea]}
+                  placeholder="Optional description"
+                  value={editClass.description}
+                  onChangeText={(text) => setEditClass({ ...editClass, description: text })}
+                  multiline
+                  numberOfLines={3}
+                  placeholderTextColor="#5B6779"
+                />
+              </View>
+            </ScrollView>
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                disabled={isSavingClass}
+                onPress={() => {
+                  setIsEditClassModalVisible(false);
+                  setEditingClassId(null);
+                }}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.submitButtonWrap}
+                onPress={handleEditClass}
+                disabled={isSavingClass}
+              >
+                <LinearGradient
+                  colors={[...colors.fabGradient]}
+                  style={styles.submitButtonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  {isSavingClass ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.submitButtonText}>Save Changes</Text>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </AdminScreenShell>
     </>
   );
@@ -1587,7 +1748,34 @@ const styles = StyleSheet.create({
   studentStatusInactive: { backgroundColor: '#fee2e2', borderWidth: 1, borderColor: '#ef4444' },
   studentStatusText: { fontSize: 10, fontWeight: '700', textTransform: 'capitalize' },
   noStudentsText: { fontSize: 13, color: '#64748b', textAlign: 'center', paddingVertical: 8 },
+  classActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+    width: '100%',
+  },
+  classActionsRowTablet: {
+    marginTop: 0,
+  },
+  editClassBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#bae6fd',
+    backgroundColor: '#f0f9ff',
+  },
+  editClassBtnTablet: {
+    flexShrink: 0,
+  },
+  editClassBtnText: { fontSize: 13, fontWeight: '700', color: '#0284c7' },
   deleteClassBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1597,8 +1785,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#fecaca',
     backgroundColor: '#fef2f2',
-    marginTop: 4,
-    width: '100%',
+    marginTop: 0,
+    width: undefined,
   },
   deleteClassBtnTablet: {
     flexShrink: 0,

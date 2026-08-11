@@ -206,6 +206,32 @@ export function resolveSchoolIitCategories(user?: {
   return list.map((c) => String(c || '').toUpperCase().trim()).filter(Boolean);
 }
 
+/**
+ * IIT Track dropdown: only when Board is IIT/NEET/JEE AND the school has
+ * 2+ assigned product categories. One track (or none) → do not show the field.
+ */
+export function shouldShowIitTrackField(
+  board?: string | null,
+  schoolIitCategories?: string[] | null,
+): boolean {
+  const compact = String(board || '')
+    .toUpperCase()
+    .replace(/[\s/\\-]+/g, '');
+  const isIitBoard =
+    compact === 'IIT' ||
+    compact.includes('IIT') ||
+    compact.includes('NEET') ||
+    compact.includes('JEE');
+  if (!isIitBoard) return false;
+
+  const unique = new Set(
+    (schoolIitCategories || [])
+      .map((c) => String(c || '').toUpperCase().trim())
+      .filter(Boolean),
+  );
+  return unique.size >= 2;
+}
+
 export function schoolCanAccessProductCategory(
   schoolIitCategories: string[] | undefined,
   productCategory?: string | null

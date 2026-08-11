@@ -17,6 +17,16 @@ type Props = {
 
 function formatOptionLabel(option: string) {
   if (!option) return '';
+  if (option === '__WHOLE_CHAPTER__') return 'Whole chapter';
+  if (option === 'NONE' || option === 'GENERAL') return 'General';
+  const upper = option.toUpperCase();
+  if (['ALPHA', 'BETA', 'GAMMA', 'DELTA'].includes(upper)) {
+    return `IIT ${upper.charAt(0)}${upper.slice(1).toLowerCase()}`;
+  }
+  if (upper.startsWith('IIT_')) {
+    const rest = upper.slice(4);
+    return `IIT ${rest.charAt(0)}${rest.slice(1).toLowerCase()}`;
+  }
   return option.charAt(0).toUpperCase() + option.slice(1);
 }
 

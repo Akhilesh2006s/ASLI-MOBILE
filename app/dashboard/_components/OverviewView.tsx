@@ -11,6 +11,7 @@ import { setupSessionTimeSync } from '../../../src/lib/session-time-sync';
 import QuickStatsModule from './overview/QuickStatsModule';
 import LearningProgressModule from './overview/LearningProgressModule';
 import AdaptiveLearningModule from './overview/AdaptiveLearningModule';
+import WeeklyDigestCard from '../../../src/components/student/WeeklyDigestCard';
 import TodaysTasksSection from './overview/TodaysTasksSection';
 import StudyCalendarSection from './overview/StudyCalendarSection';
 import ClassTimetableSection from './overview/ClassTimetableSection';
@@ -279,7 +280,7 @@ const OverviewView = memo(function OverviewView({
           const completedIds = stored ? JSON.parse(stored) : [];
           if (Array.isArray(completedIds)) {
             const contentResponse = await fetch(
-              `${API_BASE_URL}/api/student/asli-prep-content?subject=${encodeURIComponent(subjectId)}`,
+              `${API_BASE_URL}/api/student/asli-prep-content?subject=${encodeURIComponent(subjectId)}&surface=learning-path`,
               {
                 headers: {
                   'Authorization': `Bearer ${token}`,
@@ -922,6 +923,8 @@ const OverviewView = memo(function OverviewView({
         overallProgress={overallProgress}
         subjectProgress={subjectProgress}
       />
+
+      <WeeklyDigestCard apiBase="/api/student" />
 
       <AdaptiveLearningModule />
     </View>

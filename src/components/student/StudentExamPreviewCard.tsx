@@ -56,8 +56,12 @@ export default function StudentExamPreviewCard({
   const dateRange = formatExamDateRange(exam);
   const dayRoleLabel = !hasAttempted ? getExamDayRoleLabelForCard(examDayRole) : null;
   const attemptsExhausted = usedAttempts >= maxAttempts;
+  const canResume = Boolean(exam.hasInProgressDraft) && exam.canResumeExam !== false && !exam.forceSubmitDraft;
+  const forceSubmit = Boolean(exam.forceSubmitDraft || (exam.hasInProgressDraft && exam.canResumeExam === false));
   const canStart =
-    variant === 'available' && status.status === 'active' && !attemptsExhausted && onStartPress;
+    variant === 'available' &&
+    ((status.status === 'active' && !attemptsExhausted) || forceSubmit) &&
+    onStartPress;
   const isUpcoming = variant === 'upcoming' || status.status === 'upcoming';
 
   const stats: StatItem[] = [];
@@ -150,10 +154,18 @@ export default function StudentExamPreviewCard({
           onPress={onStartPress}
           activeOpacity={0.85}
           accessibilityRole="button"
-          accessibilityLabel="Start exam"
+          accessibilityLabel={
+            forceSubmit ? 'Submit saved exam' : canResume ? 'Resume exam' : 'Start exam'
+          }
         >
-          <Ionicons name="play" size={16} color="#fff" />
-          <Text style={styles.startButtonText}>Start exam</Text>
+          <Ionicons
+            name={forceSubmit ? 'cloud-upload' : canResume ? 'play-skip-forward' : 'play'}
+            size={16}
+            color="#fff"
+          />
+          <Text style={styles.startButtonText}>
+            {forceSubmit ? 'Submit saved exam' : canResume ? 'Resume exam' : 'Start exam'}
+          </Text>
         </TouchableOpacity>
       ) : variant === 'upcoming' ? (
         <View style={styles.upcomingButton}>

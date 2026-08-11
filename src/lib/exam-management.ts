@@ -3,7 +3,7 @@ import { getExamClassStrings } from './exam-classes';
 export type ExamType = 'weekend' | 'mains' | 'advanced' | 'practice';
 export type ExamSubject = 'maths' | 'physics' | 'chemistry' | 'biology';
 export type FilterType = 'all-schools' | 'specific-schools';
-export type QuestionType = 'mcq' | 'multiple' | 'integer';
+export type QuestionType = 'mcq' | 'multiple' | 'integer' | 'assertion_reason' | 'match_following';
 export type BulkQuestionUploadMode = 'csv' | 'pdf';
 
 export interface Exam {
@@ -84,6 +84,15 @@ export interface PdfQuestionRow {
   option4: string;
   correctAnswer: string;
   explanation: string;
+  passageId?: string;
+  passageText?: string;
+  sharedMatterId?: string;
+  sharedMatterText?: string;
+  sharedMatterKind?: '' | 'case' | 'assertion_reason' | 'match_following';
+  assertionText?: string;
+  reasonText?: string;
+  matchColumnI?: Array<{ key?: string; text?: string }>;
+  matchColumnII?: Array<{ key?: string; text?: string }>;
 }
 
 export const BOARDS = [
@@ -144,6 +153,77 @@ export const emptyQuestionForm = (): QuestionFormState => ({
   correctAnswers: [],
   integerAnswer: '',
 });
+
+function optionText(opt: unknown): string {
+  if (typeof opt === 'string') return opt;
+  if (opt && typeof opt === 'object' && 'text' in (opt as object)) {
+    return String((opt as { text?: unknown }).text ?? '');
+  }
+  return '';
+}
+
+/** Prefill the single-question form from an existing exam question (edit flow). */
+export const questionFormFromExisting = (q: any): QuestionFormState => {
+  const rawOptions = Array.isArray(q?.options) ? q.options : [];
+  const options = rawOptions.map(optionText);
+  while (options.length < 4) options.push('');
+
+  const typeRaw = String(q?.questionType || 'mcq').toLowerCase();
+  const questionType: QuestionType =
+    typeRaw === 'multiple' ||
+    typeRaw === 'integer' ||
+    typeRaw === 'assertion_reason' ||
+    typeRaw === 'match_following'
+      ? (typeRaw as QuestionType)
+      : 'mcq';
+
+  const subjectRaw = String(q?.subject || 'maths').toLowerCase();
+  const subject: ExamSubject = (['maths', 'physics', 'chemistry', 'biology'].includes(subjectRaw)
+    ? subjectRaw
+    : 'maths') as ExamSubject;
+
+  let correctAnswer = '';
+  let correctAnswers: string[] = [];
+  let integerAnswer = '';
+
+  if (questionType === 'integer') {
+    integerAnswer =
+      q?.correctAnswer === null || q?.correctAnswer === undefined ? '' : String(q.correctAnswer);
+  } else if (questionType === 'multiple') {
+    const answers = Array.isArray(q?.correctAnswer)
+      ? q.correctAnswer
+      : q?.correctAnswer != null && q?.correctAnswer !== ''
+        ? [q.correctAnswer]
+        : [];
+    correctAnswers = answers.map((a: unknown) => String(a ?? '').trim()).filter(Boolean);
+    if (correctAnswers.length === 0) {
+      rawOptions.forEach((opt: any) => {
+        if (opt?.isCorrect) correctAnswers.push(optionText(opt));
+      });
+    }
+  } else {
+    if (q?.correctAnswer != null && q?.correctAnswer !== '') {
+      correctAnswer = String(q.correctAnswer);
+    } else {
+      const flagged = rawOptions.find((opt: any) => opt?.isCorrect);
+      if (flagged) correctAnswer = optionText(flagged);
+    }
+  }
+
+  return {
+    questionText: String(q?.questionText || ''),
+    questionImage: String(q?.questionImage || ''),
+    questionType,
+    subject,
+    marks: String(q?.marks ?? 1),
+    negativeMarks: String(q?.negativeMarks ?? 0),
+    explanation: String(q?.explanation || ''),
+    options,
+    correctAnswer,
+    correctAnswers,
+    integerAnswer,
+  };
+};
 
 export const normalizeDisplayText = (value?: string) =>
   (value || '')
@@ -460,7 +540,7 @@ export const buildQuestionPayload = (
 
   return {
     questionText: form.questionText.trim(),
-    questionImage: form.questionImage.trim() || undefined,
+    questionImage: form.questionImage.trim(),
     questionType: form.questionType,
     options: formattedOptions,
     correctAnswer,

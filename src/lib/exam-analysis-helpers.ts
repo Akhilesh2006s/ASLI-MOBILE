@@ -60,6 +60,7 @@ export type ScoreReconciliation = {
   net: number;
   marksNotEarnedOnWrong: number;
   costPerWrong: number;
+  examHasNegativeMarking?: boolean;
 };
 
 export type DnaScores = {
@@ -84,11 +85,12 @@ export type AiExamAnalysis = {
   motivation?: string;
   predictions?: { trend?: string };
   actionPlan?: { today?: string[]; thisWeek?: string[]; beforeNextExam?: string[] };
-  focusAreas?: Array<{ subject: string; issue: string; whatToDo: string }>;
+  focusAreas?: Array<{ subject: string; topic?: string; issue: string; whatToDo: string }>;
   questionInsights?: Array<{
     index?: number;
     questionId?: string;
     subject?: string;
+    topic?: string;
     status?: string;
     conceptGap?: string;
     insight?: string;
@@ -650,52 +652,165 @@ export function getUserAnswerForQuestion(question: any, index: number, answers?:
   return undefined;
 }
 
-export function generatePlanTopics(aiAnalysis: AiExamAnalysis | null): PlanTopic[] {
-  const weekActions = aiAnalysis?.actionPlan?.thisWeek || [];
+function isUsablePlanTopicLabel(raw: string): boolean {
+  const s = String(raw || '').replace(/\s+/g, ' ').trim();
+  if (!s || s.length < 2 || s.length > 48) return false;
+  const lower = s.toLowerCase();
+  if (
+    /^(general|unknown|n\/a|na|misc|miscellaneous|chapter|unit|default|other|none|core concepts|maths?|mathematics|physics|chemistry|biology|science)$/i.test(
+      lower
+    )
+  ) {
+    return false;
+  }
+  if (/^(maths?|mathematics|physics|chemistry|biology|science)\s+fundamentals$/i.test(lower)) {
+    return false;
+  }
+  if (/^\d+(\s+\d+)*$/.test(lower)) return false;
+  if ((lower.match(/\d/g) || []).length >= (lower.match(/[a-z]/g) || []).length) return false;
+  if (/\?/.test(s)) return false;
+  if (
+    /\b(directions?|instruction|read the following|each of the following|four choices|choose the correct|select the correct option|answer the following|which of the following|what is the|how many|find the|calculate|greatest among|least among)\b/i.test(
+      lower
+    )
+  ) {
+    return false;
+  }
+  if (/^(following|among|greatest|least|given|below|above|correct|option|choose|select|which|what|find)\b/i.test(lower)) {
+    return false;
+  }
+  if (s.split(/\s+/).length > 8) return false;
+  return true;
+}
+
+function sanitizePlanTopicTitle(raw: string, fallbackSubject?: string): string {
+  const cleaned = String(raw || '')
+    .replace(/^low accuracy\/?confidence in\s+/i, '')
+    .replace(/\s*\(skips detected\)\s*/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (isUsablePlanTopicLabel(cleaned)) return cleaned;
+  const subj = String(fallbackSubject || '').trim();
+  if (subj) {
+    const pretty = subj.charAt(0).toUpperCase() + subj.slice(1).toLowerCase();
+    return `Mixed ${pretty} revision`;
+  }
+  return 'Mixed revision';
+}
+
+export type ConceptPressureCard = {
+  tag: string;
+  name: string;
+  meta: string;
+};
+
+/** Structured cards for Concept Pressure Points — never show stem fragments like "222 444". */
+export function buildConceptPressureCards(aiAnalysis: AiExamAnalysis | null): ConceptPressureCard[] {
+  const formatSubject = (raw?: string) => {
+    const s = String(raw || 'General');
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  };
+
+  const fromFocus = (aiAnalysis?.focusAreas || [])
+    .map((f) => {
+      const name = sanitizePlanTopicTitle(f.topic || f.issue || '', f.subject);
+      if (!isUsablePlanTopicLabel(name) && /^Mixed\b/i.test(name)) {
+        // Keep subject fundamentals as a last-resort readable title
+        return {
+          tag: formatSubject(f.subject),
+          name,
+          meta: f.whatToDo || 'Review this concept',
+        };
+      }
+      if (!name) return null;
+      return {
+        tag: formatSubject(f.subject),
+        name,
+        meta: f.whatToDo || 'Review this concept',
+      };
+    })
+    .filter(Boolean) as ConceptPressureCard[];
+
+  if (fromFocus.length > 0) return fromFocus.slice(0, 3);
+
+  const wrongInsights =
+    aiAnalysis?.questionInsights?.filter((q) => {
+      const s = String(q.status || '').toLowerCase();
+      return s === 'wrong' || s === 'incorrect';
+    }) || [];
+
+  const seen = new Set<string>();
+  const fromInsights: ConceptPressureCard[] = [];
+  for (const q of wrongInsights) {
+    const qNum = Number(q.index) > 0 ? Number(q.index) : undefined;
+    const title = sanitizePlanTopicTitle(q.topic || '', q.subject);
+    const key = `${String(q.subject || '').toLowerCase()}::${title.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    fromInsights.push({
+      tag: formatSubject(q.subject),
+      name: title,
+      meta: qNum ? `Wrong · Q${qNum} · review working` : 'Review this concept',
+    });
+    if (fromInsights.length >= 3) break;
+  }
+  return fromInsights;
+}
+
+export function generatePlanTopics(
+  aiAnalysis: AiExamAnalysis | null,
+  result?: ExamAnalysisResult | null
+): PlanTopic[] {
   const focus = aiAnalysis?.focusAreas || [];
-  const topics = focus.map((f) => {
-    const m = String(f.issue || '').match(/in\s+(.+?)(?:\s*\(|$)/i);
-    return m?.[1]?.trim() || f.subject;
-  });
-  const defaults = ['Rotation', 'Slow-Mode Read', 'Friction', 'Pacing Drill', 'Calorimetry', 'Calculus', 'Mock Retake'];
-  const subtitles = ['Concept + 10 Qs', 'Read twice', 'Build on prior topic', 'Timed 15-Q drill', 'Concept + 10 Q', 'Core maths practice', 'Full mock retake'];
-  const durations = ['25 min', '15 min', '25 min', '20 min', '25 min', '30 min', '35 min'];
-  return Array.from({ length: 7 }, (_, i) => ({
+  const fromFocus = focus
+    .map((f) => {
+      const fromTopicField = (f as { topic?: string }).topic;
+      const fromIssue = String(f.issue || '').match(/in\s+(.+?)(?:\s*\(|$)/i)?.[1];
+      return sanitizePlanTopicTitle(fromTopicField || fromIssue || '', f.subject);
+    })
+    .filter((t, i, arr) => arr.indexOf(t) === i && isUsablePlanTopicLabel(t));
+
+  const weakSubjects = Object.entries(result?.subjectWiseScore || {})
+    .filter(([, score]: [string, any]) => score && score.total > 0 && score.correct / score.total < 0.7)
+    .sort((a: any, b: any) => a[1].correct / a[1].total - b[1].correct / b[1].total)
+    .map(([subj]) => sanitizePlanTopicTitle('', subj));
+
+  const topics = [...fromFocus, ...weakSubjects].filter(
+    (t, i, arr) => arr.indexOf(t) === i && isUsablePlanTopicLabel(t)
+  );
+
+  const list =
+    topics.length > 0
+      ? topics.slice(0, 5)
+      : ['Review wrong answers'];
+
+  return list.map((title, i) => ({
     topicNum: i + 1,
-    title: topics[i] || weekActions[i]?.slice(0, 48) || defaults[i],
-    subtitle: subtitles[i],
-    duration: durations[i],
+    title,
+    subtitle: 'Open Questions tab · review misses · then drill',
+    duration: `${15 + i * 5} min`,
   }));
 }
 
-export function generatePlanQueueItems(topicTitle: string, topicIndex: number): {
+/** @deprecated Decorative queue — prefer reviewing real wrong questions in the Questions tab. */
+export function generatePlanQueueItems(topicTitle: string, _topicIndex: number): {
   warmup: PlanQueueItem[];
   core: PlanQueueItem[];
   stretch: PlanQueueItem[];
 } {
   const concept = topicTitle || 'Focus';
-  const warmup: PlanQueueItem[] = [
-    { id: 'w1', minutes: 1, title: `${concept}: quick recall`, tier: 'warmup' },
-    { id: 'w2', minutes: 1, title: `${concept}: formula check`, tier: 'warmup' },
-    { id: 'w3', minutes: 1, title: `${concept}: easy starter`, tier: 'warmup' },
-  ];
-  const core: PlanQueueItem[] = [
-    { id: 'c1', minutes: 2, title: `${concept}: standard problem`, tier: 'core' },
-    { id: 'c2', minutes: 2, title: `${concept}: mixed practice`, tier: 'core' },
-    { id: 'c3', minutes: 2, title: `${concept}: exam-style Q`, tier: 'core' },
-    { id: 'c4', minutes: 2, title: `${concept}: timed drill`, tier: 'core' },
-    { id: 'c5', minutes: 2, title: `${concept}: error review`, tier: 'core' },
-    { id: 'c6', minutes: 2, title: `${concept}: checkpoint`, tier: 'core' },
-    { id: 'c7', minutes: 2, title: `${concept}: consolidation`, tier: 'core' },
-  ];
-  const stretch: PlanQueueItem[] =
-    topicIndex >= 5
-      ? [
-          { id: 's1', minutes: 3, title: `${concept}: challenge set A`, tier: 'stretch' },
-          { id: 's2', minutes: 3, title: `${concept}: challenge set B`, tier: 'stretch' },
-        ]
-      : [{ id: 's1', minutes: 3, title: `${concept}: optional hard Q`, tier: 'stretch' }];
-  return { warmup, core, stretch };
+  return {
+    warmup: [
+      { id: 'w1', minutes: 5, title: `Re-attempt wrong Qs on ${concept}`, tier: 'warmup' },
+    ],
+    core: [
+      { id: 'c1', minutes: 10, title: `Write 1-line miss reason for each ${concept} error`, tier: 'core' },
+      { id: 'c2', minutes: 10, title: `Drill 5–10 similar ${concept} questions in Asli Prep`, tier: 'core' },
+    ],
+    stretch: [
+      { id: 's1', minutes: 5, title: `Ask AI Tutor one doubt on ${concept}`, tier: 'stretch' },
+    ],
+  };
 }
 
 export type PerformanceInsight = {
@@ -1066,6 +1181,14 @@ export function matchesQuestionFilter(filter: QuestionFilterId, status: Question
 
 type ErrorType = 'careless' | 'conceptual' | 'time-pressure' | 'reading' | null;
 
+function isReadingErrorInsight(insight?: string): boolean {
+  const s = String(insight || '');
+  if (!s.trim()) return false;
+  return /\b(misread|mis-read|incorrectly read|reading error|did not read|didn't read|stem misread|option trap)\b/i.test(
+    s
+  );
+}
+
 export function classifyErrorType(
   question: any,
   userAnswer: unknown,
@@ -1078,7 +1201,7 @@ export function classifyErrorType(
   }
 ): ErrorType {
   if (!opts.isAttempted || opts.isCorrect) return null;
-  if (opts.aiInsight && /not|except|incorrectly read/i.test(opts.aiInsight)) return 'reading';
+  if (isReadingErrorInsight(opts.aiInsight)) return 'reading';
   if (timeTaken != null && opts.avgTime > 0 && timeTaken >= opts.avgTime * 1.2) {
     return 'time-pressure';
   }
@@ -1161,12 +1284,11 @@ export function buildMistakeTaxonomy(
     if (!attempted || correct) return;
     const t = getQuestionTimeForIndex(q, i, ua, result);
     const qi = aiAnalysis?.questionInsights?.find((x) => x.index === i + 1 || x.index === i);
-    const insight = qi?.insight || qi?.fixStrategy || qi?.conceptGap;
     const err = classifyErrorType(q, ua, t, {
       isCorrect: correct,
       isAttempted: attempted,
       avgTime: avgTimePerQuestion || 60,
-      aiInsight: insight,
+      aiInsight: qi?.insight,
     });
     if (err === 'careless') counts.careless += 1;
     else if (err === 'conceptual') counts.conceptual += 1;
@@ -1200,17 +1322,18 @@ export function buildScoreReconciliation(result: ExamAnalysisResult): ScoreRecon
   const wrongN = result.wrongAnswers || 0;
   const net = Math.round(Number(result.obtainedMarks) || 0);
   const marksPerWrong = wrongN > 0 ? Math.max(0, (result.totalMarks || 0) - net) / wrongN : 0;
+  const examHasNegativeMarking = questions.some((q) => Number(q.negativeMarks) > 0);
 
   questions.forEach((q, i) => {
     const ua = getUserAnswerForQuestion(q, i, result.answers);
     const attempted = ua !== undefined && ua !== null && ua !== '';
-    const qMarks = Number(q.marks ?? 4) || 4;
-    const qNeg = Number(q.negativeMarks ?? 1) || 0;
+    const qMarks = Number(q.marks) > 0 ? Number(q.marks) : 1;
+    const qNeg = Math.max(0, Number(q.negativeMarks) || 0);
     if (!attempted) return;
     if (compareAnswers(q, ua, q.correctAnswer)) {
       marksEarned += qMarks;
     } else {
-      negativePenalty += qNeg;
+      if (examHasNegativeMarking && qNeg > 0) negativePenalty += qNeg;
       marksNotEarnedOnWrong += qMarks;
     }
   });
@@ -1218,10 +1341,11 @@ export function buildScoreReconciliation(result: ExamAnalysisResult): ScoreRecon
   if (questions.length === 0 && wrongN > 0) {
     const avgQMarks = (result.totalMarks || 0) / Math.max(totalQuestionCount, 1);
     marksNotEarnedOnWrong = Math.round(wrongN * avgQMarks);
-    negativePenalty = Math.max(0, Math.round(net + marksNotEarnedOnWrong - (result.totalMarks || 0) + wrongN * avgQMarks));
-    if (negativePenalty <= 0) negativePenalty = Math.round(wrongN * 1);
-    marksEarned = net + negativePenalty;
+    negativePenalty = 0;
+    marksEarned = net;
   }
+
+  if (!examHasNegativeMarking) negativePenalty = 0;
 
   marksEarned = Math.round(marksEarned);
   negativePenalty = Math.round(negativePenalty);
@@ -1229,7 +1353,14 @@ export function buildScoreReconciliation(result: ExamAnalysisResult): ScoreRecon
   const totalImpact = marksNotEarnedOnWrong + negativePenalty;
   const costPerWrong = wrongN > 0 ? Math.round(totalImpact / wrongN) : Math.round(marksPerWrong);
 
-  return { marksEarned, negativePenalty, net, marksNotEarnedOnWrong, costPerWrong };
+  return {
+    marksEarned,
+    negativePenalty,
+    net,
+    marksNotEarnedOnWrong,
+    costPerWrong,
+    examHasNegativeMarking,
+  };
 }
 
 export function getDNAScores(result: ExamAnalysisResult, aiAnalysis?: AiExamAnalysis | null): DnaScores {
@@ -1256,6 +1387,7 @@ export function getDNAProfileLabel(
   accuracyPct: number,
   avgTimePerQ: number
 ): string {
+  if (avgTimePerQ > 0 && avgTimePerQ < 45 && accuracyPct < 55) return 'Rushed Reader';
   if (accuracyPct < 30 && avgTimePerQ < 60) return 'Rushed Reader';
   if (dna.accuracy >= 70) return 'Precision Player';
   if (dna.speed < 40) return 'Deep Thinker';
@@ -1267,8 +1399,9 @@ export function getTimeXAccuracyQuadrant(result: ExamAnalysisResult): TimeQuadra
   const out: TimeQuadrant = { fastWrong: 0, fastRight: 0, slowWrong: 0, slowRight: 0 };
   const questions = result.questions || [];
   if (!questions.length) return out;
-  const avgTime = result.timeTaken / Math.max(questions.length, 1);
-  const classified: Array<{ fast: boolean; right: boolean }> = [];
+  const overallAvg = result.timeTaken / Math.max(questions.length, 1);
+  const ideal = 60;
+  const fastCut = Math.max(25, ideal * 0.5);
 
   questions.forEach((q, i) => {
     const ua = getUserAnswerForQuestion(q, i, result.answers);
@@ -1276,27 +1409,21 @@ export function getTimeXAccuracyQuadrant(result: ExamAnalysisResult): TimeQuadra
     if (!attempted) return;
     const t = getQuestionTimeForIndex(q, i, ua, result);
     const right = compareAnswers(q, ua, q.correctAnswer);
-    const fast = (t ?? avgTime) < avgTime;
-    classified.push({ fast, right });
-  });
 
-  if (!classified.length) {
-    const wrong = questions.filter((q, i) => {
-      const ua = getUserAnswerForQuestion(q, i, result.answers);
-      return ua != null && ua !== '' && !compareAnswers(q, ua, q.correctAnswer);
-    }).length;
-    const correct = questions.filter((q, i) => {
-      const ua = getUserAnswerForQuestion(q, i, result.answers);
-      return ua != null && ua !== '' && compareAnswers(q, ua, q.correctAnswer);
-    }).length;
-    out.fastWrong = Math.round(wrong * 0.4);
-    out.slowWrong = wrong - out.fastWrong;
-    out.fastRight = Math.round(correct * 0.35);
-    out.slowRight = correct - out.fastRight;
-    return out;
-  }
+    let fast: boolean;
+    if (t != null && t > 0) {
+      if (t < fastCut) fast = true;
+      else if (t >= ideal * 1.25) fast = false;
+      else fast = overallAvg <= ideal;
+    } else {
+      // Missing per-Q time: 3s average must NOT count as Slow
+      fast = overallAvg > 0 && overallAvg <= fastCut
+        ? true
+        : overallAvg >= ideal * 1.25
+          ? false
+          : overallAvg < ideal;
+    }
 
-  classified.forEach(({ fast, right }) => {
     if (fast && right) out.fastRight += 1;
     else if (fast && !right) out.fastWrong += 1;
     else if (!fast && right) out.slowRight += 1;
@@ -1311,9 +1438,14 @@ export function getSpeedRatingLabel(result: ExamAnalysisResult): string {
     (result.correctAnswers || 0) + (result.wrongAnswers || 0) + (result.unattempted || 0);
   const avgTimePerQuestion =
     totalQuestionCount > 0 ? Math.floor(result.timeTaken / totalQuestionCount) : 0;
+  const attempted = (result.correctAnswers || 0) + (result.wrongAnswers || 0);
+  const accuracy = attempted > 0 ? (result.correctAnswers / attempted) * 100 : 0;
+  if (avgTimePerQuestion > 0 && avgTimePerQuestion <= 25) {
+    return accuracy < 55 ? 'Rushed' : 'Sharp';
+  }
   if (result.timeTaken < totalQuestionCount * 60) return 'Sharp';
   if (avgTimePerQuestion < 90) return 'Balanced';
-  return 'Rushed';
+  return 'Slow';
 }
 
 export function buildWeakAreas(result: ExamAnalysisResult) {

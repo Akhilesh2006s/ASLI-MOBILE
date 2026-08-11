@@ -33,6 +33,7 @@ import {
   topicFormFromRow,
   updateTopic,
 } from '../../../src/lib/ai-tool-topics';
+import { sortChapterWiseLabels } from '../../../src/lib/curriculum-chapter-sort';
 
 type TopicOptionsData = {
   boards?: string[];
@@ -218,12 +219,16 @@ export default function AiToolTopicsView() {
 
   const hierarchyTopics = useMemo(() => {
     if (!hierarchyTree || !selectedClass || !selectedSubject) return [];
-    return Object.keys(hierarchyTree[selectedClass]?.[selectedSubject] || {});
+    return sortChapterWiseLabels(
+      Object.keys(hierarchyTree[selectedClass]?.[selectedSubject] || {}),
+    );
   }, [hierarchyTree, selectedClass, selectedSubject]);
 
   const hierarchySubTopics = useMemo(() => {
     if (!hierarchyTree || !selectedClass || !selectedSubject || !selectedTopic) return [];
-    return hierarchyTree[selectedClass]?.[selectedSubject]?.[selectedTopic] || [];
+    return sortNatural(
+      hierarchyTree[selectedClass]?.[selectedSubject]?.[selectedTopic] || [],
+    );
   }, [hierarchyTree, selectedClass, selectedSubject, selectedTopic]);
 
   const fetchDialogOptions = useCallback(async (boardValue: string, classLabelValue: string) => {

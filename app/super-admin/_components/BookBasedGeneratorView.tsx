@@ -63,6 +63,7 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
   const [topic, setTopic] = useState('');
   const [subTopic, setSubTopic] = useState('');
   const [generationRecordCount, setGenerationRecordCount] = useState('10');
+  const [questionCount, setQuestionCount] = useState('10');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationLocked, setGenerationLocked] = useState(false);
   const [lastSummary, setLastSummary] = useState<{
@@ -83,8 +84,25 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
     () => filterSubjectsForAiTool(selectedTool || '', subjects),
     [selectedTool, subjects],
   );
-  const classOptionsForSelect = classOptions;
-  const subjectOptionsForSelect = subjectsForTool;
+  const classOptionsForSelect = useMemo(() => {
+    if (classNumber && !classOptions.includes(classNumber)) {
+      return [classNumber, ...classOptions];
+    }
+    return classOptions;
+  }, [classOptions, classNumber]);
+  const subjectOptionsForSelect = useMemo(() => {
+    const base = subjectsForTool;
+    if (subject && !base.some((s) => s.toLowerCase() === subject.toLowerCase())) {
+      return [subject, ...base];
+    }
+    return base;
+  }, [subjectsForTool, subject]);
+  const boardOptionsForSelect = useMemo(() => {
+    if (board && !boardOptions.some((b) => b.toLowerCase() === board.toLowerCase())) {
+      return [...boardOptions, board].sort((a, b) => a.localeCompare(b));
+    }
+    return boardOptions;
+  }, [boardOptions, board]);
   const bookReady = Boolean(selectedBook?.embeddingsCreated && selectedBook?.processingStatus === 'indexed');
 
   const loadBooks = useCallback(async () => {
@@ -107,21 +125,53 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
 
   const selectBook = useCallback((book: BookRow) => {
     setBookId(book._id);
+    const nextBoard = String(book.board || '').trim();
+    const nextClassRaw = normalizeClassLabel(book.class);
+    const nextClass = nextClassRaw === 'Unassigned' ? '' : nextClassRaw;
+    const nextSubject = String(book.subject || '').trim();
+    const nextTopic = String(book.topic || '').trim();
+    const nextSubTopic = String(book.subtopic || '').trim();
+
+    if (nextBoard) {
+      setBoard(nextBoard);
+      setBoardOptions((prev) =>
+        prev.includes(nextBoard) ? prev : [...prev, nextBoard].sort((a, b) => a.localeCompare(b)),
+      );
+    }
+    setClassNumber(nextClass);
+    setSubject(nextSubject);
+    setTopic(nextTopic);
+    setSubTopic(nextSubTopic);
   }, []);
 
-  const buildPayload = (forceUnlock = false) => ({
-    toolSlug: selectedTool,
-    toolName: currentTool?.name || selectedTool,
-    board,
-    className: classNumber,
-    subjectName: subject,
-    topicName: topic,
-    subtopicName: subTopic,
-    bookId,
-    batchSize: parseGenerationRecordCount(generationRecordCount) || 10,
-    useBookKnowledge: true,
-    ...(forceUnlock ? { forceUnlock: true } : {}),
-  });
+  const buildPayload = (forceUnlock = false) => {
+    const countTools = new Set([
+      'worksheet-mcq-generator',
+      'smart-qa-practice-generator',
+      'mock-test-builder',
+      'exam-question-paper-generator',
+      'homework-creator',
+    ]);
+    const n = Number(questionCount);
+    const q =
+      Number.isFinite(n) && n > 0 ? Math.min(40, Math.max(1, Math.floor(n))) : 10;
+    return {
+      toolSlug: selectedTool,
+      toolName: currentTool?.name || selectedTool,
+      board,
+      className: classNumber,
+      subjectName: subject,
+      topicName: topic,
+      subtopicName: subTopic,
+      bookId,
+      batchSize: parseGenerationRecordCount(generationRecordCount) || 10,
+      useBookKnowledge: true,
+      ...(selectedTool && countTools.has(selectedTool)
+        ? { extraParams: { questionCount: q, numberOfQuestions: q } }
+        : {}),
+      ...(forceUnlock ? { forceUnlock: true } : {}),
+    };
+  };
 
   const generate = async (opts?: { forceUnlock?: boolean }) => {
     if (!bookId || !bookReady) {
@@ -271,7 +321,7 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
           style={styles.chipRow}
           keyboardShouldPersistTaps="handled"
         >
-          {boardOptions.map((b) => (
+          {boardOptionsForSelect.map((b) => (
             <Pressable key={b} style={[styles.chip, board === b && styles.chipActive]} onPress={() => setBoard(b)}>
               <Text style={[styles.chipText, board === b && styles.chipTextActive]}>{b}</Text>
             </Pressable>
@@ -343,6 +393,24 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
             if (next !== null) setGenerationRecordCount(next);
           }}
         />
+        {(
+          selectedTool === 'worksheet-mcq-generator' ||
+          selectedTool === 'smart-qa-practice-generator' ||
+          selectedTool === 'mock-test-builder' ||
+          selectedTool === 'exam-question-paper-generator' ||
+          selectedTool === 'homework-creator'
+        ) ? (
+          <>
+            <Text style={styles.fieldLabel}>Number of questions (1–40)</Text>
+            <TextInput
+              style={styles.input}
+              value={questionCount}
+              keyboardType="number-pad"
+              placeholder="e.g. 10"
+              onChangeText={setQuestionCount}
+            />
+          </>
+        ) : null}
         </View>
         <Pressable
           style={[styles.generateBtn, (isGenerating || !selectedTool || !bookReady) && styles.generateBtnDisabled]}

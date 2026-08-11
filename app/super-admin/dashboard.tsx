@@ -30,6 +30,7 @@ import AiToolTopicsView from './_components/AiToolTopicsView';
 import AiToolGenerationsView from './_components/AiToolGenerationsView';
 import SuperAdminOverviewView from './_components/SuperAdminOverviewView';
 import LiveSessionsView from './_components/LiveSessionsView';
+import AuditLogsView from './_components/AuditLogsView';
 import SuperAdminNavDrawer, {
   superAdminNavLabel,
   type SuperAdminView,
@@ -63,6 +64,7 @@ export default function SuperAdminDashboard() {
     activeAssessments: 0,
     avgExamsPerStudent: 0,
     contentEngagement: 0,
+    contentVolume: 0,
     passRate: 0,
     activeStudents: 0,
     activeStudentsPercentage: 0,
@@ -254,8 +256,10 @@ export default function SuperAdminDashboard() {
         return <AiGeneratorView />;
       case 'subscriptions':
         return <SubscriptionManagementView />;
+      case 'audit-logs':
+        return <AuditLogsView />;
       case 'settings':
-        return <SettingsView onNavigate={handleViewChange} onLogout={handleLogout} />;
+        return <SettingsView onNavigate={handleViewChange} />;
       default:
         return renderOverview();
     }

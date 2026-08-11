@@ -366,7 +366,14 @@ export default function DetailedAnalysisView({
       case 'insights':
         return <InsightsTabMobile result={displayResult} aiAnalysis={aiAnalysis} />;
       case 'plan':
-        return <PlanTabMobile studentName={studentName} aiAnalysis={aiAnalysis} />;
+        return (
+          <PlanTabMobile
+            studentName={studentName}
+            aiAnalysis={aiAnalysis}
+            result={displayResult}
+            onOpenQuestions={() => selectTab('questions')}
+          />
+        );
       default:
         return null;
     }

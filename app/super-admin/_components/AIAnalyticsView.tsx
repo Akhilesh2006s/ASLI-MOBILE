@@ -425,8 +425,16 @@ function AdminComparisonTab({ filteredAnalytics }: { filteredAnalytics: Detailed
               </View>
               <View style={styles.adminCardStats}>
                 <View style={styles.adminStatItem}>
-                  <Text style={styles.adminStatValue}>{admin.totalStudents || 0}</Text>
+                  <Text style={styles.adminStatValue}>
+                    {(admin.uniqueStudents ?? admin.totalStudents) || 0}
+                  </Text>
                   <Text style={styles.adminStatLabel}>Students</Text>
+                </View>
+                <View style={styles.adminStatItem}>
+                  <Text style={styles.adminStatValue}>
+                    {(admin.totalAttempts ?? admin.totalStudents) || 0}
+                  </Text>
+                  <Text style={styles.adminStatLabel}>Attempts</Text>
                 </View>
                 <View style={styles.adminStatItem}>
                   <Text style={styles.adminStatValue}>{admin.totalExams || 0}</Text>

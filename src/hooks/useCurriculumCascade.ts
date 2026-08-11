@@ -296,7 +296,7 @@ export function useCurriculumCascade(
         const curriculumTopics = rowsToNames((data as { data?: CurriculumRow[] }).data);
         const managedTopics = (managed as { data?: { topics?: string[] } })?.data?.topics || [];
         setTopics(
-          sortChapterWiseLabels(mergePreservingPrimaryOrder(managedTopics, curriculumTopics))
+          sortChapterWiseLabels(mergePreservingPrimaryOrder(managedTopics, curriculumTopics)),
         );
       } catch {
         if (!cancelled) setTopics([]);
@@ -344,8 +344,8 @@ export function useCurriculumCascade(
         const managedSubtopics = (managed as { data?: { subTopics?: string[] } })?.data?.subTopics || [];
         setSubtopics(
           sanitizeSubtopicOptions(
-            mergePreservingPrimaryOrder(managedSubtopics, curriculumSubtopics)
-          )
+            mergePreservingPrimaryOrder(managedSubtopics, curriculumSubtopics),
+          ),
         );
       } catch {
         if (!cancelled) setSubtopics([]);

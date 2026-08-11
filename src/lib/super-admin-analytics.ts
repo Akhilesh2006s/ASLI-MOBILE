@@ -29,6 +29,9 @@ export interface DashboardStats {
   courses?: number;
   assessments?: number;
   exams?: number;
+  totalVideos?: number;
+  contentVolume?: number;
+  totalStudents?: number;
 }
 
 export interface ExamDifficultyItem {
@@ -101,8 +104,14 @@ export interface AdminAnalytics {
   performanceTrends: PerformanceTrend[];
   subjectAnalysis: SubjectAnalysis[];
   totalStudents: number;
+  uniqueStudents?: number;
+  totalAttempts?: number;
   totalExams: number;
   averageScore: number;
+  board?: string;
+  curriculumBoard?: string;
+  effectiveBoard?: string;
+  state?: string;
 }
 
 export interface GlobalAnalytics {
@@ -148,10 +157,12 @@ export interface DetailedAnalytics {
 export const BOARD_OPTIONS = [
   { value: 'all', label: 'All Boards' },
   { value: 'CBSE', label: 'CBSE' },
+  { value: 'STATE', label: 'State Board' },
   { value: 'SSC', label: 'SSC' },
   { value: 'ICSE', label: 'ICSE' },
   { value: 'IB', label: 'IB' },
-  { value: 'Others', label: 'Others' },
+  { value: 'CAMBRIDGE', label: 'Cambridge' },
+  { value: 'OTHER', label: 'Other / Unmapped' },
 ];
 
 export const STATE_OPTIONS = [
@@ -249,10 +260,57 @@ export function computeTotalContent(
       0
     ) || 0;
   const fromStats =
+    (dashboardStats?.totalVideos || 0) +
     (dashboardStats?.totalContent || dashboardStats?.courses || 0) +
     (dashboardStats?.assessments || 0) +
-    (dashboardStats?.exams || 0);
+    (dashboardStats?.exams || 0) ||
+    Number((dashboardStats as any)?.contentVolume || 0);
   return fromStats || fromAdmins;
+}
+
+export type PlatformAnalytics = {
+  schoolStudents?: number;
+  weeklyActiveStudents?: number;
+  monthlyActiveStudents?: number;
+  individual?: {
+    total?: number;
+    students?: number;
+    teachers?: number;
+    trialActive?: number;
+    exceeded?: number;
+    paid?: number;
+    converted?: number;
+    conversionRate?: number;
+    revenueInr?: number;
+  };
+};
+
+export async function fetchPlatformAnalytics(): Promise<PlatformAnalytics | null> {
+  try {
+    const response = await api.get('/api/super-admin/analytics');
+    const payload = response?.data;
+    if (payload?.success === false) return null;
+    return (payload?.data || payload) as PlatformAnalytics;
+  } catch {
+    return null;
+  }
+}
+
+function resolveAdminCurriculumBoard(
+  adminData: AdminRecord | undefined,
+  fallbackAdmin?: AdminAnalytics
+): string {
+  const curriculum =
+    (adminData as any)?.curriculumBoard ||
+    fallbackAdmin?.curriculumBoard ||
+    fallbackAdmin?.effectiveBoard ||
+    '';
+  if (curriculum) return String(curriculum).toUpperCase().trim();
+  const hub = String(adminData?.board || fallbackAdmin?.board || '')
+    .toUpperCase()
+    .trim();
+  if (['CBSE', 'STATE', 'SSC', 'ICSE', 'IB', 'CAMBRIDGE'].includes(hub)) return hub;
+  return 'OTHER';
 }
 
 export function getFilteredDetailedAnalytics(
@@ -275,16 +333,54 @@ export function getFilteredDetailedAnalytics(
   if (filterBoard !== 'all') {
     filteredAdminAnalytics = filteredAdminAnalytics.filter((admin) => {
       const adminData = admins.find((a) => String(a.id || a._id) === String(admin.adminId));
-      return adminData?.board === filterBoard;
+      return resolveAdminCurriculumBoard(adminData, admin) === filterBoard;
     });
   }
 
   if (filterState !== 'all') {
     filteredAdminAnalytics = filteredAdminAnalytics.filter((admin) => {
       const adminData = admins.find((a) => String(a.id || a._id) === String(admin.adminId));
-      return adminData?.state === filterState;
+      return (adminData?.state || admin.state) === filterState;
     });
   }
+
+  const filteredAdminIds = new Set(filteredAdminAnalytics.map((a) => String(a.adminId)));
+
+  const mergedSubjects = new Map<
+    string,
+    { subject: string; totalScore: number; totalExams: number; highestScore: number; lowestScore: number }
+  >();
+  for (const admin of filteredAdminAnalytics) {
+    for (const s of admin.subjectAnalysis || []) {
+      const key = s.subject || 'Unknown';
+      const cur = mergedSubjects.get(key) || {
+        subject: key,
+        totalScore: 0,
+        totalExams: 0,
+        highestScore: 0,
+        lowestScore: 100,
+      };
+      const exams = Number(s.totalExams || s.examCount || 0);
+      cur.totalExams += exams;
+      cur.totalScore += Number(s.averageScore || 0) * exams;
+      cur.highestScore = Math.max(cur.highestScore, Number(s.highestScore || 0));
+      cur.lowestScore = Math.min(cur.lowestScore, Number(s.lowestScore ?? 100));
+      mergedSubjects.set(key, cur);
+    }
+  }
+
+  const subjectWiseAnalysis = [...mergedSubjects.values()]
+    .map((s) => ({
+      ...s,
+      examCount: s.totalExams,
+      averageScore: s.totalExams > 0 ? Math.round((s.totalScore / s.totalExams) * 100) / 100 : 0,
+    }))
+    .sort((a, b) => b.averageScore - a.averageScore);
+
+  const filteredTopPerformers = filteredAdminAnalytics
+    .flatMap((a) => (a.topScorers || []).map((t) => ({ ...t, adminId: a.adminId, adminName: a.adminName })))
+    .sort((a, b) => (b.averageScore || 0) - (a.averageScore || 0))
+    .slice(0, 20);
 
   const filteredGlobalAnalytics: GlobalAnalytics = {
     ...analytics.globalAnalytics,
@@ -296,13 +392,18 @@ export function getFilteredDetailedAnalytics(
         : 0,
     totalExams: filteredAdminAnalytics.reduce((sum, admin) => sum + (admin.totalExams || 0), 0),
     totalExamResults: filteredAdminAnalytics.reduce(
-      (sum, admin) => sum + (admin.totalStudents || 0),
+      (sum, admin) => sum + (admin.totalAttempts ?? admin.totalStudents ?? 0),
       0
     ),
-    topPerformers: (analytics.globalAnalytics.topPerformers || []).filter(() => {
-      return filteredAdminAnalytics.length > 0;
-    }),
-    subjectWiseAnalysis: analytics.globalAnalytics.subjectWiseAnalysis || [],
+    topPerformers: filteredTopPerformers.length
+      ? filteredTopPerformers
+      : (analytics.globalAnalytics.topPerformers || []).filter((p: any) =>
+          filteredAdminIds.has(String(p.adminId))
+        ),
+    subjectWiseAnalysis:
+      subjectWiseAnalysis.length > 0
+        ? subjectWiseAnalysis
+        : analytics.globalAnalytics.subjectWiseAnalysis || [],
   };
 
   return {

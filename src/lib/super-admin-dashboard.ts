@@ -13,6 +13,7 @@ export type DashboardStats = {
   activeAssessments: number;
   avgExamsPerStudent: number;
   contentEngagement: number;
+  contentVolume: number;
   passRate: number;
   activeStudents: number;
   activeStudentsPercentage: number;
@@ -78,7 +79,8 @@ export function normalizeDashboardStats(raw: Record<string, unknown> | null | un
     activeVideos: Number(n.activeVideos || 0),
     activeAssessments: Number(n.activeAssessments || 0),
     avgExamsPerStudent: Number(n.avgExamsPerStudent || 0),
-    contentEngagement: Number(n.contentEngagement || 0),
+    contentVolume: Number(n.contentVolume ?? n.contentEngagement ?? 0),
+    contentEngagement: Number(n.contentVolume ?? n.contentEngagement ?? 0),
     passRate: Number(n.passRate || 0),
     activeStudents: Number(n.activeStudents || 0),
     activeStudentsPercentage: Number(n.activeStudentsPercentage || 0),

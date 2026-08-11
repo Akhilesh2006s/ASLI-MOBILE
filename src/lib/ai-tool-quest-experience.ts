@@ -35,15 +35,15 @@ export const AI_TOOL_QUEST_STYLES = `
 .quest-orbit-btn{display:none!important}
 .quest-stamp{display:none!important}
 .quest-node{
-  --quest:#8b5cf6;--quest-deep:#6d28d9;
-  position:relative;z-index:1;margin:0 0 6px;border-radius:14px;overflow:hidden;
-  border:1px solid #e2e8f0;
-  background:#ffffff;
-  box-shadow:none;
+  --quest:#8b5cf6;--quest-deep:#6d28d9;--quest-pastel:#f8fafc;--quest-pastel-border:#e2e8f0;
+  position:relative;z-index:1;margin:0 0 10px;border-radius:16px;overflow:hidden;
+  border:1.5px solid var(--quest-pastel-border);
+  background:var(--quest-pastel);
+  box-shadow:0 4px 14px rgba(15,23,42,.05);
   transition:none
 }
 .quest-node:last-child{margin-bottom:0}
-.quest-node[open]{transform:none;box-shadow:none}
+.quest-node[open]{transform:none;box-shadow:0 6px 18px rgba(15,23,42,.06)}
 .quest-node::before{
   content:"";position:absolute;inset:0 auto 0 0;width:4px;
   background:linear-gradient(180deg,var(--quest),var(--quest-deep));
@@ -60,20 +60,22 @@ export const AI_TOOL_QUEST_STYLES = `
   width:36px;height:36px;border-radius:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
   color:#fff;font-weight:800;font-size:13px;letter-spacing:-.02em;
   background:linear-gradient(145deg,var(--quest),var(--quest-deep));
-  box-shadow:none;animation:none
+  box-shadow:0 4px 10px rgba(15,23,42,.12);animation:none
 }
+.quest-orb svg{width:19px;height:19px;stroke:#fff;flex-shrink:0}
+.quest-orb span{font-size:18px;line-height:1}
 .quest-copy{min-width:0;flex:1}
 .quest-kicker{
-  display:flex;align-items:center;gap:6px;font-size:10px;font-weight:700;letter-spacing:.08em;
-  text-transform:uppercase;color:#64748b
+  display:flex;align-items:center;gap:6px;font-size:10px;font-weight:800;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--quest-deep)
 }
 .quest-kicker span.dot{width:5px;height:5px;border-radius:99px;background:var(--quest);animation:none}
-.quest-title{margin-top:1px;font-size:15px;line-height:1.3;font-weight:800;color:#0f172a}
-.quest-hint{font-size:11px;font-weight:600;color:#64748b;white-space:nowrap}
-.quest-node[open] .quest-hint{color:#475569}
+.quest-title{margin-top:2px;font-size:15.5px;line-height:1.3;font-weight:800;letter-spacing:-.01em;color:#0f172a}
+.quest-hint{font-size:11px;font-weight:700;color:var(--quest-deep);white-space:nowrap}
+.quest-node[open] .quest-hint{color:var(--quest-deep)}
 .quest-body{
-  padding:0 12px 10px 14px;color:#334155;position:relative;z-index:1;
-  border-top:1px solid #e2e8f0;
+  padding:2px 14px 12px 16px;color:#334155;position:relative;z-index:1;
+  border-top:1px solid var(--quest-pastel-border);
   background:#ffffff
 }
 .quest-body>*:first-child{margin-top:8px}
@@ -215,6 +217,31 @@ export const AI_TOOL_QUEST_STYLES = `
   background:linear-gradient(145deg,var(--quest),var(--quest-deep));color:#fff;font-size:12px;font-weight:900
 }
 .quest-story-q p{margin:0;padding-top:3px;font-size:14px;line-height:1.45;color:#1e293b;font-weight:500}
+
+/* —— Tap-to-reveal (answers/solutions) and tap-to-check (checklists/materials) —— */
+.quest-reveal-btn{
+  display:inline-flex;align-items:center;gap:6px;margin:6px 0 2px;
+  padding:9px 16px;border-radius:999px;border:1.5px solid var(--quest,#8b5cf6);
+  background:#fff;color:var(--quest-deep,#6d28d9);font-size:12px;font-weight:800;
+  cursor:pointer;-webkit-tap-highlight-color:transparent
+}
+.quest-reveal-hidden{display:none!important}
+.quest-reveal-btn:active{transform:scale(.96)}
+@keyframes quest-reveal-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.quest-revealed-anim{animation:quest-reveal-in .32s cubic-bezier(.16,1,.3,1) both}
+.quest-check{cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;transition:border-color .15s,transform .1s}
+.quest-check:active{transform:scale(.98)}
+.quest-check-mark{transition:background .15s,color .15s}
+.quest-check:not(.quest-checked) .quest-check-mark{background:#e2e8f0!important;color:transparent!important}
+.quest-check.quest-checked{border-left-color:#16a34a!important}
+.quest-check.quest-checked .quest-check-mark{background:linear-gradient(145deg,#16a34a,#15803d)!important;color:#fff!important;animation:quest-pop .3s ease}
+.quest-material{cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;transition:opacity .15s,transform .1s}
+.quest-material:active{transform:scale(.98)}
+.quest-material.quest-checked{opacity:.55}
+.quest-material.quest-checked>span:last-child{text-decoration:line-through}
+@keyframes quest-pop{0%{transform:scale(.55)}60%{transform:scale(1.2)}100%{transform:scale(1)}}
+@keyframes quest-node-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.quest-entrance{animation:quest-node-in .38s cubic-bezier(.16,1,.3,1) both;animation-delay:calc(var(--i,0) * 55ms)}
 `;
 
 export const AI_TOOL_QUEST_BOOTSTRAP = `
@@ -223,6 +250,8 @@ ${AI_TOOL_SELECTION_GUARD_JS}
   try{
     var palette = ['#8b5cf6','#0ea5e9','#f59e0b','#f43f5e','#6366f1','#06b6d4','#f97316','#d946ef','#3b82f6','#14b8a6'];
     var deep = ['#6d28d9','#0369a1','#b45309','#be123c','#4338ca','#0e7490','#c2410c','#a21caf','#1d4ed8','#0f766e'];
+    var pastel = ['#f5f3ff','#f0f9ff','#fffbeb','#fff1f2','#eef2ff','#ecfeff','#fff7ed','#fdf4ff','#eff6ff','#f0fdfa'];
+    var pastelBorder = ['#ddd6fe','#bae6fd','#fde68a','#fecdd3','#c7d2fe','#a5f3fc','#fed7aa','#f5d0fe','#bfdbfe','#99f6e4'];
 
     function syncHint(n){
       var h = n.querySelector('.quest-hint');
@@ -263,6 +292,8 @@ ${AI_TOOL_SELECTION_GUARD_JS}
         details.className = 'quest-node';
         details.style.setProperty('--quest', palette[i%10]);
         details.style.setProperty('--quest-deep', deep[i%10]);
+        details.style.setProperty('--quest-pastel', pastel[i%10]);
+        details.style.setProperty('--quest-pastel-border', pastelBorder[i%10]);
         details.open = true;
         var summary = document.createElement('summary');
         summary.className = 'quest-summary';
@@ -311,8 +342,92 @@ ${AI_TOOL_SELECTION_GUARD_JS}
     if (window.ReactNativeWebView) {
       window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'orbit', tabs: tabs }));
     }
+    applyQuestRevealGates();
   }catch(e){}
 })();
+
+/**
+ * Tap-to-reveal for answers/solutions, tap-to-check for checklists/materials.
+ * Gates only the INNER content of a section (never the <details> element itself —
+ * that must stay force-open, see the comment above about WebView height sizing).
+ */
+function applyQuestRevealGates(){
+  try {
+    // Per-question answer + explanation (Practice Q&A inline cards).
+    var answers = document.querySelectorAll('.quest-answer:not([data-quest-gated])');
+    for (var i = 0; i < answers.length; i++) {
+      (function(ansEl){
+        ansEl.setAttribute('data-quest-gated', '1');
+        var explainEl = ansEl.nextElementSibling;
+        if (!explainEl || !explainEl.classList || !explainEl.classList.contains('quest-explain')) explainEl = null;
+        ansEl.classList.add('quest-reveal-hidden');
+        if (explainEl) explainEl.classList.add('quest-reveal-hidden');
+        var accent = ansEl.style.getPropertyValue('--quest') || '#8b5cf6';
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'quest-reveal-btn';
+        btn.textContent = 'Reveal answer';
+        btn.style.setProperty('--quest', accent);
+        ansEl.parentNode.insertBefore(btn, ansEl);
+        btn.addEventListener('click', function(){
+          ansEl.classList.remove('quest-reveal-hidden');
+          ansEl.classList.add('quest-revealed-anim');
+          if (explainEl) {
+            explainEl.classList.remove('quest-reveal-hidden');
+            explainEl.classList.add('quest-revealed-anim');
+          }
+          btn.remove();
+          if (window.__aiToolSendHeight) setTimeout(window.__aiToolSendHeight, 30);
+        });
+      })(answers[i]);
+    }
+
+    // Whole-section answer key / solutions bodies — gate the inner payload only,
+    // the <details> stays open so the height-measurement pass is unaffected.
+    var spoilerTitleRe = /(answer\s*key|answer\s*hints|step-by-step\s*solutions)/i;
+    var sectionNodes = document.querySelectorAll('.quest-node:not([data-quest-section-gated])');
+    for (var s = 0; s < sectionNodes.length; s++) {
+      (function(node){
+        node.setAttribute('data-quest-section-gated', '1');
+        var titleEl = node.querySelector('.quest-title');
+        var title = titleEl ? (titleEl.textContent || '') : '';
+        if (!spoilerTitleRe.test(title)) return;
+        var bodyEl = node.querySelector('.quest-body');
+        if (!bodyEl || !bodyEl.children.length) return;
+        // Already handled per-item above — don't double-gate.
+        if (bodyEl.querySelector('.quest-answer')) return;
+        var accent = node.style.getPropertyValue('--quest') || '#8b5cf6';
+        var inner = document.createElement('div');
+        inner.className = 'quest-reveal-hidden';
+        while (bodyEl.firstChild) inner.appendChild(bodyEl.firstChild);
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'quest-reveal-btn';
+        btn.textContent = 'Reveal answers';
+        btn.style.setProperty('--quest', accent);
+        bodyEl.appendChild(btn);
+        bodyEl.appendChild(inner);
+        btn.addEventListener('click', function(){
+          inner.classList.remove('quest-reveal-hidden');
+          inner.classList.add('quest-revealed-anim');
+          btn.remove();
+          if (window.__aiToolSendHeight) setTimeout(window.__aiToolSendHeight, 30);
+        });
+      })(sectionNodes[s]);
+    }
+  } catch (e) {}
+}
+
+if (!document.__questTapBound) {
+  document.__questTapBound = true;
+  document.addEventListener('click', function(e){
+    var t = e.target;
+    var check = t && t.closest ? t.closest('.quest-check') : null;
+    if (check) { check.classList.toggle('quest-checked'); return; }
+    var mat = t && t.closest ? t.closest('.quest-material') : null;
+    if (mat) { mat.classList.toggle('quest-checked'); return; }
+  }, true);
+}
 `;
 
 export function wrapQuestExperience(bodyHtml: string): string {
