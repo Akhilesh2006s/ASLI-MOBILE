@@ -20,7 +20,7 @@ import {
   type LearningPathContentItem,
 } from '../../src/lib/learningPathContent';
 import { useSchoolProgram } from '../../src/hooks/useSchoolProgram';
-import { prepareLibraryContents, getLibraryContentDisplayTitle } from '../../src/lib/dedupe-library-content';
+import { prepareLibraryContents, getLibraryContentDisplayTitle, isIitTrackContent } from '../../src/lib/dedupe-library-content';
 import { groupContentsByType } from '../../src/lib/learning-path-content-groups';
 import { GlassPanel } from '../../src/components/ui';
 
@@ -93,7 +93,7 @@ export default function SubjectContent() {
             classNumber: subjectMeta?.classNumber,
             productCategory: subjectMeta?.productCategory,
           },
-        }),
+        }).filter((item) => !isIitTrackContent(item)),
       );
     } catch (error) {
       console.error('Error fetching subject data:', error);

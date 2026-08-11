@@ -19,6 +19,7 @@ import GlassPanel from '../../../src/components/ui/GlassPanel';
 import { GLASS_ROW, GLASS_VIOLET } from '../../../src/theme/glass';
 import {
   prepareLibraryContents,
+  isIitTrackContent,
   type LibraryContentRow,
 } from '../../../src/lib/dedupe-library-content';
 import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
@@ -150,7 +151,7 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
       const { data } = await api.get('/api/student/asli-prep-content');
       const raw = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
       prepared = prepareLibraryContents(raw, isAsliPrepExclusive);
-      setItemCounts(countItemsBySubject(prepared));
+      setItemCounts(countItemsBySubject(prepared.filter((item) => !isIitTrackContent(item))));
       if (list.length === 0) {
         list = subjectsFromPrepContent(prepared);
       }

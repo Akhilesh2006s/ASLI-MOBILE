@@ -67,6 +67,11 @@ export function getLibraryContentProductCategory(row: LibraryContentLike): strin
     .toUpperCase();
 }
 
+/** Any non-empty productCategory (Alpha/Beta/Gamma/Delta/…) marks IIT-track content. */
+export function isIitTrackContent(row: LibraryContentLike): boolean {
+  return Boolean(getLibraryContentProductCategory(row));
+}
+
 function titleAlreadyHasClassOrTrack(title: string, classNumber: string, trackLabel: string): boolean {
   const t = title.toLowerCase();
   if (classNumber) {

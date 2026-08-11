@@ -12,7 +12,7 @@ import {
   isSoftDeletedSubjectName,
   subjectCatalogGroupKey,
 } from './subject-names';
-import { prepareLibraryContents, dedupeLibraryContents } from './dedupe-library-content';
+import { prepareLibraryContents, dedupeLibraryContents, isIitTrackContent } from './dedupe-library-content';
 
 export type LearningPathRole = 'admin' | 'teacher' | 'student';
 
@@ -124,7 +124,9 @@ async function loadTeacherLearningPathCatalog(
 
   const allContentRaw = await fetchAllPrepContent('teacher');
   const allContent = sortContentNewestFirst(
-    prepareLibraryContents(parseContentPayload(allContentRaw), isAsliPrepExclusive)
+    prepareLibraryContents(parseContentPayload(allContentRaw), isAsliPrepExclusive).filter(
+      (item) => !isIitTrackContent(item)
+    )
   );
 
   const contentByKey = new Map<string, any[]>();
@@ -196,7 +198,9 @@ export async function loadLearningPathCatalog(
     fetchAllPrepContent(role),
   ]);
 
-  const allContent = prepareLibraryContents(allContentRaw, isAsliPrepExclusive);
+  const allContent = prepareLibraryContents(allContentRaw, isAsliPrepExclusive).filter(
+    (item) => !isIitTrackContent(item)
+  );
   const bySubjectId = new Map<string, any[]>();
 
   for (const item of allContent) {

@@ -337,7 +337,14 @@ export default function StudentToolPage() {
     formParams.subject,
     cascadeTopic,
     selectedBoard,
-    { enabled: uiReady },
+    {
+      enabled: uiReady,
+      productCategory: isIitBoard
+        ? formParams.batch
+          ? String(formParams.batch)
+          : undefined
+        : '',
+    },
   );
 
   const classSelectOptions = useMemo(() => {
@@ -494,6 +501,13 @@ export default function StudentToolPage() {
         delete newParams.projectTopic;
       }
       if (name === 'subject') {
+        delete newParams.topic;
+        delete newParams.subTopic;
+        delete newParams.concept;
+        delete newParams.chapter;
+        delete newParams.projectTopic;
+      }
+      if (name === 'batch') {
         delete newParams.topic;
         delete newParams.subTopic;
         delete newParams.concept;

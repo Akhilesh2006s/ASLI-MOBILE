@@ -5,6 +5,7 @@ import {
   getLibraryContentClassNumber,
   getLibraryContentDisplayTitle,
   getLibraryContentProductCategory,
+  isIitTrackContent,
   normalizeLibraryClassNumber,
   type LibrarySubjectContext,
 } from './library-content-labels';
@@ -16,6 +17,7 @@ export {
   getLibraryContentClassNumber,
   getLibraryContentDisplayTitle,
   getLibraryContentProductCategory,
+  isIitTrackContent,
   normalizeLibraryClassNumber,
 };
 

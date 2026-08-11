@@ -15,12 +15,12 @@ const LIST_GAP = STUDENT_SPACING.md;
 const TOOLS_TABLET_MIN_WIDTH = 768;
 const TOOLS_WIDE_MIN_WIDTH = 1024;
 const STUDENT_TOOLS_SUBTITLE =
-  'Choose a tool, add your curriculum details, and generate clear study content with Vidya AI.';
+  'Stuck on a concept? Revising a chapter? Preparing for a test? Vidya AI has a tool to help.';
 
 const HERO_STAT_CHIPS: { icon: keyof typeof Ionicons.glyphMap; title: string; copy: string }[] = [
-  { icon: 'time-outline', title: 'Save Time', copy: 'Automate revision & notes' },
-  { icon: 'bulb-outline', title: 'Practice Smarter', copy: 'Questions built for you' },
-  { icon: 'trending-up-outline', title: 'Better Outcomes', copy: 'Track progress & improve' },
+  { icon: 'book-outline', title: 'Learn', copy: 'Understand concepts clearly' },
+  { icon: 'create-outline', title: 'Practise', copy: 'Questions, flashcards & tests' },
+  { icon: 'compass-outline', title: 'Prepare', copy: 'Study guides, projects & plans' },
 ];
 
 export default function VidyaAIView() {
@@ -112,7 +112,7 @@ export default function VidyaAIView() {
         <View style={styles.heroBadge}>
           <Text style={styles.heroBadgeText}>VIDYA AI STUDIO</Text>
         </View>
-        <Text style={styles.sectionTitle}>What would you like to learn?</Text>
+        <Text style={styles.sectionTitle}>What are you working on today?</Text>
         <Text style={styles.sectionSubtitle}>{STUDENT_TOOLS_SUBTITLE}</Text>
         <View style={styles.heroStatsRow}>
           {HERO_STAT_CHIPS.map((stat) => (

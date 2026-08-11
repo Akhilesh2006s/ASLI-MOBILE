@@ -289,7 +289,14 @@ export default function TeacherToolPage() {
     formParams.subject,
     cascadeTopic,
     selectedBoard,
-    { enabled: uiReady },
+    {
+      enabled: uiReady,
+      productCategory: isIitBoard
+        ? formParams.batch
+          ? String(formParams.batch)
+          : undefined
+        : '',
+    },
   );
 
   const classSelectOptions =
@@ -524,6 +531,13 @@ export default function TeacherToolPage() {
         delete newParams.projectTopic;
       }
       if (name === 'subject') {
+        delete newParams.topic;
+        delete newParams.subTopic;
+        delete newParams.concept;
+        delete newParams.chapter;
+        delete newParams.projectTopic;
+      }
+      if (name === 'batch') {
         delete newParams.topic;
         delete newParams.subTopic;
         delete newParams.concept;

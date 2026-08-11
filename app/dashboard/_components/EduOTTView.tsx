@@ -23,6 +23,7 @@ import { resolveContentDurationSeconds, canJoinLiveSession } from '../../../src/
 import {
   dedupeLibraryContents,
   extractLibraryContentList,
+  isIitTrackContent,
   isLibraryVideoRow,
   type LibraryContentRow,
 } from '../../../src/lib/dedupe-library-content';
@@ -100,7 +101,7 @@ function rowsFromVideoPayload(payload: unknown, assumeVideoType: boolean): Libra
   const rows = extractLibraryContentList(payload).map((row) =>
     assumeVideoType && !row.type ? { ...row, type: 'Video' } : row
   );
-  return rows.filter(isLibraryVideoRow);
+  return rows.filter(isLibraryVideoRow).filter(isIitTrackContent);
 }
 
 async function fetchRoleVideos(
@@ -280,7 +281,7 @@ function mapContentToVideoItem(content: any): VideoItem {
 }
 
 function mapAndDedupeVideos(list: unknown[]): VideoItem[] {
-  const rows = extractLibraryContentList(list).filter(isLibraryVideoRow);
+  const rows = extractLibraryContentList(list).filter(isLibraryVideoRow).filter(isIitTrackContent);
   return dedupeLibraryContents(rows).map(mapContentToVideoItem);
 }
 

@@ -35,6 +35,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { API_BASE_URL } from '../../src/services/api/api';
 import { useAuth } from '../../src/context/AuthContext';
+import { useKeyboardDockLift } from '../../src/hooks/useKeyboardDockLift';
 import { GlassPanel } from '../../src/components/ui';
 import { COLORS, FONT, RADIUS, SPACING } from '../../src/theme';
 
@@ -140,6 +141,7 @@ type FieldProps = {
   delay?: number;
   inputRef?: RefObject<TextInputType | null>;
   onSubmitEditing?: () => void;
+  onFocusField?: () => void;
 };
 
 function PremiumField({
@@ -155,6 +157,7 @@ function PremiumField({
   delay = 0,
   inputRef,
   onSubmitEditing,
+  onFocusField,
 }: FieldProps) {
   const [focused, setFocused] = useState(false);
   const focusAnim = useSharedValue(0);
@@ -185,7 +188,10 @@ function PremiumField({
           placeholderTextColor={PALETTE.muted}
           value={value}
           onChangeText={onChangeText}
-          onFocus={() => setFocused(true)}
+          onFocus={() => {
+            setFocused(true);
+            onFocusField?.();
+          }}
           onBlur={() => setFocused(false)}
           keyboardType={keyboardType}
           autoCapitalize="none"
@@ -223,8 +229,13 @@ export default function Login() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const { signIn } = useAuth();
+  const { keyboardLift, keyboardOpen, captureBaseline } = useKeyboardDockLift();
+  const scrollRef = useRef<ScrollView>(null);
   const cardWidth = useMemo(() => Math.min(width - 28, 440), [width]);
-  const logoWidth = useMemo(() => Math.min(width * 0.52, 200), [width]);
+  const logoWidth = useMemo(
+    () => (keyboardOpen ? Math.min(width * 0.28, 96) : Math.min(width * 0.52, 200)),
+    [width, keyboardOpen],
+  );
   const logoHeight = useMemo(() => logoWidth * 0.92, [logoWidth]);
 
   const [showForm, setShowForm] = useState(true);
@@ -266,6 +277,22 @@ export default function Login() {
     };
     load();
   }, [showForm]);
+
+  // Keep active fields (and Sign In) above the keyboard on edge-to-edge Android.
+  useEffect(() => {
+    if (!keyboardOpen) return;
+    const id = setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, Platform.OS === 'ios' ? 60 : 120);
+    return () => clearTimeout(id);
+  }, [keyboardOpen, keyboardLift]);
+
+  const ensureFieldVisible = () => {
+    captureBaseline();
+    setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, Platform.OS === 'ios' ? 80 : 160);
+  };
 
   const redirectByRole = (role: string) => {
     const normalized = String(role || '')
@@ -350,13 +377,27 @@ export default function Login() {
 
       {showForm ? (
         <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
-          <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <KeyboardAvoidingView
+            style={styles.flex}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
+          >
             <ScrollView
-              contentContainerStyle={styles.scroll}
+              ref={scrollRef}
+              contentContainerStyle={[
+                styles.scroll,
+                keyboardOpen && styles.scrollKeyboardOpen,
+                keyboardLift > 0 && { paddingBottom: SPACING.xl + keyboardLift },
+              ]}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
             >
-              <Animated.View entering={FadeInDown.duration(500)} style={styles.brandHeader}>
+              <Animated.View
+                entering={FadeInDown.duration(500)}
+                style={[styles.brandHeader, keyboardOpen && styles.brandHeaderCompact]}
+              >
                 <Image
                   source={require('../../assets/logo-transparent.png')}
                   style={{ width: logoWidth, height: logoHeight }}
@@ -367,9 +408,15 @@ export default function Login() {
 
               {/* Glass card */}
               <Animated.View entering={FadeInDown.duration(600).delay(120).springify()} style={{ width: cardWidth }}>
-                <GlassPanel style={styles.card} radius={28} tone="strong">
-                  <View style={styles.cardTop}>
-                    <Text style={styles.cardTitle}>Welcome Back</Text>
+                <GlassPanel
+                  style={[styles.card, keyboardOpen && styles.cardKeyboardOpen]}
+                  radius={28}
+                  tone="strong"
+                >
+                  <View style={[styles.cardTop, keyboardOpen && styles.cardTopCompact]}>
+                    <Text style={[styles.cardTitle, keyboardOpen && styles.cardTitleCompact]}>
+                      Welcome Back
+                    </Text>
                   </View>
 
                   {error ? (
@@ -394,6 +441,7 @@ export default function Login() {
                       keyboardType="email-address"
                       delay={180}
                       inputRef={emailInputRef}
+                      onFocusField={ensureFieldVisible}
                       onSubmitEditing={() => passwordInputRef.current?.focus()}
                     />
                     <PremiumField
@@ -410,6 +458,7 @@ export default function Login() {
                       onTogglePassword={() => setShowPassword((v) => !v)}
                       delay={260}
                       inputRef={passwordInputRef}
+                      onFocusField={ensureFieldVisible}
                       onSubmitEditing={handleSubmit}
                     />
 
@@ -445,20 +494,24 @@ export default function Login() {
                     </Animated.View>
                   </View>
 
-                  <View style={styles.dividerRow}>
-                    <View style={styles.dividerLine} />
-                    <Text style={styles.dividerText}>or</Text>
-                    <View style={styles.dividerLine} />
-                  </View>
+                  {!keyboardOpen ? (
+                    <>
+                      <View style={styles.dividerRow}>
+                        <View style={styles.dividerLine} />
+                        <Text style={styles.dividerText}>or</Text>
+                        <View style={styles.dividerLine} />
+                      </View>
 
-                  <Pressable
-                    style={styles.registerBtn}
-                    accessibilityRole="button"
-                    onPress={handleCreateAccount}
-                  >
-                    <Ionicons name="person-add-outline" size={18} color={PALETTE.accentText} />
-                    <Text style={styles.registerBtnText}>Create a free account</Text>
-                  </Pressable>
+                      <Pressable
+                        style={styles.registerBtn}
+                        accessibilityRole="button"
+                        onPress={handleCreateAccount}
+                      >
+                        <Ionicons name="person-add-outline" size={18} color={PALETTE.accentText} />
+                        <Text style={styles.registerBtnText}>Create a free account</Text>
+                      </Pressable>
+                    </>
+                  ) : null}
                 </GlassPanel>
               </Animated.View>
             </ScrollView>
@@ -481,6 +534,10 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xl,
     alignItems: 'center',
   },
+  scrollKeyboardOpen: {
+    justifyContent: 'flex-start',
+    paddingTop: 0,
+  },
   brandHeader: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -488,6 +545,9 @@ const styles = StyleSheet.create({
     marginTop: 0,
     marginBottom: SPACING.md,
     width: '100%',
+  },
+  brandHeaderCompact: {
+    marginBottom: SPACING.xs,
   },
   card: {
     paddingHorizontal: SPACING.xl,
@@ -499,8 +559,15 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 8,
   },
+  cardKeyboardOpen: {
+    paddingTop: SPACING.lg,
+    paddingBottom: SPACING.lg,
+  },
   cardTop: {
     marginBottom: SPACING.xl,
+  },
+  cardTopCompact: {
+    marginBottom: SPACING.md,
   },
   cardTitle: {
     fontSize: 28,
@@ -508,6 +575,10 @@ const styles = StyleSheet.create({
     color: PALETTE.text,
     letterSpacing: -0.5,
     marginBottom: 6,
+  },
+  cardTitleCompact: {
+    fontSize: 22,
+    marginBottom: 0,
   },
   cardSubtitle: {
     fontSize: FONT.base,

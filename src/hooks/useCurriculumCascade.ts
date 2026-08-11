@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../lib/api-config';
-import { mergePreservingPrimaryOrder } from '../lib/curriculum-chapter-sort';
+import {
+  mergePreservingPrimaryOrder,
+  normalizeProductCategory,
+  sortChapterWiseLabels,
+} from '../lib/curriculum-chapter-sort';
 
 type CurriculumRow = { id: string; name: string; label: string };
 
@@ -127,7 +131,13 @@ async function fetchCurriculum(path: string, token: string | null) {
 
 async function fetchManagedTopicTaxonomy(
   token: string | null,
-  params: { board?: string; classLabel?: string; subject?: string; topicName?: string }
+  params: {
+    board?: string;
+    classLabel?: string;
+    subject?: string;
+    topicName?: string;
+    productCategory?: string;
+  }
 ) {
   const buildPath = (includeBoard: boolean) => {
     const qs = new URLSearchParams();
@@ -135,6 +145,7 @@ async function fetchManagedTopicTaxonomy(
     if (params.classLabel) qs.set('classLabel', params.classLabel);
     if (params.subject) qs.set('subject', params.subject);
     if (params.topicName) qs.set('topicName', params.topicName);
+    if (params.productCategory !== undefined) qs.set('productCategory', params.productCategory);
     return `/api/ai-generator/topic-taxonomy?${qs.toString()}`;
   };
 
@@ -171,9 +182,13 @@ export function useCurriculumCascade(
   subject: string | undefined,
   topic: string | undefined,
   board: string | undefined = undefined,
-  options?: { enabled?: boolean },
+  options?: { enabled?: boolean; productCategory?: string },
 ) {
   const enabled = options?.enabled !== false;
+  const productCategory =
+    options?.productCategory !== undefined
+      ? normalizeProductCategory(options.productCategory)
+      : undefined;
   const gradeForApi = normalizeGradeForCurriculum(gradeLevel);
   const [classRows, setClassRows] = useState<CurriculumRow[]>([]);
   const [subjects, setSubjects] = useState<string[]>([]);
@@ -193,6 +208,7 @@ export function useCurriculumCascade(
         const token = await SecureStore.getItemAsync('authToken');
         const qs = new URLSearchParams({ v: '4' });
         if (board) qs.set('board', board);
+        if (productCategory !== undefined) qs.set('productCategory', productCategory);
         const data = await fetchCurriculum(`/api/curriculum/classes?${qs.toString()}`, token);
         if (cancelled) return;
         const rows = (data as { data?: CurriculumRow[] }).data || [];
@@ -206,7 +222,7 @@ export function useCurriculumCascade(
     return () => {
       cancelled = true;
     };
-  }, [board, enabled]);
+  }, [board, productCategory, enabled]);
 
   useEffect(() => {
     let cancelled = false;
@@ -222,9 +238,14 @@ export function useCurriculumCascade(
         const token = await SecureStore.getItemAsync('authToken');
         const qs = new URLSearchParams({ classId: gradeForApi, syllabus: 'curriculum-v3' });
         if (board) qs.set('board', board);
+        if (productCategory !== undefined) qs.set('productCategory', productCategory);
         const [data, managed] = await Promise.all([
           fetchCurriculum(`/api/curriculum/subjects?${qs.toString()}`, token),
-          fetchManagedTopicTaxonomy(token, { board, classLabel: gradeForApi }),
+          fetchManagedTopicTaxonomy(token, {
+            board,
+            classLabel: gradeForApi,
+            productCategory,
+          }),
         ]);
         if (cancelled) return;
         const curriculumSubjects = dedupeSubjectOptions(
@@ -241,7 +262,7 @@ export function useCurriculumCascade(
     return () => {
       cancelled = true;
     };
-  }, [gradeLevel, gradeForApi, board, enabled]);
+  }, [gradeLevel, gradeForApi, board, productCategory, enabled]);
 
   useEffect(() => {
     let cancelled = false;
@@ -261,14 +282,22 @@ export function useCurriculumCascade(
           syllabus: SYLLABUS,
         });
         if (board) qs.set('board', board);
+        if (productCategory !== undefined) qs.set('productCategory', productCategory);
         const [data, managed] = await Promise.all([
           fetchCurriculum(`/api/curriculum/topics?${qs.toString()}`, token),
-          fetchManagedTopicTaxonomy(token, { board, classLabel: gradeForApi, subject }),
+          fetchManagedTopicTaxonomy(token, {
+            board,
+            classLabel: gradeForApi,
+            subject,
+            productCategory,
+          }),
         ]);
         if (cancelled) return;
         const curriculumTopics = rowsToNames((data as { data?: CurriculumRow[] }).data);
         const managedTopics = (managed as { data?: { topics?: string[] } })?.data?.topics || [];
-        setTopics(mergePreservingPrimaryOrder(managedTopics, curriculumTopics));
+        setTopics(
+          sortChapterWiseLabels(mergePreservingPrimaryOrder(managedTopics, curriculumTopics))
+        );
       } catch {
         if (!cancelled) setTopics([]);
       } finally {
@@ -278,7 +307,7 @@ export function useCurriculumCascade(
     return () => {
       cancelled = true;
     };
-  }, [gradeLevel, gradeForApi, subject, board, enabled]);
+  }, [gradeLevel, gradeForApi, subject, board, productCategory, enabled]);
 
   useEffect(() => {
     let cancelled = false;
@@ -299,9 +328,16 @@ export function useCurriculumCascade(
           syllabus: SYLLABUS,
         });
         if (board) qs.set('board', board);
+        if (productCategory !== undefined) qs.set('productCategory', productCategory);
         const [data, managed] = await Promise.all([
           fetchCurriculum(`/api/curriculum/subtopics?${qs.toString()}`, token),
-          fetchManagedTopicTaxonomy(token, { board, classLabel: gradeForApi, subject, topicName: topic }),
+          fetchManagedTopicTaxonomy(token, {
+            board,
+            classLabel: gradeForApi,
+            subject,
+            topicName: topic,
+            productCategory,
+          }),
         ]);
         if (cancelled) return;
         const curriculumSubtopics = rowsToNames((data as { data?: CurriculumRow[] }).data);
@@ -320,7 +356,7 @@ export function useCurriculumCascade(
     return () => {
       cancelled = true;
     };
-  }, [gradeLevel, gradeForApi, subject, topic, board, enabled]);
+  }, [gradeLevel, gradeForApi, subject, topic, board, productCategory, enabled]);
 
   const classOptions = useMemo(() => {
     if (classRows.length === 0) return [];

@@ -22,6 +22,7 @@ import {
   getLibraryContentClassNumber,
   getLibraryContentDisplayTitle,
   getLibraryContentProductCategory,
+  isIitTrackContent,
   prepareLibraryContents,
 } from '../../../src/lib/dedupe-library-content';
 import { formatProductCategoryLabel } from '../../../src/lib/library-content-labels';
@@ -99,7 +100,7 @@ export default function TeacherSubjectContentScreen() {
             classNumber: subData?.classNumber,
             productCategory: subData?.productCategory,
           },
-        }),
+        }).filter((item) => !isIitTrackContent(item)),
       );
       setClasses(Array.isArray(classRes.data) ? classRes.data : []);
       setExpandedTypes({});
