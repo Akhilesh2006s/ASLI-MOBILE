@@ -88,7 +88,7 @@ export default function TeacherSubjectContentScreen() {
     try {
       const [subRes, contentRes, classRes] = await Promise.all([
         teacherService.subject(subjectId),
-        teacherService.asliPrepContent({ subject: subjectId }),
+        teacherService.asliPrepContent({ subject: subjectId, surface: 'learning-path' }),
         teacherService.classes(),
       ]);
       const subData = subRes.data?.subject ?? subRes.data;

@@ -73,14 +73,18 @@ async function fetchSubjects(role: LearningPathRole): Promise<any[]> {
 
 async function fetchAllPrepContent(role: LearningPathRole): Promise<any[]> {
   if (role === 'admin') {
-    const response = await api.get('/api/admin/asli-prep-content');
+    const response = await api.get('/api/admin/asli-prep-content', {
+      params: { surface: 'learning-path' },
+    });
     return parseContentPayload(response?.data);
   }
   if (role === 'teacher') {
-    const data = await fetchTeacherPayload<unknown>('/api/teacher/asli-prep-content');
+    const data = await fetchTeacherPayload<unknown>('/api/teacher/asli-prep-content?surface=learning-path');
     return parseContentPayload(data);
   }
-  const response = await api.get('/api/student/asli-prep-content');
+  const response = await api.get('/api/student/asli-prep-content', {
+    params: { surface: 'learning-path' },
+  });
   return parseContentPayload(response?.data);
 }
 

@@ -142,11 +142,13 @@ function rowRichness(row: LibraryContentRow): number {
  * Keeps the row with the richest metadata when keys collide.
  *
  * Pass 1: media URL / id / meta slot
- * Pass 2: visible display title + type (catches re-uploads with different CDN URLs)
+ * Pass 2 (optional): visible display title + type — only for subject-detail catalogs.
+ *   Skip on EduOTT / global lists: backend already URL-dedupes, and title collapse
+ *   drops distinct videos that share a generic title (web shows all of them).
  */
 export function dedupeLibraryContents<T extends LibraryContentRow>(
   rows: T[],
-  options?: { collapseAcrossSubjects?: boolean },
+  options?: { collapseAcrossSubjects?: boolean; skipTitleCollapse?: boolean },
 ): T[] {
   if (!Array.isArray(rows) || rows.length < 2) return rows || [];
 
@@ -176,7 +178,7 @@ export function dedupeLibraryContents<T extends LibraryContentRow>(
   const keptByUrl = new Set(byKey.values());
   const afterUrlPass = rows.filter((row) => keptByUrl.has(row));
 
-  if (afterUrlPass.length < 2) return afterUrlPass;
+  if (options?.skipTitleCollapse || afterUrlPass.length < 2) return afterUrlPass;
 
   const collapseAcrossSubjects = Boolean(options?.collapseAcrossSubjects);
   const byTitle = new Map<string, T>();

@@ -23,7 +23,6 @@ import { resolveContentDurationSeconds, canJoinLiveSession } from '../../../src/
 import {
   dedupeLibraryContents,
   extractLibraryContentList,
-  isIitTrackContent,
   isLibraryVideoRow,
   type LibraryContentRow,
 } from '../../../src/lib/dedupe-library-content';
@@ -54,7 +53,7 @@ function buildVideosUrl(
   selectedClass: string | null,
   selectedSubject: string | null
 ): string {
-  const params = new URLSearchParams({ type: 'Video' });
+  const params = new URLSearchParams({ type: 'Video', surface: 'eduott' });
   if (role === 'student') {
     if (selectedClass) params.set('class', selectedClass);
     if (selectedSubject) params.set('subject', selectedSubject);
@@ -81,7 +80,7 @@ function buildVideosFallbackUrl(role: EduOTTRole): string {
 }
 
 function buildAllContentUrl(role: EduOTTRole): string {
-  return `${API_BASE_URL}/api/${role}/asli-prep-content`;
+  return `${API_BASE_URL}/api/${role}/asli-prep-content?surface=eduott`;
 }
 
 async function fetchJsonPayload(
@@ -101,7 +100,7 @@ function rowsFromVideoPayload(payload: unknown, assumeVideoType: boolean): Libra
   const rows = extractLibraryContentList(payload).map((row) =>
     assumeVideoType && !row.type ? { ...row, type: 'Video' } : row
   );
-  return rows.filter(isLibraryVideoRow).filter(isIitTrackContent);
+  return rows.filter(isLibraryVideoRow);
 }
 
 async function fetchRoleVideos(
@@ -281,8 +280,10 @@ function mapContentToVideoItem(content: any): VideoItem {
 }
 
 function mapAndDedupeVideos(list: unknown[]): VideoItem[] {
-  const rows = extractLibraryContentList(list).filter(isLibraryVideoRow).filter(isIitTrackContent);
-  return dedupeLibraryContents(rows).map(mapContentToVideoItem);
+  const rows = extractLibraryContentList(list).filter(isLibraryVideoRow);
+  // Match web EduOTT: trust API URL/meta dedupe. Title-collapse here was dropping
+  // distinct videos that share a generic title (e.g. ~14 on web → ~6–7 on mobile).
+  return dedupeLibraryContents(rows, { skipTitleCollapse: true }).map(mapContentToVideoItem);
 }
 
 const EDUOTT_EDGE_PAD = STUDENT_SPACING.sm;
@@ -334,7 +335,7 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
   const [videosFetchFailed, setVideosFetchFailed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [sessionSearchTerm, setSessionSearchTerm] = useState('');
-  const [visibleCount, setVisibleCount] = useState(10);
+  const [visibleCount, setVisibleCount] = useState(40);
 
   useEffect(() => {
     if (!programLoading && !isAsliPrepExclusive && activeTab === 'videos') {
@@ -385,7 +386,7 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
   }, [isAsliPrepExclusive, programLoading, role]);
 
   useEffect(
-    () => setVisibleCount(10),
+    () => setVisibleCount(40),
     [searchTerm, listEpoch]
   );
 

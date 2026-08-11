@@ -148,7 +148,9 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
     }
 
     try {
-      const { data } = await api.get('/api/student/asli-prep-content');
+      const { data } = await api.get('/api/student/asli-prep-content', {
+        params: { surface: 'learning-path' },
+      });
       const raw = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
       prepared = prepareLibraryContents(raw, isAsliPrepExclusive);
       setItemCounts(countItemsBySubject(prepared.filter((item) => !isIitTrackContent(item))));

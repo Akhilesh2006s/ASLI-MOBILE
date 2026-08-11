@@ -139,10 +139,11 @@ const teacherService = {
     cachedFetch<any[]>(`diary_${limit}`, `/api/teacher/work-diary?limit=${limit}`),
   classStats: () => cachedFetch<any>('class_stats', '/api/teacher/class-stats'),
   attendance: () => cachedFetch<any>('attendance', '/api/teacher/attendance'),
-  asliPrepContent: (params?: { subject?: string; type?: string }) => {
+  asliPrepContent: (params?: { subject?: string; type?: string; surface?: string }) => {
     const qs = new URLSearchParams();
     if (params?.subject) qs.set('subject', params.subject);
     if (params?.type) qs.set('type', params.type);
+    if (params?.surface) qs.set('surface', params.surface);
     const q = qs.toString();
     return cachedFetch<any[]>(`prep_${q}`, `/api/teacher/asli-prep-content${q ? `?${q}` : ''}`);
   },

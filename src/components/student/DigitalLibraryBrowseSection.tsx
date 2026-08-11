@@ -23,18 +23,23 @@ type Props = {
   dark?: boolean;
 };
 
+const GRID_GAP = 8;
+
 export default function DigitalLibraryBrowseSection({
   returnTo = 'learning',
   showHeader = true,
   dark,
 }: Props) {
-  const { width } = useWindowDimensions();
+  const { width: windowWidth } = useWindowDimensions();
   const { isAsliPrepExclusive, libraryTiles, loading: programLoading } = useSchoolProgram();
   const [allContent, setAllContent] = useState<{ type?: string }[]>([]);
   const [isLoadingContent, setIsLoadingContent] = useState(true);
+  const [gridWidth, setGridWidth] = useState(0);
 
-  const cols = width < 380 ? 2 : 3;
-  const tileWidth = cols === 2 ? '48%' : '31.5%';
+  // Phones: 2 cols (tight 2×3). Tablets: 3 cols.
+  const cols = windowWidth >= 768 ? 3 : 2;
+  const tileWidth =
+    gridWidth > 0 ? Math.floor((gridWidth - GRID_GAP * (cols - 1)) / cols) : undefined;
 
   useEffect(() => {
     let cancelled = false;
@@ -82,13 +87,22 @@ export default function DigitalLibraryBrowseSection({
       {programLoading || isLoadingContent ? (
         <ActivityIndicator color={STUDENT.primary} style={styles.loader} />
       ) : (
-        <View style={styles.grid}>
+        <View
+          style={styles.grid}
+          onLayout={(event) => {
+            const next = Math.floor(event.nativeEvent.layout.width);
+            if (next > 0 && next !== gridWidth) setGridWidth(next);
+          }}
+        >
           {libraryTiles.map((tile, index) => {
             const color = SUBJECT_COLORS[index % SUBJECT_COLORS.length];
             return (
               <TouchableOpacity
                 key={tile.key}
-                style={[styles.tileWrap, { width: tileWidth }]}
+                style={[
+                  styles.tileWrap,
+                  tileWidth != null ? { width: tileWidth } : styles.tileWrapFallback,
+                ]}
                 activeOpacity={0.88}
                 onPress={() => openDigitalLibraryType(tile.type, returnTo)}
                 accessibilityRole="button"
@@ -100,7 +114,12 @@ export default function DigitalLibraryBrowseSection({
                   style={styles.tile}
                   contentStyle={styles.tileInner}
                 >
-                  <View style={[styles.tileIcon, { backgroundColor: `${color}20`, borderColor: `${color}40` }]}>
+                  <View
+                    style={[
+                      styles.tileIcon,
+                      { backgroundColor: `${color}20`, borderColor: `${color}40` },
+                    ]}
+                  >
                     <Ionicons
                       name={tile.icon as keyof typeof Ionicons.glyphMap}
                       size={20}
@@ -131,29 +150,29 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 10,
+    alignItems: 'stretch',
+    gap: GRID_GAP,
   },
-  tileWrap: {
-    marginBottom: 2,
+  tileWrap: {},
+  tileWrapFallback: {
+    width: '48%',
   },
   tile: {
     width: '100%',
   },
   tileInner: {
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 10,
-    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    gap: 4,
   },
   tileIcon: {
-    width: 42,
-    height: 42,
+    width: 40,
+    height: 40,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    marginBottom: 2,
   },
   tileLabel: {
     fontSize: 13,
