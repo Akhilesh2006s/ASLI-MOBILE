@@ -44,7 +44,8 @@ export default function AttendanceScreen() {
   };
 
   const summary = useMemo(() => {
-    const totalMinutes = sessions.reduce((acc, item) => acc + Math.round((item.duration || 0) / 60), 0);
+    // UserSession.duration is already minutes (not seconds).
+    const totalMinutes = sessions.reduce((acc, item) => acc + Math.max(0, Math.round(item.duration || 0)), 0);
     const totalHours = (totalMinutes / 60).toFixed(1);
     const activeDays = new Set(
       sessions
@@ -110,7 +111,7 @@ export default function AttendanceScreen() {
         ) : (
           sessions.slice(0, 25).map((item, index) => {
             const dateText = item.date || item.startTime;
-            const durationMin = Math.max(1, Math.round((item.duration || 0) / 60));
+            const durationMin = Math.max(0, Math.round(item.duration || 0));
             return (
               <GlassPanel key={item._id || `${dateText}-${index}`} style={styles.sessionCard} radius={12} tone="medium">
                 {/* GlassPanel wraps children in its own view, so the row lives one level in */}

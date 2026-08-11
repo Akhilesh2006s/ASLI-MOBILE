@@ -23,18 +23,16 @@ export interface TeacherToolConfig {
   fields: TeacherToolFieldConfig[];
 }
 
-const cascadeFields = (extra: TeacherToolFieldConfig[] = [], opts?: { optionalSubtopic?: boolean }): TeacherToolFieldConfig[] => [
+const cascadeFields = (extra: TeacherToolFieldConfig[] = []): TeacherToolFieldConfig[] => [
   { name: 'gradeLevel', label: 'Class *', type: 'select', required: true, options: CLASS_OPTIONS },
   { name: 'subject', label: 'Subject *', type: 'select', required: true, dependsOn: 'gradeLevel' },
   { name: 'topic', label: 'Topic *', type: 'select', required: true, placeholder: 'Select topic', isNCERT: true },
   {
     name: 'subTopic',
-    label: opts?.optionalSubtopic
-      ? 'Sub Topic (optional — leave empty for whole chapter)'
-      : 'Sub Topic *',
+    label: 'Sub Topic (Optional)',
     type: 'select',
-    required: !opts?.optionalSubtopic,
-    placeholder: opts?.optionalSubtopic ? 'Whole chapter' : 'Select subtopic',
+    required: false,
+    placeholder: 'Whole chapter',
     isCascadeSubtopic: true,
   },
   ...extra,
@@ -52,7 +50,7 @@ const TEACHER_TOOL_CONFIGS: Record<string, Omit<TeacherToolConfig, 'icon' | 'col
   'worksheet-mcq-generator': {
     name: 'Worksheet & MCQ Generator',
     description: 'Design custom worksheets and MCQs with various question types',
-    fields: cascadeFields([], { optionalSubtopic: true }),
+    fields: cascadeFields(),
   },
   'concept-mastery-helper': {
     name: 'Concept Mastery Helper',
@@ -88,15 +86,15 @@ const TEACHER_TOOL_CONFIGS: Record<string, Omit<TeacherToolConfig, 'icon' | 'col
     name: 'Daily Class Plan Maker',
     description: 'Organize your daily teaching schedule efficiently',
     fields: [
-      { name: 'date', label: 'Date', type: 'text', placeholder: 'e.g., 2025-01-15' },
       ...cascadeFields(),
+      { name: 'date', label: 'Date *', type: 'text', required: true, placeholder: 'YYYY-MM-DD' },
       { name: 'timeSlots', label: 'Time Slots', type: 'text', placeholder: 'e.g., 9:00-10:00, 10:15-11:15' },
     ],
   },
   'exam-question-paper-generator': {
     name: 'Exam Question Paper Generator',
     description: 'Create comprehensive exam papers with varying difficulty',
-    fields: cascadeFields([], { optionalSubtopic: true }),
+    fields: cascadeFields(),
   },
 };
 

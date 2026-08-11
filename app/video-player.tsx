@@ -197,12 +197,12 @@ export default function VideoPlayer() {
       if (!opts?.silent) setIsLoading(true);
 
       const libraryAttempts: Array<() => Promise<{ data: any }>> = [
-        () => api.get('/api/teacher/asli-prep-content', { params: { type: 'Video' } }),
-        () => api.get('/api/teacher/asli-prep-content'),
-        () => api.get('/api/student/asli-prep-content', { params: { type: 'Video' } }),
-        () => api.get('/api/student/asli-prep-content'),
-        () => api.get('/api/admin/asli-prep-content', { params: { type: 'Video' } }),
-        () => api.get('/api/admin/asli-prep-content'),
+        () => api.get('/api/teacher/asli-prep-content', { params: { type: 'Video', surface: 'eduott' } }),
+        () => api.get('/api/teacher/asli-prep-content', { params: { surface: 'learning-path' } }),
+        () => api.get('/api/student/asli-prep-content', { params: { type: 'Video', surface: 'eduott' } }),
+        () => api.get('/api/student/asli-prep-content', { params: { surface: 'learning-path' } }),
+        () => api.get('/api/admin/asli-prep-content', { params: { type: 'Video', surface: 'eduott' } }),
+        () => api.get('/api/admin/asli-prep-content', { params: { surface: 'learning-path' } }),
         () => api.get('/api/teacher/videos'),
         () => api.get('/api/student/videos'),
       ];

@@ -14,7 +14,9 @@ import authService from '../../../src/services/api/authService';
 import {
   CLASS_FILTER_OPTIONS,
   examIncludesClass,
+  expandExamsByClass,
   getExamClassStrings,
+  type ExamClassCard,
   type ExamClassLike,
 } from '../../../src/lib/exam-classes';
 import {
@@ -77,7 +79,17 @@ interface AnalyticsData {
   attemptedCount?: number;
   notAttemptedCount?: number;
   averageScore?: string;
+  examClasses?: string[];
+  examTitle?: string;
   topPerformers?: Array<{
+    rank: number;
+    studentName: string;
+    studentEmail?: string;
+    classNumber?: string;
+    percentage: number;
+    marks: string;
+  }>;
+  rankedStudents?: Array<{
     rank: number;
     studentName: string;
     studentEmail?: string;
@@ -99,7 +111,9 @@ const EMPTY_ANALYTICS: AnalyticsData = {
   attemptedCount: 0,
   notAttemptedCount: 0,
   averageScore: '0.00',
+  examClasses: [],
   topPerformers: [],
+  rankedStudents: [],
 };
 
 function formatAverageScore(score?: string): string {
@@ -288,6 +302,8 @@ export default function ExamsView() {
   const [viewerLabel, setViewerLabel] = useState('School Admin');
   const [exportingExamId, setExportingExamId] = useState<string | null>(null);
   const [selectedResult, setSelectedResult] = useState<AdminExamResult | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [showAllPerformers, setShowAllPerformers] = useState(false);
 
   useEffect(() => {
     authService
@@ -387,9 +403,20 @@ export default function ExamsView() {
     }
   }, [selectedExam, filters, fetchExams, loadExamDetail]);
 
-  const openExamDetail = (exam: Exam) => {
-    setSelectedExam(exam);
-    void loadExamDetail(exam, filters);
+  const openExamDetail = (exam: ExamClassCard<Exam> | Exam) => {
+    const focusClass = String((exam as ExamClassCard<Exam>).viewClassNumber || '').trim();
+    setSelectedExam({ ...exam, viewClassNumber: focusClass } as Exam & { viewClassNumber?: string });
+    setShowAllPerformers(false);
+    setShowFilters(false);
+    const examClasses = getExamClassStrings(exam);
+    const nextFilters: ResultFilters = {
+      classNumber: focusClass || (examClasses.length === 1 ? examClasses[0] : ''),
+      subject: '',
+      startDate: '',
+      endDate: '',
+    };
+    setFilters(nextFilters);
+    void loadExamDetail(exam, nextFilters);
   };
 
   const closeExamDetail = () => {
@@ -397,6 +424,8 @@ export default function ExamsView() {
     setSelectedResult(null);
     setAnalytics(null);
     setResults([]);
+    setShowAllPerformers(false);
+    setShowFilters(false);
   };
 
   const applyFilters = () => {
@@ -427,10 +456,15 @@ export default function ExamsView() {
 
   const filteredExams = useMemo(() => {
     const q = searchTerm.toLowerCase();
+    const expanded = expandExamsByClass(exams);
     const byClass =
       listClassFilter === 'all'
-        ? exams
-        : exams.filter((exam) => examIncludesClass(exam, listClassFilter));
+        ? expanded
+        : expanded.filter(
+            (exam) =>
+              exam.viewClassNumber === listClassFilter ||
+              (!exam.viewClassNumber && examIncludesClass(exam, listClassFilter)),
+          );
     return byClass
       .filter(
         (exam) =>
@@ -440,6 +474,12 @@ export default function ExamsView() {
       .sort((a, b) => {
         const timeDiff = getExamSortTime(b) - getExamSortTime(a);
         if (timeDiff !== 0) return timeDiff;
+        const classDiff = String(a.viewClassNumber || '').localeCompare(
+          String(b.viewClassNumber || ''),
+          undefined,
+          { numeric: true },
+        );
+        if (classDiff !== 0) return classDiff;
         return (a.title || '').localeCompare(b.title || '');
       });
   }, [exams, listClassFilter, searchTerm]);
@@ -484,12 +524,37 @@ export default function ExamsView() {
             <Text style={styles.exportBtnPrimaryText}>Export Analysis CSV</Text>
           </AdminScalePressable>
         </View>
-        <Text style={[styles.exportHint, { color: colors.textMuted }]}>
-          School performance analysis report — exam name, overall snapshot, subject & complexity breakdown, and student ranking.
-        </Text>
+        {(() => {
+          const classes =
+            (analytics?.examClasses && analytics.examClasses.length > 0
+              ? analytics.examClasses
+              : getExamClassStrings(selectedExam)) || [];
+          const classLabel =
+            classes.length > 0
+              ? classes.map((c) => normalizeClassNumberForDisplay(c)).join(', ')
+              : 'All';
+          return (
+            <Text style={[styles.exportHint, { color: colors.textMuted }]}>
+              Class {classLabel} · {analytics?.attemptedCount ?? 0} of{' '}
+              {analytics?.totalStudents ?? 0} students attempted
+            </Text>
+          );
+        })()}
 
         <AdminGlassCard noAnimation style={{ marginBottom: spacing.sm }}>
-          <AdminSectionHeader icon="filter-outline" title="Filter Results" />
+          <AdminScalePressable
+            onPress={() => setShowFilters((v) => !v)}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+          >
+            <AdminSectionHeader icon="filter-outline" title="Filters (optional)" />
+            <Ionicons
+              name={showFilters ? 'chevron-up' : 'chevron-down'}
+              size={18}
+              color={colors.textMuted}
+            />
+          </AdminScalePressable>
+          {showFilters ? (
+            <>
           <Text style={[styles.filterLabel, { color: colors.textMuted }]}>Class</Text>
           <AdminFilterChips
             chips={DETAIL_CLASS_CHIPS}
@@ -557,6 +622,8 @@ export default function ExamsView() {
             <Ionicons name="checkmark" size={18} color="#fff" />
             <Text style={styles.applyBtnText}>Apply Filters</Text>
           </AdminScalePressable>
+            </>
+          ) : null}
         </AdminGlassCard>
 
         {detailLoading && !analytics ? (
@@ -568,7 +635,15 @@ export default function ExamsView() {
             <AdminStatsRow
               items={[
                 {
-                  label: 'Total students',
+                  label: (() => {
+                    const classes =
+                      analytics?.examClasses?.length
+                        ? analytics.examClasses
+                        : getExamClassStrings(selectedExam);
+                    return classes.length === 1
+                      ? `Class ${normalizeClassNumberForDisplay(classes[0])} students`
+                      : 'Eligible students';
+                  })(),
                   value: analytics?.totalStudents ?? 0,
                   icon: 'people',
                   gradientIndex: 0,
@@ -594,10 +669,20 @@ export default function ExamsView() {
               ]}
             />
 
-            {analytics?.topPerformers && analytics.topPerformers.length > 0 ? (
+            {(() => {
+              const allRanked =
+                analytics?.rankedStudents && analytics.rankedStudents.length > 0
+                  ? analytics.rankedStudents
+                  : analytics?.topPerformers || [];
+              if (!allRanked.length) return null;
+              const visible = showAllPerformers ? allRanked : allRanked.slice(0, 10);
+              return (
               <AdminGlassCard style={{ marginBottom: spacing.sm }}>
-                <AdminSectionHeader icon="trophy-outline" title="Top Performers" />
-                {analytics.topPerformers.map((performer, idx) => (
+                <AdminSectionHeader
+                  icon="trophy-outline"
+                  title={`Student ranking (${allRanked.length})`}
+                />
+                {visible.map((performer, idx) => (
                   <View
                     key={`${performer.rank}-${performer.studentName}-${idx}`}
                     style={[styles.performerRow, { borderBottomColor: colors.surfaceBorder }]}
@@ -633,13 +718,26 @@ export default function ExamsView() {
                     </View>
                   </View>
                 ))}
+                {allRanked.length > 10 ? (
+                  <AdminScalePressable
+                    onPress={() => setShowAllPerformers((v) => !v)}
+                    style={[styles.applyBtn, { backgroundColor: colors.primaryMuted, borderRadius: radius.sm, marginTop: 8 }]}
+                  >
+                    <Text style={[styles.applyBtnText, { color: colors.primary }]}>
+                      {showAllPerformers
+                        ? 'Show less'
+                        : `Show more (${allRanked.length - 10} more)`}
+                    </Text>
+                  </AdminScalePressable>
+                ) : null}
               </AdminGlassCard>
-            ) : null}
+              );
+            })()}
 
             <AdminGlassCard style={{ marginBottom: spacing.sm }}>
               <AdminSectionHeader
                 icon="list-outline"
-                title={`Student Results (${results.length})`}
+                title={`Attempt details (${results.length})`}
                 action={
                   <AdminScalePressable
                     onPress={() => void exportToCsv()}
@@ -978,9 +1076,11 @@ export default function ExamsView() {
         <View style={[styles.listContent, isTablet && styles.listContentGrid]}>
           {filteredExams.map((exam, index) => {
           const status = getExamStatus(exam);
-          const classLabels = getExamClassStrings(exam);
+          const classLabels = exam.viewClassNumber
+            ? [exam.viewClassNumber]
+            : getExamClassStrings(exam);
           return (
-            <View key={exam._id} style={isTablet ? { width: cardWidth } : undefined}>
+            <View key={exam.cardKey} style={isTablet ? { width: cardWidth } : undefined}>
             <AdminGlassCard delay={index * 60} style={styles.examCard}>
               <View style={[styles.examAccentBar, { backgroundColor: colors.primary }]} />
               <View style={styles.cardTop}>

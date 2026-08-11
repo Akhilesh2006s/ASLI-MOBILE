@@ -27,7 +27,14 @@ const cascadeFields = (extra: StudentToolFieldConfig[] = []): StudentToolFieldCo
   { name: 'gradeLevel', label: 'Class *', type: 'select', required: true, options: CLASS_OPTIONS },
   { name: 'subject', label: 'Subject *', type: 'select', required: true, dependsOn: 'gradeLevel' },
   { name: 'topic', label: 'Topic *', type: 'select', required: true, placeholder: 'Select topic', isNCERT: true },
-  { name: 'subTopic', label: 'Sub Topic *', type: 'select', required: true, placeholder: 'Select subtopic', isCascadeSubtopic: true },
+  {
+    name: 'subTopic',
+    label: 'Sub Topic (Optional)',
+    type: 'select',
+    required: false,
+    placeholder: 'Whole chapter',
+    isCascadeSubtopic: true,
+  },
   ...extra,
 ];
 
@@ -62,7 +69,14 @@ export const STUDENT_TOOL_CONFIGS: Record<string, StudentToolConfig> = {
       { name: 'gradeLevel', label: 'Class *', type: 'select', required: true, options: CLASS_OPTIONS },
       { name: 'subject', label: 'Subject *', type: 'select', required: true, dependsOn: 'gradeLevel' },
       { name: 'chapter', label: 'Chapter/Topic *', type: 'select', required: true, placeholder: 'Select chapter/topic', isNCERT: true },
-      { name: 'subTopic', label: 'Sub Topic *', type: 'select', required: true, placeholder: 'Select subtopic', isCascadeSubtopic: true },
+      {
+        name: 'subTopic',
+        label: 'Sub Topic (Optional)',
+        type: 'select',
+        required: false,
+        placeholder: 'Whole chapter',
+        isCascadeSubtopic: true,
+      },
     ],
   },
   'key-points-formula-extractor': {

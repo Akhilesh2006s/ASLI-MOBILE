@@ -171,13 +171,23 @@ export function buildExtraParams(
   duration: string,
 ) {
   const payload: Record<string, unknown> = {};
+  const countTools = new Set([
+    'worksheet-mcq-generator',
+    'smart-qa-practice-generator',
+    'mock-test-builder',
+    'exam-question-paper-generator',
+    'homework-creator',
+  ]);
+  if (selectedTool && countTools.has(selectedTool)) {
+    const n = Number(questionCount);
+    payload.questionCount = Number.isFinite(n) && n > 0 ? Math.min(40, Math.max(1, Math.floor(n))) : 10;
+    payload.numberOfQuestions = payload.questionCount;
+  }
   if (selectedTool === 'worksheet-mcq-generator') {
     payload.questionType = questionType;
-    payload.questionCount = Number(questionCount) || 10;
   }
   if (selectedTool === 'smart-qa-practice-generator') {
     payload.questionType = questionType;
-    payload.questionCount = Number(questionCount) || 10;
     payload.difficulty = difficulty;
   }
   if (

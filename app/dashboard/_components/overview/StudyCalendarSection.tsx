@@ -63,7 +63,7 @@ function getPrimaryMarkerColor(
   if (!dayMarkers?.totalCount && !entries?.length) return null;
   if (dayMarkers?.examStartCount) return EXAM_MARKER_COLORS.start;
   if (dayMarkers?.examEndCount) return EXAM_MARKER_COLORS.end;
-  if (dayMarkers?.examMiddleCount) return EXAM_MARKER_COLORS.middle;
+  // Middle-of-window days no longer get exam dots — only open/close dates
   if (dayMarkers?.examSingleCount) return EXAM_MARKER_COLORS.single;
   if (dayMarkers?.quizCount) return EXAM_MARKER_COLORS.quiz;
   if (entries?.some((e) => e.type === 'event')) return EXAM_MARKER_COLORS.event;

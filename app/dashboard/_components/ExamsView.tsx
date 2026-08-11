@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useAnimatedProps } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import ChipNav from '../../../src/components/student/ChipNav';
@@ -35,6 +35,7 @@ import {
   normalizeClassNumber,
 } from '../../../src/lib/exam-classes';
 import { dedupeStudentExamResults } from '../../../src/lib/dedupe-exam-results';
+import { readMobileExamDraft } from '../../../src/lib/exam-attempt-draft';
 import ExamResultsView from '../../../src/components/student/ExamResultsView';
 import RankingsTab from './RankingsTab';
 import DonutChart from '../../../src/components/ui/charts/DonutChart';
@@ -66,6 +67,11 @@ interface Exam {
   subjects?: string[];
   subject?: string;
   questions?: any[];
+  hasInProgressDraft?: boolean;
+  canResumeExam?: boolean;
+  forceSubmitDraft?: boolean;
+  resumeCount?: number;
+  maxResumes?: number;
 }
 
 interface ExamResult {
@@ -181,6 +187,12 @@ export default function ExamsView({
     fetchRankings();
   }, []);
 
+  useFocusEffect(
+    useCallback(() => {
+      void fetchExams();
+    }, []),
+  );
+
   const fetchUser = async () => {
     try {
       const token = await SecureStore.getItemAsync('authToken');
@@ -203,17 +215,39 @@ export default function ExamsView({
     try {
       setIsLoading(true);
       const token = await SecureStore.getItemAsync('authToken');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token && token !== 'null' && token !== 'undefined') {
+        headers.Authorization = `Bearer ${token}`;
+      }
       const response = await fetch(`${API_BASE_URL}/api/student/exams`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        headers,
+        credentials: 'include',
       });
 
       if (response.ok) {
         const data = await response.json();
         const examsList = Array.isArray(data) ? data : (data.data || data.exams || []);
-        setExams(examsList);
+        const userRaw = await SecureStore.getItemAsync('user');
+        let userId: string | null = null;
+        try {
+          const parsed = userRaw ? JSON.parse(userRaw) : null;
+          userId = parsed?._id || parsed?.id || null;
+        } catch {
+          userId = null;
+        }
+        const enriched = await Promise.all(
+          (Array.isArray(examsList) ? examsList : []).map(async (exam: Exam) => {
+            if (exam?.hasInProgressDraft) return exam;
+            const local = await readMobileExamDraft(String(exam._id), userId);
+            return local ? { ...exam, hasInProgressDraft: true } : exam;
+          }),
+        );
+        setExams(enriched);
+      } else {
+        console.error('Failed to fetch exams:', response.status);
+        setExams([]);
       }
     } catch (error) {
       console.error('Failed to fetch exams:', error);
@@ -347,11 +381,12 @@ export default function ExamsView({
         if (used >= getMaxAttemptsForExam(exam)) return false;
         const hydratedQuestionCount = Array.isArray(exam.questions) ? exam.questions.length : 0;
         if (hydratedQuestionCount <= 0) return false;
+        if (exam.isActive === false) return false;
+        if (exam.hasInProgressDraft || exam.forceSubmitDraft) return true;
         const now = new Date();
         const startDate = new Date(exam.startDate);
         const endDate = new Date(exam.endDate);
-        const isActiveByDate = now >= startDate && now <= endDate;
-        return exam.isActive !== false && isActiveByDate;
+        return now >= startDate && now <= endDate;
       }),
     [subjectFilteredExams, attemptCountByExamId]
   );

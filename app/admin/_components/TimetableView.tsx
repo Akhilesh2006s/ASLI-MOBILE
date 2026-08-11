@@ -337,6 +337,10 @@ export default function TimetableView() {
       Alert.alert('Validation', 'Class, subject, and teacher are required.');
       return;
     }
+    if (!form.room.trim() || !form.building.trim()) {
+      Alert.alert('Validation', 'Room and building are required.');
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
@@ -347,8 +351,8 @@ export default function TimetableView() {
         sectionId: form.sectionId,
         subjectId: form.subjectId,
         teacherId: form.teacherId,
-        room: form.room,
-        building: form.building,
+        room: form.room.trim(),
+        building: form.building.trim(),
         sessionType: form.sessionType,
         status: form.status,
         repeatRule: 'none',
@@ -458,7 +462,14 @@ export default function TimetableView() {
   const pickCsvFile = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['text/csv', 'text/comma-separated-values', 'application/vnd.ms-excel'],
+        type: [
+          'text/csv',
+          'text/comma-separated-values',
+          'application/vnd.ms-excel',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'application/octet-stream',
+          '*/*',
+        ],
         copyToCacheDirectory: true,
       });
       if (!result.canceled && result.assets[0]) {
@@ -779,7 +790,9 @@ export default function TimetableView() {
         }
       >
         <Text style={[styles.uploadHint, { color: colors.textMuted }]}>
-          Upload a CSV or Excel file to bulk import schedule entries.
+          Upload CSV or Excel. Class weekly grids work (e.g. “6A” header + Time row + Mon–Sat subject
+          cells). Flat row files (Date, Class, Section, Subject, Teacher) also work — use Download
+          template. Classes must already exist in School Management.
         </Text>
         <AdminScalePressable
           onPress={pickCsvFile}
@@ -888,18 +901,20 @@ export default function TimetableView() {
               />
             )}
             {formField(
-              'Room',
+              'Room *',
               <TextInput
                 value={form.room}
                 onChangeText={(room) => setForm((f) => ({ ...f, room }))}
+                placeholder="e.g. 101"
                 style={[styles.input, { borderColor: colors.surfaceBorder, color: colors.text }]}
               />
             )}
             {formField(
-              'Building',
+              'Building *',
               <TextInput
                 value={form.building}
                 onChangeText={(building) => setForm((f) => ({ ...f, building }))}
+                placeholder="e.g. Main Block"
                 style={[styles.input, { borderColor: colors.surfaceBorder, color: colors.text }]}
               />
             )}

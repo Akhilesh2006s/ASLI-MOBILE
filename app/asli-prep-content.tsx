@@ -146,6 +146,7 @@ export default function AsliPrepContent() {
       if (filters.subject && filters.subject !== 'all') queryParams.append('subject', filters.subject);
       if (filters.type && filters.type !== 'all') queryParams.append('type', filters.type);
       if (filters.topic && filters.topic.trim()) queryParams.append('topic', filters.topic.trim());
+      queryParams.append('surface', 'learning-path');
 
       const response = await fetch(`${API_BASE_URL}/api/student/asli-prep-content?${queryParams}`, {
         headers: {

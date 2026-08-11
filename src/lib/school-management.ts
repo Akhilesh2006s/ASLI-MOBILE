@@ -163,6 +163,65 @@ export function isValidOptionalPhone(phone: string) {
   return digits.length === 0 || digits.length === 10;
 }
 
+export function sanitizePincodeInput(value: string) {
+  return String(value || '').replace(/\D/g, '').slice(0, 6);
+}
+
+/** Empty OR exactly 6 digits; rejects longer values without truncating-to-valid. */
+export function isValidOptionalIndianPincode(raw: string) {
+  const trimmed = String(raw || '').trim();
+  if (!trimmed) return true;
+  if (!/^\d+$/.test(trimmed)) return false;
+  if (trimmed.length !== 6) return false;
+  return /^[1-9]\d{5}$/.test(trimmed);
+}
+
+export function isValidSchoolPlaceName(raw: string, min = 2, max = 120) {
+  const s = String(raw || '').trim();
+  if (s.length < min || s.length > max) return false;
+  if (!/[A-Za-z\u0900-\u097F]/.test(s)) return false;
+  return /^[A-Za-z0-9\u0900-\u097F\s.'&\-()/]+$/.test(s);
+}
+
+export function isValidOptionalAddressLine(raw: string, max = 120) {
+  const s = String(raw || '').trim();
+  if (!s) return true;
+  if (s.length > max) return false;
+  if (!/[A-Za-z0-9\u0900-\u097F]/.test(s)) return false;
+  return /^[A-Za-z0-9\u0900-\u097F\s.'&\-()/#]+$/.test(s);
+}
+
+export function schoolAddressFieldError(fields: {
+  schoolName?: string;
+  city?: string;
+  district?: string;
+  pin?: string;
+  doorNo?: string;
+  street?: string;
+  area?: string;
+}): string | null {
+  if (!isValidSchoolPlaceName(fields.schoolName || '', 2, 200)) {
+    return 'School name must include letters (symbols-only names are not allowed).';
+  }
+  if (!isValidSchoolPlaceName(fields.city || '', 2, 100)) {
+    return 'City must include letters.';
+  }
+  if (!isValidSchoolPlaceName(fields.district || '', 2, 100)) {
+    return 'District must include letters.';
+  }
+  if (
+    !isValidOptionalAddressLine(fields.doorNo || '') ||
+    !isValidOptionalAddressLine(fields.street || '') ||
+    !isValidOptionalAddressLine(fields.area || '')
+  ) {
+    return 'Door No, Street, and Area may only use letters, numbers, and common punctuation.';
+  }
+  if (!isValidOptionalIndianPincode(fields.pin || '')) {
+    return 'Pincode must be exactly 6 digits (e.g. 500001), or left empty.';
+  }
+  return null;
+}
+
 export function isUnlimitedPortalAccess(perms: string[] | undefined): boolean {
   return isUnlimitedPortalAccessFor(perms, SCHOOL_PORTAL_FEATURE_IDS);
 }
@@ -350,7 +409,7 @@ export function buildCreatePayload(form: SchoolFormState) {
     phone: sanitizePhoneInput(form.phone),
     secondaryContactPerson: form.secondaryContactPerson.trim(),
     secondaryContactPhone: sanitizePhoneInput(form.secondaryContactPhone),
-    pin: form.pin.trim(),
+    pin: sanitizePincodeInput(form.pin),
     permissions: resolvePortalPermissions(form.accessMode, form.limitedFeatures),
     vidyaEnabledForTeachers: form.vidyaEnabledForTeachers,
     vidyaEnabledForStudents: form.vidyaEnabledForStudents,
@@ -371,7 +430,7 @@ export function buildUpdatePayload(form: SchoolFormState) {
     phone: sanitizePhoneInput(form.phone),
     secondaryContactPerson: form.secondaryContactPerson.trim(),
     secondaryContactPhone: sanitizePhoneInput(form.secondaryContactPhone),
-    pin: form.pin.trim(),
+    pin: sanitizePincodeInput(form.pin),
     isActive: form.isActive,
     permissions: resolvePortalPermissions(form.accessMode, form.limitedFeatures),
     vidyaEnabledForTeachers: form.vidyaEnabledForTeachers,

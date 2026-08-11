@@ -14,12 +14,12 @@ import type {
 
 const CONTROL_ASSISTANT_QUICK_QUESTIONS = [
   'How many students are there in the application?',
-  'How many students are in Class 7?',
-  'How many teachers are active?',
+  'How is Class 7 performing?',
   "Show today's attendance summary",
+  'Platform or school dashboard overview',
   'How many exams are scheduled this week?',
-  'Which class has the highest student count?',
-  'How many pending fee records exist?',
+  'Tell me about a student by name (e.g. how is Rahul doing?)',
+  'How many teachers are active?',
   'How many AI requests were generated today?',
 ];
 
@@ -28,29 +28,28 @@ const QUICK_QUESTIONS_BY_ROLE: Record<
   string[]
 > = {
   student: [
-    'Explain this topic simply',
-    'Help me solve this problem',
-    'Give me a quiz',
-    'Summarize this chapter',
+    'What is my learning progress?',
+    'What videos have I watched?',
+    'What is my exam status — did I improve?',
+    'Where am I weak and what should I study?',
   ],
   teacher: [
-    'Give me 10 MCQs on [current topic]',
-    'Create a 5-question worksheet for my class',
-    'Write a lesson plan for today',
     'Which students in my class need extra attention?',
-    "Summarize this week's curriculum points",
+    'How is Class performance this month?',
+    'Give me 10 MCQs on [current topic]',
+    'Tell me about a student in my class by name',
   ],
   admin: [
-    'How do I enroll students into classes?',
-    'Generate attendance report',
-    'Schedule an exam for Grade 10',
-    'Assign teachers to subjects',
+    'How is Class 7 performing?',
+    'Show school dashboard overview',
+    'How many students are active?',
+    'Tell me about a student by name',
   ],
   super_admin: [
-    'Show AI usage statistics across schools',
-    'Detect anomalies in AI responses',
-    'Configure model behavior',
-    'Generate system performance report',
+    'Platform overview — schools, students, teachers',
+    'How is Class 8 performing across schools?',
+    'Details about a school by name',
+    'How is a student or teacher doing by name?',
   ],
 };
 

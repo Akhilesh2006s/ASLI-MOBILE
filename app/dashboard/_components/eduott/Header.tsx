@@ -26,7 +26,8 @@ function HeaderComponent({ username, dashboardLabel = 'Student Dashboard' }: Hea
           <View>
             <Text style={styles.smallText}>{dashboardLabel}</Text>
             <Text style={styles.title}>EduOTT</Text>
-            <Text style={styles.welcomeText}>Welcome Back, {username}</Text>
+            <Text style={styles.exclusiveBadge}>IIT EXCLUSIVE</Text>
+            <Text style={styles.welcomeText}>IIT track videos · Welcome, {username}</Text>
           </View>
         </View>
       </View>
@@ -78,6 +79,21 @@ const styles = StyleSheet.create({
     ...STUDENT_TYPO.section,
     color: STUDENT.textOnPrimary,
     lineHeight: 28,
+  },
+  exclusiveBadge: {
+    marginTop: 4,
+    alignSelf: 'flex-start',
+    overflow: 'hidden',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.55)',
+    backgroundColor: 'rgba(251, 191, 36, 0.18)',
+    color: '#FDE68A',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
   welcomeText: {
     color: 'rgba(255,255,255,0.9)',

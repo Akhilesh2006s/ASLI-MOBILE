@@ -9,12 +9,14 @@ import {
   Pressable,
   ActivityIndicator,
   Alert,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchCurrentUser } from '../../../src/lib/vidya-admin';
 import { GlassPanel } from '../../../src/components/ui';
 import { SUPER_ADMIN_FLOATING_TAB_BAR_PAD } from '../../../src/lib/responsive-layout';
+import api, { API_BASE_URL } from '../../../src/services/api/api';
 import type { SuperAdminView } from './SuperAdminNavDrawer';
 
 const VIDYA_PREFS_KEY = 'superAdminVidyaPrefs';
@@ -23,7 +25,6 @@ type ExplainDepth = 'concise' | 'balanced' | 'detailed';
 
 type SettingsViewProps = {
   onNavigate: (view: SuperAdminView) => void;
-  onLogout: () => void;
 };
 
 const QUICK_LINKS: { view: SuperAdminView; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
@@ -43,13 +44,19 @@ const DEPTH_OPTIONS: { value: ExplainDepth; label: string }[] = [
   { value: 'detailed', label: 'Detailed — step-by-step' },
 ];
 
-export default function SettingsView({ onNavigate, onLogout }: SettingsViewProps) {
+export default function SettingsView({ onNavigate }: SettingsViewProps) {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<{ fullName?: string; email?: string; role?: string } | null>(
     null
   );
   const [explainDepth, setExplainDepth] = useState<ExplainDepth>('balanced');
   const [depthPickerOpen, setDepthPickerOpen] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [changingPassword, setChangingPassword] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -80,6 +87,37 @@ export default function SettingsView({ onNavigate, onLogout }: SettingsViewProps
     Alert.alert('Saved', 'Vidya AI display preferences saved on this device.');
   };
 
+  const changePassword = async () => {
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      Alert.alert('Missing fields', 'Enter current, new, and confirm password.');
+      return;
+    }
+    if (passwordForm.newPassword.length < 8) {
+      Alert.alert('Too short', 'New password must be at least 8 characters.');
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      Alert.alert('Mismatch', 'New password and confirmation must match.');
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      const res = await api.post('/api/super-admin/change-password', passwordForm);
+      if (!res.data?.success) {
+        throw new Error(res.data?.message || 'Failed to change password');
+      }
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      Alert.alert('Password updated', 'Your super admin password was changed successfully.');
+    } catch (err: any) {
+      Alert.alert(
+        'Could not update password',
+        err?.response?.data?.message || err?.message || 'Try again',
+      );
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   const depthLabel = DEPTH_OPTIONS.find((o) => o.value === explainDepth)?.label || 'Balanced';
 
   if (loading) {
@@ -95,7 +133,7 @@ export default function SettingsView({ onNavigate, onLogout }: SettingsViewProps
       <View style={styles.header}>
         <Text style={styles.headerTitle}>System Settings</Text>
         <Text style={styles.headerSubtitle}>
-          Shortcuts to main modules. Secrets and database URLs are set on the server, not here.
+          Account security, Vidya preferences, and shortcuts. Secrets stay on the server.
         </Text>
       </View>
 
@@ -130,6 +168,63 @@ export default function SettingsView({ onNavigate, onLogout }: SettingsViewProps
 
       <GlassPanel style={styles.section} radius={10} tone="medium">
         <View style={styles.sectionInner}>
+          <Text style={styles.sectionTitle}>Change password</Text>
+          <Text style={styles.sectionHint}>Update the password for your logged-in super admin account.</Text>
+          <Text style={styles.fieldLabel}>Current password</Text>
+          <TextInput
+            style={styles.input}
+            secureTextEntry
+            value={passwordForm.currentPassword}
+            onChangeText={(currentPassword) => setPasswordForm((p) => ({ ...p, currentPassword }))}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <Text style={styles.fieldLabel}>New password</Text>
+          <TextInput
+            style={styles.input}
+            secureTextEntry
+            value={passwordForm.newPassword}
+            onChangeText={(newPassword) => setPasswordForm((p) => ({ ...p, newPassword }))}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <Text style={styles.fieldHint}>At least 8 characters</Text>
+          <Text style={styles.fieldLabel}>Confirm new password</Text>
+          <TextInput
+            style={styles.input}
+            secureTextEntry
+            value={passwordForm.confirmPassword}
+            onChangeText={(confirmPassword) => setPasswordForm((p) => ({ ...p, confirmPassword }))}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <TouchableOpacity
+            style={[styles.saveButton, changingPassword && styles.saveButtonDisabled]}
+            onPress={changePassword}
+            disabled={changingPassword}
+          >
+            {changingPassword ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.saveButtonText}>Update password</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </GlassPanel>
+
+      <GlassPanel style={styles.section} radius={10} tone="medium">
+        <View style={styles.sectionInner}>
+          <Text style={styles.sectionTitle}>Platform configuration</Text>
+          <Text style={styles.sectionHint}>
+            AI keys, JWT secrets, and database URLs are set in the backend .env — not editable here.
+          </Text>
+          <Text style={styles.fieldLabel}>API base</Text>
+          <Text style={styles.apiBase}>{API_BASE_URL || '—'}</Text>
+        </View>
+      </GlassPanel>
+
+      <GlassPanel style={styles.section} radius={10} tone="medium">
+        <View style={styles.sectionInner}>
           <Text style={styles.sectionTitle}>Quick links</Text>
           <View style={styles.linksGrid}>
             {QUICK_LINKS.map((link) => (
@@ -147,13 +242,8 @@ export default function SettingsView({ onNavigate, onLogout }: SettingsViewProps
       </GlassPanel>
 
       <Text style={styles.envNote}>
-        To change AI provider keys, JWT secrets, or database URLs, update the backend .env and redeploy.
+        Appearance stays light-only for consistent school demos. Dark mode is not enabled yet.
       </Text>
-
-      <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
-        <Ionicons name="log-out" size={20} color="#ef4444" />
-        <Text style={styles.logoutText}>Logout</Text>
-      </TouchableOpacity>
 
       <Modal visible={depthPickerOpen} transparent animationType="slide" onRequestClose={() => setDepthPickerOpen(false)}>
         <View style={styles.modalOverlay}>
@@ -227,6 +317,19 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 16, fontWeight: '800', color: '#111827', marginBottom: 6 },
   sectionHint: { fontSize: 12, color: '#6b7280', lineHeight: 18, marginBottom: 12 },
+  fieldLabel: { fontSize: 12, fontWeight: '600', color: '#6b7280', marginBottom: 6, marginTop: 10 },
+  fieldHint: { fontSize: 11, color: '#9ca3af', marginTop: 4 },
+  input: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#111827',
+    backgroundColor: '#fff',
+  },
+  apiBase: { fontSize: 12, fontFamily: 'monospace', color: '#111827', lineHeight: 18 },
   pickerRow: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
   pickerLabel: { fontSize: 12, color: '#6b7280', marginBottom: 4 },
   pickerValue: { fontSize: 14, fontWeight: '600', color: '#111827' },
@@ -237,6 +340,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: 'center',
   },
+  saveButtonDisabled: { opacity: 0.7 },
   saveButtonText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   linksGrid: { gap: 8 },
   linkButton: {
@@ -258,19 +362,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 16,
   },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginHorizontal: 16,
-    marginBottom: 24,
-    padding: 14,
-    borderRadius: 10,
-    backgroundColor: '#fef2f2',
-    borderWidth: 1,
-    borderColor: '#fecaca',
-  },
-  logoutText: { fontSize: 15, fontWeight: '700', color: '#ef4444' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   modalSheet: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16 },
   modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 12 },

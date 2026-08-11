@@ -14,6 +14,7 @@ import {
   FlatList,
   Pressable,
   useWindowDimensions,
+  AppState,
 } from 'react-native';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,12 +27,33 @@ import { getDashboardPath } from '../../src/hooks/useBackNavigation';
 import ExamResultsView from '../../src/components/student/ExamResultsView';
 import { GlassPanel } from '../../src/components/ui';
 import { ExamAnalysisResult } from '../../src/lib/exam-analysis-helpers';
-import { normalizeAndFormatExamDisplayText } from '../../src/lib/exam-text-normalize';
+import { normalizeAndFormatExamDisplayText, resolveAssertionReasonDisplay } from '../../src/lib/exam-text-normalize';
+import {
+  clearMobileExamDraft,
+  normalizeMobileDraftAnswers,
+  pickMobileResumeDraft,
+  readMobileExamDraft,
+  writeMobileExamDraft,
+  type MobileExamDraft,
+} from '../../src/lib/exam-attempt-draft';
 
 const MAX_EXIT_ATTEMPTS = 5;
 const PALETTE_COLUMNS = 5;
 const PALETTE_PAGE_SIZE = 20;
+const DEFAULT_ASSERTION_REASON_DIRECTIONS =
+  'Directions: Each question below consists of an Assertion (A) and a Reason (R). Choose the correct option:\n' +
+  '(a) Both A and R are true, and R is the correct explanation of A.\n' +
+  '(b) Both A and R are true, but R is not the correct explanation of A.\n' +
+  '(c) A is true, but R is false.\n' +
+  '(d) A is false, but R is true.';
 
+function looksLikeArDirectionsText(text?: string) {
+  const t = String(text || '');
+  return (
+    /correct explanation of A/i.test(t) ||
+    (/Both A and R are true/i.test(t) && /A is false,\s*but R is true/i.test(t))
+  );
+}
 type Question = {
   _id: string;
   questionText?: string;
@@ -41,7 +63,24 @@ type Question = {
   options?: Array<string | { text: string; isCorrect?: boolean }>;
   marks?: number;
   subject?: string;
+  displayOrder?: number;
+  sectionHeading?: string;
 };
+
+const SUBJECT_SECTION_LABELS: Record<string, string> = {
+  maths: 'Maths',
+  physics: 'Physics',
+  chemistry: 'Chemistry',
+  biology: 'Biology',
+};
+
+function resolveAttemptSectionHeading(q?: Question | null) {
+  if (!q) return '';
+  const custom = String(q.sectionHeading || '').trim();
+  if (custom) return custom;
+  const key = String(q.subject || '').trim().toLowerCase();
+  return SUBJECT_SECTION_LABELS[key] || (key ? key.charAt(0).toUpperCase() + key.slice(1) : '');
+}
 
 function answerKey(question: Question | null | undefined): string {
   if (!question?._id) return '';
@@ -140,16 +179,84 @@ export default function ExamPage() {
   const [showQuestionDropdown, setShowQuestionDropdown] = useState(false);
   const { width: screenWidth } = useWindowDimensions();
   const paletteListRef = useRef<FlatList<number>>(null);
+  const questionScrollRef = useRef<ScrollView>(null);
   const [examResult, setExamResult] = useState<ExamAnalysisResult | null>(null);
   const [questionTimings, setQuestionTimings] = useState<Record<string, number>>({});
+  const [resumeNotice, setResumeNotice] = useState<string | null>(null);
+  const [pendingForceSubmit, setPendingForceSubmit] = useState(false);
   const submittedRef = useRef(false);
   const autoSubmitTriggeredRef = useRef(false);
   const submitInFlightRef = useRef(false);
   const submitExamRef = useRef<() => Promise<void>>(async () => {});
   const questionEnterTimestampRef = useRef<number>(Date.now());
   const lastTrackedQuestionIdRef = useRef<string | null>(null);
+  const answersRef = useRef(answers);
+  const timeLeftRef = useRef(timeLeft);
+  const flaggedRef = useRef(flaggedQuestions);
+  const questionTimingsRef = useRef(questionTimings);
+  const currentIndexRef = useRef(currentIndex);
+  const examRef = useRef(exam);
+  const draftUserIdRef = useRef<string>('');
+
+  answersRef.current = answers;
+  timeLeftRef.current = timeLeft;
+  flaggedRef.current = flaggedQuestions;
+  questionTimingsRef.current = questionTimings;
+  currentIndexRef.current = currentIndex;
+  examRef.current = exam;
 
   const examInProgress = !!exam && !submittedRef.current && !isLoading && !examResult;
+
+  const persistDraftNow = useCallback(async (opts?: {
+    remainingSeconds?: number;
+    answers?: Record<string, unknown>;
+    flaggedQuestions?: number[];
+    questionTimings?: Record<string, number>;
+    currentQuestionIndex?: number;
+  }) => {
+    const liveExam = examRef.current;
+    if (!liveExam || !id || submittedRef.current || submitInFlightRef.current) return;
+    const durationSeconds = Math.max(60, Math.round((Number(liveExam.duration) || 60) * 60));
+    const remainingSeconds = Math.max(
+      0,
+      Number.isFinite(Number(opts?.remainingSeconds))
+        ? Number(opts?.remainingSeconds)
+        : timeLeftRef.current || 0,
+    );
+    const payload = {
+      answers: normalizeMobileDraftAnswers(
+        (opts?.answers as Record<string, unknown> | undefined) ??
+          (answersRef.current as Record<string, unknown>) ??
+          {},
+      ),
+      flaggedQuestions: Array.isArray(opts?.flaggedQuestions)
+        ? opts.flaggedQuestions
+        : Array.from(flaggedRef.current || []),
+      questionTimings:
+        opts?.questionTimings && typeof opts.questionTimings === 'object'
+          ? opts.questionTimings
+          : questionTimingsRef.current || {},
+      currentQuestionIndex: Number.isFinite(Number(opts?.currentQuestionIndex))
+        ? Math.max(0, Number(opts?.currentQuestionIndex))
+        : currentIndexRef.current || 0,
+      remainingSeconds,
+      durationSeconds,
+    };
+    await writeMobileExamDraft(String(id), payload, draftUserIdRef.current);
+    try {
+      const token = await SecureStore.getItemAsync('authToken');
+      await fetch(`${API_BASE_URL}/api/student/exams/${id}/attempt-draft`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+    } catch {
+      /* local backup kept */
+    }
+  }, [id]);
 
   useEffect(() => {
     if (id) fetchExam();
@@ -157,6 +264,39 @@ export default function ExamPage() {
       if (path) setDashboardPath(path);
     });
   }, [id]);
+
+  useEffect(() => {
+    if (!examInProgress || pendingForceSubmit) return;
+    const interval = setInterval(() => {
+      void persistDraftNow();
+    }, 15000);
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') {
+        void persistDraftNow();
+      }
+    });
+    return () => {
+      clearInterval(interval);
+      sub.remove();
+    };
+  }, [examInProgress, pendingForceSubmit, persistDraftNow]);
+
+  useEffect(() => {
+    if (!examInProgress || pendingForceSubmit) return;
+    const t = setTimeout(() => {
+      void persistDraftNow();
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [answers, flaggedQuestions, currentIndex, examInProgress, pendingForceSubmit, persistDraftNow]);
+
+  useEffect(() => {
+    if (!pendingForceSubmit || !exam || isLoading) return;
+    setPendingForceSubmit(false);
+    const t = setTimeout(() => {
+      void submitExamRef.current();
+    }, 600);
+    return () => clearTimeout(t);
+  }, [pendingForceSubmit, exam, isLoading]);
 
   const recordExitAttempt = useCallback(() => {
     if (submittedRef.current || submitInFlightRef.current || isSubmitting || !exam) return;
@@ -289,10 +429,13 @@ export default function ExamPage() {
         submittedRef.current = false;
         autoSubmitTriggeredRef.current = false;
         Alert.alert('Submit Failed', json?.message || 'Could not save exam result.', [
+          { text: 'Stay and retry', style: 'cancel' },
           { text: 'Go to Dashboard', onPress: () => router.replace(dashboardPath) },
         ]);
         return;
       }
+
+      await clearMobileExamDraft(String(exam._id || id), draftUserIdRef.current);
 
       const server = (json?.data || {}) as Record<string, unknown>;
       const merged = mergeExamResult(exam, answers, timeTaken, server, finalTimings);
@@ -304,11 +447,15 @@ export default function ExamPage() {
       if (aborted) {
         Alert.alert(
           'Grading is taking longer than usual',
-          'Your result may appear under Attempted Exams shortly. You can check back from the dashboard.',
-          [{ text: 'OK', onPress: () => router.replace(dashboardPath) }]
+          'Your result may already be saved. Check Attempted Exams, or stay here and tap Submit again if it is not listed yet.',
+          [
+            { text: 'Stay and retry', style: 'cancel' },
+            { text: 'Go to Dashboard', onPress: () => router.replace(dashboardPath) },
+          ]
         );
       } else {
         Alert.alert('Error', 'Failed to submit exam. Please try again.', [
+          { text: 'Stay and retry', style: 'cancel' },
           { text: 'Go to Dashboard', onPress: () => router.replace(dashboardPath) },
         ]);
       }
@@ -380,8 +527,143 @@ export default function ExamPage() {
         return;
       }
 
-      setExam({ ...examData, questions });
-      setTimeLeft((Number(examData.duration) || 60) * 60);
+      const fullSeconds = (Number(examData.duration) || 60) * 60;
+      let userId = '';
+      try {
+        const userRaw = await SecureStore.getItemAsync('user');
+        if (userRaw) {
+          const u = JSON.parse(userRaw);
+          userId = String(u?._id || u?.id || '');
+        }
+      } catch {
+        /* ignore */
+      }
+      draftUserIdRef.current = userId;
+
+      let serverDraft: MobileExamDraft | null = null;
+      let draftMeta: {
+        forceSubmit?: boolean;
+        resumeLimitReached?: boolean;
+        examEnded?: boolean;
+        message?: string;
+        resumeCount?: number;
+        maxResumes?: number;
+      } = {
+        forceSubmit: Boolean(examData?.forceSubmitExam),
+        examEnded: Boolean(examData?.forceSubmitExam),
+        message: examData?.examWindowMessage || undefined,
+      };
+      try {
+        const draftRes = await fetch(`${API_BASE_URL}/api/student/exams/${id}/attempt-draft`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        if (draftRes.ok) {
+          const draftJson = await draftRes.json();
+          draftMeta = {
+            forceSubmit: Boolean(draftJson?.forceSubmit || examData?.forceSubmitExam),
+            resumeLimitReached: Boolean(draftJson?.resumeLimitReached),
+            examEnded: Boolean(draftJson?.examEnded || examData?.forceSubmitExam),
+            message: draftJson?.message || examData?.examWindowMessage || undefined,
+            resumeCount: Number(draftJson?.data?.resumeCount) || 0,
+            maxResumes: Number(draftJson?.data?.maxResumes) || Number(draftJson?.maxResumes) || 5,
+          };
+          if (draftJson?.data) {
+            serverDraft = {
+              examId: String(draftJson.data.examId || id),
+              answers: draftJson.data.answers || {},
+              flaggedQuestions: Array.isArray(draftJson.data.flaggedQuestions)
+                ? draftJson.data.flaggedQuestions
+                : [],
+              questionTimings: draftJson.data.questionTimings || {},
+              currentQuestionIndex: Number(draftJson.data.currentQuestionIndex) || 0,
+              remainingSeconds: Math.max(0, Number(draftJson.data.remainingSeconds) || 0),
+              durationSeconds: Math.max(1, Number(draftJson.data.durationSeconds) || fullSeconds),
+              lastSavedAt: String(draftJson.data.lastSavedAt || new Date().toISOString()),
+            };
+          }
+        }
+      } catch {
+        /* continue with local */
+      }
+
+      const localDraft = await readMobileExamDraft(String(id), userId);
+      const draft = pickMobileResumeDraft(serverDraft, localDraft);
+      const mustForceSubmit = Boolean(draftMeta.forceSubmit && draft);
+
+      const hydratedExam = { ...examData, questions };
+      examRef.current = hydratedExam;
+      setExam(hydratedExam);
+      if (draft) {
+        const restoredAnswers = normalizeMobileDraftAnswers(
+          draft.answers as Record<string, unknown>,
+        );
+        const restoredFlags = Array.isArray(draft.flaggedQuestions) ? draft.flaggedQuestions : [];
+        const restoredTimings =
+          draft.questionTimings && typeof draft.questionTimings === 'object'
+            ? draft.questionTimings
+            : {};
+        const maxIdx = Math.max(0, questions.length - 1);
+        const restoredIndex = Math.min(maxIdx, Math.max(0, draft.currentQuestionIndex || 0));
+        const resumeSeconds = Math.min(fullSeconds, Math.max(0, Number(draft.remainingSeconds) || 0));
+
+        answersRef.current = restoredAnswers;
+        flaggedRef.current = new Set(restoredFlags);
+        questionTimingsRef.current = restoredTimings;
+        currentIndexRef.current = restoredIndex;
+        timeLeftRef.current = resumeSeconds;
+
+        setAnswers(restoredAnswers);
+        setFlaggedQuestions(new Set(restoredFlags));
+        setQuestionTimings(restoredTimings);
+        setCurrentIndex(restoredIndex);
+        setTimeLeft(resumeSeconds);
+
+        const answered = Object.keys(restoredAnswers).length;
+        const mm = Math.floor(resumeSeconds / 60);
+        const ss = resumeSeconds % 60;
+        const resumeUsed = Math.max(0, Number(draftMeta.resumeCount) || 0);
+        const resumeMax = Math.max(1, Number(draftMeta.maxResumes) || 5);
+
+        if (mustForceSubmit) {
+          setResumeNotice(
+            draftMeta.message ||
+              (draftMeta.examEnded
+                ? 'Exam ended — submitting saved answers.'
+                : `Resume limit (${resumeMax}) reached — submitting saved answers.`),
+          );
+          setPendingForceSubmit(true);
+        } else {
+          setResumeNotice(
+            answered > 0 || resumeSeconds < fullSeconds - 5
+              ? `Resumed (${resumeUsed}/${resumeMax}) — ${answered} answer(s) · ${mm}:${String(ss).padStart(2, '0')} left`
+              : `Resuming (${resumeUsed}/${resumeMax}) — ${mm}:${String(ss).padStart(2, '0')} left`,
+          );
+          void persistDraftNow({
+            remainingSeconds: resumeSeconds,
+            answers: restoredAnswers,
+            flaggedQuestions: restoredFlags,
+            questionTimings: restoredTimings,
+            currentQuestionIndex: restoredIndex,
+          });
+        }
+      } else if (examData?.forceSubmitExam) {
+        setResumeNotice(examData?.examWindowMessage || 'Exam window has ended.');
+        timeLeftRef.current = 0;
+        setTimeLeft(0);
+      } else {
+        timeLeftRef.current = fullSeconds;
+        setTimeLeft(fullSeconds);
+        void persistDraftNow({
+          remainingSeconds: fullSeconds,
+          answers: {},
+          flaggedQuestions: [],
+          questionTimings: {},
+          currentQuestionIndex: 0,
+        });
+      }
     } catch {
       Alert.alert('Error', 'Failed to load exam.');
       router.back();
@@ -405,21 +687,27 @@ export default function ExamPage() {
         const idx = existing.indexOf(value);
         if (idx >= 0) existing.splice(idx, 1);
         else existing.push(value);
+        let next: Record<string, any>;
         if (existing.length === 0) {
-          const next = { ...prev };
+          next = { ...prev };
           delete next[questionId];
-          return next;
+        } else {
+          next = { ...prev, [questionId]: existing };
         }
-        return { ...prev, [questionId]: existing };
+        answersRef.current = next;
+        return next;
       });
     } else {
       setAnswers((prev) => {
+        let next: Record<string, any>;
         if (prev[questionId] === value) {
-          const next = { ...prev };
+          next = { ...prev };
           delete next[questionId];
-          return next;
+        } else {
+          next = { ...prev, [questionId]: value };
         }
-        return { ...prev, [questionId]: value };
+        answersRef.current = next;
+        return next;
       });
     }
   };
@@ -539,16 +827,39 @@ export default function ExamPage() {
   }
 
   const qText = currentQuestion.questionText || currentQuestion.question || '';
+  const arDisplay = resolveAssertionReasonDisplay({
+    assertionText: currentQuestion.assertionText,
+    reasonText: currentQuestion.reasonText,
+    questionText: qText,
+  });
   const qType = currentQuestion.questionType || 'mcq';
   const options = currentQuestion.options || [];
   const maxExitReached = exitAttempts >= MAX_EXIT_ATTEMPTS;
   const currentQid = answerKey(currentQuestion);
   const hasCurrentAnswer = isAnswerProvided(currentQuestion, answers[currentQid]);
-  const questionImageUri = currentQuestion.questionImage
-    ? currentQuestion.questionImage.startsWith('http')
-      ? currentQuestion.questionImage
-      : `${API_BASE_URL}${currentQuestion.questionImage}`
-    : null;
+  const questionImageUri =
+    currentQuestion.questionType === 'assertion_reason'
+      ? null
+      : currentQuestion.questionImage
+        ? currentQuestion.questionImage.startsWith('http')
+          ? currentQuestion.questionImage
+          : `${API_BASE_URL}${currentQuestion.questionImage}`
+        : null;
+  const sharedMatterDisplay = (() => {
+    const optsBlob = (options || [])
+      .map((o: any) => (typeof o === 'string' ? o : o?.text || ''))
+      .join('\n');
+    const isAr =
+      currentQuestion.questionType === 'assertion_reason' ||
+      Boolean(currentQuestion.assertionText || currentQuestion.reasonText) ||
+      (/\bA\s*[:：]/.test(qText) && /\bR\s*[:：]/.test(qText)) ||
+      (/Both A and R are true/i.test(optsBlob) && /correct explanation of A/i.test(optsBlob));
+    if (!isAr) {
+      return String(currentQuestion.sharedMatterText || currentQuestion.passageText || '').trim();
+    }
+    const raw = String(currentQuestion.sharedMatterText || '').trim();
+    return looksLikeArDirectionsText(raw) ? raw : DEFAULT_ASSERTION_REASON_DIRECTIONS;
+  })();
   const answeredCount = exam.questions.filter((q) =>
     isAnswerProvided(q, answers[answerKey(q)])
   ).length;
@@ -572,6 +883,10 @@ export default function ExamPage() {
     setCurrentIndex(index);
     setShowQuestionDropdown(false);
   };
+
+  useEffect(() => {
+    questionScrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [currentIndex]);
 
   const renderPaletteItem = (q: Question, index: number) => {
     const answered = isAnswerProvided(q, answers[answerKey(q)]);
@@ -629,6 +944,13 @@ export default function ExamPage() {
               <Text style={styles.headerSubmitText}>Submit</Text>
             </TouchableOpacity>
           </View>
+          {resumeNotice ? (
+            <TouchableOpacity onPress={() => setResumeNotice(null)} activeOpacity={0.85}>
+              <Text style={{ color: '#fff7ed', fontSize: 11, marginTop: 6, marginBottom: 4 }}>
+                {resumeNotice} · tap to dismiss
+              </Text>
+            </TouchableOpacity>
+          ) : null}
           <View style={styles.progressTrack}>
             <View
               style={[
@@ -686,15 +1008,30 @@ export default function ExamPage() {
         </GlassPanel>
 
         <ScrollView
+          ref={questionScrollRef}
           style={styles.body}
           contentContainerStyle={styles.bodyContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.questionCard}>
+            {(() => {
+              const heading = resolveAttemptSectionHeading(currentQuestion);
+              const prevHeading = resolveAttemptSectionHeading(
+                exam.questions[currentIndex - 1]
+              );
+              if (!heading || heading === prevHeading) return null;
+              return (
+                <View style={styles.sectionHeadingBanner}>
+                  <Text style={styles.sectionHeadingText}>{heading}</Text>
+                </View>
+              );
+            })()}
             <View style={styles.questionCardHeader}>
               <View style={styles.questionNumberBadge}>
-                <Text style={styles.questionNumberBadgeText}>Q{currentIndex + 1}</Text>
+                <Text style={styles.questionNumberBadgeText}>
+                  Q{currentIndex + 1}
+                </Text>
               </View>
               <View style={styles.questionCardActions}>
                 <TouchableOpacity
@@ -718,9 +1055,102 @@ export default function ExamPage() {
               </View>
             </View>
 
-            <Text style={styles.questionText}>
-              {normalizeExamText(qText, currentQuestion.subject)}
-            </Text>
+            {sharedMatterDisplay ? (
+              <View style={styles.sharedMatterCard}>
+                <Text style={styles.sharedMatterLabel}>
+                  {currentQuestion.questionType === 'assertion_reason' ||
+                  currentQuestion.sharedMatterKind === 'assertion_reason'
+                    ? 'Assertion–Reason directions'
+                    : currentQuestion.sharedMatterKind === 'match_following'
+                      ? 'Match the Following'
+                      : currentQuestion.sharedMatterKind === 'case'
+                        ? 'Case / Passage'
+                        : 'Shared matter'}
+                </Text>
+                <Text style={styles.sharedMatterText}>
+                  {normalizeExamText(sharedMatterDisplay, currentQuestion.subject)}
+                </Text>
+              </View>
+            ) : null}
+
+            {(arDisplay.assertion || arDisplay.reason) ? (
+              <View style={styles.arBlock}>
+                {arDisplay.assertion ? (
+                  <Text style={styles.questionText}>
+                    <Text style={styles.arLabel}>A: </Text>
+                    {normalizeExamText(arDisplay.assertion, currentQuestion.subject)}
+                  </Text>
+                ) : null}
+                {arDisplay.reason ? (
+                  <Text style={styles.questionText}>
+                    <Text style={styles.arLabel}>R: </Text>
+                    {normalizeExamText(arDisplay.reason, currentQuestion.subject)}
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
+
+            {((Array.isArray(currentQuestion.matchColumnI) && currentQuestion.matchColumnI.length > 0) ||
+              (Array.isArray(currentQuestion.matchColumnII) && currentQuestion.matchColumnII.length > 0)) &&
+            !questionImageUri ? (
+              <View style={styles.matchTable}>
+                <View style={[styles.matchTableRow, styles.matchTableHeader]}>
+                  <View style={[styles.matchTableCell, styles.matchTableCellBorder]}>
+                    <Text style={styles.matchTableHeaderText}>Column I</Text>
+                  </View>
+                  <View style={styles.matchTableCell}>
+                    <Text style={styles.matchTableHeaderText}>Column II</Text>
+                  </View>
+                </View>
+                {Array.from(
+                  {
+                    length: Math.max(
+                      (currentQuestion.matchColumnI || []).length,
+                      (currentQuestion.matchColumnII || []).length,
+                    ),
+                  },
+                  (_, i) => {
+                    const a = (currentQuestion.matchColumnI || [])[i];
+                    const b = (currentQuestion.matchColumnII || [])[i];
+                    const leftKey = String(a?.key || String.fromCharCode(65 + i)).replace(/\.$/, '');
+                    const rightKey = String(b?.key || String(i + 1)).replace(/\.$/, '');
+                    return (
+                      <View
+                        key={i}
+                        style={[
+                          styles.matchTableRow,
+                          i ===
+                          Math.max(
+                            (currentQuestion.matchColumnI || []).length,
+                            (currentQuestion.matchColumnII || []).length,
+                          ) -
+                            1
+                            ? null
+                            : styles.matchTableRowBorder,
+                        ]}
+                      >
+                        <View style={[styles.matchTableCell, styles.matchTableCellBorder]}>
+                          {a ? (
+                            <Text style={styles.matchColumnItem}>
+                              <Text style={styles.matchKey}>{leftKey}. </Text>
+                              {normalizeExamText(a.text, currentQuestion.subject)}
+                            </Text>
+                          ) : null}
+                        </View>
+                        <View style={styles.matchTableCell}>
+                          {b ? (
+                            <Text style={styles.matchColumnItem}>
+                              <Text style={styles.matchKey}>{rightKey}. </Text>
+                              {normalizeExamText(b.text, currentQuestion.subject)}
+                            </Text>
+                          ) : null}
+                        </View>
+                      </View>
+                    );
+                  },
+                )}
+              </View>
+            ) : null}
 
             {questionImageUri ? (
               <Image
@@ -728,6 +1158,12 @@ export default function ExamPage() {
                 style={styles.questionImage}
                 resizeMode="contain"
               />
+            ) : null}
+
+            {arDisplay.showQuestionText && arDisplay.questionText ? (
+            <Text style={styles.questionText}>
+              {normalizeExamText(arDisplay.questionText, currentQuestion.subject)}
+            </Text>
             ) : null}
 
             {qType === 'integer' ? (
@@ -1054,11 +1490,95 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 1,
   },
+  sectionHeadingBanner: {
+    backgroundColor: '#0f172a',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
+  },
+  sectionHeadingText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '800',
+  },
   questionCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 14,
+  },
+  sharedMatterCard: {
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fde68a',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
+  },
+  sharedMatterLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#92400e',
+    textTransform: 'uppercase',
+    marginBottom: 6,
+  },
+  sharedMatterText: {
+    fontSize: 14,
+    color: '#78350f',
+    lineHeight: 20,
+  },
+  arBlock: {
+    backgroundColor: '#f5f3ff',
+    borderWidth: 1,
+    borderColor: '#ddd6fe',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
+    gap: 8,
+  },
+  arLabel: {
+    fontWeight: '800',
+    color: '#5b21b6',
+  },
+  matchTable: {
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    marginBottom: 12,
+    backgroundColor: '#fff',
+  },
+  matchTableHeader: {
+    backgroundColor: '#e2e8f0',
+  },
+  matchTableHeaderText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  matchTableRow: {
+    flexDirection: 'row',
+  },
+  matchTableRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#1e293b',
+  },
+  matchTableCell: {
+    flex: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  matchTableCellBorder: {
+    borderRightWidth: 1,
+    borderRightColor: '#1e293b',
+  },
+  matchKey: {
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  matchColumnItem: {
+    fontSize: 13,
+    color: '#0f172a',
+    lineHeight: 18,
   },
   questionCardActions: {
     flexDirection: 'row',

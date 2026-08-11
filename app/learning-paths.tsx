@@ -7,6 +7,10 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '../src/services/api/api';
 import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
 import { GlassPanel } from '../src/components/ui';
+import {
+  learningPathDisplayName,
+  prepareStudentLearningPathSubjects,
+} from '../src/lib/learning-path-subjects';
 
 export default function LearningPaths() {
   const router = useRouter();
@@ -29,7 +33,9 @@ export default function LearningPaths() {
     try {
       const { data } = await api.get('/api/student/subjects');
       if (data?.success !== false) {
-        setLearningPaths(data.subjects || data.data || []);
+        setLearningPaths(
+          prepareStudentLearningPathSubjects(data.subjects || data.data || []),
+        );
       }
     } catch (error) {
       console.error('Error fetching learning paths:', error);
@@ -76,7 +82,9 @@ export default function LearningPaths() {
                     <Ionicons name="book" size={24} color="#3b82f6" />
                   </View>
                   <View style={styles.pathInfo}>
-                    <Text style={styles.pathTitle}>{path.name || 'Subject'}</Text>
+                    <Text style={styles.pathTitle}>
+                      {learningPathDisplayName(path.name || 'Subject')}
+                    </Text>
                     <Text style={styles.pathDescription} numberOfLines={2}>
                       {path.description || 'Start your learning journey'}
                     </Text>

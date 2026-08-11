@@ -97,33 +97,52 @@ export default function StudentResults() {
     try {
       setError('');
       const token = await SecureStore.getItemAsync('authToken');
-      const res = await fetch(`${API_BASE_URL}/api/student/exam-results`, {
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      });
-      if (!res.ok) throw new Error('Failed to load results');
-      const data = await res.json();
-      const list = Array.isArray(data) ? data : data?.results || data?.data || [];
-      setItems(
-        Array.isArray(list)
-          ? list.map((row) => {
-              const normalized = normalizeExamResultFromApi(row);
-              const subjects = Object.keys(normalized.subjectWiseScore || {});
-              return {
-                _id: normalized._id,
-                examName: normalized.examTitle,
-                title: normalized.examTitle,
-                score: normalized.obtainedMarks,
-                totalMarks: normalized.totalMarks,
-                percentage:
-                  normalized.totalMarks > 0
-                    ? Math.round(getMarksPercentage(normalized))
-                    : Math.round(normalized.percentage),
-                createdAt: normalized.completedAt,
-                subject: subjects[0] || 'Exam',
-              } satisfies ResultItem;
-            })
-          : []
-      );
+      const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+      const [examRes, omrRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/student/exam-results`, { headers }),
+        fetch(`${API_BASE_URL}/api/student/omr-results`, { headers }),
+      ]);
+      if (!examRes.ok && !omrRes.ok) throw new Error('Failed to load results');
+
+      const examData = examRes.ok ? await examRes.json() : null;
+      const omrData = omrRes.ok ? await omrRes.json() : null;
+
+      const examList = Array.isArray(examData)
+        ? examData
+        : examData?.results || examData?.data || [];
+      const examItems: ResultItem[] = Array.isArray(examList)
+        ? examList.map((row: any) => {
+            const normalized = normalizeExamResultFromApi(row);
+            const subjects = Object.keys(normalized.subjectWiseScore || {});
+            return {
+              _id: normalized._id,
+              examName: normalized.examTitle,
+              title: normalized.examTitle,
+              score: normalized.obtainedMarks,
+              totalMarks: normalized.totalMarks,
+              percentage:
+                normalized.totalMarks > 0
+                  ? Math.round(getMarksPercentage(normalized))
+                  : Math.round(normalized.percentage),
+              createdAt: normalized.completedAt,
+              subject: subjects[0] || 'Exam',
+            } satisfies ResultItem;
+          })
+        : [];
+
+      const omrHistory = Array.isArray(omrData?.data?.history) ? omrData.data.history : [];
+      const omrItems: ResultItem[] = omrHistory.map((row: any) => ({
+        _id: row._id,
+        examName: row.testTitle || 'OMR Test',
+        title: row.testTitle || 'OMR Test',
+        score: row.totalMarks,
+        totalMarks: row.totalQuestions || row.totalMarks,
+        percentage: Math.round(row.percentage || 0),
+        createdAt: row.batchCreatedAt || row.testDate,
+        subject: 'OMR',
+      }));
+
+      setItems([...omrItems, ...examItems]);
     } catch (e: any) {
       setError(e?.message || 'Could not load results');
     } finally {
@@ -149,7 +168,7 @@ export default function StudentResults() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StudentScreenHeader title="Exam Results" onBack={() => router.back()} />
+      <StudentScreenHeader title="OMR Results" onBack={() => router.back()} />
 
       <View style={styles.filters}>
         <SearchBar value={query} onChangeText={setQuery} placeholder="Filter by subject..." />
@@ -161,7 +180,7 @@ export default function StudentResults() {
       ) : error ? (
         <ErrorState message={error} onRetry={load} style={{ margin: STUDENT_SPACING.lg }} />
       ) : filtered.length === 0 ? (
-        <EmptyState icon="document-text-outline" title="No results yet" subtitle="Your exam results will show here." />
+        <EmptyState icon="scan-outline" title="No OMR results yet" subtitle="Your OMR exam results will show here." />
       ) : (
         <ScrollView contentContainerStyle={styles.list}>
           <Animated.View entering={FadeInDown.duration(STUDENT_ANIMATION.normal)}>

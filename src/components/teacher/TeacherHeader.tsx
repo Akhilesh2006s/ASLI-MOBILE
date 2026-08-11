@@ -10,7 +10,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  formatPersonName,
   formatSubjectLabel,
   formatTeacherFullName,
   formatTeacherTimeGreeting,
@@ -74,10 +73,16 @@ export default function TeacherHeader({
 
   const greetingLine = useMemo(() => formatTeacherTimeGreeting(), []);
   const teacherNameLine = useMemo(() => {
-    if (displayName !== undefined) return formatTeacherFullName(displayName);
-    if (userName) return formatPersonName(userName);
-    return formatTeacherFullName('Teacher');
-  }, [displayName, userName]);
+    const fromProps = String(displayName || userName || '').trim();
+    if (fromProps && fromProps.toLowerCase() !== 'teacher') {
+      return formatTeacherFullName(fromProps);
+    }
+    const combined = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
+    const fromUser = String(
+      user?.fullName || combined || user?.name || user?.email?.split('@')[0] || fromProps || 'Teacher',
+    ).trim();
+    return formatTeacherFullName(fromUser || 'Teacher');
+  }, [displayName, userName, user]);
 
   const subjectLabels = useMemo(() => {
     const seen = new Set<string>();
@@ -131,8 +136,8 @@ export default function TeacherHeader({
         { paddingTop: Math.max(insets.top, TEACHER_SPACING.md) + TEACHER_SPACING.lg },
       ]}
     >
-      {/* On glass the page artwork already supplies the colour and the orbs —
-          painting the gradient over it would hide the background entirely. */}
+      {/* Glass home: keep soft backdrop so greeting + name stay readable on artwork */}
+      {glass ? <GlassSurface intensity={42} /> : null}
       {glass ? null : (
         <>
           <LinearGradient
@@ -251,11 +256,11 @@ const styles = StyleSheet.create({
     borderBottomColor: '#38BDF8',
   },
   wrapGlass: {
-    // No card edge — the greeting should read as sitting directly on the page
-    // artwork, the way the compact bar's glass does.
+    backgroundColor: 'transparent',
     borderBottomWidth: 0,
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
+    overflow: 'hidden',
   },
   orbTop: {
     position: 'absolute',

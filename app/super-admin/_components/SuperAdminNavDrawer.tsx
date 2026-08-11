@@ -48,7 +48,8 @@ export type SuperAdminView =
   | 'ai-analytics'
   | 'board-comparison'
   | 'subscriptions'
-  | 'settings';
+  | 'settings'
+  | 'audit-logs';
 
 type NavItem = {
   id: SuperAdminView;
@@ -95,6 +96,7 @@ const NAV_SECTIONS: NavSection[] = [
     title: 'Insights & Billing',
     items: [
       { id: 'analytics', label: 'Analytics', icon: 'stats-chart-outline' },
+      { id: 'audit-logs', label: 'Audit Logs', icon: 'shield-checkmark-outline' },
       { id: 'subscriptions', label: 'Subscriptions', icon: 'card-outline' },
       { id: 'settings', label: 'Settings', icon: 'settings-outline' },
     ],

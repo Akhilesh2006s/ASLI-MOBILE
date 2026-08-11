@@ -18,6 +18,7 @@ export type AdminNavView =
   | 'teachers'
   | 'subjects'
   | 'exams'
+  | 'results'
   | 'assessments'
   | 'quizzes'
   | 'learning-paths'
@@ -41,6 +42,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { id: 'teachers', label: 'Teachers', icon: 'person-circle-outline' },
   { id: 'subjects', label: 'Subjects', icon: 'book-outline' },
   { id: 'exams', label: 'Exams', icon: 'document-text-outline' },
+  { id: 'results', label: 'OMR Results', icon: 'scan-outline' },
   { id: 'learning-paths', label: 'Learning Paths', icon: 'locate-outline' },
   { id: 'eduott', label: 'EduOTT', icon: 'play-outline' },
   { id: 'timetable', label: 'Timetable', icon: 'calendar-number-outline' },

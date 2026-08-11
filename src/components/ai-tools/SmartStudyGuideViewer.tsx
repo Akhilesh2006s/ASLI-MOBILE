@@ -1,5 +1,5 @@
-import { useMemo, type ReactNode } from 'react';
-import { View, Text, StyleSheet, Platform, ScrollView } from 'react-native';
+import { useMemo, useState, type ReactNode } from 'react';
+import { View, Text, StyleSheet, Platform, ScrollView, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import AiToolWebView from './AiToolWebView';
@@ -23,6 +23,7 @@ import {
 } from '../../lib/parse-smart-study-guide';
 import { getAiToolIonicon } from '../../lib/ai-tool-icons';
 import AiToolStackedSection from './AiToolStackedSection';
+import { SelfCheckList, TapToMarkItem, CheckableSteps } from '../shared/ai-tool-interactive';
 
 type Props = {
   content: string;
@@ -30,30 +31,6 @@ type Props = {
   toolType?: string;
   fill?: boolean;
 };
-
-function BulletList({
-  items,
-  color,
-  tabletUi,
-  boardUi,
-}: {
-  items: string[];
-  color: string;
-  tabletUi?: boolean;
-  boardUi?: boolean;
-}) {
-  if (!items.length) return null;
-  return (
-    <View style={styles.bulletList}>
-      {items.map((line, i) => (
-        <View key={`${line}-${i}`} style={[styles.bulletRow, { borderLeftColor: color }]}>
-          <View style={[styles.bulletOrb, { backgroundColor: color }]} />
-          <Text style={[styles.bulletText, viewerTabletStyle(!!tabletUi, 'bulletText', !!boardUi)]}>{line}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
 
 function RichTextBlock({ text, tabletUi, boardUi }: { text: string; tabletUi?: boolean; boardUi?: boolean }) {
   if (!text.trim()) return null;
@@ -74,6 +51,7 @@ function PracticeQuestionCard({
   const isMcq = q.type === 'objective' && q.options.length >= 2;
   const accents = ['#8b5cf6', '#0ea5e9', '#f59e0b', '#f43f5e', '#6366f1', '#06b6d4', '#f97316', '#d946ef'];
   const accent = accents[index % accents.length];
+  const [revealed, setRevealed] = useState(false);
   return (
     <View
       style={[
@@ -110,10 +88,21 @@ function PracticeQuestionCard({
         </View>
       ) : null}
       {q.answer ? (
-        <View style={[styles.answerBox, { borderLeftColor: accent }]}>
-          <Text style={styles.answerLabel}>Answer</Text>
-          <Text style={styles.answerText}>{q.answer}</Text>
-        </View>
+        revealed ? (
+          <View style={[styles.answerBox, { borderLeftColor: accent }]}>
+            <Text style={styles.answerLabel}>Answer</Text>
+            <Text style={styles.answerText}>{q.answer}</Text>
+          </View>
+        ) : (
+          <Pressable
+            style={[styles.revealAnswerBtn, { borderColor: accent }]}
+            onPress={() => setRevealed(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Reveal answer"
+          >
+            <Text style={[styles.revealAnswerText, { color: accent }]}>Reveal answer</Text>
+          </Pressable>
+        )
       ) : null}
     </View>
   );
@@ -161,7 +150,7 @@ function buildBodySections(guide: StudyGuideContent, tabletUi = false, boardUi =
     push(
       '3',
       <GuideSectionCard sectionNum="Section 3" title="Learning Objectives" icon="flag-outline" stripe="#c4b5fd" tabletUi={tabletUi} boardUi={boardUi}>
-        <BulletList items={guide.learningObjectives} color="#8b5cf6" tabletUi={tabletUi} boardUi={boardUi} />
+        <CheckableSteps items={guide.learningObjectives} tone="violet" />
       </GuideSectionCard>,
     );
   }
@@ -169,7 +158,7 @@ function buildBodySections(guide: StudyGuideContent, tabletUi = false, boardUi =
     push(
       '4',
       <GuideSectionCard sectionNum="Section 4" title="Prior Knowledge Required" icon="school-outline" stripe="#67e8f9" tabletUi={tabletUi} boardUi={boardUi}>
-        <BulletList items={guide.priorKnowledge} color="#0891b2" tabletUi={tabletUi} boardUi={boardUi} />
+        <SelfCheckList items={guide.priorKnowledge} tone="teal" />
       </GuideSectionCard>,
     );
   }
@@ -224,7 +213,11 @@ function buildBodySections(guide: StudyGuideContent, tabletUi = false, boardUi =
     push(
       '8',
       <GuideSectionCard sectionNum="Section 8" title="Real-life Examples" icon="leaf-outline" stripe="#bef264" tabletUi={tabletUi} boardUi={boardUi}>
-        <BulletList items={guide.realLifeExamples} color="#65a30d" tabletUi={tabletUi} boardUi={boardUi} />
+        <View style={styles.markList}>
+          {guide.realLifeExamples.map((item, i) => (
+            <TapToMarkItem key={`${item}-${i}`} text={item} tone="lime" />
+          ))}
+        </View>
       </GuideSectionCard>,
     );
   }
@@ -232,7 +225,11 @@ function buildBodySections(guide: StudyGuideContent, tabletUi = false, boardUi =
     push(
       '9',
       <GuideSectionCard sectionNum="Section 9" title="Quick Revision Notes" icon="flash-outline" stripe="#fdba74" tabletUi={tabletUi} boardUi={boardUi}>
-        <BulletList items={guide.quickRevisionNotes} color="#ea580c" tabletUi={tabletUi} boardUi={boardUi} />
+        <View style={styles.markList}>
+          {guide.quickRevisionNotes.map((item, i) => (
+            <TapToMarkItem key={`${item}-${i}`} text={item} tone="orange" markedStyle="strike" />
+          ))}
+        </View>
       </GuideSectionCard>,
     );
   }
@@ -253,7 +250,7 @@ function buildBodySections(guide: StudyGuideContent, tabletUi = false, boardUi =
     push(
       '11',
       <GuideSectionCard sectionNum="Section 11" title="Tips for Further Improvement" icon="sparkles-outline" stripe="#f0abfc" tabletUi={tabletUi} boardUi={boardUi}>
-        <BulletList items={guide.improvementTips} color="#c026d3" tabletUi={tabletUi} boardUi={boardUi} />
+        <SelfCheckList items={guide.improvementTips} tone="fuchsia" prompt="Tap each tip once you've tried it" />
       </GuideSectionCard>,
     );
   }
@@ -474,6 +471,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   guideBody: { padding: 2, gap: 6 },
+  markList: { gap: 8 },
   titleSection: {
     borderRadius: 14,
     borderWidth: 1,
@@ -649,4 +647,13 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   answerText: { fontSize: 13, lineHeight: 19, color: '#1e293b', fontWeight: '600' },
+  revealAnswerBtn: {
+    marginTop: 10,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
+  revealAnswerText: { fontSize: 12, fontWeight: '800' },
 });

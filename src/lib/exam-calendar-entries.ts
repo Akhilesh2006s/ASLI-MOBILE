@@ -72,9 +72,23 @@ export function buildExamCalendarEntries(exams: any[]): ExamCalendarEntry[] {
     if (!start || !end) continue;
     const examId = String(exam._id || exam.id || '');
     if (!examId) continue;
-    for (const day of eachLocalDayInRange(start, end)) {
+
+    const markerDays =
+      formatCalendarDateKey(start) === formatCalendarDateKey(end)
+        ? [new Date(start.getFullYear(), start.getMonth(), start.getDate())]
+        : [
+            new Date(start.getFullYear(), start.getMonth(), start.getDate()),
+            new Date(end.getFullYear(), end.getMonth(), end.getDate()),
+          ];
+
+    for (const day of markerDays) {
       const slot = new Date(day);
-      slot.setHours(start.getHours(), start.getMinutes(), 0, 0);
+      const role = getExamDayRole(day, start, end);
+      if (role === 'end') {
+        slot.setHours(end.getHours(), end.getMinutes(), 0, 0);
+      } else {
+        slot.setHours(start.getHours(), start.getMinutes(), 0, 0);
+      }
       entries.push({
         id: examId,
         type: 'exam',
@@ -82,7 +96,7 @@ export function buildExamCalendarEntries(exams: any[]): ExamCalendarEntry[] {
         subject: getExamSubjectLabel(exam),
         date: slot,
         source: exam,
-        examDayRole: getExamDayRole(day, start, end),
+        examDayRole: role,
         windowStart: start,
         windowEnd: end,
       });

@@ -164,3 +164,78 @@ export function formatClassroomScienceText(value: unknown, subject?: string): st
 export function normalizeAndFormatExamDisplayText(value: unknown, subject?: string): string {
   return formatClassroomScienceText(value, subject);
 }
+
+/** Parse a stem like `A: … R: …` into assertion / reason parts. */
+export function parseAssertionReasonStem(
+  text: unknown
+): { assertion: string; reason: string } | null {
+  const raw = String(text || '').trim();
+  if (!raw) return null;
+  const m = raw.match(/^\s*A\s*[:：]\s*([\s\S]+?)\s+R\s*[:：]\s*([\s\S]+?)\s*$/i);
+  if (!m) return null;
+  const assertion = m[1].trim();
+  const reason = m[2].trim();
+  if (!assertion || !reason) return null;
+  return { assertion, reason };
+}
+
+function stripArLabel(value: string, label: 'A' | 'R'): string {
+  const re = label === 'A' ? /^A\s*[:：]\s*/i : /^R\s*[:：]\s*/i;
+  return String(value || '').replace(re, '').trim();
+}
+
+/** One clean A/R block; hides questionText when it only repeats the same stem. */
+export function resolveAssertionReasonDisplay(q: {
+  assertionText?: string | null;
+  reasonText?: string | null;
+  questionText?: string | null;
+}): {
+  assertion: string;
+  reason: string;
+  showQuestionText: boolean;
+  questionText: string;
+} {
+  let assertion = stripArLabel(String(q.assertionText || '').trim(), 'A');
+  let reason = stripArLabel(String(q.reasonText || '').trim(), 'R');
+  const questionText = String(q.questionText || '').trim();
+
+  if ((!assertion || !reason) && questionText) {
+    const parsed = parseAssertionReasonStem(questionText);
+    if (parsed) {
+      if (!assertion) assertion = parsed.assertion;
+      if (!reason) reason = parsed.reason;
+    }
+  }
+
+  if (assertion && !reason) {
+    const parsed = parseAssertionReasonStem(
+      /^A\s*[:：]/i.test(String(q.assertionText || '').trim())
+        ? String(q.assertionText || '').trim()
+        : `A: ${assertion}`
+    );
+    if (parsed) {
+      assertion = parsed.assertion;
+      reason = parsed.reason;
+    }
+  }
+
+  let showQuestionText = Boolean(questionText);
+  if (assertion && reason && questionText) {
+    const parsedQt = parseAssertionReasonStem(questionText);
+    if (parsedQt) {
+      showQuestionText = false;
+    } else {
+      const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+      const a = norm(assertion);
+      const r = norm(reason);
+      const qt = norm(questionText);
+      const aKey = a.slice(0, Math.min(48, a.length));
+      const rKey = r.slice(0, Math.min(48, r.length));
+      if (aKey && rKey && qt.includes(aKey) && qt.includes(rKey)) {
+        showQuestionText = false;
+      }
+    }
+  }
+
+  return { assertion, reason, showQuestionText, questionText };
+}

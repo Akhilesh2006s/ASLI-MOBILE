@@ -47,7 +47,8 @@ export default function SuperAdminOverviewView({
   onNavigate,
 }: Props) {
   const { colors } = useSuperAdminTheme();
-  const engagement = Math.min(isLoading ? 0 : stats.contentEngagement || 0, 100);
+  const contentVolume = isLoading ? 0 : Number(stats.contentVolume ?? stats.contentEngagement ?? 0);
+  const activeRate = isLoading ? 0 : Math.min(100, Number(stats.activeStudentsPercentage) || 0);
 
   return (
     <ScrollView
@@ -215,15 +216,19 @@ export default function SuperAdminOverviewView({
             </View>
             <View style={styles.engagementBlock}>
               <View style={styles.studentAnalyticsRow}>
-                <Text style={styles.studentAnalyticsLabel}>Student Engagement</Text>
-                <Text style={styles.studentAnalyticsValue}>{engagement.toFixed(0)}%</Text>
+                <Text style={styles.studentAnalyticsLabel}>Content items</Text>
+                <Text style={styles.studentAnalyticsValue}>{contentVolume.toLocaleString()}</Text>
+              </View>
+              <View style={[styles.studentAnalyticsRow, { marginTop: 8 }]}>
+                <Text style={styles.studentAnalyticsLabel}>Active student rate</Text>
+                <Text style={styles.studentAnalyticsValue}>{activeRate.toFixed(0)}%</Text>
               </View>
               <View style={styles.engagementBar}>
                 <LinearGradient
                   colors={['#FB923C', '#38BDF8']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
-                  style={[styles.engagementFill, { width: `${engagement}%` }]}
+                  style={[styles.engagementFill, { width: `${activeRate}%` }]}
                 />
               </View>
             </View>

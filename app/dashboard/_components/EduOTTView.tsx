@@ -48,7 +48,7 @@ function buildVideosUrl(
   selectedClass: string | null,
   selectedSubject: string | null
 ): string {
-  const params = new URLSearchParams({ type: 'Video' });
+  const params = new URLSearchParams({ type: 'Video', surface: 'eduott' });
   if (role === 'student') {
     if (selectedClass) params.set('class', selectedClass);
     if (selectedSubject) params.set('subject', selectedSubject);

@@ -138,6 +138,45 @@ export function filterSubjectsForAiTool(toolType: string, subjects: string[]): s
   return subjects;
 }
 
+/** IIT / NEET / JEE boards in AI Tools — STEM only. */
+export function isIitAiToolBoard(board?: string | null): boolean {
+  const compact = String(board || '')
+    .toUpperCase()
+    .replace(/[\s/\\-]+/g, '');
+  return compact.includes('IIT') || compact.includes('NEET') || compact.includes('JEE');
+}
+
+const IIT_STEM_PLAIN_KEYS = new Set([
+  'physics',
+  'phy',
+  'chemistry',
+  'chem',
+  'maths',
+  'math',
+  'mathematics',
+  'biology',
+  'bio',
+]);
+
+export function isIitStemSubject(subject: string | undefined | null): boolean {
+  const raw = String(subject || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\b(iit|neet|jee)\b/g, ' ')
+    .replace(/[/_.]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!raw) return false;
+  const plain = extractPlainSubjectName(raw).toLowerCase().trim();
+  if (IIT_STEM_PLAIN_KEYS.has(plain)) return true;
+  const first = plain.split(/\s+/)[0];
+  return Boolean(first && IIT_STEM_PLAIN_KEYS.has(first));
+}
+
+export function filterSubjectsForIitBoard(subjects: string[]): string[] {
+  return subjects.filter(isIitStemSubject);
+}
+
 const STORY_LANGUAGE_PLAIN_KEYS = new Set(['eng', 'english', 'hin', 'hindi', 'tel', 'telugu']);
 
 export function isStoryPassageLanguageSubject(subject: string | undefined | null): boolean {

@@ -62,7 +62,7 @@ export default function SubjectContent() {
       }
 
       const contentRes = await api.get('/api/student/asli-prep-content', {
-        params: { subject: id },
+        params: { subject: id, surface: 'learning-path' },
       });
       const raw = contentRes.data?.data ?? contentRes.data;
       const list = Array.isArray(raw) ? raw : [];

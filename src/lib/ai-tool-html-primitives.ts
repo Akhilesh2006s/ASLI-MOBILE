@@ -163,10 +163,12 @@ export function sectionCardHtml(opts: {
   const title = formatAiToolText(opts.title);
   const orb = numMatch ? numMatch[1] : '✦';
 
+  const orbContent = opts.iconSvg?.trim() ? opts.iconSvg : escapeHtml(orb);
+
   return `
-<details class="quest-node"${openAttr} style="--quest:${theme.hex};--quest-deep:${theme.hexDeep}" id="quest-${orb}">
+<details class="quest-node"${openAttr} style="--quest:${theme.hex};--quest-deep:${theme.hexDeep};--quest-pastel:${theme.pastelBg};--quest-pastel-border:${theme.pastelBorder}" id="quest-${orb}">
   <summary class="quest-summary">
-    <div class="quest-orb" aria-hidden="true">${escapeHtml(orb)}</div>
+    <div class="quest-orb" aria-hidden="true">${orbContent}</div>
     <div class="quest-copy">
       <div class="quest-kicker"><span class="dot"></span>${escapeHtml(label)}</div>
       <div class="quest-title">${escapeHtml(title)}</div>

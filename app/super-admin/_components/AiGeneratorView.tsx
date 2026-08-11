@@ -254,10 +254,13 @@ function TopicBlock({
       </Pressable>
       {open ? (
         <View style={styles.nestedBody}>
-          {node.subtopics.map((st) => (
+          {node.subtopics.map((st, idx) => (
             <SubtopicBlock
-              key={st.subtopicName}
-              node={st}
+              key={`${String(st.subtopicName || 'whole').trim() || 'whole'}::${idx}`}
+              node={{
+                ...st,
+                subtopicName: String(st.subtopicName || '').trim() || 'Whole chapter',
+              }}
               toolSlug={toolSlug}
               deletingId={deletingId}
               onView={onView}
@@ -904,25 +907,30 @@ export default function AiGeneratorView() {
               <Text style={styles.selectText}>{questionType}</Text>
               <Ionicons name="chevron-down" size={16} color="#64748b" />
             </Pressable>
-            <Text style={styles.fieldLabel}>Questions per worksheet</Text>
+          </>
+        ) : null}
+
+        {(
+          selectedTool === 'worksheet-mcq-generator' ||
+          selectedTool === 'smart-qa-practice-generator' ||
+          selectedTool === 'mock-test-builder' ||
+          selectedTool === 'exam-question-paper-generator' ||
+          selectedTool === 'homework-creator'
+        ) ? (
+          <>
+            <Text style={styles.fieldLabel}>Number of questions</Text>
             <TextInput
               style={styles.input}
               value={questionCount}
               onChangeText={setQuestionCount}
               keyboardType="number-pad"
+              placeholder="e.g. 10"
             />
           </>
         ) : null}
 
         {selectedTool === 'smart-qa-practice-generator' ? (
           <>
-            <Text style={styles.fieldLabel}>Question Count</Text>
-            <TextInput
-              style={styles.input}
-              value={questionCount}
-              onChangeText={setQuestionCount}
-              keyboardType="number-pad"
-            />
             <Text style={styles.fieldLabel}>Difficulty</Text>
             <Pressable style={styles.selectField} onPress={() => setDifficultyPickerOpen(true)}>
               <Text style={styles.selectText}>{difficulty}</Text>

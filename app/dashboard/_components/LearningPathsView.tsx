@@ -25,6 +25,10 @@ import {
   STUDENT_TYPO,
   SUBJECT_COLORS,
 } from '../../../src/theme/student';
+import {
+  learningPathDisplayName,
+  prepareStudentLearningPathSubjects,
+} from '../../../src/lib/learning-path-subjects';
 
 function AnimatedProgressBar({ progress, delay = 0 }: { progress: number; delay?: number }) {
   const width = useSharedValue(0);
@@ -123,14 +127,16 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
 
     if (list.length === 0) {
       try {
-        const { data } = await api.get('/api/student/asli-prep-content');
+        const { data } = await api.get('/api/student/asli-prep-content', {
+          params: { surface: 'learning-path' },
+        });
         list = subjectsFromPrepContent(data);
       } catch {
         /* keep list empty */
       }
     }
 
-    setSubjects(list);
+    setSubjects(prepareStudentLearningPathSubjects(list));
     if (list.length === 0 && primaryFailed) {
       setSubjectsError(
         'Subjects are temporarily unavailable. Please try again in a moment.'
@@ -240,7 +246,8 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
             <View style={styles.subjectsList}>
               <Text style={styles.sectionLabel}>Your subjects</Text>
               {subjects.map((subject: any, index: number) => {
-                const iconName = getSubjectIcon(subject.name);
+                const displayName = learningPathDisplayName(subject.name);
+                const iconName = getSubjectIcon(displayName);
                 const color = SUBJECT_COLORS[index % SUBJECT_COLORS.length];
                 return (
                   <GlassCard
@@ -263,7 +270,7 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
                       </View>
                       <View style={styles.subjectMeta}>
                         <Text style={styles.subjectName} numberOfLines={2}>
-                          {subject.name}
+                          {displayName}
                         </Text>
                         <Text style={styles.subjectHint}>Open chapters & materials</Text>
                       </View>

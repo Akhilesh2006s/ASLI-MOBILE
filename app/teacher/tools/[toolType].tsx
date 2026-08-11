@@ -48,12 +48,27 @@ import {
   useAiToolOutputScroll,
   useQueueAiToolScrollOnGenerate,
 } from '../../../src/components/ai-tools/useAiToolOutputScroll';
-import type { AiToolGenerationMeta } from '../../../src/lib/ai-tool-generate';
+import {
+  validateAiToolForm,
+  executeAiToolGenerate,
+  buildTeacherAiRequestBody,
+  storeAiToolSuccessPayload,
+  validateActivityToolDisplay,
+  fetchAiToolGeneratedContentFallback,
+  isAiToolClientValidationError,
+  isAiToolInlineOnlyError,
+  resolveAiToolApiInlineMessage,
+  resolveSubTopicForRequest,
+  WHOLE_CHAPTER_VALUE,
+  type AiToolGenerationMeta,
+} from '../../../src/lib/ai-tool-generate';
 import {
   buildAiToolContentRenderKey,
 } from '../../../src/lib/ai-tool-rotation-label';
 import {
   filterSubjectsForAiTool,
+  filterSubjectsForIitBoard,
+  isIitAiToolBoard,
   isLanguageExcludedTool,
   isStoryPassageLanguageSubject,
   isStoryLanguageTool,
@@ -71,6 +86,7 @@ import {
   resolveCurriculumBoardForAiTools,
   resolveIsAsliPrepExclusive,
 } from '../../../src/lib/school-program-ai';
+import { resolveSchoolIitCategories, shouldShowIitTrackField } from '../../../src/lib/school-program';
 import {
   useCurriculumCascade,
 } from '../../../src/hooks/useCurriculumCascade';
@@ -124,13 +140,42 @@ type DropdownState = {
 
 function normalizeSubjectName(value: string) {
   let compact = String(value || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-  if (compact === 'maths') return 'mathematics';
-  if (compact === 'socialscience' || compact === 'socialstudies' || compact === 'sst') return 'socialscience';
-  if (compact.startsWith('biology')) return 'biology';
-  if (compact.startsWith('physics')) return 'physics';
-  if (compact.startsWith('chemistry')) return 'chemistry';
-  if (compact.startsWith('math')) return 'mathematics';
+  if (compact === 'maths' || compact === 'math') return 'mathematics';
+  if (
+    compact === 'socialscience' ||
+    compact === 'socialstudies' ||
+    compact === 'sst' ||
+    compact === 'social'
+  ) {
+    return 'socialscience';
+  }
+  if (compact === 'computerscience' || compact === 'computer' || compact === 'cs' || compact === 'it') {
+    return 'computerscience';
+  }
+  if (compact === 'phy' || compact.startsWith('physics')) return 'physics';
+  if (compact === 'chem' || compact.startsWith('chemistry')) return 'chemistry';
+  if (compact === 'bio' || compact.startsWith('biology')) return 'biology';
+  if (compact === 'sci' || compact === 'evs' || compact.startsWith('science')) return 'science';
+  if (compact.startsWith('mathematics')) return 'mathematics';
   return compact;
+}
+
+function subjectDisplayLabel(value: string) {
+  const key = normalizeSubjectName(value);
+  const labels: Record<string, string> = {
+    mathematics: 'Mathematics',
+    physics: 'Physics',
+    chemistry: 'Chemistry',
+    biology: 'Biology',
+    science: 'Science',
+    socialscience: 'Social Science',
+    computerscience: 'Computer Science',
+    english: 'English',
+    hindi: 'Hindi',
+    telugu: 'Telugu',
+  };
+  if (labels[key]) return labels[key];
+  return String(value || '').trim() || value;
 }
 
 function uniquePreserveOrder(items: string[]) {
@@ -143,6 +188,23 @@ function uniquePreserveOrder(items: string[]) {
     result.push(String(item).trim());
   }
   return result;
+}
+
+function mergeAssignedWithCurriculum(assignedSubjectNames: string[], curriculumSubjects: string[]) {
+  if (assignedSubjectNames.length === 0) {
+    return uniquePreserveOrder(curriculumSubjects);
+  }
+  const assignedKeys = new Set(assignedSubjectNames.map(normalizeSubjectName));
+  const fromCurriculum = uniquePreserveOrder(
+    curriculumSubjects.filter((s) => assignedKeys.has(normalizeSubjectName(s)))
+  );
+  const matchedKeys = new Set(fromCurriculum.map(normalizeSubjectName));
+  const assignedOnly = uniquePreserveOrder(
+    assignedSubjectNames
+      .filter((s) => !matchedKeys.has(normalizeSubjectName(s)))
+      .map((s) => subjectDisplayLabel(s))
+  );
+  return uniquePreserveOrder([...fromCurriculum, ...assignedOnly]);
 }
 
 function FormSection({
@@ -240,17 +302,70 @@ export default function TeacherToolPage() {
   const [availableNCERTTopics, setAvailableNCERTTopics] = useState<string[]>([]);
   const [schoolBoardName, setSchoolBoardName] = useState('CBSE');
   const [isAsliPrepExclusive, setIsAsliPrepExclusive] = useState(false);
+  const [schoolIitCategories, setSchoolIitCategories] = useState<string[]>([]);
   const [activeDropdown, setActiveDropdown] = useState<DropdownState | null>(null);
 
   const config = toolType && isTeacherToolType(toolType) ? getTeacherToolConfig(toolType) : null;
+  const boardOptions = getAiToolBoardOptions(isAsliPrepExclusive, schoolBoardName);
+  const selectedBoard = formParams.board || getDefaultAiToolBoard(isAsliPrepExclusive, schoolBoardName);
+  const effectiveConfig = useMemo(() => {
+    if (!config) return config;
+    const showTrack = shouldShowIitTrackField(selectedBoard, schoolIitCategories);
+    if (!showTrack) {
+      if (!config.fields.some((f) => f.name === 'productCategory')) return config;
+      return {
+        ...config,
+        fields: config.fields.filter((f) => f.name !== 'productCategory'),
+      };
+    }
+    if (config.fields.some((f) => f.name === 'productCategory')) return config;
+    const insertAt = Math.min(2, config.fields.length);
+    return {
+      ...config,
+      fields: [
+        ...config.fields.slice(0, insertAt),
+        {
+          name: 'productCategory',
+          label: 'IIT Track (Optional)',
+          type: 'select' as const,
+          required: false,
+          options: ['NONE', ...schoolIitCategories],
+          placeholder: 'General',
+        },
+        ...config.fields.slice(insertAt),
+      ],
+    };
+  }, [config, schoolIitCategories, selectedBoard]);
+
+  useEffect(() => {
+    if (shouldShowIitTrackField(selectedBoard, schoolIitCategories)) return;
+    setFormParams((prev) => {
+      if (!prev.productCategory) return prev;
+      const next = { ...prev };
+      delete next.productCategory;
+      return next;
+    });
+  }, [selectedBoard, schoolIitCategories]);
   const contentRenderKey = useMemo(
     () => buildAiToolContentRenderKey(toolType, generatedContent, responseMeta),
     [toolType, generatedContent, responseMeta]
   );
   const accent = AI.primary;
 
-  const boardOptions = getAiToolBoardOptions(isAsliPrepExclusive, schoolBoardName);
-  const selectedBoard = formParams.board || getDefaultAiToolBoard(isAsliPrepExclusive, schoolBoardName);
+  useEffect(() => {
+    if (toolType !== 'daily-class-plan-maker') return;
+    setFormParams((prev) => {
+      const raw = String(prev.date || '').trim();
+      const ok = /^\d{4}-\d{2}-\d{2}$/.test(raw);
+      if (ok) return prev;
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      return { ...prev, date: `${y}-${m}-${d}` };
+    });
+  }, [toolType]);
+
   const cascadeTopic = formParams.topic || formParams.chapter || '';
 
   const cascade = useCurriculumCascade(
@@ -264,29 +379,25 @@ export default function TeacherToolPage() {
   const classSelectOptions =
     cascade.classOptions.length > 0 ? cascade.classOptions : CLASS_OPTIONS;
 
-  const restrictToAssignedSubjects = useCallback(
-    (subjects: string[]) => {
-      if (assignedSubjectNames.length === 0) return subjects;
-      const allowed = new Set(assignedSubjectNames.map(normalizeSubjectName));
-      const restricted = uniquePreserveOrder(
-        subjects.filter((subject) => allowed.has(normalizeSubjectName(subject)))
-      );
-      return restricted.length > 0 ? restricted : subjects;
-    },
-    [assignedSubjectNames]
-  );
-
   const availableSubjects = useMemo(() => {
     if (!formParams.gradeLevel) return [];
     const raw = cascade.subjects;
     if (cascade.loadingSubjects && raw.length === 0) return [];
+    // IIT: AI Tool Topics / STEM only — do not merge CBSE assigned subjects
+    if (isIitAiToolBoard(selectedBoard)) {
+      return filterSubjectsForIitBoard(uniquePreserveOrder(raw));
+    }
+    if (assignedSubjectNames.length > 0) {
+      return mergeAssignedWithCurriculum(assignedSubjectNames, raw);
+    }
     if (raw.length === 0) return [];
-    return restrictToAssignedSubjects(raw);
+    return uniquePreserveOrder(raw);
   }, [
     formParams.gradeLevel,
     cascade.subjects,
     cascade.loadingSubjects,
-    restrictToAssignedSubjects,
+    assignedSubjectNames,
+    selectedBoard,
   ]);
 
   const subjectsForTool = useMemo(
@@ -355,7 +466,7 @@ export default function TeacherToolPage() {
   }));
 
   const { curriculumFields, topicFields, extraFields } = useMemo(() => {
-    if (!config) return { curriculumFields: [], topicFields: [], extraFields: [] };
+    if (!effectiveConfig) return { curriculumFields: [], topicFields: [], extraFields: [] };
     const HIDDEN_EXTRA = new Set([
       'questionCount',
       'difficulty',
@@ -370,9 +481,9 @@ export default function TeacherToolPage() {
     const curriculum: TeacherToolFieldConfig[] = [];
     const topic: TeacherToolFieldConfig[] = [];
     const extra: TeacherToolFieldConfig[] = [];
-    for (const field of config.fields) {
+    for (const field of effectiveConfig.fields) {
       if (HIDDEN_EXTRA.has(field.name)) continue;
-      if (field.name === 'gradeLevel' || field.name === 'subject') {
+      if (field.name === 'gradeLevel' || field.name === 'subject' || field.name === 'productCategory') {
         curriculum.push(field);
       } else if (field.isNCERT || field.isCascadeSubtopic) {
         topic.push(field);
@@ -381,7 +492,7 @@ export default function TeacherToolPage() {
       }
     }
     return { curriculumFields: curriculum, topicFields: topic, extraFields: extra };
-  }, [config]);
+  }, [effectiveConfig]);
 
   const returnTab = parseTeacherDashboardTab(
     typeof returnTabRaw === 'string' ? returnTabRaw : Array.isArray(returnTabRaw) ? returnTabRaw[0] : undefined,
@@ -412,6 +523,7 @@ export default function TeacherToolPage() {
         const curriculumBoard = resolveCurriculumBoardForAiTools(user);
         const defaultBoard = getDefaultAiToolBoard(exclusive, curriculumBoard);
         setSchoolBoardName(curriculumBoard);
+        setSchoolIitCategories(resolveSchoolIitCategories(user));
         const compositionDefaults =
           toolType === 'worksheet-mcq-generator' || toolType === 'exam-question-paper-generator'
             ? {
@@ -491,6 +603,7 @@ export default function TeacherToolPage() {
 
   useEffect(() => {
     if (!formParams.gradeLevel || subjectsForTool.length === 0) return;
+    if (cascade.loadingSubjects) return;
     setFormParams((prev) => {
       const currentSubject = prev.subject;
       const hasCurrent =
@@ -499,14 +612,38 @@ export default function TeacherToolPage() {
           (s) => normalizeSubjectName(s) === normalizeSubjectName(String(currentSubject))
         );
       if (hasCurrent) return prev;
+      if (currentSubject) {
+        const next = { ...prev };
+        delete next.subject;
+        delete next.topic;
+        delete next.subTopic;
+        return next;
+      }
       return { ...prev, subject: subjectsForTool[0] };
     });
-  }, [subjectsForTool, formParams.gradeLevel]);
+  }, [subjectsForTool, formParams.gradeLevel, cascade.loadingSubjects]);
 
   const handleInputChange = (name: string, value: any) => {
     setFormParams((prev) => {
-      const newParams = { ...prev, [name]: value };
+      let next = value;
+      if (name === 'date') {
+        // Digits and hyphens only — blocks junk like !@#$%!@#$%.
+        next = String(value ?? '')
+          .replace(/[^\d-]/g, '')
+          .slice(0, 10);
+      }
+      const newParams = { ...prev, [name]: next };
 
+      if (name === 'productCategory') {
+        const track = value === 'NONE' ? '' : value;
+        newParams.productCategory = track;
+        // Keep subject when changing IIT Track; only reset topic cascade
+        delete newParams.topic;
+        delete newParams.subTopic;
+        delete newParams.concept;
+        delete newParams.chapter;
+        delete newParams.projectTopic;
+      }
       if (name === 'gradeLevel') {
         delete newParams.subject;
         delete newParams.topic;
@@ -553,7 +690,9 @@ export default function TeacherToolPage() {
       }
 
       if (field.isCascadeSubtopic && field.name === 'subTopic') {
-        return cascade.subtopics;
+        return !field.required
+          ? [WHOLE_CHAPTER_VALUE, ...cascade.subtopics]
+          : cascade.subtopics;
       }
 
       if (
@@ -638,7 +777,7 @@ export default function TeacherToolPage() {
       }
     }
     if (fieldOptions.length === 0 && field.dependsOn) {
-      const parent = config?.fields.find((f) => f.name === field.dependsOn);
+      const parent = effectiveConfig?.fields.find((f) => f.name === field.dependsOn);
       return `Select ${parent?.label.replace(' *', '') || 'class'} first`;
     }
     return field.placeholder || 'No options available';
@@ -695,7 +834,7 @@ export default function TeacherToolPage() {
     } = await import('../../../src/lib/ai-tool-generate');
 
     const validationError = validateAiToolForm({
-      config,
+      config: effectiveConfig,
       formParams: { ...formParams, board: selectedBoard },
       toolType,
       isReadingPractice: isStoryLanguageTool(toolType),
@@ -783,7 +922,7 @@ export default function TeacherToolPage() {
           classLabel: String(selectedClass),
           subject: String(selectedSubject),
           topic: String(formParams.topic || ''),
-          subTopic: String(formParams.subTopic || ''),
+          subTopic: resolveSubTopicForRequest(formParams.subTopic),
           toolType: String(toolType || ''),
         });
 
@@ -837,7 +976,8 @@ export default function TeacherToolPage() {
     required?: boolean
   ) => {
     const icon = FIELD_ICONS[fieldName] || 'chevron-down-circle-outline';
-    const display = value || hint;
+    const displayLabel = value === WHOLE_CHAPTER_VALUE ? 'Whole chapter' : value;
+    const display = displayLabel || hint;
     const isPlaceholder = !value;
 
     return (
@@ -871,7 +1011,11 @@ export default function TeacherToolPage() {
   };
 
   const renderSelectField = (field: TeacherToolFieldConfig) => {
-    const value = formParams[field.name] || '';
+    const rawValue = formParams[field.name] || '';
+    const value =
+      field.isCascadeSubtopic && !field.required && !rawValue
+        ? WHOLE_CHAPTER_VALUE
+        : rawValue;
     const { isDisabled, loading } = getFieldDisabledState(field);
 
     let fieldOptions = getFieldOptions(field);
@@ -1279,7 +1423,13 @@ export default function TeacherToolPage() {
         accent={accent}
         onClose={() => setActiveDropdown(null)}
         onSelect={(option) => {
-          if (activeDropdown) handleInputChange(activeDropdown.fieldName, option);
+          if (activeDropdown) {
+            const next =
+              activeDropdown.fieldName === 'subTopic' && option === WHOLE_CHAPTER_VALUE
+                ? ''
+                : option;
+            handleInputChange(activeDropdown.fieldName, next);
+          }
           setActiveDropdown(null);
         }}
       />

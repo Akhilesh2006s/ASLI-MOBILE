@@ -17,7 +17,27 @@ export type AiToolFieldConfig = {
   name: string;
   label: string;
   required?: boolean;
+  type?: string;
 };
+
+const AI_TOOL_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+export function isValidAiToolDate(value: unknown): boolean {
+  const raw = String(value ?? '').trim();
+  if (!AI_TOOL_DATE_RE.test(raw)) return false;
+  const [y, m, d] = raw.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return (
+    dt.getUTCFullYear() === y &&
+    dt.getUTCMonth() === m - 1 &&
+    dt.getUTCDate() === d
+  );
+}
+
+export function sanitizeAiToolDateValue(value: unknown): string {
+  const raw = String(value ?? '').trim();
+  return isValidAiToolDate(raw) ? raw : '';
+}
 
 export type AiToolGenerationMeta = {
   source?: string;
@@ -133,6 +153,14 @@ export function validateAiToolForm({
 
   if (isLanguageExcludedTool(toolType) && isStoryPassageLanguageSubject(subject)) {
     return LANGUAGE_EXCLUDED_TOOL_ERROR;
+  }
+
+  const dateField = config.fields.find((f) => f.name === 'date' || f.type === 'date');
+  if (dateField) {
+    const raw = formParams.date ?? formParams[dateField.name];
+    if (raw != null && String(raw).trim() !== '' && !isValidAiToolDate(raw)) {
+      return 'Please pick a valid date (YYYY-MM-DD).';
+    }
   }
 
   return null;
@@ -435,6 +463,27 @@ export function storeAiToolSuccessPayload(
   };
 }
 
+export const WHOLE_CHAPTER_VALUE = '__WHOLE_CHAPTER__';
+
+export function resolveSubTopicForRequest(value: unknown): string {
+  const raw = String(value ?? '').trim();
+  if (!raw || raw === WHOLE_CHAPTER_VALUE) return '';
+  const norm = raw
+    .toLowerCase()
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (
+    norm === 'whole chapter' ||
+    norm === 'wholechapter' ||
+    norm === 'all subtopics' ||
+    norm === 'entire chapter'
+  ) {
+    return '';
+  }
+  return raw;
+}
+
 export function buildTeacherAiRequestBody(
   toolType: string,
   formParams: Record<string, unknown>,
@@ -447,7 +496,7 @@ export function buildTeacherAiRequestBody(
   );
   const selectedSubject = formParams.subject || formParams.subjects;
   const selectedTopic = formParams.topic || '';
-  const selectedSubTopic = formParams.subTopic || '';
+  const selectedSubTopic = resolveSubTopicForRequest(formParams.subTopic);
   const selectedSection = formParams.section || formParams.className || '';
 
   const compositionTools = new Set([
@@ -469,11 +518,16 @@ export function buildTeacherAiRequestBody(
     classNumber: parseAiToolClassNumber(selectedClass),
     subject: selectedSubject,
     topic: selectedTopic,
-    subTopic: selectedSubTopic,
     section: selectedSection,
     questionCount: formParams.questionCount ? parseInt(String(formParams.questionCount), 10) : undefined,
     duration: formParams.duration ? parseInt(String(formParams.duration), 10) : undefined,
     ...formParams,
+    subTopic: selectedSubTopic,
+    chapterScope: !selectedSubTopic,
+    productCategory:
+      formParams.productCategory === 'NONE' || formParams.productCategory === 'GENERAL'
+        ? ''
+        : String(formParams.productCategory || ''),
     questionComposition,
     board: selectedBoard,
     gradeLevel: selectedClass,
@@ -493,6 +547,7 @@ export function buildStudentAiRequestBody(
       formParams.projectTopic ||
       ''
   ).trim();
+  const selectedSubTopic = resolveSubTopicForRequest(formParams.subTopic);
 
   const gradeLevel = mapGradeLevel(
     selectedBoard,
@@ -506,6 +561,12 @@ export function buildStudentAiRequestBody(
     gradeLevel,
     subject: formParams.subject || formParams.subjects,
     topic: mappedTopic,
+    subTopic: selectedSubTopic,
+    chapterScope: !selectedSubTopic,
+    productCategory:
+      formParams.productCategory === 'NONE' || formParams.productCategory === 'GENERAL'
+        ? ''
+        : String(formParams.productCategory || ''),
   };
 }
 

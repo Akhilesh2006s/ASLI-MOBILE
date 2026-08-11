@@ -35,6 +35,12 @@ interface AdaptiveCard {
   examScorePercent?: number;
   weakTopicCount: number;
   priority: 'High' | 'Medium' | 'Low';
+  focusChapters?: Array<{
+    chapter: string;
+    wrong?: number;
+    skipped?: number;
+    navigatePath?: string;
+  }>;
   gapsWithoutContent: string[];
   usesLibraryFallback?: boolean;
   recommendedContent: RecommendedItem[];
@@ -156,7 +162,7 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
       <View style={styles.skyInner}>
       <PremiumSectionHeader
         title="Adaptive Learning"
-        subtitle="Personalized Resources From Your Performance — Only Content Available In Your Library"
+        subtitle="Chapters From Your Exam Misses — Then Matching Library Resources"
         icon="bulb-outline"
         accent={STUDENT_SKY.accent}
         badge="AI Powered"
@@ -209,6 +215,31 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
                     </Text>
                   </View>
                 </View>
+
+                {Array.isArray(rec.focusChapters) && rec.focusChapters.length > 0 ? (
+                  <View style={styles.focusWrap}>
+                    <Text style={styles.focusLabel}>CHAPTERS / SUBTOPICS TO FOCUS ON</Text>
+                    {rec.focusChapters.map((ch) => (
+                      <TouchableOpacity
+                        key={ch.chapter}
+                        style={styles.focusChip}
+                        onPress={() => {
+                          if (ch.navigatePath) router.push(ch.navigatePath as any);
+                          else router.push('/learning-paths' as any);
+                        }}
+                      >
+                        <Text style={styles.focusChapter}>{ch.chapter}</Text>
+                        <Text style={styles.focusMeta}>
+                          {(ch.wrong || 0) > 0 ? `${ch.wrong} wrong` : ''}
+                          {(ch.wrong || 0) > 0 && (ch.skipped || 0) > 0 ? ' · ' : ''}
+                          {(ch.skipped || 0) > 0 ? `${ch.skipped} skipped` : ''}
+                          {(ch.wrong || 0) === 0 && (ch.skipped || 0) === 0 ? 'From recent exams' : ''}
+                          {' · Study this'}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                ) : null}
 
                 {displayContent.length > 0 ? (
                   <>
@@ -343,6 +374,24 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   priorityText: { fontSize: 9, fontWeight: '800' },
+  focusWrap: { marginBottom: 10, gap: 6 },
+  focusLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: STUDENT.danger,
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  focusChip: {
+    backgroundColor: `${STUDENT.danger}12`,
+    borderWidth: 1,
+    borderColor: `${STUDENT.danger}33`,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  focusChapter: { fontSize: 13, fontWeight: '700', color: STUDENT.text },
+  focusMeta: { fontSize: 11, color: STUDENT.textMuted, marginTop: 2 },
   recLabel: {
     fontSize: 10,
     fontWeight: '800',

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../../src/lib/api-config';
 import MathRenderer from '../../../../src/components/MathRenderer';
@@ -30,6 +31,7 @@ import {
   buildMistakeTaxonomy,
   buildPatternAlerts,
   buildPerformanceInsights,
+  buildConceptPressureCards,
   getDnaSummaryMessage,
   buildQuestionFilterCounts,
   buildQuestionRowStatuses,
@@ -90,6 +92,8 @@ export function AiReportTabMobile({ result, examTitle, studentName, aiAnalysis, 
       total: score.total,
     }))
     .filter((row) => row.total > 0);
+
+  const conceptCards = useMemo(() => buildConceptPressureCards(aiAnalysis), [aiAnalysis]);
 
   const mistakeTaxonomy = useMemo(() => buildMistakeTaxonomy(result, aiAnalysis), [result, aiAnalysis]);
   const scoreReconciliation = useMemo(() => buildScoreReconciliation(result), [result]);
@@ -396,13 +400,13 @@ export function AiReportTabMobile({ result, examTitle, studentName, aiAnalysis, 
         </AnalysisCard>
       )}
 
-      {(aiAnalysis?.focusAreas?.length || 0) > 0 && (
+      {conceptCards.length > 0 && (
         <AnalysisCard title="Concept Pressure Points" icon="flash" accent="#F59E0B">
-          {(aiAnalysis?.focusAreas || []).slice(0, 3).map((f, i) => (
-            <View key={i} style={panelStyles.conceptCard}>
-              <Text style={panelStyles.conceptTag}>{f.subject}</Text>
-              <Text style={panelStyles.conceptTitle}>{f.issue}</Text>
-              <Text style={panelStyles.conceptMeta}>{f.whatToDo}</Text>
+          {conceptCards.map((c, i) => (
+            <View key={`${c.tag}-${c.name}-${i}`} style={panelStyles.conceptCard}>
+              <Text style={panelStyles.conceptTag}>{c.tag}</Text>
+              <Text style={panelStyles.conceptTitle}>{c.name}</Text>
+              <Text style={panelStyles.conceptMeta}>{c.meta}</Text>
             </View>
           ))}
         </AnalysisCard>
@@ -617,7 +621,7 @@ export function QuestionsTabMobile({
               isCorrect: correct,
               isAttempted: attempted,
               avgTime: avgTimePerQuestion || 60,
-              aiInsight: qi?.insight || qi?.fixStrategy || qi?.conceptGap,
+              aiInsight: qi?.insight,
             });
             const qText = getOptionText(question.questionText || question.question, question.subject);
             return (
@@ -1028,13 +1032,23 @@ export function InsightsTabMobile({ result, aiAnalysis }: { result: ExamAnalysis
 const PLAN_DAY_CARD_WIDTH = 160;
 const PLAN_DAY_CARD_GAP = 10;
 
-export function PlanTabMobile({ studentName, aiAnalysis }: { studentName: string; aiAnalysis: AiExamAnalysis | null }) {
+export function PlanTabMobile({
+  studentName,
+  aiAnalysis,
+  result,
+  onOpenQuestions,
+}: {
+  studentName: string;
+  aiAnalysis: AiExamAnalysis | null;
+  result?: ExamAnalysisResult;
+  onOpenQuestions?: () => void;
+}) {
   const { isTablet, isWide, contentWidth, width } = useExamAnalysisLayout();
   const [selectedDay, setSelectedDay] = useState(0);
   const verticalScrollRef = useRef<ScrollView>(null);
   const planDaysScrollRef = useRef<ScrollView>(null);
   const planQueueOffsetRef = useRef(0);
-  const planTopics = useMemo(() => generatePlanTopics(aiAnalysis), [aiAnalysis]);
+  const planTopics = useMemo(() => generatePlanTopics(aiAnalysis, result), [aiAnalysis, result]);
   const activeTopic = planTopics[selectedDay] ?? planTopics[0];
   const planQueue = useMemo(() => generatePlanQueueItems(activeTopic?.title || 'Focus', selectedDay), [activeTopic?.title, selectedDay]);
 
@@ -1072,24 +1086,39 @@ export function PlanTabMobile({ studentName, aiAnalysis }: { studentName: string
     [scrollPlanDayIntoView, scrollPlanQueueIntoView]
   );
 
-  const planVideoCards = useMemo(() => {
-    const focus = aiAnalysis?.focusAreas || [];
-    const fromFocus = focus.slice(0, 3).map((f, i) => ({
-      subj: (f.subject || 'General').toUpperCase(),
-      title: f.issue?.slice(0, 40) || f.subject,
-      min: 8 + i,
-      mastery: Math.max(20, 100 - (i + 1) * 18),
-      bg: i === 0 ? '#fff7ed' : i === 1 ? '#f5f3ff' : '#fefce8',
+  const focusChapterCards = useMemo(() => {
+    const fromFocus = (aiAnalysis?.focusAreas || []).slice(0, 6).map((f, i) => {
+      const chapter = String((f as { topic?: string }).topic || f.issue || f.subject || 'Focus chapter').trim();
+      const subject = String(f.subject || 'General');
+      return {
+        subj: subject.toUpperCase(),
+        title: chapter.slice(0, 48),
+        mastery: Math.max(18, 100 - (i + 1) * 16),
+        bg: i === 0 ? '#fff7ed' : i === 1 ? '#ecfdf5' : i === 2 ? '#eff6ff' : '#fefce8',
+        subjectId: (f as { subjectId?: string }).subjectId,
+        focus: chapter,
+      };
+    });
+    if (fromFocus.length > 0) return fromFocus;
+    return planTopics.slice(0, 4).map((t, i) => ({
+      subj: 'FOCUS',
+      title: t.title,
+      mastery: Math.max(20, 70 - i * 12),
+      bg: i === 0 ? '#fff7ed' : i === 1 ? '#ecfdf5' : '#eff6ff',
+      subjectId: undefined as string | undefined,
+      focus: t.title,
     }));
-    if (fromFocus.length >= 3) return fromFocus;
-    return (['physics', 'maths', 'chemistry'] as const).map((subj, i) => ({
-      subj: subj.toUpperCase(),
-      title: `${subj.charAt(0).toUpperCase() + subj.slice(1)} fundamentals`,
-      min: 10,
-      mastery: 50 - i * 8,
-      bg: i === 0 ? '#fff7ed' : i === 1 ? '#f5f3ff' : '#fefce8',
-    }));
-  }, [aiAnalysis]);
+  }, [aiAnalysis, planTopics]);
+
+  const openLearningPath = useCallback((card: { subjectId?: string; focus?: string; title?: string }) => {
+    const focus = encodeURIComponent(String(card.focus || card.title || '').trim());
+    const focusQ = focus ? `?focus=${focus}` : '';
+    if (card.subjectId) {
+      router.push(`/subject/${card.subjectId}${focusQ}` as any);
+      return;
+    }
+    router.push(`/learning-paths${focusQ}` as any);
+  }, []);
 
   return (
     <ScrollView
@@ -1100,8 +1129,10 @@ export function PlanTabMobile({ studentName, aiAnalysis }: { studentName: string
     >
       <LinearGradient colors={[...ANALYSIS.gradientHero]} style={panelStyles.planHero}>
         <Text style={panelStyles.planHeroTitle}>YOUR TOPIC PLAN</Text>
-        <Text style={panelStyles.planHeroSub}>Personalised from your weak areas</Text>
-        <Text style={panelStyles.planHeroMeta}>7 focus topics · 70 questions · 7 quizzes</Text>
+        <Text style={panelStyles.planHeroSub}>Built from this paper — review misses, then drill chapters</Text>
+        <Text style={panelStyles.planHeroMeta}>
+          {planTopics.length} focus topic{planTopics.length === 1 ? '' : 's'} · tap to open checklist
+        </Text>
       </LinearGradient>
 
       <View style={panelStyles.planWhyBox}>
@@ -1109,10 +1140,25 @@ export function PlanTabMobile({ studentName, aiAnalysis }: { studentName: string
         <View style={{ flex: 1 }}>
           <Text style={panelStyles.planWhyTitle}>Why this plan, in one minute</Text>
           <Text style={panelStyles.bodyText}>
-            {studentName}, this week targets your focus areas. {(aiAnalysis?.actionPlan?.thisWeek || [])[0] || 'Short daily drills on weak chapters.'}
+            {studentName}, this week targets your weak chapters. {(aiAnalysis?.actionPlan?.thisWeek || [])[0] || 'Short daily drills on focus chapters.'}
           </Text>
         </View>
       </View>
+
+      {onOpenQuestions ? (
+        <TouchableOpacity
+          style={panelStyles.missReviewBtn}
+          onPress={onOpenQuestions}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="create-outline" size={18} color="#0369A1" />
+          <View style={{ flex: 1 }}>
+            <Text style={panelStyles.missReviewTitle}>Review wrong answers</Text>
+            <Text style={panelStyles.metaText}>Open the Questions tab to revisit misses</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#64748B" />
+        </TouchableOpacity>
+      ) : null}
 
       <View style={panelStyles.planDaysScrollWrap}>
       <ScrollView
@@ -1160,23 +1206,28 @@ export function PlanTabMobile({ studentName, aiAnalysis }: { studentName: string
       </AnalysisCard>
       </View>
 
-      <AnalysisCard title="Video Queue · 30 minutes total" icon="play-circle" accent={ANALYSIS.purple}>
-        <Text style={panelStyles.metaText}>Auto-ordered by weakness</Text>
+      <AnalysisCard title="Chapters & subtopics to focus on" icon="book" accent="#0D9488">
+        <Text style={panelStyles.metaText}>Opens Learning Paths — not YouTube</Text>
         <View style={panelStyles.videoGrid}>
-          {planVideoCards.map((v, i) => (
-            <View
-              key={`${v.subj}-${i}`}
+          {focusChapterCards.map((v, i) => (
+            <TouchableOpacity
+              key={`${v.subj}-${v.title}-${i}`}
               style={[
                 panelStyles.videoCard,
                 isWide && panelStyles.videoCardWide,
                 { backgroundColor: v.bg },
               ]}
+              onPress={() => openLearningPath(v)}
+              activeOpacity={0.88}
             >
-              <Text style={panelStyles.videoSubj}>{v.subj} · {v.min} MIN</Text>
-              <Ionicons name="play-circle" size={28} color="#5B6779" style={{ alignSelf: 'center', marginVertical: 8 }} />
+              <Text style={panelStyles.videoSubj}>{v.subj}</Text>
+              <Ionicons name="library-outline" size={26} color="#0F766E" style={{ alignSelf: 'center', marginVertical: 8 }} />
               <Text style={panelStyles.videoTitle}>{v.title}</Text>
-              <Text style={panelStyles.metaText}>Your mastery: {Math.round(v.mastery)}%</Text>
-            </View>
+              <Text style={panelStyles.metaText}>Focus score: {Math.round(v.mastery)}%</Text>
+              <Text style={[panelStyles.metaText, { color: '#0F766E', fontWeight: '700', marginTop: 4 }]}>
+                Open in Learning Paths →
+              </Text>
+            </TouchableOpacity>
           ))}
         </View>
       </AnalysisCard>
@@ -1495,6 +1546,19 @@ const panelStyles = StyleSheet.create({
   planHeroTitle: { color: '#0F172A', fontSize: 22, fontWeight: '800' },
   planHeroSub: { color: '#475569', fontSize: 13, marginTop: 4 },
   planHeroMeta: { color: '#64748B', fontSize: 12, marginTop: 6 },
+  missReviewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    backgroundColor: '#F0F9FF',
+  },
+  missReviewTitle: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
   planWhyBox: { flexDirection: 'row', gap: 12, backgroundColor: '#fff1f2', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#fecdd3' },
   planAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#93C5FD', alignItems: 'center', justifyContent: 'center' },
   planAvatarText: { color: '#fff', fontWeight: '800' },
