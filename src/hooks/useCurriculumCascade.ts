@@ -47,14 +47,16 @@ const normalizeLabelKey = (value: string) =>
   String(value).trim().toLowerCase().replace(/\s+/g, ' ');
 
 /**
- * Clean up subtopic options coming from the curriculum API.
+ * Clean up topic/subtopic options coming from the curriculum API.
  * - Trims whitespace and removes case-insensitive duplicates.
  * - Drops "clustered" entries: a single option that is really every other
- *   subtopic concatenated with commas (bad backend data). Such an entry is
- *   removed only when all of its comma-separated parts already exist as their
- *   own options, so legitimate names that contain a comma are preserved.
+ *   topic/subtopic concatenated with commas (bad backend data — the managed
+ *   topic-taxonomy endpoint feeds both the topics and subtopics cascades, so
+ *   both are equally exposed to this). Such an entry is removed only when all
+ *   of its comma-separated parts already exist as their own options, so
+ *   legitimate names that contain a comma are preserved.
  */
-function sanitizeSubtopicOptions(options: string[]): string[] {
+function sanitizeCurriculumOptions(options: string[]): string[] {
   const cleaned = options.map((o) => String(o ?? '').trim()).filter(Boolean);
 
   const seen = new Set<string>();
@@ -296,7 +298,9 @@ export function useCurriculumCascade(
         const curriculumTopics = rowsToNames((data as { data?: CurriculumRow[] }).data);
         const managedTopics = (managed as { data?: { topics?: string[] } })?.data?.topics || [];
         setTopics(
-          sortChapterWiseLabels(mergePreservingPrimaryOrder(managedTopics, curriculumTopics)),
+          sortChapterWiseLabels(
+            sanitizeCurriculumOptions(mergePreservingPrimaryOrder(managedTopics, curriculumTopics)),
+          ),
         );
       } catch {
         if (!cancelled) setTopics([]);
@@ -343,7 +347,7 @@ export function useCurriculumCascade(
         const curriculumSubtopics = rowsToNames((data as { data?: CurriculumRow[] }).data);
         const managedSubtopics = (managed as { data?: { subTopics?: string[] } })?.data?.subTopics || [];
         setSubtopics(
-          sanitizeSubtopicOptions(
+          sanitizeCurriculumOptions(
             mergePreservingPrimaryOrder(managedSubtopics, curriculumSubtopics),
           ),
         );
