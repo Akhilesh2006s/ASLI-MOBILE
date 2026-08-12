@@ -15,8 +15,8 @@ import Animated, {
 } from 'react-native-reanimated';
 
 /** Hold long enough for the entrance spring to settle before exit. */
-export const SPLASH_DURATION_MS = 2000;
-const EXIT_DURATION_MS = 420;
+export const SPLASH_DURATION_MS = 3800;
+const EXIT_DURATION_MS = 520;
 const MAX_LOGO_SCALE = 1.06;
 const BRAND_LOGO = require('../../assets/logo-transparent.png');
 
@@ -38,7 +38,7 @@ function PulseRing({ size, delay, color }: { size: number; delay: number; color:
       delay,
       withRepeat(
         withSequence(
-          withTiming(1, { duration: 1600, easing: Easing.out(Easing.cubic) }),
+          withTiming(1, { duration: 2400, easing: Easing.out(Easing.cubic) }),
           withTiming(0, { duration: 0 }),
         ),
         -1,
@@ -68,7 +68,8 @@ export function AppSplash({ exiting = false }: AppSplashProps) {
 
   const availableWidth = width - insets.left - insets.right;
   const availableHeight = height - insets.top - insets.bottom;
-  const logoWidth = Math.min(availableWidth * 0.72, (availableHeight * 0.42) * LOGO_CONTENT_ASPECT);
+  // Larger mark: nearly full width, up to ~68% of height.
+  const logoWidth = Math.min(availableWidth * 0.96, (availableHeight * 0.68) * LOGO_CONTENT_ASPECT);
   const logoHeight = logoWidth / LOGO_CONTENT_ASPECT;
   const stageWidth = logoWidth * MAX_LOGO_SCALE;
   const stageHeight = logoHeight * MAX_LOGO_SCALE;
@@ -81,16 +82,16 @@ export function AppSplash({ exiting = false }: AppSplashProps) {
   const ringOpacity = useSharedValue(1);
 
   useEffect(() => {
-    logoOpacity.value = withTiming(1, { duration: 520, easing: Easing.out(Easing.cubic) });
-    logoTranslateY.value = withSpring(0, { damping: 16, stiffness: 140, mass: 0.85 });
-    logoScale.value = withSpring(1, { damping: 14, stiffness: 120, mass: 0.85 });
+    logoOpacity.value = withTiming(1, { duration: 900, easing: Easing.out(Easing.cubic) });
+    logoTranslateY.value = withSpring(0, { damping: 18, stiffness: 90, mass: 1 });
+    logoScale.value = withSpring(1, { damping: 16, stiffness: 85, mass: 1 });
 
     breathe.value = withDelay(
-      650,
+      900,
       withRepeat(
         withSequence(
-          withTiming(1.025, { duration: 1100, easing: Easing.inOut(Easing.ease) }),
-          withTiming(1, { duration: 1100, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1.025, { duration: 1600, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1, { duration: 1600, easing: Easing.inOut(Easing.ease) }),
         ),
         -1,
         false,
@@ -151,8 +152,8 @@ export function AppSplash({ exiting = false }: AppSplashProps) {
           <View style={[styles.stage, { width: stageWidth, height: stageHeight }]}>
             <Animated.View style={[styles.rings, ringsStyle]} pointerEvents="none">
               <PulseRing size={ringBase} delay={0} color="rgba(17,49,106,0.35)" />
-              <PulseRing size={ringBase} delay={520} color="rgba(202,121,17,0.32)" />
-              <PulseRing size={ringBase} delay={1040} color="rgba(79,70,229,0.28)" />
+              <PulseRing size={ringBase} delay={750} color="rgba(202,121,17,0.32)" />
+              <PulseRing size={ringBase} delay={1500} color="rgba(79,70,229,0.28)" />
             </Animated.View>
 
             <Animated.View style={[styles.logoWrap, { width: logoWidth, height: logoHeight }, logoStyle]}>

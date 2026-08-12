@@ -311,8 +311,8 @@ export default function Login() {
   };
 
   const handleCreateAccount = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    Alert.alert('Create Account', 'Please contact your school admin to create an account.');
+    Haptics.selectionAsync();
+    router.push('/auth/register');
   };
 
   const submitLogin = async () => {
