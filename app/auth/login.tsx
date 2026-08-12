@@ -442,7 +442,7 @@ export default function Login() {
                     <PremiumField
                       label="Email or Student ID"
                       icon="mail-outline"
-                      placeholder="Email or student ID (e.g. 1724)"
+                      placeholder="Email or student ID"
                       value={formData.email}
                       onChangeText={(email) => {
                         credentialsRef.current = { ...credentialsRef.current, email };

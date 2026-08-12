@@ -3,7 +3,7 @@ import { View, Image, StyleSheet, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   Easing,
-  FadeOut,
+  cancelAnimation,
   interpolate,
   useAnimatedStyle,
   useSharedValue,
@@ -14,11 +14,17 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-export const SPLASH_DURATION_MS = 1200;
-const EXIT_DURATION_MS = 450;
-/** Max scale from breathe + exit animations — size budget must include this. */
-const MAX_LOGO_SCALE = 1.08;
+/** Hold long enough for the entrance spring to settle before exit. */
+export const SPLASH_DURATION_MS = 2000;
+const EXIT_DURATION_MS = 420;
+const MAX_LOGO_SCALE = 1.06;
 const BRAND_LOGO = require('../../assets/logo-transparent.png');
+
+/**
+ * Opaque ink bounds inside the square canvas (1254×1254 with transparent pad).
+ * Using content aspect keeps the mark from looking tiny / jumping on scale.
+ */
+const LOGO_CONTENT_ASPECT = 1112 / 779;
 
 type AppSplashProps = {
   exiting?: boolean;
@@ -32,25 +38,28 @@ function PulseRing({ size, delay, color }: { size: number; delay: number; color:
       delay,
       withRepeat(
         withSequence(
-          withTiming(1, { duration: 1800, easing: Easing.out(Easing.cubic) }),
+          withTiming(1, { duration: 1600, easing: Easing.out(Easing.cubic) }),
           withTiming(0, { duration: 0 }),
         ),
         -1,
         false,
       ),
     );
+    return () => {
+      cancelAnimation(progress);
+    };
   }, [delay, progress]);
 
   const ringStyle = useAnimatedStyle(() => ({
     width: size,
     height: size,
     borderRadius: size / 2,
-    transform: [{ scale: interpolate(progress.value, [0, 1], [0.75, 1.45]) }],
-    opacity: interpolate(progress.value, [0, 0.35, 1], [0, 0.55, 0]),
+    transform: [{ scale: interpolate(progress.value, [0, 1], [0.72, 1.38]) }],
+    opacity: interpolate(progress.value, [0, 0.25, 1], [0, 0.42, 0]),
     borderColor: color,
   }));
 
-  return <Animated.View style={[styles.ring, ringStyle]} />;
+  return <Animated.View style={[styles.ring, ringStyle]} pointerEvents="none" />;
 }
 
 export function AppSplash({ exiting = false }: AppSplashProps) {
@@ -59,48 +68,68 @@ export function AppSplash({ exiting = false }: AppSplashProps) {
 
   const availableWidth = width - insets.left - insets.right;
   const availableHeight = height - insets.top - insets.bottom;
-  const logoMeta = Image.resolveAssetSource(BRAND_LOGO);
-  const logoAspect = logoMeta.width / logoMeta.height;
-  const logoWidth = Math.min(availableWidth * 0.82, (availableHeight * 0.62) / MAX_LOGO_SCALE);
-  const logoHeight = logoWidth / logoAspect;
+  const logoWidth = Math.min(availableWidth * 0.72, (availableHeight * 0.42) * LOGO_CONTENT_ASPECT);
+  const logoHeight = logoWidth / LOGO_CONTENT_ASPECT;
   const stageWidth = logoWidth * MAX_LOGO_SCALE;
   const stageHeight = logoHeight * MAX_LOGO_SCALE;
 
-  const logoScale = useSharedValue(0.45);
+  const logoScale = useSharedValue(0.82);
   const logoOpacity = useSharedValue(0);
+  const logoTranslateY = useSharedValue(18);
   const breathe = useSharedValue(1);
   const containerOpacity = useSharedValue(1);
+  const ringOpacity = useSharedValue(1);
 
   useEffect(() => {
-    logoScale.value = withSpring(1, { damping: 11, stiffness: 95, mass: 0.9 });
-    logoOpacity.value = withTiming(1, { duration: 650, easing: Easing.out(Easing.cubic) });
+    logoOpacity.value = withTiming(1, { duration: 520, easing: Easing.out(Easing.cubic) });
+    logoTranslateY.value = withSpring(0, { damping: 16, stiffness: 140, mass: 0.85 });
+    logoScale.value = withSpring(1, { damping: 14, stiffness: 120, mass: 0.85 });
 
     breathe.value = withDelay(
-      700,
+      650,
       withRepeat(
         withSequence(
-          withTiming(1.03, { duration: 1400, easing: Easing.inOut(Easing.ease) }),
-          withTiming(1, { duration: 1400, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1.025, { duration: 1100, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1, { duration: 1100, easing: Easing.inOut(Easing.ease) }),
         ),
         -1,
         false,
       ),
     );
-  }, [breathe, logoOpacity, logoScale]);
+
+    return () => {
+      cancelAnimation(logoOpacity);
+      cancelAnimation(logoTranslateY);
+      cancelAnimation(logoScale);
+      cancelAnimation(breathe);
+    };
+  }, [breathe, logoOpacity, logoScale, logoTranslateY]);
 
   useEffect(() => {
     if (!exiting) return;
 
-    breathe.value = withTiming(1, { duration: 200 });
+    cancelAnimation(breathe);
+    breathe.value = withTiming(1, { duration: 160, easing: Easing.out(Easing.quad) });
+    ringOpacity.value = withTiming(0, { duration: 220, easing: Easing.out(Easing.quad) });
     logoScale.value = withTiming(MAX_LOGO_SCALE, {
       duration: EXIT_DURATION_MS,
       easing: Easing.out(Easing.cubic),
     });
-    containerOpacity.value = withTiming(0, { duration: EXIT_DURATION_MS, easing: Easing.in(Easing.cubic) });
-  }, [breathe, containerOpacity, exiting, logoScale]);
+    logoOpacity.value = withTiming(0, {
+      duration: EXIT_DURATION_MS,
+      easing: Easing.in(Easing.cubic),
+    });
+    containerOpacity.value = withTiming(0, {
+      duration: EXIT_DURATION_MS,
+      easing: Easing.in(Easing.cubic),
+    });
+  }, [breathe, containerOpacity, exiting, logoOpacity, logoScale, ringOpacity]);
 
   const logoStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: logoScale.value * breathe.value }],
+    transform: [
+      { translateY: logoTranslateY.value },
+      { scale: logoScale.value * breathe.value },
+    ],
     opacity: logoOpacity.value,
   }));
 
@@ -108,26 +137,36 @@ export function AppSplash({ exiting = false }: AppSplashProps) {
     opacity: containerOpacity.value,
   }));
 
-  const ringBase = Math.min(logoWidth, logoHeight) * 0.62;
+  const ringsStyle = useAnimatedStyle(() => ({
+    opacity: ringOpacity.value,
+  }));
+
+  const ringBase = Math.min(logoWidth, logoHeight) * 0.78;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
-      <Animated.View exiting={FadeOut.duration(EXIT_DURATION_MS)} style={[styles.container, containerStyle]}>
-        <View style={[styles.stage, { width: stageWidth, height: stageHeight }]}>
-          <PulseRing size={ringBase} delay={0} color="rgba(37,99,235,0.45)" />
-          <PulseRing size={ringBase} delay={600} color="rgba(20,184,166,0.4)" />
-          <PulseRing size={ringBase} delay={1200} color="rgba(147,51,234,0.35)" />
+    // Animate the full-screen wash so exit reveals login underneath (no solid-bg flash).
+    <Animated.View style={[styles.safeArea, containerStyle]}>
+      <SafeAreaView style={styles.safeInner} edges={['top', 'bottom', 'left', 'right']}>
+        <View style={styles.container}>
+          <View style={[styles.stage, { width: stageWidth, height: stageHeight }]}>
+            <Animated.View style={[styles.rings, ringsStyle]} pointerEvents="none">
+              <PulseRing size={ringBase} delay={0} color="rgba(17,49,106,0.35)" />
+              <PulseRing size={ringBase} delay={520} color="rgba(202,121,17,0.32)" />
+              <PulseRing size={ringBase} delay={1040} color="rgba(79,70,229,0.28)" />
+            </Animated.View>
 
-          <Animated.View style={[styles.logoWrap, { width: logoWidth, height: logoHeight }, logoStyle]}>
-            <Image
-              source={BRAND_LOGO}
-              style={{ width: logoWidth, height: logoHeight }}
-              resizeMode="contain"
-            />
-          </Animated.View>
+            <Animated.View style={[styles.logoWrap, { width: logoWidth, height: logoHeight }, logoStyle]}>
+              <Image
+                source={BRAND_LOGO}
+                style={{ width: logoWidth, height: logoHeight }}
+                resizeMode="contain"
+                accessibilityLabel="AsliLearn.ai"
+              />
+            </Animated.View>
+          </View>
         </View>
-      </Animated.View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </Animated.View>
   );
 }
 
@@ -136,14 +175,18 @@ export const SPLASH_EXIT_DURATION_MS = EXIT_DURATION_MS;
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    // Solid wash so login (under the overlay) is never visible through the splash.
-    backgroundColor: '#E8EEF9',
+    // Match AppBackground so the handoff to login does not flash a different wash.
+    backgroundColor: '#DCE4F7',
+  },
+  safeInner: {
+    flex: 1,
+    backgroundColor: 'transparent',
   },
   container: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#E8EEF9',
+    backgroundColor: 'transparent',
     overflow: 'visible',
   },
   stage: {
@@ -151,9 +194,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'visible',
   },
+  rings: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   ring: {
     position: 'absolute',
-    borderWidth: 2,
+    borderWidth: 1.5,
   },
   logoWrap: {
     alignItems: 'center',
