@@ -491,12 +491,10 @@ function SubtopicLeafRow({
     <View style={styles.subtopicLeaf}>
       <Pressable style={styles.subtopicLeafTrigger} onPress={() => setOpen((v) => !v)}>
         <View style={styles.subtopicLeafLeft}>
-          <Ionicons name="git-branch-outline" size={14} color="#d97706" />
-          <Text style={styles.subtopicLabel}>Subtopic</Text>
+          <Ionicons name="git-branch-outline" size={14} color="#d97706" style={styles.rowIcon} />
           <View style={styles.subtopicValueWrap}>
-            <Text style={styles.subtopicValue} numberOfLines={1}>
-              {labelEmpty(item.value)}
-            </Text>
+            <Text style={styles.subtopicLabel}>Subtopic</Text>
+            <Text style={styles.subtopicValue}>{labelEmpty(item.value)}</Text>
           </View>
         </View>
         <View style={styles.subtopicLeafRight}>
@@ -556,16 +554,14 @@ function TopicRow({
   return (
     <GlassPanel style={styles.topicCard} radius={10} tone="medium">
       <Pressable style={styles.topicTrigger} onPress={() => setOpen((v) => !v)}>
-        <Ionicons name="bookmark-outline" size={16} color="#0d9488" />
+        <Ionicons name="bookmark-outline" size={16} color="#0d9488" style={styles.rowIcon} />
         <View style={styles.topicTitleWrap}>
-          <Text style={styles.topicTitle} numberOfLines={1}>
-            {label}
-          </Text>
+          <View style={styles.levelBadge}>
+            <Text style={styles.levelBadgeText}>Topic</Text>
+          </View>
+          <Text style={styles.topicTitle}>{label}</Text>
         </View>
-        <View style={styles.levelBadge}>
-          <Text style={styles.levelBadgeText}>Topic</Text>
-        </View>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#5B6779" />
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#5B6779" style={styles.rowChevron} />
       </Pressable>
       {open ? (
         <View style={styles.topicBody}>
@@ -630,16 +626,14 @@ function SubjectRow({
   return (
     <GlassPanel style={styles.subjectCard} radius={10} tone="medium">
       <Pressable style={styles.subjectTrigger} onPress={() => setOpen((v) => !v)}>
-        <Ionicons name="book-outline" size={16} color="#6366f1" />
+        <Ionicons name="book-outline" size={16} color="#6366f1" style={styles.rowIcon} />
         <View style={styles.subjectTitleWrap}>
-          <Text style={styles.subjectTitle} numberOfLines={1}>
-            {label}
-          </Text>
+          <View style={styles.levelBadge}>
+            <Text style={styles.levelBadgeText}>Subject</Text>
+          </View>
+          <Text style={styles.subjectTitle}>{label}</Text>
         </View>
-        <View style={styles.levelBadge}>
-          <Text style={styles.levelBadgeText}>Subject</Text>
-        </View>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#5B6779" />
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#5B6779" style={styles.rowChevron} />
       </Pressable>
       {open ? (
         <View style={styles.subjectBody}>
@@ -696,15 +690,13 @@ function ClassBlock({
   return (
     <GlassPanel style={styles.classBlock} radius={12} tone="medium">
       <Pressable style={styles.classTrigger} onPress={() => setOpen((v) => !v)}>
-        <View style={styles.classBadge}>
-          <Text style={styles.classBadgeText}>Class</Text>
-        </View>
         <View style={styles.classTitleWrap}>
-          <Text style={styles.classTitle} numberOfLines={1}>
-            {classTitle}
-          </Text>
+          <View style={styles.classBadge}>
+            <Text style={styles.classBadgeText}>Class</Text>
+          </View>
+          <Text style={styles.classTitle}>{classTitle}</Text>
         </View>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#5B6779" />
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#5B6779" style={styles.rowChevron} />
       </Pressable>
       {open ? (
         <View style={styles.classBody}>
@@ -800,19 +792,15 @@ function ToolSection({
         <View style={styles.toolIcon}>
           <Ionicons name="sparkles" size={16} color="#fff" />
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.toolTitle} numberOfLines={2}>
-            {title}
-          </Text>
-          <Text style={styles.toolId} numberOfLines={1}>
-            {tool.value}
-          </Text>
+        <View style={styles.toolTriggerBody}>
+          <Text style={styles.toolTitle}>{title}</Text>
+          <View style={styles.savedBadge}>
+            <Text style={styles.savedBadgeText}>{tool.count} saved</Text>
+          </View>
+          <Text style={styles.toolId}>{tool.value}</Text>
           <Text style={styles.toolHint}>
             {open ? 'Hide classes & paths' : 'Expand to browse class → subject → topic → records'}
           </Text>
-        </View>
-        <View style={styles.savedBadge}>
-          <Text style={styles.savedBadgeText}>{tool.count} saved</Text>
         </View>
       </Pressable>
       {open ? (
@@ -1167,6 +1155,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   toolTrigger: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, padding: 14 },
+  toolTriggerBody: { flex: 1, minWidth: 0, gap: 6 },
   toolIcon: {
     width: 36,
     height: 36,
@@ -1175,16 +1164,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  toolTitle: { fontSize: 15, fontWeight: '700', color: '#0f172a' },
-  toolId: { fontSize: 10, color: '#64748b', fontFamily: 'monospace', marginTop: 2 },
-  toolHint: { fontSize: 11, color: '#64748b', marginTop: 4 },
+  toolTitle: { fontSize: 15, fontWeight: '700', color: '#0f172a', lineHeight: 20 },
+  toolId: { fontSize: 10, color: '#64748b', fontFamily: 'monospace' },
+  toolHint: { fontSize: 11, color: '#64748b', lineHeight: 16 },
   savedBadge: {
+    alignSelf: 'flex-start',
     backgroundColor: '#ffedd5',
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
   savedBadgeText: { fontSize: 11, fontWeight: '600', color: '#9a3412' },
+  rowIcon: { marginTop: 2 },
+  rowChevron: { marginTop: 2 },
   toolBody: {
     borderTopWidth: 1,
     borderTopColor: '#f1f5f9',
@@ -1211,11 +1203,18 @@ const styles = StyleSheet.create({
     borderColor: '#fed7aa',
     borderRadius: 12,
   },
-  classTrigger: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12 },
-  classBadge: { backgroundColor: '#1e293b', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
+  classTrigger: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 12 },
+  classBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#1e293b',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginBottom: 4,
+  },
   classBadgeText: { fontSize: 9, fontWeight: '700', color: '#fff', textTransform: 'uppercase' },
   classTitleWrap: { flex: 1, minWidth: 0 },
-  classTitle: { fontSize: 14, fontWeight: '700', color: '#0f172a' },
+  classTitle: { fontSize: 14, fontWeight: '700', color: '#0f172a', lineHeight: 20 },
   classBody: { borderTopWidth: 1, borderTopColor: '#ffedd5', padding: 8, gap: 8, backgroundColor: '#fffaf5' },
   subjectCard: {
     borderWidth: 1,
@@ -1223,10 +1222,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     overflow: 'hidden',
   },
-  subjectTrigger: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10 },
-  subjectTitleWrap: { flex: 1, minWidth: 0 },
-  subjectTitle: { fontSize: 13, fontWeight: '600', color: '#1e293b' },
+  subjectTrigger: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 10 },
+  subjectTitleWrap: { flex: 1, minWidth: 0, gap: 4 },
+  subjectTitle: { fontSize: 13, fontWeight: '600', color: '#1e293b', lineHeight: 18 },
   levelBadge: {
+    alignSelf: 'flex-start',
     borderWidth: 1,
     borderColor: '#e2e8f0',
     borderRadius: 4,
@@ -1241,9 +1241,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     overflow: 'hidden',
   },
-  topicTrigger: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10 },
-  topicTitleWrap: { flex: 1, minWidth: 0 },
-  topicTitle: { fontSize: 13, fontWeight: '600', color: '#1e293b' },
+  topicTrigger: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 10 },
+  topicTitleWrap: { flex: 1, minWidth: 0, gap: 4 },
+  topicTitle: { fontSize: 13, fontWeight: '600', color: '#1e293b', lineHeight: 18 },
   topicBody: { borderTopWidth: 1, borderTopColor: '#f1f5f9', padding: 8, gap: 8 },
   subtopicLeaf: {
     borderWidth: 1,
@@ -1254,16 +1254,16 @@ const styles = StyleSheet.create({
   },
   subtopicLeafTrigger: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     padding: 10,
     gap: 8,
   },
-  subtopicLeafLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  subtopicLabel: { fontSize: 10, fontWeight: '600', color: '#64748b', textTransform: 'uppercase' },
+  subtopicLeafLeft: { flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 6, minWidth: 0 },
+  subtopicLabel: { fontSize: 10, fontWeight: '600', color: '#64748b', textTransform: 'uppercase', marginBottom: 2 },
   subtopicValueWrap: { flex: 1, minWidth: 0 },
-  subtopicValue: { fontSize: 13, fontWeight: '600', color: '#0f172a' },
-  subtopicLeafRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  subtopicValue: { fontSize: 13, fontWeight: '600', color: '#0f172a', lineHeight: 18 },
+  subtopicLeafRight: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
   countPill: { backgroundColor: '#f1f5f9', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
   countPillText: { fontSize: 10, fontWeight: '600', color: '#475569' },
   subtopicLeafBody: { borderTopWidth: 1, borderTopColor: '#e2e8f0', padding: 8 },
