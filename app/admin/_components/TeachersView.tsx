@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { ReactNode } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, Modal, Pressable } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import {
   SvgCheckbox,
@@ -34,6 +34,11 @@ import {
   AdminStatsRow,
 } from '../_ui';
 
+interface TeacherClassAssignment {
+  classId: string;
+  subjectId: string;
+}
+
 interface Teacher {
   id: string;
   fullName: string;
@@ -43,6 +48,7 @@ interface Teacher {
   qualifications?: string;
   subjects?: any[];
   assignedClassIds?: string[];
+  assignments?: TeacherClassAssignment[];
   isActive: boolean;
   createdAt: string;
 }
@@ -81,27 +87,32 @@ const getResolvedAssignedClasses = (assignedClassIds: string[] = [], classList: 
     .map((classId) => ({ classId: String(classId), classItem: resolveAssignedClass(classId, classList) }))
     .filter((entry): entry is { classId: string; classItem: ClassOption } => !!entry.classItem);
 
-const getClassSubjectLine = (classItem: ClassOption | undefined, teacherSubjects: any[] = []) => {
-  if (!classItem) return '';
-  const teacherIdSet = new Set(
-    teacherSubjects.map((s) => String(s?._id || s?.id || '')).filter(Boolean)
-  );
-  const fromClass = (classItem.assignedSubjects ?? []).filter((sub) => {
-    if (!sub) return false;
-    const sid = String(sub.id || sub._id || '');
-    return teacherIdSet.size === 0 || !sid || teacherIdSet.has(sid);
-  });
-  const labels = (
-    fromClass.length > 0
-      ? fromClass.map((s) => s.name || s.code || '').filter(Boolean)
-      : teacherSubjects.map((s) => s?.name || s?.title || '').filter(Boolean)
-  );
-  const unique = Array.from(new Set(labels));
-  if (unique.length > 0) return unique.join(', ');
-  if (classItem.subjectLabel && classItem.subjectLabel !== 'General') {
-    return classItem.subjectLabel;
-  }
-  return '';
+const getTeacherClassIds = (teacher: Teacher) => {
+  const fromAssignments = [
+    ...new Set((teacher.assignments || []).map((row) => String(row.classId)).filter(Boolean)),
+  ];
+  if (fromAssignments.length > 0) return fromAssignments;
+  return (teacher.assignedClassIds || []).map(String);
+};
+
+const getClassSubjectLineForTeacher = (
+  classId: string,
+  teacherSubjects: any[] = [],
+  assignments: TeacherClassAssignment[] = [],
+) => {
+  const rows = assignments.filter((row) => String(row.classId) === String(classId));
+  if (rows.length === 0) return '';
+
+  const labels = rows
+    .map((row) => {
+      const subject = teacherSubjects.find(
+        (s) => String(s?._id || s?.id || '') === String(row.subjectId),
+      );
+      return subject?.name || subject?.title || subject?.code || '';
+    })
+    .filter(Boolean);
+
+  return Array.from(new Set(labels)).join(', ');
 };
 
 const GRID_GAP = ADMIN_LIST_GRID_GAP;
@@ -119,10 +130,13 @@ export default function TeachersView() {
   const [newTeacher, setNewTeacher] = useState({
     fullName: '',
     email: '',
+    password: '',
     phone: '',
     department: '',
-    qualifications: ''
+    qualifications: '',
+    subjects: [] as string[],
   });
+  const [showNewTeacherPassword, setShowNewTeacherPassword] = useState(false);
   const [editTeacher, setEditTeacher] = useState({
     fullName: '',
     email: '',
@@ -138,7 +152,13 @@ export default function TeachersView() {
   const [assignClassesModal, setAssignClassesModal] = useState(false);
   const [assigningForTeacher, setAssigningForTeacher] = useState<Teacher | null>(null);
   const [selectedSubjectIds, setSelectedSubjectIds] = useState<string[]>([]);
-  const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
+  const [classSubjectAssignments, setClassSubjectAssignments] = useState<TeacherClassAssignment[]>([
+    { classId: '', subjectId: '' },
+  ]);
+  const [classAssignPicker, setClassAssignPicker] = useState<{
+    rowIndex: number;
+    field: 'classId' | 'subjectId';
+  } | null>(null);
   const [assignSubmitting, setAssignSubmitting] = useState(false);
   const [dailyDialogTeacher, setDailyDialogTeacher] = useState<Teacher | null>(null);
 
@@ -163,6 +183,12 @@ export default function TeachersView() {
         qualifications: teacher.qualifications || '',
         subjects: teacher.subjects || [],
         assignedClassIds: (teacher.assignedClassIds || []).map((id: any) => String(id)),
+        assignments: (teacher.assignments || [])
+          .map((row: any) => ({
+            classId: String(row.classId || ''),
+            subjectId: String(row.subjectId || ''),
+          }))
+          .filter((row: TeacherClassAssignment) => row.classId && row.subjectId),
         isActive: teacher.isActive !== false,
         createdAt: teacher.createdAt || new Date().toISOString()
       }));
@@ -193,15 +219,68 @@ export default function TeachersView() {
     [teachers]
   );
 
+  const toggleNewTeacherSubject = useCallback((subjectId: string) => {
+    setNewTeacher((prev) => {
+      const selected = prev.subjects.includes(subjectId);
+      return {
+        ...prev,
+        subjects: selected
+          ? prev.subjects.filter((id) => id !== subjectId)
+          : [...prev.subjects, subjectId],
+      };
+    });
+  }, []);
+
+  const resetNewTeacherForm = useCallback(() => {
+    setNewTeacher({
+      fullName: '',
+      email: '',
+      password: '',
+      phone: '',
+      department: '',
+      qualifications: '',
+      subjects: [],
+    });
+    setShowNewTeacherPassword(false);
+  }, []);
+
   const handleAddTeacher = async () => {
-    if (!newTeacher.fullName.trim() || !newTeacher.email.trim() || !newTeacher.department.trim()) {
-      Alert.alert('Error', 'Please fill in all required fields (Name, Email, Department)');
+    const fullName = newTeacher.fullName.trim();
+    const email = newTeacher.email.trim().toLowerCase();
+    const phone = newTeacher.phone.trim();
+    const department = newTeacher.department.trim();
+    const password = newTeacher.password.trim();
+    const phoneDigits = phone.replace(/\D/g, '');
+
+    if (!fullName || !email || !phone || !password || !department || newTeacher.subjects.length === 0) {
+      Alert.alert(
+        'Error',
+        'Please fill in all required fields: Name, Email, Phone, Password, Department, and at least one subject.',
+      );
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters long.');
+      return;
+    }
+
+    if (phoneDigits.length < 10 || phoneDigits.length > 15) {
+      Alert.alert('Error', 'Phone number is required (10–15 digits).');
       return;
     }
 
     try {
-      await api.post('/api/admin/teachers', newTeacher);
-      setNewTeacher({ fullName: '', email: '', phone: '', department: '', qualifications: '' });
+      await api.post('/api/admin/teachers', {
+        fullName,
+        email,
+        password,
+        phone,
+        department,
+        qualifications: newTeacher.qualifications.trim(),
+        subjects: newTeacher.subjects,
+      });
+      resetNewTeacherForm();
       setIsAddModalVisible(false);
       fetchTeachers();
       Alert.alert('Success', 'Teacher added successfully!');
@@ -342,11 +421,15 @@ export default function TeachersView() {
 
   const openAssignClassesModal = useCallback((teacher: Teacher) => {
     setAssigningForTeacher(teacher);
-    setSelectedClassIds(
-      getResolvedAssignedClasses(teacher.assignedClassIds, classesList).map((entry) => entry.classItem.id),
+    const existing = (teacher.assignments ?? []).map((row) => ({
+      classId: String(row.classId),
+      subjectId: String(row.subjectId),
+    }));
+    setClassSubjectAssignments(
+      existing.length > 0 ? existing : [{ classId: '', subjectId: '' }],
     );
     setAssignClassesModal(true);
-  }, [classesList]);
+  }, []);
 
   const toggleSubjectId = useCallback((id: string) => {
     setSelectedSubjectIds((prev) =>
@@ -354,11 +437,26 @@ export default function TeachersView() {
     );
   }, []);
 
-  const toggleClassId = useCallback((id: string) => {
-    setSelectedClassIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-  }, []);
+  const teacherSubjectOptions = useMemo(() => {
+    if (!assigningForTeacher) return [];
+    return (assigningForTeacher.subjects || [])
+      .map((s: any) => ({
+        id: String(s._id || s.id || ''),
+        name: String(s.name || s.title || s.code || 'Subject'),
+      }))
+      .filter((s) => s.id);
+  }, [assigningForTeacher]);
+
+  const classAssignPickerOptions = useMemo(() => {
+    if (!classAssignPicker) return [];
+    if (classAssignPicker.field === 'classId') {
+      return classesList.map((cls) => ({ label: cls.name, value: cls.id }));
+    }
+    return teacherSubjectOptions.map((s) => ({ label: s.name, value: s.id }));
+  }, [classAssignPicker, classesList, teacherSubjectOptions]);
+
+  const classAssignPickerTitle =
+    classAssignPicker?.field === 'classId' ? 'Select class' : 'Select subject';
 
   const handleAssignSubjectsSubmit = async () => {
     if (!assigningForTeacher) return;
@@ -380,24 +478,39 @@ export default function TeachersView() {
 
   const getAssignedClassOptions = useCallback(
     (teacher: Teacher) =>
-      getResolvedAssignedClasses(teacher.assignedClassIds, classesList).map(({ classItem }) => ({
+      getResolvedAssignedClasses(getTeacherClassIds(teacher), classesList).map(({ classItem }) => ({
         id: classItem.id,
         label: classItem.name,
       })),
-    [classesList]
+    [classesList],
   );
 
   const handleAssignClassesSubmit = async () => {
     if (!assigningForTeacher) return;
+
+    const incomplete = classSubjectAssignments.some(
+      (row) => (row.classId && !row.subjectId) || (!row.classId && row.subjectId),
+    );
+    if (incomplete) {
+      Alert.alert('Incomplete row', 'Each row needs both a class and a subject.');
+      return;
+    }
+    if ((assigningForTeacher.subjects || []).length === 0) {
+      Alert.alert('Assign subjects first', 'Assign subjects to this teacher before linking classes.');
+      return;
+    }
+
+    const validAssignments = classSubjectAssignments.filter((row) => row.classId && row.subjectId);
     setAssignSubmitting(true);
     try {
       await api.post(`/api/admin/teachers/${assigningForTeacher.id}/assign-classes`, {
-        classIds: selectedClassIds,
+        assignments: validAssignments,
       });
       setAssignClassesModal(false);
       setAssigningForTeacher(null);
+      setClassSubjectAssignments([{ classId: '', subjectId: '' }]);
       fetchTeachers();
-      Alert.alert('Success', 'Classes assigned successfully!');
+      Alert.alert('Success', 'Class assignments saved successfully!');
     } catch (error: any) {
       Alert.alert('Error', error?.friendlyMessage || 'Failed to assign classes.');
     } finally {
@@ -413,7 +526,7 @@ export default function TeachersView() {
       subjectNames.length > 0
         ? subjectNames.slice(0, 3).join(', ') + (subjectNames.length > 3 ? ` (+${subjectNames.length - 3})` : '')
         : 'No subjects assigned';
-    const resolvedAssignedClasses = getResolvedAssignedClasses(teacher.assignedClassIds, classesList);
+    const resolvedAssignedClasses = getResolvedAssignedClasses(getTeacherClassIds(teacher), classesList);
 
     const DetailRow = ({
       icon,
@@ -515,7 +628,11 @@ export default function TeachersView() {
           <AdminCardScrollBox style={styles.assignedClassesScroll}>
             {resolvedAssignedClasses.length > 0 ? (
               resolvedAssignedClasses.map(({ classId, classItem }) => {
-                const subjectLine = getClassSubjectLine(classItem, teacher.subjects || []);
+                const subjectLine = getClassSubjectLineForTeacher(
+                  classId,
+                  teacher.subjects || [],
+                  teacher.assignments || [],
+                );
                 return (
                   <View key={classId} style={styles.assignedClassCard}>
                     <Text style={styles.assignedClassName} numberOfLines={2}>
@@ -679,7 +796,10 @@ export default function TeachersView() {
         visible={isAddModalVisible}
         animationType="slide"
         transparent={true}
-        onRequestClose={() => setIsAddModalVisible(false)}
+        onRequestClose={() => {
+          resetNewTeacherForm();
+          setIsAddModalVisible(false);
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, modalMaxWidth != null && { maxWidth: modalMaxWidth }]}>
@@ -691,7 +811,10 @@ export default function TeachersView() {
             >
               <Text style={styles.modalTitle}>Add New Teacher</Text>
               <TouchableOpacity
-                onPress={() => setIsAddModalVisible(false)}
+                onPress={() => {
+                  resetNewTeacherForm();
+                  setIsAddModalVisible(false);
+                }}
                 hitSlop={12}
                 accessibilityRole="button"
                 accessibilityLabel="Close add teacher form"
@@ -700,7 +823,7 @@ export default function TeachersView() {
               </TouchableOpacity>
             </LinearGradient>
 
-            <ScrollView style={styles.modalBody}>
+            <ScrollView style={styles.modalBody} keyboardShouldPersistTaps="handled">
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Full Name *</Text>
                 <TextInput
@@ -710,7 +833,7 @@ export default function TeachersView() {
                   onChangeText={(text) => setNewTeacher({ ...newTeacher, fullName: text })}
                   placeholderTextColor="#5B6779"
                 />
-                  </View>
+              </View>
 
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Email *</Text>
@@ -723,19 +846,19 @@ export default function TeachersView() {
                   autoCapitalize="none"
                   placeholderTextColor="#5B6779"
                 />
-                </View>
+              </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Phone</Text>
+                <Text style={styles.formLabel}>Phone *</Text>
                 <TextInput
                   style={styles.formInput}
-                  placeholder="Enter phone number"
+                  placeholder="10-digit mobile number"
                   value={newTeacher.phone}
-                  onChangeText={(text) => setNewTeacher({ ...newTeacher, phone: text })}
+                  onChangeText={(text) => setNewTeacher({ ...newTeacher, phone: text.replace(/[^\d+\s-]/g, '') })}
                   keyboardType="phone-pad"
                   placeholderTextColor="#5B6779"
                 />
-                  </View>
+              </View>
 
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Department *</Text>
@@ -746,7 +869,37 @@ export default function TeachersView() {
                   onChangeText={(text) => setNewTeacher({ ...newTeacher, department: text })}
                   placeholderTextColor="#5B6779"
                 />
-                    </View>
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Password *</Text>
+                <View style={styles.passwordRow}>
+                  <TextInput
+                    style={[styles.formInput, styles.passwordInput]}
+                    placeholder="Minimum 6 characters"
+                    value={newTeacher.password}
+                    onChangeText={(text) => setNewTeacher({ ...newTeacher, password: text })}
+                    secureTextEntry={!showNewTeacherPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    placeholderTextColor="#5B6779"
+                  />
+                  <TouchableOpacity
+                    style={styles.passwordToggle}
+                    onPress={() => setShowNewTeacherPassword((prev) => !prev)}
+                    hitSlop={10}
+                    accessibilityRole="button"
+                    accessibilityLabel={showNewTeacherPassword ? 'Hide password' : 'Show password'}
+                  >
+                    <MaterialCommunityIcons
+                      name={showNewTeacherPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={20}
+                      color="#6b7280"
+                    />
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.formHint}>Teacher will use this password to sign in.</Text>
+              </View>
 
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Qualifications</Text>
@@ -760,12 +913,64 @@ export default function TeachersView() {
                   placeholderTextColor="#5B6779"
                 />
               </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Assign Subjects *</Text>
+                {subjectsList.length === 0 ? (
+                  <Text style={styles.assignEmpty}>No subjects available. Create subjects first.</Text>
+                ) : (
+                  <ScrollView
+                    style={styles.subjectPickerBox}
+                    nestedScrollEnabled
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator
+                  >
+                    {subjectsList.map((subject) => {
+                      const checked = newTeacher.subjects.includes(subject.id);
+                      return (
+                        <TouchableOpacity
+                          key={subject.id}
+                          style={styles.assignRow}
+                          onPress={() => toggleNewTeacherSubject(subject.id)}
+                          activeOpacity={0.75}
+                        >
+                          <View style={styles.assignCheckWrap}>
+                            <SvgCheckbox checked={checked} size={22} />
+                          </View>
+                          <View style={styles.assignRowText}>
+                            <Text style={styles.assignRowTitle}>{subject.name}</Text>
+                            {!!subject.code && (
+                              <Text style={styles.assignRowSub} numberOfLines={1}>
+                                {subject.code}
+                              </Text>
+                            )}
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                )}
+                {newTeacher.subjects.length > 0 ? (
+                  <Text style={styles.formHint}>
+                    Selected ({newTeacher.subjects.length}):{' '}
+                    {subjectsList
+                      .filter((s) => newTeacher.subjects.includes(s.id))
+                      .map((s) => s.name)
+                      .join(', ')}
+                  </Text>
+                ) : (
+                  <Text style={styles.formErrorHint}>Please select at least one subject</Text>
+                )}
+              </View>
             </ScrollView>
 
             <View style={styles.modalFooter}>
               <TouchableOpacity
                 style={styles.cancelButton}
-                onPress={() => setIsAddModalVisible(false)}
+                onPress={() => {
+                  resetNewTeacherForm();
+                  setIsAddModalVisible(false);
+                }}
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
@@ -987,7 +1192,7 @@ export default function TeachersView() {
         </View>
       </Modal>
 
-      {/* Assign Classes */}
+      {/* Assign Classes — class + subject per row */}
       <Modal
         visible={assignClassesModal}
         animationType="fade"
@@ -999,10 +1204,10 @@ export default function TeachersView() {
             <View style={styles.assignModalHeader}>
               <View style={styles.assignModalTitleBlock}>
                 <Text style={styles.assignModalTitle}>
-                  Assign Classes to {assigningForTeacher?.fullName ?? ''}
+                  Assign to Class — {assigningForTeacher?.fullName ?? ''}
                 </Text>
                 <Text style={styles.assignModalDesc}>
-                  Select classes to assign to this teacher from the existing classes.
+                  Pick a class and the subject this teacher will teach there.
                 </Text>
               </View>
               <TouchableOpacity
@@ -1016,40 +1221,79 @@ export default function TeachersView() {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.assignSectionLabel}>Assign Classes</Text>
-            <ScrollView
-              style={[styles.assignScroll, styles.assignClassListBorder]}
-              nestedScrollEnabled
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator
-            >
-              {classesList.length === 0 ? (
-                <Text style={styles.assignEmpty}>No classes available. Create classes first.</Text>
-              ) : (
-                classesList.map((cls) => {
-                  const checked = selectedClassIds.includes(cls.id);
-                  return (
-                    <TouchableOpacity
-                      key={cls.id}
-                      style={[styles.assignRow, styles.assignRowInList]}
-                      onPress={() => toggleClassId(cls.id)}
-                      activeOpacity={0.75}
-                    >
-                      <View style={styles.assignCheckWrap}>
-                        <SvgCheckbox checked={checked} size={22} />
+            {(assigningForTeacher?.subjects || []).length === 0 ? (
+              <Text style={styles.assignEmpty}>
+                Assign subjects to this teacher first, then return here to link class and subject.
+              </Text>
+            ) : (
+              <>
+                <Text style={styles.assignSectionLabel}>Class + subject rows</Text>
+                <ScrollView
+                  style={[styles.assignScroll, styles.assignClassListBorder]}
+                  nestedScrollEnabled
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator
+                >
+                  {classSubjectAssignments.map((row, index) => {
+                    const classLabel =
+                      classesList.find((c) => c.id === row.classId)?.name || 'Select class';
+                    const subjectLabel =
+                      teacherSubjectOptions.find((s) => s.id === row.subjectId)?.name ||
+                      'Select subject';
+                    return (
+                      <View key={`assign-row-${index}`} style={styles.classAssignRow}>
+                        <TouchableOpacity
+                          style={styles.classAssignField}
+                          onPress={() => setClassAssignPicker({ rowIndex: index, field: 'classId' })}
+                        >
+                          <Text style={styles.classAssignFieldLabel}>Class</Text>
+                          <Text style={styles.classAssignFieldValue} numberOfLines={1}>
+                            {classLabel}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.classAssignField}
+                          onPress={() =>
+                            setClassAssignPicker({ rowIndex: index, field: 'subjectId' })
+                          }
+                        >
+                          <Text style={styles.classAssignFieldLabel}>Subject</Text>
+                          <Text style={styles.classAssignFieldValue} numberOfLines={1}>
+                            {subjectLabel}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.classAssignRemove}
+                          onPress={() => {
+                            setClassSubjectAssignments((prev) => {
+                              const next = prev.filter((_, i) => i !== index);
+                              return next.length > 0 ? next : [{ classId: '', subjectId: '' }];
+                            });
+                          }}
+                        >
+                          <MaterialCommunityIcons name="trash-can-outline" size={20} color="#dc2626" />
+                        </TouchableOpacity>
                       </View>
-                      <View style={styles.assignRowText}>
-                        <Text style={styles.assignRowTitle}>{cls.name}</Text>
-                        <Text style={styles.assignRowMeta} numberOfLines={2}>
-                          {cls.subjectLabel} • {cls.schedule} • {cls.room}
-                        </Text>
-                        <Text style={styles.assignRowSub}>{cls.studentCount} students</Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })
-              )}
-            </ScrollView>
+                    );
+                  })}
+                  {classesList.length === 0 ? (
+                    <Text style={styles.assignEmpty}>No classes available. Create classes first.</Text>
+                  ) : null}
+                </ScrollView>
+                <TouchableOpacity
+                  style={styles.classAssignAddBtn}
+                  onPress={() =>
+                    setClassSubjectAssignments((prev) => [...prev, { classId: '', subjectId: '' }])
+                  }
+                  disabled={classesList.length === 0}
+                >
+                  <MaterialCommunityIcons name="plus" size={18} color={colors.primary} />
+                  <Text style={[styles.classAssignAddBtnText, { color: colors.primary }]}>
+                    Add class + subject
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
 
             <View style={styles.assignModalFooter}>
               <TouchableOpacity
@@ -1060,17 +1304,64 @@ export default function TeachersView() {
                 <Text style={styles.assignCancelBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.assignPrimaryBtn, { backgroundColor: colors.primary }, assignSubmitting && styles.assignPrimaryBtnDisabled]}
+                style={[
+                  styles.assignPrimaryBtn,
+                  { backgroundColor: colors.primary },
+                  assignSubmitting && styles.assignPrimaryBtnDisabled,
+                ]}
                 onPress={handleAssignClassesSubmit}
-                disabled={assignSubmitting}
+                disabled={assignSubmitting || (assigningForTeacher?.subjects || []).length === 0}
               >
                 <Text style={styles.assignPrimaryBtnText}>
-                  {assignSubmitting ? 'Saving…' : 'Assign Classes'}
+                  {assignSubmitting ? 'Saving…' : 'Save assignments'}
                 </Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
+      </Modal>
+
+      <Modal
+        visible={!!classAssignPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setClassAssignPicker(null)}
+      >
+        <Pressable style={styles.pickerOverlay} onPress={() => setClassAssignPicker(null)}>
+          <Pressable style={styles.pickerSheet} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.pickerTitle}>{classAssignPickerTitle}</Text>
+            <ScrollView style={styles.pickerList}>
+              {classAssignPickerOptions.map((opt) => {
+                const rowIndex = classAssignPicker?.rowIndex ?? 0;
+                const field = classAssignPicker?.field ?? 'classId';
+                const selected = classSubjectAssignments[rowIndex]?.[field] ?? '';
+                return (
+                  <TouchableOpacity
+                    key={opt.value}
+                    style={[styles.pickerItem, selected === opt.value && styles.pickerItemActive]}
+                    onPress={() => {
+                      setClassSubjectAssignments((prev) =>
+                        prev.map((entry, i) =>
+                          i === rowIndex ? { ...entry, [field]: opt.value } : entry,
+                        ),
+                      );
+                      setClassAssignPicker(null);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.pickerItemText,
+                        selected === opt.value && styles.pickerItemTextActive,
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       <AdminTeacherDailyModal
@@ -1419,6 +1710,39 @@ const styles = StyleSheet.create({
     minHeight: 72,
     textAlignVertical: 'top',
   },
+  passwordRow: {
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  passwordInput: {
+    paddingRight: 44,
+  },
+  passwordToggle: {
+    position: 'absolute',
+    right: 12,
+    height: '100%',
+    justifyContent: 'center',
+  },
+  formHint: {
+    marginTop: 6,
+    fontSize: 12,
+    color: '#6b7280',
+    lineHeight: 16,
+  },
+  formErrorHint: {
+    marginTop: 6,
+    fontSize: 12,
+    color: '#dc2626',
+    lineHeight: 16,
+  },
+  subjectPickerBox: {
+    maxHeight: 220,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 10,
+    backgroundColor: '#f9fafb',
+    overflow: 'hidden',
+  },
   modalFooter: {
     flexDirection: 'row',
     gap: 10,
@@ -1583,6 +1907,90 @@ const styles = StyleSheet.create({
   },
   assignPrimaryBtnDisabled: {
     opacity: 0.65,
+  },
+  classAssignRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 8,
+    marginBottom: 10,
+  },
+  classAssignField: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: '#fff',
+  },
+  classAssignFieldLabel: {
+    fontSize: 11,
+    color: '#64748b',
+    marginBottom: 2,
+  },
+  classAssignFieldValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0f172a',
+  },
+  classAssignRemove: {
+    padding: 10,
+    marginBottom: 2,
+  },
+  classAssignAddBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: '#cbd5e1',
+    borderRadius: 10,
+  },
+  classAssignAddBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  pickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    justifyContent: 'flex-end',
+  },
+  pickerSheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    maxHeight: '60%',
+    paddingBottom: 24,
+  },
+  pickerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0f172a',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  pickerList: {
+    paddingHorizontal: 12,
+  },
+  pickerItem: {
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+  },
+  pickerItemActive: {
+    backgroundColor: '#f5f3ff',
+  },
+  pickerItemText: {
+    fontSize: 15,
+    color: '#334155',
+  },
+  pickerItemTextActive: {
+    color: '#6d28d9',
+    fontWeight: '600',
   },
   assignPrimaryBtnText: {
     fontSize: 15,

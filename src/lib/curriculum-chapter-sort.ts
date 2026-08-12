@@ -9,9 +9,14 @@ export function chapterNumberFromLabel(value: string): number | null {
     const n = parseInt(chapterMatch[1], 10);
     return Number.isNaN(n) ? null : n;
   }
-  const leading = s.match(/^(\d+)\s*[.\):\-–]/);
+  const leading = s.match(/^(\d+)\s*[.\):\-–—]?\s+/);
   if (leading) {
     const n = parseInt(leading[1], 10);
+    return Number.isNaN(n) ? null : n;
+  }
+  const leadingTight = s.match(/^(\d+)\s*[.\):\-–—]/);
+  if (leadingTight) {
+    const n = parseInt(leadingTight[1], 10);
     return Number.isNaN(n) ? null : n;
   }
   return null;
@@ -22,23 +27,41 @@ export function canonicalTopicKey(value: string): string {
   let s = String(value || '')
     .trim()
     .toLowerCase()
+    .replace(/[\u2013\u2014\u2212]/g, '-')
     .replace(/\s+/g, ' ');
   if (!s) return '';
-  s = s
-    .replace(/^(chapter|ch\.?|unit)\s*[-–—.]?\s*\d+\s*[-–—:.]\s*/i, '')
-    .replace(/^(chapter|ch\.?|unit)\s*[-–—.]?\s*\d+\s*/i, '')
-    .replace(/^\d+\s*[.\):\-–—]\s*/, '')
+
+  // "Integers - Integers" / "Chapter 1 - Chapter 1 - Integers"
+  for (let i = 0; i < 3; i += 1) {
+    const next = s
+      .replace(/^(chapter|ch\.?|unit)\s*[-–—.#:]?\s*\d+\s*[-–—:.]?\s*/i, '')
+      .replace(/^\d+\s*[.\):\-–—]?\s*/, '')
+      .trim();
+    if (next === s) break;
+    s = next;
+  }
+
+  // Collapse "title - title"
+  const dashParts = s.split(/\s+-\s+/).map((p) => p.trim()).filter(Boolean);
+  if (dashParts.length >= 2) {
+    const first = dashParts[0];
+    if (dashParts.every((p) => p === first)) s = first;
+  }
+
+  return s
+    .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  return s;
 }
 
 function topicLabelScore(value: string): number {
   const s = String(value || '').trim();
   if (!s) return -1;
-  let score = s.length;
+  let score = Math.min(s.length, 80);
   if (chapterNumberFromLabel(s) != null) score += 1000;
   if (/^(chapter|ch\.?|unit)\b/i.test(s)) score += 100;
+  // Prefer cleaner display names over "title - title"
+  if (!/\s-\s/.test(s) || chapterNumberFromLabel(s) != null) score += 20;
   return score;
 }
 
@@ -54,6 +77,27 @@ export function compareChapterWiseLabels(a: string, b: string): number {
 
 export function sortChapterWiseLabels(labels: string[]): string[] {
   return [...labels].sort(compareChapterWiseLabels);
+}
+
+/**
+ * Dedupe topic/subtopic labels that mean the same chapter
+ * ("Integers" vs "Chapter 1 - Integers"), keep the best display label,
+ * then sort chapter-wise.
+ */
+export function dedupeChapterWiseLabels(labels: string[]): string[] {
+  const byKey = new Map<string, string>();
+
+  for (const raw of labels) {
+    const label = String(raw || '').trim();
+    if (!label) continue;
+    const key = canonicalTopicKey(label) || label.toLowerCase();
+    const prev = byKey.get(key);
+    if (!prev || topicLabelScore(label) > topicLabelScore(prev)) {
+      byKey.set(key, label);
+    }
+  }
+
+  return sortChapterWiseLabels([...byKey.values()]);
 }
 
 /**
@@ -90,7 +134,7 @@ export function mergePreservingPrimaryOrder(primary: string[], secondary: string
     upsert(value, true);
   }
 
-  return order.map((key) => byKey.get(key)!).filter(Boolean);
+  return dedupeChapterWiseLabels(order.map((key) => byKey.get(key)!).filter(Boolean));
 }
 
 /** Alpha / IIT Alpha → ALPHA (matches backend productCategory). */

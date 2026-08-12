@@ -12,7 +12,7 @@ import {
   isSoftDeletedSubjectName,
   subjectCatalogGroupKey,
 } from './subject-names';
-import { prepareLibraryContents, dedupeLibraryContents, isIitTrackContent } from './dedupe-library-content';
+import { prepareLibraryContents, dedupeLibraryContents } from './dedupe-library-content';
 
 export type LearningPathRole = 'admin' | 'teacher' | 'student';
 
@@ -125,9 +125,7 @@ async function loadTeacherLearningPathCatalog(
 
   const allContentRaw = await fetchAllPrepContent('teacher');
   const allContent = sortContentNewestFirst(
-    prepareLibraryContents(parseContentPayload(allContentRaw), isAsliPrepExclusive).filter(
-      (item) => !isIitTrackContent(item)
-    )
+    prepareLibraryContents(parseContentPayload(allContentRaw), isAsliPrepExclusive)
   );
 
   const contentByKey = new Map<string, any[]>();
@@ -199,9 +197,7 @@ export async function loadLearningPathCatalog(
     fetchAllPrepContent(role),
   ]);
 
-  const allContent = prepareLibraryContents(allContentRaw, isAsliPrepExclusive).filter(
-    (item) => !isIitTrackContent(item)
-  );
+  const allContent = prepareLibraryContents(allContentRaw, isAsliPrepExclusive);
   const bySubjectId = new Map<string, any[]>();
 
   for (const item of allContent) {
@@ -232,27 +228,6 @@ export async function loadLearningPathCatalog(
       totalContent: asliPrepContent.length,
     });
   }
-
-  bySubjectId.forEach((items, subjectId) => {
-    if (consumedIds.has(subjectId)) return;
-    const sorted = sortContentNewestFirst(
-      dedupeLibraryContents(items, { collapseAcrossSubjects: true }),
-    );
-    const first = sorted[0];
-    const populated = first?.subject;
-    const nameFromPopulate =
-      typeof populated === 'object' && populated?.name ? populated.name : 'Subject';
-    merged.push({
-      _id: subjectId,
-      id: subjectId,
-      name: nameFromPopulate,
-      description: `Content for ${nameFromPopulate}`,
-      board: first?.board || '',
-      classNumber: first?.classNumber,
-      asliPrepContent: sorted,
-      totalContent: sorted.length,
-    });
-  });
 
   const withContent = merged.filter((row) => row.totalContent > 0);
 

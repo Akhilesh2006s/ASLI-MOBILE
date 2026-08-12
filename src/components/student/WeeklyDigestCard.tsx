@@ -196,6 +196,49 @@ export default function WeeklyDigestCard({
             />
           </View>
 
+          <SectionTitle icon="construct-outline" title="Tools you used" />
+          {(Array.isArray(m.toolsUsed) ? m.toolsUsed : []).length > 0 ? (
+            (m.toolsUsed as Array<{ name?: string; count?: number; subjects?: string[] }>)
+              .slice(0, 8)
+              .map((tool, idx) => (
+                <View key={`${tool.name}-${idx}`} style={styles.listRow}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.listTitle} numberOfLines={1}>{tool.name || 'Tool'}</Text>
+                    {Array.isArray(tool.subjects) && tool.subjects.length > 0 ? (
+                      <Text style={styles.listSub} numberOfLines={1}>
+                        {tool.subjects.slice(0, 3).join(' · ')}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <Text style={styles.listPct}>{n(tool.count)}×</Text>
+                </View>
+              ))
+          ) : (
+            <Text style={styles.mutedSmall}>No AI tools used this week yet.</Text>
+          )}
+
+          <SectionTitle icon="library-outline" title="Subjects you used most" />
+          {(Array.isArray(m.topSubjectsDetailed) ? m.topSubjectsDetailed : []).length > 0 ? (
+            (m.topSubjectsDetailed as Array<{ subject?: string; sessions?: number; pct?: number }>)
+              .slice(0, 5)
+              .map((row, idx) => (
+                <View key={`${row.subject}-${idx}`} style={styles.listRow}>
+                  <Text style={styles.listTitle} numberOfLines={1}>
+                    {idx === 0 ? 'Most · ' : ''}
+                    {row.subject || 'Subject'}
+                  </Text>
+                  <Text style={styles.listPct}>
+                    {n(row.sessions)}
+                    {n(row.pct) > 0 ? ` · ${n(row.pct)}%` : ''}
+                  </Text>
+                </View>
+              ))
+          ) : m.topSubjects?.length ? (
+            <Text style={styles.summary}>{(m.topSubjects as string[]).slice(0, 5).join(', ')}</Text>
+          ) : (
+            <Text style={styles.mutedSmall}>No subject activity this week yet.</Text>
+          )}
+
           <SectionTitle icon="clipboard-outline" title="Exams" />
           <View style={styles.grid}>
             <MetricTile label="Written" value={n(m.examAttempts)} />
@@ -228,8 +271,16 @@ export default function WeeklyDigestCard({
           <SectionTitle icon="flame-outline" title="Content & progress" />
           <View style={styles.grid}>
             <MetricTile
-              label="Top subjects"
-              value={m.topSubjects?.length ? m.topSubjects.slice(0, 2).join(', ') : '—'}
+              label="Most used subject"
+              value={
+                m.mostUsedSubject?.subject ||
+                (m.topSubjects?.length ? m.topSubjects[0] : '—')
+              }
+              hint={
+                m.mostUsedSubject?.sessions
+                  ? `${n(m.mostUsedSubject.sessions)} activities`
+                  : undefined
+              }
             />
             <MetricTile label="Videos" value={n(m.videosWatched)} />
             <MetricTile label="Streak" value={n(m.streak) > 0 ? `${n(m.streak)}d` : '0'} />
@@ -367,8 +418,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#E2E8F0',
   },
-  listTitle: { flex: 1, fontSize: 13, color: '#334155' },
+  listTitle: { flex: 1, fontSize: 13, color: '#334155', fontWeight: '600' },
+  listSub: { fontSize: 11, color: '#64748B', marginTop: 2 },
   listPct: { fontSize: 13, fontWeight: '800', color: '#0F172A' },
+  mutedSmall: { fontSize: 12, color: '#64748B', marginBottom: 4 },
   highlights: {
     marginTop: 4,
     borderRadius: 12,

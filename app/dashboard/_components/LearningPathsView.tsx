@@ -19,7 +19,6 @@ import GlassPanel from '../../../src/components/ui/GlassPanel';
 import { GLASS_ROW, GLASS_VIOLET } from '../../../src/theme/glass';
 import {
   prepareLibraryContents,
-  isIitTrackContent,
   type LibraryContentRow,
 } from '../../../src/lib/dedupe-library-content';
 import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
@@ -83,35 +82,15 @@ function subjectIdFromContentRow(item: LibraryContentRow): string {
   return String(sub._id || '').trim();
 }
 
-/** When /api/student/subjects is down, rebuild a subject list from library content. */
-function subjectsFromPrepContent(rows: LibraryContentRow[]): any[] {
-  const byId = new Map<string, { _id: string; id: string; name: string }>();
-
-  for (const item of rows) {
-    const subj = item?.subjectId ?? item?.subject;
-    if (subj == null) continue;
-    const id =
-      typeof subj === 'object'
-        ? String(subj._id || '')
-        : String(subj).trim();
-    if (!id || byId.has(id)) continue;
-    const name =
-      typeof subj === 'object'
-        ? String(subj.name || (item as { subjectName?: string }).subjectName || 'Subject')
-        : String((item as { subjectName?: string }).subjectName || 'Subject');
-    byId.set(id, { _id: id, id, name });
-  }
-
-  return Array.from(byId.values()).sort((a, b) =>
-    a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true })
-  );
-}
-
-function countItemsBySubject(rows: LibraryContentRow[]): Record<string, number> {
+/** Count library items only for catalog subjects returned by /api/student/subjects. */
+function countItemsBySubject(
+  rows: LibraryContentRow[],
+  allowedSubjectIds: Set<string>,
+): Record<string, number> {
   const counts: Record<string, number> = {};
   for (const item of rows) {
     const id = subjectIdFromContentRow(item);
-    if (!id) continue;
+    if (!id || !allowedSubjectIds.has(id)) continue;
     counts[id] = (counts[id] || 0) + 1;
   }
   return counts;
@@ -142,7 +121,6 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
 
     let list: any[] = [];
     let primaryFailed = false;
-    let prepared: LibraryContentRow[] = [];
 
     try {
       const { data } = await api.get('/api/student/subjects');
@@ -151,22 +129,31 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
       primaryFailed = true;
     }
 
+    const preparedSubjects = prepareStudentLearningPathSubjects(list);
+    setSubjects(preparedSubjects);
+
+    const allowedIds = new Set<string>();
+    for (const subject of preparedSubjects) {
+      const primary = String(subject._id || subject.id || '');
+      if (primary) allowedIds.add(primary);
+      for (const mid of subject.mergedSubjectIds || []) {
+        const s = String(mid || '');
+        if (s) allowedIds.add(s);
+      }
+    }
+
     try {
       const { data } = await api.get('/api/student/asli-prep-content', {
         params: { surface: 'learning-path' },
       });
       const raw = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
-      prepared = prepareLibraryContents(raw, isAsliPrepExclusive);
-      setItemCounts(countItemsBySubject(prepared.filter((item) => !isIitTrackContent(item))));
-      if (list.length === 0) {
-        list = subjectsFromPrepContent(prepared);
-      }
+      const prepared = prepareLibraryContents(raw, isAsliPrepExclusive);
+      setItemCounts(countItemsBySubject(prepared, allowedIds));
     } catch {
       setItemCounts({});
     }
 
-    setSubjects(prepareStudentLearningPathSubjects(list));
-    if (list.length === 0 && primaryFailed) {
+    if (preparedSubjects.length === 0 && primaryFailed) {
       setSubjectsError(
         'Subjects are temporarily unavailable. Please try again in a moment.'
       );
@@ -279,11 +266,19 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
                 const iconName = getSubjectIcon(displayName);
                 const color = SUBJECT_COLORS[index % SUBJECT_COLORS.length];
                 const subjectId = String(subject._id || subject.id || '');
-                const count = itemCounts[subjectId];
+                const mergedIds: string[] = Array.isArray(subject.mergedSubjectIds)
+                  ? subject.mergedSubjectIds.map(String).filter(Boolean)
+                  : [subjectId];
+                const count = mergedIds.reduce((sum, sid) => sum + (itemCounts[sid] || 0), 0);
+                const otherIds = mergedIds.filter((sid) => sid !== subjectId);
                 const hint =
-                  typeof count === 'number'
-                    ? `${count} ${count === 1 ? 'item' : 'items'}`
-                    : 'View content';
+                  typeof count === 'number' && count > 0
+                    ? subject.hasIitTrack
+                      ? `${count} items · includes IIT`
+                      : `${count} ${count === 1 ? 'item' : 'items'}`
+                    : subject.hasIitTrack
+                      ? `${displayName} IIT available`
+                      : 'View content';
                 return (
                   <GlassCard
                     key={subject._id || subject.id}
@@ -295,7 +290,13 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
                     onPress={() =>
                       router.push({
                         pathname: '/subject/[id]',
-                        params: { id: subjectId, returnTo: 'learning' },
+                        params: {
+                          id: subjectId,
+                          returnTo: 'learning',
+                          ...(otherIds.length
+                            ? { merge: otherIds.join(',') }
+                            : {}),
+                        },
                       })
                     }
                   >

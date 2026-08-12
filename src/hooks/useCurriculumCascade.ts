@@ -4,7 +4,7 @@ import { API_BASE_URL } from '../lib/api-config';
 import {
   mergePreservingPrimaryOrder,
   normalizeProductCategory,
-  sortChapterWiseLabels,
+  dedupeChapterWiseLabels,
 } from '../lib/curriculum-chapter-sort';
 
 type CurriculumRow = { id: string; name: string; label: string };
@@ -43,47 +43,34 @@ function rowsToNames(rows: CurriculumRow[] | undefined): string[] {
   return rows.map((r) => r.name || r.label || r.id).filter(Boolean);
 }
 
-const normalizeLabelKey = (value: string) =>
-  String(value).trim().toLowerCase().replace(/\s+/g, ' ');
-
 /**
  * Clean up topic/subtopic options coming from the curriculum API.
- * - Trims whitespace and removes case-insensitive duplicates.
- * - Drops "clustered" entries: a single option that is really every other
- *   topic/subtopic concatenated with commas (bad backend data — the managed
- *   topic-taxonomy endpoint feeds both the topics and subtopics cascades, so
- *   both are equally exposed to this). Such an entry is removed only when all
- *   of its comma-separated parts already exist as their own options, so
- *   legitimate names that contain a comma are preserved.
+ * - Chapter-aware dedupe ("Integers" + "Chapter 1 - Integers" → one entry)
+ * - Drops clustered comma-joined junk rows when parts already exist alone
+ * - Sorts Chapter 1…10…11 order
  */
 function sanitizeCurriculumOptions(options: string[]): string[] {
   const cleaned = options.map((o) => String(o ?? '').trim()).filter(Boolean);
-
-  const seen = new Set<string>();
-  const deduped: string[] = [];
-  for (const option of cleaned) {
-    const key = normalizeLabelKey(option);
-    if (!key || seen.has(key)) continue;
-    seen.add(key);
-    deduped.push(option);
-  }
+  const deduped = dedupeChapterWiseLabels(cleaned);
 
   const singleKeys = new Set(
     deduped
       .filter((o) => !o.includes(','))
-      .map((o) => normalizeLabelKey(o))
+      .map((o) => o.trim().toLowerCase().replace(/\s+/g, ' ')),
   );
 
-  return deduped.filter((option) => {
-    if (!option.includes(',')) return true;
-    const parts = option
-      .split(',')
-      .map((p) => normalizeLabelKey(p))
-      .filter(Boolean);
-    if (parts.length < 2) return true;
-    const allPartsExistSeparately = parts.every((p) => singleKeys.has(p));
-    return !allPartsExistSeparately;
-  });
+  return dedupeChapterWiseLabels(
+    deduped.filter((option) => {
+      if (!option.includes(',')) return true;
+      const parts = option
+        .split(',')
+        .map((p) => p.trim().toLowerCase().replace(/\s+/g, ' '))
+        .filter(Boolean);
+      if (parts.length < 2) return true;
+      const allPartsExistSeparately = parts.every((p) => singleKeys.has(p));
+      return !allPartsExistSeparately;
+    }),
+  );
 }
 
 function normalizeSubjectKey(value: string): string {
@@ -298,9 +285,7 @@ export function useCurriculumCascade(
         const curriculumTopics = rowsToNames((data as { data?: CurriculumRow[] }).data);
         const managedTopics = (managed as { data?: { topics?: string[] } })?.data?.topics || [];
         setTopics(
-          sortChapterWiseLabels(
-            sanitizeCurriculumOptions(mergePreservingPrimaryOrder(managedTopics, curriculumTopics)),
-          ),
+          sanitizeCurriculumOptions(mergePreservingPrimaryOrder(managedTopics, curriculumTopics)),
         );
       } catch {
         if (!cancelled) setTopics([]);

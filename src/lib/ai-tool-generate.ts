@@ -531,7 +531,7 @@ export function buildTeacherAiRequestBody(
     productCategory:
       formParams.productCategory === 'NONE' || formParams.productCategory === 'GENERAL'
         ? ''
-        : String(formParams.productCategory || ''),
+        : String(formParams.productCategory || formParams.batch || ''),
     questionComposition,
     board: selectedBoard,
     gradeLevel: selectedClass,
@@ -570,7 +570,7 @@ export function buildStudentAiRequestBody(
     productCategory:
       formParams.productCategory === 'NONE' || formParams.productCategory === 'GENERAL'
         ? ''
-        : String(formParams.productCategory || ''),
+        : String(formParams.productCategory || formParams.batch || ''),
   };
 }
 

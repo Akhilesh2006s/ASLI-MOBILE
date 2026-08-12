@@ -99,20 +99,21 @@ ${AI_TOOL_SELECTION_GUARD_JS}
   window.__aiToolSendHeight = function() { sendHeight(false); };
   // Initial expand + measure so every generator section is visible.
   sendHeight(true);
-  [60, 200, 500, 1000, 2000, 3500].forEach(function(ms) { setTimeout(function(){ sendHeight(false); }, ms); });
+  // A few settles only — continuous remasure while the parent scrolls causes shake.
+  [120, 400, 1200].forEach(function(ms) { setTimeout(function(){ sendHeight(false); }, ms); });
   if (!window.__aiToolHeightBound) {
     window.__aiToolHeightBound = true;
     var roTimer = null;
     if (typeof ResizeObserver !== 'undefined') {
       var ro = new ResizeObserver(function() {
         if (roTimer) clearTimeout(roTimer);
-        roTimer = setTimeout(function(){ sendHeight(false); }, 80);
+        roTimer = setTimeout(function(){ sendHeight(false); }, 160);
       });
       ro.observe(document.body);
       var field = document.querySelector('.quest-field');
       if (field) ro.observe(field);
     }
-    document.addEventListener('toggle', function() { setTimeout(function(){ sendHeight(false); }, 30); }, true);
+    document.addEventListener('toggle', function() { setTimeout(function(){ sendHeight(false); }, 40); }, true);
   }
 })();
 true;
@@ -193,15 +194,40 @@ export default function AiToolWebView({
   /** Explicit pixel viewport for fill mode — Android needs this to enable WebView scroll. */
   const [fillViewportH, setFillViewportH] = useState(0);
   const heightDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const heightLockedRef = useRef(false);
+  const lastStableHeightRef = useRef(INITIAL_HEIGHT);
+  const stableHitsRef = useRef(0);
 
   useEffect(() => {
     // Always start short — never seed with a content-length guess (that was the empty gap).
+    heightLockedRef.current = false;
+    stableHitsRef.current = 0;
+    lastStableHeightRef.current = INITIAL_HEIGHT;
     setHeight(INITIAL_HEIGHT);
   }, [contentKey]);
 
   const applyHeight = useCallback((next: number) => {
+    if (heightLockedRef.current) {
+      // After settle, only accept large jumps (e.g. user toggled a section).
+      const delta = Math.abs(next + BOTTOM_PAD - lastStableHeightRef.current);
+      if (delta < 48) return;
+      heightLockedRef.current = false;
+      stableHitsRef.current = 0;
+    }
     const target = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, next + BOTTOM_PAD));
-    setHeight((prev) => (Math.abs(target - prev) < 4 ? prev : target));
+    setHeight((prev) => {
+      if (Math.abs(target - prev) < 6) {
+        stableHitsRef.current += 1;
+        if (stableHitsRef.current >= 2) {
+          heightLockedRef.current = true;
+          lastStableHeightRef.current = prev;
+        }
+        return prev;
+      }
+      stableHitsRef.current = 0;
+      lastStableHeightRef.current = target;
+      return target;
+    });
   }, []);
 
   const webViewHeight = Math.max(height, MIN_HEIGHT);
@@ -225,7 +251,7 @@ export default function AiToolWebView({
         timers.forEach(clearTimeout);
       };
     }
-    const timers = [80, 300, 800, 1600].map((ms) => setTimeout(measureHeight, ms));
+    const timers = [100, 500, 1400].map((ms) => setTimeout(measureHeight, ms));
     return () => {
       timers.forEach(clearTimeout);
       if (heightDebounceRef.current) clearTimeout(heightDebounceRef.current);
@@ -249,7 +275,7 @@ export default function AiToolWebView({
             return;
           }
           if (heightDebounceRef.current) clearTimeout(heightDebounceRef.current);
-          heightDebounceRef.current = setTimeout(() => applyHeight(msg.h as number), 30);
+          heightDebounceRef.current = setTimeout(() => applyHeight(msg.h as number), 80);
           return;
         }
         if (msg.type === 'orbit') {
@@ -269,7 +295,7 @@ export default function AiToolWebView({
       const next = Number(raw);
       if (!Number.isFinite(next) || next <= 0) return;
       if (heightDebounceRef.current) clearTimeout(heightDebounceRef.current);
-      heightDebounceRef.current = setTimeout(() => applyHeight(next), 30);
+      heightDebounceRef.current = setTimeout(() => applyHeight(next), 80);
     },
     [applyHeight, fill, measureHeight, unlockFillScroll],
   );

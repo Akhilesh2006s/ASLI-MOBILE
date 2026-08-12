@@ -30,3 +30,17 @@ export function groupContentsByType<T extends GroupableContent>(items: T[]): { t
 
   return ordered.map((type) => ({ type, items: grouped[type] }));
 }
+
+/** Split board type sections + a trailing IIT section (peer to TextBook / Materials). */
+export function groupLearningPathContentsWithIit<T extends GroupableContent>(
+  items: T[],
+  isIit: (item: T) => boolean,
+): { type: string; items: T[]; iit?: boolean }[] {
+  const board = items.filter((item) => !isIit(item));
+  const iit = items.filter((item) => isIit(item));
+  const sections = groupContentsByType(board).map((s) => ({ ...s, iit: false as boolean | undefined }));
+  if (iit.length > 0) {
+    sections.push({ type: 'IIT', items: iit, iit: true });
+  }
+  return sections;
+}

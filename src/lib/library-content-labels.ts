@@ -60,16 +60,53 @@ export function getLibraryContentProductCategory(row: LibraryContentLike): strin
   const direct = String(row.productCategory || '')
     .trim()
     .toUpperCase();
-  if (direct) return direct;
+  if (direct && direct !== 'GENERAL' && direct !== 'NONE' && direct !== 'ALL') {
+    return direct;
+  }
   const subject = asSubjectRef(row.subject) || asSubjectRef(row.subjectId);
-  return String(subject?.productCategory || '')
+  const fromSubject = String(subject?.productCategory || '')
     .trim()
     .toUpperCase();
+  if (fromSubject && fromSubject !== 'GENERAL' && fromSubject !== 'NONE' && fromSubject !== 'ALL') {
+    return fromSubject;
+  }
+  return '';
 }
 
-/** Any non-empty productCategory (Alpha/Beta/Gamma/Delta/…) marks IIT-track content. */
+function contentBoardKey(row: LibraryContentLike): string {
+  const subject = asSubjectRef(row.subject) || asSubjectRef(row.subjectId);
+  const raw = String((row as { board?: string }).board || subject?.board || '');
+  return String(raw)
+    .toUpperCase()
+    .replace(/[\s/\\-]+/g, '');
+}
+
+/** IIT-board or Alpha/Beta/Gamma track materials (videos stay EduOTT). */
 export function isIitTrackContent(row: LibraryContentLike): boolean {
-  return Boolean(getLibraryContentProductCategory(row));
+  if (getLibraryContentProductCategory(row)) return true;
+  const board = contentBoardKey(row);
+  return board.includes('IIT') || board.includes('NEET') || board.includes('JEE');
+}
+
+/** e.g. Biology IIT Alpha */
+export function formatIitLearningPathContentLabel(
+  row: LibraryContentLike,
+  fallbackSubjectName?: string,
+): string {
+  const subject = asSubjectRef(row.subject) || asSubjectRef(row.subjectId);
+  const rawName = String(subject?.name || fallbackSubjectName || '').trim();
+  const base =
+    rawName
+      .split('__deleted__')[0]
+      .replace(/_\d+$/, '')
+      .replace(/\b(iit|neet|jee)\b/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim() || 'Subject';
+  const titled = base.charAt(0).toUpperCase() + base.slice(1);
+  const cat = getLibraryContentProductCategory(row);
+  if (!cat) return `${titled} IIT`;
+  const track = formatProductCategoryLabel(cat);
+  return `${titled} IIT ${track}`;
 }
 
 function titleAlreadyHasClassOrTrack(title: string, classNumber: string, trackLabel: string): boolean {

@@ -15,13 +15,7 @@ import {
   InteractionManager,
 } from 'react-native';
 import { ScrollView as GHScrollView } from 'react-native-gesture-handler';
-import Animated, {
-  Extrapolation,
-  interpolate,
-  useAnimatedScrollHandler,
-  useAnimatedStyle,
-  useSharedValue,
-} from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -38,7 +32,7 @@ import AiToolDownloadBarLazy from '../../../src/components/ai-tools/AiToolDownlo
 import AiToolParamsGrid from '../../../src/components/ai-tools/AiToolParamsGrid';
 import AiToolResultShell from '../../../src/components/ai-tools/AiToolResultShell';
 import AiToolOptionPicker from '../../../src/components/ai-tools/AiToolOptionPicker';
-import { GlassPanel, GlassSurface } from '../../../src/components/ui';
+import { GlassPanel } from '../../../src/components/ui';
 import {
   aiToolTabletPageStyles,
   aiToolTabletStyles,
@@ -87,7 +81,6 @@ import {
   resolveCurriculumBoardForAiTools,
   resolveIsAsliPrepExclusive,
 } from '../../../src/lib/school-program-ai';
-import { resolveSchoolIitCategories, shouldShowIitTrackField } from '../../../src/lib/school-program';
 import {
   useCurriculumCascade,
 } from '../../../src/hooks/useCurriculumCascade';
@@ -100,15 +93,21 @@ import {
 } from '../../../src/theme/teacher';
 import { AI, AI_RADIUS, AI_SHADOW, AI_SPACING, AI_TYPE } from '../../../src/theme/ai';
 import { GLASS_ROW } from '../../../src/theme/glass';
+import {
+  canonicalTopicKey,
+  dedupeChapterWiseLabels,
+} from '../../../src/lib/curriculum-chapter-sort';
 
 function mergeSelectedIntoOptions(options: string[], selected: unknown): string[] {
   const v = typeof selected === 'string' ? selected.trim() : '';
   if (!v) return options;
-  if (options.includes(v)) return options;
-  return [v, ...options];
+  const selectedKey = canonicalTopicKey(v) || v.toLowerCase();
+  if (options.some((o) => (canonicalTopicKey(o) || o.toLowerCase()) === selectedKey)) {
+    return dedupeChapterWiseLabels(options);
+  }
+  return dedupeChapterWiseLabels([v, ...options]);
 }
 
-const HEADER_COLLAPSE_DISTANCE = 72;
 const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 
 const FIELD_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -324,7 +323,6 @@ export default function TeacherToolPage() {
   const [isLoadingUser, setIsLoadingUser] = useState(true);
   /** Wait for the stack transition before heavy form/network work. */
   const [uiReady, setUiReady] = useState(false);
-  const scrollY = useSharedValue(0);
   const { isTablet, useSplitLayout, outputBleedStyle } = useAiToolTabletLayout();
   const { scrollRef, onOutputLayout, queueScrollToOutput, resetOutputScroll } =
     useAiToolOutputScroll(isTablet);
@@ -332,7 +330,6 @@ export default function TeacherToolPage() {
   const [availableNCERTTopics, setAvailableNCERTTopics] = useState<string[]>([]);
   const [schoolBoardName, setSchoolBoardName] = useState('CBSE');
   const [isAsliPrepExclusive, setIsAsliPrepExclusive] = useState(false);
-  const [schoolIitCategories, setSchoolIitCategories] = useState<string[]>([]);
   const [activeDropdown, setActiveDropdown] = useState<DropdownState | null>(null);
 
   const config = toolType && isTeacherToolType(toolType) ? getTeacherToolConfig(toolType) : null;
@@ -340,42 +337,22 @@ export default function TeacherToolPage() {
   const selectedBoard = formParams.board || getDefaultAiToolBoard(isAsliPrepExclusive, schoolBoardName);
   const effectiveConfig = useMemo(() => {
     if (!config) return config;
-    const showTrack = shouldShowIitTrackField(selectedBoard, schoolIitCategories);
-    if (!showTrack) {
-      if (!config.fields.some((f) => f.name === 'productCategory')) return config;
-      return {
-        ...config,
-        fields: config.fields.filter((f) => f.name !== 'productCategory'),
-      };
-    }
-    if (config.fields.some((f) => f.name === 'productCategory')) return config;
-    const insertAt = Math.min(2, config.fields.length);
+    // Batch already covers IIT track — never show a second productCategory field.
+    if (!config.fields.some((f) => f.name === 'productCategory')) return config;
     return {
       ...config,
-      fields: [
-        ...config.fields.slice(0, insertAt),
-        {
-          name: 'productCategory',
-          label: 'IIT Track (Optional)',
-          type: 'select' as const,
-          required: false,
-          options: ['NONE', ...schoolIitCategories],
-          placeholder: 'General',
-        },
-        ...config.fields.slice(insertAt),
-      ],
+      fields: config.fields.filter((f) => f.name !== 'productCategory'),
     };
-  }, [config, schoolIitCategories, selectedBoard]);
+  }, [config]);
 
   useEffect(() => {
-    if (shouldShowIitTrackField(selectedBoard, schoolIitCategories)) return;
     setFormParams((prev) => {
       if (!prev.productCategory) return prev;
       const next = { ...prev };
       delete next.productCategory;
       return next;
     });
-  }, [selectedBoard, schoolIitCategories]);
+  }, [selectedBoard]);
   const contentRenderKey = useMemo(
     () => buildAiToolContentRenderKey(toolType, generatedContent, responseMeta),
     [toolType, generatedContent, responseMeta]
@@ -457,42 +434,6 @@ export default function TeacherToolPage() {
     fallbackEmptyMessage,
   );
 
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollY.value = event.contentOffset.y;
-    },
-  });
-
-  const headerAnimatedStyle = useAnimatedStyle(() => ({
-    maxHeight: isTablet
-      ? 140
-      : interpolate(scrollY.value, [0, HEADER_COLLAPSE_DISTANCE], [140, 0], Extrapolation.CLAMP),
-    opacity: isTablet
-      ? 1
-      : interpolate(scrollY.value, [0, HEADER_COLLAPSE_DISTANCE * 0.65], [1, 0], Extrapolation.CLAMP),
-    overflow: 'hidden' as const,
-  }));
-
-  const compactHeaderAnimatedStyle = useAnimatedStyle(() => ({
-    maxHeight: isTablet
-      ? 0
-      : interpolate(
-          scrollY.value,
-          [HEADER_COLLAPSE_DISTANCE * 0.4, HEADER_COLLAPSE_DISTANCE],
-          [0, 52],
-          Extrapolation.CLAMP
-        ),
-    opacity: isTablet
-      ? 0
-      : interpolate(
-          scrollY.value,
-          [HEADER_COLLAPSE_DISTANCE * 0.4, HEADER_COLLAPSE_DISTANCE],
-          [0, 1],
-          Extrapolation.CLAMP
-        ),
-    overflow: 'hidden' as const,
-  }));
-
   const { curriculumFields, topicFields, extraFields } = useMemo(() => {
     if (!effectiveConfig) return { curriculumFields: [], topicFields: [], extraFields: [] };
     const HIDDEN_EXTRA = new Set([
@@ -511,7 +452,7 @@ export default function TeacherToolPage() {
     const extra: TeacherToolFieldConfig[] = [];
     for (const field of effectiveConfig.fields) {
       if (HIDDEN_EXTRA.has(field.name)) continue;
-      if (field.name === 'gradeLevel' || field.name === 'subject' || field.name === 'productCategory') {
+      if (field.name === 'gradeLevel' || field.name === 'subject') {
         curriculum.push(field);
       } else if (field.isNCERT || field.isCascadeSubtopic) {
         topic.push(field);
@@ -551,7 +492,6 @@ export default function TeacherToolPage() {
         const curriculumBoard = resolveCurriculumBoardForAiTools(user);
         const defaultBoard = getDefaultAiToolBoard(exclusive, curriculumBoard);
         setSchoolBoardName(curriculumBoard);
-        setSchoolIitCategories(resolveSchoolIitCategories(user));
         const compositionDefaults =
           toolType === 'worksheet-mcq-generator' || toolType === 'exam-question-paper-generator'
             ? {
@@ -688,6 +628,7 @@ export default function TeacherToolPage() {
         delete newParams.projectTopic;
       }
       if (name === 'batch') {
+        newParams.productCategory = String(value || '').trim();
         delete newParams.topic;
         delete newParams.subTopic;
         delete newParams.concept;
@@ -706,6 +647,7 @@ export default function TeacherToolPage() {
         delete newParams.projectTopic;
         if (!String(value).toUpperCase().includes('IIT')) {
           delete newParams.batch;
+          delete newParams.productCategory;
         }
         if (String(value).toUpperCase() === 'IIT') {
           const iitClass = cascade.classOptions.find((c) => /iit/i.test(c)) || 'Class 6';
@@ -1453,30 +1395,13 @@ export default function TeacherToolPage() {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" />
 
-      <Animated.View style={headerAnimatedStyle}>
-        <TeacherToolHeader
-          title={config.name}
-          subtitle={config.description}
-          onBack={goBack}
-          tabletUi={isTablet}
-          toolIcon={getAiToolIonicon(toolType)}
-        />
-      </Animated.View>
-
-      <Animated.View style={[styles.compactHeader, compactHeaderAnimatedStyle]}>
-        <GlassSurface intensity={50} tone="medium" />
-        <View style={styles.compactHeaderRow}>
-          <Pressable onPress={goBack} style={styles.backBtn} hitSlop={8}>
-            <Ionicons name="arrow-back" size={22} color={TEACHER.text} />
-          </Pressable>
-          <View style={styles.compactHeaderTitleWrap}>
-            <Text style={[styles.compactHeaderTitle, isTablet && aiToolTabletPageStyles.compactHeaderTitle]} numberOfLines={1}>
-              {formatAiToolText(config.name)}
-            </Text>
-          </View>
-          <View style={styles.headerSpacer} />
-        </View>
-      </Animated.View>
+      <TeacherToolHeader
+        title={config.name}
+        subtitle={config.description}
+        onBack={goBack}
+        tabletUi={isTablet}
+        toolIcon={getAiToolIonicon(toolType)}
+      />
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -1525,8 +1450,8 @@ export default function TeacherToolPage() {
             showsVerticalScrollIndicator
             keyboardShouldPersistTaps="handled"
             nestedScrollEnabled
-            bounces
-            overScrollMode="always"
+            bounces={false}
+            overScrollMode="never"
             removeClippedSubviews={false}
           >
             {formPanel}
@@ -1547,8 +1472,8 @@ export default function TeacherToolPage() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           nestedScrollEnabled
-          onScroll={scrollHandler}
-          scrollEventThrottle={16}
+          bounces={false}
+          overScrollMode="never"
         >
           {formPanel}
           {renderOutputPanel(false)}
@@ -1657,7 +1582,6 @@ const styles = StyleSheet.create({
   headerTitleTablet: { fontSize: 24, lineHeight: 30 },
   headerSubtitle: { ...AI_TYPE.caption, fontSize: 13, lineHeight: 18, color: AI.textSecondary, marginTop: 3 },
   headerSubtitleTablet: { fontSize: 14, lineHeight: 20 },
-  headerSpacer: { width: 40 },
   headerIconWrap: {
     borderRadius: AI_RADIUS.md,
     shadowColor: AI.primary,
@@ -1672,24 +1596,6 @@ const styles = StyleSheet.create({
     borderRadius: AI_RADIUS.md,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  compactHeader: {
-    borderBottomWidth: 1,
-    borderBottomColor: AI.primaryBorder,
-    overflow: 'hidden',
-  },
-  compactHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: TEACHER_SPACING.lg,
-    paddingVertical: TEACHER_SPACING.sm,
-    gap: TEACHER_SPACING.md,
-  },
-  compactHeaderTitleWrap: { flex: 1, minWidth: 0 },
-  compactHeaderTitle: {
-    ...TEACHER_TYPO.body,
-    fontWeight: '800',
-    color: AI.text,
   },
   scroll: { flex: 1 },
   scrollContent: { padding: AI_SPACING.lg, gap: AI_SPACING.md },

@@ -20,9 +20,10 @@ import {
   type LearningPathContentItem,
 } from '../../src/lib/learningPathContent';
 import { useSchoolProgram } from '../../src/hooks/useSchoolProgram';
-import { prepareLibraryContents, getLibraryContentDisplayTitle, isIitTrackContent } from '../../src/lib/dedupe-library-content';
-import { groupContentsByType } from '../../src/lib/learning-path-content-groups';
+import { prepareLibraryContents, getLibraryContentDisplayTitle, isIitTrackContent, formatIitLearningPathContentLabel } from '../../src/lib/dedupe-library-content';
+import { groupLearningPathContentsWithIit } from '../../src/lib/learning-path-content-groups';
 import { GlassPanel } from '../../src/components/ui';
+import { learningPathDisplayName } from '../../src/lib/learning-path-subjects';
 
 function pickParam(v: string | string[] | undefined): string {
   if (v == null) return '';
@@ -51,12 +52,17 @@ function iconForType(type: string): keyof typeof Ionicons.glyphMap {
 export default function SubjectContent() {
   const router = useRouter();
   const { isAsliPrepExclusive, loading: programLoading } = useSchoolProgram();
-  const { id: idRaw, returnTo: returnToRaw } = useLocalSearchParams<{
+  const { id: idRaw, returnTo: returnToRaw, merge: mergeRaw } = useLocalSearchParams<{
     id?: string | string[];
     returnTo?: string | string[];
+    merge?: string | string[];
   }>();
   const id = pickParam(idRaw);
   const returnTo = pickParam(returnToRaw);
+  const mergeIds = pickParam(mergeRaw)
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
   const [subject, setSubject] = useState<any>(null);
   const [content, setContent] = useState<LearningPathContentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -82,18 +88,33 @@ export default function SubjectContent() {
         setSubject(subjectMeta);
       }
 
-      const contentRes = await api.get('/api/student/asli-prep-content', {
-        params: { subject: id, surface: 'learning-path' },
-      });
-      const raw = contentRes.data?.data ?? contentRes.data;
-      const list = Array.isArray(raw) ? raw : [];
+      const subjectIds = Array.from(new Set([id, ...mergeIds]));
+      const lists = await Promise.all(
+        subjectIds.map(async (sid) => {
+          const contentRes = await api.get('/api/student/asli-prep-content', {
+            params: { subject: sid, surface: 'learning-path' },
+          });
+          const raw = contentRes.data?.data ?? contentRes.data;
+          return Array.isArray(raw) ? raw : [];
+        }),
+      );
+      const seen = new Set<string>();
+      const merged: any[] = [];
+      for (const list of lists) {
+        for (const item of list) {
+          const cid = String(item?._id || '');
+          if (!cid || seen.has(cid)) continue;
+          seen.add(cid);
+          merged.push(item);
+        }
+      }
       setContent(
-        prepareLibraryContents(list, isAsliPrepExclusive, {
+        prepareLibraryContents(merged, isAsliPrepExclusive, {
           subjectSlot: {
             classNumber: subjectMeta?.classNumber,
             productCategory: subjectMeta?.productCategory,
           },
-        }).filter((item) => !isIitTrackContent(item)),
+        }),
       );
     } catch (error) {
       console.error('Error fetching subject data:', error);
@@ -101,7 +122,7 @@ export default function SubjectContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [id, isAsliPrepExclusive]);
+  }, [id, mergeIds.join(','), isAsliPrepExclusive]);
 
   useEffect(() => {
     if (!id || programLoading) return;
@@ -110,12 +131,13 @@ export default function SubjectContent() {
 
   const typeSections = useMemo(
     () =>
-      groupContentsByType(
+      groupLearningPathContentsWithIit(
         content.map((item, index) => ({
           ...item,
           _id: String(item._id || item.id || index),
           type: String(item.type || 'Content'),
-        }))
+        })),
+        (item) => isIitTrackContent(item),
       ),
     [content]
   );
@@ -210,7 +232,12 @@ export default function SubjectContent() {
                             </View>
                             <View style={styles.contentInfo}>
                               <Text style={styles.contentTitle}>
-                                {getLibraryContentDisplayTitle(item) || 'Content'}
+                                {section.iit
+                                  ? formatIitLearningPathContentLabel(
+                                      item,
+                                      learningPathDisplayName(subject?.name || ''),
+                                    ) || 'Content'
+                                  : getLibraryContentDisplayTitle(item) || 'Content'}
                               </Text>
                               <Text style={styles.contentDescription} numberOfLines={2}>
                                 {item.description || 'Learn more about this topic'}

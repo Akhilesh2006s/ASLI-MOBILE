@@ -19,6 +19,7 @@ import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../../src/theme/tea
 import { useContentViewerBack } from '../../../src/hooks/useBackNavigation';
 import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
 import {
+  formatIitLearningPathContentLabel,
   getLibraryContentClassNumber,
   getLibraryContentDisplayTitle,
   getLibraryContentProductCategory,
@@ -26,7 +27,8 @@ import {
   prepareLibraryContents,
 } from '../../../src/lib/dedupe-library-content';
 import { formatProductCategoryLabel } from '../../../src/lib/library-content-labels';
-import { groupContentsByType } from '../../../src/lib/learning-path-content-groups';
+import { groupLearningPathContentsWithIit } from '../../../src/lib/learning-path-content-groups';
+import { learningPathDisplayName } from '../../../src/lib/learning-path-subjects';
 
 type ContentItem = {
   _id: string;
@@ -100,7 +102,7 @@ export default function TeacherSubjectContentScreen() {
             classNumber: subData?.classNumber,
             productCategory: subData?.productCategory,
           },
-        }).filter((item) => !isIitTrackContent(item)),
+        }),
       );
       setClasses(Array.isArray(classRes.data) ? classRes.data : []);
       setExpandedTypes({});
@@ -165,7 +167,10 @@ export default function TeacherSubjectContentScreen() {
     return classFiltered.filter((c) => c.type === typeFilter);
   }, [classFiltered, typeFilter]);
 
-  const typeSections = useMemo(() => groupContentsByType(filtered), [filtered]);
+  const typeSections = useMemo(
+    () => groupLearningPathContentsWithIit(filtered, (item) => isIitTrackContent(item)),
+    [filtered],
+  );
 
   const uniqueTypes = useMemo(
     () => Array.from(new Set(classFiltered.map((c) => c.type))).sort(),
@@ -317,7 +322,14 @@ export default function TeacherSubjectContentScreen() {
                             />
                           </View>
                           <View style={styles.itemBody}>
-                            <Text style={styles.itemTitle}>{getLibraryContentDisplayTitle(item)}</Text>
+                            <Text style={styles.itemTitle}>
+                              {section.iit
+                                ? formatIitLearningPathContentLabel(
+                                    item,
+                                    learningPathDisplayName(subject?.name || ''),
+                                  )
+                                : getLibraryContentDisplayTitle(item)}
+                            </Text>
                             {item.description ? (
                               <Text style={styles.itemDesc} numberOfLines={2}>
                                 {item.description}

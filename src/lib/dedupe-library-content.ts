@@ -2,6 +2,7 @@ import { filterContentsBySchoolProgram, filterByProductCategory } from './school
 import {
   filterLibraryContentsForSubjectSlot,
   formatProductCategoryLabel,
+  formatIitLearningPathContentLabel,
   getLibraryContentClassNumber,
   getLibraryContentDisplayTitle,
   getLibraryContentProductCategory,
@@ -14,6 +15,7 @@ import {
 export {
   filterLibraryContentsForSubjectSlot,
   formatProductCategoryLabel,
+  formatIitLearningPathContentLabel,
   getLibraryContentClassNumber,
   getLibraryContentDisplayTitle,
   getLibraryContentProductCategory,
