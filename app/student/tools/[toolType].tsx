@@ -78,8 +78,6 @@ import {
   executeStudentAiToolGenerate,
   fetchAiToolGeneratedContentFallback,
   storeAiToolSuccessPayload,
-  validateActivityToolDisplay,
-  validateStudyGuideToolDisplay,
   isAiToolClientValidationError,
   isAiToolInlineOnlyError,
   resolveAiToolApiInlineMessage,
@@ -716,8 +714,6 @@ export default function StudentToolPage() {
       executeStudentAiToolGenerate,
       fetchAiToolGeneratedContentFallback,
       storeAiToolSuccessPayload,
-      validateActivityToolDisplay,
-      validateStudyGuideToolDisplay,
       isAiToolClientValidationError,
       isAiToolInlineOnlyError,
       resolveAiToolApiInlineMessage,
@@ -770,22 +766,6 @@ export default function StudentToolPage() {
       }
 
       const stored = storeAiToolSuccessPayload(apiToolType, result.content, result.rawContent, 'student');
-      const activityDisplayError = validateActivityToolDisplay(
-        apiToolType,
-        stored.generatedContent,
-        stored.rawGeneratedContent,
-        'student',
-      );
-      const studyGuideDisplayError = validateStudyGuideToolDisplay(
-        apiToolType,
-        stored.generatedContent,
-        stored.rawGeneratedContent,
-      );
-      const displayError = activityDisplayError || studyGuideDisplayError;
-      if (displayError) {
-        showInlineOutputMessage(displayError);
-        return;
-      }
 
       setResponseMeta(result.metadata);
       setFromAiFailure(result.fromAiFailure);
@@ -834,22 +814,6 @@ export default function StudentToolPage() {
         }
 
         const stored = storeAiToolSuccessPayload(apiToolType, fallbackResult.content, fallbackResult.rawContent, 'student');
-        const activityDisplayError = validateActivityToolDisplay(
-          apiToolType,
-          stored.generatedContent,
-          stored.rawGeneratedContent,
-          'student',
-        );
-        const studyGuideDisplayError = validateStudyGuideToolDisplay(
-          apiToolType,
-          stored.generatedContent,
-          stored.rawGeneratedContent,
-        );
-        const displayError = activityDisplayError || studyGuideDisplayError;
-        if (displayError) {
-          showInlineOutputMessage(displayError);
-          return;
-        }
 
         setResponseMeta(fallbackResult.metadata);
         setFromAiFailure(false);

@@ -47,7 +47,6 @@ import {
   executeAiToolGenerate,
   buildTeacherAiRequestBody,
   storeAiToolSuccessPayload,
-  validateActivityToolDisplay,
   fetchAiToolGeneratedContentFallback,
   isAiToolClientValidationError,
   isAiToolInlineOnlyError,
@@ -806,7 +805,6 @@ export default function TeacherToolPage() {
       executeAiToolGenerate,
       buildTeacherAiRequestBody,
       storeAiToolSuccessPayload,
-      validateActivityToolDisplay,
       fetchAiToolGeneratedContentFallback,
       isAiToolClientValidationError,
       isAiToolInlineOnlyError,
@@ -864,16 +862,6 @@ export default function TeacherToolPage() {
       }
 
       const stored = storeAiToolSuccessPayload(toolType, result.content, result.rawContent, 'teacher');
-      const activityDisplayError = validateActivityToolDisplay(
-        toolType,
-        stored.generatedContent,
-        stored.rawGeneratedContent,
-        'teacher',
-      );
-      if (activityDisplayError) {
-        showInlineOutputMessage(activityDisplayError);
-        return;
-      }
 
       setResponseMeta(result.metadata);
       setFromAiFailure(result.fromAiFailure);
@@ -921,16 +909,6 @@ export default function TeacherToolPage() {
           fallbackResult.rawContent,
           'teacher'
         );
-        const activityDisplayError = validateActivityToolDisplay(
-          toolType,
-          stored.generatedContent,
-          stored.rawGeneratedContent,
-          'teacher',
-        );
-        if (activityDisplayError) {
-          showInlineOutputMessage(activityDisplayError);
-          return;
-        }
 
         setResponseMeta(fallbackResult.metadata);
         setFromAiFailure(false);

@@ -85,39 +85,21 @@ function activitiesFromRaw(rawContent: unknown) {
 }
 
 export function validateActivityToolDisplay(
-  toolType: string,
-  content: string,
-  rawContent: unknown,
-  variant: 'student' | 'teacher',
+  _toolType: string,
+  _content: string,
+  _rawContent: unknown,
+  _variant: 'student' | 'teacher',
 ): string | null {
-  if (toolType !== 'activity-project-generator' && toolType !== 'project-idea-lab') return null;
-  const display = resolveRichDisplayContent(content, rawContent);
-  // Super Admin stores full numbered markdown — same source teacher/student should render.
-  if (countNumberedTemplateSections(display) >= 3) return null;
-  const mode = toolType === 'project-idea-lab' ? 'student' : variant;
-  if (activitiesPayloadIsComplete(activitiesFromRaw(rawContent), content, mode)) return null;
-  return 'Complete activity content is not available for this selection. All template sections must be filled.';
+  // Delivery no longer blocks incomplete stored content — always show what the API returned.
+  return null;
 }
 
 export function validateStudyGuideToolDisplay(
-  toolType: string,
-  content: string,
-  rawContent: unknown,
+  _toolType: string,
+  _content: string,
+  _rawContent: unknown,
 ): string | null {
-  if (toolType !== 'smart-study-guide-generator') return null;
-  const display = resolveRichDisplayContent(content, rawContent);
-  if (countNumberedTemplateSections(display) >= 11) return null;
-
-  const { guide, markdownFallback } = resolveStudyGuideFromPayload(content, rawContent);
-  if (
-    markdownFallback &&
-    countNumberedTemplateSections(String(markdownFallback || '')) >= 11
-  ) {
-    return null;
-  }
-  if (markdownFallback || !isStudyGuideComplete(guide)) {
-    return 'Saved content is incomplete or not in the correct tool format. Ask Super Admin to complete all sections.';
-  }
+  // Delivery no longer blocks incomplete stored content — always show what the API returned.
   return null;
 }
 

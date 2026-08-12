@@ -1,13 +1,22 @@
-import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useMemo, useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Pressable,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../src/lib/api-config';
-import { useBackNavigation, getDashboardPath } from '../../src/hooks/useBackNavigation';
+import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import { GlassPanel } from '../../src/components/ui';
+import { STUDENT } from '../../src/theme/student';
 
 interface Question {
   _id: string;
@@ -22,7 +31,6 @@ interface Question {
   } | string;
 }
 
-const HEADER_COLORS = ['#0284c7', '#0d9488'] as const;
 const LIST_PATH = '/iq-rank-boost-subjects';
 
 function resolveCorrectAnswer(question: Question): string {
@@ -46,16 +54,10 @@ export default function IQRankBoostQuiz() {
     unattempted: number;
     score: number;
   } | null>(null);
-  const [subjectName, setSubjectName] = useState<string>('');
-  const [dashboardPath, setDashboardPath] = useState<string>('/dashboard');
+  const [subjectName, setSubjectName] = useState('');
 
   useEffect(() => {
-    if (quizId) {
-      void fetchQuiz();
-    }
-    getDashboardPath().then((path) => {
-      if (path) setDashboardPath(path);
-    });
+    if (quizId) void fetchQuiz();
   }, [quizId]);
 
   useBackNavigation(LIST_PATH, false);
@@ -82,11 +84,14 @@ export default function IQRankBoostQuiz() {
         if (data.quiz?.title) setQuizTitle(String(data.quiz.title));
         const subject = data.quiz?.subject || shuffled[0]?.subject;
         if (subject) {
-          setSubjectName(typeof subject === 'object' ? subject?.name || 'Subject' : 'Subject');
+          setSubjectName(typeof subject === 'object' ? subject?.name || '' : '');
         }
+      } else {
+        setQuestions([]);
       }
     } catch (error) {
       console.error('Error fetching quiz:', error);
+      setQuestions([]);
     } finally {
       setIsLoading(false);
     }
@@ -94,10 +99,7 @@ export default function IQRankBoostQuiz() {
 
   const handleAnswerSelect = (answer: string) => {
     const questionId = questions[currentQuestionIndex]._id;
-    setAnswers({
-      ...answers,
-      [questionId]: answer,
-    });
+    setAnswers((prev) => ({ ...prev, [questionId]: answer }));
   };
 
   const handleSubmit = async () => {
@@ -108,9 +110,9 @@ export default function IQRankBoostQuiz() {
     questions.forEach((question) => {
       const userAnswer = answers[question._id];
       const expected = resolveCorrectAnswer(question);
-      if (!userAnswer) unattempted++;
-      else if (userAnswer === expected) correct++;
-      else incorrect++;
+      if (!userAnswer) unattempted += 1;
+      else if (userAnswer === expected) correct += 1;
+      else incorrect += 1;
     });
 
     const score = questions.length > 0 ? Math.round((correct / questions.length) * 100) : 0;
@@ -150,12 +152,22 @@ export default function IQRankBoostQuiz() {
 
   const currentQuestion = questions[currentQuestionIndex];
   const selectedAnswer = currentQuestion ? answers[currentQuestion._id] : null;
+  const answeredCount = Object.keys(answers).length;
+  const progress =
+    questions.length > 0 ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0;
+
+  const scoreColors = useMemo(() => {
+    const s = results?.score ?? 0;
+    if (s >= 80) return ['#10b981', '#0d9488'] as const;
+    if (s >= 50) return ['#0284c7', '#4f46e5'] as const;
+    return ['#f43f5e', '#f97316'] as const;
+  }, [results?.score]);
 
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0284c7" />
+          <ActivityIndicator size="large" color={STUDENT.primary} />
           <Text style={styles.loadingText}>Loading quiz...</Text>
         </View>
       </SafeAreaView>
@@ -165,50 +177,91 @@ export default function IQRankBoostQuiz() {
   if (isSubmitted && results) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <LinearGradient colors={[...HEADER_COLORS]} style={styles.header}>
-          <View style={styles.headerContent}>
-            <TouchableOpacity onPress={() => router.replace(LIST_PATH)} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="#fff" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Quiz Results</Text>
-          </View>
-        </LinearGradient>
-
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.resultsContainer}>
-            <View style={styles.scoreCircle}>
-              <Text style={styles.scoreText}>{results.score}%</Text>
-              <Text style={styles.scoreLabel}>Score</Text>
+        <ScrollView contentContainerStyle={styles.resultsScroll} showsVerticalScrollIndicator={false}>
+          <LinearGradient colors={[...scoreColors]} style={styles.resultsHero}>
+            <Text style={styles.resultsEyebrow}>Quiz complete</Text>
+            <Text style={styles.resultsTitle} numberOfLines={2}>
+              {quizTitle}
+            </Text>
+            {subjectName ? <Text style={styles.resultsSubject}>{subjectName}</Text> : null}
+            <View style={styles.scoreRow}>
+              <Text style={styles.scoreBig}>{results.score}%</Text>
+              <Text style={styles.scoreHint}>score</Text>
             </View>
-
-            <View style={styles.statsGrid}>
-              <GlassPanel style={styles.statCard} radius={12}>
-                <View style={styles.statCardInner}>
-                  <Ionicons name="checkmark-circle" size={32} color="#10b981" />
-                  <Text style={styles.statValue}>{results.correct}</Text>
-                  <Text style={styles.statLabel}>Correct</Text>
+            <View style={styles.statsRow}>
+              {[
+                { label: 'Total', value: results.total },
+                { label: 'Correct', value: results.correct },
+                { label: 'Wrong', value: results.incorrect },
+                { label: 'Skipped', value: results.unattempted },
+              ].map((stat) => (
+                <View key={stat.label} style={styles.statPill}>
+                  <Text style={styles.statValue}>{stat.value}</Text>
+                  <Text style={styles.statLabel}>{stat.label}</Text>
                 </View>
-              </GlassPanel>
-              <GlassPanel style={styles.statCard} radius={12}>
-                <View style={styles.statCardInner}>
-                  <Ionicons name="close-circle" size={32} color="#ef4444" />
-                  <Text style={styles.statValue}>{results.incorrect}</Text>
-                  <Text style={styles.statLabel}>Incorrect</Text>
-                </View>
-              </GlassPanel>
-              <GlassPanel style={styles.statCard} radius={12}>
-                <View style={styles.statCardInner}>
-                  <Ionicons name="alert-circle" size={32} color="#6b7280" />
-                  <Text style={styles.statValue}>{results.unattempted}</Text>
-                  <Text style={styles.statLabel}>Unattempted</Text>
-                </View>
-              </GlassPanel>
+              ))}
             </View>
-
-            <TouchableOpacity style={styles.doneButton} onPress={() => router.replace(LIST_PATH)}>
-              <Text style={styles.doneButtonText}>Back to Quiz</Text>
+            <TouchableOpacity style={styles.heroBtn} onPress={() => router.replace(LIST_PATH)}>
+              <Text style={styles.heroBtnText}>Back to quizzes</Text>
             </TouchableOpacity>
-          </View>
+          </LinearGradient>
+
+          <Text style={styles.reviewHeading}>Review</Text>
+          {questions.map((question, index) => {
+            const userAnswer = answers[question._id];
+            const expected = resolveCorrectAnswer(question);
+            const isCorrect = Boolean(userAnswer && userAnswer === expected);
+            const isAnswered = Boolean(userAnswer);
+            return (
+              <GlassPanel key={question._id} style={styles.reviewCard} radius={16}>
+                <View style={styles.reviewTop}>
+                  <Text style={styles.reviewQ}>Q{index + 1}</Text>
+                  <View
+                    style={[
+                      styles.reviewBadge,
+                      isCorrect
+                        ? styles.badgeOk
+                        : isAnswered
+                          ? styles.badgeBad
+                          : styles.badgeSkip,
+                    ]}
+                  >
+                    <Text style={styles.reviewBadgeText}>
+                      {isCorrect ? 'Correct' : isAnswered ? 'Incorrect' : 'Skipped'}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={styles.reviewPrompt}>{question.questionText}</Text>
+                {(question.options || []).map((option, optIndex) => {
+                  const letter = String.fromCharCode(65 + optIndex);
+                  const selected = userAnswer === option.text;
+                  const correctOpt = option.isCorrect || option.text === expected;
+                  return (
+                    <View
+                      key={`${question._id}-opt-${optIndex}`}
+                      style={[
+                        styles.reviewOpt,
+                        correctOpt && styles.reviewOptOk,
+                        selected && !correctOpt && styles.reviewOptBad,
+                      ]}
+                    >
+                      <Text style={styles.reviewOptText}>
+                        {letter}. {option.text}
+                      </Text>
+                    </View>
+                  );
+                })}
+                {question.explanation ? (
+                  <View style={styles.explainBox}>
+                    <Text style={styles.explainText}>
+                      <Text style={styles.explainLabel}>Why: </Text>
+                      {question.explanation}
+                    </Text>
+                  </View>
+                ) : null}
+              </GlassPanel>
+            );
+          })}
         </ScrollView>
       </SafeAreaView>
     );
@@ -218,9 +271,13 @@ export default function IQRankBoostQuiz() {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.emptyContainer}>
+          <Ionicons name="alert-circle-outline" size={42} color="#94a3b8" />
           <Text style={styles.emptyText}>No questions available</Text>
-          <TouchableOpacity style={styles.doneButton} onPress={() => router.replace(LIST_PATH)}>
-            <Text style={styles.doneButtonText}>Back to Quiz</Text>
+          <Text style={styles.emptySub}>
+            This quiz may not be assigned to your class or trial account.
+          </Text>
+          <TouchableOpacity style={styles.nextButton} onPress={() => router.replace(LIST_PATH)}>
+            <Text style={styles.nextButtonText}>Back to quizzes</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -229,54 +286,91 @@ export default function IQRankBoostQuiz() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <LinearGradient colors={[...HEADER_COLORS]} style={styles.header}>
+      <LinearGradient colors={['#0284c7', '#4f46e5']} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => router.replace(LIST_PATH)} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
+            <Ionicons name="arrow-back" size={22} color="#fff" />
           </TouchableOpacity>
           <View style={styles.headerText}>
+            <Text style={styles.headerEyebrow}>QUIZ</Text>
             <Text style={styles.headerTitle} numberOfLines={1}>
               {quizTitle}
             </Text>
-            <Text style={styles.headerSubtitle}>
-              {subjectName ? `${subjectName} · ` : ''}
-              Question {currentQuestionIndex + 1} of {questions.length}
+            <Text style={styles.headerSubtitle} numberOfLines={1}>
+              {subjectName ? `${subjectName} · ` : ''}Q{currentQuestionIndex + 1} of {questions.length}
+              {` · ${answeredCount} answered`}
             </Text>
           </View>
         </View>
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: `${progress}%` }]} />
+        </View>
       </LinearGradient>
 
-      <View style={styles.progressBar}>
-        <View
-          style={[
-            styles.progressFill,
-            { width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` },
-          ]}
-        />
-      </View>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <GlassPanel style={styles.questionCard} radius={12}>
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentInner} showsVerticalScrollIndicator={false}>
+        <GlassPanel style={styles.questionCard} radius={18}>
+          <View style={styles.questionMeta}>
+            <View style={styles.qPill}>
+              <Text style={styles.qPillText}>Q{currentQuestionIndex + 1}</Text>
+            </View>
+            {currentQuestion.difficulty ? (
+              <Text style={styles.diffText}>{String(currentQuestion.difficulty)}</Text>
+            ) : null}
+          </View>
           <Text style={styles.questionText}>{currentQuestion.questionText}</Text>
         </GlassPanel>
 
         <View style={styles.optionsList}>
           {(currentQuestion.options || []).map((option, index) => {
             const selected = selectedAnswer === option.text;
+            const letter = String.fromCharCode(65 + index);
             return (
-              <TouchableOpacity
+              <Pressable
                 key={`${currentQuestion._id}-${index}`}
                 style={[styles.optionButton, selected && styles.optionSelected]}
                 onPress={() => handleAnswerSelect(option.text)}
-                activeOpacity={0.8}
               >
                 <View style={[styles.optionBullet, selected && styles.optionBulletSelected]}>
                   <Text style={[styles.optionBulletText, selected && styles.optionBulletTextSelected]}>
-                    {String.fromCharCode(65 + index)}
+                    {letter}
                   </Text>
                 </View>
                 <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
                   {option.text}
+                </Text>
+                <Ionicons
+                  name={selected ? 'checkmark-circle' : 'ellipse-outline'}
+                  size={20}
+                  color={selected ? '#0284c7' : '#cbd5e1'}
+                />
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <Text style={styles.jumpLabel}>Jump to question</Text>
+        <View style={styles.jumpRow}>
+          {questions.map((q, index) => {
+            const answered = Boolean(answers[q._id]);
+            const current = index === currentQuestionIndex;
+            return (
+              <TouchableOpacity
+                key={q._id}
+                style={[
+                  styles.jumpBtn,
+                  current && styles.jumpCurrent,
+                  !current && answered && styles.jumpAnswered,
+                ]}
+                onPress={() => setCurrentQuestionIndex(index)}
+              >
+                <Text
+                  style={[
+                    styles.jumpBtnText,
+                    current && styles.jumpBtnTextCurrent,
+                    !current && answered && styles.jumpBtnTextAnswered,
+                  ]}
+                >
+                  {index + 1}
                 </Text>
               </TouchableOpacity>
             );
@@ -290,8 +384,14 @@ export default function IQRankBoostQuiz() {
           disabled={currentQuestionIndex === 0}
           onPress={() => setCurrentQuestionIndex((i) => Math.max(0, i - 1))}
         >
-          <Ionicons name="chevron-back" size={20} color={currentQuestionIndex === 0 ? '#94a3b8' : '#0284c7'} />
-          <Text style={[styles.navButtonText, currentQuestionIndex === 0 && styles.navButtonTextDisabled]}>
+          <Ionicons
+            name="chevron-back"
+            size={20}
+            color={currentQuestionIndex === 0 ? '#94a3b8' : '#0284c7'}
+          />
+          <Text
+            style={[styles.navButtonText, currentQuestionIndex === 0 && styles.navButtonTextDisabled]}
+          >
             Previous
           </Text>
         </TouchableOpacity>
@@ -305,8 +405,8 @@ export default function IQRankBoostQuiz() {
             <Ionicons name="chevron-forward" size={20} color="#fff" />
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity style={styles.nextButton} onPress={() => void handleSubmit()}>
-            <Text style={styles.nextButtonText}>Submit</Text>
+          <TouchableOpacity style={styles.submitButton} onPress={() => void handleSubmit()}>
+            <Text style={styles.nextButtonText}>Submit quiz</Text>
             <Ionicons name="checkmark" size={20} color="#fff" />
           </TouchableOpacity>
         )}
@@ -318,11 +418,18 @@ export default function IQRankBoostQuiz() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  loadingText: { marginTop: 12, color: '#64748b' },
-  emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 16 },
-  emptyText: { fontSize: 16, color: '#64748b', fontWeight: '600' },
-  header: { paddingHorizontal: 16, paddingBottom: 16, paddingTop: 8 },
-  headerContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  loadingText: { marginTop: 12, color: '#64748b', fontWeight: '600' },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    gap: 10,
+  },
+  emptyText: { fontSize: 17, color: '#334155', fontWeight: '800' },
+  emptySub: { fontSize: 13, color: '#64748b', textAlign: 'center', marginBottom: 8 },
+  header: { paddingHorizontal: 16, paddingBottom: 14, paddingTop: 8 },
+  headerContent: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
   backButton: {
     width: 40,
     height: 40,
@@ -332,38 +439,92 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerText: { flex: 1, minWidth: 0 },
-  headerTitle: { fontSize: 20, fontWeight: '800', color: '#fff' },
+  headerEyebrow: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: 'rgba(255,255,255,0.8)',
+    letterSpacing: 1,
+  },
+  headerTitle: { fontSize: 20, fontWeight: '800', color: '#fff', marginTop: 2 },
   headerSubtitle: { marginTop: 2, fontSize: 13, color: 'rgba(255,255,255,0.9)' },
-  progressBar: { height: 4, backgroundColor: '#e2e8f0' },
-  progressFill: { height: 4, backgroundColor: '#0d9488' },
+  progressTrack: {
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    overflow: 'hidden',
+  },
+  progressFill: { height: 6, borderRadius: 999, backgroundColor: '#fff' },
   content: { flex: 1 },
-  questionCard: { margin: 16, padding: 16 },
-  questionText: { fontSize: 16, fontWeight: '700', color: '#0f172a', lineHeight: 24 },
-  optionsList: { paddingHorizontal: 16, gap: 10, paddingBottom: 24 },
+  contentInner: { paddingBottom: 24 },
+  questionCard: { margin: 16, marginBottom: 12, padding: 18 },
+  questionMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  qPill: {
+    backgroundColor: '#e2e8f0',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  qPillText: { fontSize: 12, fontWeight: '800', color: '#475569' },
+  diffText: { fontSize: 12, fontWeight: '700', color: '#64748b', textTransform: 'capitalize' },
+  questionText: { fontSize: 17, fontWeight: '700', color: '#0f172a', lineHeight: 26 },
+  optionsList: { paddingHorizontal: 16, gap: 10, marginBottom: 18 },
   optionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 1,
+    borderRadius: 16,
+    borderWidth: 2,
     borderColor: '#e2e8f0',
     padding: 14,
   },
   optionSelected: { borderColor: '#0284c7', backgroundColor: '#e0f2fe' },
   optionBullet: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#f1f5f9',
     alignItems: 'center',
     justifyContent: 'center',
   },
   optionBulletSelected: { backgroundColor: '#0284c7' },
-  optionBulletText: { fontSize: 13, fontWeight: '700', color: '#64748b' },
+  optionBulletText: { fontSize: 13, fontWeight: '800', color: '#64748b' },
   optionBulletTextSelected: { color: '#fff' },
-  optionText: { flex: 1, fontSize: 14, color: '#334155', fontWeight: '500' },
-  optionTextSelected: { color: '#0c4a6e', fontWeight: '700' },
+  optionText: { flex: 1, fontSize: 15, color: '#334155', fontWeight: '600' },
+  optionTextSelected: { color: '#0c4a6e', fontWeight: '800' },
+  jumpLabel: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#64748b',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  jumpRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingHorizontal: 16,
+  },
+  jumpBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: '#e2e8f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  jumpCurrent: { backgroundColor: '#0284c7' },
+  jumpAnswered: { backgroundColor: '#d1fae5' },
+  jumpBtnText: { fontSize: 13, fontWeight: '800', color: '#475569' },
+  jumpBtnTextCurrent: { color: '#fff' },
+  jumpBtnTextAnswered: { color: '#065f46' },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -374,7 +535,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     gap: 12,
   },
-  navButton: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 10, paddingHorizontal: 8 },
+  navButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+  },
   navButtonDisabled: { opacity: 0.5 },
   navButtonText: { fontSize: 14, fontWeight: '700', color: '#0284c7' },
   navButtonTextDisabled: { color: '#94a3b8' },
@@ -383,34 +550,85 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     backgroundColor: '#0284c7',
-    borderRadius: 12,
+    borderRadius: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+  },
+  submitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#4f46e5',
+    borderRadius: 14,
     paddingHorizontal: 18,
     paddingVertical: 12,
   },
   nextButtonText: { color: '#fff', fontWeight: '800', fontSize: 14 },
-  resultsContainer: { padding: 24, alignItems: 'center' },
-  scoreCircle: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: '#e0f2fe',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
+  resultsScroll: { paddingBottom: 40 },
+  resultsHero: {
+    margin: 16,
+    borderRadius: 24,
+    padding: 20,
   },
-  scoreText: { fontSize: 36, fontWeight: '900', color: '#0284c7' },
-  scoreLabel: { fontSize: 13, color: '#64748b', fontWeight: '600' },
-  statsGrid: { flexDirection: 'row', gap: 10, width: '100%', marginBottom: 24 },
-  statCard: { flex: 1 },
-  statCardInner: { alignItems: 'center', padding: 14, gap: 4 },
-  statValue: { fontSize: 20, fontWeight: '800', color: '#0f172a' },
-  statLabel: { fontSize: 11, color: '#64748b', fontWeight: '600' },
-  doneButton: {
-    backgroundColor: '#0284c7',
+  resultsEyebrow: { color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: '700' },
+  resultsTitle: { color: '#fff', fontSize: 24, fontWeight: '900', marginTop: 4 },
+  resultsSubject: { color: 'rgba(255,255,255,0.85)', marginTop: 4, fontSize: 13 },
+  scoreRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginTop: 16, marginBottom: 16 },
+  scoreBig: { color: '#fff', fontSize: 48, fontWeight: '900' },
+  scoreHint: { color: 'rgba(255,255,255,0.85)', fontSize: 13, marginBottom: 10 },
+  statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  statPill: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    minWidth: 70,
+  },
+  statValue: { color: '#fff', fontSize: 18, fontWeight: '900' },
+  statLabel: { color: 'rgba(255,255,255,0.85)', fontSize: 11, fontWeight: '600' },
+  heroBtn: {
+    marginTop: 18,
+    alignSelf: 'flex-start',
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  heroBtnText: { color: '#0f172a', fontWeight: '800', fontSize: 14 },
+  reviewHeading: {
+    marginHorizontal: 16,
+    marginBottom: 10,
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  reviewCard: { marginHorizontal: 16, marginBottom: 12, padding: 14 },
+  reviewTop: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  reviewQ: { fontSize: 13, fontWeight: '800', color: '#64748b' },
+  reviewBadge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
+  badgeOk: { backgroundColor: '#d1fae5' },
+  badgeBad: { backgroundColor: '#fee2e2' },
+  badgeSkip: { backgroundColor: '#e2e8f0' },
+  reviewBadgeText: { fontSize: 11, fontWeight: '800', color: '#0f172a' },
+  reviewPrompt: { fontSize: 15, fontWeight: '700', color: '#0f172a', marginBottom: 10 },
+  reviewOpt: {
     borderRadius: 12,
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    alignSelf: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 6,
   },
-  doneButtonText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  reviewOptOk: { borderColor: '#86efac', backgroundColor: '#ecfdf5' },
+  reviewOptBad: { borderColor: '#fca5a5', backgroundColor: '#fff1f2' },
+  reviewOptText: { fontSize: 13, color: '#334155', fontWeight: '600' },
+  explainBox: {
+    marginTop: 8,
+    borderRadius: 12,
+    backgroundColor: '#e0f2fe',
+    padding: 10,
+  },
+  explainLabel: { fontWeight: '800' },
+  explainText: { fontSize: 13, color: '#0c4a6e', lineHeight: 18 },
 });
