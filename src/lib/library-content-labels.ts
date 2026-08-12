@@ -3,8 +3,11 @@
  * (classNumber + productCategory / Alpha|Beta), not generic file titles.
  */
 
+import { normalizeSubjectDisplayKey } from './subject-names';
+
 export type LibrarySubjectRef = {
   _id?: string;
+  id?: string;
   name?: string;
   classNumber?: string | number | null;
   productCategory?: string | null;
@@ -19,12 +22,54 @@ export type LibraryContentLike = {
   productCategory?: string | null;
   subject?: LibrarySubjectRef | string | null;
   subjectId?: LibrarySubjectRef | string | null;
+  subjectName?: string | null;
 };
 
 function asSubjectRef(value: LibraryContentLike['subject'] | LibraryContentLike['subjectId']): LibrarySubjectRef | null {
   if (!value) return null;
   if (typeof value === 'string') return { _id: value };
   return value;
+}
+
+export function getLibraryContentSubjectId(row: LibraryContentLike): string {
+  const subject = asSubjectRef(row.subject) || asSubjectRef(row.subjectId);
+  return String(subject?._id || subject?.id || '').trim();
+}
+
+export function getLibraryContentSubjectRawName(row: LibraryContentLike): string {
+  const subject = asSubjectRef(row.subject) || asSubjectRef(row.subjectId);
+  const fromRef = String(subject?.name || '').trim();
+  if (fromRef) return fromRef;
+  return String(row.subjectName || '').trim();
+}
+
+export function getLibraryContentSubjectKey(row: LibraryContentLike): string {
+  return normalizeSubjectDisplayKey(getLibraryContentSubjectRawName(row));
+}
+
+/**
+ * Match library content to a Learning Paths subject card (ID + Social studies↔Social Science).
+ */
+export function libraryContentMatchesSubject(
+  row: LibraryContentLike,
+  subject: {
+    _id?: string;
+    id?: string;
+    name?: string;
+    mergedSubjectIds?: string[];
+  },
+): boolean {
+  const subjectIds = new Set(
+    [subject._id, subject.id, ...(subject.mergedSubjectIds || [])]
+      .map((id) => String(id || '').trim())
+      .filter(Boolean),
+  );
+  const contentId = getLibraryContentSubjectId(row);
+  if (contentId && subjectIds.has(contentId)) return true;
+
+  const subjectKey = normalizeSubjectDisplayKey(subject.name || '');
+  const contentKey = getLibraryContentSubjectKey(row);
+  return Boolean(subjectKey && contentKey && subjectKey === contentKey);
 }
 
 export function normalizeLibraryClassNumber(value: unknown): string {

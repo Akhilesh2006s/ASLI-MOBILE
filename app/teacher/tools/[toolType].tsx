@@ -552,20 +552,7 @@ export default function TeacherToolPage() {
   }, [formParams.gradeLevel, formParams.subject, cascade.topics, cascade.loadingTopics]);
 
   useEffect(() => {
-    const sub = formParams.subject;
-    if (!sub) return;
-    const subStr = String(sub);
-    const shouldClear =
-      (isStoryLanguageTool(toolType) && !isStoryPassageLanguageSubject(subStr)) ||
-      (isLanguageExcludedTool(toolType) && isStoryPassageLanguageSubject(subStr));
-    if (!shouldClear) return;
-    setFormParams((prev) => {
-      const next = { ...prev };
-      delete next.subject;
-      delete next.topic;
-      delete next.subTopic;
-      return next;
-    });
+    // Do not clear subject based on language/tool pairing — delivery is not gated.
   }, [toolType, formParams.subject]);
 
   useEffect(() => {
@@ -731,8 +718,6 @@ export default function TeacherToolPage() {
     if (field.name === 'subject') {
       if (!formParams.gradeLevel || cascade.loadingSubjects) return 'Select class first';
       if (subjectsForTool.length === 0) {
-        if (isStoryLanguageTool(toolType)) return 'English, Hindi, or Telugu only';
-        if (isLanguageExcludedTool(toolType)) return 'Not available for English, Hindi, or Telugu';
         return 'No subjects available';
       }
     }
@@ -899,7 +884,13 @@ export default function TeacherToolPage() {
             showInlineOutputMessage(fallbackResult.fallbackMessage);
             return;
           }
-          showInlineOutputMessage(`${errMsg} ${fallbackResult.fallbackMessage}`.trim());
+          const lookupTimedOut = /exceeded time limit|multiplanner/i.test(errMsg);
+          showInlineOutputMessage(
+            lookupTimedOut
+              ? 'Saved content is taking too long to load. Please try Generate again.'
+              : fallbackResult.fallbackMessage ||
+                  'Could not load saved content for this selection. Please try again.',
+          );
           return;
         }
 
@@ -915,8 +906,12 @@ export default function TeacherToolPage() {
         setGeneratedContent(stored.generatedContent);
         setRawGeneratedContent(stored.rawGeneratedContent);
       } catch (fallbackError: any) {
-        const fe = String(fallbackError?.message || 'Fallback lookup failed');
-        showInlineOutputMessage(`${errMsg} ${fe}`.trim());
+        const lookupTimedOut = /exceeded time limit|multiplanner/i.test(errMsg);
+        showInlineOutputMessage(
+          lookupTimedOut
+            ? 'Saved content is taking too long to load. Please try Generate again.'
+            : 'Could not load saved content for this selection. Please try again.',
+        );
       }
     } finally {
       setIsGenerating(false);
@@ -1192,26 +1187,6 @@ export default function TeacherToolPage() {
                 )
               : null}
             {curriculumFields.map(renderField)}
-            {isStoryLanguageTool(toolType) ? (
-              <View style={styles.infoBanner}>
-                <Ionicons name="information-circle" size={18} color={TEACHER.primaryLight} />
-                <View style={styles.infoBannerTextWrap}>
-                  <Text style={[styles.infoBannerText, isTablet && aiToolTabletPageStyles.infoBannerText]}>
-                    English, Hindi, and Telugu subjects only for this tool.
-                  </Text>
-                </View>
-              </View>
-            ) : null}
-            {isLanguageExcludedTool(toolType) ? (
-              <View style={[styles.infoBanner, styles.infoBannerWarning]}>
-                <Ionicons name="alert-circle" size={18} color="#b45309" />
-                <View style={styles.infoBannerTextWrap}>
-                  <Text style={[styles.infoBannerText, styles.infoBannerWarningText, isTablet && aiToolTabletPageStyles.infoBannerText]}>
-                    Not available for English, Hindi, or Telugu subjects.
-                  </Text>
-                </View>
-              </View>
-            ) : null}
           </FormSection>
 
           {topicFields.length > 0 || extraFields.length > 0 ? (

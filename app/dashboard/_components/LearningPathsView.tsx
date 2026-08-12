@@ -21,6 +21,7 @@ import {
   prepareLibraryContents,
   type LibraryContentRow,
 } from '../../../src/lib/dedupe-library-content';
+import { libraryContentMatchesSubject } from '../../../src/lib/library-content-labels';
 import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
 import {
   STUDENT,
@@ -75,23 +76,21 @@ function parseSubjectsPayload(data: any): any[] {
   return [];
 }
 
-function subjectIdFromContentRow(item: LibraryContentRow): string {
-  const sub = item.subjectId ?? item.subject;
-  if (sub == null) return '';
-  if (typeof sub === 'string') return sub.trim();
-  return String(sub._id || '').trim();
-}
-
-/** Count library items only for catalog subjects returned by /api/student/subjects. */
+/** Count library items per catalog subject (ID + Social studies↔Social Science aliases). */
 function countItemsBySubject(
   rows: LibraryContentRow[],
-  allowedSubjectIds: Set<string>,
+  subjects: Array<{
+    _id?: string;
+    id?: string;
+    name?: string;
+    mergedSubjectIds?: string[];
+  }>,
 ): Record<string, number> {
   const counts: Record<string, number> = {};
-  for (const item of rows) {
-    const id = subjectIdFromContentRow(item);
-    if (!id || !allowedSubjectIds.has(id)) continue;
-    counts[id] = (counts[id] || 0) + 1;
+  for (const subject of subjects) {
+    const primary = String(subject._id || subject.id || '').trim();
+    if (!primary) continue;
+    counts[primary] = rows.filter((row) => libraryContentMatchesSubject(row, subject)).length;
   }
   return counts;
 }
@@ -132,23 +131,13 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
     const preparedSubjects = prepareStudentLearningPathSubjects(list);
     setSubjects(preparedSubjects);
 
-    const allowedIds = new Set<string>();
-    for (const subject of preparedSubjects) {
-      const primary = String(subject._id || subject.id || '');
-      if (primary) allowedIds.add(primary);
-      for (const mid of subject.mergedSubjectIds || []) {
-        const s = String(mid || '');
-        if (s) allowedIds.add(s);
-      }
-    }
-
     try {
       const { data } = await api.get('/api/student/asli-prep-content', {
         params: { surface: 'learning-path' },
       });
       const raw = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
       const prepared = prepareLibraryContents(raw, isAsliPrepExclusive);
-      setItemCounts(countItemsBySubject(prepared, allowedIds));
+      setItemCounts(countItemsBySubject(prepared, preparedSubjects));
     } catch {
       setItemCounts({});
     }
@@ -269,7 +258,7 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
                 const mergedIds: string[] = Array.isArray(subject.mergedSubjectIds)
                   ? subject.mergedSubjectIds.map(String).filter(Boolean)
                   : [subjectId];
-                const count = mergedIds.reduce((sum, sid) => sum + (itemCounts[sid] || 0), 0);
+                const count = itemCounts[subjectId] || 0;
                 const otherIds = mergedIds.filter((sid) => sid !== subjectId);
                 const hint =
                   typeof count === 'number' && count > 0

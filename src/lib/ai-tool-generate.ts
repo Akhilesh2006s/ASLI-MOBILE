@@ -1,11 +1,6 @@
 import { activitiesPayloadIsComplete } from './parse-activity-markdown';
 import { isStudyGuideComplete, resolveStudyGuideFromPayload } from './parse-smart-study-guide';
-import {
-  isLanguageExcludedTool,
-  isStoryPassageLanguageSubject,
-  LANGUAGE_EXCLUDED_TOOL_ERROR,
-  resolveStudentAiApiToolType,
-} from './student-ai-tools';
+import { resolveStudentAiApiToolType } from './student-ai-tools';
 import { parseAiToolClassNumber } from './school-program';
 import {
   countNumberedTemplateSections,
@@ -129,15 +124,7 @@ export function validateAiToolForm({
     return 'Please select a board.';
   }
 
-  const subject = String(formParams.subject || formParams.subjects || '');
-
-  if (isReadingPractice && !isStoryPassageLanguageSubject(subject)) {
-    return 'Story & Passage Creator works only with English, Hindi, or Telugu subjects.';
-  }
-
-  if (isLanguageExcludedTool(toolType) && isStoryPassageLanguageSubject(subject)) {
-    return LANGUAGE_EXCLUDED_TOOL_ERROR;
-  }
+  // Subject/tool pairing and language gates are not client delivery blockers.
 
   const dateField = config.fields.find((f) => f.name === 'date' || f.type === 'date');
   if (dateField) {
@@ -170,7 +157,7 @@ function parseResponseBody(responseText: string): {
   }
 }
 
-function resolveApiError(data: ReturnType<typeof parseResponseBody>, response: Response, responseText: string) {
+function resolveApiError(data: ReturnType<typeof parseResponseBody>, response: Response, responseText: string): AiToolGenerateResult {
   const code = data?.code;
   const message = data.message || responseText || `Server error: ${response.status}`;
 
@@ -183,43 +170,34 @@ function resolveApiError(data: ReturnType<typeof parseResponseBody>, response: R
         code === 'AI_TOOL_WRONG_TYPE'))
   ) {
     return {
-      ok: false as const,
-      title:
-        code === 'AI_TOOL_WRONG_TYPE'
-          ? 'Wrong tool content'
-          : code === 'AI_TOOL_CONTENT_INCOMPLETE'
-            ? 'Content incomplete'
-            : 'No content found',
+      ok: false,
+      title: 'No content found',
       message:
         message ||
-        'No complete content is available for this class, subject, topic, and sub-topic.',
+        'No saved content matched this selection yet. Try Generate again shortly.',
       code,
       fallbackMessage:
         message ||
-        (code === 'AI_TOOL_WRONG_TYPE'
-          ? 'Saved content belongs to a different AI tool. Super Admin must generate using this tool name only.'
-          : code === 'AI_TOOL_CONTENT_INCOMPLETE'
-            ? 'Saved content is incomplete or not in the correct tool format. Ask Super Admin to complete all sections.'
-            : 'No content found for this selection. Ask Super Admin to add it in AI Tool Generations.'),
+        'No saved content matched this selection yet. Try Generate again shortly.',
     };
   }
 
   if (response.status === 503 && code === 'AI_UNAVAILABLE_NO_FALLBACK') {
     return {
-      ok: false as const,
+      ok: false,
       title: 'AI unavailable',
       message:
         message ||
-        'No stored content matched. Ask your Super Admin to add content or fix the API quota.',
+        'No stored content matched this selection yet. Try again shortly.',
       code,
       fallbackMessage:
         message ||
-        'AI service is unavailable and no previously generated content was found for this selection.',
+        'No stored content matched this selection yet. Try again shortly.',
     };
   }
 
   return {
-    ok: false as const,
+    ok: false,
     title: 'Error',
     message: message || 'AI generation failed',
     code,
@@ -241,20 +219,17 @@ export function resolveAiToolApiInlineMessage(
   const message = data.message || '';
   if (message) return message;
 
-  if (data.code === 'AI_TOOL_WRONG_TYPE') {
-    return 'Saved content belongs to a different AI tool. Super Admin must generate using this tool name only.';
-  }
-  if (data.code === 'AI_TOOL_CONTENT_INCOMPLETE') {
-    return 'Saved content is incomplete or not in the correct tool format. Ask Super Admin to complete all sections.';
+  if (data.code === 'AI_TOOL_WRONG_TYPE' || data.code === 'AI_TOOL_CONTENT_INCOMPLETE') {
+    return `No saved ${toolName || 'content'} matched this selection yet. Try Generate again shortly.`;
   }
   if (data.code === 'AI_TOOL_DATA_NOT_FOUND') {
-    return `No ${toolName || 'tool'} content found for this selection. Ask Super Admin to add it in AI Tool Generations.`;
+    return `No ${toolName || 'tool'} content found for this selection yet. Try Generate again shortly.`;
   }
   if (data.code === 'AI_UNAVAILABLE_NO_FALLBACK') {
-    return 'AI service is unavailable and no previously generated content was found for this selection.';
+    return 'No stored content matched this selection yet. Try again shortly.';
   }
 
-  return 'No complete content is available for this class, subject, topic, and sub-topic.';
+  return 'No saved content matched this selection yet.';
 }
 
 export function isAiToolInlineOnlyError(code?: string): boolean {
@@ -334,16 +309,34 @@ export async function fetchAiToolGeneratedContentFallback({
     data?.code === 'AI_TOOL_WRONG_TYPE' ||
     (data?.success && !data?.data)
   ) {
+    // Still deliver body when present — incomplete is not a UI gate.
+    if (String(fallbackContent).trim().length > 0) {
+      const fallbackRaw =
+        data?.data?.structuredContent ?? data?.data?.rawData ?? data?.data?.raw ?? null;
+      return {
+        ok: true,
+        content: String(fallbackContent),
+        rawContent: fallbackRaw,
+        metadata: {
+          matchType: data?.data?.matchType,
+          totalCandidates: data?.data?.totalCandidates,
+          selectedIndex: data?.data?.selectedIndex,
+          source: data?.data?.source,
+          sourceLabel: data?.data?.sourceLabel,
+        },
+        fromAiFailure: false,
+      };
+    }
     return {
       ok: false,
-      title: 'Content incomplete',
+      title: 'No content found',
       message:
         data?.message ||
-        'Saved content is incomplete or not in the correct tool format for this tool.',
+        'No saved content matched this selection yet. Try Generate again shortly.',
       code: data?.code,
       fallbackMessage:
         data?.message ||
-        'Ask your Super Admin to complete all sections before this can be shown.',
+        'No saved content matched this selection yet. Try Generate again shortly.',
     };
   }
 
@@ -395,6 +388,21 @@ export async function executeAiToolGenerate({
   const data = parseResponseBody(responseText);
 
   if (!response.ok) {
+    const softContent = String(data?.data?.content || data?.content || '').trim();
+    if (softContent) {
+      return {
+        ok: true,
+        content: softContent,
+        rawContent:
+          data.data?.rawData ??
+          data.data?.structuredContent ??
+          data.data?.metadata?.structuredContent ??
+          data.data?.metadata?.renderContent ??
+          null,
+        metadata: data.data?.metadata ?? null,
+        fromAiFailure: false,
+      };
+    }
     return resolveApiError(data, response, responseText);
   }
 
@@ -501,13 +509,13 @@ export function buildTeacherAiRequestBody(
 
   return {
     toolType,
+    ...formParams,
     classNumber: parseAiToolClassNumber(selectedClass),
     subject: selectedSubject,
     topic: selectedTopic,
     section: selectedSection,
     questionCount: formParams.questionCount ? parseInt(String(formParams.questionCount), 10) : undefined,
     duration: formParams.duration ? parseInt(String(formParams.duration), 10) : undefined,
-    ...formParams,
     subTopic: selectedSubTopic,
     chapterScope: !selectedSubTopic,
     productCategory:

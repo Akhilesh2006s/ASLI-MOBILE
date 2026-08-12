@@ -118,14 +118,10 @@ export function isLanguageExcludedTool(toolType: string): boolean {
   return LANGUAGE_EXCLUDED_TOOL_ID_SET.has(String(toolType || '').trim());
 }
 
-export function filterSubjectsForAiTool(toolType: string, subjects: string[]): string[] {
-  if (isStoryLanguageTool(toolType)) {
-    return subjects.filter(isStoryPassageLanguageSubject);
-  }
-  if (isLanguageExcludedTool(toolType)) {
-    return subjects.filter((s) => !isStoryPassageLanguageSubject(s));
-  }
-  return subjects;
+export function filterSubjectsForAiTool(_toolType: string, subjects: string[]): string[] {
+  // Dashboard delivery: do not hide subjects by tool language rules — show all and
+  // let the API return whatever saved content exists for the selection.
+  return Array.isArray(subjects) ? subjects.filter(Boolean) : [];
 }
 
 /** IIT / NEET / JEE boards in AI Tools — STEM only. */

@@ -60,7 +60,8 @@ function topicLabelScore(value: string): number {
   let score = Math.min(s.length, 80);
   if (chapterNumberFromLabel(s) != null) score += 1000;
   if (/^(chapter|ch\.?|unit)\b/i.test(s)) score += 100;
-  // Prefer cleaner display names over "title - title"
+  // Prefer "Chapter N - Title" over bare "Chapter N"
+  if (/\s[-–—:]\s*.+/u.test(s) || /\s-\s.+/.test(s)) score += 200;
   if (!/\s-\s/.test(s) || chapterNumberFromLabel(s) != null) score += 20;
   return score;
 }
@@ -81,15 +82,24 @@ export function sortChapterWiseLabels(labels: string[]): string[] {
 
 /**
  * Dedupe topic/subtopic labels that mean the same chapter
- * ("Integers" vs "Chapter 1 - Integers"), keep the best display label,
+ * ("Chapter 1" vs "Chapter 1 - The Wonderful World…"), keep the best display label,
  * then sort chapter-wise.
  */
 export function dedupeChapterWiseLabels(labels: string[]): string[] {
+  const byChapter = new Map<number, string>();
   const byKey = new Map<string, string>();
 
   for (const raw of labels) {
     const label = String(raw || '').trim();
     if (!label) continue;
+    const ch = chapterNumberFromLabel(label);
+    if (ch != null) {
+      const prev = byChapter.get(ch);
+      if (!prev || topicLabelScore(label) > topicLabelScore(prev)) {
+        byChapter.set(ch, label);
+      }
+      continue;
+    }
     const key = canonicalTopicKey(label) || label.toLowerCase();
     const prev = byKey.get(key);
     if (!prev || topicLabelScore(label) > topicLabelScore(prev)) {
@@ -97,7 +107,12 @@ export function dedupeChapterWiseLabels(labels: string[]): string[] {
     }
   }
 
-  return sortChapterWiseLabels([...byKey.values()]);
+  for (const chapterLabel of byChapter.values()) {
+    const canon = canonicalTopicKey(chapterLabel);
+    if (canon) byKey.delete(canon);
+  }
+
+  return sortChapterWiseLabels([...byChapter.values(), ...byKey.values()]);
 }
 
 /**
