@@ -681,7 +681,7 @@ export default function ExamsView({
       { id: 'attempted', label: 'Attempted Exams', shortLabel: 'Attempted' },
       { id: 'ranking', label: 'My Rankings', shortLabel: 'Rankings' },
       { id: 'upcoming', label: 'Upcoming Exams', shortLabel: 'Upcoming' },
-      { id: 'omr', label: 'OMR Results', shortLabel: 'OMR' },
+      { id: 'omr', label: 'Offline Results', shortLabel: 'Offline' },
     ],
     []
   );
@@ -1081,7 +1081,7 @@ export default function ExamsView({
         </View>
       )}
 
-      {/* OMR Results Tab */}
+      {/* Offline Results Tab */}
       {activeTab === 'omr' && (
         <View style={styles.content}>
           <OmrResultsView />

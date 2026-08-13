@@ -134,6 +134,20 @@ const teacherService = {
     }),
   subject: (id: string) => cachedFetch<any>(`subject_${id}`, `/api/subjects/${id}`),
   quizzes: () => cachedFetch<any[]>('quizzes', '/api/teacher/quizzes'),
+  exams: (classNumber?: string) => {
+    const q =
+      classNumber && classNumber !== 'all'
+        ? `?classNumber=${encodeURIComponent(classNumber)}`
+        : '';
+    return fetchJson<any>(`/api/teacher/exams${q}`);
+  },
+  examQuestionAnalytics: (examId: string, classNumber?: string) => {
+    const q =
+      classNumber && classNumber !== 'all'
+        ? `?classNumber=${encodeURIComponent(classNumber)}`
+        : '';
+    return fetchJson<any>(`/api/teacher/exams/${encodeURIComponent(examId)}/question-analytics${q}`);
+  },
   remarks: () => cachedFetch<any[]>('remarks', '/api/teacher/remarks'),
   workDiary: (limit = 40) =>
     cachedFetch<any[]>(`diary_${limit}`, `/api/teacher/work-diary?limit=${limit}`),

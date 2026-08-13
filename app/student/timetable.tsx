@@ -1,36 +1,39 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Image,
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
-import { fetchStudentTimetable, timetableEntriesToSlots } from '../../src/lib/timetable-helpers';
+import { API_BASE_URL } from '../../src/lib/api-config';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import { EmptyState, ErrorState, GlassPanel, LoadingState } from '../../src/components/ui';
 import StudentScreenHeader from '../../src/components/student/StudentScreenHeader';
-import {
-  STUDENT,
-  STUDENT_ANIMATION,
-  STUDENT_RADIUS,
-  STUDENT_SPACING,
-  STUDENT_TYPO,
-  SUBJECT_COLORS,
-} from '../../src/theme/student';
+import { STUDENT, STUDENT_RADIUS, STUDENT_SPACING } from '../../src/theme/student';
 
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-
-type Slot = {
-  day?: string;
-  period?: number;
-  subject?: string;
-  teacher?: string;
-  time?: string;
+type PhotoPayload = {
+  label?: string;
+  imageUrl?: string;
 };
 
+function resolveUrl(imageUrl?: string): string {
+  const raw = String(imageUrl || '').trim();
+  if (!raw) return '';
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+  if (raw.startsWith('/')) return `${API_BASE_URL}${raw}`;
+  return `${API_BASE_URL}/${raw}`;
+}
+
 export default function StudentTimetable() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [slots, setSlots] = useState<Slot[]>([]);
+  const [photo, setPhoto] = useState<PhotoPayload | null>(null);
 
   useBackNavigation('/dashboard', false);
 
@@ -38,115 +41,80 @@ export default function StudentTimetable() {
     try {
       setError('');
       const token = await SecureStore.getItemAsync('authToken');
-      if (!token) throw new Error('Not authenticated');
-      const entries = await fetchStudentTimetable(token);
-      setSlots(timetableEntriesToSlots(entries));
-    } catch (e: any) {
-      setError(e?.message || 'Could not load timetable');
+      if (!token) {
+        setError('Please sign in again.');
+        setPhoto(null);
+        return;
+      }
+      const res = await fetch(`${API_BASE_URL}/api/timetable/photo`, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
+      if (!res.ok) {
+        setPhoto(null);
+        setError('Could not load timetable photo.');
+        return;
+      }
+      const data = await res.json();
+      setPhoto(data?.data || null);
+    } catch {
+      setError('Could not load timetable photo.');
+      setPhoto(null);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
-  const periods = Math.max(6, ...slots.map((s) => Number(s.period || 0)));
+  const imageUrl = resolveUrl(photo?.imageUrl);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StudentScreenHeader title="Weekly Timetable" onBack={() => router.back()} />
-
-      {loading ? (
-        <LoadingState variant="cards" style={{ padding: STUDENT_SPACING.lg }} />
-      ) : error ? (
-        <ErrorState message={error} onRetry={load} style={{ margin: STUDENT_SPACING.lg }} />
-      ) : slots.length === 0 ? (
-        <EmptyState icon="calendar-outline" title="No timetable" subtitle="Your schedule will appear here." />
-      ) : (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={styles.grid}>
-            <Animated.View entering={FadeInDown.duration(STUDENT_ANIMATION.normal)} style={styles.row}>
-              <View style={styles.corner} />
-              {DAYS.map((d) => (
-                <View key={d} style={styles.dayHead}>
-                  <Text style={styles.dayText}>{d}</Text>
-                </View>
-              ))}
-            </Animated.View>
-            {Array.from({ length: periods }).map((_, p) => (
-              <Animated.View
-                key={p}
-                entering={FadeInDown.duration(STUDENT_ANIMATION.normal).delay((p + 1) * 60)}
-                style={styles.row}
-              >
-                <View style={styles.periodHead}>
-                  <Text style={styles.periodText}>P{p + 1}</Text>
-                </View>
-                {DAYS.map((day, di) => {
-                  const slot = slots.find(
-                    (s) =>
-                      (s.day?.toLowerCase().startsWith(day.toLowerCase()) || s.day === String(di + 1)) &&
-                      Number(s.period) === p + 1
-                  );
-                  const color = SUBJECT_COLORS[di % SUBJECT_COLORS.length];
-                  return (
-                    <GlassPanel
-                      key={`${day}-${p}`}
-                      radius={STUDENT_RADIUS.sm}
-                      tone="strong"
-                      bordered={false}
-                      style={[
-                        styles.cell,
-                        slot && { backgroundColor: `${color}15`, borderColor: `${color}40` },
-                      ]}
-                    >
-                      {slot ? (
-                        <>
-                          <Text style={[styles.subject, { color }]} numberOfLines={2}>
-                            {slot.subject}
-                          </Text>
-                          {slot.teacher ? (
-                            <Text style={styles.teacher} numberOfLines={1}>
-                              {slot.teacher}
-                            </Text>
-                          ) : null}
-                        </>
-                      ) : null}
-                    </GlassPanel>
-                  );
-                })}
-              </Animated.View>
-            ))}
-          </View>
-        </ScrollView>
-      )}
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <StudentScreenHeader
+        title={photo?.label ? `Timetable · ${photo.label}` : 'Class Timetable'}
+        subtitle="Photo from your school"
+        onBack={() => router.back()}
+      />
+      <ScrollView contentContainerStyle={styles.content}>
+        {loading ? (
+          <LoadingState />
+        ) : error ? (
+          <ErrorState message={error} onRetry={() => { setLoading(true); void load(); }} />
+        ) : imageUrl ? (
+          <GlassPanel style={styles.card} radius={STUDENT_RADIUS.card} tone="strong">
+            <Pressable onPress={() => Linking.openURL(imageUrl)}>
+              <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="contain" />
+              <Text style={styles.hint}>Tap to open full size</Text>
+            </Pressable>
+          </GlassPanel>
+        ) : (
+          <EmptyState
+            icon="calendar-outline"
+            title="No timetable photo"
+            subtitle="Ask your school admin or teacher to upload the class timetable photo."
+          />
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-const CELL_W = 110;
 const styles = StyleSheet.create({
-  // Transparent so the app background artwork shows through.
-  container: { flex: 1, backgroundColor: 'transparent' },
-  grid: { padding: STUDENT_SPACING.lg },
-  row: { flexDirection: 'row' },
-  corner: { width: 44, height: 44 },
-  dayHead: { width: CELL_W, height: 44, alignItems: 'center', justifyContent: 'center' },
-  dayText: { ...STUDENT_TYPO.caption, color: STUDENT.text },
-  periodHead: { width: 44, height: 72, alignItems: 'center', justifyContent: 'center' },
-  periodText: { ...STUDENT_TYPO.label, color: STUDENT.textMuted },
-  cell: {
-    width: CELL_W,
-    height: 72,
-    margin: 2,
-    borderRadius: STUDENT_RADIUS.sm,
-    borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
-    padding: STUDENT_SPACING.xs,
-    justifyContent: 'center',
+  safe: { flex: 1, backgroundColor: STUDENT.bg },
+  content: { padding: STUDENT_SPACING.md, paddingBottom: 40 },
+  card: { padding: 12 },
+  image: {
+    width: '100%',
+    height: 420,
+    borderRadius: 12,
+    backgroundColor: '#f8fafc',
   },
-  subject: { ...STUDENT_TYPO.label, fontSize: 11 },
-  teacher: { fontSize: 10, color: STUDENT.textMuted, marginTop: 2 },
+  hint: {
+    marginTop: 10,
+    textAlign: 'center',
+    fontSize: 12,
+    color: STUDENT.textMuted,
+  },
 });

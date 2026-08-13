@@ -14,6 +14,7 @@ import teacherService from '../../../src/services/api/teacherService';
 import { TeacherShimmer } from '../../../src/components/teacher';
 import { GlassPanel } from '../../../src/components/ui';
 import { formatPersonName } from '../../../src/lib/teacher-text';
+import TeacherExamPaperReview from './TeacherExamPaperReview';
 import {
   buildProgressAiSummaryPayload,
   formatClassBadge,
@@ -752,6 +753,14 @@ export default function TrackProgressView({
             })
           )}
         </GlassPanel>
+
+        <TeacherExamPaperReview
+          classNumber={
+            expandedClassNumbers.size === 1
+              ? [...expandedClassNumbers][0]
+              : initialClassFilter || 'all'
+          }
+        />
       </ScrollView>
 
       <Modal visible={!!detailStudent} transparent animationType="slide">

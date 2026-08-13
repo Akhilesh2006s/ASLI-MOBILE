@@ -168,7 +168,7 @@ export default function StudentResults() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StudentScreenHeader title="OMR Results" onBack={() => router.back()} />
+      <StudentScreenHeader title="Offline Results" onBack={() => router.back()} />
 
       <View style={styles.filters}>
         <SearchBar value={query} onChangeText={setQuery} placeholder="Filter by subject..." />
@@ -180,7 +180,7 @@ export default function StudentResults() {
       ) : error ? (
         <ErrorState message={error} onRetry={load} style={{ margin: STUDENT_SPACING.lg }} />
       ) : filtered.length === 0 ? (
-        <EmptyState icon="scan-outline" title="No OMR results yet" subtitle="Your OMR exam results will show here." />
+        <EmptyState icon="scan-outline" title="No Offline Results Yet" subtitle="Your Offline Exam Results Will Show Here." />
       ) : (
         <ScrollView contentContainerStyle={styles.list}>
           <Animated.View entering={FadeInDown.duration(STUDENT_ANIMATION.normal)}>

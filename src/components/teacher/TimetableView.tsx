@@ -1,480 +1,265 @@
-import { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
-  Modal,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
+import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import teacherService from '../../services/api/teacherService';
-import TeacherShimmer from './TeacherShimmer';
-import WeeklyTimetableGrid from './WeeklyTimetableGrid';
-import {
-  buildWeekdayPlacements,
-  formatWeekRange,
-  getWeekStart,
-  teacherSlotLabel,
-  type TimetableEntryLike,
-} from '../../lib/timetable-utils';
-import { TEACHER, TEACHER_SPACING, TEACHER_TYPO, glassCard } from '../../theme/teacher';
+import { API_BASE_URL } from '../../lib/api-config';
+import { TEACHER, TEACHER_SPACING, glassCard } from '../../theme/teacher';
 
+type Photo = {
+  _id: string;
+  label: string;
+  imageUrl: string;
+  updatedAt?: string | null;
+};
+
+function resolveUrl(imageUrl?: string): string {
+  const raw = String(imageUrl || '').trim();
+  if (!raw) return '';
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+  if (raw.startsWith('/')) return `${API_BASE_URL}${raw}`;
+  return `${API_BASE_URL}/${raw}`;
+}
+
+/** Teacher personal timetable — one photo, no class link. */
 export default function TimetableView() {
-  const [entries, setEntries] = useState<TimetableEntryLike[]>([]);
+  const [photo, setPhoto] = useState<Photo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [classFilter, setClassFilter] = useState('all');
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [selectedSlot, setSelectedSlot] = useState<TimetableEntryLike | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [previewUri, setPreviewUri] = useState<string | null>(null);
+  const [pendingAsset, setPendingAsset] = useState<{
+    uri: string;
+    name: string;
+    mimeType?: string;
+  } | null>(null);
 
-  const weekStart = useMemo(() => getWeekStart(), []);
-  const weekRange = useMemo(() => formatWeekRange(weekStart), [weekStart]);
-
-  useEffect(() => {
-    loadTimetable();
+  const authHeaders = useCallback(async () => {
+    const token = await SecureStore.getItemAsync('authToken');
+    return token ? { Authorization: `Bearer ${token}` } : {};
   }, []);
 
-  const loadTimetable = async () => {
-    setLoading(true);
+  const load = useCallback(async () => {
     try {
-      const res = await teacherService.timetable();
-      const data = res.data ?? [];
-      setEntries(Array.isArray(data) ? data.filter(Boolean) : []);
+      setLoading(true);
+      const headers = await authHeaders();
+      const res = await fetch(`${API_BASE_URL}/api/timetable/my-photo`, {
+        headers: { ...headers },
+      });
+      const json = await res.json();
+      setPhoto(json?.data || null);
     } catch {
-      setEntries([]);
+      setPhoto(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, [authHeaders]);
 
-  const classOptions = useMemo(() => {
-    const map = new Map<string, string>();
-    entries.forEach((e) => {
-      const label = teacherSlotLabel(e);
-      if (label && label !== '—') map.set(label, label);
-    });
-    return Array.from(map.values()).sort();
-  }, [entries]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-  const filteredEntries = useMemo(() => {
-    if (classFilter === 'all') return entries;
-    return entries.filter((e) => teacherSlotLabel(e) === classFilter);
-  }, [entries, classFilter]);
-
-  const sessionCount = useMemo(
-    () => buildWeekdayPlacements(filteredEntries).length,
-    [filteredEntries]
-  );
-
-  const markComplete = async (entry: TimetableEntryLike) => {
-    if (entry.status !== 'Scheduled' && entry.status !== undefined && entry.status !== 'Pending') {
-      setSelectedSlot(entry);
-      return;
-    }
-    const id = entry._id || entry.id;
-    if (!id) return;
+  const pickPhoto = async () => {
     try {
-      await teacherService.updateTimetableStatus(String(id), 'Completed');
-      setEntries((prev) =>
-        prev.map((e) =>
-          (e._id || e.id) === id ? { ...e, status: 'Completed' } : e
-        )
-      );
-      setSelectedSlot(null);
-      Alert.alert('Done', 'Marked as completed.');
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'image/*',
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
+      setPendingAsset({
+        uri: asset.uri,
+        name: asset.name || 'timetable.jpg',
+        mimeType: asset.mimeType || 'image/jpeg',
+      });
+      setPreviewUri(asset.uri);
     } catch {
-      Alert.alert('Error', 'Could not update timetable entry.');
+      Alert.alert('Pick failed', 'Could not open the photo picker.');
     }
   };
 
-  const handleEntryClick = (entry: TimetableEntryLike) => {
-    if (entry.status === 'Completed') {
-      setSelectedSlot(entry);
+  const savePhoto = async () => {
+    if (!pendingAsset) {
+      Alert.alert('Choose a photo', 'Pick a timetable image first.');
       return;
     }
-    Alert.alert('Mark completed?', teacherSlotLabel(entry), [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Mark completed', onPress: () => markComplete(entry) },
-      { text: 'Details', onPress: () => setSelectedSlot(entry) },
-    ]);
+    try {
+      setUploading(true);
+      const headers = await authHeaders();
+      const form = new FormData();
+      form.append('image', {
+        uri: pendingAsset.uri,
+        name: pendingAsset.name,
+        type: pendingAsset.mimeType || 'image/jpeg',
+      } as any);
+      const res = await fetch(`${API_BASE_URL}/api/timetable/my-photo`, {
+        method: 'POST',
+        headers: { ...headers },
+        body: form,
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.message || 'Upload failed');
+      Alert.alert('Saved', json?.message || 'Timetable photo saved');
+      setPendingAsset(null);
+      setPreviewUri(null);
+      await load();
+    } catch (error: any) {
+      Alert.alert('Upload failed', error?.message || 'Could not save photo');
+    } finally {
+      setUploading(false);
+    }
   };
+
+  const removePhoto = async () => {
+    try {
+      setUploading(true);
+      const headers = await authHeaders();
+      const res = await fetch(`${API_BASE_URL}/api/timetable/my-photo`, {
+        method: 'DELETE',
+        headers: { ...headers },
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.message || 'Delete failed');
+      setPhoto(null);
+      Alert.alert('Removed', 'Timetable photo removed');
+    } catch (error: any) {
+      Alert.alert('Delete failed', error?.message || 'Could not remove photo');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const displayUri = previewUri || (photo ? resolveUrl(photo.imageUrl) : '');
 
   if (loading) {
     return (
-      <View style={styles.wrap}>
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <View style={styles.headerIcon}>
-              <Ionicons name="calendar" size={22} color="#fff" />
-            </View>
-            <View style={styles.headerText}>
-              <View style={styles.shimmerTitle} />
-              <View style={styles.shimmerSub} />
-            </View>
-          </View>
-          <TeacherShimmer variant="list" count={6} />
-        </View>
+      <View style={styles.center}>
+        <ActivityIndicator color={TEACHER.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.wrap}>
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <View style={styles.headerTop}>
-            <View style={styles.headerLeft}>
-              <View style={styles.headerIcon}>
-                <Ionicons name="calendar" size={22} color="#fff" />
-              </View>
-              <View style={styles.headerText}>
-                <Text style={styles.title}>Timetable</Text>
-                <Text style={styles.subtitle}>
-                  Monday – Saturday · same weekly pattern · {weekRange}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.sessionBadge}>
-              <Text style={styles.sessionBadgeText}>
-                {sessionCount} {sessionCount === 1 ? 'session' : 'sessions'}
-              </Text>
-            </View>
-          </View>
+    <ScrollView contentContainerStyle={styles.content}>
+      <View style={[glassCard, styles.card]}>
+        <Text style={styles.title}>My Timetable</Text>
+        <Text style={styles.sub}>Upload one timetable photo for yourself — no class needed.</Text>
 
-          {classOptions.length > 0 ? (
-            <Pressable
-              style={styles.filterTrigger}
-              onPress={() => setPickerOpen(true)}
-              accessibilityRole="button"
-              accessibilityLabel={`Filter by class: ${classFilter === 'all' ? 'All classes' : classFilter}`}
-              accessibilityState={{ expanded: pickerOpen }}
-            >
-              <Text style={styles.filterTriggerText} numberOfLines={1}>
-                {classFilter === 'all' ? 'All classes' : classFilter}
-              </Text>
-              <Ionicons
-                name="chevron-down"
-                size={16}
-                color={TEACHER.textSecondary}
-                accessibilityElementsHidden
-                importantForAccessibility="no"
-              />
-            </Pressable>
-          ) : null}
+        <View style={styles.actions}>
+          <Pressable style={styles.btnOutline} onPress={() => void pickPhoto()}>
+            <Ionicons name="image-outline" size={18} color="#0369a1" />
+            <Text style={styles.btnOutlineText}>Choose photo</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.btnPrimary, (!pendingAsset || uploading) && styles.btnDisabled]}
+            disabled={!pendingAsset || uploading}
+            onPress={() => void savePhoto()}
+          >
+            <Ionicons name="cloud-upload-outline" size={18} color="#fff" />
+            <Text style={styles.btnPrimaryText}>{uploading ? 'Saving…' : 'Save'}</Text>
+          </Pressable>
         </View>
 
-        {sessionCount === 0 ? (
-          <View style={styles.empty}>
-            <Ionicons name="calendar-outline" size={40} color={TEACHER.textMuted} />
-            <Text style={styles.emptyTitle}>No schedule entries this week</Text>
-            <Text style={styles.emptySub}>
-              Schedules assigned by your admin will appear here once they add entries in Timetable
-              Management.
-            </Text>
+        {displayUri ? (
+          <View>
+            <Image source={{ uri: displayUri }} style={styles.preview} resizeMode="contain" />
+            {pendingAsset ? (
+              <Text style={styles.previewHint}>Preview — tap Save to keep</Text>
+            ) : null}
           </View>
         ) : (
-          <View style={styles.gridWrap}>
-            <WeeklyTimetableGrid entries={filteredEntries} onEntryClick={handleEntryClick} />
-          </View>
+          <Pressable style={styles.drop} onPress={() => void pickPhoto()}>
+            <Ionicons name="camera-outline" size={28} color="#38bdf8" />
+            <Text style={styles.dropTitle}>Upload your timetable photo</Text>
+          </Pressable>
         )}
+
+        {photo && !pendingAsset ? (
+          <Pressable
+            style={[styles.btnDanger, uploading && styles.btnDisabled]}
+            disabled={uploading}
+            onPress={() => void removePhoto()}
+          >
+            <Ionicons name="trash-outline" size={16} color="#e11d48" />
+            <Text style={styles.btnDangerText}>Remove photo</Text>
+          </Pressable>
+        ) : null}
       </View>
-
-      <Modal visible={pickerOpen} transparent animationType="none">
-        <Pressable
-          style={styles.pickerOverlay}
-          onPress={() => setPickerOpen(false)}
-          accessibilityRole="button"
-          accessibilityLabel="Close class filter"
-        >
-          <View style={styles.pickerSheet}>
-            <Text style={styles.pickerTitle}>Filter by class</Text>
-            <ScrollView style={{ maxHeight: 320 }}>
-              {['all', ...classOptions].map((opt) => (
-                <Pressable
-                  key={opt}
-                  style={[styles.pickerItem, classFilter === opt && styles.pickerItemActive]}
-                  onPress={() => {
-                    setClassFilter(opt);
-                    setPickerOpen(false);
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel={opt === 'all' ? 'All classes' : opt}
-                  accessibilityState={{ selected: classFilter === opt }}
-                >
-                  <Text
-                    style={[
-                      styles.pickerItemText,
-                      classFilter === opt && styles.pickerItemTextActive,
-                    ]}
-                  >
-                    {opt === 'all' ? 'All classes' : opt}
-                  </Text>
-                  {classFilter === opt ? (
-                    <Ionicons name="checkmark" size={18} color={TEACHER.primaryLight} />
-                  ) : null}
-                </Pressable>
-              ))}
-            </ScrollView>
-          </View>
-        </Pressable>
-      </Modal>
-
-      <Modal visible={!!selectedSlot} transparent animationType="none">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>
-              {selectedSlot?.subject || (selectedSlot ? teacherSlotLabel(selectedSlot) : '') || 'Class Details'}
-            </Text>
-            <Text style={styles.modalMeta}>
-              {selectedSlot?.dayOfWeek || selectedSlot?.day} · {selectedSlot?.startTime} –{' '}
-              {selectedSlot?.endTime}
-            </Text>
-            {selectedSlot ? (
-              <Text style={styles.modalMeta}>{teacherSlotLabel(selectedSlot)}</Text>
-            ) : null}
-            <Pressable
-              style={styles.modalBtn}
-              onPress={() => router.push('/teacher/attendance' as any)}
-              accessibilityRole="button"
-              accessibilityLabel="Mark attendance"
-            >
-              <LinearGradient colors={[TEACHER.primary, TEACHER.primaryDark]} style={styles.modalBtnGrad}>
-                <Ionicons
-                  name="checkmark-done-outline"
-                  size={18}
-                  color={TEACHER.textOnPrimary}
-                  accessibilityElementsHidden
-                  importantForAccessibility="no"
-                />
-                <Text style={styles.modalBtnText}>Mark Attendance</Text>
-              </LinearGradient>
-            </Pressable>
-            {selectedSlot?.status !== 'Completed' ? (
-              <Pressable
-                style={styles.modalBtnOutline}
-                onPress={() => selectedSlot && markComplete(selectedSlot)}
-                accessibilityRole="button"
-                accessibilityLabel="Mark class completed"
-              >
-                <Text style={styles.modalBtnOutlineText}>Mark Completed</Text>
-              </Pressable>
-            ) : null}
-            <Pressable
-              style={styles.modalClose}
-              onPress={() => setSelectedSlot(null)}
-              accessibilityRole="button"
-              accessibilityLabel="Close class details"
-            >
-              <Text style={styles.modalCloseText}>Close</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
-    paddingHorizontal: TEACHER_SPACING.lg,
-    paddingBottom: 120,
-  },
-  card: {
-    ...glassCard,
-    overflow: 'hidden',
-  },
-  cardHeader: {
-    padding: TEACHER_SPACING.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: TEACHER.surfaceBorder,
-    backgroundColor: TEACHER.surface,
-    gap: TEACHER_SPACING.md,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  headerLeft: {
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  content: { padding: TEACHER_SPACING.md, paddingBottom: 40, gap: 16 },
+  card: { padding: 14 },
+  title: { fontSize: 18, fontWeight: '700', color: TEACHER.text },
+  sub: { marginTop: 4, marginBottom: 12, fontSize: 13, color: TEACHER.textMuted },
+  actions: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  btnOutline: {
     flex: 1,
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  headerIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: TEACHER.primary,
+    gap: 6,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  headerText: { flex: 1 },
-  title: {
-    ...TEACHER_TYPO.section,
-    color: TEACHER.text,
-  },
-  subtitle: {
-    ...TEACHER_TYPO.caption,
-    color: TEACHER.textMuted,
-    marginTop: 2,
-    lineHeight: 18,
-  },
-  sessionBadge: {
-    borderRadius: 999,
     borderWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
-    backgroundColor: TEACHER.navActiveBg,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  sessionBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: TEACHER.primaryLight,
-  },
-  filterTrigger: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    borderColor: '#bae6fd',
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
-    backgroundColor: TEACHER.surfaceElevated,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    maxWidth: 280,
+    paddingVertical: 10,
+    backgroundColor: '#fff',
   },
-  filterTriggerText: {
+  btnOutlineText: { color: '#0369a1', fontWeight: '600' },
+  btnPrimary: {
     flex: 1,
-    fontSize: 14,
+    flexDirection: 'row',
+    gap: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    paddingVertical: 10,
+    backgroundColor: '#0ea5e9',
+  },
+  btnDisabled: { opacity: 0.5 },
+  btnPrimaryText: { color: '#fff', fontWeight: '700' },
+  preview: { width: '100%', height: 300, borderRadius: 12, backgroundColor: '#f8fafc' },
+  previewHint: {
+    marginTop: 8,
+    fontSize: 12,
     fontWeight: '600',
-    color: TEACHER.text,
-    marginRight: 8,
-  },
-  gridWrap: {
-    padding: TEACHER_SPACING.md,
-  },
-  empty: {
-    alignItems: 'center',
-    paddingVertical: 48,
-    paddingHorizontal: TEACHER_SPACING.lg,
-  },
-  emptyTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: TEACHER.text,
-    marginTop: 12,
-  },
-  emptySub: {
-    fontSize: 12,
-    color: TEACHER.textMuted,
+    color: '#b45309',
     textAlign: 'center',
-    marginTop: 6,
-    maxWidth: 320,
-    lineHeight: 18,
   },
-  shimmerTitle: {
-    height: 18,
-    width: 120,
-    borderRadius: 6,
-    backgroundColor: 'rgba(123,80,255,0.15)',
-    marginBottom: 8,
-  },
-  shimmerSub: {
-    height: 12,
-    width: '90%',
-    borderRadius: 6,
-    backgroundColor: 'rgba(123,80,255,0.1)',
-  },
-  pickerOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    justifyContent: 'flex-end',
-  },
-  pickerSheet: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: TEACHER_SPACING.lg,
-    paddingBottom: 32,
-    borderTopWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
-  },
-  pickerTitle: {
-    ...TEACHER_TYPO.section,
-    fontSize: 16,
-    color: TEACHER.text,
-    marginBottom: 12,
-  },
-  pickerItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: TEACHER.surfaceBorder,
-  },
-  pickerItemActive: {
-    backgroundColor: TEACHER.navActiveBg,
-  },
-  pickerItemText: {
-    fontSize: 15,
-    color: TEACHER.textSecondary,
-  },
-  pickerItemTextActive: {
-    fontWeight: '700',
-    color: TEACHER.primaryLight,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    justifyContent: 'flex-end',
-  },
-  modalCard: {
-    backgroundColor: TEACHER.bg,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: TEACHER_SPACING.xxl,
-    borderTopWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
-  },
-  modalTitle: {
-    ...TEACHER_TYPO.section,
-    color: TEACHER.text,
-  },
-  modalMeta: {
-    fontSize: 14,
-    color: TEACHER.textMuted,
-    marginTop: 6,
-  },
-  modalBtn: {
+  drop: {
+    minHeight: 160,
     borderRadius: 12,
-    overflow: 'hidden',
-    marginTop: TEACHER_SPACING.lg,
-  },
-  modalBtnGrad: {
-    flexDirection: 'row',
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: '#7dd3fc',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    padding: 14,
+    backgroundColor: '#f0f9ff',
   },
-  modalBtnText: { color: TEACHER.textOnPrimary, fontWeight: '700' },
-  modalBtnOutline: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: TEACHER.surfaceBorder,
-    borderRadius: 12,
-    padding: 14,
+  dropTitle: { fontSize: 14, fontWeight: '600', color: '#334155' },
+  btnDanger: {
+    marginTop: 12,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: TEACHER_SPACING.md,
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#fecdd3',
+    backgroundColor: '#fff1f2',
   },
-  modalBtnOutlineText: { color: TEACHER.text, fontWeight: '700' },
-  modalClose: { alignItems: 'center', marginTop: TEACHER_SPACING.lg },
-  modalCloseText: { color: TEACHER.textMuted, fontWeight: '600' },
+  btnDangerText: { color: '#e11d48', fontWeight: '700', fontSize: 13 },
 });

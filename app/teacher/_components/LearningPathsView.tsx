@@ -22,6 +22,8 @@ import {
   countLearningPathDisplayStats,
   learningPathStatsTotal,
 } from '../../../src/lib/learning-path-stats';
+import { isIitTrackContent } from '../../../src/lib/library-content-labels';
+import { learningPathDisplayName } from '../../../src/lib/learning-path-subjects';
 
 type Props = {
   refreshKey?: number;
@@ -59,6 +61,8 @@ function SubjectPathCard({
   const itemCount = learningPathStatsTotal(stats);
   const palette = teacherSubjectBadgePalette(subject.name, index);
   const iconName = teacherSubjectIconName(subject.name) as keyof typeof Ionicons.glyphMap;
+  const displayName = learningPathDisplayName(subject.name);
+  const iitCount = (subject.asliPrepContent || []).filter((c: any) => isIitTrackContent(c)).length;
 
   if (listMode) {
     return (
@@ -66,7 +70,7 @@ function SubjectPathCard({
         style={({ pressed }) => [styles.listPress, pressed && styles.pressed]}
         onPress={() => router.push(`/teacher/subject/${subject.id}?returnTo=learning`)}
         accessibilityRole="button"
-        accessibilityLabel={`Open ${subject.name}`}
+        accessibilityLabel={`Open ${displayName}`}
       >
         <GlassPanel style={styles.listCard} radius={TEACHER_RADIUS.lg} tone="strong" elevated>
           <View style={styles.listRow}>
@@ -75,11 +79,18 @@ function SubjectPathCard({
             </View>
             <View style={styles.listMeta}>
               <Text style={[styles.listName, { color: palette.border }]} numberOfLines={1}>
-                {subject.name}
+                {displayName}
               </Text>
               <Text style={styles.listHint} numberOfLines={1}>
-                {itemCount} {itemCount === 1 ? 'item' : 'items'}
+                {iitCount > 0
+                  ? `${itemCount} items · includes ${displayName} IIT`
+                  : `${itemCount} ${itemCount === 1 ? 'item' : 'items'}`}
               </Text>
+              {iitCount > 0 ? (
+                <Text style={styles.iitSubhead} numberOfLines={1}>
+                  {displayName} IIT · {iitCount}
+                </Text>
+              ) : null}
             </View>
             <View style={styles.listChevron}>
               <Ionicons name="chevron-forward" size={16} color={TEACHER.textMuted} />
@@ -111,8 +122,13 @@ function SubjectPathCard({
           </View>
         </View>
         <Text style={[styles.name, { color: palette.border }]} numberOfLines={2}>
-          {subject.name}
+          {displayName}
         </Text>
+        {iitCount > 0 ? (
+          <Text style={styles.iitSubhead} numberOfLines={1}>
+            {displayName} IIT · {iitCount} items
+          </Text>
+        ) : null}
         {subject.description ? (
           <Text style={styles.desc} numberOfLines={2}>
             {subject.description}
@@ -325,6 +341,14 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontSize: 12,
     color: TEACHER.textMuted,
+  },
+  iitSubhead: {
+    marginTop: 3,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    color: '#B45309',
   },
   listChevron: {
     width: 28,

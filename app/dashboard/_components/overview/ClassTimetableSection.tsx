@@ -1,115 +1,68 @@
 import React, { memo, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Image, ActivityIndicator, Pressable, Linking } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
-import { fetchStudentTimetable, timetableEntriesToSlots } from '../../../../src/lib/timetable-helpers';
+import { API_BASE_URL } from '../../../../src/lib/api-config';
 import { GlassPanel } from '../../../../src/components/ui';
-import { STUDENT, STUDENT_RADIUS, SUBJECT_COLORS } from '../../../../src/theme/student';
+import { STUDENT, STUDENT_RADIUS } from '../../../../src/theme/student';
 
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const CELL_W = 100;
-
-type Slot = {
-  day?: string;
-  period?: number;
-  subject?: string;
-  teacher?: string;
-  time?: string;
-  startTime?: string;
-  endTime?: string;
+type PhotoPayload = {
+  label?: string;
+  imageUrl?: string;
 };
 
-function getCurrentDayIndex(): number {
-  const day = new Date().getDay();
-  if (day === 0) return -1;
-  return day - 1;
+function resolveUrl(imageUrl?: string): string {
+  const raw = String(imageUrl || '').trim();
+  if (!raw) return '';
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+  if (raw.startsWith('/')) return `${API_BASE_URL}${raw}`;
+  return `${API_BASE_URL}/${raw}`;
 }
 
 function ClassTimetableSectionComponent() {
   const [loading, setLoading] = useState(true);
-  const [slots, setSlots] = useState<Slot[]>([]);
-  const currentDayIndex = getCurrentDayIndex();
+  const [photo, setPhoto] = useState<PhotoPayload | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
         const token = await SecureStore.getItemAsync('authToken');
         if (!token) return;
-        const entries = await fetchStudentTimetable(token);
-        setSlots(timetableEntriesToSlots(entries));
+        const res = await fetch(`${API_BASE_URL}/api/timetable/photo`, {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        });
+        if (!res.ok) {
+          setPhoto(null);
+          return;
+        }
+        const data = await res.json();
+        setPhoto(data?.data || null);
       } catch {
-        setSlots([]);
+        setPhoto(null);
       } finally {
         setLoading(false);
       }
     })();
   }, []);
 
-  const periods = Math.max(6, ...slots.map((s) => Number(s.period || 0)), 0);
+  const imageUrl = resolveUrl(photo?.imageUrl);
 
   return (
     <View style={styles.wrap}>
       <GlassPanel style={styles.gridCard} radius={STUDENT_RADIUS.card} tone="strong">
+        <Text style={styles.title}>
+          Class Timetable{photo?.label ? ` · ${photo.label}` : ''}
+        </Text>
         {loading ? (
           <ActivityIndicator color={STUDENT.accent} style={{ padding: 24 }} />
-        ) : slots.length === 0 ? (
-          <Text style={styles.empty}>No Classes In Your Weekly Timetable Yet.</Text>
+        ) : imageUrl ? (
+          <Pressable onPress={() => Linking.openURL(imageUrl)}>
+            <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="contain" />
+            <Text style={styles.hint}>Tap to open full size</Text>
+          </Pressable>
         ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View>
-              <View style={styles.row}>
-                <View style={styles.corner} />
-                {Array.from({ length: periods }).map((_, p) => (
-                  <View key={p} style={styles.timeHead}>
-                    <Text style={styles.timeHeadText}>{9 + p} AM</Text>
-                  </View>
-                ))}
-              </View>
-              {DAYS.map((day, di) => {
-                const isCurrentDay = di === currentDayIndex;
-                return (
-                  <View key={day} style={styles.row}>
-                    <View style={[styles.dayLabel, isCurrentDay && styles.dayLabelCurrent]}>
-                      {isCurrentDay ? <View style={styles.currentDot} /> : null}
-                      <Text style={styles.dayLabelText}>{day}</Text>
-                    </View>
-                    {Array.from({ length: periods }).map((_, p) => {
-                      const slot = slots.find(
-                        (s) =>
-                          (s.day?.toLowerCase().startsWith(day.toLowerCase()) ||
-                            s.day === String(di + 1)) &&
-                          Number(s.period) === p + 1
-                      );
-                      const color = SUBJECT_COLORS[(di + p) % SUBJECT_COLORS.length];
-                      return (
-                        <View
-                          key={`${day}-${p}`}
-                          style={[
-                            styles.cell,
-                            isCurrentDay && styles.cellCurrentDay,
-                            slot && styles.cellFilled,
-                            slot && { borderLeftColor: color, borderLeftWidth: 4 },
-                          ]}
-                        >
-                          {slot ? (
-                            <>
-                              <Text style={[styles.cellSubject, { color }]} numberOfLines={2}>
-                                {slot.subject || 'Class'}
-                              </Text>
-                              {slot.teacher ? (
-                                <Text style={styles.cellTeacher} numberOfLines={1}>
-                                  {slot.teacher}
-                                </Text>
-                              ) : null}
-                            </>
-                          ) : null}
-                        </View>
-                      );
-                    })}
-                  </View>
-                );
-              })}
-            </View>
-          </ScrollView>
+          <Text style={styles.empty}>
+            No timetable photo yet. Ask your school admin or teacher to upload it.
+          </Text>
         )}
       </GlassPanel>
     </View>
@@ -117,72 +70,32 @@ function ClassTimetableSectionComponent() {
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: 8 },
-  gridCard: {
-    // Frosted over the app background artwork instead of a solid fill.
-    backgroundColor: 'transparent',
-    borderRadius: STUDENT_RADIUS.card,
-    borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
-    overflow: 'hidden',
+  wrap: { marginTop: 8 },
+  gridCard: { padding: 12 },
+  title: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: STUDENT.text,
+    marginBottom: 10,
   },
-  empty: { textAlign: 'center', color: STUDENT.textMuted, fontSize: 12, padding: 20 },
-  row: { flexDirection: 'row' },
-  corner: { width: 52, height: 44 },
-  timeHead: {
-    width: CELL_W,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: STUDENT.accentSoft,
-    borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
+  image: {
+    width: '100%',
+    height: 280,
     borderRadius: 12,
-    margin: 1,
+    backgroundColor: '#f8fafc',
   },
-  timeHeadText: { fontSize: 10, fontWeight: '700', color: STUDENT.accent },
-  dayLabel: {
-    width: 52,
-    minHeight: 64,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
-    backgroundColor: STUDENT.navActiveBg,
-    borderRadius: 12,
-    margin: 1,
+  hint: {
+    marginTop: 8,
+    textAlign: 'center',
+    fontSize: 12,
+    color: STUDENT.textMuted,
   },
-  dayLabelCurrent: {
-    backgroundColor: STUDENT.bg,
+  empty: {
+    paddingVertical: 28,
+    textAlign: 'center',
+    fontSize: 13,
+    color: STUDENT.textMuted,
   },
-  currentDot: {
-    position: 'absolute',
-    top: 4,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: STUDENT.primary,
-  },
-  dayLabelText: { fontSize: 10, fontWeight: '800', color: STUDENT.navActiveText },
-  cell: {
-    width: CELL_W,
-    minHeight: 64,
-    borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
-    padding: 6,
-    justifyContent: 'center',
-    borderRadius: 12,
-    margin: 1,
-    backgroundColor: 'rgba(255,255,255,0.28)',
-  },
-  cellFilled: {
-    backgroundColor: '#FFFFFF',
-  },
-  cellCurrentDay: {
-    backgroundColor: 'rgba(109,91,208,0.12)',
-  },
-  cellSubject: { fontSize: 10, fontWeight: '700' },
-  cellTeacher: { fontSize: 9, color: STUDENT.textMuted, marginTop: 2 },
 });
 
 export default memo(ClassTimetableSectionComponent);

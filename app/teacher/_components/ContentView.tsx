@@ -14,7 +14,7 @@ const SUB_TABS = [
   { id: 'videos', label: 'Videos', shortLabel: 'Videos' },
   { id: 'homework', label: 'Homework', shortLabel: 'Homework' },
   { id: 'quizzes', label: 'Quizzes', shortLabel: 'Quizzes' },
-  { id: 'omr', label: 'OMR Results', shortLabel: 'OMR' },
+  { id: 'omr', label: 'Offline Results', shortLabel: 'Offline' },
 ];
 
 type Props = { initialSubTab?: ContentSubTab };

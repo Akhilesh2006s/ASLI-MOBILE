@@ -297,6 +297,11 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
                         <Text style={styles.subjectName} numberOfLines={2}>
                           {displayName}
                         </Text>
+                        {subject.hasIitTrack ? (
+                          <Text style={styles.iitSubhead} numberOfLines={1}>
+                            {displayName} IIT
+                          </Text>
+                        ) : null}
                         <Text style={styles.subjectHint}>{hint}</Text>
                       </View>
                       <View style={styles.subjectChevron}>
@@ -546,6 +551,14 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontSize: 12,
     color: STUDENT.textMuted,
+  },
+  iitSubhead: {
+    marginTop: 2,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+    color: '#B45309',
   },
   subjectChevron: {
     width: 28,

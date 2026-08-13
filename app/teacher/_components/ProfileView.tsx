@@ -19,6 +19,7 @@ import { GlassPanel } from '../../../src/components/ui';
 import EduOTTView from './EduOTTView';
 import { EduOTTFilterProvider } from '../../../src/contexts/edu-ott-filter-context';
 import WorkDiaryView from './WorkDiaryView';
+import WeeklyDigestCard from '../../../src/components/student/WeeklyDigestCard';
 
 type Props = {
   user: any;
@@ -247,6 +248,8 @@ export default function ProfileView({ user, stats, onNavigate, onLogout }: Props
           }}
         />
       ))}
+
+      <WeeklyDigestCard apiBase="/api/teacher" />
 
       <Animated.View style={logoutBorderStyle}>
         <Pressable style={styles.logoutBtn} onPress={onLogout}>

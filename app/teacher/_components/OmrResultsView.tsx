@@ -29,7 +29,7 @@ export default function OmrResultsView() {
       const data = await omrService.getTeacherResults();
       setRows(Array.isArray(data) ? data : []);
     } catch (err: any) {
-      setError(err?.friendlyMessage || err?.message || 'Failed to load OMR results');
+      setError(err?.friendlyMessage || err?.message || 'Failed to load Offline Results');
       setRows([]);
     } finally {
       setLoading(false);
@@ -71,7 +71,7 @@ export default function OmrResultsView() {
             <Ionicons name="scan-outline" size={22} color={TEACHER.secondary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.title}>OMR Results</Text>
+            <Text style={styles.title}>Offline Results</Text>
             <Text style={styles.subtitle}>
               Scores for students in your classes after admin assigns Candidate IDs.
             </Text>
@@ -104,7 +104,7 @@ export default function OmrResultsView() {
       ) : filtered.length === 0 ? (
         <View style={styles.emptyCard}>
           <Ionicons name="scan-outline" size={40} color="#FDBA74" />
-          <Text style={styles.emptyTitle}>No OMR results yet</Text>
+          <Text style={styles.emptyTitle}>No Offline Results Yet</Text>
           <Text style={styles.emptyBody}>
             Ask your school admin to upload the OMR Score List and assign candidates to students.
           </Text>

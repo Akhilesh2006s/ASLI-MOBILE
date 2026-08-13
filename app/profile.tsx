@@ -411,7 +411,7 @@ export default function Profile() {
                   <View style={styles.menuIcon}>
                     <Ionicons name="scan-outline" size={18} color="#f59e0b" />
                   </View>
-                  <Text style={styles.menuText}>OMR Results</Text>
+                  <Text style={styles.menuText}>Offline Results</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color="#5B6779" />
               </TouchableOpacity>

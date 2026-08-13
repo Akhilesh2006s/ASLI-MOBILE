@@ -80,7 +80,7 @@ export default function OmrResultsView() {
         return list[0]?._id || null;
       });
     } catch (err: any) {
-      setError(err?.friendlyMessage || err?.message || 'Failed to load OMR results');
+      setError(err?.friendlyMessage || err?.message || 'Failed to load Offline Results');
       setHistory([]);
       setSelectedId(null);
     } finally {
@@ -147,7 +147,7 @@ export default function OmrResultsView() {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={STUDENT.primary} />
-        <Text style={styles.muted}>Loading OMR results…</Text>
+        <Text style={styles.muted}>Loading Offline Results…</Text>
       </View>
     );
   }
@@ -170,7 +170,7 @@ export default function OmrResultsView() {
         <View style={styles.emptyIcon}>
           <Ionicons name="scan-outline" size={36} color="#FB923C" />
         </View>
-        <Text style={styles.emptyTitle}>No OMR results yet</Text>
+        <Text style={styles.emptyTitle}>No Offline Results Yet</Text>
         <Text style={styles.emptyBody}>
           When your school uploads an OMR score sheet and links your Candidate ID, scores show up
           here.
@@ -183,7 +183,7 @@ export default function OmrResultsView() {
     <View style={styles.scrollContent}>
       <View style={styles.topRow}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.sectionTitle}>OMR Results</Text>
+          <Text style={styles.sectionTitle}>Offline Results</Text>
           <Text style={styles.sectionSub}>
             Sheet scores from your school
             {history.length ? ` · ${history.length} test${history.length === 1 ? '' : 's'}` : ''}

@@ -14,6 +14,7 @@ export type WeeklyReportPdfInput = {
   highlights?: string[];
   studentName?: string;
   schoolName?: string;
+  role?: 'student' | 'teacher';
   metrics: Record<string, unknown>;
 };
 
@@ -96,6 +97,48 @@ export function buildWeeklyReportHtml(input: WeeklyReportPdfInput): string {
   const mostUsed = (m.mostUsedSubject || null) as
     | { subject?: string; sessions?: number; pct?: number }
     | null;
+  const isTeacher =
+    input.role === 'teacher' || String(m.role || '') === 'teacher' || 'generationsCreated' in m;
+
+  if (isTeacher) {
+    return `<!DOCTYPE html><html><head><meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#0f172a;padding:18px}
+.hero{border-radius:18px;padding:20px;background:linear-gradient(135deg,#0ea5e9,#0284c7 55%,#0f766e);color:#fff}
+.brand{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;opacity:.9}
+h1{margin:8px 0 4px;font-size:22px}.sub{margin:0;font-size:13px;opacity:.92}
+.section{margin-top:18px}.section h2{margin:0 0 8px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#0369a1;font-weight:800}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tile{border:1px solid #e2e8f0;border-radius:12px;padding:10px;background:#f8fafc}
+.tile-label{font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase}
+.tile-value{margin-top:4px;font-size:18px;font-weight:800}
+.highlights{margin-top:16px;padding:12px;border-radius:12px;background:#f0f9ff;border:1px solid #bae6fd}
+</style></head><body>
+<div class="hero"><div class="brand">AsliLearn · Teacher weekly report</div>
+<h1>${esc(input.title || 'Your weekly AsliLearn teacher report')}</h1>
+<p class="sub">${esc(input.summary || '')}</p>
+<p class="sub" style="margin-top:8px">${esc(input.studentName || '')}${input.schoolName ? ` · ${esc(input.schoolName)}` : ''}</p>
+</div>
+<div class="section"><h2>Your activity</h2><div class="grid">
+<div class="tile"><div class="tile-label">Logins</div><div class="tile-value">${esc(n(m.loginCount))}</div></div>
+<div class="tile"><div class="tile-label">Sessions</div><div class="tile-value">${esc(n(m.sessions))}</div></div>
+<div class="tile"><div class="tile-label">Time</div><div class="tile-value">${esc(m.totalTimeLabel || `${n(m.minutes)} min`)}</div></div>
+<div class="tile"><div class="tile-label">Status</div><div class="tile-value">${esc(m.status || '—')}</div></div>
+</div></div>
+<div class="section"><h2>Teaching with AI</h2><div class="grid">
+<div class="tile"><div class="tile-label">AI resources</div><div class="tile-value">${esc(n(m.generationsCreated))}</div></div>
+<div class="tile"><div class="tile-label">Vidya asks</div><div class="tile-value">${esc(n(m.aiDoubts))}</div></div>
+<div class="tile"><div class="tile-label">Tool opens</div><div class="tile-value">${esc(n(m.aiToolUses))}</div></div>
+<div class="tile"><div class="tile-label">School students</div><div class="tile-value">${esc(n(m.schoolStudentsAccessed))}</div></div>
+</div></div>
+${
+  highlights.length
+    ? `<div class="highlights"><strong>This week</strong><ul>${highlights.map((h) => `<li>${esc(h)}</li>`).join('')}</ul></div>`
+    : ''
+}
+</body></html>`;
+  }
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -267,7 +310,7 @@ export function buildWeeklyReportHtml(input: WeeklyReportPdfInput): string {
     )}
 
     ${section(
-      'OMR results',
+      'Offline Results',
       `<div class="grid">
         ${tile('OMR tests', String(n(m.omrAttempts)))}
         ${tile('Average score', n(m.omrAttempts) > 0 ? `${n(m.omrAvgPct)}%` : '—')}
@@ -278,7 +321,7 @@ export function buildWeeklyReportHtml(input: WeeklyReportPdfInput): string {
           ? `<p class="empty" style="margin-top:8px">Best rank this week: #${esc(n(m.omrBestRank))}</p>`
           : ''
       }
-      ${listRows(omr.slice(0, 8), 'No OMR results assigned this week yet.')}`,
+      ${listRows(omr.slice(0, 8), 'No Offline Results Assigned This Week Yet.')}`,
     )}
 
     ${section(

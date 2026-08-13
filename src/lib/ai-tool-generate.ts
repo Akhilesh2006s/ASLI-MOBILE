@@ -375,13 +375,19 @@ export async function executeAiToolGenerate({
   token: string;
   requestBody: Record<string, unknown>;
 }): Promise<AiToolGenerateResult> {
+  const bodyWithUnique = {
+    ...requestBody,
+    uniqueSeed:
+      String(requestBody.uniqueSeed || '').trim() ||
+      `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+  };
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(requestBody),
+    body: JSON.stringify(bodyWithUnique),
   });
 
   const responseText = await response.text();

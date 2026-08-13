@@ -47,7 +47,7 @@ export default function TeacherOmrResultsScreen() {
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={22} color={TEACHER.text} />
         </Pressable>
-        <Text style={styles.title}>OMR Results</Text>
+        <Text style={styles.title}>Offline Results</Text>
       </View>
 
       {loading ? (
@@ -56,7 +56,7 @@ export default function TeacherOmrResultsScreen() {
         <ErrorState message={error} onRetry={load} />
       ) : rows.length === 0 ? (
         <EmptyState
-          title="No OMR results"
+          title="No Offline Results"
           description="Scores appear after school admin uploads and assigns candidates."
         />
       ) : (

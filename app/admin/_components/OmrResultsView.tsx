@@ -243,7 +243,7 @@ export default function OmrResultsView() {
   return (
     <AdminScreenShell>
       <AdminSectionHeader
-        title="OMR Results"
+        title="Offline Results"
         subtitle="Upload Score List CSV/Excel and map Candidate IDs to students."
       />
 

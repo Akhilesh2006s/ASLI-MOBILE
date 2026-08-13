@@ -106,10 +106,14 @@ export function parseStudentDashboardTab(value?: string): StudentDashboardTab {
   return 'home';
 }
 
-/** Back from student AI tool screens → dashboard (default home; tools pass Vidya). */
+/** Back from student AI tool screens → previous page when possible, else dashboard. */
 export function useStudentDashboardBack(returnTab: StudentDashboardTab = 'home') {
   const router = useRouter();
   const navigate = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
     // Memory intent only — never stick ?tab= in the URL (reload would reopen Vidya).
     setStudentDashboardTabIntent(returnTab);
     router.replace('/dashboard');
@@ -135,10 +139,14 @@ export function parseTeacherDashboardTab(value?: string): TeacherDashboardTab {
   return 'dashboard';
 }
 
-/** Back from teacher tool screens → dashboard (default home; tools pass Vidya AI). */
+/** Back from teacher tool screens → previous page when possible, else dashboard. */
 export function useTeacherDashboardBack(returnTab: TeacherDashboardTab = 'dashboard') {
   const router = useRouter();
   const navigate = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
     setTeacherDashboardTabIntent(returnTab);
     router.replace('/teacher/dashboard');
   }, [returnTab, router]);

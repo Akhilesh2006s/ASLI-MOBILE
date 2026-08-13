@@ -61,6 +61,7 @@ export default function WeeklyDigestCard({
   const [studentName, setStudentName] = useState('');
   const [schoolName, setSchoolName] = useState('');
   const isStudent = apiBase === '/api/student';
+  const isTeacher = apiBase === '/api/teacher';
 
   const load = useCallback(async (build = false) => {
     setLoading(true);
@@ -76,7 +77,7 @@ export default function WeeklyDigestCard({
   }, [apiBase]);
 
   useEffect(() => {
-    void load(isStudent);
+    void load(true);
     (async () => {
       try {
         const raw = await SecureStore.getItemAsync('user');
@@ -88,7 +89,7 @@ export default function WeeklyDigestCard({
         /* ignore */
       }
     })();
-  }, [load, isStudent]);
+  }, [load]);
 
   const m = digest?.metrics || {};
   const exams = Array.isArray(m.exams) ? m.exams : [];
@@ -104,6 +105,15 @@ export default function WeeklyDigestCard({
     );
   }, [digest, isStudent]);
 
+  const hasRichTeacherMetrics = useMemo(() => {
+    if (!isTeacher || !digest?.metrics) return false;
+    return (
+      'generationsCreated' in digest.metrics ||
+      'status' in digest.metrics ||
+      digest.metrics.role === 'teacher'
+    );
+  }, [digest, isTeacher]);
+
   const handleDownload = async () => {
     if (!digest || downloading) return;
     setDownloading(true);
@@ -114,6 +124,7 @@ export default function WeeklyDigestCard({
         highlights: digest.highlights || [],
         studentName: studentName || undefined,
         schoolName: schoolName || undefined,
+        role: isTeacher ? 'teacher' : 'student',
         metrics: (digest.metrics || {}) as Record<string, unknown>,
       });
     } catch (err) {
@@ -153,6 +164,45 @@ export default function WeeklyDigestCard({
         <Text style={styles.muted}>
           Your weekly digest will appear here every Monday. Tap refresh to build one for this week.
         </Text>
+      ) : hasRichTeacherMetrics ? (
+        <View style={styles.body}>
+          <Text style={styles.title}>{digest.title}</Text>
+          <Text style={styles.summary}>{digest.summary}</Text>
+
+          <SectionTitle icon="log-in-outline" title="Your activity" />
+          <View style={styles.grid}>
+            <MetricTile label="Logins" value={n(m.loginCount)} hint="Days opened" />
+            <MetricTile label="Sessions" value={n(m.sessions)} />
+            <MetricTile label="Time" value={m.totalTimeLabel || `${n(m.minutes)} min`} />
+            <MetricTile label="Status" value={String(m.status || '—')} />
+            <MetricTile label="Classes" value={n(m.classesAssigned)} />
+            <MetricTile label="Students" value={n(m.studentsInClasses)} />
+          </View>
+
+          <SectionTitle icon="sparkles-outline" title="Teaching with AI" />
+          <View style={styles.grid}>
+            <MetricTile label="AI resources" value={n(m.generationsCreated)} />
+            <MetricTile label="Vidya asks" value={n(m.aiDoubts)} />
+            <MetricTile label="Tool opens" value={n(m.aiToolUses)} />
+          </View>
+
+          <SectionTitle icon="school-outline" title="Your school" />
+          <View style={styles.grid}>
+            <MetricTile label="Students" value={n(m.schoolStudentsAccessed)} />
+            <MetricTile label="Sessions" value={n(m.schoolSessions)} />
+            <MetricTile label="Teachers active" value={n(m.schoolTeachersActive)} />
+          </View>
+
+          {(digest.highlights || []).length > 0 ? (
+            <View style={styles.highlights}>
+              {(digest.highlights || []).map((h) => (
+                <Text key={h} style={styles.highlightItem}>
+                  • {h}
+                </Text>
+              ))}
+            </View>
+          ) : null}
+        </View>
       ) : hasRichStudentMetrics ? (
         <View style={styles.body}>
           <Text style={styles.title}>{digest.title}</Text>
@@ -252,9 +302,9 @@ export default function WeeklyDigestCard({
             </View>
           ))}
 
-          <SectionTitle icon="scan-outline" title="OMR results" />
+          <SectionTitle icon="scan-outline" title="Offline Results" />
           <View style={styles.grid}>
-            <MetricTile label="OMR tests" value={n(m.omrAttempts)} />
+            <MetricTile label="Offline Tests" value={n(m.omrAttempts)} />
             <MetricTile label="Average" value={n(m.omrAttempts) > 0 ? `${n(m.omrAvgPct)}%` : '—'} />
             <MetricTile label="Best" value={n(m.omrAttempts) > 0 ? `${n(m.omrBestPct)}%` : '—'} />
           </View>
@@ -334,7 +384,7 @@ export default function WeeklyDigestCard({
                 <MetricTile label="Logins" value={n(m.loginCount)} />
                 <MetricTile label="Sessions" value={n(m.sessions)} />
                 <MetricTile label="Exams" value={n(m.examAttempts)} />
-                <MetricTile label="OMR" value={n(m.omrAttempts)} />
+                <MetricTile label="Offline" value={n(m.omrAttempts)} />
                 <MetricTile label="AI uses" value={n(m.aiExplanations)} />
                 <MetricTile label="Streak" value={n(m.streak) > 0 ? `${n(m.streak)}d` : '0'} />
               </View>
