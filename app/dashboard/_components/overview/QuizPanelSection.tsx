@@ -239,7 +239,7 @@ export default function QuizPanelSection() {
         </View>
       )}
 
-      {dailyStatus ? (
+      {dailyStatus || quizzes.some((q) => q.isDaily) ? (
         <View style={styles.extras}>
           <View style={styles.unlockCard}>
             <View style={styles.extraHeader}>
@@ -247,7 +247,7 @@ export default function QuizPanelSection() {
               <Text style={styles.extraTitle}>Next unlock</Text>
             </View>
             <Text style={styles.extraBody}>
-              {dailyStatus.lockedUntilTomorrow
+              {dailyStatus?.lockedUntilTomorrow
                 ? 'Tomorrow’s daily quiz unlocks at midnight (IST).'
                 : 'Finish today’s daily quiz to keep your streak.'}
             </Text>
@@ -255,7 +255,7 @@ export default function QuizPanelSection() {
               <Ionicons name="calendar" size={12} color="#0284c7" />
               <Text style={styles.unlockPillText}>
                 Unlocks{' '}
-                {dailyStatus.nextUnlockDateKey
+                {dailyStatus?.nextUnlockDateKey
                   ? formatDateKeyLabel(dailyStatus.nextUnlockDateKey)
                   : 'tomorrow'}
               </Text>
@@ -272,7 +272,7 @@ export default function QuizPanelSection() {
                 <Text style={styles.seeAll}>See all</Text>
               </TouchableOpacity>
             </View>
-            {dailyStatus.history?.length ? (
+            {dailyStatus?.history?.length ? (
               dailyStatus.history.slice(0, 5).map((row) => (
                 <TouchableOpacity
                   key={row.dateKey}
@@ -296,7 +296,9 @@ export default function QuizPanelSection() {
               ))
             ) : (
               <Text style={styles.prevEmpty}>
-                No saved daily scores yet. Complete today’s quiz to start your record.
+                {dailyStatus
+                  ? 'No saved daily scores yet. Complete today’s quiz to start your record.'
+                  : 'Previous scores will appear here after you finish a daily quiz.'}
               </Text>
             )}
           </View>

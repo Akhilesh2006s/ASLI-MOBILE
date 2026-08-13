@@ -208,6 +208,27 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
         </Animated.View>
       ) : null}
 
+      <TouchableOpacity
+        activeOpacity={0.88}
+        onPress={() => router.push('/iq-rank-boost-subjects')}
+        style={{ marginBottom: 10 }}
+      >
+        <GlassPanel tone="medium" radius={STUDENT_RADIUS.card} style={{ padding: 0 }}>
+          <View style={[styles.bannerInner, { paddingVertical: 14, paddingHorizontal: 14 }]}>
+            <View style={[styles.bannerIcon, { backgroundColor: '#e0f2fe' }]}>
+              <Ionicons name="trophy-outline" size={22} color="#0284c7" />
+            </View>
+            <View style={styles.bannerText}>
+              <Text style={styles.bannerTitle}>Daily Quiz</Text>
+              <Text style={styles.bannerSub}>
+                Start today’s set · next unlock · previous results
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={STUDENT.textMuted} />
+          </View>
+        </GlassPanel>
+      </TouchableOpacity>
+
       <View style={styles.tabsContainer}>
         <ChipNav
           chips={tabChips}

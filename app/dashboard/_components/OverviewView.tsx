@@ -361,7 +361,7 @@ const OverviewView = memo(function OverviewView({
 
       setIsLoadingSchedule(true);
       const subjectIds = subjectsList.map((s: any) => String(s._id || s.id)).filter(Boolean);
-      const [contentRes, quizzesRes, homeworkRes, chapterProgressRes] = await Promise.all([
+      const [contentRes, quizzesRes, iqQuizzesRes, homeworkRes, chapterProgressRes] = await Promise.all([
         fetch(`${API_BASE_URL}/api/student/asli-prep-content`, {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -369,6 +369,12 @@ const OverviewView = memo(function OverviewView({
           }
         }),
         fetch(`${API_BASE_URL}/api/student/quizzes`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }),
+        fetch(`${API_BASE_URL}/api/student/iq-rank-quizzes`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -421,13 +427,46 @@ const OverviewView = memo(function OverviewView({
 
       if (quizzesRes.ok) {
         const quizzesData = await quizzesRes.json();
-        const allQuizzesList = quizzesData.data || [];
-        fetchedAllQuizzes = allQuizzesList;
-        setAllQuizzes(allQuizzesList);
-        const incompleteQuiz = allQuizzesList.filter((quiz: any) => {
+        const learning = (quizzesData.data || []).map((q: any) => ({
+          ...q,
+          quizModule: 'learning',
+        }));
+        fetchedAllQuizzes = learning;
+      }
+
+      if (iqQuizzesRes.ok) {
+        const iqData = await iqQuizzesRes.json();
+        const iqList = Array.isArray(iqData.data) ? iqData.data : [];
+        const mappedIq = iqList.map((q: any) => {
+          const isDaily =
+            q?.questionBankSource === 'daily-quiz-xlsx' || q?.activityType === 'daily';
+          return {
+            ...q,
+            quizModule: 'iq-rank',
+            title: q.title || (isDaily ? 'Daily Quiz' : 'Quiz'),
+            totalQuestions: isDaily
+              ? Number(q.dailyPickCount) || Number(q.totalQuestions) || 5
+              : Number(q.totalQuestions) || 0,
+            _isDailyQuiz: isDaily,
+            // Keep calendar/tasks treating open daily quizzes as incomplete
+            hasAttempted: isDaily ? false : q.hasAttempted,
+            completedAt: isDaily ? null : q.completedAt,
+          };
+        });
+        mappedIq.sort((a: any, b: any) => Number(b._isDailyQuiz) - Number(a._isDailyQuiz));
+        fetchedAllQuizzes = [...mappedIq, ...fetchedAllQuizzes];
+      }
+
+      if (fetchedAllQuizzes.length > 0) {
+        setAllQuizzes(fetchedAllQuizzes);
+        const incompleteQuiz = fetchedAllQuizzes.filter((quiz: any) => {
+          if (quiz.quizModule === 'iq-rank') return true;
           return !quiz.hasAttempted || !quiz.completedAt;
         });
         incompleteQuiz.sort((a: any, b: any) => {
+          const aDaily = a._isDailyQuiz ? 1 : 0;
+          const bDaily = b._isDailyQuiz ? 1 : 0;
+          if (bDaily !== aDaily) return bDaily - aDaily;
           const dateA = new Date(a.createdAt || 0).getTime();
           const dateB = new Date(b.createdAt || 0).getTime();
           return dateB - dateA;
@@ -612,7 +651,20 @@ const OverviewView = memo(function OverviewView({
 
   const handleOpenScheduleItem = useCallback((item: any, isQuiz: boolean) => {
     if (isQuiz) {
-      router.push(`/quiz/${item._id || item.id}`);
+      const quizId = String(item._id || item.id || '');
+      const isIq =
+        item.quizModule === 'iq-rank' ||
+        item._isDailyQuiz ||
+        item.questionBankSource === 'daily-quiz-xlsx' ||
+        item.activityType === 'daily';
+      if (isIq && quizId) {
+        router.push({
+          pathname: '/iq-rank-boost-quiz/[quizId]',
+          params: { quizId },
+        });
+        return;
+      }
+      router.push(`/quiz/${quizId}`);
       return;
     }
 
@@ -706,7 +758,22 @@ const OverviewView = memo(function OverviewView({
     exams,
     examAttemptCounts,
     studentClassNumber: user?.classNumber,
-    onOpenQuiz: (quiz: any) => router.push(`/quiz/${quiz._id || quiz.id}`),
+    onOpenQuiz: (quiz: any) => {
+      const quizId = String(quiz._id || quiz.id || '');
+      const isIq =
+        quiz.quizModule === 'iq-rank' ||
+        quiz._isDailyQuiz ||
+        quiz.questionBankSource === 'daily-quiz-xlsx' ||
+        quiz.activityType === 'daily';
+      if (isIq && quizId) {
+        router.push({
+          pathname: '/iq-rank-boost-quiz/[quizId]',
+          params: { quizId },
+        });
+        return;
+      }
+      router.push(`/quiz/${quizId}`);
+    },
     onOpenExam: (examId: string) => onOpenExam?.(examId),
   };
 
@@ -840,6 +907,7 @@ const OverviewView = memo(function OverviewView({
             {renderStatCard('week', weekStatBody)}
             {renderStatCard('efficiency', efficiencyStatBody)}
           </View>
+          <QuizPanelSection />
           <StudyCalendarSection {...calendarSectionProps} />
         </>
       ) : (
@@ -850,11 +918,10 @@ const OverviewView = memo(function OverviewView({
             {renderStatCard('week', weekStatBody)}
             {renderStatCard('efficiency', efficiencyStatBody)}
           </View>
+          <QuizPanelSection />
           <StudyCalendarSection {...calendarSectionProps} />
         </>
       )}
-
-      <QuizPanelSection />
 
       <ClassTimetableSection />
 
