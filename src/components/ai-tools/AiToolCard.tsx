@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   card: {
-    minHeight: 126,
+    height: 132,
     width: '100%',
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
     ...AI_SHADOW,
   },
   cardCompact: {
-    minHeight: 194,
+    height: 210,
     flexDirection: 'column',
   },
   cardGlassShell: {

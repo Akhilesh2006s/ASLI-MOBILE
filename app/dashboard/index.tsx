@@ -18,6 +18,7 @@ import ExamsTabView from './_components/ExamsTabView';
 import AITabView from './_components/AITabView';
 import ProfileTabView from './_components/ProfileTabView';
 import VidyaAIFloatingAssistant from '../../src/components/vidya/VidyaAIFloatingAssistant';
+import TrialDailyQuizPrompt from '../../src/components/TrialDailyQuizPrompt';
 import { useVidyaChatAccess } from '../../src/hooks/useVidyaChatAccess';
 import { resolveStudentFirstName } from '../../src/lib/student-text';
 import { studentFloatingTabBarReserve } from '../../src/lib/responsive-layout';
@@ -288,6 +289,7 @@ export default function StudentDashboard() {
           }}
         />
       ) : null}
+      <TrialDailyQuizPrompt />
     </SafeAreaView>
   );
 }

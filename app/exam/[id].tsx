@@ -10,12 +10,12 @@ import {
   TextInput,
   Modal,
   BackHandler,
-  Image,
   FlatList,
   Pressable,
   useWindowDimensions,
   AppState,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,7 +23,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { usePreventRemove } from '@react-navigation/native';
 import { API_BASE_URL } from '../../src/lib/api-config';
 import * as SecureStore from 'expo-secure-store';
-import api from '../../src/services/api/api';
+import api, { AUTH_TOKEN_KEY } from '../../src/services/api/api';
 import { getDashboardPath } from '../../src/hooks/useBackNavigation';
 import ExamResultsView from '../../src/components/student/ExamResultsView';
 import { GlassPanel } from '../../src/components/ui';
@@ -356,6 +356,24 @@ export default function ExamPage() {
   const currentIndexRef = useRef(currentIndex);
   const examRef = useRef(exam);
   const draftUserIdRef = useRef<string>('');
+  const [uploadAuthHeaders, setUploadAuthHeaders] = useState<Record<string, string> | undefined>();
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = await SecureStore.getItemAsync(AUTH_TOKEN_KEY);
+        if (!cancelled && token) {
+          setUploadAuthHeaders({ Authorization: `Bearer ${token}` });
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   answersRef.current = answers;
   timeLeftRef.current = timeLeft;
@@ -1088,14 +1106,11 @@ export default function ExamPage() {
   const maxExitReached = exitAttempts >= MAX_EXIT_ATTEMPTS;
   const currentQid = answerKey(currentQuestion);
   const hasCurrentAnswer = isAnswerProvided(currentQuestion, answers[currentQid]);
-  const questionImageUri =
-    currentQuestion.questionType === 'assertion_reason'
-      ? null
-      : currentQuestion.questionImage
-        ? currentQuestion.questionImage.startsWith('http')
-          ? currentQuestion.questionImage
-          : `${API_BASE_URL}${currentQuestion.questionImage}`
-        : null;
+  const questionImageUri = currentQuestion.questionImage
+    ? currentQuestion.questionImage.startsWith('http')
+      ? currentQuestion.questionImage
+      : `${API_BASE_URL}${currentQuestion.questionImage}`
+    : null;
   const sharedMatterDisplay = (() => {
     const optsBlob = (options || [])
       .map((o: any) => (typeof o === 'string' ? o : o?.text || ''))
@@ -1405,9 +1420,13 @@ export default function ExamPage() {
 
             {questionImageUri ? (
               <Image
-                source={{ uri: questionImageUri }}
+                source={{
+                  uri: questionImageUri,
+                  ...(uploadAuthHeaders ? { headers: uploadAuthHeaders } : {}),
+                }}
                 style={styles.questionImage}
-                resizeMode="contain"
+                contentFit="contain"
+                transition={150}
               />
             ) : null}
 

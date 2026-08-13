@@ -1,5 +1,6 @@
 import React, { memo, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, ActivityIndicator, Pressable, Linking } from 'react-native';
+import { View, Text, StyleSheet, Image, ActivityIndicator, Pressable } from 'react-native';
+import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../../src/lib/api-config';
 import { GlassPanel } from '../../../../src/components/ui';
@@ -10,17 +11,11 @@ type PhotoPayload = {
   imageUrl?: string;
 };
 
-function resolveUrl(imageUrl?: string): string {
-  const raw = String(imageUrl || '').trim();
-  if (!raw) return '';
-  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
-  if (raw.startsWith('/')) return `${API_BASE_URL}${raw}`;
-  return `${API_BASE_URL}/${raw}`;
-}
-
 function ClassTimetableSectionComponent() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [photo, setPhoto] = useState<PhotoPayload | null>(null);
+  const [imageUrl, setImageUrl] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -32,19 +27,25 @@ function ClassTimetableSectionComponent() {
         });
         if (!res.ok) {
           setPhoto(null);
+          setImageUrl('');
           return;
         }
         const data = await res.json();
-        setPhoto(data?.data || null);
+        const next = data?.data || null;
+        setPhoto(next);
+        setImageUrl(
+          next?.imageUrl
+            ? `${API_BASE_URL}/api/timetable/photo/file?token=${encodeURIComponent(token)}`
+            : '',
+        );
       } catch {
         setPhoto(null);
+        setImageUrl('');
       } finally {
         setLoading(false);
       }
     })();
   }, []);
-
-  const imageUrl = resolveUrl(photo?.imageUrl);
 
   return (
     <View style={styles.wrap}>
@@ -55,9 +56,9 @@ function ClassTimetableSectionComponent() {
         {loading ? (
           <ActivityIndicator color={STUDENT.accent} style={{ padding: 24 }} />
         ) : imageUrl ? (
-          <Pressable onPress={() => Linking.openURL(imageUrl)}>
+          <Pressable onPress={() => router.push('/student/timetable')} accessibilityRole="button">
             <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="contain" />
-            <Text style={styles.hint}>Tap to open full size</Text>
+            <Text style={styles.hint}>Tap to view in app</Text>
           </Pressable>
         ) : (
           <Text style={styles.empty}>

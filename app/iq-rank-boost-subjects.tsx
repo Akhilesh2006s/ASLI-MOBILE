@@ -26,6 +26,9 @@ interface Quiz {
   difficulty?: string;
   totalQuestions?: number;
   scheduleType?: string;
+  activityType?: string;
+  questionBankSource?: string;
+  dailyPickCount?: number;
   createdAt?: string;
 }
 
@@ -94,12 +97,27 @@ export default function IQRankBoostSubjects() {
       const quizzes: Quiz[] = Array.isArray(quizzesData.data) ? quizzesData.data : [];
       if (quizzesData.classNumber) setStudentClass(String(quizzesData.classNumber));
 
+      // Pin daily class bank quizzes first
+      quizzes.sort((a, b) => {
+        const aDaily = a.questionBankSource === 'daily-quiz-xlsx' || a.activityType === 'daily' ? 1 : 0;
+        const bDaily = b.questionBankSource === 'daily-quiz-xlsx' || b.activityType === 'daily' ? 1 : 0;
+        return bDaily - aDaily;
+      });
+
       const subjectMap = new Map<string, SubjectWithQuizzes>();
       for (const quiz of quizzes) {
-        const subjectId =
-          typeof quiz.subject === 'object' ? String(quiz.subject?._id || '') : String(quiz.subject || '');
-        const subjectName =
-          typeof quiz.subject === 'object' ? String(quiz.subject?.name || 'Subject') : 'Subject';
+        const isDaily =
+          quiz.questionBankSource === 'daily-quiz-xlsx' || quiz.activityType === 'daily';
+        const subjectId = isDaily
+          ? 'daily-quiz'
+          : typeof quiz.subject === 'object'
+            ? String(quiz.subject?._id || '')
+            : String(quiz.subject || '');
+        const subjectName = isDaily
+          ? 'Daily Quiz'
+          : typeof quiz.subject === 'object'
+            ? String(quiz.subject?.name || 'Subject')
+            : 'Subject';
         if (!subjectId) continue;
         if (!subjectMap.has(subjectId)) {
           subjectMap.set(subjectId, {
@@ -109,13 +127,17 @@ export default function IQRankBoostSubjects() {
             totalQuizzes: 0,
             totalQuestions: 0,
             difficulties: [],
-            latestScore: scoreBySubject.get(subjectId),
+            latestScore: scoreBySubject.get(
+              typeof quiz.subject === 'object' ? String(quiz.subject?._id || '') : String(quiz.subject || ''),
+            ),
           });
         }
         const bucket = subjectMap.get(subjectId)!;
         bucket.quizzes.push(quiz);
         bucket.totalQuizzes += 1;
-        bucket.totalQuestions += Number(quiz.totalQuestions || 0);
+        bucket.totalQuestions += Number(
+          isDaily ? quiz.dailyPickCount || quiz.totalQuestions || 5 : quiz.totalQuestions || 0,
+        );
         if (quiz.difficulty && !bucket.difficulties.includes(quiz.difficulty)) {
           bucket.difficulties.push(quiz.difficulty);
         }
@@ -123,7 +145,13 @@ export default function IQRankBoostSubjects() {
         if (quizScore != null) bucket.latestScore = quizScore;
       }
 
-      setSubjects(Array.from(subjectMap.values()));
+      // Daily Quiz section first
+      const ordered = Array.from(subjectMap.values()).sort((a, b) => {
+        if (a._id === 'daily-quiz') return -1;
+        if (b._id === 'daily-quiz') return 1;
+        return a.name.localeCompare(b.name);
+      });
+      setSubjects(ordered);
     } catch (error) {
       console.error('Failed to fetch quizzes:', error);
       setSubjects([]);
@@ -159,7 +187,9 @@ export default function IQRankBoostSubjects() {
               <Text style={styles.headerTitle}>Quiz</Text>
             </View>
             <Text style={styles.headerSubtitle}>
-              {studentClass ? `Class ${studentClass}` : 'Daily and weekly quizzes'}
+              {studentClass
+                ? `Class ${studentClass} · 5 questions / day from your class bank`
+                : 'Daily 5-question quizzes for your class'}
             </Text>
           </View>
         </View>
@@ -227,35 +257,43 @@ export default function IQRankBoostSubjects() {
                 ) : null}
 
                 <View style={{ gap: 8, marginTop: 10 }}>
-                  {subject.quizzes.map((quiz) => (
-                    <TouchableOpacity
-                      key={quiz._id}
-                      style={styles.quizItem}
-                      activeOpacity={0.75}
-                      onPress={() =>
-                        router.push({
-                          pathname: '/iq-rank-boost-quiz/[quizId]',
-                          params: { quizId: quiz._id },
-                        })
-                      }
-                    >
-                      <View style={{ flex: 1, minWidth: 0 }}>
-                        <Text style={styles.quizItemTitle} numberOfLines={1}>
-                          {quiz.title}
-                        </Text>
-                        <Text style={styles.quizItemMeta} numberOfLines={1}>
-                          {[
-                            quiz.scheduleType && quiz.scheduleType !== 'once' ? quiz.scheduleType : null,
-                            quiz.difficulty,
-                            quiz.totalQuestions != null ? `${quiz.totalQuestions} Q` : null,
-                          ]
-                            .filter(Boolean)
-                            .join(' · ')}
-                        </Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
-                    </TouchableOpacity>
-                  ))}
+                  {subject.quizzes.map((quiz) => {
+                    const isDaily =
+                      quiz.questionBankSource === 'daily-quiz-xlsx' || quiz.activityType === 'daily';
+                    return (
+                      <TouchableOpacity
+                        key={quiz._id}
+                        style={[styles.quizItem, isDaily && styles.quizItemDaily]}
+                        activeOpacity={0.75}
+                        onPress={() =>
+                          router.push({
+                            pathname: '/iq-rank-boost-quiz/[quizId]',
+                            params: { quizId: quiz._id },
+                          })
+                        }
+                      >
+                        <View style={{ flex: 1, minWidth: 0 }}>
+                          <Text style={styles.quizItemTitle} numberOfLines={1}>
+                            {quiz.title}
+                          </Text>
+                          <Text style={styles.quizItemMeta} numberOfLines={2}>
+                            {isDaily
+                              ? `Today · ${quiz.dailyPickCount || 5} Q · your class only · IQ, reasoning, vocab, maths & science`
+                              : [
+                                  quiz.scheduleType && quiz.scheduleType !== 'once'
+                                    ? quiz.scheduleType
+                                    : null,
+                                  quiz.difficulty,
+                                  quiz.totalQuestions != null ? `${quiz.totalQuestions} Q` : null,
+                                ]
+                                  .filter(Boolean)
+                                  .join(' · ')}
+                          </Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               </GlassPanel>
             ))}
@@ -325,6 +363,10 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     paddingHorizontal: 12,
     paddingVertical: 10,
+  },
+  quizItemDaily: {
+    backgroundColor: '#f0f9ff',
+    borderColor: '#7dd3fc',
   },
   quizItemTitle: { fontSize: 14, fontWeight: '700', color: '#0f172a' },
   quizItemMeta: { fontSize: 11, color: '#64748b', marginTop: 2, textTransform: 'capitalize' },
