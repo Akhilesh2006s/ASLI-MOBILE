@@ -17,6 +17,15 @@ const TOOLS_WIDE_MIN_WIDTH = 1024;
 const STUDENT_TOOLS_SUBTITLE =
   'Stuck on a concept? Revising a chapter? Preparing for a test? Vidya AI has a tool to help.';
 
+function chunkItems<T>(items: T[], size: number): T[][] {
+  if (size <= 1) return items.map((item) => [item]);
+  const rows: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    rows.push(items.slice(i, i + size));
+  }
+  return rows;
+}
+
 const HERO_STAT_CHIPS: { icon: keyof typeof Ionicons.glyphMap; title: string; copy: string }[] = [
   { icon: 'book-outline', title: 'Learn', copy: 'Understand concepts clearly' },
   { icon: 'create-outline', title: 'Practise', copy: 'Questions, flashcards & tests' },
@@ -27,11 +36,7 @@ export default function VidyaAIView() {
   const { width: screenWidth } = useWindowDimensions();
   const isTablet = screenWidth >= TOOLS_TABLET_MIN_WIDTH;
   const gridColumns = screenWidth >= TOOLS_WIDE_MIN_WIDTH ? 3 : isTablet ? 2 : 1;
-  const [toolsListWidth, setToolsListWidth] = useState(0);
-  const toolCardWidth =
-    gridColumns > 1 && toolsListWidth > 0
-      ? (toolsListWidth - LIST_GAP * (gridColumns - 1)) / gridColumns
-      : undefined;
+  const isGrid = gridColumns > 1;
 
   const [subjectNames, setSubjectNames] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -88,6 +93,14 @@ export default function VidyaAIView() {
   }, [ready]);
 
   const visibleTools = useMemo(() => filterVisibleStudentTools(subjectNames), [subjectNames]);
+  const toolRows = useMemo(
+    () => chunkItems(visibleTools, isGrid ? gridColumns : 1),
+    [visibleTools, isGrid, gridColumns],
+  );
+  const shimmerRows = useMemo(
+    () => chunkItems(Array.from({ length: isGrid ? gridColumns * 2 : 4 }, (_, index) => index), isGrid ? gridColumns : 1),
+    [isGrid, gridColumns],
+  );
 
   const openTool = (tool: StudentAiTool) => {
     // Paint the press spring, then push — keeps the transition smooth.
@@ -99,12 +112,30 @@ export default function VidyaAIView() {
     });
   };
 
-  const onToolsLayout = (event: { nativeEvent: { layout: { width: number } } }) => {
-    const nextWidth = Math.floor(event.nativeEvent.layout.width);
-    if (nextWidth > 0 && nextWidth !== toolsListWidth) {
-      setToolsListWidth(nextWidth);
-    }
-  };
+  const renderToolRow = (row: StudentAiTool[], rowIndex: number) => (
+    <View key={`tools-row-${rowIndex}`} style={[styles.toolsRow, isGrid && styles.toolsRowGrid]}>
+      {row.map((tool) => (
+        <View key={tool.id} style={isGrid ? styles.toolCell : styles.toolCellFull}>
+          <AiToolCard
+            title={tool.name}
+            description={tool.description}
+            icon={tool.icon as any}
+            accent={tool.color || AI.primary}
+            badge="AI Powered"
+            ctaText="Get Started"
+            compact={isGrid}
+            glass
+            onPress={() => openTool(tool)}
+          />
+        </View>
+      ))}
+      {isGrid
+        ? Array.from({ length: gridColumns - row.length }, (_, spacerIndex) => (
+            <View key={`tools-spacer-${rowIndex}-${spacerIndex}`} style={styles.toolCell} />
+          ))
+        : null}
+    </View>
+  );
 
   return (
     <View style={styles.container}>
@@ -130,41 +161,20 @@ export default function VidyaAIView() {
       </GlassPanel>
 
       {!ready || isLoading ? (
-        <View
-          style={[styles.toolsList, gridColumns > 1 && styles.toolsListGrid]}
-          onLayout={onToolsLayout}
-        >
-          {Array.from({ length: gridColumns > 1 ? gridColumns * 2 : 4 }).map((_, index) => (
-            <ShimmerCard
-              key={`shimmer-${index}`}
-              style={toolCardWidth != null ? { width: toolCardWidth, height: 96 } : styles.shimmerRow}
-            />
-          ))}
-        </View>
-      ) : (
-        <View
-          style={[styles.toolsList, gridColumns > 1 && styles.toolsListGrid]}
-          onLayout={onToolsLayout}
-        >
-          {visibleTools.map((tool) => (
-            <View
-              key={tool.id}
-              style={toolCardWidth != null ? { width: toolCardWidth } : styles.toolCardWrapFull}
-            >
-              <AiToolCard
-                title={tool.name}
-                description={tool.description}
-                icon={tool.icon as any}
-                accent={tool.color || AI.primary}
-                badge="AI Powered"
-                ctaText="Get Started"
-                compact={gridColumns > 1}
-                glass
-                onPress={() => openTool(tool)}
-              />
+        <View style={styles.toolsList}>
+          {shimmerRows.map((row, rowIndex) => (
+            <View key={`shimmer-row-${rowIndex}`} style={[styles.toolsRow, isGrid && styles.toolsRowGrid]}>
+              {row.map((index) => (
+                <ShimmerCard
+                  key={`shimmer-${index}`}
+                  style={isGrid ? styles.shimmerCell : styles.shimmerRow}
+                />
+              ))}
             </View>
           ))}
         </View>
+      ) : (
+        <View style={styles.toolsList}>{toolRows.map((row, rowIndex) => renderToolRow(row, rowIndex))}</View>
       )}
     </View>
   );
@@ -250,15 +260,27 @@ const styles = StyleSheet.create({
     gap: LIST_GAP,
     paddingBottom: STUDENT_SPACING.md,
   },
-  toolsListGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'stretch',
+  toolsRow: {
+    width: '100%',
   },
-  toolCardWrapFull: {
+  toolsRowGrid: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: LIST_GAP,
+  },
+  toolCell: {
+    flex: 1,
+    minWidth: 0,
+  },
+  toolCellFull: {
     width: '100%',
   },
   shimmerRow: {
+    height: 96,
+  },
+  shimmerCell: {
+    flex: 1,
+    minWidth: 0,
     height: 96,
   },
 });

@@ -47,11 +47,13 @@ export default function AiToolCard({
       accessibilityRole="button"
       accessibilityLabel={`${title}. ${description}`}
       accessibilityHint="Opens this AI tool"
+      style={[styles.pressable, compact && styles.pressableFill]}
     >
       <Animated.View
         style={[
           styles.card,
           compact && styles.cardCompact,
+          compact && styles.cardFill,
           glass && styles.cardGlassShell,
           { borderColor: accent },
           style,
@@ -104,9 +106,18 @@ export default function AiToolCard({
 }
 
 const styles = StyleSheet.create({
+  pressable: {
+    width: '100%',
+    alignSelf: 'stretch',
+    minWidth: 0,
+  },
+  pressableFill: {
+    flex: 1,
+  },
   card: {
     minHeight: 126,
     width: '100%',
+    maxWidth: '100%',
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: AI_SPACING.md,
@@ -121,6 +132,9 @@ const styles = StyleSheet.create({
   cardCompact: {
     minHeight: 194,
     flexDirection: 'column',
+  },
+  cardFill: {
+    flex: 1,
   },
   cardGlassShell: {
     backgroundColor: 'transparent',
@@ -137,19 +151,23 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     minWidth: 0,
+    width: '100%',
   },
   titleBlock: {
     gap: AI_SPACING.xs,
     alignItems: 'flex-start',
+    width: '100%',
   },
   title: {
     ...AI_TYPE.title,
     color: AI.text,
+    width: '100%',
   },
   description: {
     ...AI_TYPE.caption,
     marginTop: AI_SPACING.xs,
     color: AI.textSecondary,
+    width: '100%',
   },
   actionRow: {
     marginTop: AI_SPACING.md,

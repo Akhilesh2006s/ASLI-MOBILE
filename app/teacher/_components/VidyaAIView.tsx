@@ -28,9 +28,19 @@ import { TEACHER_SPACING } from '../../../src/theme/teacher';
 import { AI, AI_RADIUS, AI_SPACING, AI_TYPE } from '../../../src/theme/ai';
 
 const CONTENT_MAX = 1080;
+const BOARD_MIN_WIDTH = 1024;
 const GRID_GAP = TEACHER_SPACING.md;
 /** Floating teacher tab bar height + gap so the last tool card is fully visible. */
 const TAB_BAR_CLEARANCE = 100;
+
+function chunkItems<T>(items: T[], size: number): T[][] {
+  if (size <= 1) return items.map((item) => [item]);
+  const rows: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    rows.push(items.slice(i, i + size));
+  }
+  return rows;
+}
 
 function usePressScale(to = 0.96) {
   const scale = useSharedValue(1);
@@ -42,16 +52,14 @@ function usePressScale(to = 0.96) {
 
 function useVidyaAILayout() {
   const { width } = useWindowDimensions();
-  const shellWidth = Math.min(width, CONTENT_MAX);
-  const listInnerWidth = shellWidth - TEACHER_SPACING.lg * 2;
+  const isBoard = width >= BOARD_MIN_WIDTH;
   const columns = width >= 1040 ? 3 : width >= 700 ? 2 : 1;
-  const cardWidth = (listInnerWidth - GRID_GAP * (columns - 1)) / columns;
-  return { isGrid: columns > 1, columns, shellWidth, cardWidth };
+  return { isGrid: columns > 1, columns, isBoard };
 }
 
 export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: boolean }) {
   const chatPress = usePressScale();
-  const { isGrid, shellWidth, cardWidth } = useVidyaAILayout();
+  const { isGrid, columns, isBoard } = useVidyaAILayout();
   const scrollBottomPad = TAB_BAR_CLEARANCE + TEACHER_SPACING.lg;
   const [subjectNames, setSubjectNames] = useState<string[]>([]);
 
@@ -88,6 +96,10 @@ export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: bool
     () => filterVisibleTeacherTools(subjectNames),
     [subjectNames],
   );
+  const toolRows = useMemo(
+    () => chunkItems(visibleTools, isGrid ? columns : 1),
+    [visibleTools, isGrid, columns],
+  );
 
   return (
     <ScrollView
@@ -96,7 +108,7 @@ export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: bool
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
     >
-      <View style={[styles.innerShell, { width: shellWidth }]}>
+      <View style={[styles.innerShell, !isBoard && styles.innerShellCapped]}>
         {chatEnabled ? (
         <Pressable
           onPress={() => router.push('/teacher/vidya-chat' as any)}
@@ -130,27 +142,39 @@ export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: bool
           <Text style={styles.sectionTitle}>Create your next classroom resource</Text>
           <Text style={styles.sectionSubtitle}>{TEACHER_AI_TOOLS_SUBTITLE}</Text>
 
-          <View style={[styles.toolsGrid, isGrid && styles.toolsGridMulti]}>
-            {visibleTools.map((tool) => (
-              <View key={tool.id} style={{ width: cardWidth }}>
-                <AiToolCard
-                  title={tool.title}
-                  description={tool.description}
-                  icon={tool.icon as keyof typeof Ionicons.glyphMap}
-                  accent={tool.color || AI.primary}
-                  badge="Teacher"
-                  compact={isGrid}
-                  glass
-                  onPress={() => {
-                    // Let the press spring paint, then navigate — avoids a stuck frame.
-                    requestAnimationFrame(() => {
-                      router.push({
-                        pathname: tool.route as any,
-                        params: { returnTab: 'vidya-ai' },
-                      });
-                    });
-                  }}
-                />
+          <View style={styles.toolsGrid}>
+            {toolRows.map((row, rowIndex) => (
+              <View
+                key={`tools-row-${rowIndex}`}
+                style={[styles.toolsRow, isGrid && styles.toolsRowGrid]}
+              >
+                {row.map((tool) => (
+                  <View key={tool.id} style={isGrid ? styles.toolCell : styles.toolCellFull}>
+                    <AiToolCard
+                      title={tool.title}
+                      description={tool.description}
+                      icon={tool.icon as keyof typeof Ionicons.glyphMap}
+                      accent={tool.color || AI.primary}
+                      badge="Teacher"
+                      compact={isGrid}
+                      glass
+                      onPress={() => {
+                        // Let the press spring paint, then navigate — avoids a stuck frame.
+                        requestAnimationFrame(() => {
+                          router.push({
+                            pathname: tool.route as any,
+                            params: { returnTab: 'vidya-ai' },
+                          });
+                        });
+                      }}
+                    />
+                  </View>
+                ))}
+                {isGrid
+                  ? Array.from({ length: columns - row.length }, (_, spacerIndex) => (
+                      <View key={`tools-spacer-${rowIndex}-${spacerIndex}`} style={styles.toolCell} />
+                    ))
+                  : null}
               </View>
             ))}
           </View>
@@ -170,6 +194,10 @@ const styles = StyleSheet.create({
   },
   innerShell: {
     alignSelf: 'center',
+    width: '100%',
+  },
+  innerShellCapped: {
+    maxWidth: CONTENT_MAX,
   },
   chatCard: {
     marginHorizontal: TEACHER_SPACING.lg,
@@ -239,11 +267,19 @@ const styles = StyleSheet.create({
     width: '100%',
     gap: GRID_GAP,
   },
-  toolsGridMulti: {
+  toolsRow: {
+    width: '100%',
+  },
+  toolsRowGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    columnGap: GRID_GAP,
-    rowGap: GRID_GAP,
-    gap: 0,
+    alignItems: 'stretch',
+    gap: GRID_GAP,
+  },
+  toolCell: {
+    flex: 1,
+    minWidth: 0,
+  },
+  toolCellFull: {
+    width: '100%',
   },
 });
