@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../services/api/api';
@@ -46,11 +45,19 @@ export default function TeacherDiaryFeed() {
     return <ShimmerCard style={styles.wrap} />;
   }
 
-  if (entries.length === 0) return null;
-
   return (
     <View style={styles.wrap}>
-      <PremiumSectionHeader title="Teacher Diary" icon="book-outline" accent={STUDENT.primary} />
+      <PremiumSectionHeader
+        title="Teachers report"
+        subtitle="Daily class updates from teachers at your school."
+        icon="book-outline"
+        accent={STUDENT.primary}
+      />
+      {entries.length === 0 ? (
+        <GlassCard variant="glass" style={styles.card}>
+          <Text style={styles.empty}>No teacher updates yet.</Text>
+        </GlassCard>
+      ) : null}
       {entries.map((e, index) => {
         const open = expanded === e._id;
         const teacher = e.teacherId?.fullName || 'Teacher';
@@ -60,7 +67,7 @@ export default function TeacherDiaryFeed() {
             <Pressable
               onPress={() => setExpanded(open ? null : e._id)}
               accessibilityRole="button"
-              accessibilityLabel={`Diary entry from ${teacher}`}
+              accessibilityLabel={`Teachers report from ${teacher}`}
               accessibilityHint={open ? 'Collapse entry' : 'Expand entry'}
               accessibilityState={{ expanded: open }}
             >
@@ -108,4 +115,10 @@ const styles = StyleSheet.create({
   meta: { ...STUDENT_TYPO.label, color: STUDENT.textMuted, marginTop: 2 },
   entryTitle: { fontWeight: '600', color: STUDENT.accent, marginBottom: 6, fontSize: 13 },
   preview: { fontSize: 13, color: STUDENT.textSecondary, lineHeight: 19 },
+  empty: {
+    fontSize: 13,
+    color: STUDENT.textMuted,
+    textAlign: 'center',
+    paddingVertical: 8,
+  },
 });

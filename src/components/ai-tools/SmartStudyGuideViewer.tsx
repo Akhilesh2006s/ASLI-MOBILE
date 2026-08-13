@@ -23,7 +23,7 @@ import {
 } from '../../lib/parse-smart-study-guide';
 import { getAiToolIonicon } from '../../lib/ai-tool-icons';
 import AiToolStackedSection from './AiToolStackedSection';
-import { SelfCheckList, TapToMarkItem, CheckableSteps } from '../shared/ai-tool-interactive';
+import { SelfCheckList, TapToMarkItem, CheckableSteps, TapToRevealCard } from '../shared/ai-tool-interactive';
 
 type Props = {
   content: string;
@@ -138,10 +138,19 @@ function buildBodySections(guide: StudyGuideContent, tabletUi = false, boardUi =
     sections.push({ key, node, fullWidth });
   };
 
+  if (guide.title.trim()) {
+    push(
+      '1',
+      <GuideSectionCard sectionNum="Section 1" title="Study Guide Title" icon="book-outline" stripe="#a5b4fc" tabletUi={tabletUi} boardUi={boardUi}>
+        <Text style={[styles.guideTitle, viewerTabletStyle(tabletUi, 'guideTitle', boardUi)]}>{guide.title}</Text>
+      </GuideSectionCard>,
+    );
+  }
+
   if (guide.chapterOverview.trim()) {
     push(
       '2',
-      <GuideSectionCard sectionNum="Section 2" title="Chapter and Subtopic Overview" icon="book-outline" stripe="#93c5fd" tabletUi={tabletUi} boardUi={boardUi}>
+      <GuideSectionCard sectionNum="Section 2" title="Chapter & Subtopic Overview" icon="book-outline" stripe="#93c5fd" tabletUi={tabletUi} boardUi={boardUi}>
         <RichTextBlock text={guide.chapterOverview} tabletUi={tabletUi} boardUi={boardUi} />
       </GuideSectionCard>,
     );
@@ -183,12 +192,9 @@ function buildBodySections(guide: StudyGuideContent, tabletUi = false, boardUi =
   if (guide.definitions.length > 0 || guide.formulae.length > 0) {
     push(
       '6',
-      <GuideSectionCard sectionNum="Section 6" title="Important Definitions and Formulae" icon="calculator-outline" stripe="#fcd34d" tabletUi={tabletUi} boardUi={boardUi}>
+      <GuideSectionCard sectionNum="Section 6" title="Definitions & Formulae" icon="calculator-outline" stripe="#fcd34d" tabletUi={tabletUi} boardUi={boardUi}>
         {guide.definitions.map((d, i) => (
-          <View key={`def-${i}`} style={styles.definitionRow}>
-            <Text style={styles.definitionTerm}>{d.term}</Text>
-            <Text style={styles.definitionText}>{d.definition}</Text>
-          </View>
+          <TapToRevealCard key={`def-${i}`} prompt={d.term} detail={d.definition} tone="amber" />
         ))}
         {guide.formulae.map((f, i) => (
           <View key={`fm-${i}`} style={styles.formulaRow}>

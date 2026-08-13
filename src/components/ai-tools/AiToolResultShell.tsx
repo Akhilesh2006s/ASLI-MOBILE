@@ -163,9 +163,12 @@ export default function AiToolResultShell({
   );
 }
 
+/** Equal left/right inset for header, meta chips, and result card. */
+const SHELL_GUTTER = 12;
+
 const styles = StyleSheet.create({
   outer: {
-    width: '100%',
+    alignSelf: 'stretch',
     backgroundColor: '#FFFFFF',
     borderRadius: AI_RADIUS.lg,
     borderWidth: 1,
@@ -183,7 +186,7 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
   header: {
-    paddingHorizontal: 14,
+    paddingHorizontal: SHELL_GUTTER,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#E0F2FE',
@@ -233,7 +236,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0F9FF',
   },
   metaOrbit: {
-    paddingHorizontal: 12,
+    paddingHorizontal: SHELL_GUTTER,
     paddingVertical: 8,
     gap: 8,
     alignItems: 'center',
@@ -260,21 +263,23 @@ const styles = StyleSheet.create({
   },
   chipValue: { fontSize: 12, lineHeight: 14, fontWeight: '700', flexShrink: 1 },
   contentArea: {
-    paddingVertical: 8,
-    paddingHorizontal: 0,
+    paddingVertical: SHELL_GUTTER,
+    paddingHorizontal: SHELL_GUTTER,
     backgroundColor: '#F8FAFC',
   },
   contentAreaFill: {
     flex: 1,
     minHeight: 0,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
   },
   resultBody: {
-    width: '100%',
-    paddingHorizontal: 8,
+    // stretch + horizontal padding on parent — never width:100% with side margins
+    // (that overflows and makes left/right gutters look unequal).
+    alignSelf: 'stretch',
+    paddingHorizontal: SHELL_GUTTER,
     paddingVertical: 8,
     backgroundColor: '#FFFFFF',
-    marginHorizontal: 8,
-    marginBottom: 8,
     borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#E2E8F0',
@@ -282,8 +287,6 @@ const styles = StyleSheet.create({
   resultBodyFill: {
     flex: 1,
     minHeight: 0,
-    marginHorizontal: 0,
-    marginBottom: 0,
     borderRadius: 0,
     borderWidth: 0,
   },

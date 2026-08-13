@@ -413,13 +413,16 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
   <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"><\/script>
   <style>
     * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; background: #525659; min-height: 100%; }
+    html { height: 100%; }
+    html, body { margin: 0; padding: 0; background: #525659; }
+    body { min-height: 100%; }
+    body.tv-mode { height: 100%; overflow: hidden; }
     #status {
       color: #fff;
       text-align: center;
@@ -428,6 +431,14 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
       font-size: 15px;
     }
     #pages { padding: 8px 0 24px; }
+    body.tv-mode #pages {
+      padding: 0;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
     canvas {
       display: block;
       margin: 0 auto 12px;
@@ -435,6 +446,11 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
       height: auto;
       background: #fff;
       box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+    }
+    body.tv-mode canvas {
+      margin: 0;
+      max-width: none;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.45);
     }
     #error { display: none; color: #fca5a5; padding: 24px; text-align: center; font-family: sans-serif; font-size: 14px; }
     #progress { color: #cbd5e1; text-align: center; font-size: 12px; padding: 8px; font-family: sans-serif; }
@@ -446,9 +462,65 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
   <div id="pages"></div>
   <script>
     (function () {
+      var MIN_ZOOM = 0.5;
+      var MAX_ZOOM = 4;
+      var PAGE_PAD = 24;
+      var pdfDoc = null;
+      var currentPage = 1;
+      var userZoom = 1;
+      var renderToken = 0;
+      var resizeTimer = null;
+      var lastLayoutKey = '';
+
       const statusEl = () => document.getElementById('status');
       const progressEl = () => document.getElementById('progress');
       const pagesEl = () => document.getElementById('pages');
+
+      function isTvView() {
+        var cfg = window.__pdfViewerConfig;
+        if (cfg && typeof cfg.tv === 'boolean') return cfg.tv;
+        return window.innerWidth >= 1024 && window.innerWidth >= window.innerHeight;
+      }
+
+      function applyBodyMode() {
+        if (isTvView()) document.body.classList.add('tv-mode');
+        else document.body.classList.remove('tv-mode');
+      }
+
+      function postNative(msg) {
+        if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(msg);
+      }
+
+      function postState() {
+        postNative(JSON.stringify({
+          type: 'pdf-state',
+          page: currentPage,
+          pages: pdfDoc ? pdfDoc.numPages : 0,
+          zoom: Math.round(userZoom * 100) / 100,
+          tv: isTvView()
+        }));
+      }
+
+      function clampZoom(z) {
+        return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, z));
+      }
+
+      function availableSize() {
+        var w = Math.max((window.innerWidth || document.documentElement.clientWidth || 320) - PAGE_PAD, 200);
+        var h = Math.max((window.innerHeight || document.documentElement.clientHeight || 480) - PAGE_PAD, 200);
+        return { w: w, h: h };
+      }
+
+      function layoutKey() {
+        return [
+          isTvView() ? 'tv' : 'phone',
+          window.innerWidth,
+          window.innerHeight,
+          currentPage,
+          userZoom,
+          pdfDoc ? pdfDoc.numPages : 0
+        ].join(':');
+      }
 
       function clearError() {
         const err = document.getElementById('error');
@@ -473,58 +545,146 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
         if (window.ReactNativeWebView) {
           const s = statusEl();
           if (s) s.textContent = 'Opening document…';
-          window.ReactNativeWebView.postMessage('pdf-error');
+          postNative('pdf-error');
           return;
         }
         showError(msg);
       }
 
-      async function renderPdf(pdf) {
-        const container = pagesEl();
-        const s = statusEl();
-        const p = progressEl();
+      async function drawPage(container, pdf, num, tv) {
+        var page = await pdf.getPage(num);
+        var baseViewport = page.getViewport({ scale: 1 });
+        var size = availableSize();
+        var fitScale = tv
+          ? Math.min(size.w / baseViewport.width, size.h / baseViewport.height)
+          : size.w / baseViewport.width;
+        var layoutScale = fitScale * (tv ? userZoom : 1);
+        var viewport = page.getViewport({ scale: layoutScale });
+        var pixelRatio = tv
+          ? Math.min(Math.max(window.devicePixelRatio || 1, 2), 2.5)
+          : Math.min(window.devicePixelRatio || 1, 2);
+        var cssW = Math.max(1, Math.floor(viewport.width));
+        var cssH = Math.max(1, Math.floor(viewport.height));
+        var canvas = document.createElement('canvas');
+        canvas.style.width = cssW + 'px';
+        canvas.style.height = cssH + 'px';
+        if (!tv) canvas.style.maxWidth = 'calc(100% - 16px)';
+        canvas.width = Math.floor(cssW * pixelRatio);
+        canvas.height = Math.floor(cssH * pixelRatio);
+        var ctx = canvas.getContext('2d', { alpha: false });
+        if (!ctx) return;
+        ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+        container.appendChild(canvas);
+        await page.render({
+          canvasContext: ctx,
+          viewport: viewport,
+          intent: 'display',
+        }).promise;
+        if (tv) {
+          var zoomed = userZoom > 1.02;
+          container.style.overflow = zoomed ? 'auto' : 'hidden';
+          container.style.alignItems = zoomed ? 'flex-start' : 'center';
+        }
+      }
+
+      async function renderVisible(pdf) {
+        var container = pagesEl();
+        var s = statusEl();
+        var p = progressEl();
         if (!container) return false;
+        var token = ++renderToken;
+        var tv = isTvView();
+        applyBodyMode();
+        var key = layoutKey();
+        container.innerHTML = '';
 
-        async function renderPage(num) {
-          const page = await pdf.getPage(num);
-          const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
-          const containerWidth = Math.max(document.documentElement.clientWidth - 16, 280);
-          const baseViewport = page.getViewport({ scale: 1 });
-          const layoutScale = containerWidth / baseViewport.width;
-          const viewport = page.getViewport({ scale: layoutScale });
-          const canvas = document.createElement('canvas');
-          canvas.style.width = Math.floor(viewport.width) + 'px';
-          canvas.style.height = Math.floor(viewport.height) + 'px';
-          canvas.style.maxWidth = 'calc(100% - 16px)';
-          canvas.width = Math.floor(viewport.width * pixelRatio);
-          canvas.height = Math.floor(viewport.height * pixelRatio);
-          const ctx = canvas.getContext('2d', { alpha: false });
-          if (!ctx) return;
-          ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-          container.appendChild(canvas);
-          await page.render({
-            canvasContext: ctx,
-            viewport,
-            intent: 'display',
-          }).promise;
+        if (tv) {
+          currentPage = Math.min(Math.max(1, currentPage), pdf.numPages);
+          await drawPage(container, pdf, currentPage, true);
+          if (token !== renderToken) return false;
+          lastLayoutKey = key;
+          if (s) s.remove();
+          if (p) p.remove();
+          postNative('pdf-ready');
+          postState();
+          return true;
         }
 
-        await renderPage(1);
-        if (window.ReactNativeWebView) {
-          window.ReactNativeWebView.postMessage('pdf-ready');
-        }
+        userZoom = 1;
+        await drawPage(container, pdf, 1, false);
+        if (token !== renderToken) return false;
+        postNative('pdf-ready');
         if (s) s.remove();
         if (pdf.numPages > 1) {
-          const prog = p;
-          if (prog) prog.textContent = 'Loading pages… 1 / ' + pdf.numPages;
-          for (let num = 2; num <= pdf.numPages; num++) {
-            await renderPage(num);
-            if (prog) prog.textContent = 'Loading pages… ' + num + ' / ' + pdf.numPages;
+          if (p) p.textContent = 'Loading pages… 1 / ' + pdf.numPages;
+          for (var num = 2; num <= pdf.numPages; num++) {
+            if (token !== renderToken) return false;
+            await drawPage(container, pdf, num, false);
+            if (p) p.textContent = 'Loading pages… ' + num + ' / ' + pdf.numPages;
             if (num % 2 === 0) await new Promise(function (r) { setTimeout(r, 0); });
           }
         }
         if (p) p.remove();
+        lastLayoutKey = key;
+        postState();
         return true;
+      }
+
+      async function rerender() {
+        if (!pdfDoc) return;
+        if (layoutKey() === lastLayoutKey && pagesEl() && pagesEl().querySelector('canvas')) return;
+        await renderVisible(pdfDoc);
+      }
+
+      window.__pdfApplyConfig = function () {
+        lastLayoutKey = '';
+        applyBodyMode();
+        rerender();
+      };
+
+      window.__pdfViewer = {
+        zoomBy: function (factor) {
+          if (!isTvView()) return;
+          userZoom = clampZoom(userZoom * factor);
+          lastLayoutKey = '';
+          rerender();
+        },
+        setZoom: function (z) {
+          if (!isTvView()) return;
+          userZoom = clampZoom(z);
+          lastLayoutKey = '';
+          rerender();
+        },
+        fitPage: function () {
+          userZoom = 1;
+          lastLayoutKey = '';
+          rerender();
+        },
+        nextPage: function () {
+          if (!pdfDoc || currentPage >= pdfDoc.numPages) return;
+          currentPage += 1;
+          lastLayoutKey = '';
+          rerender();
+        },
+        prevPage: function () {
+          if (!pdfDoc || currentPage <= 1) return;
+          currentPage -= 1;
+          lastLayoutKey = '';
+          rerender();
+        }
+      };
+
+      window.addEventListener('resize', function () {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function () { rerender(); }, 120);
+      });
+
+      async function renderPdf(pdf) {
+        pdfDoc = pdf;
+        currentPage = 1;
+        userZoom = 1;
+        lastLayoutKey = '';
+        return renderVisible(pdf);
       }
 
       async function openPdf(getDocumentParams) {
@@ -561,9 +721,8 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
       };
 
       function signalViewerReady() {
-        if (window.ReactNativeWebView) {
-          window.ReactNativeWebView.postMessage('viewer-ready');
-        }
+        applyBodyMode();
+        postNative('viewer-ready');
       }
 
       if (typeof pdfjsLib !== 'undefined') {

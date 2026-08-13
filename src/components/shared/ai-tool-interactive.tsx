@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
@@ -153,6 +153,28 @@ export function SelfCheckList({
   );
 }
 
+const ICON_ALIASES: Record<string, keyof typeof Ionicons.glyphMap> = {
+  lightbulb: 'bulb-outline',
+  star: 'star',
+  checklist: 'checkbox-outline',
+  sparkle: 'sparkles-outline',
+  sparkles: 'sparkles-outline',
+  notebook: 'book-outline',
+  quiz: 'help-circle-outline',
+  'ellipse-outline': 'ellipse-outline',
+  'checkmark-circle': 'checkmark-circle',
+  'bulb-outline': 'bulb-outline',
+  'checkbox-outline': 'checkbox-outline',
+  'sparkles-outline': 'sparkles-outline',
+  'book-outline': 'book-outline',
+  'help-circle-outline': 'help-circle-outline',
+};
+
+function resolveInteractiveIcon(name?: string): keyof typeof Ionicons.glyphMap {
+  if (!name) return 'ellipse-outline';
+  return ICON_ALIASES[name] || (name as keyof typeof Ionicons.glyphMap);
+}
+
 /** A single tappable row that toggles a checked/strike-through state — for materials, aids, checklists. */
 export function TapToMarkItem({
   text,
@@ -163,9 +185,9 @@ export function TapToMarkItem({
 }: {
   text: string;
   tone?: InteractiveTone;
-  markedStyle?: 'strike' | 'none';
-  iconOff?: keyof typeof Ionicons.glyphMap;
-  iconOn?: keyof typeof Ionicons.glyphMap;
+  markedStyle?: 'strike' | 'none' | 'highlight';
+  iconOff?: string;
+  iconOn?: string;
 }) {
   const c = toneOf(tone);
   const [marked, setMarked] = useState(false);
@@ -186,12 +208,17 @@ export function TapToMarkItem({
       ]}
     >
       <Animated.View style={pop}>
-        <Ionicons name={marked ? iconOn : iconOff} size={20} color={marked ? c.accent : '#94a3b8'} />
+        <Ionicons
+          name={resolveInteractiveIcon(marked ? iconOn : iconOff)}
+          size={20}
+          color={marked ? c.accent : '#94a3b8'}
+        />
       </Animated.View>
       <Text
         style={[
           styles.markText,
           marked && markedStyle === 'strike' && styles.markTextStrike,
+          marked && markedStyle === 'highlight' && { color: c.text, fontWeight: '600' },
         ]}
       >
         {text}
@@ -204,16 +231,27 @@ export function TapToMarkItem({
 export function TapToRevealCard({
   label = 'Tap to reveal',
   text,
+  prompt,
+  detail,
+  revealLabel,
   tone = 'violet',
 }: {
   label?: string;
-  text: string;
+  text?: string;
+  /** Web-parity: term / question shown as the card title. */
+  prompt?: string;
+  /** Web-parity: hidden body. */
+  detail?: string;
+  revealLabel?: string;
   tone?: InteractiveTone;
 }) {
   const c = toneOf(tone);
   const [revealed, setRevealed] = useState(false);
   const tap = useTapScale();
-  if (!String(text || '').trim()) return null;
+  const body = String(detail ?? text ?? '').trim();
+  const heading = String(prompt || '').trim();
+  const action = revealLabel || label;
+  if (!body && !heading) return null;
   return (
     <AnimatedPressable
       onPress={() => setRevealed((v) => !v)}
@@ -221,19 +259,27 @@ export function TapToRevealCard({
       onPressOut={tap.onPressOut}
       accessibilityRole="button"
       accessibilityState={{ expanded: revealed }}
-      accessibilityLabel={revealed ? text : label}
+      accessibilityLabel={revealed ? body || heading : heading || action}
       style={[styles.revealCard, tap.style, { borderColor: c.softBorder, backgroundColor: c.soft }]}
     >
-      {revealed ? (
+      {heading ? (
+        <View style={styles.revealHeader}>
+          <Text style={[styles.revealPromptTitle, { color: c.text }]}>{heading}</Text>
+          {body ? (
+            <Text style={[styles.revealLabel, { color: c.accent }]}>{revealed ? 'Hide' : action}</Text>
+          ) : null}
+        </View>
+      ) : null}
+      {revealed && body ? (
         <Animated.View entering={FadeInDown.duration(280).springify().damping(16)}>
-          <Text style={[styles.revealText, { color: c.text }]}>{text}</Text>
+          <Text style={[styles.revealText, { color: c.text }, heading && styles.revealTextAfterTitle]}>{body}</Text>
         </Animated.View>
-      ) : (
+      ) : !heading ? (
         <Animated.View entering={FadeIn.duration(160)} style={styles.revealPrompt}>
           <Ionicons name="eye-outline" size={16} color={c.accent} />
-          <Text style={[styles.revealLabel, { color: c.accent }]}>{label}</Text>
+          <Text style={[styles.revealLabel, { color: c.accent }]}>{action}</Text>
         </Animated.View>
-      )}
+      ) : null}
     </AnimatedPressable>
   );
 }
@@ -308,6 +354,115 @@ export function CheckableSteps({
   );
 }
 
+/** Timeline of steps/objectives the student can tap to check off — same as web CheckableTimeline. */
+export function CheckableTimeline({ items, tone = 'violet' }: { items: string[]; tone?: InteractiveTone }) {
+  return <CheckableSteps items={items} tone={tone} />;
+}
+
+/** Text with a Read more / Read less toggle once it gets long. */
+export function ExpandableText({ text, threshold = 260 }: { text?: string; threshold?: number }) {
+  const [expanded, setExpanded] = useState(false);
+  const safeText = String(text || '');
+  if (!safeText.trim()) return null;
+  const isLong = safeText.length > threshold;
+  const display = isLong && !expanded ? `${safeText.slice(0, threshold - 40).trim()}…` : safeText;
+  return (
+    <View>
+      <Text style={styles.expandText}>{display}</Text>
+      {isLong ? (
+        <Pressable onPress={() => setExpanded((v) => !v)} style={styles.expandBtn} accessibilityRole="button">
+          <Text style={styles.expandBtnLabel}>{expanded ? 'Read less ↑' : 'Read more ↓'}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+/** Tap-to-flip card for terms / concepts. */
+export function FlipCard({
+  front,
+  back,
+  tone = 'amber',
+}: {
+  front: ReactNode;
+  back: ReactNode;
+  tone?: InteractiveTone;
+}) {
+  const c = toneOf(tone);
+  const [flipped, setFlipped] = useState(false);
+  const tap = useTapScale();
+  return (
+    <AnimatedPressable
+      onPress={() => setFlipped((v) => !v)}
+      onPressIn={tap.onPressIn}
+      onPressOut={tap.onPressOut}
+      accessibilityRole="button"
+      accessibilityState={{ expanded: flipped }}
+      style={[styles.flipCard, tap.style, { borderColor: c.softBorder, backgroundColor: flipped ? '#FFFFFF' : c.soft }]}
+    >
+      {flipped ? (
+        <Animated.View entering={FadeIn.duration(180)}>{back}</Animated.View>
+      ) : (
+        <Animated.View entering={FadeIn.duration(180)}>{front}</Animated.View>
+      )}
+      <Text style={[styles.flipHint, { color: c.accent }]}>{flipped ? 'Tap to flip back ↻' : 'Tap to flip ↻'}</Text>
+    </AnimatedPressable>
+  );
+}
+
+/** One-item-at-a-time carousel — matches web Practice Recall layout. */
+export function OneAtATimeCarousel({
+  items,
+  tone = 'fuchsia',
+}: {
+  items: string[];
+  tone?: InteractiveTone;
+  icon?: string;
+}) {
+  const c = toneOf(tone);
+  const [index, setIndex] = useState(0);
+  if (!items.length) return null;
+  const item = items[Math.min(index, items.length - 1)];
+  return (
+    <View style={styles.carouselWrap}>
+      <View style={[styles.carouselCard, { borderColor: c.softBorder, backgroundColor: c.soft }]}>
+        <Text style={styles.carouselText}>{item}</Text>
+      </View>
+      <View style={styles.carouselNav}>
+        <Pressable
+          onPress={() => setIndex((v) => Math.max(0, v - 1))}
+          disabled={index === 0}
+          style={[styles.carouselBtn, { borderColor: c.softBorder, opacity: index === 0 ? 0.4 : 1 }]}
+        >
+          <Text style={[styles.carouselBtnLabel, { color: c.accent }]}>← Prev</Text>
+        </Pressable>
+        <View style={styles.carouselDots}>
+          {items.map((_, i) => (
+            <Pressable
+              key={i}
+              onPress={() => setIndex(i)}
+              style={[
+                styles.carouselDot,
+                { width: i === index ? 18 : 8, backgroundColor: i === index ? c.accent : c.softBorder },
+              ]}
+            />
+          ))}
+        </View>
+        <Pressable
+          onPress={() => setIndex((v) => Math.min(items.length - 1, v + 1))}
+          disabled={index === items.length - 1}
+          style={[
+            styles.carouselBtn,
+            { borderColor: c.accent, backgroundColor: c.accent, opacity: index === items.length - 1 ? 0.4 : 1 },
+          ]}
+        >
+          <Text style={[styles.carouselBtnLabel, { color: '#fff' }]}>Next →</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   selfCheckWrap: { borderRadius: 14, borderWidth: 1, padding: 12, gap: 10 },
   selfCheckHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
@@ -355,4 +510,20 @@ const styles = StyleSheet.create({
   stepBadgeText: { fontSize: 11, fontWeight: '800' },
   stepText: { flex: 1, fontSize: 14, lineHeight: 21, color: '#334155', paddingTop: 3 },
   stepTextDone: { color: '#94a3b8', textDecorationLine: 'line-through' },
+  revealHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  revealPromptTitle: { flex: 1, fontSize: 15, fontWeight: '800', lineHeight: 21 },
+  revealTextAfterTitle: { marginTop: 8 },
+  expandText: { fontSize: 15, lineHeight: 22, color: '#334155' },
+  expandBtn: { marginTop: 6 },
+  expandBtnLabel: { fontSize: 13, fontWeight: '700', color: '#0369a1' },
+  flipCard: { borderRadius: 14, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 14, minHeight: 88 },
+  flipHint: { marginTop: 8, fontSize: 11, fontWeight: '700' },
+  carouselWrap: { gap: 10 },
+  carouselCard: { borderRadius: 14, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 14 },
+  carouselText: { fontSize: 15, lineHeight: 22, color: '#1e293b', fontWeight: '500' },
+  carouselNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  carouselBtn: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8 },
+  carouselBtnLabel: { fontSize: 13, fontWeight: '700' },
+  carouselDots: { flexDirection: 'row', gap: 6, alignItems: 'center' },
+  carouselDot: { height: 8, borderRadius: 4 },
 });

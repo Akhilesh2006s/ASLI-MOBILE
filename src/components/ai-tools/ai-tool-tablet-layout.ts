@@ -56,12 +56,9 @@ export function useAiToolTabletLayout() {
   // Stacked form → output on tablet; split panes stay off for readability on boards.
   const useSplitLayout = false;
   const pagePad = isTablet ? AI_TOOL_PAGE_PAD_TABLET : AI_TOOL_PAGE_PAD_MOBILE;
-  /** Full-bleed output — pull both sides so no side gutters remain. */
+  /** Full-bleed output — equal negative margins only (no fixed window width). */
   const outputBleedStyle = {
-    marginLeft: -pagePad,
-    marginRight: -pagePad,
-    width,
-    maxWidth: width,
+    marginHorizontal: -pagePad,
     alignSelf: 'stretch' as const,
   };
   return { isTablet, isDigitalBoard, useSplitLayout, splitMaxWidth, pagePad, outputBleedStyle };

@@ -122,7 +122,6 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 12,
     paddingHorizontal: 12,
-    paddingLeft: 14,
   },
   iconBadge: {
     width: 36,
@@ -164,9 +163,8 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   body: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 10,
-    paddingLeft: 14,
     backgroundColor: '#FFFFFF',
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: 'rgba(15,23,42,0.06)',

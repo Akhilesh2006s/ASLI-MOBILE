@@ -5,8 +5,10 @@ import {
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
   type ViewStyle,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import {
   buildPdfInjectScript,
@@ -20,6 +22,11 @@ import {
   type PdfUrlLoadTarget,
 } from '../../utils/contentPreview';
 
+const TV_MIN_WIDTH = 1024;
+const ZOOM_STEP = 1.25;
+const MIN_ZOOM = 0.5;
+const MAX_ZOOM = 4;
+
 type Props = {
   fileUrl: string;
   title?: string;
@@ -28,6 +35,8 @@ type Props = {
 };
 
 export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange }: Props) {
+  const { width, height } = useWindowDimensions();
+  const isTvView = width >= TV_MIN_WIDTH && width >= height;
   const webRef = useRef<WebView>(null);
   const webReadyRef = useRef(false);
   const [webReady, setWebReady] = useState(false);
@@ -36,6 +45,9 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
   const [rendering, setRendering] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageCount, setPageCount] = useState(0);
+  const [zoom, setZoom] = useState(1);
   const injectedRef = useRef(false);
   const mountedRef = useRef(true);
   const fallbackTriedRef = useRef(false);
@@ -60,18 +72,19 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
   }, [webReady]);
 
   const injectWhenReady = useCallback((script: string) => {
+    const wrapped = `window.__pdfViewerConfig=${JSON.stringify({ tv: isTvView })};${script}`;
     const run = () => {
       if (!mountedRef.current) return;
       if (webRef.current && webReadyRef.current) {
         injectedRef.current = true;
         setRendering(true);
-        webRef.current.injectJavaScript(script);
+        webRef.current.injectJavaScript(wrapped);
         return;
       }
       setTimeout(run, 20);
     };
     run();
-  }, []);
+  }, [isTvView]);
 
   const loadBase64Fallback = useCallback(async () => {
     if (fallbackTriedRef.current) {
@@ -110,6 +123,9 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
     setError(null);
     setUrlTarget(null);
     setBase64Payload(null);
+    setPage(1);
+    setPageCount(0);
+    setZoom(1);
 
     void resolvePdfUrlTarget(fileUrlRef.current, titleRef.current).then((target) => {
       if (!mountedRef.current || !target?.url) return;
@@ -169,6 +185,19 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
     };
   }, [webReady, base64Payload, urlTarget, injectWhenReady]);
 
+  const injectViewerCommand = useCallback((command: string) => {
+    webRef.current?.injectJavaScript(
+      `(function(){try{var v=window.__pdfViewer;if(v){${command}}}catch(e){}})();true;`
+    );
+  }, []);
+
+  useEffect(() => {
+    if (!webReadyRef.current || !injectedRef.current) return;
+    webRef.current?.injectJavaScript(
+      `window.__pdfViewerConfig=${JSON.stringify({ tv: isTvView })};if(typeof window.__pdfApplyConfig==='function'){window.__pdfApplyConfig();}true;`
+    );
+  }, [isTvView]);
+
   const onWebMessage = useCallback(
     (event: WebViewMessageEvent) => {
       const data = event.nativeEvent.data;
@@ -182,6 +211,24 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
       }
       if (data === 'pdf-error') {
         void loadBase64Fallback();
+        return;
+      }
+      if (typeof data === 'string' && data.charAt(0) === '{') {
+        try {
+          const msg = JSON.parse(data) as {
+            type?: string;
+            page?: number;
+            pages?: number;
+            zoom?: number;
+          };
+          if (msg.type === 'pdf-state') {
+            if (typeof msg.page === 'number') setPage(msg.page);
+            if (typeof msg.pages === 'number') setPageCount(msg.pages);
+            if (typeof msg.zoom === 'number') setZoom(msg.zoom);
+          }
+        } catch {
+          /* ignore */
+        }
       }
     },
     [loadBase64Fallback]
@@ -211,30 +258,96 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
     );
   }
 
+  const showTvControls = isTvView;
+  const controlsReady = !busy && pageCount > 0;
+  const canZoomOut = controlsReady && zoom > MIN_ZOOM + 0.01;
+  const canZoomIn = controlsReady && zoom < MAX_ZOOM - 0.01;
+  const isFitPage = controlsReady && Math.abs(zoom - 1) < 0.02;
+
   return (
     <View style={[styles.wrap, style]} collapsable={false}>
-      <WebView
-        key={reloadKey}
-        ref={webRef}
-        source={{ html: PDF_JS_VIEWER_SHELL_HTML, baseUrl: YOUTUBE_EMBED_ORIGIN }}
-        style={styles.viewer}
-        pointerEvents={busy ? 'none' : 'auto'}
-        originWhitelist={['*']}
-        javaScriptEnabled
-        domStorageEnabled
-        allowsInlineMediaPlayback
-        mixedContentMode="always"
-        setSupportMultipleWindows={false}
-        cacheEnabled
-        cacheMode="LOAD_CACHE_ELSE_NETWORK"
-        onMessage={onWebMessage}
-      />
-      {busy && (
-        <View style={styles.overlay} pointerEvents="auto">
-          <ActivityIndicator size="large" color="#6366F1" />
-          <Text style={styles.loadingText}>Opening preview…</Text>
+      <View style={styles.viewerWrap}>
+        <WebView
+          key={reloadKey}
+          ref={webRef}
+          source={{ html: PDF_JS_VIEWER_SHELL_HTML, baseUrl: YOUTUBE_EMBED_ORIGIN }}
+          style={styles.viewer}
+          pointerEvents={busy ? 'none' : 'auto'}
+          originWhitelist={['*']}
+          javaScriptEnabled
+          domStorageEnabled
+          allowsInlineMediaPlayback
+          mixedContentMode="always"
+          setSupportMultipleWindows={false}
+          scalesPageToFit={false}
+          setBuiltInZoomControls={false}
+          nestedScrollEnabled
+          cacheEnabled
+          cacheMode="LOAD_CACHE_ELSE_NETWORK"
+          onMessage={onWebMessage}
+        />
+        {busy ? (
+          <View style={styles.overlay} pointerEvents="auto">
+            <ActivityIndicator size="large" color="#6366F1" />
+            <Text style={styles.loadingText}>Opening preview…</Text>
+          </View>
+        ) : null}
+      </View>
+      {showTvControls ? (
+        <View style={styles.tvBar}>
+          <TouchableOpacity
+            style={[styles.tvBtn, !canZoomOut && styles.tvBtnDisabled]}
+            onPress={() => injectViewerCommand(`v.zoomBy(${1 / ZOOM_STEP})`)}
+            disabled={!canZoomOut}
+            accessibilityRole="button"
+            accessibilityLabel="Zoom out"
+          >
+            <Ionicons name="remove" size={22} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tvFitBtn, isFitPage && styles.tvFitBtnActive, !controlsReady && styles.tvBtnDisabled]}
+            onPress={() => injectViewerCommand('v.fitPage()')}
+            disabled={!controlsReady}
+            accessibilityRole="button"
+            accessibilityLabel="Fit page to screen"
+          >
+            <Ionicons name="contract-outline" size={18} color="#fff" />
+            <Text style={styles.tvFitText}>Fit page</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tvBtn, !canZoomIn && styles.tvBtnDisabled]}
+            onPress={() => injectViewerCommand(`v.zoomBy(${ZOOM_STEP})`)}
+            disabled={!canZoomIn}
+            accessibilityRole="button"
+            accessibilityLabel="Zoom in"
+          >
+            <Ionicons name="add" size={22} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.tvZoomLabel}>{Math.round(zoom * 100)}%</Text>
+          <View style={styles.tvBarSpacer} />
+          <TouchableOpacity
+            style={[styles.tvBtn, (!controlsReady || page <= 1) && styles.tvBtnDisabled]}
+            onPress={() => injectViewerCommand('v.prevPage()')}
+            disabled={!controlsReady || page <= 1}
+            accessibilityRole="button"
+            accessibilityLabel="Previous page"
+          >
+            <Ionicons name="chevron-back" size={22} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.tvPageLabel}>
+            {controlsReady ? `${page} / ${pageCount}` : '— / —'}
+          </Text>
+          <TouchableOpacity
+            style={[styles.tvBtn, (!controlsReady || page >= pageCount) && styles.tvBtnDisabled]}
+            onPress={() => injectViewerCommand('v.nextPage()')}
+            disabled={!controlsReady || page >= pageCount}
+            accessibilityRole="button"
+            accessibilityLabel="Next page"
+          >
+            <Ionicons name="chevron-forward" size={22} color="#fff" />
+          </TouchableOpacity>
         </View>
-      )}
+      ) : null}
     </View>
   );
 }
@@ -243,6 +356,10 @@ const styles = StyleSheet.create({
   wrap: {
     flex: 1,
     backgroundColor: '#525659',
+  },
+  viewerWrap: {
+    flex: 1,
+    minHeight: 0,
   },
   viewer: {
     flex: 1,
@@ -285,5 +402,60 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     fontSize: 14,
+  },
+  tvBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
+    backgroundColor: '#3c4043',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.12)',
+  },
+  tvBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  tvBtnDisabled: {
+    opacity: 0.35,
+  },
+  tvFitBtn: {
+    minHeight: 48,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  tvFitBtnActive: {
+    backgroundColor: '#6366F1',
+  },
+  tvFitText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  tvZoomLabel: {
+    color: '#e2e8f0',
+    fontSize: 14,
+    fontWeight: '700',
+    minWidth: 48,
+    textAlign: 'center',
+  },
+  tvBarSpacer: {
+    flex: 1,
+  },
+  tvPageLabel: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+    minWidth: 64,
+    textAlign: 'center',
   },
 });

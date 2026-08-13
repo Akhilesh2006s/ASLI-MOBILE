@@ -28,7 +28,7 @@ export async function fetchStudentNotifications(token: string): Promise<StudentN
           : 'Teacher';
       items.push({
         _id: `diary-${entry._id}`,
-        title: `Teacher Diary — ${teacher}`,
+        title: `Teachers report — ${teacher}`,
         message: entry.summary || entry.workDone || entry.notes || entry.content || 'New class update',
         type: 'diary',
         createdAt: entry.forDate || entry.createdAt || new Date().toISOString(),

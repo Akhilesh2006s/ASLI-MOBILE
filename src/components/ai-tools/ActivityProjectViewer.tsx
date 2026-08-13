@@ -50,6 +50,10 @@ type NormalizedActivity = {
   expectedOutcomes: string;
   realLife: string;
   reflection: string;
+  safetyCareInstructions: string[];
+  observationTable: string;
+  creativeOutput: string;
+  selfAssessmentRubric: string[];
 };
 
 type SectionDef = {
@@ -135,6 +139,18 @@ function normalizeActivity(raw: ParsedActivity, idx: number, mode: 'student' | '
     ),
     realLife: String(a.real_life_application || '').trim(),
     reflection: cleanReflectionProse(String(a.reflection_exit_ticket || a.reflection || '')),
+    safetyCareInstructions: dedupeStringLines(
+      coalesceLines(a.safety_care_instructions || a.safety_instructions),
+    ),
+    observationTable: firstNonEmptyFromActivity(
+      a.observation_data_recording_table,
+      a.observation_table,
+    ),
+    creativeOutput: firstNonEmptyFromActivity(
+      a.creative_output_final_product,
+      a.creative_output,
+    ),
+    selfAssessmentRubric: dedupeStringLines(coalesceLines(a.self_assessment_rubric)),
   };
 }
 
@@ -194,7 +210,7 @@ const TEACHER_SECTIONS: SectionDef[] = [
     stripe: '#a5b4fc',
     hasContent: (a) => a.teacherInstructions.length > 0,
     render: (a) => (
-      <SelfCheckList items={a.teacherInstructions} tone="indigo" prompt="Tap each once covered" />
+      <SelfCheckList items={a.teacherInstructions} tone="indigo" prompt="Tap each once done" />
     ),
   },
   {
@@ -333,12 +349,104 @@ const STUDENT_SECTIONS: SectionDef[] = [
     render: (a) => <SelfCheckList items={a.learningObjectives} tone="violet" />,
   },
   {
+    num: 4,
+    title: 'NCF competency / learning outcome alignment',
+    icon: 'school-outline',
+    stripe: '#93c5fd',
+    hasContent: (a) => a.ncfAlignment.length > 0,
+    render: (a) => (
+      <SelfCheckList items={a.ncfAlignment} tone="sky" prompt="Tap each alignment point once reviewed" />
+    ),
+  },
+  {
+    num: 5,
+    title: 'Materials required',
+    icon: 'cube-outline',
+    stripe: '#fcd34d',
+    hasContent: (a) => a.materials.length > 0,
+    render: (a) => (
+      <View style={styles.checkList}>
+        {a.materials.map((m, i) => (
+          <TapToMarkItem key={`${m}-${i}`} text={m} tone="amber" markedStyle="strike" />
+        ))}
+      </View>
+    ),
+  },
+  {
     num: 6,
     title: 'Step-by-step Student Procedure',
     icon: 'list-outline',
     stripe: '#6ee7b7',
     hasContent: (a) => a.steps.length > 0,
     render: (a) => <CheckableSteps items={a.steps} tone="emerald" />,
+  },
+  {
+    num: 7,
+    title: 'Safety and Care Instructions',
+    icon: 'warning-outline',
+    stripe: '#cbd5e1',
+    hasContent: (a) => a.safetyCareInstructions.length > 0,
+    render: (a) => (
+      <SelfCheckList items={a.safetyCareInstructions} tone="slate" prompt="Tap each once you've checked it" />
+    ),
+  },
+  {
+    num: 8,
+    title: 'Observation / Data Recording Table',
+    icon: 'clipboard-outline',
+    stripe: '#a5b4fc',
+    hasContent: (a) => !!a.observationTable,
+    render: (a) => <PreWrapText>{a.observationTable}</PreWrapText>,
+  },
+  {
+    num: 9,
+    title: 'Creative Output / Final Product',
+    icon: 'sparkles-outline',
+    stripe: '#c4b5fd',
+    hasContent: (a) => !!a.creativeOutput,
+    render: (a) => <PreWrapText>{a.creativeOutput}</PreWrapText>,
+  },
+  {
+    num: 10,
+    title: 'Differentiation: Support and Extension',
+    icon: 'people-outline',
+    stripe: '#f9a8d4',
+    hasContent: (a) => !!a.differentiation,
+    render: (a) => <PreWrapText>{a.differentiation}</PreWrapText>,
+  },
+  {
+    num: 11,
+    title: 'Self-Assessment Rubric',
+    icon: 'clipboard-outline',
+    stripe: '#fda4af',
+    hasContent: (a) => a.selfAssessmentRubric.length > 0,
+    render: (a) => (
+      <SelfCheckList items={a.selfAssessmentRubric} tone="rose" prompt="Tap each criterion once assessed" />
+    ),
+  },
+  {
+    num: 12,
+    title: 'Expected Learning Outcomes',
+    icon: 'trophy-outline',
+    stripe: '#67e8f9',
+    hasContent: (a) => !!a.expectedOutcomes,
+    render: (a) => <PreWrapText>{a.expectedOutcomes}</PreWrapText>,
+  },
+  {
+    num: 13,
+    title: 'Real-life Application',
+    icon: 'sparkles-outline',
+    stripe: '#e879f9',
+    hasContent: (a) => !!a.realLife,
+    render: (a) => <PreWrapText>{a.realLife}</PreWrapText>,
+  },
+  {
+    num: 14,
+    title: 'Reflection / Exit Ticket',
+    icon: 'bulb-outline',
+    stripe: '#fdba74',
+    hasContent: (a) => !!a.reflection,
+    render: (a) => <PreWrapText>{a.reflection}</PreWrapText>,
   },
 ];
 
