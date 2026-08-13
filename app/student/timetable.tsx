@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   Image,
-  Linking,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  View,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
+import { Ionicons } from '@expo/vector-icons';
 import { API_BASE_URL } from '../../src/lib/api-config';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import { EmptyState, ErrorState, GlassPanel, LoadingState } from '../../src/components/ui';
@@ -21,19 +24,18 @@ type PhotoPayload = {
   imageUrl?: string;
 };
 
-function resolveUrl(imageUrl?: string): string {
-  const raw = String(imageUrl || '').trim();
-  if (!raw) return '';
-  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
-  if (raw.startsWith('/')) return `${API_BASE_URL}${raw}`;
-  return `${API_BASE_URL}/${raw}`;
+async function resolveAuthenticatedFileUrl(token: string): Promise<string> {
+  return `${API_BASE_URL}/api/timetable/photo/file?token=${encodeURIComponent(token)}`;
 }
 
 export default function StudentTimetable() {
   const router = useRouter();
+  const { width, height } = useWindowDimensions();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [photo, setPhoto] = useState<PhotoPayload | null>(null);
+  const [imageUrl, setImageUrl] = useState('');
+  const [fullscreen, setFullscreen] = useState(false);
 
   useBackNavigation('/dashboard', false);
 
@@ -44,6 +46,7 @@ export default function StudentTimetable() {
       if (!token) {
         setError('Please sign in again.');
         setPhoto(null);
+        setImageUrl('');
         return;
       }
       const res = await fetch(`${API_BASE_URL}/api/timetable/photo`, {
@@ -51,14 +54,18 @@ export default function StudentTimetable() {
       });
       if (!res.ok) {
         setPhoto(null);
+        setImageUrl('');
         setError('Could not load timetable photo.');
         return;
       }
       const data = await res.json();
-      setPhoto(data?.data || null);
+      const next = data?.data || null;
+      setPhoto(next);
+      setImageUrl(next?.imageUrl ? await resolveAuthenticatedFileUrl(token) : '');
     } catch {
       setError('Could not load timetable photo.');
       setPhoto(null);
+      setImageUrl('');
     } finally {
       setLoading(false);
     }
@@ -68,8 +75,6 @@ export default function StudentTimetable() {
     void load();
   }, [load]);
 
-  const imageUrl = resolveUrl(photo?.imageUrl);
-
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StudentScreenHeader
@@ -77,16 +82,27 @@ export default function StudentTimetable() {
         subtitle="Photo from your school"
         onBack={() => router.back()}
       />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        maximumZoomScale={3}
+        minimumZoomScale={1}
+        bouncesZoom
+      >
         {loading ? (
           <LoadingState />
         ) : error ? (
-          <ErrorState message={error} onRetry={() => { setLoading(true); void load(); }} />
+          <ErrorState
+            message={error}
+            onRetry={() => {
+              setLoading(true);
+              void load();
+            }}
+          />
         ) : imageUrl ? (
           <GlassPanel style={styles.card} radius={STUDENT_RADIUS.card} tone="strong">
-            <Pressable onPress={() => Linking.openURL(imageUrl)}>
+            <Pressable onPress={() => setFullscreen(true)} accessibilityRole="imagebutton">
               <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="contain" />
-              <Text style={styles.hint}>Tap to open full size</Text>
+              <Text style={styles.hint}>Tap to view larger · pinch to zoom</Text>
             </Pressable>
           </GlassPanel>
         ) : (
@@ -97,6 +113,42 @@ export default function StudentTimetable() {
           />
         )}
       </ScrollView>
+
+      <Modal
+        visible={fullscreen}
+        animationType="fade"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setFullscreen(false)}
+      >
+        <SafeAreaView style={styles.fullscreen} edges={['top', 'bottom']}>
+          <View style={styles.fullscreenHeader}>
+            <Text style={styles.fullscreenTitle} numberOfLines={1}>
+              {photo?.label ? `${photo.label} timetable` : 'Class timetable'}
+            </Text>
+            <Pressable
+              onPress={() => setFullscreen(false)}
+              style={styles.closeBtn}
+              accessibilityLabel="Close"
+            >
+              <Ionicons name="close" size={22} color="#fff" />
+            </Pressable>
+          </View>
+          <ScrollView
+            style={styles.fullscreenScroll}
+            contentContainerStyle={styles.fullscreenContent}
+            maximumZoomScale={4}
+            minimumZoomScale={1}
+            centerContent
+            bouncesZoom
+          >
+            <Image
+              source={{ uri: imageUrl }}
+              style={{ width: width - 16, height: Math.max(420, height * 0.75) }}
+              resizeMode="contain"
+            />
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -116,5 +168,30 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 12,
     color: STUDENT.textMuted,
+  },
+  fullscreen: { flex: 1, backgroundColor: '#0f172a' },
+  fullscreenHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  fullscreenTitle: { flex: 1, color: '#fff', fontSize: 16, fontWeight: '700' },
+  closeBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fullscreenScroll: { flex: 1 },
+  fullscreenContent: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 8,
   },
 });

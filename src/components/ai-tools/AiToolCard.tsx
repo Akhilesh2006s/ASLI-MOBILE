@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   card: {
-    minHeight: 126,
+    height: 132,
     width: '100%',
     maxWidth: '100%',
     flexDirection: 'row',
@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
     ...AI_SHADOW,
   },
   cardCompact: {
-    minHeight: 194,
+    height: 210,
     flexDirection: 'column',
   },
   cardFill: {

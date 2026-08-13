@@ -55,6 +55,9 @@ export default function IQRankBoostQuiz() {
     score: number;
   } | null>(null);
   const [subjectName, setSubjectName] = useState('');
+  const [hasStarted, setHasStarted] = useState(false);
+  const [isDaily, setIsDaily] = useState(false);
+  const [dailyMeta, setDailyMeta] = useState<{ dateKey?: string; completed?: boolean } | null>(null);
 
   useEffect(() => {
     if (quizId) void fetchQuiz();
@@ -65,6 +68,11 @@ export default function IQRankBoostQuiz() {
   const fetchQuiz = async () => {
     try {
       setIsLoading(true);
+      setHasStarted(false);
+      setIsSubmitted(false);
+      setResults(null);
+      setAnswers({});
+      setCurrentQuestionIndex(0);
       const token = await SecureStore.getItemAsync('authToken');
       const response = await fetch(
         `${API_BASE_URL}/api/student/iq-rank-questions?quizId=${encodeURIComponent(String(quizId))}`,
@@ -79,10 +87,14 @@ export default function IQRankBoostQuiz() {
       if (response.ok) {
         const data = await response.json();
         const fetched = data.data || data.questions || [];
-        const shuffled = [...fetched].sort(() => Math.random() - 0.5);
-        setQuestions(shuffled);
+        const dailyBank =
+          data.quiz?.questionBankSource === 'daily-quiz-xlsx' || data.quiz?.activityType === 'daily';
+        setIsDaily(Boolean(dailyBank));
+        setDailyMeta(data.daily || null);
+        // Keep API order for daily (category spread). Only shuffle one-off quizzes.
+        setQuestions(dailyBank ? fetched : [...fetched].sort(() => Math.random() - 0.5));
         if (data.quiz?.title) setQuizTitle(String(data.quiz.title));
-        const subject = data.quiz?.subject || shuffled[0]?.subject;
+        const subject = data.quiz?.subject || fetched[0]?.subject;
         if (subject) {
           setSubjectName(typeof subject === 'object' ? subject?.name || '' : '');
         }
@@ -170,6 +182,57 @@ export default function IQRankBoostQuiz() {
           <ActivityIndicator size="large" color={STUDENT.primary} />
           <Text style={styles.loadingText}>Loading quiz...</Text>
         </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!isLoading && questions.length === 0) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.emptyContainer}>
+          <Ionicons name="alert-circle-outline" size={42} color="#94a3b8" />
+          <Text style={styles.emptyText}>No questions available</Text>
+          <Text style={styles.emptySub}>
+            This quiz may not be assigned to your class or trial account.
+          </Text>
+          <TouchableOpacity style={styles.nextButton} onPress={() => router.replace(LIST_PATH)}>
+            <Text style={styles.nextButtonText}>Back to quizzes</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!hasStarted && !isSubmitted) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ScrollView contentContainerStyle={styles.lobbyScroll} showsVerticalScrollIndicator={false}>
+          <LinearGradient colors={['#0284c7', '#0d9488']} style={styles.lobbyHero}>
+            <TouchableOpacity onPress={() => router.replace(LIST_PATH)} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={22} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.lobbyEyebrow}>{isDaily ? 'TODAY’S SET' : 'READY TO START'}</Text>
+            <Text style={styles.lobbyTitle}>{quizTitle}</Text>
+            {subjectName ? <Text style={styles.lobbySub}>{subjectName}</Text> : null}
+          </LinearGradient>
+          <GlassPanel style={styles.lobbyCard} radius={18}>
+            <Text style={styles.lobbyCardTitle}>
+              {isDaily ? `${questions.length} questions for your class` : `${questions.length} questions`}
+            </Text>
+            <Text style={styles.lobbyCardBody}>
+              {isDaily
+                ? 'Same style every day: 5 questions from IQ, reasoning, vocab, maths & science — only from your class bank. Different set tomorrow.'
+                : 'Answer carefully. You can jump between questions before submitting.'}
+            </Text>
+            {dailyMeta?.completed ? (
+              <Text style={styles.lobbyDone}>You already completed today’s set — retake to practice again.</Text>
+            ) : null}
+            <TouchableOpacity style={styles.startBtn} onPress={() => setHasStarted(true)}>
+              <Ionicons name="play" size={18} color="#fff" />
+              <Text style={styles.startBtnText}>Start quiz</Text>
+            </TouchableOpacity>
+          </GlassPanel>
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -564,6 +627,37 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   nextButtonText: { color: '#fff', fontWeight: '800', fontSize: 14 },
+  lobbyScroll: { paddingBottom: 40 },
+  lobbyHero: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 28,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  lobbyEyebrow: {
+    marginTop: 16,
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  lobbyTitle: { color: '#fff', fontSize: 26, fontWeight: '900', marginTop: 6 },
+  lobbySub: { color: 'rgba(255,255,255,0.9)', marginTop: 6, fontSize: 14 },
+  lobbyCard: { marginHorizontal: 16, marginTop: -12, padding: 18 },
+  lobbyCardTitle: { fontSize: 17, fontWeight: '800', color: '#0f172a', marginBottom: 8 },
+  lobbyCardBody: { fontSize: 13, lineHeight: 19, color: '#64748b', marginBottom: 14 },
+  lobbyDone: { fontSize: 12, color: '#0d9488', fontWeight: '600', marginBottom: 12 },
+  startBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#0284c7',
+    borderRadius: 14,
+    paddingVertical: 14,
+  },
+  startBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
   resultsScroll: { paddingBottom: 40 },
   resultsHero: {
     margin: 16,
