@@ -15,6 +15,7 @@ import WeeklyDigestCard from '../../../src/components/student/WeeklyDigestCard';
 import TodaysTasksSection from './overview/TodaysTasksSection';
 import StudyCalendarSection from './overview/StudyCalendarSection';
 import ClassTimetableSection from './overview/ClassTimetableSection';
+import QuizPanelSection from './overview/QuizPanelSection';
 import MyHomeworkSection from './overview/MyHomeworkSection';
 import {
   buildTodaysTasksContentList,
@@ -852,6 +853,8 @@ const OverviewView = memo(function OverviewView({
           <StudyCalendarSection {...calendarSectionProps} />
         </>
       )}
+
+      <QuizPanelSection />
 
       <ClassTimetableSection />
 

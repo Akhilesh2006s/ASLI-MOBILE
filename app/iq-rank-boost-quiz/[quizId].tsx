@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Pressable,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -57,7 +58,13 @@ export default function IQRankBoostQuiz() {
   const [subjectName, setSubjectName] = useState('');
   const [hasStarted, setHasStarted] = useState(false);
   const [isDaily, setIsDaily] = useState(false);
-  const [dailyMeta, setDailyMeta] = useState<{ dateKey?: string; completed?: boolean } | null>(null);
+  const [dailyMeta, setDailyMeta] = useState<{
+    dateKey?: string;
+    completed?: boolean;
+    score?: number;
+    pickCount?: number;
+  } | null>(null);
+  const [lockedUntilTomorrow, setLockedUntilTomorrow] = useState(false);
 
   useEffect(() => {
     if (quizId) void fetchQuiz();
@@ -88,7 +95,9 @@ export default function IQRankBoostQuiz() {
         const data = await response.json();
         const fetched = data.data || data.questions || [];
         const dailyBank =
-          data.quiz?.questionBankSource === 'daily-quiz-xlsx' || data.quiz?.activityType === 'daily';
+          data.quiz?.questionBankSource === 'daily-quiz-xlsx' ||
+          data.quiz?.activityType === 'daily' ||
+          Boolean(data.daily);
         setIsDaily(Boolean(dailyBank));
         setDailyMeta(data.daily || null);
         // Keep API order for daily (category spread). Only shuffle one-off quizzes.
@@ -97,6 +106,51 @@ export default function IQRankBoostQuiz() {
         const subject = data.quiz?.subject || fetched[0]?.subject;
         if (subject) {
           setSubjectName(typeof subject === 'object' ? subject?.name || '' : '');
+        }
+
+        if (dailyBank && data.daily?.completed) {
+          const total = Number(data.daily.pickCount) || fetched.length || 5;
+          let score = data.daily.score != null ? Number(data.daily.score) : null;
+          let correct = 0;
+          try {
+            const statusRes = await fetch(`${API_BASE_URL}/api/student/daily-quiz-status`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (statusRes.ok) {
+              const statusJson = await statusRes.json();
+              const today = statusJson?.data?.today;
+              if (today?.completed) {
+                const t = Number(today.totalQuestions) || total;
+                correct = Number(today.correctCount) || 0;
+                score = today.score != null ? Number(today.score) : score;
+                setResults({
+                  total: t,
+                  correct,
+                  incorrect: Math.max(0, t - correct),
+                  unattempted: 0,
+                  score: score ?? 0,
+                });
+                setIsSubmitted(true);
+                setLockedUntilTomorrow(true);
+                setHasStarted(true);
+                return;
+              }
+            }
+          } catch {
+            /* fall through */
+          }
+          if (score != null) {
+            setResults({
+              total,
+              correct: 0,
+              incorrect: 0,
+              unattempted: 0,
+              score,
+            });
+            setIsSubmitted(true);
+            setLockedUntilTomorrow(true);
+            setHasStarted(true);
+          }
         }
       } else {
         setQuestions([]);
@@ -140,7 +194,7 @@ export default function IQRankBoostQuiz() {
             : questions[0].subject
           : quizId;
 
-      await fetch(`${API_BASE_URL}/api/student/iq-rank-quiz-result`, {
+      const res = await fetch(`${API_BASE_URL}/api/student/iq-rank-quiz-result`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -157,8 +211,28 @@ export default function IQRankBoostQuiz() {
           answers,
         }),
       });
+      const data = await res.json().catch(() => null);
+      if (res.status === 409 || data?.code === 'DAILY_QUIZ_ALREADY_COMPLETED') {
+        setLockedUntilTomorrow(true);
+        Alert.alert(
+          'Already completed today',
+          data?.message || 'Come back tomorrow for a new daily quiz.',
+        );
+        return;
+      }
+      if (!res.ok || !data?.success) {
+        Alert.alert(
+          'Could not save result',
+          data?.message || 'Your score is shown, but saving failed. Try again later.',
+        );
+        return;
+      }
+      if (data?.daily?.lockedUntilTomorrow || isDaily) {
+        setLockedUntilTomorrow(true);
+      }
     } catch (error) {
       console.error('Error submitting quiz:', error);
+      Alert.alert('Could not save result', 'Check your connection and try again.');
     }
   };
 
@@ -224,13 +298,25 @@ export default function IQRankBoostQuiz() {
                 ? 'Same style every day: 5 questions from IQ, reasoning, vocab, maths & science — only from your class bank. Different set tomorrow.'
                 : 'Answer carefully. You can jump between questions before submitting.'}
             </Text>
-            {dailyMeta?.completed ? (
-              <Text style={styles.lobbyDone}>You already completed today’s set — retake to practice again.</Text>
+            {dailyMeta?.completed || lockedUntilTomorrow ? (
+              <Text style={styles.lobbyDone}>
+                You already completed today’s set. Come back tomorrow for a new quiz.
+              </Text>
             ) : null}
-            <TouchableOpacity style={styles.startBtn} onPress={() => setHasStarted(true)}>
-              <Ionicons name="play" size={18} color="#fff" />
-              <Text style={styles.startBtnText}>Start quiz</Text>
-            </TouchableOpacity>
+            {dailyMeta?.completed || lockedUntilTomorrow ? (
+              <TouchableOpacity
+                style={[styles.startBtn, { backgroundColor: '#94a3b8' }]}
+                onPress={() => router.replace(LIST_PATH)}
+              >
+                <Ionicons name="lock-closed" size={18} color="#fff" />
+                <Text style={styles.startBtnText}>Locked until tomorrow</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.startBtn} onPress={() => setHasStarted(true)}>
+                <Ionicons name="play" size={18} color="#fff" />
+                <Text style={styles.startBtnText}>Start quiz</Text>
+              </TouchableOpacity>
+            )}
           </GlassPanel>
         </ScrollView>
       </SafeAreaView>
@@ -267,6 +353,11 @@ export default function IQRankBoostQuiz() {
             <TouchableOpacity style={styles.heroBtn} onPress={() => router.replace(LIST_PATH)}>
               <Text style={styles.heroBtnText}>Back to quizzes</Text>
             </TouchableOpacity>
+            {lockedUntilTomorrow || isDaily ? (
+              <Text style={[styles.lobbyDone, { color: 'rgba(255,255,255,0.95)', marginTop: 10 }]}>
+                Today’s set is saved. Next daily quiz unlocks tomorrow.
+              </Text>
+            ) : null}
           </LinearGradient>
 
           <Text style={styles.reviewHeading}>Review</Text>
