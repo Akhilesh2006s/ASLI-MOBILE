@@ -758,6 +758,10 @@ export default function ExamPage() {
     return () => clearInterval(timer);
   }, [exam, timeLeft]);
 
+  useEffect(() => {
+    questionScrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [currentIndex]);
+
   const fetchExam = async () => {
     try {
       const token = await SecureStore.getItemAsync('authToken');
@@ -1149,10 +1153,6 @@ export default function ExamPage() {
     setCurrentIndex(index);
     setShowQuestionDropdown(false);
   };
-
-  useEffect(() => {
-    questionScrollRef.current?.scrollTo({ y: 0, animated: false });
-  }, [currentIndex]);
 
   const renderPaletteItem = (q: Question, index: number) => {
     const answered = isAnswerProvided(q, answers[answerKey(q)]);

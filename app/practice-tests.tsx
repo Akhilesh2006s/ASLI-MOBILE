@@ -93,24 +93,41 @@ export default function PracticeTests() {
                   <Ionicons name="chevron-forward" size={20} color="#5B6779" />
                 </View>
                 <View style={styles.testMeta}>
-                  {test.duration && (
+                  {test.duration ? (
                     <View style={styles.metaItem}>
                       <Ionicons name="time" size={16} color="#6b7280" />
                       <Text style={styles.metaText}>{test.duration} min</Text>
                     </View>
-                  )}
-                  {test.questions && (
+                  ) : null}
+                  <View style={styles.metaItem}>
+                    <Ionicons name="document-text" size={16} color="#6b7280" />
+                    <Text style={styles.metaText}>
+                      {test.questionCount ??
+                        (Array.isArray(test.questions) ? test.questions.length : null) ??
+                        '—'}{' '}
+                      questions
+                    </Text>
+                  </View>
+                  {test.difficulty ? (
                     <View style={styles.metaItem}>
-                      <Ionicons name="document-text" size={16} color="#6b7280" />
-                      <Text style={styles.metaText}>{test.questions.length} questions</Text>
+                      <Ionicons name="speedometer-outline" size={16} color="#6b7280" />
+                      <Text style={styles.metaText}>{test.difficulty}</Text>
                     </View>
-                  )}
-                  {test.score !== undefined && (
+                  ) : null}
+                  {(test.bestScore != null || test.score != null) && (
                     <View style={styles.metaItem}>
                       <Ionicons name="trophy" size={16} color="#f59e0b" />
-                      <Text style={styles.metaText}>Best: {test.score}%</Text>
+                      <Text style={styles.metaText}>
+                        Best: {test.bestScore ?? test.score}%
+                      </Text>
                     </View>
                   )}
+                  {test.totalPoints != null ? (
+                    <View style={styles.metaItem}>
+                      <Ionicons name="star-outline" size={16} color="#6b7280" />
+                      <Text style={styles.metaText}>{test.totalPoints} pts</Text>
+                    </View>
+                  ) : null}
                 </View>
                 <TouchableOpacity
                   style={styles.startButton}

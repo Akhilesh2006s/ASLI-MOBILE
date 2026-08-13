@@ -1,5 +1,13 @@
-import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,45 +18,277 @@ import { useBackNavigation, getDashboardPath } from '../../src/hooks/useBackNavi
 import MathRenderer from '../../src/components/MathRenderer';
 import { GlassPanel } from '../../src/components/ui';
 
-interface Question {
-  _id: string;
+type Question = {
+  _id?: string;
   question: string;
-  options: string[];
-  correctAnswer: number;
+  type?: 'multiple-choice' | 'true-false' | 'short-answer' | string;
+  options?: string[] | Array<{ text?: string; label?: string } | string>;
+  correctAnswer?: string | string[] | number | boolean;
   explanation?: string;
+  points?: number;
+};
+
+type Quiz = {
+  _id: string;
+  title: string;
+  description?: string;
+  duration?: number;
+  difficulty?: string;
+  questions: Question[];
+  totalPoints?: number;
+};
+
+type QuizResults = {
+  total: number;
+  correct: number;
+  incorrect: number;
+  unattempted: number;
+  score: number;
+  totalPoints: number;
+  percentage: number;
+};
+
+function questionKey(q: Question, index: number) {
+  return String(q._id || q.question || index);
+}
+
+function normalizeOptions(q: Question): string[] {
+  const raw = Array.isArray(q.options) ? q.options : [];
+  const mapped = raw
+    .map((opt) => {
+      if (typeof opt === 'string') return opt.trim();
+      if (opt && typeof opt === 'object') {
+        return String(opt.text || opt.label || '').trim();
+      }
+      return String(opt ?? '').trim();
+    })
+    .filter(Boolean);
+
+  if (mapped.length) return mapped;
+  if (q.type === 'true-false') return ['True', 'False'];
+  return [];
+}
+
+function formatTime(seconds: number) {
+  const mins = Math.floor(Math.max(0, seconds) / 60);
+  const secs = Math.max(0, seconds) % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+function answersMatch(correct: unknown, given: string): boolean {
+  if (correct == null && correct !== 0 && correct !== false) return false;
+  const norm = (v: unknown) => String(v ?? '').trim().toLowerCase();
+  if (Array.isArray(correct)) {
+    return correct.some((c) => norm(c) === norm(given));
+  }
+  // numeric index → option text handled by caller
+  return norm(correct) === norm(given);
 }
 
 export default function QuizPage() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-  const [answers, setAnswers] = useState<Record<number, number>>({});
-  const [timeRemaining, setTimeRemaining] = useState(600); // 10 minutes
+  const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [results, setResults] = useState<QuizResults | null>(null);
+  const [dashboardPath, setDashboardPath] = useState('/dashboard');
+  const submittingRef = useRef(false);
+  const answersRef = useRef(answers);
+  const timeLeftRef = useRef(timeLeft);
+  const quizRef = useRef(quiz);
 
-  const [dashboardPath, setDashboardPath] = useState<string>('/dashboard');
+  answersRef.current = answers;
+  timeLeftRef.current = timeLeft;
+  quizRef.current = quiz;
 
   useEffect(() => {
-    if (id) {
-      fetchQuiz();
-    }
-    // Get dashboard path for back navigation
-    getDashboardPath().then(path => {
+    getDashboardPath().then((path) => {
       if (path) setDashboardPath(path);
     });
-  }, [id]);
+  }, []);
 
-  // Navigate back to dashboard when back button is pressed
   useBackNavigation(dashboardPath, false);
 
   useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        setIsLoading(true);
+        setLoadError(null);
+        const token = await SecureStore.getItemAsync('authToken');
+        const response = await fetch(`${API_BASE_URL}/api/student/quizzes/${id}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        if (!response.ok) {
+          if (!cancelled) {
+            setQuiz(null);
+            setLoadError('Failed to fetch quiz. Please try again.');
+          }
+          return;
+        }
+        const data = await response.json();
+        const payload = (data?.data || data?.quiz || data) as Quiz;
+        const questions = Array.isArray(payload?.questions) ? payload.questions : [];
+        if (!cancelled) {
+          setQuiz({
+            ...payload,
+            _id: String(payload?._id || id),
+            title: payload?.title || 'Quiz',
+            questions,
+            totalPoints:
+              Number(payload?.totalPoints) ||
+              questions.reduce((sum, q) => sum + (Number(q.points) > 0 ? Number(q.points) : 1), 0) ||
+              questions.length,
+          });
+          setCurrentQuestionIndex(0);
+          setAnswers({});
+          setIsSubmitted(false);
+          setResults(null);
+        }
+      } catch (error) {
+        console.error('Error fetching quiz:', error);
+        if (!cancelled) {
+          setQuiz(null);
+          setLoadError('An error occurred while fetching the quiz.');
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  const computeLocalResults = useCallback((activeQuiz: Quiz, answerMap: Record<string, string>) => {
+    let correct = 0;
+    let incorrect = 0;
+    let unattempted = 0;
+    let totalScore = 0;
+    const totalPoints =
+      Number(activeQuiz.totalPoints) ||
+      activeQuiz.questions.reduce((sum, q) => sum + (Number(q.points) > 0 ? Number(q.points) : 1), 0) ||
+      activeQuiz.questions.length;
+
+    activeQuiz.questions.forEach((question, index) => {
+      const qid = questionKey(question, index);
+      const userAnswer = answerMap[qid];
+      const opts = normalizeOptions(question);
+      const pts = Number(question.points) > 0 ? Number(question.points) : 1;
+
+      if (!userAnswer) {
+        unattempted++;
+        return;
+      }
+
+      let correctValue: unknown = question.correctAnswer;
+      if (typeof correctValue === 'number' && opts[correctValue] != null) {
+        correctValue = opts[correctValue];
+      }
+
+      if (answersMatch(correctValue, userAnswer)) {
+        correct++;
+        totalScore += pts;
+      } else {
+        incorrect++;
+      }
+    });
+
+    const percentage = totalPoints > 0 ? Math.round((totalScore / totalPoints) * 100) : 0;
+    return {
+      total: activeQuiz.questions.length,
+      correct,
+      incorrect,
+      unattempted,
+      score: totalScore,
+      totalPoints,
+      percentage,
+    };
+  }, []);
+
+  const handleSubmit = useCallback(async () => {
+    const activeQuiz = quizRef.current;
+    if (!activeQuiz || submittingRef.current || isSubmitted) return;
+    submittingRef.current = true;
+    setIsSubmitting(true);
+    setIsSubmitted(true);
+
+    const answerMap = answersRef.current;
+    const local = computeLocalResults(activeQuiz, answerMap);
+    setResults(local);
+
+    const durationSec = Math.max(0, Number(activeQuiz.duration || 0) * 60);
+    const timeTaken = Math.max(0, durationSec - timeLeftRef.current);
+
+    // Server grader expects an array aligned to question index (option text / value).
+    const answerPayload = activeQuiz.questions.map((q, index) => {
+      const qid = questionKey(q, index);
+      const value = answerMap[qid];
+      return value
+        ? { questionId: q._id || qid, questionIndex: index, answer: value }
+        : { questionId: q._id || qid, questionIndex: index, answer: null };
+    });
+
+    try {
+      const token = await SecureStore.getItemAsync('authToken');
+      const response = await fetch(`${API_BASE_URL}/api/student/quizzes/${activeQuiz._id}/submit`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          answers: answerPayload,
+          timeTaken,
+        }),
+      });
+
+      if (response.ok) {
+        const body = await response.json();
+        const serverScore = body?.data?.score;
+        const serverTotal = body?.data?.totalPoints;
+        if (typeof serverScore === 'number' && serverScore >= 0) {
+          const totalPoints = Number(serverTotal) || local.totalPoints;
+          const percentage = totalPoints > 0 ? Math.round((serverScore / totalPoints) * 100) : local.percentage;
+          setResults({
+            ...local,
+            score: serverScore,
+            totalPoints,
+            percentage,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error submitting quiz:', error);
+      // Keep local results so the student still sees a summary
+    } finally {
+      setIsSubmitting(false);
+      submittingRef.current = false;
+    }
+  }, [computeLocalResults, isSubmitted]);
+
+  // Timer — start only after quiz loads; match web (duration minutes → seconds)
+  useEffect(() => {
+    if (!quiz || isSubmitted) return;
+    const seconds = Math.max(0, Math.round(Number(quiz.duration || 10) * 60));
+    setTimeLeft(seconds);
+    if (seconds <= 0) return;
+
     const timer = setInterval(() => {
-      setTimeRemaining((prev) => {
+      setTimeLeft((prev) => {
         if (prev <= 1) {
-          handleSubmit();
+          clearInterval(timer);
+          void handleSubmit();
           return 0;
         }
         return prev - 1;
@@ -56,359 +296,444 @@ export default function QuizPage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [quiz?._id, isSubmitted, handleSubmit]);
 
-  const fetchQuiz = async () => {
-    try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/student/quizzes/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setQuestions(data.questions || data.quiz?.questions || []);
-      }
-    } catch (error) {
-      console.error('Error fetching quiz:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleAnswerSelect = (optionIndex: number) => {
-    setSelectedAnswer(optionIndex);
-    setAnswers({
-      ...answers,
-      [currentQuestionIndex]: optionIndex,
-    });
+  const handleAnswerSelect = (qid: string, option: string) => {
+    if (isSubmitted) return;
+    setAnswers((prev) => ({ ...prev, [qid]: option }));
   };
 
   const handleNext = () => {
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-      setSelectedAnswer(answers[currentQuestionIndex + 1] || null);
+    if (!quiz) return;
+    if (currentQuestionIndex < quiz.questions.length - 1) {
+      setCurrentQuestionIndex((i) => i + 1);
     }
   };
 
   const handlePrevious = () => {
     if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
-      setSelectedAnswer(answers[currentQuestionIndex - 1] || null);
+      setCurrentQuestionIndex((i) => i - 1);
     }
   };
 
-  const handleSubmit = async () => {
-    setIsSubmitting(true);
-    try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/student/quizzes/${id}/submit`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ answers }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        Alert.alert(
-          'Quiz Submitted!',
-          `You scored ${result.score || 0} out of ${questions.length}`,
-          [
-            {
-              text: 'OK',
-              onPress: () => router.back(),
-            },
-          ]
-        );
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to submit quiz. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
+  const currentQuestion = quiz?.questions?.[currentQuestionIndex];
+  const qid = currentQuestion ? questionKey(currentQuestion, currentQuestionIndex) : '';
+  const options = useMemo(
+    () => (currentQuestion ? normalizeOptions(currentQuestion) : []),
+    [currentQuestion],
+  );
+  const progress =
+    quiz && quiz.questions.length
+      ? ((currentQuestionIndex + 1) / quiz.questions.length) * 100
+      : 0;
 
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3b82f6" />
+          <ActivityIndicator size="large" color="#7c3aed" />
+          <Text style={styles.loadingText}>Loading quiz…</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  const currentQuestion = questions[currentQuestionIndex];
-  const isAnswered = selectedAnswer !== null;
+  if (!quiz || !quiz.questions.length) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <StatusBar style="dark" />
+        <View style={styles.notFoundWrap}>
+          <Ionicons name="alert-circle-outline" size={56} color="#cbd5e1" />
+          <Text style={styles.notFoundTitle}>Quiz Not Found</Text>
+          <Text style={styles.notFoundSub}>
+            {loadError ||
+              "The quiz you're looking for doesn't exist or you don't have access to it."}
+          </Text>
+          <Pressable style={styles.primaryBtn} onPress={() => router.replace(dashboardPath as any)}>
+            <Text style={styles.primaryBtnText}>Go to Dashboard</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar style="dark" />
-      <GlassPanel style={styles.header} radius={0} bordered={false}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#111827" />
-          </TouchableOpacity>
-          <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>Question {currentQuestionIndex + 1} of {questions.length}</Text>
-            <View style={styles.timerContainer}>
-              <Ionicons name="time" size={16} color="#f59e0b" />
-              <Text style={styles.timerText}>{formatTime(timeRemaining)}</Text>
+
+      <GlassPanel style={styles.topBar} radius={0} bordered={false}>
+        <View style={styles.topBarRow}>
+          <Pressable
+            onPress={() => {
+              if (isSubmitted) {
+                router.replace(dashboardPath as any);
+                return;
+              }
+              Alert.alert('Leave quiz?', 'Your progress will be lost if you leave now.', [
+                { text: 'Stay', style: 'cancel' },
+                { text: 'Leave', style: 'destructive', onPress: () => router.back() },
+              ]);
+            }}
+            style={styles.backButton}
+            hitSlop={8}
+          >
+            <Ionicons name="arrow-back" size={22} color="#111827" />
+          </Pressable>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.topTitle} numberOfLines={1}>
+              {quiz.title}
+            </Text>
+            <Text style={styles.topSub} numberOfLines={1}>
+              Question {currentQuestionIndex + 1} of {quiz.questions.length}
+            </Text>
+          </View>
+          {!isSubmitted ? (
+            <View style={styles.timerPill}>
+              <Ionicons name="time-outline" size={16} color="#dc2626" />
+              <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
+            </View>
+          ) : null}
+        </View>
+      </GlassPanel>
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Header card — match web */}
+        <View style={styles.headerCard}>
+          {quiz.description ? <Text style={styles.description}>{quiz.description}</Text> : null}
+          <View style={styles.metaRow}>
+            <View style={styles.metaChip}>
+              <Ionicons name="help-circle-outline" size={14} color="#64748b" />
+              <Text style={styles.metaText}>{quiz.questions.length} Questions</Text>
+            </View>
+            <View style={styles.metaChip}>
+              <Ionicons name="trophy-outline" size={14} color="#64748b" />
+              <Text style={styles.metaText}>{quiz.totalPoints || quiz.questions.length} Points</Text>
+            </View>
+            {quiz.difficulty ? (
+              <View style={styles.difficultyBadge}>
+                <Text style={styles.difficultyText}>{quiz.difficulty}</Text>
+              </View>
+            ) : null}
+          </View>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${progress}%` }]} />
+          </View>
+        </View>
+
+        {isSubmitted && results ? (
+          <View style={styles.resultsCard}>
+            <View style={styles.resultsTitleRow}>
+              <Ionicons name="trophy" size={28} color="#eab308" />
+              <Text style={styles.resultsTitle}>Quiz Results</Text>
+            </View>
+            <Text style={styles.resultsPct}>{results.percentage}%</Text>
+            <Text style={styles.resultsScore}>
+              Score: {results.score} / {results.totalPoints} points
+            </Text>
+
+            <View style={styles.statsRow}>
+              <View style={[styles.statBox, styles.statCorrect]}>
+                <Ionicons name="checkmark-circle" size={28} color="#16a34a" />
+                <Text style={[styles.statValue, { color: '#166534' }]}>{results.correct}</Text>
+                <Text style={[styles.statLabel, { color: '#16a34a' }]}>Correct</Text>
+              </View>
+              <View style={[styles.statBox, styles.statIncorrect]}>
+                <Ionicons name="close-circle" size={28} color="#dc2626" />
+                <Text style={[styles.statValue, { color: '#991b1b' }]}>{results.incorrect}</Text>
+                <Text style={[styles.statLabel, { color: '#dc2626' }]}>Incorrect</Text>
+              </View>
+              <View style={[styles.statBox, styles.statSkip]}>
+                <Ionicons name="document-text-outline" size={28} color="#64748b" />
+                <Text style={[styles.statValue, { color: '#334155' }]}>{results.unattempted}</Text>
+                <Text style={[styles.statLabel, { color: '#64748b' }]}>Unattempted</Text>
+              </View>
+            </View>
+
+            <Pressable
+              style={styles.dashboardBtn}
+              onPress={() => router.replace(dashboardPath as any)}
+            >
+              <Text style={styles.dashboardBtnText}>Back to Dashboard</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <View style={styles.questionCard}>
+            <View style={styles.questionStem}>
+              <MathRenderer formula={currentQuestion?.question || ''} inline={false} />
+            </View>
+
+            <View style={styles.optionsList}>
+              {options.map((option, index) => {
+                const optionLabel = String.fromCharCode(65 + index);
+                const isSelected = answers[qid] === option;
+                return (
+                  <Pressable
+                    key={`${qid}-${index}`}
+                    style={[styles.optionCard, isSelected && styles.optionCardSelected]}
+                    onPress={() => handleAnswerSelect(qid, option)}
+                  >
+                    <View
+                      style={[styles.optionLetter, isSelected && styles.optionLetterSelected]}
+                    >
+                      <Text
+                        style={[
+                          styles.optionLetterText,
+                          isSelected && styles.optionLetterTextSelected,
+                        ]}
+                      >
+                        {optionLabel}
+                      </Text>
+                    </View>
+                    <Text
+                      style={[styles.optionText, isSelected && styles.optionTextSelected]}
+                    >
+                      {option}
+                    </Text>
+                    {isSelected ? (
+                      <Ionicons name="checkmark-circle" size={20} color="#7c3aed" />
+                    ) : null}
+                  </Pressable>
+                );
+              })}
+              {!options.length ? (
+                <Text style={styles.noOptions}>No options available for this question.</Text>
+              ) : null}
             </View>
           </View>
-        </View>
-      </GlassPanel>
-
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.questionCard}>
-          <View style={styles.questionContainer}>
-            <MathRenderer formula={currentQuestion?.question || ''} inline={false} />
-          </View>
-        </View>
-
-        <View style={styles.optionsContainer}>
-          {currentQuestion?.options.map((option, index) => {
-            const isSelected = selectedAnswer === index;
-            return (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.optionCard,
-                  isSelected && styles.optionCardSelected,
-                ]}
-                onPress={() => handleAnswerSelect(index)}
-              >
-                <View style={styles.optionContent}>
-                  <View style={[
-                    styles.optionRadio,
-                    isSelected && styles.optionRadioSelected,
-                  ]}>
-                    {isSelected && <View style={styles.optionRadioInner} />}
-                  </View>
-                  <Text style={[
-                    styles.optionText,
-                    isSelected && styles.optionTextSelected,
-                  ]}>
-                    {option}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        )}
       </ScrollView>
 
-      <GlassPanel style={styles.footer} radius={0} bordered={false}>
-        <View style={styles.navigationButtons}>
-          <TouchableOpacity
-            style={[styles.navButton, currentQuestionIndex === 0 && styles.navButtonDisabled]}
-            onPress={handlePrevious}
-            disabled={currentQuestionIndex === 0}
-          >
-            <Text style={styles.navButtonText}>Previous</Text>
-          </TouchableOpacity>
+      {!isSubmitted ? (
+        <GlassPanel style={styles.footer} radius={0} bordered={false}>
+          <View style={styles.navRow}>
+            <Pressable
+              style={[styles.navBtn, currentQuestionIndex === 0 && styles.navBtnDisabled]}
+              onPress={handlePrevious}
+              disabled={currentQuestionIndex === 0}
+            >
+              <Ionicons name="arrow-back" size={16} color="#111827" />
+              <Text style={styles.navBtnText}>Previous</Text>
+            </Pressable>
 
-          {currentQuestionIndex < questions.length - 1 ? (
-            <TouchableOpacity
-              style={styles.navButton}
-              onPress={handleNext}
-            >
-              <Text style={styles.navButtonText}>Next</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-              onPress={handleSubmit}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.submitButtonText}>Submit Quiz</Text>
-              )}
-            </TouchableOpacity>
-          )}
-        </View>
-      </GlassPanel>
+            {currentQuestionIndex < quiz.questions.length - 1 ? (
+              <Pressable style={styles.nextBtn} onPress={handleNext}>
+                <Text style={styles.nextBtnText}>Next</Text>
+                <Ionicons name="arrow-forward" size={16} color="#fff" />
+              </Pressable>
+            ) : (
+              <Pressable
+                style={[styles.submitBtn, isSubmitting && styles.navBtnDisabled]}
+                onPress={() => void handleSubmit()}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.submitBtnText}>Submit Quiz</Text>
+                )}
+              </Pressable>
+            )}
+          </View>
+        </GlassPanel>
+      ) : null}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  // Transparent so the app background artwork shows through.
-  container: {
+  container: { flex: 1, backgroundColor: 'transparent' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
+  loadingText: { fontSize: 15, color: '#64748b' },
+  notFoundWrap: {
     flex: 1,
-    backgroundColor: 'transparent',
-  },
-  loadingContainer: {
-    flex: 1,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
+    padding: 24,
+    gap: 10,
   },
-  header: {
-    padding: 20,
+  notFoundTitle: { fontSize: 22, fontWeight: '800', color: '#0f172a' },
+  notFoundSub: { fontSize: 14, color: '#64748b', textAlign: 'center', lineHeight: 20 },
+  primaryBtn: {
+    marginTop: 12,
+    backgroundColor: '#7c3aed',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  topBar: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: 'rgba(226,232,240,0.9)',
   },
-  // Row layout lives on an inner view because GlassPanel wraps its children.
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backButton: {
-    marginRight: 16,
-  },
-  headerContent: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  timerContainer: {
+  topBarRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  backButton: { padding: 4 },
+  topTitle: { fontSize: 16, fontWeight: '800', color: '#0f172a' },
+  topSub: { fontSize: 12, color: '#64748b', marginTop: 2 },
+  timerPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#fef3c7',
-    paddingHorizontal: 12,
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    paddingHorizontal: 10,
     paddingVertical: 6,
+    borderRadius: 10,
+  },
+  timerText: { fontSize: 14, fontWeight: '800', color: '#dc2626' },
+  scrollView: { flex: 1 },
+  scrollContent: { padding: 16, paddingBottom: 28, gap: 14 },
+  headerCard: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    gap: 10,
   },
-  timerText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#92400e',
+  description: { fontSize: 13, color: '#64748b', lineHeight: 18 },
+  metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
+  metaChip: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  metaText: { fontSize: 12, color: '#64748b', fontWeight: '600' },
+  difficultyBadge: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    backgroundColor: '#f8fafc',
   },
-  scrollView: {
-    flex: 1,
+  difficultyText: { fontSize: 11, fontWeight: '700', color: '#475569', textTransform: 'capitalize' },
+  progressTrack: {
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: '#f1f5f9',
+    overflow: 'hidden',
+    marginTop: 4,
   },
+  progressFill: { height: '100%', backgroundColor: '#a855f7', borderRadius: 999 },
   questionCard: {
     backgroundColor: '#FFFFFF',
-    margin: 20,
-    marginBottom: 16,
     borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  questionContainer: {
-    width: '100%',
-  },
-  questionText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    lineHeight: 26,
-  },
-  optionsContainer: {
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  optionCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
     padding: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    gap: 14,
+  },
+  questionStem: { width: '100%' },
+  optionsList: { gap: 10 },
+  optionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     borderWidth: 2,
     borderColor: '#e5e7eb',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 14,
   },
   optionCardSelected: {
-    borderColor: '#3b82f6',
-    backgroundColor: '#eff6ff',
+    borderColor: '#a855f7',
+    backgroundColor: '#faf5ff',
   },
-  optionContent: {
-    flexDirection: 'row',
+  optionLetter: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#e5e7eb',
     alignItems: 'center',
-  },
-  optionRadio: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#d1d5db',
-    marginRight: 12,
     justifyContent: 'center',
+  },
+  optionLetterSelected: { backgroundColor: '#a855f7' },
+  optionLetterText: { fontSize: 13, fontWeight: '800', color: '#374151' },
+  optionLetterTextSelected: { color: '#fff' },
+  optionText: { flex: 1, fontSize: 15, color: '#111827', lineHeight: 21 },
+  optionTextSelected: { color: '#5b21b6', fontWeight: '600' },
+  noOptions: { fontSize: 13, color: '#94a3b8', textAlign: 'center', paddingVertical: 8 },
+  resultsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    gap: 14,
+  },
+  resultsTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  resultsTitle: { fontSize: 22, fontWeight: '800', color: '#0f172a' },
+  resultsPct: {
+    fontSize: 52,
+    fontWeight: '900',
+    color: '#7c3aed',
+    textAlign: 'center',
+  },
+  resultsScore: { textAlign: 'center', color: '#64748b', fontSize: 14 },
+  statsRow: { flexDirection: 'row', gap: 8 },
+  statBox: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    borderWidth: 1,
+    gap: 4,
+  },
+  statCorrect: { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' },
+  statIncorrect: { backgroundColor: '#fef2f2', borderColor: '#fecaca' },
+  statSkip: { backgroundColor: '#f8fafc', borderColor: '#e2e8f0' },
+  statValue: { fontSize: 22, fontWeight: '800' },
+  statLabel: { fontSize: 11, fontWeight: '600' },
+  dashboardBtn: {
+    marginTop: 4,
+    backgroundColor: '#7c3aed',
+    borderRadius: 12,
+    paddingVertical: 14,
     alignItems: 'center',
   },
-  optionRadioSelected: {
-    borderColor: '#3b82f6',
-  },
-  optionRadioInner: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#3b82f6',
-  },
-  optionText: {
-    flex: 1,
-    fontSize: 16,
-    color: '#111827',
-  },
-  optionTextSelected: {
-    color: '#1e40af',
-    fontWeight: '600',
-  },
+  dashboardBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
   footer: {
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: 'rgba(226,232,240,0.9)',
   },
-  navigationButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  navButton: {
+  navRow: { flexDirection: 'row', gap: 10 },
+  navBtn: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
     paddingVertical: 14,
     borderRadius: 12,
     backgroundColor: '#f3f4f6',
-    alignItems: 'center',
   },
-  navButtonDisabled: {
-    opacity: 0.5,
-  },
-  navButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  submitButton: {
+  navBtnDisabled: { opacity: 0.45 },
+  navBtnText: { fontSize: 15, fontWeight: '700', color: '#111827' },
+  nextBtn: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: '#6d5bd0',
+    backgroundColor: '#a855f7',
+  },
+  nextBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  submitBtn: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#10b981',
   },
-  submitButtonDisabled: {
-    opacity: 0.6,
-  },
-  submitButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
+  submitBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
 });
-
