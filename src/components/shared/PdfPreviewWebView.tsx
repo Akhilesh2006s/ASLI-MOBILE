@@ -8,13 +8,14 @@ import {
   useWindowDimensions,
   type ViewStyle,
 } from 'react-native';
+import { isTvOrBoardDisplay } from '../../hooks/useIsTablet';
 import { Ionicons } from '@expo/vector-icons';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import {
   buildPdfInjectScript,
+  buildPdfJsViewerShellHtml,
   buildPdfUrlInjectScript,
   fetchPdfPreviewLoadInfo,
-  PDF_JS_VIEWER_SHELL_HTML,
   resolvePdfUrlTarget,
   shouldInjectPdfAsBase64,
   YOUTUBE_EMBED_ORIGIN,
@@ -22,7 +23,6 @@ import {
   type PdfUrlLoadTarget,
 } from '../../utils/contentPreview';
 
-const TV_MIN_WIDTH = 1024;
 const ZOOM_STEP = 1.25;
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 4;
@@ -36,7 +36,7 @@ type Props = {
 
 export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange }: Props) {
   const { width, height } = useWindowDimensions();
-  const isTvView = width >= TV_MIN_WIDTH && width >= height;
+  const isTvView = isTvOrBoardDisplay(width, height);
   const webRef = useRef<WebView>(null);
   const webReadyRef = useRef(false);
   const [webReady, setWebReady] = useState(false);
@@ -270,7 +270,7 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
         <WebView
           key={reloadKey}
           ref={webRef}
-          source={{ html: PDF_JS_VIEWER_SHELL_HTML, baseUrl: YOUTUBE_EMBED_ORIGIN }}
+          source={{ html: buildPdfJsViewerShellHtml(isTvView), baseUrl: YOUTUBE_EMBED_ORIGIN }}
           style={styles.viewer}
           pointerEvents={busy ? 'none' : 'auto'}
           originWhitelist={['*']}
@@ -279,8 +279,6 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
           allowsInlineMediaPlayback
           mixedContentMode="always"
           setSupportMultipleWindows={false}
-          scalesPageToFit={false}
-          setBuiltInZoomControls={false}
           nestedScrollEnabled
           cacheEnabled
           cacheMode="LOAD_CACHE_ELSE_NETWORK"

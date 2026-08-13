@@ -462,9 +462,11 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
   <div id="pages"></div>
   <script>
     (function () {
+      /*PDF_TV_CONFIG*/
       var MIN_ZOOM = 0.5;
       var MAX_ZOOM = 4;
-      var PAGE_PAD = 24;
+      var PAGE_PAD = 16;
+      var MAX_CANVAS = 2048;
       var pdfDoc = null;
       var currentPage = 1;
       var userZoom = 1;
@@ -479,7 +481,11 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
       function isTvView() {
         var cfg = window.__pdfViewerConfig;
         if (cfg && typeof cfg.tv === 'boolean') return cfg.tv;
-        return window.innerWidth >= 1024 && window.innerWidth >= window.innerHeight;
+        var w = window.innerWidth || 0;
+        var h = window.innerHeight || 0;
+        var shortSide = Math.min(w, h);
+        var longSide = Math.max(w, h);
+        return shortSide >= 500 && longSide >= 900;
       }
 
       function applyBodyMode() {
@@ -506,9 +512,13 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
       }
 
       function availableSize() {
-        var w = Math.max((window.innerWidth || document.documentElement.clientWidth || 320) - PAGE_PAD, 200);
-        var h = Math.max((window.innerHeight || document.documentElement.clientHeight || 480) - PAGE_PAD, 200);
-        return { w: w, h: h };
+        var el = pagesEl();
+        var w = (el && el.clientWidth) || window.innerWidth || document.documentElement.clientWidth || 320;
+        var h = (el && el.clientHeight) || window.innerHeight || document.documentElement.clientHeight || 480;
+        return {
+          w: Math.max(w - PAGE_PAD, 200),
+          h: Math.max(h - PAGE_PAD, 200)
+        };
       }
 
       function layoutKey() {
@@ -558,32 +568,36 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
         var fitScale = tv
           ? Math.min(size.w / baseViewport.width, size.h / baseViewport.height)
           : size.w / baseViewport.width;
+        if (!isFinite(fitScale) || fitScale <= 0) fitScale = 1;
         var layoutScale = fitScale * (tv ? userZoom : 1);
         var viewport = page.getViewport({ scale: layoutScale });
-        var pixelRatio = tv
-          ? Math.min(Math.max(window.devicePixelRatio || 1, 2), 2.5)
-          : Math.min(window.devicePixelRatio || 1, 2);
+        var pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
         var cssW = Math.max(1, Math.floor(viewport.width));
         var cssH = Math.max(1, Math.floor(viewport.height));
+        var backingW = Math.max(1, Math.min(Math.floor(cssW * pixelRatio), MAX_CANVAS));
+        var backingH = Math.max(1, Math.min(Math.floor(cssH * pixelRatio), MAX_CANVAS));
         var canvas = document.createElement('canvas');
         canvas.style.width = cssW + 'px';
         canvas.style.height = cssH + 'px';
         if (!tv) canvas.style.maxWidth = 'calc(100% - 16px)';
-        canvas.width = Math.floor(cssW * pixelRatio);
-        canvas.height = Math.floor(cssH * pixelRatio);
+        canvas.width = backingW;
+        canvas.height = backingH;
         var ctx = canvas.getContext('2d', { alpha: false });
         if (!ctx) return;
-        ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+        ctx.setTransform(backingW / viewport.width, 0, 0, backingH / viewport.height, 0, 0);
         container.appendChild(canvas);
-        await page.render({
-          canvasContext: ctx,
-          viewport: viewport,
-          intent: 'display',
-        }).promise;
+        try {
+          await page.render({
+            canvasContext: ctx,
+            viewport: viewport,
+            intent: 'display',
+          }).promise;
+        } catch (err) {
+          return;
+        }
         if (tv) {
-          var zoomed = userZoom > 1.02;
-          container.style.overflow = zoomed ? 'auto' : 'hidden';
-          container.style.alignItems = zoomed ? 'flex-start' : 'center';
+          container.style.overflow = 'auto';
+          container.style.alignItems = userZoom > 1.02 ? 'flex-start' : 'center';
         }
       }
 
@@ -595,6 +609,9 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
         var token = ++renderToken;
         var tv = isTvView();
         applyBodyMode();
+        if (tv) {
+          await new Promise(function (r) { requestAnimationFrame(function () { requestAnimationFrame(r); }); });
+        }
         var key = layoutKey();
         container.innerHTML = '';
 
@@ -676,7 +693,7 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
 
       window.addEventListener('resize', function () {
         clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(function () { rerender(); }, 120);
+        resizeTimer = setTimeout(function () { rerender(); }, 220);
       });
 
       async function renderPdf(pdf) {
@@ -739,6 +756,15 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
   <\/script>
 </body>
 </html>`;
+
+export function buildPdfJsViewerShellHtml(tv = false): string {
+  return PDF_JS_VIEWER_SHELL_HTML
+    .replace('<body>', tv ? '<body class="tv-mode">' : '<body>')
+    .replace(
+      '/*PDF_TV_CONFIG*/',
+      `window.__pdfViewerConfig=${JSON.stringify({ tv })};`
+    );
+}
 
 export function buildPdfInjectScript(base64: string): string {
   return `(function(){

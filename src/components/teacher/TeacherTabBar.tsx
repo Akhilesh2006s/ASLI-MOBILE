@@ -41,7 +41,7 @@ function TabButton({
   const iconName = active ? tab.activeIcon : tab.icon;
 
   const handlePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     onPress();
   };
 

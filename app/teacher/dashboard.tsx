@@ -20,6 +20,10 @@ import { TeacherTabBar, TeacherHeader, TeacherShimmer } from '../../src/componen
 import { BottomSheet, GlassPanel } from '../../src/components/ui';
 import type { TeacherTab } from '../../src/components/teacher';
 import { formatSubjectLabel, resolveTeacherDisplayName } from '../../src/lib/teacher-text';
+import {
+  extractLibraryContentList,
+  isLibraryVideoRow,
+} from '../../src/lib/dedupe-library-content';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../src/theme/teacher';
 import { Ionicons } from '@expo/vector-icons';
 import AIClassesView from './_components/AIClassesView';
@@ -96,6 +100,46 @@ function MenuItem({
   );
 }
 
+function uniqueStudentCountFromClasses(classes: any[]): number {
+  const ids = new Set<string>();
+  let fallback = 0;
+  for (const cls of classes) {
+    const roster = Array.isArray(cls?.students) ? cls.students : [];
+    if (roster.length) {
+      for (const student of roster) {
+        const id = String(student?._id || student?.id || '').trim();
+        if (id) ids.add(id);
+      }
+    } else {
+      fallback += Number(cls?.studentCount) || 0;
+    }
+  }
+  return ids.size > 0 ? ids.size : fallback;
+}
+
+function visibleTeacherVideoCount(eduottPayload: unknown, uploaded: unknown[]): number {
+  const eduott = extractLibraryContentList(eduottPayload).filter(isLibraryVideoRow);
+  const uploads = Array.isArray(uploaded) ? uploaded : [];
+  return Math.max(eduott.length, uploads.length);
+}
+
+function pendingHomeworkCount(payload: unknown): number {
+  const record = payload && typeof payload === 'object' ? (payload as { homeworks?: unknown }) : null;
+  const groups = Array.isArray(record?.homeworks)
+    ? record.homeworks
+    : Array.isArray(payload)
+      ? payload
+      : [];
+  let count = 0;
+  for (const group of groups as Array<{ submissions?: unknown[] }>) {
+    const submissions = Array.isArray(group?.submissions) ? group.submissions : [];
+    for (const sub of submissions as Array<{ grade?: unknown; gradedAt?: unknown }>) {
+      if (sub?.grade == null && !sub?.gradedAt) count += 1;
+    }
+  }
+  return count;
+}
+
 export default function TeacherDashboard() {
   const { signOut } = useAuth();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
@@ -160,12 +204,17 @@ export default function TeacherDashboard() {
         return;
       }
 
-      const [meRes, dashRes, subjectsRes, timetableRes] = await Promise.allSettled([
-        teacherService.me(),
-        teacherService.dashboard(),
-        teacherService.subjects(),
-        teacherService.timetable(),
-      ]);
+      const [meRes, dashRes, subjectsRes, timetableRes, classesRes, homeworkRes, eduottRes, videosRes] =
+        await Promise.allSettled([
+          teacherService.me(),
+          teacherService.dashboard(),
+          teacherService.subjects(),
+          teacherService.timetable(),
+          teacherService.classes(),
+          teacherService.homeworkSubmissionsGrouped(),
+          teacherService.asliPrepContent({ type: 'Video', surface: 'eduott' }),
+          teacherService.videos(),
+        ]);
 
       if (meRes.status === 'fulfilled') {
         setUser(meRes.value.data?.user ?? meRes.value.data);
@@ -175,13 +224,47 @@ export default function TeacherDashboard() {
       if (dashRes.status === 'fulfilled') {
         const d = dashRes.value.data;
         const s = d?.stats ?? d;
+        const assigned = Array.isArray(d?.assignedClasses) ? d.assignedClasses : [];
         setStats({
           totalStudents: s?.totalStudents ?? d?.students?.length ?? 0,
-          totalClasses: s?.totalClasses ?? d?.assignedClasses?.length ?? 0,
+          totalClasses: s?.totalClasses ?? assigned.length ?? 0,
           pendingGrades: s?.pendingGrades ?? 0,
-          totalVideos: s?.totalVideos ?? d?.videos?.length ?? 0,
+          totalVideos: Array.isArray(d?.videos) ? d.videos.length : 0,
         });
         setStale((prev) => prev || dashRes.value.stale);
+      }
+
+      if (classesRes.status === 'fulfilled') {
+        const classes = Array.isArray(classesRes.value.data) ? classesRes.value.data : [];
+        setStats((prev) => ({
+          ...prev,
+          totalClasses: classes.length,
+          totalStudents: uniqueStudentCountFromClasses(classes),
+        }));
+        setStale((prev) => prev || classesRes.value.stale);
+      }
+
+      if (homeworkRes.status === 'fulfilled') {
+        setStats((prev) => ({
+          ...prev,
+          pendingGrades: pendingHomeworkCount(homeworkRes.value.data),
+        }));
+        setStale((prev) => prev || homeworkRes.value.stale);
+      }
+
+      const eduottList =
+        eduottRes.status === 'fulfilled' ? eduottRes.value.data : [];
+      const uploadedList =
+        videosRes.status === 'fulfilled'
+          ? Array.isArray(videosRes.value.data)
+            ? videosRes.value.data
+            : []
+          : [];
+      if (eduottRes.status === 'fulfilled' || videosRes.status === 'fulfilled') {
+        setStats((prev) => ({
+          ...prev,
+          totalVideos: visibleTeacherVideoCount(eduottList, uploadedList),
+        }));
       }
 
       if (subjectsRes.status === 'fulfilled') {

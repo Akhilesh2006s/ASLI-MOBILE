@@ -37,7 +37,7 @@ export default function StudentTabBar({ tabs, activeTab, onTabChange }: Props) {
   const isTablet = windowWidth >= 768;
 
   const handleTabPress = (id: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     onTabChange(id);
   };
 

@@ -55,7 +55,7 @@ import {
 } from '../../../src/hooks/useCurriculumCascade';
 import StudentScreenHeader from '../../../src/components/student/StudentScreenHeader';
 import { GlassPanel } from '../../../src/components/ui';
-import AiToolContentRendererLazy from '../../../src/components/ai-tools/AiToolContentRendererLazy';
+import AiToolContentRenderer from '../../../src/components/ai-tools/AiToolContentRenderer';
 import AiToolFieldIcon from '../../../src/components/ai-tools/AiToolFieldIcon';
 import AiToolParamsGrid from '../../../src/components/ai-tools/AiToolParamsGrid';
 import AiToolPremiumIcon from '../../../src/components/ai-tools/AiToolPremiumIcon';
@@ -1253,7 +1253,7 @@ export default function StudentToolPage() {
       >
         {generatedContent ? (
           <View style={[styles.outputWrap, fill && styles.outputWrapFill]} collapsable={false}>
-            <AiToolContentRendererLazy
+            <AiToolContentRenderer
               key={contentRenderKey}
               toolType={apiToolType}
               content={generatedContent}

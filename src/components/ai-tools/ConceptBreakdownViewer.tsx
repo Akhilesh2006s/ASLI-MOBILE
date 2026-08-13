@@ -1,5 +1,6 @@
 import { useMemo, type ReactNode } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { stripStructuredAiToolMetadata } from '../../lib/strip-ai-tool-metadata';
 import {
   resolveConceptBreakdownFromPayload,
@@ -31,7 +32,12 @@ function wrapFill(node: ReactNode, fill: boolean) {
 }
 
 function buildSections(concept: ConceptBreakdownContent): ReactNode[] {
-  const slots: Array<{ title: string; icon: keyof typeof import('@expo/vector-icons').Ionicons.glyphMap; has: boolean; body: ReactNode }> = [
+  const slots: Array<{
+    title: string;
+    icon: keyof typeof Ionicons.glyphMap;
+    has: boolean;
+    body: ReactNode;
+  }> = [
     {
       title: 'Simple Definition',
       icon: 'bulb-outline',

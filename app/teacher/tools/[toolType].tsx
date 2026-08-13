@@ -27,8 +27,8 @@ import {
   parseTeacherDashboardTab,
   useTeacherDashboardBack,
 } from '../../../src/hooks/useBackNavigation';
-import AiToolContentRendererLazy from '../../../src/components/ai-tools/AiToolContentRendererLazy';
-import AiToolDownloadBarLazy from '../../../src/components/ai-tools/AiToolDownloadBarLazy';
+import AiToolContentRenderer from '../../../src/components/ai-tools/AiToolContentRenderer';
+import AiToolDownloadBar from '../../../src/components/ai-tools/AiToolDownloadBar';
 import AiToolParamsGrid from '../../../src/components/ai-tools/AiToolParamsGrid';
 import AiToolResultShell from '../../../src/components/ai-tools/AiToolResultShell';
 import AiToolOptionPicker from '../../../src/components/ai-tools/AiToolOptionPicker';
@@ -1234,7 +1234,7 @@ export default function TeacherToolPage() {
         actions={
           generatedContent ? (
             <View style={styles.resultActionStack}>
-              <AiToolDownloadBarLazy
+              <AiToolDownloadBar
                 toolType={toolType}
                 toolLabel={config?.name || 'AI Tool'}
                 content={generatedContent}
@@ -1297,7 +1297,7 @@ export default function TeacherToolPage() {
       >
         {generatedContent ? (
           <View style={[styles.outputWrap, fill && styles.outputWrapFill]} collapsable={false}>
-            <AiToolContentRendererLazy
+            <AiToolContentRenderer
               key={contentRenderKey}
               toolType={toolType}
               content={generatedContent}

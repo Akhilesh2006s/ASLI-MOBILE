@@ -1,14 +1,9 @@
-import { lazy, Suspense, type ComponentProps } from 'react';
-
-const AiToolDownloadBar = lazy(() => import('./AiToolDownloadBar'));
+import type { ComponentProps } from 'react';
+import AiToolDownloadBar from './AiToolDownloadBar';
 
 type Props = ComponentProps<typeof AiToolDownloadBar>;
 
-/** Defers teacher export helpers until a result is ready to download. */
+/** Same API as before; static import avoids Metro's async-chunk "Got unexpected undefined". */
 export default function AiToolDownloadBarLazy(props: Props) {
-  return (
-    <Suspense fallback={null}>
-      <AiToolDownloadBar {...props} />
-    </Suspense>
-  );
+  return <AiToolDownloadBar {...props} />;
 }

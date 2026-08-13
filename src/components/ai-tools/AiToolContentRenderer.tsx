@@ -4,7 +4,6 @@ import AiToolWebView from './AiToolWebView';
 import { stripStructuredAiToolMetadata } from '../../lib/strip-ai-tool-metadata';
 import { coalesceAiToolRawContent } from '../../lib/ai-tool-display-content';
 import { resolveAiToolDisplayType } from '../../lib/ai-tool-generate';
-export { getAiToolResultTitle } from '../../lib/ai-tool-result-title';
 
 type Props = {
   toolType: string;

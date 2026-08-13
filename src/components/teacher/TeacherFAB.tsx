@@ -93,7 +93,7 @@ export default function TeacherFAB({ actions, bottomOffset = 88 }: Props) {
   }, [mountScale]);
 
   const toggle = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     const next = !open;
     setOpen(next);
     progress.value = withSpring(next ? 1 : 0, SPRING);

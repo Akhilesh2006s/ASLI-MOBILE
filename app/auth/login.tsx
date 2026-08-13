@@ -306,12 +306,12 @@ export default function Login() {
   };
 
   const handleForgotPassword = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
     Alert.alert('Forgot Password', 'Please contact admin to reset your password.');
   };
 
   const handleCreateAccount = () => {
-    Haptics.selectionAsync();
+    Haptics.selectionAsync().catch(() => {});
     router.push('/auth/register');
   };
 
@@ -325,7 +325,7 @@ export default function Login() {
     const password = credentialsRef.current.password || formData.password;
     if (!emailRaw || !password) {
       setError('Please enter both email/student ID and password.');
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
       return;
     }
 
@@ -336,7 +336,7 @@ export default function Login() {
         ? `${emailRaw}@example.com`
         : emailRaw;
 
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     setIsSubmitting(true);
     try {
       const data = await signIn({ email, password });
@@ -347,10 +347,10 @@ export default function Login() {
         await SecureStore.deleteItemAsync('rememberedEmail');
         await SecureStore.deleteItemAsync('rememberedPassword');
       }
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       redirectByRole(data?.user?.role || 'student');
     } catch (err: any) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
       const fallback = `Cannot connect to server. Please check network and server status.\n${API_BASE_URL}`;
       const msg = err?.friendlyMessage || err?.message || fallback;
       setError(msg);
@@ -478,7 +478,7 @@ export default function Login() {
                         accessibilityRole="checkbox"
                         accessibilityState={{ checked: rememberMe }}
                         onPress={() => {
-                          Haptics.selectionAsync();
+                          Haptics.selectionAsync().catch(() => {});
                           setRememberMe((v) => !v);
                         }}
                       >

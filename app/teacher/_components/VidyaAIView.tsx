@@ -54,12 +54,14 @@ function useVidyaAILayout() {
   const { width } = useWindowDimensions();
   const isBoard = width >= BOARD_MIN_WIDTH;
   const columns = width >= 1040 ? 3 : width >= 700 ? 2 : 1;
-  return { isGrid: columns > 1, columns, isBoard };
+  // Pixel width (not '%') — Android TV ScrollView crashes on width:'100%' without a cap.
+  const shellWidth = isBoard ? width : Math.min(width, CONTENT_MAX);
+  return { isGrid: columns > 1, columns, shellWidth };
 }
 
 export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: boolean }) {
   const chatPress = usePressScale();
-  const { isGrid, columns, isBoard } = useVidyaAILayout();
+  const { isGrid, columns, shellWidth } = useVidyaAILayout();
   const scrollBottomPad = TAB_BAR_CLEARANCE + TEACHER_SPACING.lg;
   const [subjectNames, setSubjectNames] = useState<string[]>([]);
 
@@ -108,7 +110,7 @@ export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: bool
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
     >
-      <View style={[styles.innerShell, !isBoard && styles.innerShellCapped]}>
+      <View style={[styles.innerShell, { width: shellWidth }]}>
         {chatEnabled ? (
         <Pressable
           onPress={() => router.push('/teacher/vidya-chat' as any)}
@@ -194,10 +196,6 @@ const styles = StyleSheet.create({
   },
   innerShell: {
     alignSelf: 'center',
-    width: '100%',
-  },
-  innerShellCapped: {
-    maxWidth: CONTENT_MAX,
   },
   chatCard: {
     marginHorizontal: TEACHER_SPACING.lg,

@@ -47,13 +47,12 @@ export default function AiToolCard({
       accessibilityRole="button"
       accessibilityLabel={`${title}. ${description}`}
       accessibilityHint="Opens this AI tool"
-      style={[styles.pressable, compact && styles.pressableFill]}
+      style={styles.pressable}
     >
       <Animated.View
         style={[
           styles.card,
           compact && styles.cardCompact,
-          compact && styles.cardFill,
           glass && styles.cardGlassShell,
           { borderColor: accent },
           style,
@@ -111,13 +110,9 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     minWidth: 0,
   },
-  pressableFill: {
-    flex: 1,
-  },
   card: {
     minHeight: 126,
     width: '100%',
-    maxWidth: '100%',
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: AI_SPACING.md,
@@ -132,9 +127,6 @@ const styles = StyleSheet.create({
   cardCompact: {
     minHeight: 194,
     flexDirection: 'column',
-  },
-  cardFill: {
-    flex: 1,
   },
   cardGlassShell: {
     backgroundColor: 'transparent',

@@ -9,7 +9,6 @@ import {
 } from '../../lib/ai-tool-result-theme';
 import { AI, AI_RADIUS, AI_TYPE } from '../../theme/ai';
 import { formatAiToolText } from '../../lib/title-case';
-import { getAiToolResultTitle } from '../../lib/ai-tool-result-title';
 
 type MetaChipProps = {
   icon: keyof typeof Ionicons.glyphMap;
@@ -64,7 +63,7 @@ export default function AiToolResultShell({
   empty,
   children,
   accent,
-  variant = 'student',
+  variant: _variant = 'student',
   fill = false,
 }: Props) {
   const theme = getAiToolResultTheme(toolType);
@@ -78,11 +77,13 @@ export default function AiToolResultShell({
   const hasResult = Boolean(children) && !isLoading;
   const displayToolName = formatAiToolText(toolName);
   const displayToolDescription = toolDescription ? formatAiToolText(toolDescription) : undefined;
-  const resultTitle = formatAiToolText(getAiToolResultTitle(toolType, variant));
+  const showTitleRow = !hasResult;
 
   return (
     <View style={[styles.outer, fill && styles.outerFill]}>
-      <View style={styles.header}>
+      {showTitleRow || actions ? (
+      <View style={[styles.header, !showTitleRow && styles.headerActionsOnly]}>
+        {showTitleRow ? (
         <View style={styles.headerMain}>
           <View style={[styles.iconBox, { borderColor: `${heroColor}44`, backgroundColor: '#F0F9FF' }]}>
             <AiToolPremiumIcon
@@ -95,20 +96,16 @@ export default function AiToolResultShell({
           <View style={styles.headerText}>
             <View style={styles.titleRow}>
               <Text style={styles.toolName} numberOfLines={2}>
-                {hasResult ? resultTitle : displayToolName}
+                {displayToolName}
               </Text>
               <View style={[styles.badge, { backgroundColor: '#F0F9FF', borderColor: '#BAE6FD' }]}>
-                <Ionicons
-                  name={hasResult ? 'checkmark-circle' : 'sparkles'}
-                  size={12}
-                  color="#0369A1"
-                />
+                <Ionicons name="sparkles" size={12} color="#0369A1" />
                 <Text style={[styles.badgeText, { color: '#0369A1' }]}>
-                  {formatAiToolText(hasResult ? 'Ready' : 'AI Powered')}
+                  {formatAiToolText('AI Powered')}
                 </Text>
               </View>
             </View>
-            {!hasResult && displayToolDescription ? (
+            {displayToolDescription ? (
               <Text style={styles.description} numberOfLines={2}>
                 {displayToolDescription}
               </Text>
@@ -116,8 +113,12 @@ export default function AiToolResultShell({
             {citations}
           </View>
         </View>
+        ) : citations ? (
+          <View>{citations}</View>
+        ) : null}
         {actions ? <View style={styles.actions}>{actions}</View> : null}
       </View>
+      ) : null}
 
       {hasMeta && (hasResult || (!children && !isLoading)) ? (
         <ScrollView
@@ -192,6 +193,9 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E0F2FE',
     backgroundColor: '#F8FCFF',
     gap: 10,
+  },
+  headerActionsOnly: {
+    paddingVertical: 10,
   },
   headerMain: {
     flexDirection: 'row',

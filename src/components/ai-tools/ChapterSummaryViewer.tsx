@@ -1,5 +1,6 @@
 import { useMemo, type ReactNode } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { stripStructuredAiToolMetadata } from '../../lib/strip-ai-tool-metadata';
 import {
   resolveChapterSummaryFromPayload,
@@ -32,7 +33,12 @@ function wrapFill(node: ReactNode, fill: boolean) {
 }
 
 function buildBodySections(summary: ChapterSummaryContent): ReactNode[] {
-  const defs: Array<{ title: string; icon: keyof typeof import('@expo/vector-icons').Ionicons.glyphMap; has: boolean; body: ReactNode }> = [
+  const defs: Array<{
+    title: string;
+    icon: keyof typeof Ionicons.glyphMap;
+    has: boolean;
+    body: ReactNode;
+  }> = [
     {
       title: 'Overview of the Chapter',
       icon: 'book-outline',
