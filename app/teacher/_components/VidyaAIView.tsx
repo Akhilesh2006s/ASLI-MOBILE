@@ -8,6 +8,7 @@ import {
   useWindowDimensions,
   InteractionManager,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   useAnimatedStyle,
@@ -17,6 +18,7 @@ import Animated, {
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
+import { isTvOrBoardDisplay } from '../../../src/hooks/useIsTablet';
 import {
   filterVisibleTeacherTools,
   TEACHER_AI_TOOLS_SUBTITLE,
@@ -29,9 +31,9 @@ import { AI, AI_RADIUS, AI_SPACING, AI_TYPE } from '../../../src/theme/ai';
 
 const CONTENT_MAX = 1080;
 const BOARD_MIN_WIDTH = 1024;
-const GRID_GAP = TEACHER_SPACING.md;
-/** Floating teacher tab bar height + gap so the last tool card is fully visible. */
-const TAB_BAR_CLEARANCE = 100;
+const GRID_GAP = TEACHER_SPACING.lg;
+/** Icon + label + bar padding for the floating teacher tab bar (excludes safe-area inset). */
+const TAB_BAR_CLEARANCE = 88;
 
 function chunkItems<T>(items: T[], size: number): T[][] {
   if (size <= 1) return items.map((item) => [item]);
@@ -51,18 +53,21 @@ function usePressScale(to = 0.96) {
 }
 
 function useVidyaAILayout() {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+  const isTvView = isTvOrBoardDisplay(width, height);
   const isBoard = width >= BOARD_MIN_WIDTH;
   const columns = width >= 1040 ? 3 : width >= 700 ? 2 : 1;
   // Pixel width (not '%') — Android TV ScrollView crashes on width:'100%' without a cap.
-  const shellWidth = isBoard ? width : Math.min(width, CONTENT_MAX);
-  return { isGrid: columns > 1, columns, shellWidth };
+  const shellWidth = isBoard || isTvView ? width : Math.min(width, CONTENT_MAX);
+  return { isGrid: columns > 1, columns, shellWidth, isTvView };
 }
 
 export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: boolean }) {
   const chatPress = usePressScale();
-  const { isGrid, columns, shellWidth } = useVidyaAILayout();
-  const scrollBottomPad = TAB_BAR_CLEARANCE + TEACHER_SPACING.lg;
+  const insets = useSafeAreaInsets();
+  const { isGrid, columns, shellWidth, isTvView } = useVidyaAILayout();
+  const scrollBottomPad =
+    TAB_BAR_CLEARANCE + Math.max(insets.bottom, 12) + TEACHER_SPACING.xl;
   const [subjectNames, setSubjectNames] = useState<string[]>([]);
 
   useEffect(() => {
@@ -106,7 +111,7 @@ export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: bool
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottomPad }]}
+      contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
     >
@@ -159,6 +164,7 @@ export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: bool
                       accent={tool.color || AI.primary}
                       badge="Teacher"
                       compact={isGrid}
+                      evenHeight={isTvView}
                       glass
                       onPress={() => {
                         // Let the press spring paint, then navigate — avoids a stuck frame.
@@ -181,6 +187,8 @@ export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: bool
             ))}
           </View>
         </View>
+        {/* Explicit spacer: Android often ignores ScrollView contentContainer paddingBottom. */}
+        <View style={{ height: scrollBottomPad }} accessibilityElementsHidden />
       </View>
     </ScrollView>
   );

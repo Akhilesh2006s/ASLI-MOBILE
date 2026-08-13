@@ -12,6 +12,8 @@ type Props = {
   accent?: string;
   badge?: string;
   compact?: boolean;
+  /** TV / board only: reserved title + description height so every card matches. */
+  evenHeight?: boolean;
   /** Frosted-glass card: translucent + blurred instead of a solid white surface. */
   glass?: boolean;
   /** Trailing action label, e.g. "Get Started" (web's ai-tutor.tsx wording). */
@@ -27,6 +29,7 @@ export default function AiToolCard({
   accent = AI.primary,
   badge,
   compact,
+  evenHeight,
   glass = true,
   ctaText = 'Open Tool',
   onPress,
@@ -53,6 +56,7 @@ export default function AiToolCard({
         style={[
           styles.card,
           compact && styles.cardCompact,
+          evenHeight && styles.cardEven,
           glass && styles.cardGlassShell,
           { borderColor: accent },
           style,
@@ -68,9 +72,9 @@ export default function AiToolCard({
         >
           <Ionicons name={icon} size={compact ? 24 : 26} color="#FFFFFF" />
         </View>
-        <View style={styles.content}>
+        <View style={[styles.content, evenHeight && styles.contentEven]}>
           <View style={styles.titleBlock}>
-            <Text style={styles.title} numberOfLines={2}>
+            <Text style={[styles.title, evenHeight && styles.titleEven]} numberOfLines={2}>
               {formatAiToolText(title)}
             </Text>
             {badge ? (
@@ -91,10 +95,13 @@ export default function AiToolCard({
               </View>
             ) : null}
           </View>
-          <Text style={styles.description} numberOfLines={compact ? 3 : 2}>
+          <Text
+            style={[styles.description, evenHeight && styles.descriptionEven]}
+            numberOfLines={evenHeight ? 3 : compact ? 4 : 3}
+          >
             {formatAiToolText(description)}
           </Text>
-          <View style={styles.actionRow}>
+          <View style={[styles.actionRow, evenHeight && styles.actionRowEven]}>
             <Text style={styles.actionText}>{formatAiToolText(ctaText)}</Text>
             <Ionicons name="arrow-forward" size={18} color={AI.primary} />
           </View>
@@ -111,7 +118,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   card: {
-    height: 132,
+    minHeight: 132,
     width: '100%',
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -125,7 +132,11 @@ const styles = StyleSheet.create({
     ...AI_SHADOW,
   },
   cardCompact: {
-    height: 210,
+    minHeight: 210,
+    flexDirection: 'column',
+  },
+  cardEven: {
+    minHeight: 292,
     flexDirection: 'column',
   },
   cardGlassShell: {
@@ -145,6 +156,10 @@ const styles = StyleSheet.create({
     minWidth: 0,
     width: '100%',
   },
+  contentEven: {
+    flexGrow: 1,
+    justifyContent: 'flex-start',
+  },
   titleBlock: {
     gap: AI_SPACING.xs,
     alignItems: 'flex-start',
@@ -154,18 +169,31 @@ const styles = StyleSheet.create({
     ...AI_TYPE.title,
     color: AI.text,
     width: '100%',
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
+  },
+  titleEven: {
+    minHeight: 60,
   },
   description: {
     ...AI_TYPE.caption,
     marginTop: AI_SPACING.xs,
     color: AI.textSecondary,
     width: '100%',
+    flexShrink: 0,
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
+  },
+  descriptionEven: {
+    minHeight: 63,
   },
   actionRow: {
     marginTop: AI_SPACING.md,
     flexDirection: 'row',
     alignItems: 'center',
     gap: AI_SPACING.xs,
+  },
+  actionRowEven: {
+    marginTop: 'auto',
+    paddingTop: AI_SPACING.md,
   },
   actionText: {
     fontSize: 15,
