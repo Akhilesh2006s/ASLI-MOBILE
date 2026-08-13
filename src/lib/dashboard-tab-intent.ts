@@ -56,6 +56,21 @@ let teacherIntent: TeacherDashboardTabIntent | null = null;
 let adminIntent: AdminDashboardTabIntent | null = null;
 let superAdminIntent: SuperAdminDashboardTabIntent | null = null;
 
+/** Student Learning tab chips: subjects catalog vs quizzes list. */
+export type LearningPathsSubTabIntent = 'subjects' | 'quizzes';
+
+let learningPathsSubTabIntent: LearningPathsSubTabIntent | null = null;
+
+export function setLearningPathsSubTabIntent(tab: LearningPathsSubTabIntent) {
+  learningPathsSubTabIntent = tab;
+}
+
+export function consumeLearningPathsSubTabIntent(): LearningPathsSubTabIntent | null {
+  const next = learningPathsSubTabIntent;
+  learningPathsSubTabIntent = null;
+  return next;
+}
+
 export function setStudentDashboardTabIntent(tab: StudentDashboardTabIntent) {
   studentIntent = tab;
 }

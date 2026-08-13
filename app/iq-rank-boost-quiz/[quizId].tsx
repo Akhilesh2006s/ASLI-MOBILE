@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Pressable,
   Alert,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,9 +16,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../src/lib/api-config';
-import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import { GlassPanel } from '../../src/components/ui';
 import { STUDENT } from '../../src/theme/student';
+import {
+  setStudentDashboardTabIntent,
+  setLearningPathsSubTabIntent,
+} from '../../src/lib/dashboard-tab-intent';
 
 interface Question {
   _id: string;
@@ -32,7 +36,7 @@ interface Question {
   } | string;
 }
 
-const LIST_PATH = '/iq-rank-boost-subjects';
+const LIST_PATH = '/dashboard';
 
 function resolveCorrectAnswer(question: Question): string {
   if (question.correctAnswer) return String(question.correctAnswer);
@@ -40,8 +44,15 @@ function resolveCorrectAnswer(question: Question): string {
   return correct?.text ? String(correct.text) : '';
 }
 
+function asParam(value?: string | string[]) {
+  if (Array.isArray(value)) return String(value[0] || '');
+  return String(value || '');
+}
+
 export default function IQRankBoostQuiz() {
-  const { quizId } = useLocalSearchParams<{ quizId: string }>();
+  const params = useLocalSearchParams<{ quizId: string; from?: string }>();
+  const quizId = asParam(params.quizId);
+  const fromLearning = asParam(params.from) === 'learning';
   const [questions, setQuestions] = useState<Question[]>([]);
   const [quizTitle, setQuizTitle] = useState('Quiz');
   const [isLoading, setIsLoading] = useState(true);
@@ -70,7 +81,27 @@ export default function IQRankBoostQuiz() {
     if (quizId) void fetchQuiz();
   }, [quizId]);
 
-  useBackNavigation(LIST_PATH, false);
+  const goToQuizList = useCallback(() => {
+    if (fromLearning) {
+      if (router.canGoBack()) {
+        router.back();
+        return;
+      }
+      setStudentDashboardTabIntent('learning');
+      setLearningPathsSubTabIntent('quizzes');
+      router.replace('/dashboard');
+      return;
+    }
+    router.replace(LIST_PATH);
+  }, [fromLearning]);
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      goToQuizList();
+      return true;
+    });
+    return () => sub.remove();
+  }, [goToQuizList]);
 
   const fetchQuiz = async () => {
     try {
@@ -192,7 +223,7 @@ export default function IQRankBoostQuiz() {
           ? typeof questions[0].subject === 'object'
             ? questions[0].subject._id
             : questions[0].subject
-          : quizId;
+          : null;
 
       const res = await fetch(`${API_BASE_URL}/api/student/iq-rank-quiz-result`, {
         method: 'POST',
@@ -203,6 +234,7 @@ export default function IQRankBoostQuiz() {
         body: JSON.stringify({
           quizId,
           subjectId,
+          subject: subjectId,
           totalQuestions: questions.length,
           correctAnswers: correct,
           incorrectAnswers: incorrect,
@@ -269,7 +301,7 @@ export default function IQRankBoostQuiz() {
           <Text style={styles.emptySub}>
             This quiz may not be assigned to your class or trial account.
           </Text>
-          <TouchableOpacity style={styles.nextButton} onPress={() => router.replace(LIST_PATH)}>
+          <TouchableOpacity style={styles.nextButton} onPress={() => goToQuizList()}>
             <Text style={styles.nextButtonText}>Back to quizzes</Text>
           </TouchableOpacity>
         </View>
@@ -282,7 +314,7 @@ export default function IQRankBoostQuiz() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <ScrollView contentContainerStyle={styles.lobbyScroll} showsVerticalScrollIndicator={false}>
           <LinearGradient colors={['#0284c7', '#0d9488']} style={styles.lobbyHero}>
-            <TouchableOpacity onPress={() => router.replace(LIST_PATH)} style={styles.backButton}>
+            <TouchableOpacity onPress={() => goToQuizList()} style={styles.backButton}>
               <Ionicons name="arrow-back" size={22} color="#fff" />
             </TouchableOpacity>
             <Text style={styles.lobbyEyebrow}>{isDaily ? 'TODAY’S SET' : 'READY TO START'}</Text>
@@ -306,7 +338,7 @@ export default function IQRankBoostQuiz() {
             {dailyMeta?.completed || lockedUntilTomorrow ? (
               <TouchableOpacity
                 style={[styles.startBtn, { backgroundColor: '#94a3b8' }]}
-                onPress={() => router.replace(LIST_PATH)}
+                onPress={() => goToQuizList()}
               >
                 <Ionicons name="lock-closed" size={18} color="#fff" />
                 <Text style={styles.startBtnText}>Locked until tomorrow</Text>
@@ -350,7 +382,7 @@ export default function IQRankBoostQuiz() {
                 </View>
               ))}
             </View>
-            <TouchableOpacity style={styles.heroBtn} onPress={() => router.replace(LIST_PATH)}>
+            <TouchableOpacity style={styles.heroBtn} onPress={() => goToQuizList()}>
               <Text style={styles.heroBtnText}>Back to quizzes</Text>
             </TouchableOpacity>
             {lockedUntilTomorrow || isDaily ? (
@@ -430,7 +462,7 @@ export default function IQRankBoostQuiz() {
           <Text style={styles.emptySub}>
             This quiz may not be assigned to your class or trial account.
           </Text>
-          <TouchableOpacity style={styles.nextButton} onPress={() => router.replace(LIST_PATH)}>
+          <TouchableOpacity style={styles.nextButton} onPress={() => goToQuizList()}>
             <Text style={styles.nextButtonText}>Back to quizzes</Text>
           </TouchableOpacity>
         </View>
@@ -442,7 +474,7 @@ export default function IQRankBoostQuiz() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <LinearGradient colors={['#0284c7', '#4f46e5']} style={styles.header}>
         <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => router.replace(LIST_PATH)} style={styles.backButton}>
+          <TouchableOpacity onPress={() => goToQuizList()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={22} color="#fff" />
           </TouchableOpacity>
           <View style={styles.headerText}>

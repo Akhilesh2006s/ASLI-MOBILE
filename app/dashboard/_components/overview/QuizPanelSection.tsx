@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -115,15 +116,10 @@ export default function QuizPanelSection() {
 
   const openQuiz = (quiz: PanelQuiz) => {
     if (quiz.isDaily && dailyStatus?.lockedUntilTomorrow) {
-      const key = dailyStatus.today?.dateKey;
-      if (key) {
-        router.push({
-          pathname: '/iq-rank-boost-subjects',
-          params: { review: key },
-        });
-      } else {
-        router.push('/iq-rank-boost-subjects');
-      }
+      Alert.alert(
+        'Already completed',
+        'You’ve finished today’s daily quiz. Tomorrow’s set unlocks after midnight (IST).'
+      );
       return;
     }
     router.push({

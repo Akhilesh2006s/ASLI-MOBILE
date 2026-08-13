@@ -267,10 +267,18 @@ export default function QuizPage() {
             percentage,
           });
         }
+      } else {
+        Alert.alert(
+          'Could not save quiz',
+          'Your score is shown here, but it was not saved. Check your connection and try again so it also appears on the web.',
+        );
       }
     } catch (error) {
       console.error('Error submitting quiz:', error);
-      // Keep local results so the student still sees a summary
+      Alert.alert(
+        'Could not save quiz',
+        'Check your connection and try again so this attempt is saved for web and mobile.',
+      );
     } finally {
       setIsSubmitting(false);
       submittingRef.current = false;

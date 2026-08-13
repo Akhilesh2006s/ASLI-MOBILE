@@ -191,6 +191,7 @@ export default function ExamsView({
   useFocusEffect(
     useCallback(() => {
       void fetchExams();
+      void fetchResults();
     }, []),
   );
 

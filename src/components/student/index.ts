@@ -7,3 +7,4 @@ export type { StudentFilterOption } from './StudentFilterDropdown';
 export { default as StudentHomeHeader } from './StudentHomeHeader';
 export { default as PremiumSectionHeader } from './PremiumSectionHeader';
 export { default as TeacherDiaryFeed } from './TeacherDiaryFeed';
+export { default as DailyQuizPanel } from './DailyQuizPanel';

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
@@ -9,11 +9,12 @@ import Animated, {
   withDelay,
   withTiming,
 } from 'react-native-reanimated';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import api from '../../../src/services/api/api';
 import GlassCard from '../../../src/components/student/GlassCard';
 import ChipNav from '../../../src/components/student/ChipNav';
 import DigitalLibraryBrowseSection from '../../../src/components/student/DigitalLibraryBrowseSection';
+import DailyQuizPanel from '../../../src/components/student/DailyQuizPanel';
 import { ShimmerCard } from '../../../src/components/student/StudentShimmer';
 import GlassPanel from '../../../src/components/ui/GlassPanel';
 import { GLASS_ROW, GLASS_VIOLET } from '../../../src/theme/glass';
@@ -35,6 +36,7 @@ import {
   learningPathDisplayName,
   prepareStudentLearningPathSubjects,
 } from '../../../src/lib/learning-path-subjects';
+import { consumeLearningPathsSubTabIntent } from '../../../src/lib/dashboard-tab-intent';
 
 function AnimatedProgressBar({ progress, delay = 0 }: { progress: number; delay?: number }) {
   const width = useSharedValue(0);
@@ -107,6 +109,23 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
   const [isLoadingQuizzes, setIsLoadingQuizzes] = useState(true);
   const [subjectsError, setSubjectsError] = useState<string | null>(null);
   const [quizzesError, setQuizzesError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const intent = consumeLearningPathsSubTabIntent();
+    if (intent === 'subjects' || intent === 'quizzes') {
+      setActiveTab(intent);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      const intent = consumeLearningPathsSubTabIntent();
+      if (intent === 'subjects' || intent === 'quizzes') {
+        setActiveTab(intent);
+      }
+      void fetchQuizzes();
+    }, []),
+  );
 
   useEffect(() => {
     if (programLoading) return;
@@ -207,27 +226,6 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
           </GlassPanel>
         </Animated.View>
       ) : null}
-
-      <TouchableOpacity
-        activeOpacity={0.88}
-        onPress={() => router.push('/iq-rank-boost-subjects')}
-        style={{ marginBottom: 10 }}
-      >
-        <GlassPanel tone="medium" radius={STUDENT_RADIUS.card} style={{ padding: 0 }}>
-          <View style={[styles.bannerInner, { paddingVertical: 14, paddingHorizontal: 14 }]}>
-            <View style={[styles.bannerIcon, { backgroundColor: '#e0f2fe' }]}>
-              <Ionicons name="trophy-outline" size={22} color="#0284c7" />
-            </View>
-            <View style={styles.bannerText}>
-              <Text style={styles.bannerTitle}>Daily Quiz</Text>
-              <Text style={styles.bannerSub}>
-                Start today’s set · next unlock · previous results
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={STUDENT.textMuted} />
-          </View>
-        </GlassPanel>
-      </TouchableOpacity>
 
       <View style={styles.tabsContainer}>
         <ChipNav
@@ -351,35 +349,26 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
 
       {activeTab === 'quizzes' ? (
         <View style={styles.content}>
+          <DailyQuizPanel embedded />
           {isLoadingQuizzes ? (
-            <View style={styles.shimmerWrap}>
-              <ShimmerCard />
+            <View style={[styles.shimmerWrap, { marginTop: 12 }]}>
               <ShimmerCard />
             </View>
-          ) : quizzes.length === 0 ? (
+          ) : quizzesError ? (
             <GlassPanel tone="medium" radius={STUDENT_RADIUS.card} style={styles.emptyCard} contentStyle={styles.emptyInner}>
               <View style={styles.emptyIcon}>
-                <Ionicons
-                  name={quizzesError ? 'cloud-offline-outline' : 'document-text-outline'}
-                  size={28}
-                  color={STUDENT.primary}
-                />
+                <Ionicons name="cloud-offline-outline" size={28} color={STUDENT.primary} />
               </View>
-              <Text style={styles.emptyStateTitle}>
-                {quizzesError ? 'Couldn’t load quizzes' : 'No quizzes assigned'}
-              </Text>
-              <Text style={styles.emptyStateText}>
-                {quizzesError || "Your teacher hasn't assigned any quizzes yet."}
-              </Text>
-              {quizzesError ? (
-                <TouchableOpacity style={styles.retryBtn} onPress={fetchQuizzes} activeOpacity={0.85}>
-                  <Ionicons name="refresh" size={16} color={STUDENT.textOnPrimary} />
-                  <Text style={styles.retryBtnText}>Try again</Text>
-                </TouchableOpacity>
-              ) : null}
+              <Text style={styles.emptyStateTitle}>Couldn’t load teacher quizzes</Text>
+              <Text style={styles.emptyStateText}>{quizzesError}</Text>
+              <TouchableOpacity style={styles.retryBtn} onPress={fetchQuizzes} activeOpacity={0.85}>
+                <Ionicons name="refresh" size={16} color={STUDENT.textOnPrimary} />
+                <Text style={styles.retryBtnText}>Try again</Text>
+              </TouchableOpacity>
             </GlassPanel>
-          ) : (
-            <View style={styles.quizzesList}>
+          ) : quizzes.length > 0 ? (
+            <View style={[styles.quizzesList, { marginTop: 16 }]}>
+              <Text style={styles.sectionLabel}>Assigned by your teacher</Text>
               {quizzes.map((quiz: any, index: number) => (
                 <GlassCard key={quiz._id} variant="glass" padding={16} animate delay={index * 50}>
                   <TouchableOpacity activeOpacity={0.9} onPress={() => router.push(`/quiz/${quiz._id}`)}>
@@ -429,7 +418,7 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
                 </GlassCard>
               ))}
             </View>
-          )}
+          ) : null}
         </View>
       ) : null}
     </View>

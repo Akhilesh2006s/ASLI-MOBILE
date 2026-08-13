@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,18 +6,15 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  RefreshControl,
   Modal,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
-import { API_BASE_URL } from '../src/lib/api-config';
-import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
-import { GlassPanel } from '../src/components/ui';
+import { API_BASE_URL } from '../../lib/api-config';
+import { GlassPanel } from '../ui';
 
 interface Quiz {
   _id: string;
@@ -104,13 +101,13 @@ function formatDateKeyLabel(dateKey: string) {
   }
 }
 
-export default function IQRankBoostSubjects() {
-  const { review: reviewParam } = useLocalSearchParams<{ review?: string }>();
+type Props = {
+  embedded?: boolean;
+};
+
+export default function DailyQuizPanel({ embedded = false }: Props) {
   const [subjects, setSubjects] = useState<SubjectWithQuizzes[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [studentClass, setStudentClass] = useState<string | null>(null);
-  const [dashboardPath, setDashboardPath] = useState<string>('/dashboard');
   const [dailyStatus, setDailyStatus] = useState<DailyStatus | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [reviewLoading, setReviewLoading] = useState(false);
@@ -193,7 +190,6 @@ export default function IQRankBoostSubjects() {
 
       const quizzesData = await quizzesResponse.json();
       const quizzes: Quiz[] = Array.isArray(quizzesData.data) ? quizzesData.data : [];
-      if (quizzesData.classNumber) setStudentClass(String(quizzesData.classNumber));
 
       quizzes.sort((a, b) => Number(isDailyQuiz(b)) - Number(isDailyQuiz(a)));
 
@@ -250,16 +246,9 @@ export default function IQRankBoostSubjects() {
       console.error('Failed to fetch quizzes:', error);
       setSubjects([]);
     } finally {
-      setIsLoading(false);
-      setRefreshing(false);
       loadedOnce.current = true;
+      setIsLoading(false);
     }
-  }, []);
-
-  useEffect(() => {
-    getDashboardPath().then((path) => {
-      if (path) setDashboardPath(path);
-    });
   }, []);
 
   useFocusEffect(
@@ -267,21 +256,6 @@ export default function IQRankBoostSubjects() {
       void load();
     }, [load]),
   );
-
-  useEffect(() => {
-    const key =
-      typeof reviewParam === 'string'
-        ? reviewParam
-        : Array.isArray(reviewParam)
-          ? reviewParam[0]
-          : '';
-    if (!key || !/^\d{4}-\d{2}-\d{2}$/.test(key)) return;
-    void openPreviousResult(key);
-    // Clear deep-link param without remounting (keeps the review modal open)
-    router.setParams({ review: '' });
-  }, [reviewParam, openPreviousResult]);
-
-  useBackNavigation(dashboardPath, false);
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty.toLowerCase()) {
@@ -303,40 +277,8 @@ export default function IQRankBoostSubjects() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <LinearGradient colors={['#0284c7', '#0d9488']} style={styles.header}>
-        <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => router.replace(dashboardPath)} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
-          <View style={styles.headerText}>
-            <View style={styles.headerTitleRow}>
-              <Ionicons name="trophy" size={28} color="#fff" />
-              <Text style={styles.headerTitle}>Quiz</Text>
-            </View>
-            <Text style={styles.headerSubtitle}>
-              {studentClass
-                ? `Class ${studentClass} · 5 questions / day from your class bank`
-                : 'Daily 5-question quizzes for your class'}
-            </Text>
-          </View>
-        </View>
-      </LinearGradient>
-
-      <ScrollView
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => {
-              setRefreshing(true);
-              void load();
-            }}
-          />
-        }
-      >
-        {isLoading ? (
+    <View>
+      {isLoading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#0284c7" />
             <Text style={styles.loadingText}>Loading quizzes...</Text>
@@ -348,7 +290,7 @@ export default function IQRankBoostSubjects() {
             <Text style={styles.emptySubtext}>Quizzes assigned to you will appear here</Text>
           </View>
         ) : (
-          <View style={styles.subjectsList}>
+          <View style={[styles.subjectsList, embedded && styles.subjectsListEmbedded]}>
             {subjects.map((subject) => (
               <GlassPanel key={subject._id} style={styles.subjectCardInner} radius={12} tone="medium">
                 <View style={styles.subjectHeader}>
@@ -447,7 +389,10 @@ export default function IQRankBoostSubjects() {
                             onPress={() =>
                               router.push({
                                 pathname: '/iq-rank-boost-quiz/[quizId]',
-                                params: { quizId: quiz._id },
+                                params: {
+                                  quizId: String(quiz._id),
+                                  ...(embedded ? { from: 'learning' } : {}),
+                                },
                               })
                             }
                           >
@@ -518,7 +463,6 @@ export default function IQRankBoostSubjects() {
             ))}
           </View>
         )}
-      </ScrollView>
 
       <Modal visible={reviewOpen} animationType="slide" transparent onRequestClose={closeReview}>
         <View style={styles.modalBackdrop}>
@@ -607,7 +551,7 @@ export default function IQRankBoostSubjects() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -634,6 +578,7 @@ const styles = StyleSheet.create({
   emptyText: { marginTop: 12, fontSize: 16, fontWeight: '700', color: '#334155' },
   emptySubtext: { marginTop: 4, fontSize: 13, color: '#64748b' },
   subjectsList: { padding: 16, gap: 12 },
+  subjectsListEmbedded: { padding: 0, gap: 12 },
   subjectCardInner: { padding: 14 },
   subjectHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   subjectIcon: {
