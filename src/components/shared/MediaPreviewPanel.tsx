@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type Ref } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Video, ResizeMode } from 'expo-av';
 import { Image } from 'expo-image';
 import YouTubeEmbedWebView from './YouTubeEmbedWebView';
-import PdfPreviewWebView from './PdfPreviewWebView';
+import PdfPreviewWebView, { type PdfPageState, type PdfPreviewHandle } from './PdfPreviewWebView';
 import {
   getAuthHeaders,
   getDrivePreviewUrl,
@@ -19,6 +19,9 @@ type Props = {
   contentType?: string;
   youtubeUrl?: string;
   onPreviewBusyChange?: (busy: boolean) => void;
+  pdfRef?: Ref<PdfPreviewHandle>;
+  hidePdfPageBar?: boolean;
+  onPdfPageStateChange?: (state: PdfPageState) => void;
 };
 
 export default function MediaPreviewPanel({
@@ -27,6 +30,9 @@ export default function MediaPreviewPanel({
   contentType,
   youtubeUrl,
   onPreviewBusyChange,
+  pdfRef,
+  hidePdfPageBar,
+  onPdfPageStateChange,
 }: Props) {
   const resolvedUrl = resolveContentUrl(fileUrl);
   const ytSource = youtubeUrl || resolvedUrl;
@@ -145,10 +151,13 @@ export default function MediaPreviewPanel({
     return (
       <View style={styles.flex}>
         <PdfPreviewWebView
+          ref={pdfRef}
           fileUrl={fileUrl}
           title={title}
           style={styles.flex}
           onBusyChange={onPreviewBusyChange}
+          hidePageBar={hidePdfPageBar}
+          onPageStateChange={onPdfPageStateChange}
         />
       </View>
     );

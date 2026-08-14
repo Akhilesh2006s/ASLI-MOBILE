@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,7 +8,8 @@ import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../src/lib/api-config';
 import { useContentViewerBack } from '../src/hooks/useBackNavigation';
 import MediaPreviewPanel from '../src/components/shared/MediaPreviewPanel';
-import { resolveContentUrl } from '../src/utils/contentPreview';
+import { type PdfPageState, type PdfPreviewHandle } from '../src/components/shared/PdfPreviewWebView';
+import { getPreviewKind, resolveContentUrl } from '../src/utils/contentPreview';
 
 interface DriveFile {
   _id: string;
@@ -53,10 +54,37 @@ export default function DriveViewer() {
 
   const [file, setFile] = useState<DriveFile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [pdfPage, setPdfPage] = useState<PdfPageState>({ page: 1, pageCount: 0, ready: false });
+  const [pageDraft, setPageDraft] = useState('1');
+  const pdfRef = useRef<PdfPreviewHandle>(null);
+  const pageInputFocusedRef = useRef(false);
   const goBack = useContentViewerBack(returnTo || undefined);
 
   const previewUrl = resolveContentUrl(file?.driveLink || driveLink);
   const previewTitle = file?.title || paramTitle || 'Preview';
+  const previewKind = getPreviewKind(previewUrl, contentType || file?.fileType);
+  const showFindPage = previewKind === 'pdf';
+
+  const onPdfPageStateChange = useCallback((state: PdfPageState) => {
+    setPdfPage(state);
+    if (!pageInputFocusedRef.current) {
+      setPageDraft(String(state.page));
+    }
+  }, []);
+
+  const jumpToHeaderPage = useCallback(() => {
+    const parsed = Number.parseInt(String(pageDraft).replace(/[^\d]/g, ''), 10);
+    if (!Number.isFinite(parsed)) {
+      setPageDraft(String(pdfPage.page));
+      return;
+    }
+    pdfRef.current?.goToPage(parsed);
+  }, [pageDraft, pdfPage.page]);
+
+  useEffect(() => {
+    setPdfPage({ page: 1, pageCount: 0, ready: false });
+    setPageDraft('1');
+  }, [previewUrl]);
 
   const fetchFile = async () => {
     try {
@@ -119,6 +147,9 @@ export default function DriveViewer() {
         fileUrl={previewUrl}
         title={previewTitle}
         contentType={contentType || file?.fileType}
+        pdfRef={pdfRef}
+        hidePdfPageBar={showFindPage}
+        onPdfPageStateChange={onPdfPageStateChange}
       />
     );
   };
@@ -141,6 +172,62 @@ export default function DriveViewer() {
             ) : null}
           </View>
         </View>
+        {showFindPage ? (
+          <View style={styles.findPageRow}>
+            <TouchableOpacity
+              style={[styles.findPageNav, (!pdfPage.ready || pdfPage.page <= 1) && styles.findPageDisabled]}
+              onPress={() => pdfRef.current?.prevPage()}
+              disabled={!pdfPage.ready || pdfPage.page <= 1}
+              accessibilityRole="button"
+              accessibilityLabel="Previous page"
+            >
+              <Ionicons name="chevron-back" size={20} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.findPageLabel}>Page</Text>
+            <TextInput
+              value={pageDraft}
+              onChangeText={(text) => setPageDraft(text.replace(/[^\d]/g, ''))}
+              onFocus={() => {
+                pageInputFocusedRef.current = true;
+              }}
+              onBlur={() => {
+                pageInputFocusedRef.current = false;
+                jumpToHeaderPage();
+              }}
+              onSubmitEditing={jumpToHeaderPage}
+              keyboardType="number-pad"
+              returnKeyType="go"
+              selectTextOnFocus
+              editable={pdfPage.ready}
+              style={styles.findPageInput}
+              accessibilityLabel="Go to page number"
+            />
+            <Text style={styles.findPageLabel}>
+              of {pdfPage.ready ? pdfPage.pageCount : '—'}
+            </Text>
+            <TouchableOpacity
+              style={[styles.findPageGo, !pdfPage.ready && styles.findPageDisabled]}
+              onPress={jumpToHeaderPage}
+              disabled={!pdfPage.ready}
+              accessibilityRole="button"
+              accessibilityLabel="Go to page"
+            >
+              <Text style={styles.findPageGoText}>Go</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.findPageNav,
+                (!pdfPage.ready || pdfPage.page >= pdfPage.pageCount) && styles.findPageDisabled,
+              ]}
+              onPress={() => pdfRef.current?.nextPage()}
+              disabled={!pdfPage.ready || pdfPage.page >= pdfPage.pageCount}
+              accessibilityRole="button"
+              accessibilityLabel="Next page"
+            >
+              <Ionicons name="chevron-forward" size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        ) : null}
       </LinearGradient>
 
       <View style={styles.previewContainer}>{renderBody()}</View>
@@ -208,5 +295,54 @@ const styles = StyleSheet.create({
   previewContainer: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+  findPageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+  },
+  findPageNav: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+  },
+  findPageLabel: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  findPageInput: {
+    width: 56,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#fff',
+    color: '#0f172a',
+    textAlign: 'center',
+    fontSize: 15,
+    fontWeight: '700',
+    paddingHorizontal: 6,
+    paddingVertical: 0,
+  },
+  findPageGo: {
+    height: 36,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.22)',
+  },
+  findPageGoText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  findPageDisabled: {
+    opacity: 0.35,
   },
 });

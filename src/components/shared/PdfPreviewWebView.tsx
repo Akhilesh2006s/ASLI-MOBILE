@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
@@ -18,7 +18,6 @@ import {
   buildPdfUrlInjectScript,
   fetchPdfPreviewLoadInfo,
   resolvePdfUrlTarget,
-  shouldInjectPdfAsBase64,
   YOUTUBE_EMBED_ORIGIN,
   type PdfPreviewLoadInfo,
   type PdfUrlLoadTarget,
@@ -28,14 +27,31 @@ const ZOOM_STEP = 1.25;
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 4;
 
+export type PdfPreviewHandle = {
+  goToPage: (page: number) => void;
+  nextPage: () => void;
+  prevPage: () => void;
+};
+
+export type PdfPageState = {
+  page: number;
+  pageCount: number;
+  ready: boolean;
+};
+
 type Props = {
   fileUrl: string;
   title?: string;
   style?: ViewStyle;
   onBusyChange?: (busy: boolean) => void;
+  hidePageBar?: boolean;
+  onPageStateChange?: (state: PdfPageState) => void;
 };
 
-export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange }: Props) {
+const PdfPreviewWebView = forwardRef<PdfPreviewHandle, Props>(function PdfPreviewWebView(
+  { fileUrl, title, style, onBusyChange, hidePageBar = false, onPageStateChange },
+  ref,
+) {
   const { width, height } = useWindowDimensions();
   const isTvView = isTvOrBoardDisplay(width, height);
   const webRef = useRef<WebView>(null);
@@ -64,6 +80,10 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
   base64PayloadRef.current = base64Payload;
 
   const busy = rendering;
+  const pageRef = useRef(page);
+  const pageCountRef = useRef(pageCount);
+  pageRef.current = page;
+  pageCountRef.current = pageCount;
 
   useEffect(() => {
     onBusyChange?.(busy);
@@ -74,7 +94,7 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
   }, [webReady]);
 
   const injectWhenReady = useCallback((script: string) => {
-    const wrapped = `window.__pdfViewerConfig=${JSON.stringify({ tv: isTvView })};${script}`;
+    const wrapped = `window.__pdfViewerConfig=${JSON.stringify({ tv: isTvView, nativePinch: false })};${script}`;
     const run = () => {
       if (!mountedRef.current) return;
       if (webRef.current && webReadyRef.current) {
@@ -135,16 +155,7 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
       setUrlTarget(target);
     });
 
-    void fetchPdfPreviewLoadInfo(fileUrlRef.current, titleRef.current).then((info) => {
-      prefetchPendingRef.current = false;
-      if (!mountedRef.current) return;
-      if (!info) return;
-      prefetchedRef.current = info;
-      if (shouldInjectPdfAsBase64(info)) {
-        base64PayloadRef.current = info.base64;
-        setBase64Payload(info.base64);
-      }
-    });
+    prefetchPendingRef.current = false;
 
     return () => {
       mountedRef.current = false;
@@ -163,29 +174,7 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
 
     if (!urlTarget) return;
 
-    let cancelled = false;
-    const deadline = Date.now() + 180;
-
-    const tryInjectUrl = () => {
-      if (cancelled || injectedRef.current || !mountedRef.current) return;
-      if (base64PayloadRef.current) return;
-      injectWhenReady(buildPdfUrlInjectScript(urlTarget.url, urlTarget.headers));
-    };
-
-    const waitForPrefetch = () => {
-      if (cancelled || injectedRef.current) return;
-      if (base64PayloadRef.current) return;
-      if (!prefetchPendingRef.current || Date.now() >= deadline) {
-        tryInjectUrl();
-        return;
-      }
-      setTimeout(waitForPrefetch, 25);
-    };
-
-    waitForPrefetch();
-    return () => {
-      cancelled = true;
-    };
+    injectWhenReady(buildPdfUrlInjectScript(urlTarget.url, urlTarget.headers));
   }, [webReady, base64Payload, urlTarget, injectWhenReady]);
 
   const injectViewerCommand = useCallback((command: string) => {
@@ -194,10 +183,49 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
     );
   }, []);
 
+  const jumpToDraftPage = useCallback(() => {
+    const count = pageCountRef.current;
+    if (busy || count < 1) return;
+    const parsed = Number.parseInt(String(pageDraft).replace(/[^\d]/g, ''), 10);
+    if (!Number.isFinite(parsed)) {
+      setPageDraft(String(pageRef.current));
+      return;
+    }
+    const next = Math.min(Math.max(1, parsed), count);
+    setPageDraft(String(next));
+    setPage(next);
+    injectViewerCommand(`v.goToPage(${next})`);
+  }, [busy, pageDraft, injectViewerCommand]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      goToPage: (n: number) => {
+        const count = pageCountRef.current;
+        if (count < 1) return;
+        const next = Math.min(Math.max(1, Math.floor(n)), count);
+        setPage(next);
+        setPageDraft(String(next));
+        injectViewerCommand(`v.goToPage(${next})`);
+      },
+      nextPage: () => injectViewerCommand('v.nextPage()'),
+      prevPage: () => injectViewerCommand('v.prevPage()'),
+    }),
+    [injectViewerCommand],
+  );
+
+  useEffect(() => {
+    onPageStateChange?.({
+      page,
+      pageCount,
+      ready: !busy && pageCount > 0,
+    });
+  }, [page, pageCount, busy, onPageStateChange]);
+
   useEffect(() => {
     if (!webReadyRef.current || !injectedRef.current) return;
     webRef.current?.injectJavaScript(
-      `window.__pdfViewerConfig=${JSON.stringify({ tv: isTvView })};if(typeof window.__pdfApplyConfig==='function'){window.__pdfApplyConfig();}true;`
+      `window.__pdfViewerConfig=${JSON.stringify({ tv: isTvView, nativePinch: false })};if(typeof window.__pdfApplyConfig==='function'){window.__pdfApplyConfig();}true;`
     );
   }, [isTvView]);
 
@@ -248,6 +276,12 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
     return () => clearTimeout(timer);
   }, [rendering]);
 
+  const showTvControls = isTvView;
+  const controlsReady = !busy && pageCount > 0;
+  const canZoomOut = controlsReady && zoom > MIN_ZOOM + 0.01;
+  const canZoomIn = controlsReady && zoom < MAX_ZOOM - 0.01;
+  const isFitPage = controlsReady && Math.abs(zoom - 1) < 0.02;
+
   if (error) {
     return (
       <View style={[styles.centered, style]}>
@@ -264,32 +298,62 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
     );
   }
 
-  const showTvControls = isTvView;
-  const controlsReady = !busy && pageCount > 0;
-  const canZoomOut = controlsReady && zoom > MIN_ZOOM + 0.01;
-  const canZoomIn = controlsReady && zoom < MAX_ZOOM - 0.01;
-  const isFitPage = controlsReady && Math.abs(zoom - 1) < 0.02;
-
-  const jumpToDraftPage = useCallback(() => {
-    if (!controlsReady) return;
-    const parsed = Number.parseInt(String(pageDraft).replace(/[^\d]/g, ''), 10);
-    if (!Number.isFinite(parsed)) {
-      setPageDraft(String(page));
-      return;
-    }
-    const next = Math.min(Math.max(1, parsed), pageCount);
-    setPageDraft(String(next));
-    setPage(next);
-    injectViewerCommand(`v.goToPage(${next})`);
-  }, [controlsReady, pageDraft, page, pageCount, injectViewerCommand]);
+  const pageBar = hidePageBar ? null : (
+    <View style={styles.pageBar}>
+      <TouchableOpacity
+        style={[styles.pageNavBtn, (!controlsReady || page <= 1) && styles.tvBtnDisabled]}
+        onPress={() => injectViewerCommand('v.prevPage()')}
+        disabled={!controlsReady || page <= 1}
+        accessibilityRole="button"
+        accessibilityLabel="Previous page"
+      >
+        <Ionicons name="chevron-back" size={20} color="#fff" />
+      </TouchableOpacity>
+      <Text style={styles.pageBarLabel}>Page</Text>
+      <TextInput
+        value={pageDraft}
+        onChangeText={(text) => setPageDraft(text.replace(/[^\d]/g, ''))}
+        onSubmitEditing={jumpToDraftPage}
+        onBlur={jumpToDraftPage}
+        keyboardType="number-pad"
+        returnKeyType="go"
+        selectTextOnFocus
+        editable={controlsReady}
+        style={styles.pageInput}
+        accessibilityLabel="Go to page number"
+      />
+      <Text style={styles.pageBarLabel}>
+        of {controlsReady ? pageCount : '—'}
+      </Text>
+      <TouchableOpacity
+        style={[styles.goBtn, !controlsReady && styles.tvBtnDisabled]}
+        onPress={jumpToDraftPage}
+        disabled={!controlsReady}
+        accessibilityRole="button"
+        accessibilityLabel="Go to page"
+      >
+        <Text style={styles.goBtnText}>Go</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.pageNavBtn, (!controlsReady || page >= pageCount) && styles.tvBtnDisabled]}
+        onPress={() => injectViewerCommand('v.nextPage()')}
+        disabled={!controlsReady || page >= pageCount}
+        accessibilityRole="button"
+        accessibilityLabel="Next page"
+      >
+        <Ionicons name="chevron-forward" size={20} color="#fff" />
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
     <View style={[styles.wrap, style]} collapsable={false}>
+      {pageBar}
       <View style={styles.viewerWrap}>
         <WebView
           key={reloadKey}
           ref={webRef}
-          source={{ html: buildPdfJsViewerShellHtml(isTvView), baseUrl: YOUTUBE_EMBED_ORIGIN }}
+          source={{ html: buildPdfJsViewerShellHtml(isTvView, false), baseUrl: YOUTUBE_EMBED_ORIGIN }}
           style={styles.viewer}
           pointerEvents={busy ? 'none' : 'auto'}
           originWhitelist={['*']}
@@ -301,6 +365,10 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
           nestedScrollEnabled
           cacheEnabled
           cacheMode="LOAD_CACHE_ELSE_NETWORK"
+          scalesPageToFit={false}
+          setBuiltInZoomControls={false}
+          setDisplayZoomControls={false}
+          overScrollMode="content"
           onMessage={onWebMessage}
         />
         {busy ? (
@@ -309,52 +377,6 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
             <Text style={styles.loadingText}>Opening preview…</Text>
           </View>
         ) : null}
-      </View>
-
-      <View style={styles.pageBar}>
-        <TouchableOpacity
-          style={[styles.pageNavBtn, (!controlsReady || page <= 1) && styles.tvBtnDisabled]}
-          onPress={() => injectViewerCommand('v.prevPage()')}
-          disabled={!controlsReady || page <= 1}
-          accessibilityRole="button"
-          accessibilityLabel="Previous page"
-        >
-          <Ionicons name="chevron-back" size={20} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.pageBarLabel}>Page</Text>
-        <TextInput
-          value={pageDraft}
-          onChangeText={(text) => setPageDraft(text.replace(/[^\d]/g, ''))}
-          onSubmitEditing={jumpToDraftPage}
-          onBlur={jumpToDraftPage}
-          keyboardType="number-pad"
-          returnKeyType="go"
-          selectTextOnFocus
-          editable={controlsReady}
-          style={styles.pageInput}
-          accessibilityLabel="Go to page number"
-        />
-        <Text style={styles.pageBarLabel}>
-          of {controlsReady ? pageCount : '—'}
-        </Text>
-        <TouchableOpacity
-          style={[styles.goBtn, !controlsReady && styles.tvBtnDisabled]}
-          onPress={jumpToDraftPage}
-          disabled={!controlsReady}
-          accessibilityRole="button"
-          accessibilityLabel="Go to page"
-        >
-          <Text style={styles.goBtnText}>Go</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.pageNavBtn, (!controlsReady || page >= pageCount) && styles.tvBtnDisabled]}
-          onPress={() => injectViewerCommand('v.nextPage()')}
-          disabled={!controlsReady || page >= pageCount}
-          accessibilityRole="button"
-          accessibilityLabel="Next page"
-        >
-          <Ionicons name="chevron-forward" size={20} color="#fff" />
-        </TouchableOpacity>
       </View>
 
       {showTvControls ? (
@@ -392,7 +414,9 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
       ) : null}
     </View>
   );
-}
+});
+
+export default PdfPreviewWebView;
 
 const styles = StyleSheet.create({
   wrap: {
@@ -509,8 +533,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     backgroundColor: '#3c4043',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.12)',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.12)',
   },
   pageNavBtn: {
     width: 40,

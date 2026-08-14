@@ -419,21 +419,70 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"><\/script>
   <style>
     * { box-sizing: border-box; }
-    html { height: 100%; }
-    html, body { margin: 0; padding: 0; background: #525659; }
-    body { min-height: 100%; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      min-height: 100%;
+      background: #525659;
+    }
     body.tv-mode { height: 100%; overflow: hidden; }
     #status {
+      position: relative;
+      z-index: 2;
       color: #fff;
       text-align: center;
       padding: 32px 16px;
       font-family: -apple-system, BlinkMacSystemFont, sans-serif;
       font-size: 15px;
     }
-    #pages { padding: 8px 0 24px; }
+    #zoom-frame {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+      background: #525659;
+    }
+    #zoom-sizer {
+      width: 100%;
+      min-height: 100%;
+    }
+    #pages {
+      width: 100%;
+      padding: 8px 0 24px;
+    }
+    .pdf-slot {
+      display: block;
+      margin: 0 auto 12px;
+      overflow: hidden;
+      background: #d1d5db;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+    }
+    .pdf-zoom-inner {
+      transform-origin: 0 0;
+    }
+    .pdf-slot canvas {
+      display: block;
+      margin: 0;
+      box-shadow: none;
+      transform-origin: 0 0;
+    }
+    body.tv-mode #zoom-frame {
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: manipulation;
+    }
+    body.tv-mode #zoom-sizer,
     body.tv-mode #pages {
       padding: 0;
       height: 100%;
+      width: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -453,30 +502,50 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
       box-shadow: 0 4px 24px rgba(0,0,0,0.45);
     }
     #error { display: none; color: #fca5a5; padding: 24px; text-align: center; font-family: sans-serif; font-size: 14px; }
-    #progress { color: #cbd5e1; text-align: center; font-size: 12px; padding: 8px; font-family: sans-serif; }
+    #progress { position: relative; z-index: 2; color: #cbd5e1; text-align: center; font-size: 12px; padding: 8px; font-family: sans-serif; }
   </style>
 </head>
 <body>
   <div id="status">Preparing viewer…</div>
   <div id="progress"></div>
-  <div id="pages"></div>
+  <div id="zoom-frame">
+    <div id="zoom-sizer">
+      <div id="pages"></div>
+    </div>
+  </div>
   <script>
     (function () {
       /*PDF_TV_CONFIG*/
       var MIN_ZOOM = 0.5;
       var MAX_ZOOM = 4;
       var PAGE_PAD = 16;
-      var MAX_CANVAS = 2048;
+      var MAX_CANVAS = 4096;
       var pdfDoc = null;
       var currentPage = 1;
       var userZoom = 1;
       var renderToken = 0;
       var resizeTimer = null;
       var lastLayoutKey = '';
+      var pageSlots = [];
+      var syncTimer = null;
+      var syncingPages = false;
+      var PRELOAD_PAGES = 2;
+      var UNLOAD_PAGES = 8;
 
       const statusEl = () => document.getElementById('status');
       const progressEl = () => document.getElementById('progress');
       const pagesEl = () => document.getElementById('pages');
+      const zoomFrameEl = () => document.getElementById('zoom-frame');
+      const zoomSizerEl = () => document.getElementById('zoom-sizer');
+
+      var pinchStartDist = 0;
+      var pinchStartZoom = 1;
+      var pinchSlot = null;
+      var lastTapTime = 0;
+      var lastTapX = 0;
+      var lastTapY = 0;
+      var pinchBound = false;
+      var hiResTimer = null;
 
       function isTvView() {
         var cfg = window.__pdfViewerConfig;
@@ -508,13 +577,171 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
       }
 
       function clampZoom(z) {
-        return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, z));
+        var min = isTvView() ? MIN_ZOOM : 1;
+        return Math.max(min, Math.min(MAX_ZOOM, z));
+      }
+
+      function touchDist(touches) {
+        return Math.hypot(
+          touches[1].clientX - touches[0].clientX,
+          touches[1].clientY - touches[0].clientY
+        );
+      }
+
+      function touchMid(touches) {
+        return {
+          x: (touches[0].clientX + touches[1].clientX) / 2,
+          y: (touches[0].clientY + touches[1].clientY) / 2
+        };
+      }
+
+      function slotFromPoint(clientX, clientY) {
+        var el = document.elementFromPoint(clientX, clientY);
+        while (el && el !== document.body) {
+          if (el.classList && el.classList.contains('pdf-slot')) return el;
+          el = el.parentElement;
+        }
+        return pageSlots[currentPage] || null;
+      }
+
+      function applySlotZoom(slot, nextZoom, clientX, clientY) {
+        if (!slot) return;
+        var canvas = slot.querySelector('canvas');
+        var inner = slot.querySelector('.pdf-zoom-inner');
+        if (!canvas || !inner) return;
+        var frame = zoomFrameEl();
+        var baseW = Number(slot.getAttribute('data-base-w')) || canvas.offsetWidth || 1;
+        var baseH = Number(slot.getAttribute('data-base-h')) || canvas.offsetHeight || 1;
+        var oldZ = Number(slot.getAttribute('data-zoom')) || 1;
+        var z = clampZoom(nextZoom);
+        var rect = slot.getBoundingClientRect();
+        var contentX = (slot.scrollLeft + (clientX - rect.left)) / (oldZ || 1);
+        var contentY = (slot.scrollTop + (clientY - rect.top)) / (oldZ || 1);
+        slot.setAttribute('data-zoom', String(z));
+        userZoom = z;
+        inner.style.width = Math.round(baseW * z) + 'px';
+        inner.style.height = Math.round(baseH * z) + 'px';
+        canvas.style.transformOrigin = '0 0';
+        canvas.style.transform = z <= 1.001 ? '' : ('scale(' + z + ')');
+        if (z > 1.02) {
+          slot.style.overflow = 'auto';
+          if (frame) frame.style.overflow = 'hidden';
+          slot.scrollLeft = contentX * z - (clientX - rect.left);
+          slot.scrollTop = contentY * z - (clientY - rect.top);
+        } else {
+          userZoom = 1;
+          slot.setAttribute('data-zoom', '1');
+          slot.style.overflow = 'hidden';
+          slot.scrollLeft = 0;
+          slot.scrollTop = 0;
+          inner.style.width = baseW + 'px';
+          inner.style.height = baseH + 'px';
+          canvas.style.transform = '';
+          if (frame) frame.style.overflow = 'auto';
+        }
+        postState();
+      }
+
+      function applyCssZoom() {
+        var pages = pagesEl();
+        if (pages) pages.style.transform = '';
+        var sizer = zoomSizerEl();
+        if (sizer) {
+          sizer.style.width = '100%';
+          sizer.style.height = '';
+        }
+      }
+
+      function zoomAt(nextZoom, clientX, clientY) {
+        if (isTvView()) return;
+        applySlotZoom(pinchSlot || slotFromPoint(clientX, clientY), nextZoom, clientX, clientY);
+      }
+
+      function updatePageFromScroll() {
+        if (isTvView() || !pdfDoc) return;
+        var frame = zoomFrameEl();
+        if (!frame || pageSlots.length < 2) return;
+        var y = frame.scrollTop + Math.min(48, frame.clientHeight / 4);
+        var best = 1;
+        for (var i = 1; i < pageSlots.length; i++) {
+          var slot = pageSlots[i];
+          if (slot && slot.offsetTop <= y) best = i;
+        }
+        if (best !== currentPage) {
+          currentPage = best;
+          postState();
+        }
+      }
+
+      function bindPinchZoom() {
+        var frame = zoomFrameEl();
+        if (!frame || pinchBound) return;
+        pinchBound = true;
+
+        frame.addEventListener('scroll', function () {
+          updatePageFromScroll();
+          scheduleSyncPages();
+        }, { passive: true });
+
+        frame.addEventListener('touchstart', function (e) {
+          if (isTvView()) return;
+          if (e.touches.length >= 2) {
+            e.preventDefault();
+            var midStart = touchMid(e.touches);
+            pinchSlot = slotFromPoint(midStart.x, midStart.y);
+            pinchStartDist = touchDist(e.touches);
+            pinchStartZoom = pinchSlot ? (Number(pinchSlot.getAttribute('data-zoom')) || 1) : 1;
+          }
+        }, { passive: false, capture: true });
+
+        frame.addEventListener('touchmove', function (e) {
+          if (isTvView() || e.touches.length < 2) return;
+          e.preventDefault();
+          if (pinchStartDist <= 0) {
+            var mid0 = touchMid(e.touches);
+            pinchSlot = pinchSlot || slotFromPoint(mid0.x, mid0.y);
+            pinchStartDist = touchDist(e.touches);
+            pinchStartZoom = pinchSlot ? (Number(pinchSlot.getAttribute('data-zoom')) || 1) : 1;
+            return;
+          }
+          var mid = touchMid(e.touches);
+          zoomAt(pinchStartZoom * (touchDist(e.touches) / pinchStartDist), mid.x, mid.y);
+        }, { passive: false, capture: true });
+
+        frame.addEventListener('touchend', function (e) {
+          if (isTvView()) return;
+          if (e.touches.length >= 2) return;
+          if (e.touches.length === 1) {
+            pinchStartDist = 0;
+            return;
+          }
+          var endedSlot = pinchSlot;
+          pinchStartDist = 0;
+          if (e.changedTouches && e.changedTouches.length === 1) {
+            var t = e.changedTouches[0];
+            var now = Date.now();
+            if (now - lastTapTime <= 320 && Math.hypot(t.clientX - lastTapX, t.clientY - lastTapY) < 44) {
+              lastTapTime = 0;
+              pinchSlot = slotFromPoint(t.clientX, t.clientY);
+              var currentZ = pinchSlot ? (Number(pinchSlot.getAttribute('data-zoom')) || 1) : 1;
+              zoomAt(currentZ > 1.05 ? 1 : 2.25, t.clientX, t.clientY);
+              scheduleHiResRefresh(pinchSlot);
+              pinchSlot = null;
+              return;
+            }
+            lastTapTime = now;
+            lastTapX = t.clientX;
+            lastTapY = t.clientY;
+          }
+          if (endedSlot) scheduleHiResRefresh(endedSlot);
+          pinchSlot = null;
+        }, { passive: false });
       }
 
       function availableSize() {
-        var el = pagesEl();
-        var w = (el && el.clientWidth) || window.innerWidth || document.documentElement.clientWidth || 320;
-        var h = (el && el.clientHeight) || window.innerHeight || document.documentElement.clientHeight || 480;
+        var frame = zoomFrameEl();
+        var w = window.innerWidth || (frame && frame.clientWidth) || document.documentElement.clientWidth || 320;
+        var h = window.innerHeight || (frame && frame.clientHeight) || document.documentElement.clientHeight || 480;
         return {
           w: Math.max(w - PAGE_PAD, 200),
           h: Math.max(h - PAGE_PAD, 200)
@@ -526,8 +753,8 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
           isTvView() ? 'tv' : 'phone',
           window.innerWidth,
           window.innerHeight,
-          currentPage,
-          userZoom,
+          isTvView() ? currentPage : 0,
+          isTvView() ? userZoom : 1,
           pdfDoc ? pdfDoc.numPages : 0
         ].join(':');
       }
@@ -561,6 +788,164 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
         showError(msg);
       }
 
+      async function paintSlot(pdf, num, force) {
+        var slot = pageSlots[num];
+        if (!slot) return;
+        if (!force && slot.getAttribute('data-ready')) return;
+        if (force && slot.getAttribute('data-ready') === 'pending') return;
+        var keepZoom = Number(slot.getAttribute('data-zoom')) || 1;
+        var keepScrollL = slot.scrollLeft;
+        var keepScrollT = slot.scrollTop;
+        slot.setAttribute('data-ready', 'pending');
+        try {
+          var page = await pdf.getPage(num);
+          var baseViewport = page.getViewport({ scale: 1 });
+          var size = availableSize();
+          var fitScale = size.w / baseViewport.width;
+          if (!isFinite(fitScale) || fitScale <= 0) fitScale = 1;
+          var pixelRatio = Math.min(window.devicePixelRatio || 1, 3);
+          var quality = Math.max(1, Math.min(keepZoom, MAX_ZOOM));
+          var outputScale = pixelRatio * quality;
+          var cssW = Math.max(1, Math.floor(baseViewport.width * fitScale));
+          var cssH = Math.max(1, Math.floor(baseViewport.height * fitScale));
+          var renderViewport = page.getViewport({ scale: fitScale * outputScale });
+          var backingW = Math.max(1, Math.min(Math.floor(renderViewport.width), MAX_CANVAS));
+          var backingH = Math.max(1, Math.min(Math.floor(renderViewport.height), MAX_CANVAS));
+          var canvas = document.createElement('canvas');
+          canvas.style.width = cssW + 'px';
+          canvas.style.height = cssH + 'px';
+          canvas.width = backingW;
+          canvas.height = backingH;
+          var ctx = canvas.getContext('2d', { alpha: false });
+          if (!ctx) {
+            slot.removeAttribute('data-ready');
+            return;
+          }
+          ctx.imageSmoothingEnabled = true;
+          if (ctx.imageSmoothingQuality) ctx.imageSmoothingQuality = 'high';
+          ctx.setTransform(backingW / renderViewport.width, 0, 0, backingH / renderViewport.height, 0, 0);
+          slot.setAttribute('data-base-w', String(cssW));
+          slot.setAttribute('data-base-h', String(cssH));
+          slot.style.width = cssW + 'px';
+          slot.style.height = cssH + 'px';
+          var inner = document.createElement('div');
+          inner.className = 'pdf-zoom-inner';
+          inner.appendChild(canvas);
+          if (keepZoom > 1.02) {
+            inner.style.width = Math.round(cssW * keepZoom) + 'px';
+            inner.style.height = Math.round(cssH * keepZoom) + 'px';
+            canvas.style.transformOrigin = '0 0';
+            canvas.style.transform = 'scale(' + keepZoom + ')';
+            slot.style.overflow = 'auto';
+            slot.setAttribute('data-zoom', String(keepZoom));
+          } else {
+            inner.style.width = cssW + 'px';
+            inner.style.height = cssH + 'px';
+            slot.style.overflow = 'hidden';
+            slot.setAttribute('data-zoom', '1');
+          }
+          await page.render({
+            canvasContext: ctx,
+            viewport: renderViewport,
+            intent: 'display',
+          }).promise;
+          var oldInner = slot.querySelector('.pdf-zoom-inner');
+          if (oldInner && oldInner.parentNode === slot) slot.removeChild(oldInner);
+          slot.appendChild(inner);
+          if (keepZoom > 1.02) {
+            slot.scrollLeft = keepScrollL;
+            slot.scrollTop = keepScrollT;
+          }
+          slot.setAttribute('data-ready', '1');
+        } catch (err) {
+          slot.removeAttribute('data-ready');
+        }
+      }
+
+      function scheduleHiResRefresh(slot) {
+        if (!slot || !pdfDoc) return;
+        var num = Number(slot.getAttribute('data-page'));
+        if (!num) return;
+        clearTimeout(hiResTimer);
+        hiResTimer = setTimeout(function () {
+          void paintSlot(pdfDoc, num, true);
+        }, 140);
+      }
+
+      function visiblePageRange() {
+        var frame = zoomFrameEl();
+        var last = Math.max(1, pageSlots.length - 1);
+        if (!frame || last < 1) return { first: 1, last: 1 };
+        var viewTop = frame.scrollTop;
+        var viewBottom = frame.scrollTop + frame.clientHeight;
+        var first = 1;
+        var end = 1;
+        for (var i = 1; i <= last; i++) {
+          var slot = pageSlots[i];
+          if (!slot) continue;
+          if (slot.offsetTop + slot.offsetHeight >= viewTop - 24) {
+            first = i;
+            break;
+          }
+        }
+        for (var j = first; j <= last; j++) {
+          var s2 = pageSlots[j];
+          if (!s2) continue;
+          end = j;
+          if (s2.offsetTop > viewBottom + 24) break;
+        }
+        return {
+          first: Math.max(1, first - PRELOAD_PAGES),
+          last: Math.min(last, end + PRELOAD_PAGES)
+        };
+      }
+
+      function scheduleSyncPages() {
+        if (syncTimer) return;
+        syncTimer = setTimeout(function () {
+          syncTimer = null;
+          void syncVisiblePages();
+        }, 40);
+      }
+
+      async function syncVisiblePages() {
+        if (!pdfDoc || isTvView() || syncingPages || pageSlots.length < 2) return;
+        syncingPages = true;
+        try {
+          var range = visiblePageRange();
+          for (var n = range.first; n <= range.last; n++) {
+            await paintSlot(pdfDoc, n);
+          }
+          var last = pageSlots.length - 1;
+          for (var i = 1; i <= last; i++) {
+            if (i >= range.first - UNLOAD_PAGES && i <= range.last + UNLOAD_PAGES) continue;
+            var slot = pageSlots[i];
+            if (slot && slot.getAttribute('data-ready') === '1') {
+              slot.innerHTML = '';
+              slot.removeAttribute('data-ready');
+            }
+          }
+        } finally {
+          syncingPages = false;
+        }
+      }
+
+      function buildPageSlots(pdf, cssW, cssH) {
+        var container = pagesEl();
+        if (!container) return;
+        container.innerHTML = '';
+        pageSlots = new Array(pdf.numPages + 1);
+        for (var i = 1; i <= pdf.numPages; i++) {
+          var slot = document.createElement('div');
+          slot.className = 'pdf-slot';
+          slot.setAttribute('data-page', String(i));
+          slot.style.width = cssW + 'px';
+          slot.style.height = cssH + 'px';
+          container.appendChild(slot);
+          pageSlots[i] = slot;
+        }
+      }
+
       async function drawPage(container, pdf, num, tv) {
         var page = await pdf.getPage(num);
         var baseViewport = page.getViewport({ scale: 1 });
@@ -571,7 +956,7 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
         if (!isFinite(fitScale) || fitScale <= 0) fitScale = 1;
         var layoutScale = fitScale * (tv ? userZoom : 1);
         var viewport = page.getViewport({ scale: layoutScale });
-        var pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+        var pixelRatio = Math.min(window.devicePixelRatio || 1, 3);
         var cssW = Math.max(1, Math.floor(viewport.width));
         var cssH = Math.max(1, Math.floor(viewport.height));
         var backingW = Math.max(1, Math.min(Math.floor(cssW * pixelRatio), MAX_CANVAS));
@@ -579,11 +964,12 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
         var canvas = document.createElement('canvas');
         canvas.style.width = cssW + 'px';
         canvas.style.height = cssH + 'px';
-        if (!tv) canvas.style.maxWidth = 'calc(100% - 16px)';
         canvas.width = backingW;
         canvas.height = backingH;
         var ctx = canvas.getContext('2d', { alpha: false });
         if (!ctx) return;
+        ctx.imageSmoothingEnabled = true;
+        if (ctx.imageSmoothingQuality) ctx.imageSmoothingQuality = 'high';
         ctx.setTransform(backingW / viewport.width, 0, 0, backingH / viewport.height, 0, 0);
         container.appendChild(canvas);
         try {
@@ -609,9 +995,7 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
         var token = ++renderToken;
         var tv = isTvView();
         applyBodyMode();
-        if (tv) {
-          await new Promise(function (r) { requestAnimationFrame(function () { requestAnimationFrame(r); }); });
-        }
+        await new Promise(function (r) { requestAnimationFrame(function () { requestAnimationFrame(r); }); });
         var key = layoutKey();
         container.innerHTML = '';
 
@@ -627,23 +1011,25 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
           return true;
         }
 
-        userZoom = 1;
-        await drawPage(container, pdf, 1, false);
+        var firstPage = await pdf.getPage(1);
+        var baseViewport = firstPage.getViewport({ scale: 1 });
+        var size = availableSize();
+        var fitScale = size.w / baseViewport.width;
+        if (!isFinite(fitScale) || fitScale <= 0) fitScale = 1;
+        var viewport = firstPage.getViewport({ scale: fitScale });
+        var cssW = Math.max(1, Math.floor(viewport.width));
+        var cssH = Math.max(1, Math.floor(viewport.height));
+        buildPageSlots(pdf, cssW, cssH);
+        await paintSlot(pdf, 1);
         if (token !== renderToken) return false;
-        postNative('pdf-ready');
         if (s) s.remove();
-        if (pdf.numPages > 1) {
-          if (p) p.textContent = 'Loading pages… 1 / ' + pdf.numPages;
-          for (var num = 2; num <= pdf.numPages; num++) {
-            if (token !== renderToken) return false;
-            await drawPage(container, pdf, num, false);
-            if (p) p.textContent = 'Loading pages… ' + num + ' / ' + pdf.numPages;
-            if (num % 2 === 0) await new Promise(function (r) { setTimeout(r, 0); });
-          }
-        }
         if (p) p.remove();
         lastLayoutKey = key;
+        applyCssZoom();
+        bindPinchZoom();
+        postNative('pdf-ready');
         postState();
+        void syncVisiblePages();
         return true;
       }
 
@@ -661,21 +1047,40 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
 
       window.__pdfViewer = {
         zoomBy: function (factor) {
-          if (!isTvView()) return;
-          userZoom = clampZoom(userZoom * factor);
-          lastLayoutKey = '';
-          rerender();
+          if (isTvView()) {
+            userZoom = clampZoom(userZoom * factor);
+            lastLayoutKey = '';
+            rerender();
+            return;
+          }
+          var frame = zoomFrameEl();
+          var cx = frame ? frame.getBoundingClientRect().left + frame.clientWidth / 2 : window.innerWidth / 2;
+          var cy = frame ? frame.getBoundingClientRect().top + frame.clientHeight / 2 : window.innerHeight / 2;
+          zoomAt(userZoom * factor, cx, cy);
         },
         setZoom: function (z) {
-          if (!isTvView()) return;
-          userZoom = clampZoom(z);
-          lastLayoutKey = '';
-          rerender();
+          if (isTvView()) {
+            userZoom = clampZoom(z);
+            lastLayoutKey = '';
+            rerender();
+            return;
+          }
+          var frame = zoomFrameEl();
+          var cx = frame ? frame.getBoundingClientRect().left + frame.clientWidth / 2 : window.innerWidth / 2;
+          var cy = frame ? frame.getBoundingClientRect().top + frame.clientHeight / 2 : window.innerHeight / 2;
+          zoomAt(z, cx, cy);
         },
         fitPage: function () {
-          userZoom = 1;
-          lastLayoutKey = '';
-          rerender();
+          if (isTvView()) {
+            userZoom = 1;
+            lastLayoutKey = '';
+            rerender();
+            return;
+          }
+          var frame = zoomFrameEl();
+          var cx = frame ? frame.getBoundingClientRect().left + frame.clientWidth / 2 : window.innerWidth / 2;
+          var cy = frame ? frame.getBoundingClientRect().top + frame.clientHeight / 2 : window.innerHeight / 2;
+          zoomAt(1, cx, cy);
         },
         nextPage: function () {
           if (!pdfDoc || currentPage >= pdfDoc.numPages) return;
@@ -707,11 +1112,27 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
             return;
           }
           var container = pagesEl();
+          var frame = zoomFrameEl();
           if (!container) return;
-          var canvases = container.querySelectorAll('canvas');
-          var target = canvases[page - 1];
-          if (target && typeof target.scrollIntoView === 'function') {
-            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          var target = pageSlots[page];
+          if (target && frame) {
+            pinchSlot = target;
+            var cx = target.getBoundingClientRect().left + target.clientWidth / 2;
+            var cy = target.getBoundingClientRect().top + Math.min(80, target.clientHeight / 4);
+            zoomAt(1, cx, cy);
+            pinchSlot = null;
+            frame.style.overflow = 'auto';
+            frame.scrollTo({
+              top: Math.max(0, target.offsetTop - 8),
+              left: 0,
+              behavior: 'auto'
+            });
+            void paintSlot(pdfDoc, page);
+            scheduleSyncPages();
+          } else if (target && typeof target.scrollIntoView === 'function') {
+            target.scrollIntoView({ behavior: 'auto', block: 'start' });
+            void paintSlot(pdfDoc, page);
+            scheduleSyncPages();
           }
           postState();
         }
@@ -749,7 +1170,7 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
       }
 
       window.__renderPdfFromUrl = async function (url, headers) {
-        const params = { url: url, disableWorker: true, disableStream: false, disableAutoFetch: false };
+        const params = { url: url, disableWorker: true, disableStream: false, disableAutoFetch: false, disableRange: false };
         if (headers && Object.keys(headers).length) {
           params.httpHeaders = headers;
         }
@@ -765,6 +1186,7 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
 
       function signalViewerReady() {
         applyBodyMode();
+        bindPinchZoom();
         postNative('viewer-ready');
       }
 
@@ -783,12 +1205,12 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
 </body>
 </html>`;
 
-export function buildPdfJsViewerShellHtml(tv = false): string {
+export function buildPdfJsViewerShellHtml(tv = false, nativePinch = false): string {
   return PDF_JS_VIEWER_SHELL_HTML
     .replace('<body>', tv ? '<body class="tv-mode">' : '<body>')
     .replace(
       '/*PDF_TV_CONFIG*/',
-      `window.__pdfViewerConfig=${JSON.stringify({ tv })};`
+      `window.__pdfViewerConfig=${JSON.stringify({ tv, nativePinch })};`
     );
 }
 
