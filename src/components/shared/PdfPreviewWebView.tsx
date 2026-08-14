@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
   useWindowDimensions,
@@ -47,6 +48,7 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
   const [reloadKey, setReloadKey] = useState(0);
   const [page, setPage] = useState(1);
   const [pageCount, setPageCount] = useState(0);
+  const [pageDraft, setPageDraft] = useState('1');
   const [zoom, setZoom] = useState(1);
   const injectedRef = useRef(false);
   const mountedRef = useRef(true);
@@ -125,6 +127,7 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
     setBase64Payload(null);
     setPage(1);
     setPageCount(0);
+    setPageDraft('1');
     setZoom(1);
 
     void resolvePdfUrlTarget(fileUrlRef.current, titleRef.current).then((target) => {
@@ -222,7 +225,10 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
             zoom?: number;
           };
           if (msg.type === 'pdf-state') {
-            if (typeof msg.page === 'number') setPage(msg.page);
+            if (typeof msg.page === 'number') {
+              setPage(msg.page);
+              setPageDraft(String(msg.page));
+            }
             if (typeof msg.pages === 'number') setPageCount(msg.pages);
             if (typeof msg.zoom === 'number') setZoom(msg.zoom);
           }
@@ -264,6 +270,19 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
   const canZoomIn = controlsReady && zoom < MAX_ZOOM - 0.01;
   const isFitPage = controlsReady && Math.abs(zoom - 1) < 0.02;
 
+  const jumpToDraftPage = useCallback(() => {
+    if (!controlsReady) return;
+    const parsed = Number.parseInt(String(pageDraft).replace(/[^\d]/g, ''), 10);
+    if (!Number.isFinite(parsed)) {
+      setPageDraft(String(page));
+      return;
+    }
+    const next = Math.min(Math.max(1, parsed), pageCount);
+    setPageDraft(String(next));
+    setPage(next);
+    injectViewerCommand(`v.goToPage(${next})`);
+  }, [controlsReady, pageDraft, page, pageCount, injectViewerCommand]);
+
   return (
     <View style={[styles.wrap, style]} collapsable={false}>
       <View style={styles.viewerWrap}>
@@ -291,6 +310,53 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
           </View>
         ) : null}
       </View>
+
+      <View style={styles.pageBar}>
+        <TouchableOpacity
+          style={[styles.pageNavBtn, (!controlsReady || page <= 1) && styles.tvBtnDisabled]}
+          onPress={() => injectViewerCommand('v.prevPage()')}
+          disabled={!controlsReady || page <= 1}
+          accessibilityRole="button"
+          accessibilityLabel="Previous page"
+        >
+          <Ionicons name="chevron-back" size={20} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.pageBarLabel}>Page</Text>
+        <TextInput
+          value={pageDraft}
+          onChangeText={(text) => setPageDraft(text.replace(/[^\d]/g, ''))}
+          onSubmitEditing={jumpToDraftPage}
+          onBlur={jumpToDraftPage}
+          keyboardType="number-pad"
+          returnKeyType="go"
+          selectTextOnFocus
+          editable={controlsReady}
+          style={styles.pageInput}
+          accessibilityLabel="Go to page number"
+        />
+        <Text style={styles.pageBarLabel}>
+          of {controlsReady ? pageCount : '—'}
+        </Text>
+        <TouchableOpacity
+          style={[styles.goBtn, !controlsReady && styles.tvBtnDisabled]}
+          onPress={jumpToDraftPage}
+          disabled={!controlsReady}
+          accessibilityRole="button"
+          accessibilityLabel="Go to page"
+        >
+          <Text style={styles.goBtnText}>Go</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.pageNavBtn, (!controlsReady || page >= pageCount) && styles.tvBtnDisabled]}
+          onPress={() => injectViewerCommand('v.nextPage()')}
+          disabled={!controlsReady || page >= pageCount}
+          accessibilityRole="button"
+          accessibilityLabel="Next page"
+        >
+          <Ionicons name="chevron-forward" size={20} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
       {showTvControls ? (
         <View style={styles.tvBar}>
           <TouchableOpacity
@@ -322,28 +388,6 @@ export default function PdfPreviewWebView({ fileUrl, title, style, onBusyChange 
             <Ionicons name="add" size={22} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.tvZoomLabel}>{Math.round(zoom * 100)}%</Text>
-          <View style={styles.tvBarSpacer} />
-          <TouchableOpacity
-            style={[styles.tvBtn, (!controlsReady || page <= 1) && styles.tvBtnDisabled]}
-            onPress={() => injectViewerCommand('v.prevPage()')}
-            disabled={!controlsReady || page <= 1}
-            accessibilityRole="button"
-            accessibilityLabel="Previous page"
-          >
-            <Ionicons name="chevron-back" size={22} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.tvPageLabel}>
-            {controlsReady ? `${page} / ${pageCount}` : '— / —'}
-          </Text>
-          <TouchableOpacity
-            style={[styles.tvBtn, (!controlsReady || page >= pageCount) && styles.tvBtnDisabled]}
-            onPress={() => injectViewerCommand('v.nextPage()')}
-            disabled={!controlsReady || page >= pageCount}
-            accessibilityRole="button"
-            accessibilityLabel="Next page"
-          >
-            <Ionicons name="chevron-forward" size={22} color="#fff" />
-          </TouchableOpacity>
         </View>
       ) : null}
     </View>
@@ -455,5 +499,55 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     minWidth: 64,
     textAlign: 'center',
+  },
+  pageBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: '#3c4043',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.12)',
+  },
+  pageNavBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  pageBarLabel: {
+    color: '#e2e8f0',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  pageInput: {
+    width: 56,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#fff',
+    color: '#0f172a',
+    textAlign: 'center',
+    fontSize: 15,
+    fontWeight: '700',
+    paddingHorizontal: 6,
+    paddingVertical: 0,
+  },
+  goBtn: {
+    height: 40,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#6366F1',
+  },
+  goBtnText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '800',
   },
 });

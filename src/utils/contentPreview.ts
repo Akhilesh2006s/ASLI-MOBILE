@@ -681,13 +681,39 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
           if (!pdfDoc || currentPage >= pdfDoc.numPages) return;
           currentPage += 1;
           lastLayoutKey = '';
-          rerender();
+          if (isTvView()) {
+            rerender();
+            return;
+          }
+          window.__pdfViewer.goToPage(currentPage);
         },
         prevPage: function () {
           if (!pdfDoc || currentPage <= 1) return;
           currentPage -= 1;
           lastLayoutKey = '';
-          rerender();
+          if (isTvView()) {
+            rerender();
+            return;
+          }
+          window.__pdfViewer.goToPage(currentPage);
+        },
+        goToPage: function (n) {
+          if (!pdfDoc) return;
+          var page = Math.min(Math.max(1, Math.floor(Number(n) || 1)), pdfDoc.numPages);
+          currentPage = page;
+          if (isTvView()) {
+            lastLayoutKey = '';
+            rerender();
+            return;
+          }
+          var container = pagesEl();
+          if (!container) return;
+          var canvases = container.querySelectorAll('canvas');
+          var target = canvases[page - 1];
+          if (target && typeof target.scrollIntoView === 'function') {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+          postState();
         }
       };
 
