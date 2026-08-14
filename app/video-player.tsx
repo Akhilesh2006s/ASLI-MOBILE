@@ -17,14 +17,20 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import { Video as ExpoVideo, ResizeMode, type AVPlaybackStatus } from 'expo-av';
+import { WebView } from 'react-native-webview';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import api from '../src/services/api/api';
 import YouTubeEmbedWebView from '../src/components/shared/YouTubeEmbedWebView';
 import { useContentViewerBack } from '../src/hooks/useBackNavigation';
 import {
   extractYouTubeId,
+  extractVimeoId,
   getAuthHeaders,
+  getDrivePreviewUrl,
+  getVimeoEmbedUrl,
+  isGoogleDriveUrl,
   resolveContentUrl,
+  unwrapNestedFileUrl,
 } from '../src/utils/contentPreview';
 import { getVideoDisplayTitle } from '../src/lib/video-chapter-schedule';
 
@@ -80,20 +86,41 @@ function resolveDurationSeconds(raw: unknown): number {
   return n > 100 ? Math.round(n) : Math.round(n * 60);
 }
 
+function pickLibraryMediaUrl(videoData: any): string {
+  const raw =
+    videoData?.videoUrl ||
+    videoData?.fileUrl ||
+    (Array.isArray(videoData?.fileUrls) ? videoData.fileUrls[0] : '') ||
+    videoData?.driveLink ||
+    videoData?.youtubeUrl ||
+    '';
+  return unwrapNestedFileUrl(String(raw || '').trim());
+}
+
+function parseContentPayload(raw: unknown): any | null {
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) return raw;
+  const text = pickParam(raw as string | string[] | undefined);
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
 function transformLibraryVideo(videoData: any) {
-  const videoFileUrl = videoData.videoUrl || videoData.fileUrl || '';
+  const videoFileUrl = pickLibraryMediaUrl(videoData);
+  const youtubeFromFields = String(videoData?.youtubeUrl || '').trim();
   const isYouTube =
     !!videoData.isYouTubeVideo ||
-    !!videoData.youtubeUrl ||
-    (videoFileUrl &&
-      (videoFileUrl.includes('youtube.com') || videoFileUrl.includes('youtu.be')));
+    !!extractYouTubeId(youtubeFromFields || videoFileUrl);
 
   return {
     _id: videoData._id || videoData.id,
     title: getVideoDisplayTitle({ ...videoData, type: videoData.type || 'Video' }),
     duration: resolveDurationSeconds(videoData.duration),
     videoUrl: videoFileUrl,
-    youtubeUrl: videoData.youtubeUrl || (isYouTube ? videoFileUrl : ''),
+    youtubeUrl: youtubeFromFields || (isYouTube ? videoFileUrl : ''),
     isYouTubeVideo: isYouTube,
   };
 }
@@ -187,7 +214,8 @@ export default function VideoPlayer() {
   }>();
   const videoId = pickParam(params.videoId);
   const returnTo = pickParam(params.returnTo);
-  const { isContentItem, contentData } = params;
+  const isContentItem = pickParam(params.isContentItem);
+  const contentData = params.contentData;
   const [video, setVideo] = useState<LibraryVideo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const goBack = useContentViewerBack(returnTo || undefined);
@@ -227,21 +255,24 @@ export default function VideoPlayer() {
   }, [handleExit]);
 
   useEffect(() => {
-    if (videoId) {
-      if (isContentItem === 'true' && contentData) {
-        try {
-          const parsedContent = JSON.parse(contentData);
-          setVideo(transformLibraryVideo(parsedContent));
-          setIsLoading(false);
+    if (isContentItem === 'true' && contentData) {
+      const parsedContent = parseContentPayload(contentData);
+      if (parsedContent) {
+        setVideo(transformLibraryVideo(parsedContent));
+        setIsLoading(false);
+        if (videoId && videoId !== 'preview') {
           void fetchVideo({ silent: true });
-          return;
-        } catch (error) {
-          console.error('Error parsing content data:', error);
         }
+        return;
       }
-
-      fetchVideo();
     }
+
+    if (videoId && videoId !== 'preview') {
+      fetchVideo();
+      return;
+    }
+
+    setIsLoading(false);
   }, [videoId, isContentItem, contentData]);
 
   const fetchVideo = async (opts?: { silent?: boolean }) => {
@@ -250,10 +281,13 @@ export default function VideoPlayer() {
       if (!opts?.silent) setIsLoading(true);
 
       const libraryAttempts: Array<() => Promise<{ data: any }>> = [
-        () => api.get('/api/teacher/asli-prep-content', { params: { type: 'Video', surface: 'eduott' } }),
-        () => api.get('/api/teacher/asli-prep-content', { params: { surface: 'learning-path' } }),
+        () => api.get('/api/student/asli-prep-content', { params: { type: 'Video' } }),
         () => api.get('/api/student/asli-prep-content', { params: { type: 'Video', surface: 'eduott' } }),
         () => api.get('/api/student/asli-prep-content', { params: { surface: 'learning-path' } }),
+        () => api.get('/api/teacher/asli-prep-content', { params: { type: 'Video' } }),
+        () => api.get('/api/teacher/asli-prep-content', { params: { type: 'Video', surface: 'eduott' } }),
+        () => api.get('/api/teacher/asli-prep-content', { params: { surface: 'learning-path' } }),
+        () => api.get('/api/admin/asli-prep-content', { params: { type: 'Video' } }),
         () => api.get('/api/admin/asli-prep-content', { params: { type: 'Video', surface: 'eduott' } }),
         () => api.get('/api/admin/asli-prep-content', { params: { surface: 'learning-path' } }),
         () => api.get('/api/teacher/videos'),
@@ -264,7 +298,7 @@ export default function VideoPlayer() {
         try {
           const { data } = await run();
           const match = findByIdInList(data, videoId);
-          if (match) {
+          if (match && pickLibraryMediaUrl(match)) {
             setVideo(transformLibraryVideo(match));
             return;
           }
@@ -281,9 +315,14 @@ export default function VideoPlayer() {
     }
   };
 
-  const resolvedVideoUrl = resolveContentUrl(video?.videoUrl || '');
+  const resolvedVideoUrl = resolveContentUrl(unwrapNestedFileUrl(video?.videoUrl || ''));
+  const vimeoId = extractVimeoId(resolvedVideoUrl);
+  const isDriveVideo = isGoogleDriveUrl(resolvedVideoUrl);
   const isDirectVideo =
-    !!resolvedVideoUrl && !/youtube\.com|youtu\.be/i.test(resolvedVideoUrl);
+    !!resolvedVideoUrl &&
+    !/youtube\.com|youtu\.be/i.test(resolvedVideoUrl) &&
+    !isDriveVideo &&
+    !vimeoId;
 
   useEffect(() => {
     if (!isDirectVideo) {
@@ -332,7 +371,7 @@ export default function VideoPlayer() {
 
   const youtubeSourceUrl = (video.youtubeUrl || video.videoUrl || '').trim();
   const youtubeVideoId = extractYouTubeId(youtubeSourceUrl);
-  const isYouTube = !!youtubeVideoId || !!video.isYouTubeVideo;
+  const isYouTube = !!youtubeVideoId;
   const heading = `${BRAND} | ${video.title || 'Video'}`;
   // Keep landscape stage filling the shorter screen edge when unlocked briefly.
   const isLandscape = width > height;
@@ -357,6 +396,31 @@ export default function VideoPlayer() {
           <View style={styles.stage}>
             {isYouTube && youtubeSourceUrl ? (
               <YouTubeEmbedWebView videoUrl={youtubeSourceUrl} style={styles.video} autoplay />
+            ) : vimeoId && getVimeoEmbedUrl(resolvedVideoUrl) ? (
+              <WebView
+                source={{ uri: getVimeoEmbedUrl(resolvedVideoUrl)! }}
+                style={styles.video}
+                allowsFullscreenVideo
+                allowsInlineMediaPlayback
+                mediaPlaybackRequiresUserAction={false}
+                javaScriptEnabled
+                domStorageEnabled
+                originWhitelist={['*']}
+                setSupportMultipleWindows={false}
+              />
+            ) : isDriveVideo ? (
+              <WebView
+                source={{ uri: getDrivePreviewUrl(resolvedVideoUrl) }}
+                style={styles.video}
+                allowsFullscreenVideo
+                allowsInlineMediaPlayback
+                mediaPlaybackRequiresUserAction={false}
+                javaScriptEnabled
+                domStorageEnabled
+                originWhitelist={['*']}
+                setSupportMultipleWindows={false}
+                androidLayerType="hardware"
+              />
             ) : isDirectVideo ? (
               <ExpoVideo
                 ref={videoRef}

@@ -94,7 +94,6 @@ export default function StudentExamPreviewCard({
       style={[styles.card, focused && styles.cardFocused, style]}
       contentStyle={styles.cardInner}
     >
-      <View style={[styles.accentBar, { backgroundColor: accent }]} />
       <Text style={styles.title}>{exam.title || 'Exam'}</Text>
       {exam.description ? (
         <Text style={styles.description} numberOfLines={2}>
@@ -196,18 +195,10 @@ const styles = StyleSheet.create({
   },
   cardInner: {
     padding: 16,
-    paddingLeft: 18,
   },
   cardFocused: {
     borderWidth: 2,
     borderColor: '#fbbf24',
-  },
-  accentBar: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 4,
   },
   title: {
     fontSize: 17,

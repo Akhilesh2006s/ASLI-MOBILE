@@ -136,6 +136,44 @@ export function isYouTubeUrl(url: string): boolean {
   return /youtube\.com|youtu\.be/i.test(url);
 }
 
+/** Unwrap docs.google.com/gview?url=... so the real media URL can play. */
+export function unwrapNestedFileUrl(url: string): string {
+  const trimmed = (url || '').trim();
+  if (!trimmed) return '';
+  try {
+    const parsed = new URL(trimmed);
+    const isGview =
+      parsed.hostname.includes('docs.google.com') &&
+      (parsed.pathname.includes('/gview') || parsed.pathname.includes('/viewer'));
+    if (isGview) {
+      const target = parsed.searchParams.get('url');
+      if (target) return unwrapNestedFileUrl(target);
+    }
+  } catch {
+    return trimmed;
+  }
+  return trimmed;
+}
+
+export function isGoogleDriveUrl(url: string): boolean {
+  return /drive\.google\.com|docs\.google\.com/i.test(url || '');
+}
+
+export function extractVimeoId(url: string): string | null {
+  const trimmed = (url || '').trim();
+  if (!trimmed) return null;
+  const match = trimmed.match(
+    /vimeo\.com\/(?:channels\/[^/]+\/|groups\/[^/]+\/videos\/|video\/)?(\d+)/i,
+  );
+  return match?.[1] || null;
+}
+
+export function getVimeoEmbedUrl(url: string): string | null {
+  const id = extractVimeoId(url);
+  if (!id) return null;
+  return `https://player.vimeo.com/video/${encodeURIComponent(id)}`;
+}
+
 function shouldFetchDirectly(url: string): boolean {
   try {
     const host = new URL(url).hostname;
@@ -1266,14 +1304,14 @@ export function getPreviewKind(
   contentType?: string | null,
   youtubeUrl?: string,
 ): PreviewKind {
-  const resolved = resolveContentUrl(fileUrl);
+  const resolved = resolveContentUrl(unwrapNestedFileUrl(fileUrl));
   const yt = youtubeUrl || resolved;
   if (isYouTubeUrl(yt)) return 'youtube';
   if (contentType === 'Video' || /\.(mp4|webm|mov|avi|mkv)(\?|#|$)/i.test(resolved)) return 'video';
   if (contentType === 'Audio' || /\.(mp3|wav|ogg|m4a|aac|flac)(\?|#|$)/i.test(resolved)) return 'audio';
   if (/\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?|#|$)/i.test(resolved)) return 'image';
   if (isPdfPreviewContent(resolved, contentType)) return 'pdf';
-  if (/drive\.google\.com|docs\.google\.com/i.test(resolved)) return 'drive';
+  if (isGoogleDriveUrl(resolved)) return 'drive';
   return 'unknown';
 }
 

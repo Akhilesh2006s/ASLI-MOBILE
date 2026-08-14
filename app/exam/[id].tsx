@@ -19,7 +19,6 @@ import { Image } from 'expo-image';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { usePreventRemove } from '@react-navigation/native';
 import { API_BASE_URL } from '../../src/lib/api-config';
 import * as SecureStore from 'expo-secure-store';
@@ -83,6 +82,17 @@ function resolveAttemptSectionHeading(q?: Question | null) {
   if (custom) return custom;
   const key = String(q.subject || '').trim().toLowerCase();
   return SUBJECT_SECTION_LABELS[key] || (key ? key.charAt(0).toUpperCase() + key.slice(1) : '');
+}
+
+function subjectBadgeColors(subject?: string) {
+  const key = String(subject || '').trim().toLowerCase();
+  if (key === 'maths' || key === 'math' || key === 'mathematics') {
+    return { bg: '#dbeafe', text: '#1d4ed8' };
+  }
+  if (key === 'physics') return { bg: '#dcfce7', text: '#15803d' };
+  if (key === 'chemistry') return { bg: '#ffedd5', text: '#c2410c' };
+  if (key === 'biology') return { bg: '#dcfce7', text: '#166534' };
+  return { bg: '#f3e8ff', text: '#7e22ce' };
 }
 
 /** Normalize question id so answer map keys always match (mixed `_id` / `id` shapes). */
@@ -1196,27 +1206,57 @@ export default function ExamPage() {
       <Stack.Screen options={{ gestureEnabled: false }} />
 
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        <LinearGradient colors={['#ea580c', '#ea580c']} style={styles.header}>
+        <View style={styles.header}>
           <View style={styles.headerRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.examTitle} numberOfLines={2}>
-                {exam.title}
-              </Text>
-              <Text style={styles.examMeta}>
-                Q {currentIndex + 1}/{exam.questions.length} · {formatTime(timeLeft)}
-              </Text>
+            <Text style={styles.examTitle} numberOfLines={2}>
+              {exam.title}
+            </Text>
+            <View style={styles.headerActions}>
+              <View
+                style={[
+                  styles.timerPill,
+                  timeLeft < 300 ? styles.timerPillUrgent : styles.timerPillOk,
+                ]}
+              >
+                <Ionicons
+                  name="time-outline"
+                  size={14}
+                  color={timeLeft < 300 ? '#b91c1c' : '#1d4ed8'}
+                />
+                <Text
+                  style={[
+                    styles.timerPillText,
+                    timeLeft < 300 ? styles.timerPillTextUrgent : styles.timerPillTextOk,
+                  ]}
+                >
+                  {formatTime(timeLeft)}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.headerSubmitBtn}
+                onPress={confirmSubmit}
+                disabled={isSubmitting}
+              >
+                <Text style={styles.headerSubmitText}>Submit</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.headerSubmitBtn} onPress={confirmSubmit} disabled={isSubmitting}>
-              <Text style={styles.headerSubmitText}>Submit</Text>
-            </TouchableOpacity>
           </View>
           {resumeNotice ? (
-            <TouchableOpacity onPress={() => setResumeNotice(null)} activeOpacity={0.85}>
-              <Text style={{ color: '#fff7ed', fontSize: 11, marginTop: 6, marginBottom: 4 }}>
-                {resumeNotice} · tap to dismiss
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.resumeNotice}>
+              <Text style={styles.resumeNoticeText}>{resumeNotice}</Text>
+              <TouchableOpacity onPress={() => setResumeNotice(null)} hitSlop={8}>
+                <Text style={styles.resumeDismiss}>Dismiss</Text>
+              </TouchableOpacity>
+            </View>
           ) : null}
+          <View style={styles.progressMetaRow}>
+            <Text style={styles.progressMetaText}>
+              Question {currentIndex + 1} of {exam.questions.length}
+            </Text>
+            <Text style={styles.progressMetaText}>
+              {Math.round(((currentIndex + 1) / exam.questions.length) * 100)}%
+            </Text>
+          </View>
           <View style={styles.progressTrack}>
             <View
               style={[
@@ -1225,20 +1265,17 @@ export default function ExamPage() {
               ]}
             />
           </View>
-        </LinearGradient>
-
-        {exitAttempts > 0 ? (
-          <View style={styles.exitStrip}>
+          {exitAttempts > 0 ? (
             <Text
               style={[
                 styles.exitAttemptsText,
                 maxExitReached ? styles.exitAttemptsDanger : null,
               ]}
             >
-              Exit attempts: {exitAttempts}/{MAX_EXIT_ATTEMPTS}
+              Exit Attempts: {exitAttempts}/{MAX_EXIT_ATTEMPTS}
             </Text>
-          </View>
-        ) : null}
+          ) : null}
+        </View>
 
         <GlassPanel style={styles.navPanel} radius={0} bordered={false}>
           <View style={styles.navPanelTop}>
@@ -1294,31 +1331,41 @@ export default function ExamPage() {
               );
             })()}
             <View style={styles.questionCardHeader}>
-              <View style={styles.questionNumberBadge}>
-                <Text style={styles.questionNumberBadgeText}>
-                  Q{currentIndex + 1}
-                </Text>
-              </View>
-              <View style={styles.questionCardActions}>
-                <TouchableOpacity
-                  style={[
-                    styles.flagBtn,
-                    flaggedQuestions.has(currentIndex) && styles.flagBtnActive,
-                  ]}
-                  onPress={() => toggleFlagQuestion(currentIndex)}
-                >
-                  <Ionicons
-                    name={flaggedQuestions.has(currentIndex) ? 'flag' : 'flag-outline'}
-                    size={18}
-                    color={flaggedQuestions.has(currentIndex) ? '#ca8a04' : '#5B6779'}
-                  />
-                </TouchableOpacity>
-                {hasCurrentAnswer ? (
-                  <TouchableOpacity style={styles.clearBtn} onPress={handleClearCurrentAnswer}>
-                    <Text style={styles.clearBtnText}>Clear</Text>
-                  </TouchableOpacity>
+              <View style={styles.questionBadgeRow}>
+                {currentQuestion.subject ? (
+                  <View
+                    style={[
+                      styles.subjectBadge,
+                      { backgroundColor: subjectBadgeColors(currentQuestion.subject).bg },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.subjectBadgeText,
+                        { color: subjectBadgeColors(currentQuestion.subject).text },
+                      ]}
+                    >
+                      {resolveAttemptSectionHeading(currentQuestion) || currentQuestion.subject}
+                    </Text>
+                  </View>
                 ) : null}
+                <View style={styles.marksBadge}>
+                  <Text style={styles.marksBadgeText}>{currentQuestion.marks || 0} marks</Text>
+                </View>
               </View>
+              <TouchableOpacity
+                style={[
+                  styles.flagBtn,
+                  flaggedQuestions.has(currentIndex) && styles.flagBtnActive,
+                ]}
+                onPress={() => toggleFlagQuestion(currentIndex)}
+              >
+                <Ionicons
+                  name={flaggedQuestions.has(currentIndex) ? 'flag' : 'flag-outline'}
+                  size={18}
+                  color={flaggedQuestions.has(currentIndex) ? '#ca8a04' : '#9ca3af'}
+                />
+              </TouchableOpacity>
             </View>
 
             {sharedMatterDisplay ? (
@@ -1431,9 +1478,12 @@ export default function ExamPage() {
             ) : null}
 
             {arDisplay.showQuestionText && arDisplay.questionText ? (
-            <Text style={styles.questionText}>
-              {normalizeExamText(arDisplay.questionText, currentQuestion.subject)}
-            </Text>
+            <View style={styles.questionTextRow}>
+              <Text style={styles.qPrefix}>Q{currentIndex + 1}.</Text>
+              <Text style={styles.questionText}>
+                {normalizeExamText(arDisplay.questionText, currentQuestion.subject)}
+              </Text>
+            </View>
             ) : null}
 
             {qType === 'integer' ? (
@@ -1494,23 +1544,31 @@ export default function ExamPage() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[
-              styles.navBtn,
-              styles.nextBtn,
-              currentIndex >= exam.questions.length - 1 && styles.navBtnDisabled,
-            ]}
-            disabled={currentIndex >= exam.questions.length - 1}
-            onPress={() => setCurrentIndex((i) => Math.min(exam.questions.length - 1, i + 1))}
+            style={[styles.navBtn, styles.clearNavBtn, !hasCurrentAnswer && styles.navBtnDisabled]}
+            disabled={!hasCurrentAnswer}
+            onPress={handleClearCurrentAnswer}
           >
-            <Text
-              style={[
-                styles.navBtnText,
-                currentIndex >= exam.questions.length - 1 && styles.navBtnTextDisabled,
-              ]}
-            >
-              Next
+            <Text style={[styles.clearNavBtnText, !hasCurrentAnswer && styles.navBtnTextDisabled]}>
+              Clear
             </Text>
           </TouchableOpacity>
+
+          {currentIndex >= exam.questions.length - 1 ? (
+            <TouchableOpacity
+              style={[styles.navBtn, styles.submitNavBtn]}
+              onPress={confirmSubmit}
+              disabled={isSubmitting}
+            >
+              <Text style={styles.submitNavBtnText}>Submit</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[styles.navBtn, styles.nextBtn]}
+              onPress={() => setCurrentIndex((i) => Math.min(exam.questions.length - 1, i + 1))}
+            >
+              <Text style={styles.nextBtnText}>Next</Text>
+            </TouchableOpacity>
+          )}
           </View>
         </GlassPanel>
       </SafeAreaView>
@@ -1671,39 +1729,81 @@ export default function ExamPage() {
 
 const styles = StyleSheet.create({
   // Transparent so the app background artwork shows through.
-  container: { flex: 1, backgroundColor: 'transparent' },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent' },
+  container: { flex: 1, backgroundColor: '#f9fafb' },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb' },
   loadingText: { marginTop: 12, color: '#6b7280', fontSize: 16 },
   gradingTitle: { marginTop: 16, fontSize: 18, fontWeight: '700', color: '#111827' },
   gradingHint: { marginTop: 8, fontSize: 14, color: '#6b7280', textAlign: 'center', paddingHorizontal: 32 },
-  header: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 12 },
-  headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  examTitle: { fontSize: 20, fontWeight: '800', color: '#fff', lineHeight: 26 },
-  examMeta: { fontSize: 14, color: 'rgba(255,255,255,0.95)', marginTop: 4, fontWeight: '500' },
-  headerSubmitBtn: {
-    borderWidth: 1.5,
-    borderColor: '#fff',
-    backgroundColor: 'transparent',
+  header: {
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginTop: 2,
+    paddingTop: 10,
+    paddingBottom: 12,
   },
-  headerSubmitText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  progressTrack: { height: 3, backgroundColor: 'rgba(255,255,255,0.35)', borderRadius: 2, marginTop: 12 },
-  progressFill: { height: '100%', backgroundColor: '#FFFFFF', borderRadius: 2 },
-  exitStrip: {
-    backgroundColor: '#c2410c',
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  examTitle: { flex: 1, fontSize: 16, fontWeight: '800', color: '#111827', lineHeight: 22 },
+  timerPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  timerPillOk: { backgroundColor: '#dbeafe' },
+  timerPillUrgent: { backgroundColor: '#fee2e2' },
+  timerPillText: { fontSize: 13, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  timerPillTextOk: { color: '#1d4ed8' },
+  timerPillTextUrgent: { color: '#b91c1c' },
+  headerSubmitBtn: {
+    borderWidth: 1,
+    borderColor: '#fca5a5',
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
     paddingVertical: 7,
+    borderRadius: 8,
+  },
+  headerSubmitText: { color: '#dc2626', fontWeight: '700', fontSize: 13 },
+  resumeNotice: {
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+    backgroundColor: '#ecfdf5',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  resumeNoticeText: { flex: 1, fontSize: 12, color: '#065f46', fontWeight: '600', lineHeight: 16 },
+  resumeDismiss: { fontSize: 12, color: '#047857', fontWeight: '700', textDecorationLine: 'underline' },
+  progressMetaRow: {
+    marginTop: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
+  progressMetaText: { fontSize: 12, color: '#4b5563', fontWeight: '600' },
+  progressTrack: {
+    height: 8,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 999,
+    marginTop: 6,
+    overflow: 'hidden',
+  },
+  progressFill: { height: '100%', backgroundColor: '#4f46e5', borderRadius: 999 },
   exitAttemptsText: {
+    marginTop: 8,
     fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
+    fontWeight: '700',
+    color: '#ca8a04',
     textAlign: 'center',
   },
-  exitAttemptsDanger: { color: '#fecaca' },
+  exitAttemptsDanger: { color: '#dc2626' },
   body: { flex: 1, backgroundColor: 'transparent' },
   bodyContent: {
     paddingHorizontal: 16,
@@ -1850,20 +1950,26 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     lineHeight: 18,
   },
-  questionCardActions: {
+  questionBadgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 8,
+    flex: 1,
   },
-  questionNumberBadge: {
-    backgroundColor: 'rgba(255,247,237,0.55)',
-    borderWidth: 1,
-    borderColor: '#fed7aa',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+  subjectBadge: {
     borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
-  questionNumberBadgeText: { fontSize: 13, fontWeight: '800', color: '#c2410c' },
+  subjectBadgeText: { fontSize: 11, fontWeight: '700', textTransform: 'capitalize' },
+  marksBadge: {
+    backgroundColor: '#f3f4f6',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  marksBadgeText: { fontSize: 11, fontWeight: '700', color: '#4b5563' },
   flagBtn: {
     width: 36,
     height: 36,
@@ -1873,21 +1979,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9fafb',
   },
   flagBtnActive: { backgroundColor: '#fef9c3' },
-  clearBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+  questionTextRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 16,
   },
-  clearBtnText: { fontSize: 13, fontWeight: '600', color: '#6b7280' },
-  questionText: {
-    fontSize: 17,
-    fontWeight: '600',
+  qPrefix: {
+    fontSize: 16,
+    fontWeight: '800',
     color: '#111827',
-    marginBottom: 20,
-    textAlign: 'center',
-    lineHeight: 26,
+    lineHeight: 24,
+  },
+  questionText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#111827',
+    lineHeight: 24,
   },
   questionImage: {
     width: '100%',
@@ -1905,9 +2014,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     marginBottom: 12,
   },
-  optionSelected: { borderColor: '#ea580c', backgroundColor: 'rgba(255,247,237,0.55)' },
+  optionSelected: { borderColor: '#60a5fa', backgroundColor: '#eff6ff' },
   optionText: { fontSize: 16, color: '#111827' },
-  optionTextSelected: { color: '#c2410c', fontWeight: '700' },
+  optionTextSelected: { color: '#1d4ed8', fontWeight: '700' },
   integerInput: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
@@ -1926,20 +2035,30 @@ const styles = StyleSheet.create({
   // Row layout lives on an inner view because GlassPanel wraps its children.
   footerRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: 8,
   },
   navBtn: {
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    backgroundColor: '#fff',
   },
-  prevBtn: { backgroundColor: '#d1d5db' },
-  nextBtn: { backgroundColor: '#ea580c' },
-  navBtnDisabled: { backgroundColor: '#e5e7eb' },
-  navBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  prevBtn: {},
+  nextBtn: {},
+  clearNavBtn: { flexGrow: 0, flexShrink: 0, minWidth: 72 },
+  submitNavBtn: { backgroundColor: '#dc2626', borderColor: '#dc2626' },
+  navBtnDisabled: { backgroundColor: '#f3f4f6', borderColor: '#e5e7eb' },
+  navBtnText: { color: '#374151', fontWeight: '700', fontSize: 15 },
+  nextBtnText: { color: '#374151', fontWeight: '700', fontSize: 15 },
+  clearNavBtnText: { color: '#374151', fontWeight: '700', fontSize: 15 },
+  submitNavBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
   navBtnTextDisabled: { color: '#9ca3af' },
   palettePager: {
     flexDirection: 'row',

@@ -877,7 +877,6 @@ export default function ExamsView({
                     ]}
                     contentStyle={styles.attemptedCardInner}
                   >
-                    <View style={[styles.attemptedAccentBar, { backgroundColor: scheme.accent }]} />
                     <View style={[styles.attemptedCardBody, attemptedGridLayout.isGrid && styles.attemptedCardBodyGrid]}>
                     <Text style={styles.attemptedCardTitle} numberOfLines={isTablet ? 3 : 2}>
                       {exam.title}
@@ -1366,15 +1365,7 @@ const styles = StyleSheet.create({
   },
   attemptedCardInner: {
     padding: 16,
-    paddingLeft: 18,
     gap: 14,
-  },
-  attemptedAccentBar: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 4,
   },
   attemptedCardGridItem: {
     alignSelf: 'stretch',
