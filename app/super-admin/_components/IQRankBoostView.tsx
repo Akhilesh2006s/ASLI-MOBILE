@@ -119,15 +119,15 @@ export default function IQRankBoostView() {
 
   const handleCreate = async () => {
     if (!form.title.trim()) {
-      Alert.alert('Missing title', 'Enter a quiz title.');
+      Alert.alert('Missing Title', 'Enter a quiz title.');
       return;
     }
     if (!form.subject) {
-      Alert.alert('Missing subject', 'Select a subject.');
+      Alert.alert('Missing Subject', 'Select a subject.');
       return;
     }
     if (form.audienceType === 'schools' && form.targetSchools.length === 0) {
-      Alert.alert('Select schools', 'Choose at least one school.');
+      Alert.alert('Select Schools', 'Choose at least one school.');
       return;
     }
     if (form.audienceType === 'specific_members' && !form.targetUserIdsText.trim()) {
@@ -142,7 +142,7 @@ export default function IQRankBoostView() {
       await fetchActivities();
       Alert.alert('Created', 'Quiz created successfully.');
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message || 'Failed to create quiz');
+      Alert.alert('Error', e?.response?.data?.message || 'Failed to Create Quiz');
     } finally {
       setSaving(false);
     }
@@ -190,7 +190,7 @@ export default function IQRankBoostView() {
         {isLoading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#0ea5e9" />
-            <Text style={styles.loadingText}>Loading quizzes...</Text>
+            <Text style={styles.loadingText}>Loading Quizzes...</Text>
           </View>
         ) : (
           <>
@@ -245,7 +245,7 @@ export default function IQRankBoostView() {
             </View>
 
             <View style={styles.listSection}>
-              <Text style={styles.listTitle}>All quizzes</Text>
+              <Text style={styles.listTitle}>All Quizzes</Text>
               {recentQuizzes.length === 0 ? (
                 <Text style={styles.emptyList}>No quizzes yet. Tap Create to add one.</Text>
               ) : (
@@ -294,7 +294,7 @@ export default function IQRankBoostView() {
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Create quiz</Text>
+              <Text style={styles.modalTitle}>Create Quiz</Text>
               <Pressable onPress={() => setCreateOpen(false)}>
                 <Ionicons name="close" size={22} color="#334155" />
               </Pressable>
@@ -305,14 +305,14 @@ export default function IQRankBoostView() {
                 style={styles.input}
                 value={form.title}
                 onChangeText={(title) => setForm({ ...form, title })}
-                placeholder="Quiz title"
+                placeholder="Quiz Title"
               />
               <Text style={styles.label}>Description</Text>
               <TextInput
                 style={[styles.input, { minHeight: 64, textAlignVertical: 'top' }]}
                 value={form.description}
                 onChangeText={(description) => setForm({ ...form, description })}
-                placeholder="Optional description"
+                placeholder="Optional Description"
                 multiline
               />
               <Text style={styles.label}>Subject</Text>
@@ -332,7 +332,7 @@ export default function IQRankBoostView() {
                   );
                 })}
               </ScrollView>
-              <Text style={styles.label}>Class (or all)</Text>
+              <Text style={styles.label}>Class (Or All)</Text>
               <TextInput
                 style={styles.input}
                 value={form.classNumber}
@@ -376,7 +376,7 @@ export default function IQRankBoostView() {
                   );
                 })}
               </View>
-              <Text style={styles.label}>Available to</Text>
+              <Text style={styles.label}>Available To</Text>
               <View style={styles.chipRow}>
                 <Pressable
                   onPress={() => toggleRole('student')}
@@ -407,7 +407,7 @@ export default function IQRankBoostView() {
               </View>
               {form.audienceType === 'schools' ? (
                 <View style={styles.schoolBox}>
-                  <Text style={styles.label}>Select schools</Text>
+                  <Text style={styles.label}>Select Schools</Text>
                   {schools.slice(0, 60).map((school) => {
                     const on = form.targetSchools.includes(school._id);
                     return (
@@ -436,19 +436,19 @@ export default function IQRankBoostView() {
               ) : null}
               {form.audienceType === 'specific_members' ? (
                 <>
-                  <Text style={styles.label}>Member user IDs</Text>
+                  <Text style={styles.label}>Member User IDs</Text>
                   <TextInput
                     style={[styles.input, { minHeight: 64, textAlignVertical: 'top' }]}
                     value={form.targetUserIdsText}
                     onChangeText={(targetUserIdsText) => setForm({ ...form, targetUserIdsText })}
-                    placeholder="Comma-separated user IDs"
+                    placeholder="Comma-Separated User IDs"
                     multiline
                   />
                 </>
               ) : null}
               {form.audienceType === 'trial' ? (
                 <View style={styles.switchRow}>
-                  <Text style={styles.label}>Prompt on login</Text>
+                  <Text style={styles.label}>Prompt On Login</Text>
                   <Switch
                     value={form.promptOnLogin}
                     onValueChange={(promptOnLogin) => setForm({ ...form, promptOnLogin })}
@@ -478,7 +478,7 @@ export default function IQRankBoostView() {
                 {saving ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.saveBtnText}>Create quiz</Text>
+                  <Text style={styles.saveBtnText}>Create Quiz</Text>
                 )}
               </Pressable>
             </ScrollView>

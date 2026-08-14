@@ -24,7 +24,7 @@ type ChartKey = keyof Pick<
 >;
 
 const CHART_CONFIG: Array<{ title: string; key: ChartKey; color: string; max?: number }> = [
-  { title: 'Number of Students', key: 'students', color: '#3b82f6' },
+  { title: 'Number Of Students', key: 'students', color: '#3b82f6' },
   { title: 'Average Score (%)', key: 'averageScore', color: '#10b981', max: 100 },
   { title: 'Total Exam Attempts', key: 'totalAttempts', color: '#8b5cf6' },
   { title: 'Participation Rate (%)', key: 'participationRate', color: '#f97316', max: 100 },
@@ -154,7 +154,7 @@ export default function BoardComparisonView() {
       <ScrollView style={styles.content}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#f97316" />
-          <Text style={styles.loadingText}>Loading board analytics...</Text>
+          <Text style={styles.loadingText}>Loading Board Analytics...</Text>
         </View>
       </ScrollView>
     );
@@ -168,7 +168,7 @@ export default function BoardComparisonView() {
     >
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Board Performance Comparison</Text>
-        <Text style={styles.headerSubtitle}>Compare performance across curriculum boards</Text>
+        <Text style={styles.headerSubtitle}>Compare Performance Across Curriculum Boards</Text>
         <TouchableOpacity style={styles.refreshButton} onPress={() => load(true)}>
           <Ionicons name="refresh" size={18} color="#374151" />
           <Text style={styles.refreshButtonText}>Refresh</Text>

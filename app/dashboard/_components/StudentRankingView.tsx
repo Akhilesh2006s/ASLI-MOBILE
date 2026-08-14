@@ -61,7 +61,7 @@ export default function StudentRankingView() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#3b82f6" />
-        <Text style={styles.loadingText}>Loading rankings...</Text>
+        <Text style={styles.loadingText}>Loading Rankings...</Text>
       </View>
     );
   }
@@ -70,8 +70,8 @@ export default function StudentRankingView() {
     return (
       <View style={styles.emptyContainer}>
         <Ionicons name="trophy-outline" size={64} color="#5B6779" />
-        <Text style={styles.emptyText}>No rankings yet</Text>
-        <Text style={styles.emptySubtext}>Complete exams to see your rankings</Text>
+        <Text style={styles.emptyText}>No Rankings Yet</Text>
+        <Text style={styles.emptySubtext}>Complete Exams To See Your Rankings</Text>
       </View>
     );
   }
@@ -136,7 +136,7 @@ export default function StudentRankingView() {
                 <Text style={[styles.rankingStatValue, { color: '#2563eb' }]}>
                   #{ranking.rank}
                 </Text>
-                <Text style={styles.rankingStatSubtext}>out of {ranking.totalStudents}</Text>
+                <Text style={styles.rankingStatSubtext}>Out Of {ranking.totalStudents}</Text>
               </View>
               <View style={[styles.rankingStatCard, { backgroundColor: percentileBadge.color }]}>
                 <Ionicons name="trending-up" size={16} color={percentileBadge.text} />

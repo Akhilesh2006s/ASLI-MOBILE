@@ -40,6 +40,7 @@ function canAccessPath(pathname: string, role: string | null) {
     pathname.startsWith('/dashboard') ||
     pathname.startsWith('/attendance') ||
     pathname.startsWith('/assignments') ||
+    pathname.startsWith('/teachers-report') ||
     pathname.startsWith('/student-') ||
     pathname.startsWith('/student/')
   ) {
@@ -69,6 +70,13 @@ function canAccessPath(pathname: string, role: string | null) {
   }
   return true;
 }
+
+const STUDENT_PUSHED_SCREEN = {
+  gestureEnabled: true,
+  animation: 'slide_from_right' as const,
+  animationDuration: 220,
+  contentStyle: { backgroundColor: '#F4F7FB' },
+};
 
 function AuthGate() {
   const { isLoading, isAuthenticated, role } = useAuth();
@@ -119,43 +127,19 @@ function AuthGate() {
       <Stack.Screen
         name="dashboard/index"
         options={{
-          // Freeze under pushed student routes so tool/quiz opens stay smooth.
           freezeOnBlur: true,
         }}
       />
-      <Stack.Screen name="attendance" />
-      <Stack.Screen name="assignments" />
+      <Stack.Screen name="attendance" options={STUDENT_PUSHED_SCREEN} />
+      <Stack.Screen name="assignments" options={STUDENT_PUSHED_SCREEN} />
+      <Stack.Screen name="teachers-report" options={STUDENT_PUSHED_SCREEN} />
       <Stack.Screen name="staff/dashboard" />
-      <Stack.Screen name="learning-paths" />
-      <Stack.Screen name="subject/[id]" />
-      <Stack.Screen
-        name="quiz/[id]"
-        options={{
-          gestureEnabled: true,
-          animation: 'slide_from_right',
-          animationDuration: 220,
-          contentStyle: { backgroundColor: '#F4F7FB' },
-        }}
-      />
-      <Stack.Screen
-        name="exam/[id]"
-        options={{
-          gestureEnabled: true,
-          animation: 'slide_from_right',
-          animationDuration: 220,
-          contentStyle: { backgroundColor: '#F4F7FB' },
-        }}
-      />
-      <Stack.Screen
-        name="ai-tutor"
-        options={{
-          gestureEnabled: true,
-          animation: 'slide_from_right',
-          animationDuration: 220,
-          contentStyle: { backgroundColor: '#F4F7FB' },
-        }}
-      />
-      <Stack.Screen name="profile" />
+      <Stack.Screen name="learning-paths" options={STUDENT_PUSHED_SCREEN} />
+      <Stack.Screen name="subject/[id]" options={STUDENT_PUSHED_SCREEN} />
+      <Stack.Screen name="quiz/[id]" options={STUDENT_PUSHED_SCREEN} />
+      <Stack.Screen name="exam/[id]" options={STUDENT_PUSHED_SCREEN} />
+      <Stack.Screen name="ai-tutor" options={STUDENT_PUSHED_SCREEN} />
+      <Stack.Screen name="profile" options={STUDENT_PUSHED_SCREEN} />
       <Stack.Screen
         name="admin/dashboard"
         options={{
@@ -213,24 +197,18 @@ function AuthGate() {
           contentStyle: { backgroundColor: '#EEF2FF' },
         }}
       />
-      <Stack.Screen
-        name="student/tools/[toolType]"
-        options={{
-          gestureEnabled: true,
-          animation: 'slide_from_right',
-          animationDuration: 220,
-          contentStyle: { backgroundColor: '#F4F7FB' },
-        }}
-      />
-      <Stack.Screen name="student-exams" />
-      <Stack.Screen name="practice-tests" />
-      <Stack.Screen name="video-lectures" />
-      <Stack.Screen name="live-stream" />
+      <Stack.Screen name="student/tools/[toolType]" options={STUDENT_PUSHED_SCREEN} />
+      <Stack.Screen name="student-exams" options={STUDENT_PUSHED_SCREEN} />
+      <Stack.Screen name="practice-tests" options={STUDENT_PUSHED_SCREEN} />
+      <Stack.Screen name="video-lectures" options={STUDENT_PUSHED_SCREEN} />
+      <Stack.Screen name="live-stream" options={STUDENT_PUSHED_SCREEN} />
       <Stack.Screen
         name="video-player"
         options={{
           gestureEnabled: true,
           fullScreenGestureEnabled: true,
+          animation: 'slide_from_right',
+          contentStyle: { backgroundColor: '#0f172a' },
         }}
       />
       <Stack.Screen
@@ -238,6 +216,8 @@ function AuthGate() {
         options={{
           gestureEnabled: true,
           fullScreenGestureEnabled: true,
+          animation: 'slide_from_right',
+          contentStyle: { backgroundColor: '#F4F7FB' },
         }}
       />
       <Stack.Screen
@@ -245,16 +225,18 @@ function AuthGate() {
         options={{
           gestureEnabled: true,
           fullScreenGestureEnabled: true,
+          animation: 'slide_from_right',
+          contentStyle: { backgroundColor: '#F4F7FB' },
         }}
       />
-      <Stack.Screen name="iq-rank-boost-subjects" />
-      <Stack.Screen name="iq-rank-boost-quiz/[quizId]" />
-      <Stack.Screen name="daily-quiz-review" />
+      <Stack.Screen name="iq-rank-boost-subjects" options={STUDENT_PUSHED_SCREEN} />
+      <Stack.Screen name="iq-rank-boost-quiz/[quizId]" options={STUDENT_PUSHED_SCREEN} />
+      <Stack.Screen name="daily-quiz-review" options={STUDENT_PUSHED_SCREEN} />
       <Stack.Screen name="onboarding" />
-      <Stack.Screen name="notifications" />
-      <Stack.Screen name="student/timetable" />
-      <Stack.Screen name="student/schedule" />
-      <Stack.Screen name="student/results" />
+      <Stack.Screen name="notifications" options={STUDENT_PUSHED_SCREEN} />
+      <Stack.Screen name="student/timetable" options={STUDENT_PUSHED_SCREEN} />
+      <Stack.Screen name="student/schedule" options={STUDENT_PUSHED_SCREEN} />
+      <Stack.Screen name="student/results" options={STUDENT_PUSHED_SCREEN} />
       <Stack.Screen name="teacher/attendance" />
       <Stack.Screen name="teacher/quiz" />
       <Stack.Screen name="teacher/quiz/[quizId]" />

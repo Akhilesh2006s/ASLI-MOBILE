@@ -96,7 +96,7 @@ function VideoCardComponent({
             {title}
           </Text>
           <Text style={styles.subtitle} numberOfLines={1}>
-            {subjectName || description || 'Video lecture'}
+            {subjectName || description || 'Video Lecture'}
           </Text>
           <View style={styles.metaRow}>
             <Text style={styles.metaText}>{durationText}</Text>

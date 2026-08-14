@@ -7,7 +7,7 @@ import teacherService, { asArray } from '../../../src/services/api/teacherServic
 import HomeworkSubmissionsView from './HomeworkSubmissionsView';
 import TrackProgressView from './TrackProgressView';
 import WorkDiaryView from './WorkDiaryView';
-import { SubNavChips, StudentListCard } from '../../../src/components/teacher';
+import { SubNavChips, StudentListCard, TeacherPageHero } from '../../../src/components/teacher';
 import { GlassPanel } from '../../../src/components/ui';
 import {
   buildAssignedClassRows,
@@ -33,6 +33,10 @@ type Props = {
   progressClassFilter?: string;
   progressStudentId?: string;
   onCloseStudentAnalysis?: () => void;
+  hideSubNav?: boolean;
+  heroTitle?: string;
+  heroSubtitle?: string;
+  heroIcon?: keyof typeof Ionicons.glyphMap;
 };
 
 interface Student extends StudentRow {
@@ -44,6 +48,10 @@ export default function StudentsView({
   progressClassFilter,
   progressStudentId,
   onCloseStudentAnalysis,
+  hideSubNav,
+  heroTitle = 'Students',
+  heroSubtitle = 'Roster, progress, homework submissions, and daily diary.',
+  heroIcon = 'people-outline',
 }: Props) {
   const [activeSubTab, setActiveSubTab] = useState<StudentsSubTab>(initialSubTab || 'list');
   const [assignedClassRows, setAssignedClassRows] = useState<AssignedClassRow[]>([]);
@@ -165,7 +173,7 @@ export default function StudentsView({
             <Ionicons name="people-outline" size={36} color="#fff" />
           </LinearGradient>
           <Text style={styles.emptyText}>
-            {searchTerm.trim() ? 'No students match your search' : 'No students in assigned classes'}
+            {searchTerm.trim() ? 'No Students Match Your Search' : 'No Students In Assigned Classes'}
           </Text>
         </View>
       );
@@ -173,7 +181,7 @@ export default function StudentsView({
 
     return (
       <GlassPanel style={styles.classListCard} radius={TEACHER_RADIUS.lg} tone="strong">
-        <Text style={styles.classListTitle}>My assigned classes</Text>
+        <Text style={styles.classListTitle}>My Assigned Classes</Text>
         {classGroups.map((group) => {
           const classExpanded = expandedClassNumbers.has(group.classNumber);
           return (
@@ -191,7 +199,7 @@ export default function StudentsView({
                   <Text style={styles.classRowLabel}>{group.classNumber}</Text>
                 </View>
                 <Text style={styles.classRowCount}>
-                  {group.totalStudents} student{group.totalStudents !== 1 ? 's' : ''}
+                  {group.totalStudents} Student{group.totalStudents !== 1 ? 's' : ''}
                 </Text>
               </Pressable>
 
@@ -221,7 +229,7 @@ export default function StudentsView({
                             </Text>
                           </View>
                           <Text style={styles.sectionRowCount}>
-                            {section.students.length} student
+                            {section.students.length} Student
                             {section.students.length !== 1 ? 's' : ''}
                           </Text>
                         </Pressable>
@@ -260,7 +268,14 @@ export default function StudentsView({
 
   return (
     <View style={styles.container}>
-      {!analysisOnly ? (
+      <View style={styles.heroWrap}>
+        <TeacherPageHero
+          title={heroTitle}
+          subtitle={heroSubtitle}
+          icon={heroIcon}
+        />
+      </View>
+      {!analysisOnly && !hideSubNav ? (
         <View style={styles.subNavBar}>
           <SubNavChips
             items={STUDENT_SUB_TABS}
@@ -271,7 +286,7 @@ export default function StudentsView({
         </View>
       ) : null}
 
-      {activeSubTab === 'list' && !analysisOnly ? (
+      {activeSubTab === 'list' && !analysisOnly && !hideSubNav ? (
         <ScrollView
           style={styles.list}
           contentContainerStyle={styles.listContent}
@@ -328,7 +343,7 @@ export default function StudentsView({
           <GlassPanel style={styles.modalContent} radius={24} tone="strong">
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                Add Remark for {selectedStudent?.name}
+                Add Remark For {selectedStudent?.name}
               </Text>
               <TouchableOpacity onPress={() => setIsRemarkModalVisible(false)}>
                 <Ionicons name="close" size={28} color={TEACHER.text} />
@@ -373,7 +388,7 @@ export default function StudentsView({
                 <Text style={styles.label}>Remark *</Text>
                 <TextInput
                   style={styles.textArea}
-                  placeholder="Enter your remark here..."
+                  placeholder="Enter Your Remark Here..."
                   value={remarkText}
                   onChangeText={setRemarkText}
                   multiline
@@ -427,6 +442,11 @@ const styles = StyleSheet.create({
     flex: 1,
     // Transparent so AppBackground's artwork shows through.
     backgroundColor: 'transparent',
+  },
+  heroWrap: {
+    paddingHorizontal: TEACHER_SPACING.lg,
+    paddingTop: TEACHER_SPACING.sm,
+    paddingBottom: TEACHER_SPACING.md,
   },
   subNavBar: {
     backgroundColor: 'transparent',

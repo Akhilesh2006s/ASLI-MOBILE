@@ -292,7 +292,7 @@ export default function WorkDiaryView() {
           {preview}
         </Text>
         <View style={styles.readMoreRow}>
-          <Text style={styles.readMoreText}>Tap to read full entry</Text>
+          <Text style={styles.readMoreText}>Tap To Read Full Entry</Text>
           <Ionicons name="chevron-forward" size={14} color={TEACHER.primaryLight} />
         </View>
         </GlassPanel>
@@ -310,7 +310,7 @@ export default function WorkDiaryView() {
         </Text>
       </View>
 
-      <Text style={styles.recentTitle}>PAST ENTRIES BY CLASS</Text>
+      <Text style={styles.recentTitle}>Past Entries By Class</Text>
       {entries.length === 0 ? (
         <View style={styles.emptyBox}>
           <Text style={styles.emptyText}>
@@ -336,7 +336,7 @@ export default function WorkDiaryView() {
                     <Text style={styles.classRowLabel}>{group.classNumber}</Text>
                   </View>
                   <Text style={styles.classRowCount}>
-                    {group.totalEntries} entr{group.totalEntries === 1 ? 'y' : 'ies'}
+                    {group.totalEntries} Entr{group.totalEntries === 1 ? 'y' : 'ies'}
                   </Text>
                 </Pressable>
 
@@ -368,7 +368,7 @@ export default function WorkDiaryView() {
                               </Text>
                             </View>
                             <Text style={styles.sectionRowCount}>
-                              {section.entries.length} entr
+                              {section.entries.length} Entr
                               {section.entries.length === 1 ? 'y' : 'ies'}
                             </Text>
                           </Pressable>
@@ -397,20 +397,20 @@ export default function WorkDiaryView() {
           <Ionicons name="bookmark" size={20} color="#fff" />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>New diary entry</Text>
+          <Text style={styles.headerTitle}>New Diary Entry</Text>
           <Text style={styles.headerSub}>
             Log what you covered — visible to your students and school admin.
           </Text>
         </View>
       </View>
 
-      <Text style={styles.label}>Class & section</Text>
+      <Text style={styles.label}>Class & Section</Text>
       {classes.length === 0 ? (
         <Text style={styles.warnBox}>No classes assigned yet. Contact your administrator.</Text>
       ) : (
         <Pressable style={styles.selectTrigger} onPress={() => setClassPickerOpen(true)}>
           <Text style={selectedClass ? styles.selectValue : styles.selectPlaceholder}>
-            {selectedClass ? formatClassLabel(selectedClass) : 'Select class and section'}
+            {selectedClass ? formatClassLabel(selectedClass) : 'Select Class And Section'}
           </Text>
           <Ionicons name="chevron-down" size={18} color={TEACHER.textMuted} />
         </Pressable>
@@ -428,19 +428,19 @@ export default function WorkDiaryView() {
         caretHidden={false}
       />
 
-      <Text style={styles.label}>Title (optional)</Text>
+      <Text style={styles.label}>Title (Optional)</Text>
       <TextInput
         style={styles.input}
         value={form.title}
         onChangeText={(t) => setForm((f) => ({ ...f, title: t }))}
-        placeholder="e.g. Algebra — quadratic equations"
+        placeholder="E.g. Algebra — Quadratic Equations"
         placeholderTextColor={TEACHER.textMuted}
         cursorColor={TEACHER.primary}
         selectionColor={TEACHER.primaryLight}
         caretHidden={false}
       />
 
-      <Text style={styles.label}>Today&apos;s work</Text>
+      <Text style={styles.label}>Today&apos;s Work</Text>
       <TextInput
         style={[styles.input, styles.textArea]}
         value={form.content}
@@ -461,7 +461,7 @@ export default function WorkDiaryView() {
           style={[styles.saveBtn, (!form.classId || saving) && { opacity: 0.5 }]}
         >
           <Ionicons name="save-outline" size={18} color="#fff" />
-          <Text style={styles.saveBtnText}>{saving ? 'Saving…' : 'Save entry'}</Text>
+          <Text style={styles.saveBtnText}>{saving ? 'Saving…' : 'Save Entry'}</Text>
         </LinearGradient>
       </Pressable>
     </GlassPanel>
@@ -487,7 +487,7 @@ export default function WorkDiaryView() {
             color={mode === 'add' ? TEACHER.textOnPrimary : TEACHER.primaryLight}
           />
           <Text style={[styles.modeChipText, mode === 'add' && styles.modeChipTextActive]}>
-            Add entry
+            Add Entry
           </Text>
         </Pressable>
         <Pressable
@@ -500,7 +500,7 @@ export default function WorkDiaryView() {
             color={mode === 'history' ? TEACHER.textOnPrimary : TEACHER.primaryLight}
           />
           <Text style={[styles.modeChipText, mode === 'history' && styles.modeChipTextActive]}>
-            Past entries ({entries.length})
+            Past Entries ({entries.length})
           </Text>
         </Pressable>
       </View>
@@ -511,7 +511,7 @@ export default function WorkDiaryView() {
         <Pressable style={styles.pickerOverlay} onPress={() => setClassPickerOpen(false)}>
           {/* radius={0} so only the sheet's own top corners round. */}
           <GlassPanel style={styles.pickerSheet} radius={0} tone="strong">
-            <Text style={styles.pickerTitle}>Select class and section</Text>
+            <Text style={styles.pickerTitle}>Select Class And Section</Text>
             {classes.map((c) => {
               const id = String(c._id || c.id);
               const selected = form.classId === id;
@@ -559,7 +559,7 @@ export default function WorkDiaryView() {
               onPress={() => detailEntry && remove(String(detailEntry._id || detailEntry.id))}
             >
               <Ionicons name="trash-outline" size={16} color={TEACHER.danger} />
-              <Text style={styles.detailDeleteText}>Delete entry</Text>
+              <Text style={styles.detailDeleteText}>Delete Entry</Text>
             </Pressable>
           </GlassPanel>
         </View>

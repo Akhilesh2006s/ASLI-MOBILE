@@ -101,7 +101,7 @@ export default function LearningPathsView() {
       {subjectsWithContent.length === 0 ? (
         <AdminEmptyState
           icon="map-outline"
-          title="No learning paths found"
+          title="No Learning Paths Found"
           message={
             isAsliPrepExclusive
               ? 'No catalog content is available yet.'
@@ -217,7 +217,7 @@ export default function LearningPathsView() {
                     {isExpanded && subject.asliPrepContent && subject.asliPrepContent.length > 0 ? (
                       <View style={[styles.contentList, { borderTopColor: colors.surfaceBorder }]}>
                         <Text style={[styles.contentListTitle, { color: colors.text }]}>
-                          Content items
+                          Content Items
                         </Text>
                         {subject.asliPrepContent.map((content, contentIndex) => (
                           <AdminScalePressable

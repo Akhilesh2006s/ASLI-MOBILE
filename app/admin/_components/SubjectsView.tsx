@@ -244,7 +244,7 @@ export default function SubjectsView() {
       `Status: ${subject.isActive ? 'Active' : 'Inactive'}`,
       subject.teacher
         ? `Teacher: ${subject.teacher.fullName}\nEmail: ${subject.teacher.email || '—'}`
-        : 'Teacher: Not assigned',
+        : 'Teacher: Not Assigned',
     ];
     Alert.alert(subject.name, lines.join('\n\n'));
   };
@@ -254,7 +254,7 @@ export default function SubjectsView() {
     onChange: (ids: string[]) => void
   ) => (
     <View style={styles.formGroup}>
-      <Text style={styles.formLabel}>Assign to Class(es)</Text>
+      <Text style={styles.formLabel}>Assign To Class(es)</Text>
       {classes.length === 0 ? (
         <Text style={styles.classPickerEmpty}>No classes yet. Add classes first.</Text>
       ) : (
@@ -338,7 +338,7 @@ export default function SubjectsView() {
             </Text>
           </TouchableOpacity>
           <Text style={[styles.cardSubtitle, { color: colors.textMuted }]} numberOfLines={1}>
-            {subject.code ? `#${subject.code}` : 'Open details & classes'}
+            {subject.code ? `#${subject.code}` : 'Open Details & Classes'}
           </Text>
         </View>
         <View
@@ -385,7 +385,7 @@ export default function SubjectsView() {
         <DetailRow
           icon={<SvgIconPeople size={18} color={colors.textMuted} />}
           label="Teacher:"
-          value={subject.teacher?.fullName?.trim() ? subject.teacher.fullName : 'No teacher assigned'}
+          value={subject.teacher?.fullName?.trim() ? subject.teacher.fullName : 'No Teacher Assigned'}
           valueMuted={!subject.teacher}
         />
         <DetailRow
@@ -417,7 +417,7 @@ export default function SubjectsView() {
           </AdminCardScrollBox>
         ) : (
           <View style={styles.noClassesAssignedWrap}>
-            <Text style={styles.noClassesAssigned}>No classes assigned</Text>
+            <Text style={styles.noClassesAssigned}>No Classes Assigned</Text>
           </View>
         )}
       </View>
@@ -453,8 +453,8 @@ export default function SubjectsView() {
     >
       <View style={styles.innerShell}>
       <AdminSectionHeader
-        title="Browse subjects"
-        subtitle="Assign classes to subjects created by Super Admin"
+        title="Browse Subjects"
+        subtitle="Assign Classes To Subjects Created By Super Admin"
         icon="book-outline"
       />
 
@@ -478,7 +478,7 @@ export default function SubjectsView() {
         <AdminSkeletonList count={4} />
       ) : filteredSubjects.length === 0 ? (
         <AdminEmptyState
-          title="No subjects found"
+          title="No Subjects Found"
           message="Try a different search. Subjects are managed by Super Admin."
           icon="book-outline"
         />
@@ -545,7 +545,7 @@ export default function SubjectsView() {
                 onPress={handleSaveAssignments}
                 activeOpacity={0.88}
               >
-                <Text style={styles.submitButtonSolidText}>Save assignments</Text>
+                <Text style={styles.submitButtonSolidText}>Save Assignments</Text>
               </TouchableOpacity>
             </View>
           </View>

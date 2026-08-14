@@ -24,6 +24,7 @@ import { prepareLibraryContents, getLibraryContentDisplayTitle, isIitTrackConten
 import { groupLearningPathContentsWithIit } from '../../src/lib/learning-path-content-groups';
 import { GlassPanel } from '../../src/components/ui';
 import { learningPathDisplayName } from '../../src/lib/learning-path-subjects';
+import { getVideoDisplayTitle } from '../../src/lib/video-chapter-schedule';
 
 function pickParam(v: string | string[] | undefined): string {
   if (v == null) return '';
@@ -110,6 +111,7 @@ export default function SubjectContent() {
       }
       setContent(
         prepareLibraryContents(merged, isAsliPrepExclusive, {
+          surface: 'learning-path',
           subjectSlot: {
             classNumber: subjectMeta?.classNumber,
             productCategory: subjectMeta?.productCategory,
@@ -232,12 +234,14 @@ export default function SubjectContent() {
                             </View>
                             <View style={styles.contentInfo}>
                               <Text style={styles.contentTitle}>
-                                {section.iit
-                                  ? formatIitLearningPathContentLabel(
-                                      item,
-                                      learningPathDisplayName(subject?.name || ''),
-                                    ) || 'Content'
-                                  : getLibraryContentDisplayTitle(item) || 'Content'}
+                                {video
+                                  ? getVideoDisplayTitle(item)
+                                  : section.iit
+                                    ? formatIitLearningPathContentLabel(
+                                        item,
+                                        learningPathDisplayName(subject?.name || ''),
+                                      ) || 'Content'
+                                    : getLibraryContentDisplayTitle(item) || 'Content'}
                               </Text>
                               <Text style={styles.contentDescription} numberOfLines={2}>
                                 {item.description || 'Learn more about this topic'}

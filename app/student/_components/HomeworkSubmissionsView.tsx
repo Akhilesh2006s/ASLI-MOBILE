@@ -76,7 +76,7 @@ export default function StudentHomeworkSubmissionsView() {
         <StudentScreenHeader title="My Submissions" onBack={() => router.back()} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={STUDENT.primary} />
-          <Text style={styles.loadingText}>Loading submissions...</Text>
+          <Text style={styles.loadingText}>Loading Submissions...</Text>
         </View>
       </SafeAreaView>
     );
@@ -89,8 +89,8 @@ export default function StudentHomeworkSubmissionsView() {
         {submissions.length === 0 ? (
           <EmptyState
             icon="document-text-outline"
-            title="No submissions yet"
-            subtitle="Your homework submissions will appear here"
+            title="No Submissions Yet"
+            subtitle="Your Homework Submissions Will Appear Here"
           />
         ) : (
           submissions.map((submission, index) => {

@@ -155,7 +155,7 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
         params: { surface: 'learning-path' },
       });
       const raw = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
-      const prepared = prepareLibraryContents(raw, isAsliPrepExclusive);
+      const prepared = prepareLibraryContents(raw, isAsliPrepExclusive, { surface: 'learning-path' });
       setItemCounts(countItemsBySubject(prepared, preparedSubjects));
     } catch {
       setItemCounts({});
@@ -215,7 +215,7 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
             </View>
             <View style={styles.bannerText}>
               <Text style={styles.bannerTitle}>
-                {activeTab === 'subjects' ? 'Browse subjects' : 'My quizzes'}
+                {activeTab === 'subjects' ? 'Browse Subjects' : 'My Quizzes'}
               </Text>
               <Text style={styles.bannerSub}>
                 {activeTab === 'subjects'
@@ -253,7 +253,7 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
                 />
               </View>
               <Text style={styles.emptyStateTitle}>
-                {subjectsError ? 'Couldn’t load subjects' : 'No subjects yet'}
+                {subjectsError ? 'Couldn’t Load Subjects' : 'No Subjects Yet'}
               </Text>
               <Text style={styles.emptyStateText}>
                 {subjectsError ||
@@ -262,7 +262,7 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
               {subjectsError ? (
                 <TouchableOpacity style={styles.retryBtn} onPress={fetchSubjects} activeOpacity={0.85}>
                   <Ionicons name="refresh" size={16} color={STUDENT.textOnPrimary} />
-                  <Text style={styles.retryBtnText}>Try again</Text>
+                  <Text style={styles.retryBtnText}>Try Again</Text>
                 </TouchableOpacity>
               ) : null}
             </GlassPanel>
@@ -282,11 +282,11 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
                 const hint =
                   typeof count === 'number' && count > 0
                     ? subject.hasIitTrack
-                      ? `${count} items · includes IIT`
-                      : `${count} ${count === 1 ? 'item' : 'items'}`
+                      ? `${count} Items · Includes IIT`
+                      : `${count} ${count === 1 ? 'Item' : 'Items'}`
                     : subject.hasIitTrack
-                      ? `${displayName} IIT available`
-                      : 'View content';
+                      ? `${displayName} IIT Available`
+                      : 'View Content';
                 return (
                   <GlassCard
                     key={subject._id || subject.id}
@@ -385,24 +385,24 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
                     </View>
                     <Text style={styles.quizTitle}>{quiz.title}</Text>
                     <Text style={styles.quizDescription}>
-                      {quiz.description || `Quiz on ${quiz.subject?.name || quiz.subject || 'subject'}`}
+                      {quiz.description || `Quiz On ${quiz.subject?.name || quiz.subject || 'Subject'}`}
                     </Text>
                     <View style={styles.quizStats}>
                       <View style={styles.quizStat}>
                         <Ionicons name="time-outline" size={15} color={STUDENT.textMuted} />
-                        <Text style={styles.quizStatText}>{quiz.duration || 60} min</Text>
+                        <Text style={styles.quizStatText}>{quiz.duration || 60} Min</Text>
                       </View>
                       <View style={styles.quizStat}>
                         <Ionicons name="help-circle-outline" size={15} color={STUDENT.textMuted} />
                         <Text style={styles.quizStatText}>
-                          {quiz.questions?.length || quiz.questionCount || 0} questions
+                          {quiz.questions?.length || quiz.questionCount || 0} Questions
                         </Text>
                       </View>
                     </View>
                     {quiz.hasAttempted && quiz.bestScore != null ? (
                       <View style={styles.bestScoreContainer}>
                         <View style={styles.bestScoreHeader}>
-                          <Text style={styles.bestScoreLabel}>Best score</Text>
+                          <Text style={styles.bestScoreLabel}>Best Score</Text>
                           <Text style={styles.bestScoreValue}>{quiz.bestScore}%</Text>
                         </View>
                         <AnimatedProgressBar progress={quiz.bestScore} delay={index * 80} />
@@ -410,7 +410,7 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
                     ) : null}
                     <View style={styles.quizButton}>
                       <Text style={styles.quizButtonText}>
-                        {quiz.hasAttempted ? 'Review quiz' : 'Start quiz'}
+                        {quiz.hasAttempted ? 'Review Quiz' : 'Start Quiz'}
                       </Text>
                       <Ionicons name="arrow-forward" size={16} color={STUDENT.textOnPrimary} />
                     </View>

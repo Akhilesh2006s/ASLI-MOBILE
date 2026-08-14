@@ -1,134 +1,72 @@
-import React, { useEffect } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import React from 'react';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, {
-  FadeInDown,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withTiming,
-} from 'react-native-reanimated';
-import { getSchoolBranding } from '../../lib/school-branding';
-import { resolveStudentFirstName } from '../../lib/student-text';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { resolveStudentDisplayName } from '../../lib/student-text';
+import { isVidyaEnabledForUser } from '../../lib/vidya-access';
 import StudentCardDecor from './StudentCardDecor';
-import { STUDENT, STUDENT_RADIUS, studentGreeting } from '../../theme/student';
-import { GLASS_ROW, GLASS_VIOLET } from '../../theme/glass';
-import GlassPanel from '../ui/GlassPanel';
+
+const VIDYA_ROBOT = require('../../../assets/ROBOT.gif');
 
 type Props = {
   user: any;
   streak?: number;
-  onAvatarPress?: () => void;
-  onLogout?: () => void;
 };
 
-export default function StudentHomeHeader({ user, streak = 0, onAvatarPress, onLogout }: Props) {
-  const streakScale = useSharedValue(1);
-
-  const firstName = resolveStudentFirstName(user);
-  const classLabel = user?.className || user?.class;
-  const section = user?.section;
-  const branding = getSchoolBranding(user);
-  const dateStr = new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'short',
-    day: 'numeric',
-  });
-
-  useEffect(() => {
-    streakScale.value = withRepeat(
-      withSequence(withTiming(1.06, { duration: 900 }), withTiming(1, { duration: 900 })),
-      -1
-    );
-  }, [streakScale]);
-
-  const streakAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: streakScale.value }],
-  }));
-
-  const initials = firstName.charAt(0).toUpperCase();
+export default function StudentHomeHeader({ user, streak = 0 }: Props) {
+  const { width } = useWindowDimensions();
+  const compact = width < 380;
+  const displayName = resolveStudentDisplayName(user);
+  const stream = String(user?.educationStream || 'JEE').trim() || 'JEE';
+  const vidyaEnabled = isVidyaEnabledForUser(user);
+  const robotSize = compact ? 112 : 140;
 
   return (
-    <Animated.View entering={FadeInDown.duration(240)}>
-      <GlassPanel
-        tone="strong"
-        colors={[...GLASS_VIOLET]}
-        elevated
-        radius={32}
-        style={styles.wrap}
-        contentStyle={styles.content}
-      >
-        <StudentCardDecor variant="hero" />
-
-        <View style={styles.topRow}>
-          <View style={styles.greetBlock}>
-            <Text style={styles.greeting}>
-              {studentGreeting()}, {firstName}
-            </Text>
-            <Text style={styles.date}>{dateStr}</Text>
-          </View>
-          <View style={styles.actions}>
-            {onLogout ? (
-              <Pressable
-                style={styles.actionBtn}
-                onPress={onLogout}
-                accessibilityLabel="Logout"
-                accessibilityRole="button"
-              >
-                <Ionicons name="log-out-outline" size={20} color={STUDENT.primaryDark} />
-              </Pressable>
-            ) : null}
-            <Pressable
-              style={styles.avatar}
-              onPress={onAvatarPress}
-              accessibilityRole="button"
-              accessibilityLabel="Open your profile"
-            >
-              <Text style={styles.avatarText}>{initials}</Text>
-            </Pressable>
+    <Animated.View entering={FadeInDown.duration(240)} style={styles.wrap}>
+      {streak > 0 ? (
+        <View style={styles.streakBanner}>
+          <Ionicons name="flame" size={20} color="#f97316" />
+          <View style={styles.streakCopy}>
+            <Text style={styles.streakTitle}>{streak}-day study streak!</Text>
+            <Text style={styles.streakMessage}>Keep it up!</Text>
           </View>
         </View>
+      ) : null}
 
-        {branding ? (
-          <View style={styles.schoolRow}>
-            <View style={styles.schoolLogoWrap}>
-              {branding.schoolLogo ? (
-                <Image
-                  source={{ uri: branding.schoolLogo }}
-                  style={styles.schoolLogoImg}
-                  resizeMode="contain"
-                  accessibilityLabel={`${branding.schoolName || 'School'} logo`}
-                />
-              ) : (
-                <Ionicons name="school-outline" size={28} color={STUDENT.primaryDark} />
-              )}
-            </View>
-            <Text style={styles.schoolName} numberOfLines={2}>
-              {branding.schoolName || 'Your School'}
+      <LinearGradient
+        colors={['#0f766e', '#0284c7', '#0891b2']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0.85 }}
+        style={styles.banner}
+      >
+        <StudentCardDecor variant="hero" />
+        <View style={styles.bannerGlowTop} />
+        <View style={styles.bannerGlowBottom} />
+
+        <View style={styles.heroRow}>
+          <View style={styles.copy}>
+            <Text style={[styles.title, compact && styles.titleCompact]}>
+              Welcome, {displayName}!
+            </Text>
+            <Text style={styles.subtitle}>
+              {vidyaEnabled
+                ? `Continue your ${stream} prep — Vidya AI has picks ready.`
+                : `Continue your ${stream} prep. Pick up where you left off.`}
             </Text>
           </View>
-        ) : null}
 
-        {classLabel ? (
-          <View style={styles.badges}>
-            <View style={styles.badge}>
-              <Ionicons name="layers-outline" size={12} color={STUDENT.primaryDark} />
-              <Text style={styles.badgeText}>
-                Class {classLabel}
-                {section ? ` · ${section}` : ''}
-              </Text>
-            </View>
+          <View style={[styles.robotFrame, { width: robotSize, height: robotSize }]}>
+            <Image
+              source={VIDYA_ROBOT}
+              style={{ width: robotSize - 8, height: robotSize - 8 }}
+              contentFit="contain"
+              accessibilityLabel="Vidya AI"
+            />
           </View>
-        ) : null}
-
-        {streak > 0 ? (
-          <Animated.View style={[styles.streak, streakAnimStyle]}>
-            <Ionicons name="flame" size={14} color={STUDENT.warning} />
-            <Text style={styles.streakText}>{streak}-Day Study Streak</Text>
-          </Animated.View>
-        ) : null}
-      </GlassPanel>
+        </View>
+      </LinearGradient>
     </Animated.View>
   );
 }
@@ -136,113 +74,85 @@ export default function StudentHomeHeader({ user, streak = 0, onAvatarPress, onL
 const styles = StyleSheet.create({
   wrap: {
     marginBottom: 16,
+    gap: 12,
   },
-  content: {
-    padding: 20,
-  },
-  topRow: {
+  streakBanner: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  greetBlock: { flex: 1, marginRight: 12 },
-  greeting: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: STUDENT.text,
-    letterSpacing: -0.5,
-  },
-  date: {
-    fontSize: 13,
-    color: STUDENT.textSecondary,
-    marginTop: 6,
-    fontWeight: '500',
-  },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  actionBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: GLASS_ROW.fill,
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: '#fff7ed',
     borderWidth: 1,
-    borderColor: GLASS_ROW.border,
+    borderColor: '#fed7aa',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 20,
-    backgroundColor: STUDENT.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.85)',
+  streakCopy: { flex: 1 },
+  streakTitle: { fontSize: 13, fontWeight: '800', color: '#c2410c' },
+  streakMessage: { fontSize: 12, color: '#ea580c', marginTop: 1 },
+  banner: {
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 18,
+    overflow: 'hidden',
   },
-  avatarText: { color: STUDENT.textOnPrimary, fontWeight: '800', fontSize: 16 },
-  schoolRow: {
+  bannerGlowTop: {
+    position: 'absolute',
+    right: -36,
+    top: -70,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+  },
+  bannerGlowBottom: {
+    position: 'absolute',
+    left: -48,
+    bottom: -80,
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    backgroundColor: 'rgba(253,230,138,0.2)',
+  },
+  heroRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginTop: 16,
-    width: '100%',
-    backgroundColor: GLASS_ROW.fillStrong,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: STUDENT_RADIUS.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: GLASS_ROW.border,
+    zIndex: 2,
   },
-  schoolLogoWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 14,
-    backgroundColor: GLASS_ROW.fill,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: GLASS_ROW.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    flexShrink: 0,
-  },
-  schoolLogoImg: {
-    width: 58,
-    height: 58,
-  },
-  schoolName: {
+  copy: {
     flex: 1,
     minWidth: 0,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.4,
+    lineHeight: 30,
+  },
+  titleCompact: {
+    fontSize: 20,
+    lineHeight: 26,
+  },
+  subtitle: {
+    marginTop: 8,
     fontSize: 14,
-    fontWeight: '700',
-    color: STUDENT.text,
-    letterSpacing: 0.05,
-    lineHeight: 18,
+    fontWeight: '500',
+    lineHeight: 20,
+    color: 'rgba(255,255,255,0.88)',
   },
-  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
-  badge: {
-    flexDirection: 'row',
+  robotFrame: {
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    padding: 6,
+    overflow: 'hidden',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: GLASS_ROW.fill,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: STUDENT_RADIUS.full,
-    borderWidth: 1,
-    borderColor: GLASS_ROW.border,
+    justifyContent: 'center',
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.16,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
-  badgeText: { fontSize: 11, fontWeight: '700', color: STUDENT.primaryDark },
-  streak: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 14,
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(245,158,11,0.16)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: STUDENT_RADIUS.full,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(245,158,11,0.35)',
-  },
-  streakText: { fontSize: 12, fontWeight: '700', color: '#b45309' },
 });

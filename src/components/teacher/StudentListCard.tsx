@@ -100,7 +100,7 @@ export default function StudentListCard({ student, onAddRemark, accentIndex }: P
         <View style={styles.metaItem}>
           <Ionicons name="call-outline" size={14} color={TEACHER.textMuted} />
           <Text style={styles.metaLabel}>Contact</Text>
-          <Text style={styles.metaValue}>{student.phone?.trim() || 'No phone'}</Text>
+          <Text style={styles.metaValue}>{student.phone?.trim() || 'No Phone'}</Text>
         </View>
         <View style={styles.metaItem}>
           <Ionicons name="school-outline" size={14} color={TEACHER.textMuted} />
@@ -142,10 +142,10 @@ export default function StudentListCard({ student, onAddRemark, accentIndex }: P
           <View style={styles.progressTitleRight}>
             {(perf.totalExams ?? 0) > 0 ? (
               <Text style={styles.progressNote}>
-                {perf.totalExams} exam{(perf.totalExams ?? 0) !== 1 ? 's' : ''} completed
+                {perf.totalExams} Exam{(perf.totalExams ?? 0) !== 1 ? 's' : ''} Completed
               </Text>
             ) : (
-              <Text style={styles.progressNote}>No exams completed</Text>
+              <Text style={styles.progressNote}>No Exams Completed</Text>
             )}
           </View>
         </View>
@@ -174,7 +174,7 @@ export default function StudentListCard({ student, onAddRemark, accentIndex }: P
             ) : null}
           </>
         ) : (
-          <Text style={styles.metaMuted}>No progress data</Text>
+          <Text style={styles.metaMuted}>No Progress Data</Text>
         )}
       </View>
 

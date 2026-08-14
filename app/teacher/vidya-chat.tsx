@@ -71,7 +71,7 @@ export default function TeacherVidyaChatScreen() {
         </Pressable>
         <View style={styles.headerText}>
           <Text style={styles.title}>Vidya AI Chat</Text>
-          <Text style={styles.subtitle}>AI-powered teaching assistant</Text>
+          <Text style={styles.subtitle}>AI-Powered Teaching Assistant</Text>
         </View>
         <View style={styles.headerIcon}>
           <VidyaAvatar size={40} borderColor="#93c5fd" />

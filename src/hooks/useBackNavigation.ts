@@ -95,8 +95,9 @@ const STUDENT_DASHBOARD_TABS: StudentDashboardTab[] = [
   'learning',
   'eduott',
   'exams',
+  'results',
+  'timetable',
   'vidya',
-  'settings',
 ];
 
 export function parseStudentDashboardTab(value?: string): StudentDashboardTab {
@@ -126,21 +127,27 @@ export type TeacherDashboardTab = TeacherDashboardTabIntent;
 
 const TEACHER_DASHBOARD_TABS: TeacherDashboardTab[] = [
   'dashboard',
+  'overview',
+  'classes',
   'students',
   'eduott',
   'learning-paths',
   'vidya-ai',
+  'calendar',
+  'results',
+  'settings',
+  'reports',
 ];
 
 export function parseTeacherDashboardTab(value?: string): TeacherDashboardTab {
   if (value && TEACHER_DASHBOARD_TABS.includes(value as TeacherDashboardTab)) {
     return value as TeacherDashboardTab;
   }
-  return 'dashboard';
+  return 'overview';
 }
 
 /** Back from teacher tool screens → previous page when possible, else dashboard. */
-export function useTeacherDashboardBack(returnTab: TeacherDashboardTab = 'dashboard') {
+export function useTeacherDashboardBack(returnTab: TeacherDashboardTab = 'overview') {
   const router = useRouter();
   const navigate = useCallback(() => {
     if (router.canGoBack()) {

@@ -714,11 +714,11 @@ export default function TeacherToolPage() {
   ) => {
     if (!isDisabled) return field.placeholder || `Select ${field.label.replace(' *', '')}`;
 
-    if (field.name === 'gradeLevel' && cascade.loadingClasses) return 'Loading classes...';
+    if (field.name === 'gradeLevel' && cascade.loadingClasses) return 'Loading Classes...';
     if (field.name === 'subject') {
-      if (!formParams.gradeLevel || cascade.loadingSubjects) return 'Select class first';
+      if (!formParams.gradeLevel || cascade.loadingSubjects) return 'Select Class First';
       if (subjectsForTool.length === 0) {
-        return 'No subjects available';
+        return 'No Subjects Available';
       }
     }
     if (
@@ -728,23 +728,23 @@ export default function TeacherToolPage() {
         field.name === 'chapter' ||
         field.name === 'projectTopic')
     ) {
-      if (!formParams.gradeLevel) return 'Select class first';
-      if (!formParams.subject || cascade.loadingTopics) return 'Select subject first';
-      if (cascade.loadingTopics) return 'Loading topics...';
-      if (fieldOptions.length === 0) return 'No topics available';
+      if (!formParams.gradeLevel) return 'Select Class First';
+      if (!formParams.subject || cascade.loadingTopics) return 'Select Subject First';
+      if (cascade.loadingTopics) return 'Loading Topics...';
+      if (fieldOptions.length === 0) return 'No Topics Available';
     }
     if (field.isCascadeSubtopic) {
-      if (!(formParams.topic || formParams.chapter)) return 'Select topic first';
-      if (cascade.loadingSubtopics) return 'Loading subtopics...';
+      if (!(formParams.topic || formParams.chapter)) return 'Select Topic First';
+      if (cascade.loadingSubtopics) return 'Loading Subtopics...';
       if (cascade.subtopics.length === 0 && !String(formParams.subTopic || '').trim()) {
-        return 'No subtopics available';
+        return 'No Subtopics Available';
       }
     }
     if (fieldOptions.length === 0 && field.dependsOn) {
       const parent = effectiveConfig?.fields.find((f) => f.name === field.dependsOn);
       return `Select ${parent?.label.replace(' *', '') || 'class'} first`;
     }
-    return field.placeholder || 'No options available';
+    return field.placeholder || 'No Options Available';
   };
 
   const openDropdown = (
@@ -929,7 +929,7 @@ export default function TeacherToolPage() {
     required?: boolean
   ) => {
     const icon = FIELD_ICONS[fieldName] || 'chevron-down-circle-outline';
-    const displayLabel = value === WHOLE_CHAPTER_VALUE ? 'Whole chapter' : value;
+    const displayLabel = value === WHOLE_CHAPTER_VALUE ? 'Whole Chapter' : value;
     const display = displayLabel || hint;
     const isPlaceholder = !value;
 
@@ -1059,10 +1059,10 @@ export default function TeacherToolPage() {
           <View style={styles.errorIconWrap}>
             <Ionicons name="alert-circle-outline" size={48} color={TEACHER.danger} />
           </View>
-          <Text style={styles.errorTitle}>Tool not found</Text>
+          <Text style={styles.errorTitle}>Tool Not Found</Text>
           <Text style={styles.errorSubtitle}>This AI tool is not available on mobile yet.</Text>
           <TouchableOpacity style={styles.errorButton} onPress={goBack}>
-            <Text style={styles.errorButtonText}>Go back</Text>
+            <Text style={styles.errorButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -1168,7 +1168,7 @@ export default function TeacherToolPage() {
               'board',
               'Board',
               selectedBoard,
-              'Select board',
+              'Select Board',
               boardOptions,
               isLoadingUser,
               false,
@@ -1179,7 +1179,7 @@ export default function TeacherToolPage() {
                   'batch',
                   'Batch',
                   String(formParams.batch || ''),
-                  'Select batch',
+                  'Select Batch',
                   BATCH_OPTIONS,
                   false,
                   false,
@@ -1284,7 +1284,7 @@ export default function TeacherToolPage() {
                   fallbackEmptyMessage ? styles.emptyResultTitleError : null,
                 ]}
               >
-                {fallbackEmptyMessage || 'Fill in the form and generate to see your result'}
+                {fallbackEmptyMessage || 'Fill In The Form And Generate To See Your Result'}
               </Text>
               {!fallbackEmptyMessage ? (
                 <Text style={[styles.emptyResultText, isTablet && aiToolTabletPageStyles.emptyResultText]}>
@@ -1336,7 +1336,7 @@ export default function TeacherToolPage() {
           <>
             <Ionicons name="sparkles" size={isTablet ? 22 : 20} color={TEACHER.textOnPrimary} />
             <Text style={[styles.generateBtnText, isTablet && aiToolTabletPageStyles.generateBtnText]}>
-              Generate with AI
+              Generate With AI
             </Text>
           </>
         )}

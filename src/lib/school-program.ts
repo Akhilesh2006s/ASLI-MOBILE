@@ -232,6 +232,59 @@ export function shouldShowIitTrackField(
   return unique.size >= 2;
 }
 
+/** Video tied to IIT board or an IIT product track (Alpha/Beta/Gamma). */
+export function isIitTrackVideo(row: {
+  type?: string;
+  board?: string;
+  productCategory?: string | null;
+  subject?: { board?: string; productCategory?: string | null } | string | null;
+  subjectId?: { board?: string; productCategory?: string | null } | string | null;
+}): boolean {
+  if (String(row?.type || '').trim() !== 'Video') return false;
+  const subject =
+    row?.subject && typeof row.subject === 'object'
+      ? row.subject
+      : row?.subjectId && typeof row.subjectId === 'object'
+        ? row.subjectId
+        : null;
+  const boardRaw = String(row?.board || subject?.board || '')
+    .toUpperCase()
+    .trim();
+  const boardCompact = boardRaw.replace(/[\s/\\-]+/g, '');
+  if (
+    boardRaw === 'IIT' ||
+    boardRaw === 'IIT/NEET' ||
+    boardCompact.includes('IIT') ||
+    boardCompact.includes('NEET') ||
+    boardCompact.includes('JEE')
+  ) {
+    return true;
+  }
+  const cat = String(row?.productCategory || subject?.productCategory || '')
+    .toUpperCase()
+    .trim();
+  return Boolean(cat);
+}
+
+/** EduOTT: only IIT-track videos. */
+export function filterVideosForEduOtt<T extends Parameters<typeof isIitTrackVideo>[0]>(
+  rows: T[],
+): T[] {
+  if (!Array.isArray(rows)) return [];
+  return rows.filter((row) => isIitTrackVideo(row));
+}
+
+/** Learning Paths: drop IIT-track videos; keep board videos + all non-video. */
+export function filterVideosForLearningPath<T extends Parameters<typeof isIitTrackVideo>[0]>(
+  rows: T[],
+): T[] {
+  if (!Array.isArray(rows)) return [];
+  return rows.filter((row) => {
+    if (String(row?.type || '').trim() !== 'Video') return true;
+    return !isIitTrackVideo(row);
+  });
+}
+
 export function schoolCanAccessProductCategory(
   schoolIitCategories: string[] | undefined,
   productCategory?: string | null

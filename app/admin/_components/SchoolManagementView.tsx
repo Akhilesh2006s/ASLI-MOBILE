@@ -8,7 +8,7 @@ import { StyleSheet, Text, View } from 'react-native';
 export default function SchoolManagementView() {
   return (
     <View style={styles.wrap}>
-      <Text style={styles.title}>School management</Text>
+      <Text style={styles.title}>School Management</Text>
       <Text style={styles.body}>
         Creating and editing schools is available only in the Super Admin app. School admins manage
         teachers, students, classes, and content for their own school from the Dashboard menu.

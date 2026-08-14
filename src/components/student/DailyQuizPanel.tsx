@@ -91,7 +91,7 @@ export default function DailyQuizPanel({ embedded = false }: Props) {
   const openPreviousResult = useCallback((dateKey?: string) => {
     const key = String(dateKey || dailyStatus?.today?.dateKey || dailyStatus?.history?.[0]?.dateKey || '');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) {
-      Alert.alert('No result yet', 'Finish today’s daily quiz to view a saved review.');
+      Alert.alert('No Result Yet', 'Finish today’s daily quiz to view a saved review.');
       return;
     }
     router.push({ pathname: '/daily-quiz-review', params: { dateKey: key } });
@@ -233,13 +233,13 @@ export default function DailyQuizPanel({ embedded = false }: Props) {
       {isLoading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#0284c7" />
-            <Text style={styles.loadingText}>Loading quizzes...</Text>
+            <Text style={styles.loadingText}>Loading Quizzes...</Text>
           </View>
         ) : subjects.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="trophy-outline" size={64} color="#5B6779" />
-            <Text style={styles.emptyText}>No quizzes available</Text>
-            <Text style={styles.emptySubtext}>Quizzes assigned to you will appear here</Text>
+            <Text style={styles.emptyText}>No Quizzes Available</Text>
+            <Text style={styles.emptySubtext}>Quizzes Assigned To You Will Appear Here</Text>
           </View>
         ) : (
           <View style={[styles.subjectsList, embedded && styles.subjectsListEmbedded]}>
@@ -313,7 +313,7 @@ export default function DailyQuizPanel({ embedded = false }: Props) {
                               Today’s score {todayScore != null ? `${todayScore}%` : '—'} · unlocks{' '}
                               {dailyStatus?.nextUnlockDateKey
                                 ? formatDateKeyLabel(dailyStatus.nextUnlockDateKey)
-                                : 'tomorrow'}
+                                : 'Tomorrow'}
                             </Text>
                           ) : null}
                         </View>
@@ -325,7 +325,7 @@ export default function DailyQuizPanel({ embedded = false }: Props) {
                               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                               onPress={() => openPreviousResult(dailyStatus?.today?.dateKey)}
                             >
-                              <Text style={styles.outlineBtnText}>View result</Text>
+                              <Text style={styles.outlineBtnText}>View Result</Text>
                             </TouchableOpacity>
                             <View style={styles.lockedBtn}>
                               <Ionicons name="lock-closed" size={14} color="#64748b" />
@@ -360,7 +360,7 @@ export default function DailyQuizPanel({ embedded = false }: Props) {
                     <View style={styles.unlockCard}>
                       <View style={styles.unlockHeader}>
                         <Ionicons name="lock-closed" size={14} color="#0369a1" />
-                        <Text style={styles.unlockTitle}>Next unlock</Text>
+                        <Text style={styles.unlockTitle}>Next Unlock</Text>
                       </View>
                       <Text style={styles.unlockBody}>
                         {dailyStatus?.lockedUntilTomorrow
@@ -373,7 +373,7 @@ export default function DailyQuizPanel({ embedded = false }: Props) {
                           Unlocks{' '}
                           {dailyStatus?.nextUnlockDateKey
                             ? formatDateKeyLabel(dailyStatus.nextUnlockDateKey)
-                            : 'tomorrow'}
+                            : 'Tomorrow'}
                         </Text>
                       </View>
                     </View>
@@ -381,7 +381,7 @@ export default function DailyQuizPanel({ embedded = false }: Props) {
                     <View style={styles.prevCard}>
                       <View style={styles.unlockHeader}>
                         <Ionicons name="trophy" size={14} color="#0f766e" />
-                        <Text style={[styles.unlockTitle, { color: '#0f766e' }]}>Previous results</Text>
+                        <Text style={[styles.unlockTitle, { color: '#0f766e' }]}>Previous Results</Text>
                       </View>
                       {dailyStatus?.history?.length ? (
                         dailyStatus.history.map((row) => (
@@ -405,7 +405,7 @@ export default function DailyQuizPanel({ embedded = false }: Props) {
                           No saved daily scores yet. Finish today’s quiz to start your record.
                         </Text>
                       )}
-                      <Text style={styles.prevHint}>Tap a day to review answers</Text>
+                      <Text style={styles.prevHint}>Tap A Day To Review Answers</Text>
                     </View>
                   </View>
                 ) : null}

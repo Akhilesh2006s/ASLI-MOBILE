@@ -307,7 +307,7 @@ export default function AdminTeacherDailyModal({
                       ) : (
                         <View style={[styles.classBadgeMuted, { borderColor: colors.surfaceBorder, borderRadius: radius.sm }]}>
                           <Text style={[styles.classBadgeMutedText, { color: colors.textMuted }]}>
-                            Class not specified
+                            Class Not Specified
                           </Text>
                         </View>
                       )}

@@ -78,7 +78,7 @@ export default function LearnTabView({ username }: { username: string }) {
               <Ionicons name="trophy-outline" size={28} color={STUDENT.accent} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.linkTitle}>Quiz</Text>
-                <Text style={styles.linkSub}>Daily and weekly quizzes assigned to you</Text>
+                <Text style={styles.linkSub}>Daily And Weekly Quizzes Assigned To You</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={STUDENT.textMuted} />
             </View>
@@ -92,7 +92,7 @@ export default function LearnTabView({ username }: { username: string }) {
               <Ionicons name="videocam-outline" size={28} color={STUDENT.primary} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.linkTitle}>Video Lectures</Text>
-                <Text style={styles.linkSub}>Recorded lessons by subject</Text>
+                <Text style={styles.linkSub}>Recorded Lessons By Subject</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={STUDENT.textMuted} />
             </View>

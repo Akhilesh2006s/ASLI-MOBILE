@@ -129,24 +129,24 @@ function SchoolFormModal({ visible, mode, form, setForm, submitting, onClose, on
         </View>
         <ScrollView style={styles.formScroll} keyboardShouldPersistTaps="handled">
           <Text style={styles.formSection}>Administrator</Text>
-          <TextInput style={styles.input} placeholder="Full name *" value={form.name} onChangeText={(v) => setForm((p) => ({ ...p, name: v }))} />
+          <TextInput style={styles.input} placeholder="Full Name *" value={form.name} onChangeText={(v) => setForm((p) => ({ ...p, name: v }))} />
           <TextInput style={styles.input} placeholder="Email *" keyboardType="email-address" autoCapitalize="none" value={form.email} onChangeText={(v) => setForm((p) => ({ ...p, email: v }))} />
           {mode === 'add' ? (
             <TextInput style={styles.input} placeholder="Password *" secureTextEntry value={form.password} onChangeText={(v) => setForm((p) => ({ ...p, password: v }))} />
           ) : null}
 
           <Text style={styles.formSection}>School</Text>
-          <TextInput style={styles.input} placeholder="School name *" value={form.schoolName} onChangeText={(v) => setForm((p) => ({ ...p, schoolName: v }))} />
+          <TextInput style={styles.input} placeholder="School Name *" value={form.schoolName} onChangeText={(v) => setForm((p) => ({ ...p, schoolName: v }))} />
           <Pressable style={styles.pickerTrigger} onPress={() => setBoardPicker(true)}>
-            <Text style={styles.pickerTriggerText}>{curriculumDisplayLabel(form.board) || 'Select curriculum board *'}</Text>
+            <Text style={styles.pickerTriggerText}>{curriculumDisplayLabel(form.board) || 'Select Curriculum Board *'}</Text>
             <Ionicons name="chevron-down" size={18} color="#64748b" />
           </Pressable>
           <Pressable style={styles.pickerTrigger} onPress={() => setStatePicker(true)}>
-            <Text style={styles.pickerTriggerText}>{form.state || 'Select state *'}</Text>
+            <Text style={styles.pickerTriggerText}>{form.state || 'Select State *'}</Text>
             <Ionicons name="chevron-down" size={18} color="#64748b" />
           </Pressable>
           <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>Asli Prep exclusive</Text>
+            <Text style={styles.switchLabel}>Asli Prep Exclusive</Text>
             <Switch
               value={form.isAsliPrepExclusive}
               onValueChange={(v) => setForm((p) => ({ ...p, isAsliPrepExclusive: v }))}
@@ -155,13 +155,13 @@ function SchoolFormModal({ visible, mode, form, setForm, submitting, onClose, on
           </View>
 
           <Text style={styles.formSection}>Contact</Text>
-          <TextInput style={styles.input} placeholder="Contact person" value={form.contactPerson} onChangeText={(v) => setForm((p) => ({ ...p, contactPerson: v }))} />
-          <TextInput style={styles.input} placeholder="Phone (10 digits)" keyboardType="phone-pad" value={form.phone} onChangeText={(v) => setForm((p) => ({ ...p, phone: sanitizePhoneInput(v) }))} maxLength={10} />
-          <TextInput style={styles.input} placeholder="Secondary contact" value={form.secondaryContactPerson} onChangeText={(v) => setForm((p) => ({ ...p, secondaryContactPerson: v }))} />
-          <TextInput style={styles.input} placeholder="Secondary phone" keyboardType="phone-pad" value={form.secondaryContactPhone} onChangeText={(v) => setForm((p) => ({ ...p, secondaryContactPhone: sanitizePhoneInput(v) }))} maxLength={10} />
+          <TextInput style={styles.input} placeholder="Contact Person" value={form.contactPerson} onChangeText={(v) => setForm((p) => ({ ...p, contactPerson: v }))} />
+          <TextInput style={styles.input} placeholder="Phone (10 Digits)" keyboardType="phone-pad" value={form.phone} onChangeText={(v) => setForm((p) => ({ ...p, phone: sanitizePhoneInput(v) }))} maxLength={10} />
+          <TextInput style={styles.input} placeholder="Secondary Contact" value={form.secondaryContactPerson} onChangeText={(v) => setForm((p) => ({ ...p, secondaryContactPerson: v }))} />
+          <TextInput style={styles.input} placeholder="Secondary Phone" keyboardType="phone-pad" value={form.secondaryContactPhone} onChangeText={(v) => setForm((p) => ({ ...p, secondaryContactPhone: sanitizePhoneInput(v) }))} maxLength={10} />
           <TextInput
             style={styles.input}
-            placeholder="PIN code (6 digits)"
+            placeholder="PIN Code (6 Digits)"
             keyboardType="number-pad"
             maxLength={6}
             value={form.pin}
@@ -169,22 +169,22 @@ function SchoolFormModal({ visible, mode, form, setForm, submitting, onClose, on
           />
 
           <Text style={styles.formSection}>Address & details</Text>
-          <TextInput style={styles.input} placeholder="Door no." value={form.schoolDetails.doorNo} onChangeText={(v) => setDetail('doorNo', v)} />
+          <TextInput style={styles.input} placeholder="Door No." value={form.schoolDetails.doorNo} onChangeText={(v) => setDetail('doorNo', v)} />
           <TextInput style={styles.input} placeholder="Street" value={form.schoolDetails.street} onChangeText={(v) => setDetail('street', v)} />
           <TextInput style={styles.input} placeholder="Area" value={form.schoolDetails.area} onChangeText={(v) => setDetail('area', v)} />
           <TextInput style={styles.input} placeholder="City *" value={form.schoolDetails.city} onChangeText={(v) => setDetail('city', v)} />
           <TextInput style={styles.input} placeholder="District *" value={form.schoolDetails.district} onChangeText={(v) => setDetail('district', v)} />
           <TextInput style={styles.input} placeholder="Medium" value={form.schoolDetails.medium} onChangeText={(v) => setDetail('medium', v)} />
           <View style={styles.row2}>
-            <TextInput style={[styles.input, styles.halfInput]} placeholder="Class from" value={form.schoolDetails.classesFrom} onChangeText={(v) => setDetail('classesFrom', v)} />
-            <TextInput style={[styles.input, styles.halfInput]} placeholder="Class to" value={form.schoolDetails.classesTo} onChangeText={(v) => setDetail('classesTo', v)} />
+            <TextInput style={[styles.input, styles.halfInput]} placeholder="Class From" value={form.schoolDetails.classesFrom} onChangeText={(v) => setDetail('classesFrom', v)} />
+            <TextInput style={[styles.input, styles.halfInput]} placeholder="Class To" value={form.schoolDetails.classesTo} onChangeText={(v) => setDetail('classesTo', v)} />
           </View>
-          <TextInput style={styles.input} placeholder="Total strength" keyboardType="number-pad" value={form.schoolDetails.totalStrength} onChangeText={(v) => setDetail('totalStrength', v)} />
-          <TextInput style={styles.input} placeholder="School type" value={form.schoolDetails.schoolType} onChangeText={(v) => setDetail('schoolType', v)} />
+          <TextInput style={styles.input} placeholder="Total Strength" keyboardType="number-pad" value={form.schoolDetails.totalStrength} onChangeText={(v) => setDetail('totalStrength', v)} />
+          <TextInput style={styles.input} placeholder="School Type" value={form.schoolDetails.schoolType} onChangeText={(v) => setDetail('schoolType', v)} />
 
           <Text style={styles.formSection}>Admin portal access</Text>
           <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>Unlimited access (all modules)</Text>
+            <Text style={styles.switchLabel}>Unlimited Access (All Modules)</Text>
             <Switch
               value={form.accessMode === 'unlimited'}
               onValueChange={(v) =>
@@ -221,7 +221,7 @@ function SchoolFormModal({ visible, mode, form, setForm, submitting, onClose, on
             Control whether teachers and students can use the Vidya AI chatbot. AI tools stay available when chat is off.
           </Text>
           <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>Vidya chatbot for teachers</Text>
+            <Text style={styles.switchLabel}>Vidya Chatbot For Teachers</Text>
             <Switch
               value={form.vidyaEnabledForTeachers}
               onValueChange={(v) => setForm((p) => ({ ...p, vidyaEnabledForTeachers: v }))}
@@ -229,7 +229,7 @@ function SchoolFormModal({ visible, mode, form, setForm, submitting, onClose, on
             />
           </View>
           <View style={[styles.switchRow, { marginBottom: mode === 'edit' ? 0 : 24 }]}>
-            <Text style={styles.switchLabel}>Vidya chatbot for students</Text>
+            <Text style={styles.switchLabel}>Vidya Chatbot For Students</Text>
             <Switch
               value={form.vidyaEnabledForStudents}
               onValueChange={(v) => setForm((p) => ({ ...p, vidyaEnabledForStudents: v }))}
@@ -239,7 +239,7 @@ function SchoolFormModal({ visible, mode, form, setForm, submitting, onClose, on
 
           {mode === 'edit' ? (
             <View style={[styles.switchRow, { marginBottom: 24 }]}>
-              <Text style={styles.switchLabel}>Active account</Text>
+              <Text style={styles.switchLabel}>Active Account</Text>
               <Switch value={form.isActive} onValueChange={(v) => setForm((p) => ({ ...p, isActive: v }))} trackColor={{ true: '#f97316' }} />
             </View>
           ) : null}
@@ -255,7 +255,7 @@ function SchoolFormModal({ visible, mode, form, setForm, submitting, onClose, on
       </View>
       <OptionPicker
         visible={boardPicker}
-        title="Curriculum board"
+        title="Curriculum Board"
         options={[...CURRICULUM_BOARD_OPTIONS]}
         onSelect={(v) => setForm((p) => ({ ...p, board: v }))}
         onClose={() => setBoardPicker(false)}
@@ -293,7 +293,7 @@ export default function SchoolManagementView() {
       const list = Array.isArray(data) ? data : data?.data || [];
       setAdmins(list.map(mapAdminFromApi));
     } catch (err: any) {
-      setError(err?.friendlyMessage || 'Failed to load schools');
+      setError(err?.friendlyMessage || 'Failed to Load Schools');
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -398,7 +398,7 @@ export default function SchoolManagementView() {
       setForm(emptySchoolForm());
       await fetchAdmins();
     } catch (err: any) {
-      Alert.alert('Error', err?.friendlyMessage || err?.message || 'Failed to add school');
+      Alert.alert('Error', err?.friendlyMessage || err?.message || 'Failed to Add School');
     } finally {
       setSubmitting(false);
     }
@@ -414,14 +414,14 @@ export default function SchoolManagementView() {
       setForm(emptySchoolForm());
       await fetchAdmins();
     } catch (err: any) {
-      Alert.alert('Error', err?.friendlyMessage || err?.message || 'Failed to update school');
+      Alert.alert('Error', err?.friendlyMessage || err?.message || 'Failed to Update School');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = (admin: SchoolAdmin) => {
-    Alert.alert('Delete school', `Remove ${admin.schoolName || admin.name}?`, [
+    Alert.alert('Delete School', `Remove ${admin.schoolName || admin.name}?`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -431,7 +431,7 @@ export default function SchoolManagementView() {
             await api.delete(`/api/super-admin/admins/${admin.id}`);
             await fetchAdmins();
           } catch (err: any) {
-            Alert.alert('Error', err?.friendlyMessage || 'Delete failed');
+            Alert.alert('Error', err?.friendlyMessage || 'Delete Failed');
           }
         },
       },
@@ -475,7 +475,7 @@ export default function SchoolManagementView() {
             </Text>
             <View style={styles.badgeRow}>
               <Text style={[styles.badge, isUnlimitedPortalAccess(admin.permissions) ? styles.badgeGreen : styles.badgeAmber]}>
-                {isUnlimitedPortalAccess(admin.permissions) ? 'Full portal' : 'Limited'}
+                {isUnlimitedPortalAccess(admin.permissions) ? 'Full Portal' : 'Limited'}
               </Text>
               <Text style={styles.badgeOutline} numberOfLines={1}>
                 {boardLabel}
@@ -535,11 +535,11 @@ export default function SchoolManagementView() {
       >
         <View style={styles.header}>
           <Text style={styles.headerTitle}>School Management</Text>
-          <Text style={styles.headerSubtitle}>Manage schools and their associated data</Text>
+          <Text style={styles.headerSubtitle}>Manage Schools And Their Associated Data</Text>
           <GlassPanel style={styles.addRow} radius={14} tone="medium">
             <Pressable style={styles.addRowInner} onPress={() => { setForm(emptySchoolForm()); setShowAdd(true); }}>
               <Ionicons name="business-outline" size={18} color="#ea580c" />
-              <Text style={styles.addRowText}>Add new school</Text>
+              <Text style={styles.addRowText}>Add New School</Text>
               <Ionicons name="chevron-forward" size={18} color="#f97316" />
             </Pressable>
           </GlassPanel>
@@ -594,7 +594,7 @@ export default function SchoolManagementView() {
         ) : filteredAdmins.length === 0 ? (
           <View style={styles.empty}>
             <Ionicons name="school-outline" size={56} color="#5B6779" />
-            <Text style={styles.emptyText}>{searchQuery ? 'No schools match your search' : 'No schools yet'}</Text>
+            <Text style={styles.emptyText}>{searchQuery ? 'No Schools Match Your Search' : 'No Schools Yet'}</Text>
           </View>
         ) : isTablet ? (
           <View style={styles.listWrap}>

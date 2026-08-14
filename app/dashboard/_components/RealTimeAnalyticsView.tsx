@@ -27,11 +27,11 @@ function timeAgo(dateStr?: string): string {
   if (!dateStr) return '';
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'Just now';
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return 'Just Now';
+  if (mins < 60) return `${mins}m Ago`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
+  if (hrs < 24) return `${hrs}h Ago`;
+  return `${Math.floor(hrs / 24)}d Ago`;
 }
 
 export default function RealTimeAnalyticsView() {
@@ -113,7 +113,7 @@ export default function RealTimeAnalyticsView() {
       examResults.slice(0, 3).forEach((r) => {
         activityFeed.push({
           id: `exam-${r._id}`,
-          text: `Completed exam: ${r.examTitle || r.examName || 'Exam'} — ${Math.round(r.percentage || 0)}%`,
+          text: `Completed Exam: ${r.examTitle || r.examName || 'Exam'} — ${Math.round(r.percentage || 0)}%`,
           time: timeAgo(r.completedAt || r.createdAt),
           icon: 'checkmark-circle',
           iconColor: '#10b981',
@@ -129,7 +129,7 @@ export default function RealTimeAnalyticsView() {
           .forEach((h: any) => {
             activityFeed.push({
               id: `hw-${h._id}`,
-              text: `Submitted homework: ${h.title || h.subject || 'Assignment'}`,
+              text: `Submitted Homework: ${h.title || h.subject || 'Assignment'}`,
               time: timeAgo(h.submittedAt || h.updatedAt),
               icon: 'document-text',
               iconColor: '#f59e0b',
@@ -176,7 +176,7 @@ export default function RealTimeAnalyticsView() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#3b82f6" />
-        <Text style={styles.loadingText}>Loading analytics...</Text>
+        <Text style={styles.loadingText}>Loading Analytics...</Text>
       </View>
     );
   }
@@ -187,7 +187,7 @@ export default function RealTimeAnalyticsView() {
         <View style={styles.headerRow}>
           <View>
             <Text style={styles.headerTitle}>Real-Time Analytics</Text>
-            <Text style={styles.headerSubtitle}>Last updated: {formatTime(lastUpdate)}</Text>
+            <Text style={styles.headerSubtitle}>Last Updated: {formatTime(lastUpdate)}</Text>
           </View>
           <View style={styles.liveIndicator}>
             <View style={styles.liveDot} />
@@ -212,7 +212,7 @@ export default function RealTimeAnalyticsView() {
         <Text style={styles.sectionTitle}>Recent Activity</Text>
         <View style={styles.activityList}>
           {activities.length === 0 ? (
-            <Text style={styles.emptyText}>No recent activity yet.</Text>
+            <Text style={styles.emptyText}>No Recent Activity Yet.</Text>
           ) : (
             activities.map((item) => (
               <GlassPanel key={item.id} radius={12} style={styles.activityItem}>

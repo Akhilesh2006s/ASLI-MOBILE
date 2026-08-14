@@ -44,7 +44,7 @@ function VisibilityPicker({ visible, value, onSelect, onClose }: VisibilityPicke
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.pickerOverlay}>
         <View style={styles.pickerSheet}>
-          <Text style={styles.pickerTitle}>Who can see this session?</Text>
+          <Text style={styles.pickerTitle}>Who Can See This Session?</Text>
           {options.map((option) => (
             <Pressable
               key={option}
@@ -100,7 +100,7 @@ function SchoolsModal({
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <View style={styles.formModalWrap}>
         <View style={styles.formModalHeader}>
-          <Text style={styles.formModalTitle}>Select schools ({selectedIds.length})</Text>
+          <Text style={styles.formModalTitle}>Select Schools ({selectedIds.length})</Text>
           <Pressable onPress={onClose} hitSlop={12}>
             <Ionicons name="close" size={26} color="#64748b" />
           </Pressable>
@@ -111,13 +111,13 @@ function SchoolsModal({
             style={styles.searchInput}
             value={search}
             onChangeText={onSearchChange}
-            placeholder="Search schools..."
+            placeholder="Search Schools..."
             placeholderTextColor="#5B6779"
           />
         </View>
         <View style={styles.schoolActions}>
           <Pressable onPress={onSelectAll}>
-            <Text style={styles.schoolActionText}>Select all</Text>
+            <Text style={styles.schoolActionText}>Select All</Text>
           </Pressable>
           <Pressable onPress={onClear}>
             <Text style={styles.schoolActionText}>Clear</Text>
@@ -125,7 +125,7 @@ function SchoolsModal({
         </View>
         <ScrollView style={styles.schoolList} keyboardShouldPersistTaps="handled">
           {filtered.length === 0 ? (
-            <Text style={styles.emptySchools}>No schools found</Text>
+            <Text style={styles.emptySchools}>No Schools Found</Text>
           ) : (
             filtered.map((school) => {
               const checked = selectedIds.includes(school.id);
@@ -207,7 +207,7 @@ function SessionFormModal({
             </Pressable>
           </View>
           <ScrollView style={styles.formScroll} keyboardShouldPersistTaps="handled">
-            <Text style={styles.fieldLabel}>Session name *</Text>
+            <Text style={styles.fieldLabel}>Session Name *</Text>
             <TextInput
               style={styles.input}
               value={form.title}
@@ -216,7 +216,7 @@ function SessionFormModal({
               placeholderTextColor="#5B6779"
             />
 
-            <Text style={styles.fieldLabel}>YouTube Live link *</Text>
+            <Text style={styles.fieldLabel}>YouTube Live Link *</Text>
             <TextInput
               style={styles.input}
               value={form.youtubeUrl}
@@ -226,28 +226,28 @@ function SessionFormModal({
               autoCapitalize="none"
             />
 
-            <Text style={styles.fieldLabel}>Schools * ({form.schoolAdminIds.length} selected)</Text>
+            <Text style={styles.fieldLabel}>Schools * ({form.schoolAdminIds.length} Selected)</Text>
             <Pressable style={styles.pickerTrigger} onPress={() => setSchoolsModal(true)}>
               <Text style={styles.pickerTriggerText}>
                 {form.schoolAdminIds.length === 0
-                  ? 'Tap to select schools'
-                  : `${form.schoolAdminIds.length} school${form.schoolAdminIds.length === 1 ? '' : 's'} selected`}
+                  ? 'Tap To Select Schools'
+                  : `${form.schoolAdminIds.length} School${form.schoolAdminIds.length === 1 ? '' : 's'} Selected`}
               </Text>
               <Ionicons name="chevron-forward" size={18} color="#64748b" />
             </Pressable>
 
-            <Text style={styles.fieldLabel}>Who can see this session? *</Text>
+            <Text style={styles.fieldLabel}>Who Can See This Session? *</Text>
             <Pressable style={styles.pickerTrigger} onPress={() => setVisibilityPicker(true)}>
               <Text style={styles.pickerTriggerText}>{VISIBILITY_LABELS[form.visibility]}</Text>
               <Ionicons name="chevron-down" size={18} color="#64748b" />
             </Pressable>
 
-            <Text style={styles.fieldLabel}>Description (optional)</Text>
+            <Text style={styles.fieldLabel}>Description (Optional)</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
               value={form.description}
               onChangeText={(v) => setForm((p) => ({ ...p, description: v }))}
-              placeholder="Short note for teachers/students"
+              placeholder="Short Note For Teachers/Students"
               placeholderTextColor="#5B6779"
               multiline
               numberOfLines={3}
@@ -379,7 +379,7 @@ export default function LiveSessionsView() {
       closeForm();
       load(true);
     } catch (error: any) {
-      const message = error?.response?.data?.message || error?.message || 'Failed to save live session';
+      const message = error?.response?.data?.message || error?.message || 'Failed to Save Live Session';
       Alert.alert('Error', message);
     } finally {
       setSubmitting(false);
@@ -387,7 +387,7 @@ export default function LiveSessionsView() {
   };
 
   const handleDelete = (session: LiveSession) => {
-    Alert.alert('Remove session', `Remove "${session.title}" from Edu OTT?`, [
+    Alert.alert('Remove Session', `Remove "${session.title}" from Edu OTT?`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -397,7 +397,7 @@ export default function LiveSessionsView() {
             await deleteLiveSession(session._id);
             load(true);
           } catch (error: any) {
-            const message = error?.response?.data?.message || error?.message || 'Failed to delete session';
+            const message = error?.response?.data?.message || error?.message || 'Failed to Delete Session';
             Alert.alert('Error', message);
           }
         },
@@ -438,7 +438,7 @@ export default function LiveSessionsView() {
           style={styles.searchInput}
           value={searchTerm}
           onChangeText={setSearchTerm}
-          placeholder="Search by session or school..."
+          placeholder="Search By Session Or School..."
           placeholderTextColor="#5B6779"
         />
       </View>
@@ -450,7 +450,7 @@ export default function LiveSessionsView() {
       ) : filtered.length === 0 ? (
         <View style={styles.center}>
           <Ionicons name="videocam-outline" size={52} color="#5B6779" />
-          <Text style={styles.emptyTitle}>No live sessions yet</Text>
+          <Text style={styles.emptyTitle}>No Live Sessions Yet</Text>
           <Text style={styles.emptySub}>Add a YouTube Live link for one or more schools to get started.</Text>
         </View>
       ) : (
@@ -481,16 +481,16 @@ export default function LiveSessionsView() {
                 >
                   <View style={styles.schoolsBadge}>
                     <Text style={styles.schoolsBadgeText}>
-                      {names.length} school{names.length === 1 ? '' : 's'}
+                      {names.length} School{names.length === 1 ? '' : 's'}
                     </Text>
                   </View>
                   {names.length > 0 ? (
                     <Text style={styles.schoolsPreview} numberOfLines={2}>
                       {preview}
-                      {extra > 0 ? ` +${extra} more` : ''}
+                      {extra > 0 ? ` +${extra} More` : ''}
                     </Text>
                   ) : (
-                    <Text style={styles.schoolsPreview}>No schools assigned</Text>
+                    <Text style={styles.schoolsPreview}>No Schools Assigned</Text>
                   )}
                 </Pressable>
 
@@ -537,7 +537,7 @@ export default function LiveSessionsView() {
         <View style={styles.pickerOverlay}>
           <View style={styles.pickerSheet}>
             <Text style={styles.pickerTitle}>
-              {previewSchools.length} school{previewSchools.length === 1 ? '' : 's'} assigned
+              {previewSchools.length} School{previewSchools.length === 1 ? '' : 's'} Assigned
             </Text>
             <ScrollView style={{ maxHeight: 360 }}>
               {previewSchools.map((name) => (

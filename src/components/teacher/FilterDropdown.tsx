@@ -87,7 +87,7 @@ export default function FilterDropdown({ label, value, placeholder, options, onC
                 <Text style={styles.sheetTitle} numberOfLines={1}>
                   {label}
                 </Text>
-                <Text style={styles.count}>{options.length} options</Text>
+                <Text style={styles.count}>{options.length} Options</Text>
               </View>
 
               <FlatList
@@ -129,7 +129,7 @@ export default function FilterDropdown({ label, value, placeholder, options, onC
                 }}
                 ListEmptyComponent={
                   <View style={styles.empty}>
-                    <Text style={styles.emptyText}>No options available</Text>
+                    <Text style={styles.emptyText}>No Options Available</Text>
                   </View>
                 }
               />

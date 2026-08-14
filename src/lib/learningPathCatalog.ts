@@ -125,7 +125,9 @@ async function loadTeacherLearningPathCatalog(
 
   const allContentRaw = await fetchAllPrepContent('teacher');
   const allContent = sortContentNewestFirst(
-    prepareLibraryContents(parseContentPayload(allContentRaw), isAsliPrepExclusive)
+    prepareLibraryContents(parseContentPayload(allContentRaw), isAsliPrepExclusive, {
+      surface: 'learning-path',
+    })
   );
 
   const contentByKey = new Map<string, any[]>();
@@ -197,7 +199,9 @@ export async function loadLearningPathCatalog(
     fetchAllPrepContent(role),
   ]);
 
-  const allContent = prepareLibraryContents(allContentRaw, isAsliPrepExclusive);
+  const allContent = prepareLibraryContents(allContentRaw, isAsliPrepExclusive, {
+    surface: 'learning-path',
+  });
   const bySubjectId = new Map<string, any[]>();
 
   for (const item of allContent) {
@@ -247,7 +251,7 @@ export function countContentByType(
   contents: any[],
   isAsliPrepExclusive: boolean
 ): Record<string, number> {
-  const filtered = prepareLibraryContents(contents, isAsliPrepExclusive);
+  const filtered = prepareLibraryContents(contents, isAsliPrepExclusive, { surface: 'learning-path' });
   const counts: Record<string, number> = {};
   for (const item of filtered) {
     const t = item.type || 'Material';

@@ -7,7 +7,11 @@ import { useAuth } from '../../src/context/AuthContext';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import { useVisitedTabs } from '../../src/hooks/useVisitedTabs';
 import { consumeStudentDashboardTabIntent } from '../../src/lib/dashboard-tab-intent';
-import { StudentTabBar, StudentTab } from '../../src/components/student';
+import StudentNavDrawer, {
+  StudentNavPanel,
+  type StudentNavId,
+} from '../../src/components/student/StudentNavDrawer';
+import PortalTopBar from '../../src/components/layout/PortalTopBar';
 import { LoadingState, VisitedTabPane } from '../../src/components/ui';
 import { STUDENT } from '../../src/theme/student';
 import OverviewView from './_components/OverviewView';
@@ -16,45 +20,39 @@ import EduOTTView from './_components/EduOTTView';
 import { EduOTTFilterProvider } from '../../src/contexts/edu-ott-filter-context';
 import ExamsTabView from './_components/ExamsTabView';
 import AITabView from './_components/AITabView';
-import ProfileTabView from './_components/ProfileTabView';
+import OmrResultsView from './_components/OmrResultsView';
+import TimetableTabView from './_components/TimetableTabView';
 import VidyaAIFloatingAssistant from '../../src/components/vidya/VidyaAIFloatingAssistant';
 import TrialDailyQuizPrompt from '../../src/components/TrialDailyQuizPrompt';
 import { useVidyaChatAccess } from '../../src/hooks/useVidyaChatAccess';
 import { resolveStudentFirstName } from '../../src/lib/student-text';
-import { studentFloatingTabBarReserve } from '../../src/lib/responsive-layout';
 
-type TabId = 'home' | 'learning' | 'eduott' | 'exams' | 'vidya' | 'settings';
-
-const ALL_TABS: StudentTab[] = [
-  { id: 'home', label: 'Home', icon: 'home-outline', activeIcon: 'home' },
-  { id: 'learning', label: 'Learning', icon: 'book-outline', activeIcon: 'book' },
-  { id: 'eduott', label: 'EduOTT', icon: 'videocam-outline', activeIcon: 'videocam' },
-  { id: 'exams', label: 'Exams', icon: 'document-outline', activeIcon: 'document' },
-  { id: 'vidya', label: 'Vidya', icon: 'chatbubble-ellipses-outline', activeIcon: 'chatbubble-ellipses' },
-  { id: 'settings', label: 'Settings', icon: 'settings-outline', activeIcon: 'settings' },
-];
+type TabId = 'home' | 'learning' | 'eduott' | 'exams' | 'results' | 'timetable' | 'vidya';
 
 export default function StudentDashboard() {
   const { signOut } = useAuth();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
   const { active: activeTab, visited: visitedTabs, select: selectTab, setActive: setActiveTab } =
-    useVisitedTabs<TabId>('home', { maxVisited: 3 });
+    useVisitedTabs<TabId>('home', { maxVisited: 5 });
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [calendarFocusExamId, setCalendarFocusExamId] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const homeScrollRef = useRef<ScrollView>(null);
   const learningScrollRef = useRef<ScrollView>(null);
+  const resultsScrollRef = useRef<ScrollView>(null);
+  const timetableScrollRef = useRef<ScrollView>(null);
   const vidyaScrollRef = useRef<ScrollView>(null);
-  const settingsScrollRef = useRef<ScrollView>(null);
 
   const tabScrollRefs: Partial<Record<TabId, React.RefObject<ScrollView | null>>> = {
     home: homeScrollRef,
     learning: learningScrollRef,
+    results: resultsScrollRef,
+    timetable: timetableScrollRef,
     vidya: vidyaScrollRef,
-    settings: settingsScrollRef,
   };
 
   useBackNavigation('/dashboard', true);
@@ -79,18 +77,6 @@ export default function StudentDashboard() {
   const firstName = useMemo(() => resolveStudentFirstName(user), [user]);
 
   const vidyaChatEnabled = useVidyaChatAccess(user);
-
-  const studentTabs = useMemo(
-    () =>
-      vidyaChatEnabled
-        ? ALL_TABS
-        : ALL_TABS.map((t) =>
-            t.id === 'vidya'
-              ? { ...t, label: 'AI Tools', icon: 'sparkles-outline' as const, activeIcon: 'sparkles' as const }
-              : t
-          ),
-    [vidyaChatEnabled]
-  );
 
   const checkAuth = async () => {
     try {
@@ -147,8 +133,11 @@ export default function StudentDashboard() {
   const { width: windowWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isTablet = windowWidth >= 768;
-  const eduottTabBarGap = studentFloatingTabBarReserve(insets.bottom);
-  const pad = { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 140 };
+  const pad = {
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    paddingBottom: 28 + Math.max(insets.bottom, 8),
+  };
   const homePad = isTablet ? { ...pad, paddingHorizontal: 20 } : pad;
 
   const handleTabChange = (id: string) => {
@@ -169,6 +158,14 @@ export default function StudentDashboard() {
     });
   };
 
+  const onSelectNav = (id: StudentNavId) => {
+    if (id === 'profile') {
+      router.push('/profile');
+      return;
+    }
+    handleTabChange(id);
+  };
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -181,9 +178,28 @@ export default function StudentDashboard() {
   if (!isAuthenticated) return null;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={isTablet ? [] : ['top']}>
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
-      <View style={styles.tabContent}>
+      <View style={[styles.shell, isTablet && styles.shellTablet]}>
+        {isTablet ? (
+          <View style={styles.sidebar}>
+            <StudentNavPanel
+              activeId={activeTab}
+              user={user}
+              onSelect={onSelectNav}
+              onLogout={handleLogout}
+            />
+          </View>
+        ) : null}
+
+        <View style={[styles.tabContent, isTablet && { paddingTop: insets.top }]}>
+        {isTablet ? null : (
+          <PortalTopBar
+            user={user}
+            onOpenMenu={() => setMenuOpen(true)}
+            onLogout={handleLogout}
+          />
+        )}
         {visitedTabs.has('home') ? (
           <VisitedTabPane visible={activeTab === 'home'}>
             <ScrollView
@@ -202,8 +218,6 @@ export default function StudentDashboard() {
                   setCalendarFocusExamId(examId);
                   goToTab('exams');
                 }}
-                onGoProfile={() => goToTab('settings')}
-                onLogout={handleLogout}
               />
             </ScrollView>
           </VisitedTabPane>
@@ -225,7 +239,7 @@ export default function StudentDashboard() {
 
         {visitedTabs.has('eduott') ? (
           <VisitedTabPane visible={activeTab === 'eduott'}>
-            <View style={[styles.scroll, styles.eduottPane, { marginBottom: eduottTabBarGap }]}>
+            <View style={[styles.scroll, styles.eduottPane]}>
               <EduOTTFilterProvider>
                 <EduOTTView username={firstName} />
               </EduOTTFilterProvider>
@@ -250,6 +264,32 @@ export default function StudentDashboard() {
           </VisitedTabPane>
         ) : null}
 
+        {visitedTabs.has('results') ? (
+          <VisitedTabPane visible={activeTab === 'results'}>
+            <ScrollView
+              ref={resultsScrollRef}
+              style={styles.scroll}
+              contentContainerStyle={pad}
+              showsVerticalScrollIndicator={false}
+            >
+              <OmrResultsView />
+            </ScrollView>
+          </VisitedTabPane>
+        ) : null}
+
+        {visitedTabs.has('timetable') ? (
+          <VisitedTabPane visible={activeTab === 'timetable'}>
+            <ScrollView
+              ref={timetableScrollRef}
+              style={styles.scroll}
+              contentContainerStyle={pad}
+              showsVerticalScrollIndicator={false}
+            >
+              <TimetableTabView user={user} />
+            </ScrollView>
+          </VisitedTabPane>
+        ) : null}
+
         {visitedTabs.has('vidya') ? (
           <VisitedTabPane visible={activeTab === 'vidya'}>
             <ScrollView
@@ -262,27 +302,25 @@ export default function StudentDashboard() {
             </ScrollView>
           </VisitedTabPane>
         ) : null}
-
-        {visitedTabs.has('settings') ? (
-          <VisitedTabPane visible={activeTab === 'settings'}>
-            <ScrollView
-              ref={settingsScrollRef}
-              style={styles.scroll}
-              contentContainerStyle={pad}
-              showsVerticalScrollIndicator={false}
-            >
-              <ProfileTabView user={user} onLogout={() => router.replace('/auth/login')} />
-            </ScrollView>
-          </VisitedTabPane>
-        ) : null}
+        </View>
       </View>
 
-      <StudentTabBar tabs={studentTabs} activeTab={activeTab} onTabChange={handleTabChange} />
+      {isTablet ? null : (
+        <StudentNavDrawer
+          visible={menuOpen}
+          activeId={activeTab}
+          user={user}
+          onClose={() => setMenuOpen(false)}
+          onSelect={onSelectNav}
+          onLogout={handleLogout}
+        />
+      )}
 
       {vidyaChatEnabled ? (
         <VidyaAIFloatingAssistant
           role="student"
           hidden={activeTab === 'vidya'}
+          bottomOffset={16}
           onPress={() => {
             requestAnimationFrame(() => {
               router.push('/ai-tutor');
@@ -297,9 +335,21 @@ export default function StudentDashboard() {
 
 const styles = StyleSheet.create({
   container: {
-    // Transparent so AppBackground's artwork shows through.
     flex: 1,
     backgroundColor: 'transparent',
+  },
+  shell: {
+    flex: 1,
+    minHeight: 0,
+  },
+  shellTablet: {
+    flexDirection: 'row',
+  },
+  sidebar: {
+    width: 280,
+    overflow: 'hidden',
+    borderRightWidth: 1,
+    borderRightColor: 'rgba(255,255,255,0.6)',
   },
   tabContent: {
     flex: 1,
@@ -314,6 +364,6 @@ const styles = StyleSheet.create({
   examsPane: {
     flex: 1,
     minHeight: 0,
-    paddingBottom: 140,
+    paddingBottom: 24,
   },
 });

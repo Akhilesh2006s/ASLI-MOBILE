@@ -93,6 +93,18 @@ const teacherService = {
   },
 
   me: () => cachedFetch<any>('me', '/api/auth/me'),
+  teacherProfile: () => cachedFetch<any>('teacher_profile', '/api/teacher/me'),
+  updateProfile: (body: Record<string, unknown>) =>
+    fetchJson<any>('/api/teacher/me', { method: 'PATCH', body: JSON.stringify(body) }),
+  changePassword: (body: {
+    currentPassword: string;
+    newPassword: string;
+    confirmPassword: string;
+  }) =>
+    fetchJson<any>('/api/teacher/change-password', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
   dashboard: () => cachedFetch<any>('dashboard', '/api/teacher/dashboard'),
   classes: () => cachedFetch<any[]>('classes', '/api/teacher/classes'),
   subjects: () => cachedFetch<any[]>('subjects', '/api/teacher/subjects'),

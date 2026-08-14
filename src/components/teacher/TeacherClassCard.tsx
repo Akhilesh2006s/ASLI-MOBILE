@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,8 +11,8 @@ import Animated, {
 import {
   formatClassSectionLabel,
   formatPersonName,
-  formatSubjectList,
   formatTitleCase,
+  summarizeSubjects,
 } from '../../lib/teacher-text';
 import { TEACHER, TEACHER_RADIUS, TEACHER_TYPO } from '../../theme/teacher';
 
@@ -126,9 +126,12 @@ export default function TeacherClassCard({
   accentIndex = 0,
 }: Props) {
   const press = usePressScale();
+  const [showAllSubjects, setShowAllSubjects] = useState(false);
   const accent = CARD_ACCENTS[Math.abs(accentIndex) % CARD_ACCENTS.length];
   const accentColor = accent[1];
   const displayName = formatClassSectionLabel(name) || name;
+  const subjects = summarizeSubjects(subject, 2);
+  const visibleSubjects = showAllSubjects ? subjects.all : subjects.shown;
 
   return (
     <Animated.View
@@ -143,9 +146,32 @@ export default function TeacherClassCard({
             <Text style={[styles.className, { color: accentColor }]}>{displayName}</Text>
             <View style={styles.subjectRow}>
               <Ionicons name="book-outline" size={14} color={accentColor} />
-              <Text style={styles.subjectText} numberOfLines={1}>
-                {formatSubjectList(subject)}
-              </Text>
+              <View style={styles.subjectChips}>
+                {visibleSubjects.map((item) => (
+                  <View key={item} style={[styles.subjectChip, { borderColor: `${accentColor}33` }]}>
+                    <Text style={[styles.subjectChipText, { color: accentColor }]} numberOfLines={1}>
+                      {item}
+                    </Text>
+                  </View>
+                ))}
+                {subjects.extra > 0 ? (
+                  <Pressable
+                    onPress={() => setShowAllSubjects((open) => !open)}
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      showAllSubjects
+                        ? 'Hide extra subjects'
+                        : `Show ${subjects.extra} more subjects`
+                    }
+                    style={[styles.moreChip, { backgroundColor: `${accentColor}18` }]}
+                    hitSlop={6}
+                  >
+                    <Text style={[styles.moreChipText, { color: accentColor }]}>
+                      {showAllSubjects ? 'Show less' : `+${subjects.extra} more`}
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
             </View>
           </View>
           <View style={[styles.activeBadge, { backgroundColor: `${accentColor}18` }]}>
@@ -295,15 +321,36 @@ const styles = StyleSheet.create({
   },
   subjectRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 6,
-    marginTop: 4,
+    marginTop: 6,
   },
-  subjectText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: TEACHER.textSecondary,
+  subjectChips: {
     flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  subjectChip: {
+    maxWidth: '100%',
+    borderRadius: 8,
+    borderWidth: 1,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  subjectChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  moreChip: {
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  moreChipText: {
+    fontSize: 11,
+    fontWeight: '800',
   },
   activeBadge: {
     backgroundColor: 'rgba(16,185,129,0.12)',

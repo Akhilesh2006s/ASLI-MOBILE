@@ -1,8 +1,12 @@
 export { default as TeacherTabBar } from './TeacherTabBar';
 export type { TeacherTab } from './TeacherTabBar';
+export { default as TeacherNavDrawer, TeacherNavPanel, TEACHER_NAV_ITEMS, teacherNavLabel } from './TeacherNavDrawer';
+export type { TeacherNavId, TeacherNavItem } from './TeacherNavDrawer';
 export { default as TeacherFAB } from './TeacherFAB';
 export type { FabAction } from './TeacherFAB';
 export { default as TeacherHeader } from './TeacherHeader';
+export { default as TeacherPageHero } from './TeacherPageHero';
+export type { TeacherPageHeroTone } from './TeacherPageHero';
 export { default as VidyaGlassBackdrop } from './VidyaGlassBackdrop';
 export { default as TeacherShimmer } from './TeacherShimmer';
 export { default as SubNavChips } from './SubNavChips';

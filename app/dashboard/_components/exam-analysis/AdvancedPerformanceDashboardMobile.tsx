@@ -288,7 +288,7 @@ export default function AdvancedPerformanceDashboardMobile({
     return (
       <View style={styles.loadingWrap}>
         <ActivityIndicator size="large" color="#2563eb" />
-        <Text style={styles.loadingText}>Loading advanced intelligence…</Text>
+        <Text style={styles.loadingText}>Loading Advanced Intelligence…</Text>
       </View>
     );
   }
@@ -311,7 +311,7 @@ export default function AdvancedPerformanceDashboardMobile({
         {/* Inner view carries the row spacing GlassPanel's wrapper would swallow. */}
         <View style={styles.headerInner}>
           <Text style={styles.headerTitle}>Advanced Performance Intelligence</Text>
-          <Text style={styles.headerSub}>Live data: time × difficulty × question type × chapter</Text>
+          <Text style={styles.headerSub}>Live Data: Time × Difficulty × Question Type × Chapter</Text>
           <View style={styles.badgeRow}>
             <View style={styles.badgeBlue}>
               <Text style={styles.badgeBlueText}>Risk: {analytics.recommendation?.riskLevel || 'N/A'}</Text>
@@ -327,7 +327,7 @@ export default function AdvancedPerformanceDashboardMobile({
 
       <DashboardCard
         title="Question-Type Intelligence Matrix"
-        subtitle="Outcome counts by question type (all subjects combined)"
+        subtitle="Outcome Counts By Question Type (All Subjects Combined)"
       >
         {!questionTypeHasData ? (
           <ChartEmpty message="No question-type data for this exam yet." />
@@ -359,7 +359,7 @@ export default function AdvancedPerformanceDashboardMobile({
         title="Difficulty + Time Intelligence"
         subtitle="Correct vs wrong counts, time buckets, and ideal benchmarks"
       >
-        <Text style={styles.sectionLabel}>Correct vs wrong by difficulty</Text>
+        <Text style={styles.sectionLabel}>Correct Vs Wrong By Difficulty</Text>
         <GroupedBarChart
           data={difficultyOutcomeData}
           series={[
@@ -370,7 +370,7 @@ export default function AdvancedPerformanceDashboardMobile({
         />
 
         <View style={styles.bucketBoxGreen}>
-          <Text style={styles.bucketTitleGreen}>Correct — time buckets</Text>
+          <Text style={styles.bucketTitleGreen}>Correct — Time Buckets</Text>
           {!correctBucketsHaveData ? (
             <ChartEmpty message="No correct-answer timing data." />
           ) : (
@@ -386,7 +386,7 @@ export default function AdvancedPerformanceDashboardMobile({
         </View>
 
         <View style={styles.bucketBoxOrange}>
-          <Text style={styles.bucketTitleOrange}>Wrong — time buckets</Text>
+          <Text style={styles.bucketTitleOrange}>Wrong — Time Buckets</Text>
           {!wrongBucketsHaveData ? (
             <ChartEmpty message="No wrong-answer timing data." />
           ) : (
@@ -402,7 +402,7 @@ export default function AdvancedPerformanceDashboardMobile({
         </View>
       </DashboardCard>
 
-      <DashboardCard title="Concept vs Application Analysis">
+      <DashboardCard title="Concept Vs Application Analysis">
         {!conceptHasData ? (
           <ChartEmpty message="No concept vs application data for this exam yet." />
         ) : (
@@ -412,7 +412,7 @@ export default function AdvancedPerformanceDashboardMobile({
               <View key={row.label} style={styles.conceptRow}>
                 <Text style={styles.conceptTitle}>{row.label}</Text>
                 <Text style={styles.conceptMeta}>
-                  Hit rate: {row.hitRate}% · Total time: {formatSeconds(row.totalTime)} · Avg/Q:{' '}
+                  Hit Rate: {row.hitRate}% · Total Time: {formatSeconds(row.totalTime)} · Avg/Q:{' '}
                   {formatSeconds(row.avgTime)}
                 </Text>
               </View>
@@ -421,7 +421,7 @@ export default function AdvancedPerformanceDashboardMobile({
         )}
       </DashboardCard>
 
-      <DashboardCard title="Chapter-wise Weakness Detection">
+      <DashboardCard title="Chapter-Wise Weakness Detection">
         {!chapterHasData ? (
           <ChartEmpty message="No chapter weakness data for this exam yet." />
         ) : (
@@ -491,13 +491,13 @@ export default function AdvancedPerformanceDashboardMobile({
             Fastest: <Text style={styles.greenBold}>{analytics.timeEfficiency.fastestSubject || '—'}</Text>
           </Text>
           <Text style={styles.metaText}>
-            Time on wrong:{' '}
+            Time On Wrong:{' '}
             <Text style={styles.orangeBold}>
               {formatSeconds(analytics.timeEfficiency.timeWastedOnWrongQuestions)}
             </Text>
           </Text>
           <Text style={styles.metaText}>
-            Questions analysed:{' '}
+            Questions Analysed:{' '}
             <Text style={styles.blueBold}>{analytics.metadata.totalQuestionsAnalyzed}</Text>
           </Text>
           </View>

@@ -180,12 +180,12 @@ function StudentProgressRow({
           <View style={styles.studentMeta}>
             <View style={[styles.pill, { backgroundColor: colors.bg }]}>
               <Text style={[styles.pillText, { color: colors.text }]}>
-                {overall > 0 ? `${overall.toFixed(0)}%` : 'No data'}
+                {overall > 0 ? `${overall.toFixed(0)}%` : 'No Data'}
               </Text>
             </View>
             <Text style={styles.studentMetaText}>
-              {(student.performance?.totalExams ?? 0)} exams ·{' '}
-              {(student.performance?.dailyAverageWatchTime ?? 0).toFixed(0)} min/day
+              {(student.performance?.totalExams ?? 0)} Exams ·{' '}
+              {(student.performance?.dailyAverageWatchTime ?? 0).toFixed(0)} Min/Day
             </Text>
           </View>
         </View>
@@ -451,17 +451,17 @@ export default function TrackProgressView({
           </View>
         </View>
 
-        <SectionCard title="Exams performance" icon="locate" iconColor="#2563EB">
+        <SectionCard title="Exams Performance" icon="locate" iconColor="#2563EB">
           <View style={styles.metricGrid}>
             <View style={styles.metric}>
               <Text style={styles.metricVal}>{perf.totalExams ?? 0}</Text>
-              <Text style={styles.metricLbl}>Exams taken</Text>
+              <Text style={styles.metricLbl}>Exams Taken</Text>
             </View>
             <View style={styles.metric}>
               <Text style={styles.metricVal}>
-                {examAvg != null && examAvg > 0 ? `${examAvg.toFixed(1)}%` : 'No data'}
+                {examAvg != null && examAvg > 0 ? `${examAvg.toFixed(1)}%` : 'No Data'}
               </Text>
-              <Text style={styles.metricLbl}>Average score</Text>
+              <Text style={styles.metricLbl}>Average Score</Text>
             </View>
           </View>
           {perf.recentExamTitle ? (
@@ -473,34 +473,34 @@ export default function TrackProgressView({
           )}
         </SectionCard>
 
-        <SectionCard title="Usage & overall progress" icon="trending-up" iconColor="#059669">
+        <SectionCard title="Usage & Overall Progress" icon="trending-up" iconColor="#059669">
           <View style={styles.progressRow}>
-            <Text style={styles.progressLbl}>Overall progress</Text>
+            <Text style={styles.progressLbl}>Overall Progress</Text>
             <Text style={styles.progressPct}>{overall.toFixed(1)}%</Text>
           </View>
           <ProgressBar value={overall} color={tierBarColor(tier)} />
           <View style={[styles.progressRow, { marginTop: 10 }]}>
-            <Text style={styles.progressLbl}>Learning progress</Text>
+            <Text style={styles.progressLbl}>Learning Progress</Text>
             <Text style={styles.progressPct}>
-              {learning > 0 ? `${learning.toFixed(1)}%` : 'No data'}
+              {learning > 0 ? `${learning.toFixed(1)}%` : 'No Data'}
             </Text>
           </View>
           {learning > 0 ? <ProgressBar value={learning} color="#3B82F6" /> : null}
           <Text style={[styles.listSub, { marginTop: 8 }]}>
             {(perf.dailyAverageWatchTime ?? 0) > 0
-              ? `${(perf.dailyAverageWatchTime ?? 0).toFixed(1)} min/day avg on platform`
-              : 'No usage data yet'}
+              ? `${(perf.dailyAverageWatchTime ?? 0).toFixed(1)} Min/Day Avg On Platform`
+              : 'No Usage Data Yet'}
           </Text>
           <View style={styles.metricGrid}>
             <View style={styles.metric}>
               <Text style={styles.metricVal}>{hw.submitted}/{hw.assigned}</Text>
-              <Text style={styles.metricLbl}>Homework submitted</Text>
+              <Text style={styles.metricLbl}>Homework Submitted</Text>
             </View>
             <View style={styles.metric}>
               <Text style={styles.metricVal}>
                 {lastLogin ? lastLogin.date : 'Never'}
               </Text>
-              <Text style={styles.metricLbl}>Last activity</Text>
+              <Text style={styles.metricLbl}>Last Activity</Text>
             </View>
           </View>
         </SectionCard>
@@ -519,7 +519,7 @@ export default function TrackProgressView({
               >
                 <Text style={styles.remarkText}>{r.remark}</Text>
                 <Text style={styles.remarkMeta}>
-                  {r.isPositive ? 'Positive' : 'Needs improvement'}
+                  {r.isPositive ? 'Positive' : 'Needs Improvement'}
                   {r.subject?.name ? ` · ${r.subject.name}` : ''}
                   {r.teacherId?.fullName ? ` · ${r.teacherId.fullName}` : ''}
                   {r.createdAt ? ` · ${new Date(r.createdAt).toLocaleDateString()}` : ''}
@@ -529,7 +529,7 @@ export default function TrackProgressView({
           )}
         </SectionCard>
 
-        <SectionCard title="Areas for improvement" icon="bulb" iconColor="#D97706" variant="improvement">
+        <SectionCard title="Areas For Improvement" icon="bulb" iconColor="#D97706" variant="improvement">
           <View style={styles.aiHeader}>
             <Text style={styles.sectionHint}>Recommendation based on exams, usage, homework & remarks</Text>
             <Pressable
@@ -616,7 +616,7 @@ export default function TrackProgressView({
               >
                 {missing ? (
                   <>
-                    <Text style={styles.modalTitle}>Student not found</Text>
+                    <Text style={styles.modalTitle}>Student Not Found</Text>
                     <Text style={styles.listSub}>This student is not in your assigned classes.</Text>
                     <Pressable
                       style={styles.closeBtn}
@@ -650,18 +650,18 @@ export default function TrackProgressView({
             <View style={{ flex: 1 }}>
               <Text style={styles.headerTitle}>Track Student Progress</Text>
               <Text style={styles.headerSub}>
-                Expand class → section → View student progress
+                Expand Class → Section → View Student Progress
               </Text>
             </View>
           </View>
         </GlassPanel>
 
         <GlassPanel style={styles.classListCard} radius={TEACHER_RADIUS.lg} tone="strong">
-          <Text style={styles.classListTitle}>My assigned classes</Text>
+          <Text style={styles.classListTitle}>My Assigned Classes</Text>
           {classGroups.length === 0 ? (
             <View style={styles.classEmptyBlock}>
               <Ionicons name="school-outline" size={32} color={TEACHER.textMuted} />
-              <Text style={styles.classEmptyTitle}>No classes assigned</Text>
+              <Text style={styles.classEmptyTitle}>No Classes Assigned</Text>
               <Text style={styles.emptyLine}>Contact your administrator to get class assignments.</Text>
             </View>
           ) : (
@@ -682,7 +682,7 @@ export default function TrackProgressView({
                       <Text style={styles.classRowLabel}>{group.classNumber}</Text>
                     </View>
                     <Text style={styles.classRowCount}>
-                      {group.totalStudents} student{group.totalStudents !== 1 ? 's' : ''}
+                      {group.totalStudents} Student{group.totalStudents !== 1 ? 's' : ''}
                     </Text>
                   </Pressable>
 
@@ -713,7 +713,7 @@ export default function TrackProgressView({
                                 </Text>
                               </View>
                               <Text style={styles.sectionRowCount}>
-                                {section.students.length} student
+                                {section.students.length} Student
                                 {section.students.length !== 1 ? 's' : ''}
                               </Text>
                             </Pressable>
@@ -723,7 +723,7 @@ export default function TrackProgressView({
                                 {section.students.length > 0 ? (
                                   <View style={styles.classSummary}>
                                     <Text style={styles.classSummaryText}>
-                                      Avg exam {stats.avgExam.toFixed(1)}% · Avg progress{' '}
+                                      Avg Exam {stats.avgExam.toFixed(1)}% · Avg Progress{' '}
                                       {stats.avgOverall.toFixed(1)}%
                                     </Text>
                                   </View>

@@ -254,7 +254,7 @@ export default function VidyaAIViewChat({
         <View style={styles.messagesBlock}>
           {model.displayMessages.length === 0 ? (
             <View style={styles.starterBlock}>
-              <Text style={styles.starterTitle}>Start with a teaching prompt</Text>
+              <Text style={styles.starterTitle}>Start With A Teaching Prompt</Text>
               <Text style={styles.starterSub}>Tap a suggestion below or type your own question.</Text>
               <View style={styles.starterGrid}>
                 {model.quickQuestions.map((question) => (

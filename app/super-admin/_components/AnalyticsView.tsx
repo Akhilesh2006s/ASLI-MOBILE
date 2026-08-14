@@ -97,7 +97,7 @@ export default function AnalyticsView({ onSelectSchool }: AnalyticsViewProps) {
           <Ionicons name="bar-chart" size={32} color="#3b82f6" />
           <View style={styles.headerText}>
             <Text style={styles.headerTitle}>Analytics Dashboard</Text>
-            <Text style={styles.headerSubtitle}>Comprehensive platform analytics and insights</Text>
+            <Text style={styles.headerSubtitle}>Comprehensive Platform Analytics And Insights</Text>
           </View>
         </View>
       </View>
@@ -111,7 +111,7 @@ export default function AnalyticsView({ onSelectSchool }: AnalyticsViewProps) {
               <View>
                 <Text style={styles.statCardLabel}>Total Admins</Text>
                 <Text style={styles.statCardValue}>{totalAdmins}</Text>
-                <Text style={styles.statCardSubtext}>Active administrators</Text>
+                <Text style={styles.statCardSubtext}>Active Administrators</Text>
               </View>
               <Ionicons name="shield" size={48} color="#fff" />
             </View>
@@ -124,7 +124,7 @@ export default function AnalyticsView({ onSelectSchool }: AnalyticsViewProps) {
               <View>
                 <Text style={styles.statCardLabel}>School Students</Text>
                 <Text style={styles.statCardValue}>{schoolStudents}</Text>
-                <Text style={styles.statCardSubtext}>Excl. individual (B2C)</Text>
+                <Text style={styles.statCardSubtext}>Excl. Individual (B2C)</Text>
               </View>
               <Ionicons name="people" size={48} color="#fff" />
             </View>
@@ -137,7 +137,7 @@ export default function AnalyticsView({ onSelectSchool }: AnalyticsViewProps) {
               <View>
                 <Text style={styles.statCardLabel}>Total Teachers</Text>
                 <Text style={styles.statCardValue}>{totalTeachers}</Text>
-                <Text style={styles.statCardSubtext}>Active educators</Text>
+                <Text style={styles.statCardSubtext}>Active Educators</Text>
               </View>
               <Ionicons name="school" size={48} color="#fff" />
             </View>
@@ -150,7 +150,7 @@ export default function AnalyticsView({ onSelectSchool }: AnalyticsViewProps) {
               <View>
                 <Text style={styles.statCardLabel}>Total Content</Text>
                 <Text style={styles.statCardValue}>{totalContent}</Text>
-                <Text style={styles.statCardSubtext}>Videos + content + assessments + exams</Text>
+                <Text style={styles.statCardSubtext}>Videos + Content + Assessments + Exams</Text>
               </View>
               <Ionicons name="book" size={48} color="#fff" />
             </View>
@@ -160,14 +160,14 @@ export default function AnalyticsView({ onSelectSchool }: AnalyticsViewProps) {
 
       {individual ? (
         <View style={styles.b2cSection}>
-          <Text style={styles.b2cTitle}>Individual trials & subscriptions (B2C)</Text>
+          <Text style={styles.b2cTitle}>Individual Trials & Subscriptions (B2C)</Text>
           <View style={styles.b2cGrid}>
             <View style={styles.b2cCard}>
-              <Text style={styles.b2cLabel}>Total individuals</Text>
+              <Text style={styles.b2cLabel}>Total Individuals</Text>
               <Text style={styles.b2cValue}>{individual.total ?? '—'}</Text>
             </View>
             <View style={styles.b2cCard}>
-              <Text style={styles.b2cLabel}>On trial</Text>
+              <Text style={styles.b2cLabel}>On Trial</Text>
               <Text style={styles.b2cValue}>{individual.trialActive ?? '—'}</Text>
             </View>
             <View style={styles.b2cCard}>
@@ -184,7 +184,7 @@ export default function AnalyticsView({ onSelectSchool }: AnalyticsViewProps) {
           {(platformAnalytics?.weeklyActiveStudents != null ||
             platformAnalytics?.monthlyActiveStudents != null) && (
             <Text style={styles.b2cFootnote}>
-              Active students · 7d: {platformAnalytics?.weeklyActiveStudents ?? '—'} · 30d:{' '}
+              Active Students · 7d: {platformAnalytics?.weeklyActiveStudents ?? '—'} · 30d:{' '}
               {platformAnalytics?.monthlyActiveStudents ?? '—'}
             </Text>
           )}
@@ -206,7 +206,7 @@ export default function AnalyticsView({ onSelectSchool }: AnalyticsViewProps) {
           {analytics.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Ionicons name="bar-chart" size={64} color="#5B6779" />
-              <Text style={styles.emptyText}>No admin data available</Text>
+              <Text style={styles.emptyText}>No Admin Data Available</Text>
             </View>
           ) : (
             <View style={styles.adminList}>
@@ -234,9 +234,9 @@ export default function AnalyticsView({ onSelectSchool }: AnalyticsViewProps) {
                     <View style={styles.adminCardTop}>
                       <View style={styles.adminCardInfo}>
                         <Text style={styles.adminCardName}>{admin.name || admin.schoolName || 'Unknown Admin'}</Text>
-                        <Text style={styles.adminCardEmail}>{admin.email || 'No email'}</Text>
+                        <Text style={styles.adminCardEmail}>{admin.email || 'No Email'}</Text>
                         {interactive && (
-                          <Text style={styles.adminCardHint}>Tap for detailed exam & AI analytics →</Text>
+                          <Text style={styles.adminCardHint}>Tap For Detailed Exam & AI Analytics →</Text>
                         )}
                       </View>
                       <View

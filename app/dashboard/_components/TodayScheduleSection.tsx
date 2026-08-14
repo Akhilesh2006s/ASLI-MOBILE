@@ -84,7 +84,7 @@ export default function TodayScheduleSection() {
       <View style={styles.wrap}>
         {header}
         <GlassCard variant="glass">
-          <Text style={styles.empty}>No classes scheduled today</Text>
+          <Text style={styles.empty}>No Classes Scheduled Today</Text>
         </GlassCard>
       </View>
     );

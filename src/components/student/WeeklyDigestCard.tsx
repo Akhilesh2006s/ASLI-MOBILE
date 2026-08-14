@@ -58,6 +58,7 @@ export default function WeeklyDigestCard({
   const [digest, setDigest] = useState<Digest | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [showAllMetrics, setShowAllMetrics] = useState(false);
   const [studentName, setStudentName] = useState('');
   const [schoolName, setSchoolName] = useState('');
   const isStudent = apiBase === '/api/student';
@@ -68,7 +69,12 @@ export default function WeeklyDigestCard({
     try {
       const q = build ? '?build=1' : '';
       const { data } = await api.get(`${apiBase}/weekly-digest${q}`);
-      setDigest(data?.data || null);
+      const payload = data?.data || data || null;
+      const next =
+        payload && typeof payload === 'object' && (payload.metrics || payload.title || payload.summary)
+          ? payload
+          : null;
+      setDigest(next);
     } catch {
       setDigest(null);
     } finally {
@@ -84,7 +90,15 @@ export default function WeeklyDigestCard({
         if (!raw) return;
         const user = JSON.parse(raw);
         setStudentName(String(user?.fullName || user?.name || '').trim());
-        setSchoolName(String(user?.schoolName || user?.collegeName || user?.institutionName || '').trim());
+        setSchoolName(
+          String(
+            user?.schoolName ||
+              user?.collegeName ||
+              user?.institutionName ||
+              user?.assignedAdmin?.schoolName ||
+              '',
+          ).trim(),
+        );
       } catch {
         /* ignore */
       }
@@ -110,6 +124,7 @@ export default function WeeklyDigestCard({
     return (
       'generationsCreated' in digest.metrics ||
       'status' in digest.metrics ||
+      'loginCount' in digest.metrics ||
       digest.metrics.role === 'teacher'
     );
   }, [digest, isTeacher]);
@@ -139,7 +154,7 @@ export default function WeeklyDigestCard({
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Ionicons name="document-text-outline" size={18} color="#0284C7" />
-          <Text style={styles.headerTitle}>Weekly report</Text>
+          <Text style={styles.headerTitle}>{isTeacher ? 'Weekly Teacher Report' : 'Weekly Report'}</Text>
         </View>
         <View style={styles.headerActions}>
           {digest ? (
@@ -171,82 +186,38 @@ export default function WeeklyDigestCard({
 
           <SectionTitle icon="log-in-outline" title="Your activity" />
           <View style={styles.grid}>
-            <MetricTile label="Logins" value={n(m.loginCount)} hint="Days opened" />
-            <MetricTile label="Sessions" value={n(m.sessions)} />
-            <MetricTile label="Time" value={m.totalTimeLabel || `${n(m.minutes)} min`} />
-            <MetricTile label="Status" value={String(m.status || '—')} />
-            <MetricTile label="Classes" value={n(m.classesAssigned)} />
-            <MetricTile label="Students" value={n(m.studentsInClasses)} />
+            <MetricTile label="Logins this week" value={n(m.loginCount)} hint="Days you opened the app" />
+            <MetricTile label="Sessions" value={n(m.sessions)} hint="Times you started using it" />
+            <MetricTile
+              label="Time on platform"
+              value={m.totalTimeLabel || `${n(m.minutes)} min`}
+              hint="Total time spent this week"
+            />
+            <MetricTile label="Last active" value={m.lastActiveDate || '—'} hint="Your most recent visit" />
+            <MetricTile
+              label="Status (14 days)"
+              value={String(m.status || '—')}
+              hint="Active if used in last 14 days"
+            />
+            <MetricTile label="Active days (14d)" value={n(m.activeDays)} hint="Days used in last 2 weeks" />
+            <MetricTile label="Classes assigned" value={n(m.classesAssigned)} hint="Classes you teach" />
+            <MetricTile
+              label="Students in classes"
+              value={n(m.studentsInClasses)}
+              hint="Learners across your classes"
+            />
           </View>
 
           <SectionTitle icon="sparkles-outline" title="Teaching with AI" />
           <View style={styles.grid}>
-            <MetricTile label="AI resources" value={n(m.generationsCreated)} />
-            <MetricTile label="Vidya asks" value={n(m.aiDoubts)} />
-            <MetricTile label="Tool opens" value={n(m.aiToolUses)} />
-          </View>
-
-          <SectionTitle icon="school-outline" title="Your school" />
-          <View style={styles.grid}>
-            <MetricTile label="Students" value={n(m.schoolStudentsAccessed)} />
-            <MetricTile label="Sessions" value={n(m.schoolSessions)} />
-            <MetricTile label="Teachers active" value={n(m.schoolTeachersActive)} />
-          </View>
-
-          {(digest.highlights || []).length > 0 ? (
-            <View style={styles.highlights}>
-              {(digest.highlights || []).map((h) => (
-                <Text key={h} style={styles.highlightItem}>
-                  • {h}
-                </Text>
-              ))}
-            </View>
-          ) : null}
-        </View>
-      ) : hasRichStudentMetrics ? (
-        <View style={styles.body}>
-          <Text style={styles.title}>{digest.title}</Text>
-          <Text style={styles.summary}>{digest.summary}</Text>
-
-          <SectionTitle icon="log-in-outline" title="Adoption" />
-          <View style={styles.grid}>
-            <MetricTile label="Logins" value={n(m.loginCount)} hint="Days opened" />
-            <MetricTile label="Last active" value={m.lastActiveDate || '—'} />
-            <MetricTile label="Activation" value={m.activationDate || '—'} />
-          </View>
-
-          <SectionTitle icon="time-outline" title="Engagement" />
-          <View style={styles.grid}>
-            <MetricTile label="Sessions" value={n(m.sessions)} />
-            <MetricTile label="Total time" value={m.totalTimeLabel || `${n(m.minutes)} min`} />
             <MetricTile
-              label="Avg session"
-              value={n(m.avgSessionMinutes) > 0 ? `${n(m.avgSessionMinutes)} min` : '—'}
+              label="AI resources created"
+              value={n(m.generationsCreated)}
+              hint="Worksheets, notes & more you made"
             />
+            <MetricTile label="Vidya AI asks" value={n(m.aiDoubts)} hint="Questions you asked Vidya AI" />
+            <MetricTile label="Tool opens" value={n(m.aiToolUses)} hint="Times you opened an AI tool" />
           </View>
-
-          <SectionTitle icon="book-outline" title="Learning behaviour" />
-          <View style={styles.grid}>
-            <MetricTile label="Topics" value={n(m.topicsPractised)} />
-            <MetricTile label="Repeated" value={n(m.topicsRepeated)} />
-            <MetricTile label="Repeat %" value={`${n(m.repeatPracticePct)}%`} />
-          </View>
-
-          <SectionTitle icon="sparkles-outline" title="AI usage" />
-          <View style={styles.grid}>
-            <MetricTile
-              label="AI uses"
-              value={n(m.aiExplanations)}
-              hint={`Vidya ${n(m.aiDoubts)} · Tools ${n(m.aiToolUses)}`}
-            />
-            <MetricTile label="Practice" value={n(m.practiceAttempts) + n(m.iqAttempts)} />
-            <MetricTile
-              label="Accuracy"
-              value={n(m.practiceAttempts) > 0 ? `${n(m.practiceAccuracy)}%` : '—'}
-            />
-          </View>
-
-          <SectionTitle icon="construct-outline" title="Tools you used" />
           {(Array.isArray(m.toolsUsed) ? m.toolsUsed : []).length > 0 ? (
             (m.toolsUsed as Array<{ name?: string; count?: number; subjects?: string[] }>)
               .slice(0, 8)
@@ -267,86 +238,212 @@ export default function WeeklyDigestCard({
             <Text style={styles.mutedSmall}>No AI tools used this week yet.</Text>
           )}
 
-          <SectionTitle icon="library-outline" title="Subjects you used most" />
-          {(Array.isArray(m.topSubjectsDetailed) ? m.topSubjectsDetailed : []).length > 0 ? (
-            (m.topSubjectsDetailed as Array<{ subject?: string; sessions?: number; pct?: number }>)
-              .slice(0, 5)
-              .map((row, idx) => (
-                <View key={`${row.subject}-${idx}`} style={styles.listRow}>
-                  <Text style={styles.listTitle} numberOfLines={1}>
-                    {idx === 0 ? 'Most · ' : ''}
-                    {row.subject || 'Subject'}
-                  </Text>
-                  <Text style={styles.listPct}>
-                    {n(row.sessions)}
-                    {n(row.pct) > 0 ? ` · ${n(row.pct)}%` : ''}
-                  </Text>
-                </View>
-              ))
-          ) : m.topSubjects?.length ? (
-            <Text style={styles.summary}>{(m.topSubjects as string[]).slice(0, 5).join(', ')}</Text>
-          ) : (
-            <Text style={styles.mutedSmall}>No subject activity this week yet.</Text>
-          )}
-
-          <SectionTitle icon="clipboard-outline" title="Exams" />
-          <View style={styles.grid}>
-            <MetricTile label="Written" value={n(m.examAttempts)} />
-            <MetricTile label="Average" value={n(m.examAttempts) > 0 ? `${n(m.avgExamPct)}%` : '—'} />
-            <MetricTile label="Best" value={n(m.examAttempts) > 0 ? `${n(m.bestExamPct)}%` : '—'} />
-          </View>
-          {exams.slice(0, 4).map((exam: any, idx: number) => (
-            <View key={`${exam.title}-${idx}`} style={styles.listRow}>
-              <Text style={styles.listTitle} numberOfLines={1}>{exam.title}</Text>
-              <Text style={styles.listPct}>{n(exam.percentage)}%</Text>
-            </View>
-          ))}
-
-          <SectionTitle icon="scan-outline" title="Offline Results" />
-          <View style={styles.grid}>
-            <MetricTile label="Offline Tests" value={n(m.omrAttempts)} />
-            <MetricTile label="Average" value={n(m.omrAttempts) > 0 ? `${n(m.omrAvgPct)}%` : '—'} />
-            <MetricTile label="Best" value={n(m.omrAttempts) > 0 ? `${n(m.omrBestPct)}%` : '—'} />
-          </View>
-          {omrResults.slice(0, 4).map((row: any, idx: number) => (
-            <View key={`${row.title}-${idx}`} style={styles.listRow}>
-              <Text style={styles.listTitle} numberOfLines={1}>
-                {row.title}
-                {row.rank != null && Number(row.rank) > 0 ? ` · #${row.rank}` : ''}
-              </Text>
-              <Text style={styles.listPct}>{n(row.percentage)}%</Text>
-            </View>
-          ))}
-
-          <SectionTitle icon="flame-outline" title="Content & progress" />
+          <SectionTitle icon="people-outline" title="Your school this week" />
           <View style={styles.grid}>
             <MetricTile
-              label="Most used subject"
-              value={
-                m.mostUsedSubject?.subject ||
-                (m.topSubjects?.length ? m.topSubjects[0] : '—')
-              }
-              hint={
-                m.mostUsedSubject?.sessions
-                  ? `${n(m.mostUsedSubject.sessions)} activities`
-                  : undefined
-              }
+              label="Students accessed"
+              value={n(m.schoolStudentsAccessed)}
+              hint="Students who used the app"
             />
-            <MetricTile label="Videos" value={n(m.videosWatched)} />
-            <MetricTile label="Streak" value={n(m.streak) > 0 ? `${n(m.streak)}d` : '0'} />
-            <MetricTile label="Mastery" value={`${n(m.masteryPct)}%`} />
-            <MetricTile label="Homework" value={n(m.homeworkSubmissions)} />
-            <MetricTile label="Chapters" value={n(m.chaptersCompleted)} />
+            <MetricTile
+              label="School sessions"
+              value={n(m.schoolSessions)}
+              hint="Total sessions across your school"
+            />
+            <MetricTile
+              label="Teachers active"
+              value={n(m.schoolTeachersActive)}
+              hint="Colleagues active this week"
+            />
           </View>
 
           {(digest.highlights || []).length > 0 ? (
             <View style={styles.highlights}>
-              <Text style={styles.highlightsTitle}>This week at a glance</Text>
+              <Text style={styles.highlightsTitle}>This Week At A Glance</Text>
               {(digest.highlights || []).map((h) => (
-                <Text key={h} style={styles.highlightItem}>• {h}</Text>
+                <Text key={h} style={styles.highlightItem}>
+                  • {h}
+                </Text>
               ))}
             </View>
           ) : null}
+
+          <TouchableOpacity style={styles.cta} onPress={() => setPreviewOpen(true)} activeOpacity={0.9}>
+            <LinearGradient colors={['#0EA5E9', '#0F766E']} style={styles.ctaGrad}>
+              <Ionicons name="download-outline" size={16} color="#fff" />
+              <Text style={styles.ctaText}>Download PDF report</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      ) : hasRichStudentMetrics ? (
+        <View style={styles.body}>
+          <Text style={styles.title}>{digest.title}</Text>
+          <Text style={styles.summary}>{digest.summary}</Text>
+
+          <SectionTitle icon="log-in-outline" title="Adoption" />
+          <View style={styles.grid}>
+            <MetricTile label="Logins" value={n(m.loginCount)} hint="Days Opened" />
+            <MetricTile label="Last active" value={m.lastActiveDate || '—'} />
+            <MetricTile label="Activation" value={m.activationDate || '—'} />
+          </View>
+
+          <SectionTitle icon="time-outline" title="Engagement" />
+          <View style={styles.grid}>
+            <MetricTile label="Sessions" value={n(m.sessions)} />
+            <MetricTile label="Total time" value={m.totalTimeLabel || `${n(m.minutes)} min`} />
+            <MetricTile
+              label="Avg session"
+              value={n(m.avgSessionMinutes) > 0 ? `${n(m.avgSessionMinutes)} min` : '—'}
+            />
+          </View>
+
+          {!showAllMetrics ? (
+            <TouchableOpacity
+              style={styles.loadMoreBtn}
+              onPress={() => setShowAllMetrics(true)}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Load more weekly report metrics"
+            >
+              <Ionicons name="chevron-down" size={16} color="#0369A1" />
+              <Text style={styles.loadMoreText}>Load More</Text>
+            </TouchableOpacity>
+          ) : (
+            <>
+              <SectionTitle icon="book-outline" title="Learning behaviour" />
+              <View style={styles.grid}>
+                <MetricTile label="Topics" value={n(m.topicsPractised)} />
+                <MetricTile label="Repeated" value={n(m.topicsRepeated)} />
+                <MetricTile label="Repeat %" value={`${n(m.repeatPracticePct)}%`} />
+              </View>
+
+              <SectionTitle icon="sparkles-outline" title="AI usage" />
+              <View style={styles.grid}>
+                <MetricTile
+                  label="AI uses"
+                  value={n(m.aiExplanations)}
+                  hint={`Vidya ${n(m.aiDoubts)} · Tools ${n(m.aiToolUses)}`}
+                />
+                <MetricTile label="Practice" value={n(m.practiceAttempts) + n(m.iqAttempts)} />
+                <MetricTile
+                  label="Accuracy"
+                  value={n(m.practiceAttempts) > 0 ? `${n(m.practiceAccuracy)}%` : '—'}
+                />
+              </View>
+
+              <SectionTitle icon="construct-outline" title="Tools you used" />
+              {(Array.isArray(m.toolsUsed) ? m.toolsUsed : []).length > 0 ? (
+                (m.toolsUsed as Array<{ name?: string; count?: number; subjects?: string[] }>)
+                  .slice(0, 8)
+                  .map((tool, idx) => (
+                    <View key={`${tool.name}-${idx}`} style={styles.listRow}>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={styles.listTitle} numberOfLines={1}>{tool.name || 'Tool'}</Text>
+                        {Array.isArray(tool.subjects) && tool.subjects.length > 0 ? (
+                          <Text style={styles.listSub} numberOfLines={1}>
+                            {tool.subjects.slice(0, 3).join(' · ')}
+                          </Text>
+                        ) : null}
+                      </View>
+                      <Text style={styles.listPct}>{n(tool.count)}×</Text>
+                    </View>
+                  ))
+              ) : (
+                <Text style={styles.mutedSmall}>No AI tools used this week yet.</Text>
+              )}
+
+              <SectionTitle icon="library-outline" title="Subjects you used most" />
+              {(Array.isArray(m.topSubjectsDetailed) ? m.topSubjectsDetailed : []).length > 0 ? (
+                (m.topSubjectsDetailed as Array<{ subject?: string; sessions?: number; pct?: number }>)
+                  .slice(0, 5)
+                  .map((row, idx) => (
+                    <View key={`${row.subject}-${idx}`} style={styles.listRow}>
+                      <Text style={styles.listTitle} numberOfLines={1}>
+                        {idx === 0 ? 'Most · ' : ''}
+                        {row.subject || 'Subject'}
+                      </Text>
+                      <Text style={styles.listPct}>
+                        {n(row.sessions)}
+                        {n(row.pct) > 0 ? ` · ${n(row.pct)}%` : ''}
+                      </Text>
+                    </View>
+                  ))
+              ) : m.topSubjects?.length ? (
+                <Text style={styles.summary}>{(m.topSubjects as string[]).slice(0, 5).join(', ')}</Text>
+              ) : (
+                <Text style={styles.mutedSmall}>No subject activity this week yet.</Text>
+              )}
+
+              <SectionTitle icon="clipboard-outline" title="Exams" />
+              <View style={styles.grid}>
+                <MetricTile label="Written" value={n(m.examAttempts)} />
+                <MetricTile label="Average" value={n(m.examAttempts) > 0 ? `${n(m.avgExamPct)}%` : '—'} />
+                <MetricTile label="Best" value={n(m.examAttempts) > 0 ? `${n(m.bestExamPct)}%` : '—'} />
+              </View>
+              {exams.slice(0, 4).map((exam: any, idx: number) => (
+                <View key={`${exam.title}-${idx}`} style={styles.listRow}>
+                  <Text style={styles.listTitle} numberOfLines={1}>{exam.title}</Text>
+                  <Text style={styles.listPct}>{n(exam.percentage)}%</Text>
+                </View>
+              ))}
+
+              <SectionTitle icon="scan-outline" title="Offline Results" />
+              <View style={styles.grid}>
+                <MetricTile label="Offline Tests" value={n(m.omrAttempts)} />
+                <MetricTile label="Average" value={n(m.omrAttempts) > 0 ? `${n(m.omrAvgPct)}%` : '—'} />
+                <MetricTile label="Best" value={n(m.omrAttempts) > 0 ? `${n(m.omrBestPct)}%` : '—'} />
+              </View>
+              {omrResults.slice(0, 4).map((row: any, idx: number) => (
+                <View key={`${row.title}-${idx}`} style={styles.listRow}>
+                  <Text style={styles.listTitle} numberOfLines={1}>
+                    {row.title}
+                    {row.rank != null && Number(row.rank) > 0 ? ` · #${row.rank}` : ''}
+                  </Text>
+                  <Text style={styles.listPct}>{n(row.percentage)}%</Text>
+                </View>
+              ))}
+
+              <SectionTitle icon="flame-outline" title="Content & progress" />
+              <View style={styles.grid}>
+                <MetricTile
+                  label="Most used subject"
+                  value={
+                    m.mostUsedSubject?.subject ||
+                    (m.topSubjects?.length ? m.topSubjects[0] : '—')
+                  }
+                  hint={
+                    m.mostUsedSubject?.sessions
+                      ? `${n(m.mostUsedSubject.sessions)} activities`
+                      : undefined
+                  }
+                />
+                <MetricTile label="Videos" value={n(m.videosWatched)} />
+                <MetricTile label="Streak" value={n(m.streak) > 0 ? `${n(m.streak)}d` : '0'} />
+                <MetricTile label="Mastery" value={`${n(m.masteryPct)}%`} />
+                <MetricTile label="Homework" value={n(m.homeworkSubmissions)} />
+                <MetricTile label="Chapters" value={n(m.chaptersCompleted)} />
+              </View>
+
+              {(digest.highlights || []).length > 0 ? (
+                <View style={styles.highlights}>
+                  <Text style={styles.highlightsTitle}>This Week At A Glance</Text>
+                  {(digest.highlights || []).map((h) => (
+                    <Text key={h} style={styles.highlightItem}>• {h}</Text>
+                  ))}
+                </View>
+              ) : null}
+
+              <TouchableOpacity
+                style={styles.showLessBtn}
+                onPress={() => setShowAllMetrics(false)}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Show less weekly report metrics"
+              >
+                <Text style={styles.showLessText}>Show Less</Text>
+              </TouchableOpacity>
+            </>
+          )}
 
           <TouchableOpacity style={styles.cta} onPress={() => setPreviewOpen(true)} activeOpacity={0.9}>
             <LinearGradient colors={['#0EA5E9', '#0F766E']} style={styles.ctaGrad}>
@@ -375,18 +472,35 @@ export default function WeeklyDigestCard({
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <LinearGradient colors={['#0EA5E9', '#0284C7', '#0F766E']} style={styles.modalHero}>
-              <Text style={styles.modalBrand}>ASLILEARN · WEEKLY REPORT</Text>
-              <Text style={styles.modalTitle}>{digest?.title || 'Weekly learning report'}</Text>
-              <Text style={styles.modalSub}>{digest?.summary || 'Preview then share as PDF'}</Text>
+              <Text style={styles.modalBrand}>
+                {isTeacher ? 'ASLILEARN · TEACHER WEEKLY REPORT' : 'ASLILEARN · WEEKLY REPORT'}
+              </Text>
+              <Text style={styles.modalTitle}>{digest?.title || 'Weekly Learning Report'}</Text>
+              <Text style={styles.modalSub}>{digest?.summary || 'Preview Then Share As PDF'}</Text>
             </LinearGradient>
             <ScrollView style={styles.modalBody} contentContainerStyle={{ paddingBottom: 12 }}>
               <View style={styles.grid}>
-                <MetricTile label="Logins" value={n(m.loginCount)} />
-                <MetricTile label="Sessions" value={n(m.sessions)} />
-                <MetricTile label="Exams" value={n(m.examAttempts)} />
-                <MetricTile label="Offline" value={n(m.omrAttempts)} />
-                <MetricTile label="AI uses" value={n(m.aiExplanations)} />
-                <MetricTile label="Streak" value={n(m.streak) > 0 ? `${n(m.streak)}d` : '0'} />
+                {isTeacher ? (
+                  <>
+                    <MetricTile label="Logins" value={n(m.loginCount)} />
+                    <MetricTile label="Sessions" value={n(m.sessions)} />
+                    <MetricTile label="Time" value={m.totalTimeLabel || `${n(m.minutes)} min`} />
+                    <MetricTile label="AI resources" value={n(m.generationsCreated)} />
+                    <MetricTile label="Vidya" value={n(m.aiDoubts)} />
+                    <MetricTile label="Status" value={String(m.status || '—')} />
+                    <MetricTile label="School stu." value={n(m.schoolStudentsAccessed)} />
+                    <MetricTile label="School sess." value={n(m.schoolSessions)} />
+                  </>
+                ) : (
+                  <>
+                    <MetricTile label="Logins" value={n(m.loginCount)} />
+                    <MetricTile label="Sessions" value={n(m.sessions)} />
+                    <MetricTile label="Exams" value={n(m.examAttempts)} />
+                    <MetricTile label="Offline" value={n(m.omrAttempts)} />
+                    <MetricTile label="AI uses" value={n(m.aiExplanations)} />
+                    <MetricTile label="Streak" value={n(m.streak) > 0 ? `${n(m.streak)}d` : '0'} />
+                  </>
+                )}
               </View>
               {(digest?.highlights || []).slice(0, 4).map((h) => (
                 <Text key={h} style={styles.highlightItem}>• {h}</Text>
@@ -472,6 +586,25 @@ const styles = StyleSheet.create({
   listSub: { fontSize: 11, color: '#64748B', marginTop: 2 },
   listPct: { fontSize: 13, fontWeight: '800', color: '#0F172A' },
   mutedSmall: { fontSize: 12, color: '#64748B', marginBottom: 4 },
+  loadMoreBtn: {
+    marginTop: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    backgroundColor: 'rgba(240, 249, 255, 0.85)',
+    paddingVertical: 10,
+  },
+  loadMoreText: { fontSize: 13, fontWeight: '700', color: '#075985' },
+  showLessBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
+  showLessText: { fontSize: 13, fontWeight: '600', color: '#64748B' },
   highlights: {
     marginTop: 4,
     borderRadius: 12,

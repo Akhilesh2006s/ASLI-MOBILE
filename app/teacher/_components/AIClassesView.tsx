@@ -37,6 +37,8 @@ interface ClassItem {
 type Props = {
   stats: { totalStudents: number; totalClasses: number; totalVideos: number; pendingGrades?: number };
   initialSubTab?: ClassesSubTab;
+  hideSubNav?: boolean;
+  hideStats?: boolean;
   onOpenProgress?: (classNumber: string, studentId?: string) => void;
 };
 
@@ -166,6 +168,18 @@ function formatClassName(cls: any): string {
   return 'Class';
 }
 
+function classSubjectRaw(cls: any): string {
+  const assigned = Array.isArray(cls.assignedSubjects)
+    ? cls.assignedSubjects.map((item: unknown) => asText(item, '')).filter(Boolean)
+    : [];
+  if (assigned.length) return assigned.join(', ');
+  const listed = Array.isArray(cls.subjects)
+    ? cls.subjects.map((item: unknown) => asText(item, '')).filter(Boolean)
+    : [];
+  if (listed.length) return listed.join(', ');
+  return asText(cls.subject, 'General');
+}
+
 function formatRoom(cls: any): string {
   const room = asText(cls.room, '');
   if (room && room !== 'N/A' && room !== '—') {
@@ -178,7 +192,13 @@ function formatRoom(cls: any): string {
   return '—';
 }
 
-export default function AIClassesView({ stats, initialSubTab, onOpenProgress }: Props) {
+export default function AIClassesView({
+  stats,
+  initialSubTab,
+  hideSubNav,
+  hideStats,
+  onOpenProgress,
+}: Props) {
   const [subTab, setSubTab] = useState<ClassesSubTab>(initialSubTab || 'classes');
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -190,8 +210,8 @@ export default function AIClassesView({ stats, initialSubTab, onOpenProgress }: 
   }, [initialSubTab]);
 
   useEffect(() => {
-    if (subTab === 'classes') loadClasses();
-  }, [subTab]);
+    if (hideSubNav || subTab === 'classes') loadClasses();
+  }, [subTab, hideSubNav]);
 
   const loadClasses = async () => {
     setLoading(true);
@@ -206,7 +226,7 @@ export default function AIClassesView({ stats, initialSubTab, onOpenProgress }: 
             id: String(cls._id || cls.id || ''),
             name: formatClassName(cls),
             section: asText(cls.section, ''),
-            subject: formatSubjectList(asText(cls.subject, 'General')),
+            subject: formatSubjectList(classSubjectRaw(cls)),
             studentCount: cls.students?.length || cls.studentCount || 0,
             schedule: schedule || 'Not Scheduled',
             room: formatRoom(cls),
@@ -283,23 +303,27 @@ export default function AIClassesView({ stats, initialSubTab, onOpenProgress }: 
     );
   };
 
+  const visibleSubTab = hideSubNav ? 'classes' : subTab;
+
   return (
     <View style={styles.root}>
-      <SubNavChips items={SUB_TABS} active={subTab} onChange={(id: string) => setSubTab(id as ClassesSubTab)} />
+      {hideSubNav ? null : (
+        <SubNavChips items={SUB_TABS} active={subTab} onChange={(id: string) => setSubTab(id as ClassesSubTab)} />
+      )}
 
-      {subTab === 'classes' ? <StatsRibbon stats={stats} /> : null}
+      {visibleSubTab === 'classes' && !hideStats ? <StatsRibbon stats={stats} /> : null}
 
-      {stale && subTab === 'classes' ? (
+      {stale && visibleSubTab === 'classes' ? (
         <View style={styles.staleBanner}>
           <Ionicons name="cloud-offline-outline" size={14} color={TEACHER.warning} />
-          <Text style={styles.staleBannerText}>Showing cached data</Text>
+          <Text style={styles.staleBannerText}>Showing Cached Data</Text>
         </View>
       ) : null}
 
-      {subTab === 'classes' && renderClasses()}
+      {visibleSubTab === 'classes' && renderClasses()}
 
-      {subTab === 'timetable' && <TimetableView />}
-      {subTab === 'schedule' && <ScheduleCalendarView />}
+      {visibleSubTab === 'timetable' && <TimetableView />}
+      {visibleSubTab === 'schedule' && <ScheduleCalendarView />}
     </View>
   );
 }

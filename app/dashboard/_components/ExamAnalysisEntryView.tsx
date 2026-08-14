@@ -73,7 +73,7 @@ export default function ExamAnalysisEntryView() {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={STUDENT.primary} />
-        <Text style={styles.loadingText}>Loading your latest exam analysis…</Text>
+        <Text style={styles.loadingText}>Loading Your Latest Exam Analysis…</Text>
       </View>
     );
   }
@@ -82,7 +82,7 @@ export default function ExamAnalysisEntryView() {
     return (
       <View style={styles.centered}>
         <Ionicons name="analytics-outline" size={48} color={STUDENT.textMuted} />
-        <Text style={styles.emptyTitle}>No exam analysis yet</Text>
+        <Text style={styles.emptyTitle}>No Exam Analysis Yet</Text>
         <Text style={styles.emptyText}>
           Complete an exam, then open Attempted Exams → View Details for the full AI Report, Questions,
           Advanced, Insights, and Plan tabs.

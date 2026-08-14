@@ -623,11 +623,11 @@ export default function StudentToolPage() {
   ) => {
     if (!isDisabled) return field.placeholder || `Select ${field.label.replace(' *', '')}`;
 
-    if (field.name === 'gradeLevel' && cascade.loadingClasses) return 'Loading classes...';
+    if (field.name === 'gradeLevel' && cascade.loadingClasses) return 'Loading Classes...';
     if (field.name === 'subject') {
-      if (!formParams.gradeLevel || cascade.loadingSubjects) return 'Select class first';
+      if (!formParams.gradeLevel || cascade.loadingSubjects) return 'Select Class First';
       if (subjectsForTool.length === 0) {
-        return 'No subjects available';
+        return 'No Subjects Available';
       }
     }
     if (
@@ -637,23 +637,23 @@ export default function StudentToolPage() {
         field.name === 'chapter' ||
         field.name === 'projectTopic')
     ) {
-      if (!formParams.gradeLevel) return 'Select class first';
-      if (!formParams.subject || cascade.loadingTopics) return 'Select subject first';
-      if (cascade.loadingTopics) return 'Loading topics...';
-      if (fieldOptions.length === 0) return 'No topics available';
+      if (!formParams.gradeLevel) return 'Select Class First';
+      if (!formParams.subject || cascade.loadingTopics) return 'Select Subject First';
+      if (cascade.loadingTopics) return 'Loading Topics...';
+      if (fieldOptions.length === 0) return 'No Topics Available';
     }
     if (field.isCascadeSubtopic) {
-      if (!(formParams.topic || formParams.chapter)) return 'Select topic first';
-      if (cascade.loadingSubtopics) return 'Loading subtopics...';
+      if (!(formParams.topic || formParams.chapter)) return 'Select Topic First';
+      if (cascade.loadingSubtopics) return 'Loading Subtopics...';
       if (cascade.subtopics.length === 0 && !String(formParams.subTopic || '').trim()) {
-        return 'No subtopics available';
+        return 'No Subtopics Available';
       }
     }
     if (fieldOptions.length === 0 && field.dependsOn) {
       const parent = config?.fields.find((f) => f.name === field.dependsOn);
       return `Select ${parent?.label.replace(' *', '') || 'class'} first`;
     }
-    return field.placeholder || 'No options available';
+    return field.placeholder || 'No Options Available';
   };
 
   const openDropdown = (
@@ -747,7 +747,7 @@ export default function StudentToolPage() {
           );
           return;
         }
-        throw new Error(result.message || 'Content fetch failed');
+        throw new Error(result.message || 'Content Fetch Failed');
       }
 
       const stored = storeAiToolSuccessPayload(apiToolType, result.content, result.rawContent, 'student');
@@ -834,7 +834,7 @@ export default function StudentToolPage() {
     required?: boolean
   ) => {
     const icon = FIELD_ICONS[fieldName] || 'chevron-down-circle-outline';
-    const displayLabel = value === WHOLE_CHAPTER_VALUE ? 'Whole chapter' : value;
+    const displayLabel = value === WHOLE_CHAPTER_VALUE ? 'Whole Chapter' : value;
     const display = displayLabel || hint;
     const isPlaceholder = !value;
 
@@ -979,22 +979,22 @@ export default function StudentToolPage() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
         <StatusBar style="dark" />
-        <StudentScreenHeader title="Tool not found" onBack={goBack} />
+        <StudentScreenHeader title="Tool Not Found" onBack={goBack} />
         <View style={styles.errorContainer}>
           <View style={styles.errorIconWrap}>
             <Ionicons name="alert-circle-outline" size={48} color={STUDENT.danger} />
           </View>
-          <Text style={styles.errorTitle}>Tool not found</Text>
+          <Text style={styles.errorTitle}>Tool Not Found</Text>
           <Text style={styles.errorSubtitle}>This AI tool is not available on mobile yet.</Text>
           <TouchableOpacity style={styles.errorButton} onPress={goBack}>
-            <Text style={styles.errorButtonText}>Go back</Text>
+            <Text style={styles.errorButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
   }
 
-  const parameterTitle = 'Choose what to generate';
+  const parameterTitle = 'Choose What To Generate';
   const pageBgStyle = styles.container;
 
   const chapterValue = String(formParams.topic || formParams.chapter || '');
@@ -1094,7 +1094,7 @@ export default function StudentToolPage() {
         <>
           <FormSection
             title={parameterTitle}
-            subtitle="Start with your board and class details"
+            subtitle="Start With Your Board And Class Details"
             accent={accent}
             icon="sparkles"
             tabletUi={isTablet}
@@ -1103,7 +1103,7 @@ export default function StudentToolPage() {
               'board',
               'Board',
               selectedBoard,
-              'Select board',
+              'Select Board',
               boardOptions,
               isLoadingUser,
               false,
@@ -1114,7 +1114,7 @@ export default function StudentToolPage() {
                   'batch',
                   'Batch',
                   String(formParams.batch || ''),
-                  'Select batch',
+                  'Select Batch',
                   BATCH_OPTIONS,
                   false,
                   false,
@@ -1126,8 +1126,8 @@ export default function StudentToolPage() {
 
           {topicFields.length > 0 || extraFields.length > 0 ? (
             <FormSection
-              title="Topic details"
-              subtitle="Pick chapter and sub-topic from syllabus"
+              title="Topic Details"
+              subtitle="Pick Chapter And Sub-Topic From Syllabus"
               accent={accent}
               icon="book-outline"
               tabletUi={isTablet}
@@ -1241,7 +1241,7 @@ export default function StudentToolPage() {
                 fallbackEmptyMessage ? styles.emptyResultTitleError : null,
               ]}
             >
-              {fallbackEmptyMessage || 'Fill in the form and generate to see your result'}
+              {fallbackEmptyMessage || 'Fill In The Form And Generate To See Your Result'}
             </Text>
             {!fallbackEmptyMessage ? (
               <Text style={[styles.emptyResultText, isTablet && aiToolTabletPageStyles.emptyResultText]}>
@@ -1292,7 +1292,7 @@ export default function StudentToolPage() {
           <>
             <AiGenerateIcon size={isTablet ? 22 : 20} color={STUDENT.textOnPrimary} />
             <Text style={[styles.generateBtnText, isTablet && aiToolTabletPageStyles.generateBtnText]}>
-              Generate with AI
+              Generate With AI
             </Text>
           </>
         )}

@@ -72,7 +72,7 @@ export default function LiveSessionsView() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#3b82f6" />
-        <Text style={styles.loadingText}>Loading sessions...</Text>
+        <Text style={styles.loadingText}>Loading Sessions...</Text>
       </View>
     );
   }
@@ -101,8 +101,8 @@ export default function LiveSessionsView() {
         {filteredSessions.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="videocam-off" size={64} color="#5B6779" />
-            <Text style={styles.emptyText}>No live sessions found</Text>
-            <Text style={styles.emptySubtext}>Live sessions will appear here when available</Text>
+            <Text style={styles.emptyText}>No Live Sessions Found</Text>
+            <Text style={styles.emptySubtext}>Live Sessions Will Appear Here When Available</Text>
           </View>
         ) : (
           filteredSessions.map((session) => {
@@ -148,7 +148,7 @@ export default function LiveSessionsView() {
                     {session.viewerCount !== undefined && (
                       <View style={styles.metaItem}>
                         <Ionicons name="people" size={16} color="#6b7280" />
-                        <Text style={styles.metaText}>{session.viewerCount} viewers</Text>
+                        <Text style={styles.metaText}>{session.viewerCount} Viewers</Text>
                       </View>
                     )}
                     {isScheduled && session.scheduledTime && (

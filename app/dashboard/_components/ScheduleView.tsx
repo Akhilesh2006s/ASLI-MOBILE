@@ -114,8 +114,8 @@ export default function ScheduleView() {
       ) : incompleteContent.length === 0 && incompleteQuizzes.length === 0 ? (
         <View style={styles.emptyState}>
           <Ionicons name="checkmark-circle" size={64} color="#10b981" />
-          <Text style={styles.emptyStateTitle}>All caught up!</Text>
-          <Text style={styles.emptyStateText}>No pending content or quizzes</Text>
+          <Text style={styles.emptyStateTitle}>All Caught Up!</Text>
+          <Text style={styles.emptyStateText}>No Pending Content Or Quizzes</Text>
         </View>
       ) : (
         <ScrollView style={styles.content}>
@@ -143,8 +143,8 @@ export default function ScheduleView() {
                     </Text>
                     <View style={styles.priorityBadge}>
                       <Text style={styles.priorityText}>
-                        {quiz.difficulty === 'Hard' || quiz.difficulty === 'Expert' ? 'high' :
-                         quiz.difficulty === 'Medium' ? 'medium' : 'low'}
+                        {quiz.difficulty === 'Hard' || quiz.difficulty === 'Expert' ? 'High' :
+                         quiz.difficulty === 'Medium' ? 'Medium' : 'Low'}
                       </Text>
                     </View>
                   </View>
@@ -158,10 +158,10 @@ export default function ScheduleView() {
                     </Text>
                     <View style={styles.todoMetaItem}>
                       <Ionicons name="time" size={14} color="#6b7280" />
-                      <Text style={styles.todoMetaText}>{quiz.duration || 30} min</Text>
+                      <Text style={styles.todoMetaText}>{quiz.duration || 30} Min</Text>
                     </View>
                     {quiz.questionCount > 0 && (
-                      <Text style={styles.todoMetaText}>{quiz.questionCount} questions</Text>
+                      <Text style={styles.todoMetaText}>{quiz.questionCount} Questions</Text>
                     )}
                   </View>
                 </View>
@@ -207,7 +207,7 @@ export default function ScheduleView() {
                     </Text>
                     <View style={[styles.priorityBadge, isHomework && styles.priorityBadgeHigh]}>
                       <Text style={[styles.priorityText, isHomework && styles.priorityTextHigh]}>
-                        {isHomework ? 'high' : 'medium'}
+                        {isHomework ? 'High' : 'Medium'}
                       </Text>
                     </View>
                   </View>

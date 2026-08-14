@@ -124,7 +124,7 @@ export default function AnalyticsDashboardView() {
     <AdminScreenShell refreshing={refreshing} onRefresh={() => fetchAnalytics(true)}>
       <AdminSectionHeader
         title="Analytics Dashboard"
-        subtitle="Real-time school performance insights"
+        subtitle="Real-Time School Performance Insights"
         icon="analytics-outline"
         action={
           <AdminScalePressable

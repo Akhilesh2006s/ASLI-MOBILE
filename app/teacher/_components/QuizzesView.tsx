@@ -62,10 +62,10 @@ export default function QuizzesView() {
               </View>
             </View>
             <Text style={styles.meta}>
-              {quiz.subject || 'General'} · {quiz.questions?.length || quiz.questionCount || 0} questions
+              {quiz.subject || 'General'} · {quiz.questions?.length || quiz.questionCount || 0} Questions
             </Text>
             {quiz.averageScore != null ? (
-              <Text style={styles.score}>Avg score: {quiz.averageScore}%</Text>
+              <Text style={styles.score}>Avg Score: {quiz.averageScore}%</Text>
             ) : null}
           </GlassPanel>
         </Animated.View>
@@ -74,8 +74,8 @@ export default function QuizzesView() {
       {!quizzes.length ? (
         <View style={styles.empty}>
           <Ionicons name="help-circle-outline" size={40} color={TEACHER.textMuted} />
-          <Text style={styles.emptyText}>No quizzes created yet</Text>
-          <Text style={styles.emptySub}>Use the quiz builder to create your first quiz</Text>
+          <Text style={styles.emptyText}>No Quizzes Created Yet</Text>
+          <Text style={styles.emptySub}>Use The Quiz Builder To Create Your First Quiz</Text>
         </View>
       ) : null}
     </View>

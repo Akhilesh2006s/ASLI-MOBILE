@@ -241,7 +241,7 @@ export function AiReportTabMobile({ result, examTitle, studentName, aiAnalysis, 
         <LinearGradient colors={[...ANALYSIS.gradientHero]} style={analysisStyles.hero}>
           <Text style={analysisStyles.heroEyebrow}>{examTitle || result.examTitle || 'Exam'} · {totalQuestionCount} Qs</Text>
           <Text style={analysisStyles.heroTitle}>Performance Report</Text>
-          <Text style={analysisStyles.heroSub}>Personalised for {studentName}</Text>
+          <Text style={analysisStyles.heroSub}>Personalised For {studentName}</Text>
         </LinearGradient>
 
         <GlassPanel style={panelStyles.scoreCardBody} radius={20} tone="strong">
@@ -250,8 +250,8 @@ export function AiReportTabMobile({ result, examTitle, studentName, aiAnalysis, 
             {scoreRing}
             <View style={panelStyles.scoreCardTabletMid}>
               <Text style={panelStyles.scoreBigTablet}>{result.obtainedMarks || 0}</Text>
-              <Text style={panelStyles.scoreDenomTablet}>out of {examTotalMarks} marks (net)</Text>
-              <Text style={panelStyles.scoreRingPct}>{marksPercent.toFixed(1)}% score</Text>
+              <Text style={panelStyles.scoreDenomTablet}>Out Of {examTotalMarks} Marks (Net)</Text>
+              <Text style={panelStyles.scoreRingPct}>{marksPercent.toFixed(1)}% Score</Text>
               {statsBoxes}
             </View>
             <View style={panelStyles.scoreCardTabletEnd}>
@@ -265,8 +265,8 @@ export function AiReportTabMobile({ result, examTitle, studentName, aiAnalysis, 
               {scoreRing}
               <View style={panelStyles.scoreRingMeta}>
                 <Text style={panelStyles.scoreBig}>{result.obtainedMarks || 0}</Text>
-                <Text style={panelStyles.scoreDenom}>out of {examTotalMarks} marks (net)</Text>
-                <Text style={panelStyles.scoreRingPct}>{marksPercent.toFixed(1)}% score</Text>
+                <Text style={panelStyles.scoreDenom}>Out Of {examTotalMarks} Marks (Net)</Text>
+                <Text style={panelStyles.scoreRingPct}>{marksPercent.toFixed(1)}% Score</Text>
               </View>
             </View>
             {statsBoxes}
@@ -281,7 +281,7 @@ export function AiReportTabMobile({ result, examTitle, studentName, aiAnalysis, 
       {aiLoading && !aiAnalysis?.summary ? (
         <View style={panelStyles.loadingRow}>
           <ActivityIndicator color="#9333ea" />
-          <Text style={panelStyles.loadingText}>Generating AI report…</Text>
+          <Text style={panelStyles.loadingText}>Generating AI Report…</Text>
         </View>
       ) : null}
 
@@ -317,9 +317,9 @@ export function AiReportTabMobile({ result, examTitle, studentName, aiAnalysis, 
 
       <AnalysisCard title="Score Reconciliation" icon="calculator-outline" accent="#0EA5E9">
         {[
-          { lab: 'Marks earned', pct: reconciliation.earnedPct, val: `+${reconciliation.earned}`, color: '#16a34a' },
-          { lab: 'Negative penalty', pct: reconciliation.negPct, val: `−${reconciliation.neg}`, color: '#dc2626' },
-          { lab: 'Final score (net)', pct: reconciliation.netPct, val: String(reconciliation.net), color: '#9333ea' },
+          { lab: 'Marks Earned', pct: reconciliation.earnedPct, val: `+${reconciliation.earned}`, color: '#16a34a' },
+          { lab: 'Negative Penalty', pct: reconciliation.negPct, val: `−${reconciliation.neg}`, color: '#dc2626' },
+          { lab: 'Final Score (Net)', pct: reconciliation.netPct, val: String(reconciliation.net), color: '#9333ea' },
         ].map((row) => (
           <View key={row.lab} style={panelStyles.reconRow}>
             <Text style={panelStyles.reconLabel}>{row.lab}</Text>
@@ -344,7 +344,7 @@ export function AiReportTabMobile({ result, examTitle, studentName, aiAnalysis, 
             {potentialMetrics.wrong > 0 ? `+${potentialMetrics.swing}` : String(potentialMetrics.net)}
           </Text>
           {potentialMetrics.wrong > 0 ? (
-            <Text style={panelStyles.potentialCaption}>marks recoverable</Text>
+            <Text style={panelStyles.potentialCaption}>Marks Recoverable</Text>
           ) : null}
         </View>
         <Text style={panelStyles.potentialBody}>
@@ -361,10 +361,10 @@ export function AiReportTabMobile({ result, examTitle, studentName, aiAnalysis, 
         <StackedTaxonomyBar taxonomy={mistakeTaxonomy} />
         <View style={panelStyles.taxonomyGrid}>
           {[
-            { label: 'Silly slips', count: mistakeTaxonomy.careless },
-            { label: 'Conceptual gaps', count: mistakeTaxonomy.conceptual },
+            { label: 'Silly Slips', count: mistakeTaxonomy.careless },
+            { label: 'Conceptual Gaps', count: mistakeTaxonomy.conceptual },
             { label: 'Procedural', count: mistakeTaxonomy.procedural },
-            { label: 'Time pressure', count: mistakeTaxonomy.time },
+            { label: 'Time Pressure', count: mistakeTaxonomy.time },
           ].map((item) => (
             <View key={item.label} style={[panelStyles.taxonomyCell, isTablet && panelStyles.taxonomyCellTablet]}>
               <Text style={panelStyles.taxonomyCount}>{item.count}</Text>
@@ -494,7 +494,7 @@ function QuestionAnalysisSection({
           {aiLoading && blocks.length === 0 ? (
             <View style={panelStyles.analysisLoading}>
               <ActivityIndicator size="small" color="#7c3aed" />
-              <Text style={panelStyles.metaText}>Loading explanation…</Text>
+              <Text style={panelStyles.metaText}>Loading Explanation…</Text>
             </View>
           ) : blocks.length > 0 ? (
             blocks.map((block, bi) => (
@@ -509,7 +509,7 @@ function QuestionAnalysisSection({
       ) : aiLoading ? (
         <View style={panelStyles.analysisLoading}>
           <ActivityIndicator size="small" color="#7c3aed" />
-          <Text style={panelStyles.metaText}>Loading question analysis…</Text>
+          <Text style={panelStyles.metaText}>Loading Question Analysis…</Text>
         </View>
       ) : (
         <Text style={panelStyles.metaText}>Open this question after the report finishes loading.</Text>
@@ -563,9 +563,9 @@ export function QuestionsTabMobile({
     { id: 'correct', label: `Correct · ${counts.correct}` },
     { id: 'wrong', label: `Wrong · ${counts.wrong}` },
     { id: 'skipped', label: `Skipped · ${counts.skipped}` },
-    { id: 'wrong-quick', label: `⚡ Wrong-quick · ${counts.wrongQuick}` },
+    { id: 'wrong-quick', label: `⚡ Wrong-Quick · ${counts.wrongQuick}` },
     { id: 'hard-wrong', label: `Hard+Wrong · ${counts.hardWrong}` },
-    { id: 'time-pressure', label: `⏱ Time-pressure · ${counts.timePressure}` },
+    { id: 'time-pressure', label: `⏱ Time-Pressure · ${counts.timePressure}` },
   ];
 
   const filterPills = filterOptions.map((pill) => (
@@ -649,7 +649,7 @@ export function QuestionsTabMobile({
                 <MathRenderer formula={qText} style={panelStyles.qText} />
                 {errType ? (
                   <Text style={panelStyles.qErrorTag}>
-                    {errType === 'careless' ? 'Careless' : errType === 'conceptual' ? 'Conceptual' : errType === 'time-pressure' ? 'Time pressure' : 'Reading'}
+                    {errType === 'careless' ? 'Careless' : errType === 'conceptual' ? 'Conceptual' : errType === 'time-pressure' ? 'Time Pressure' : 'Reading'}
                   </Text>
                 ) : null}
               </TouchableOpacity>
@@ -748,7 +748,7 @@ export function QuestionsTabMobile({
                   <View style={panelStyles.yourAnswerCard}>
                     <Text style={panelStyles.answerCardLabel}>Your Answer</Text>
                     <MathRenderer
-                      formula={userAnswerTexts.length > 0 ? userAnswerTexts.join(', ') : 'Not attempted'}
+                      formula={userAnswerTexts.length > 0 ? userAnswerTexts.join(', ') : 'Not Attempted'}
                       style={panelStyles.answerCardValue}
                     />
                   </View>
@@ -948,7 +948,7 @@ export function InsightsTabMobile({ result, aiAnalysis }: { result: ExamAnalysis
         <View style={panelStyles.timeIntelGrid}>
           <View style={panelStyles.timeIntelCell}>
             <Text style={panelStyles.timeIntelVal}>{formatExamTime(avgTimePerQuestion)}</Text>
-            <Text style={panelStyles.metaText}>Avg per Question</Text>
+            <Text style={panelStyles.metaText}>Avg Per Question</Text>
           </View>
           <View style={panelStyles.timeIntelCell}>
             <Text style={panelStyles.timeIntelVal}>{speedRatingLabel}</Text>
@@ -971,7 +971,7 @@ export function InsightsTabMobile({ result, aiAnalysis }: { result: ExamAnalysis
         </View>
       </AnalysisCard>
 
-      <Text style={panelStyles.sectionHeading}>Subject-wise performance</Text>
+      <Text style={panelStyles.sectionHeading}>Subject-Wise Performance</Text>
       <View style={[panelStyles.subjectGrid, isTablet && panelStyles.subjectGridTablet]}>
         {Object.entries(result.subjectWiseScore || {}).map(([subject, score]) => {
           const pct = score.total > 0 ? (score.correct / score.total) * 100 : 0;
@@ -999,7 +999,7 @@ export function InsightsTabMobile({ result, aiAnalysis }: { result: ExamAnalysis
         )}
       </AnalysisCard>
 
-      <AnalysisCard title="Areas for Improvement" icon="flag" accent="#F59E0B">
+      <AnalysisCard title="Areas For Improvement" icon="flag" accent="#F59E0B">
         {weakAreas.length > 0 ? weakAreas.map((area, i) => (
           <View key={i} style={[panelStyles.weakCard, { backgroundColor: area.bg }]}>
             <View style={panelStyles.weakHeader}>
@@ -1088,7 +1088,7 @@ export function PlanTabMobile({
 
   const focusChapterCards = useMemo(() => {
     const fromFocus = (aiAnalysis?.focusAreas || []).slice(0, 6).map((f, i) => {
-      const chapter = String((f as { topic?: string }).topic || f.issue || f.subject || 'Focus chapter').trim();
+      const chapter = String((f as { topic?: string }).topic || f.issue || f.subject || 'Focus Chapter').trim();
       const subject = String(f.subject || 'General');
       return {
         subj: subject.toUpperCase(),
@@ -1153,8 +1153,8 @@ export function PlanTabMobile({
         >
           <Ionicons name="create-outline" size={18} color="#0369A1" />
           <View style={{ flex: 1 }}>
-            <Text style={panelStyles.missReviewTitle}>Review wrong answers</Text>
-            <Text style={panelStyles.metaText}>Open the Questions tab to revisit misses</Text>
+            <Text style={panelStyles.missReviewTitle}>Review Wrong Answers</Text>
+            <Text style={panelStyles.metaText}>Open The Questions Tab To Revisit Misses</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color="#64748B" />
         </TouchableOpacity>
@@ -1189,7 +1189,7 @@ export function PlanTabMobile({
           planQueueOffsetRef.current = event.nativeEvent.layout.y;
         }}
       >
-      <AnalysisCard title={activeTopic?.title || 'Focus topic'} icon="bookmark" accent={ANALYSIS.accent}>
+      <AnalysisCard title={activeTopic?.title || 'Focus Topic'} icon="bookmark" accent={ANALYSIS.accent}>
         <Text style={panelStyles.metaText}>{activeTopic?.subtitle} · {activeTopic?.duration}</Text>
         <Text style={panelStyles.queueHeading}>WARM-UP · {planQueue.warmup.length} EASY Qs</Text>
         {planQueue.warmup.map((item, i) => (
@@ -1206,8 +1206,8 @@ export function PlanTabMobile({
       </AnalysisCard>
       </View>
 
-      <AnalysisCard title="Chapters & subtopics to focus on" icon="book" accent="#0D9488">
-        <Text style={panelStyles.metaText}>Opens Learning Paths — not YouTube</Text>
+      <AnalysisCard title="Chapters & Subtopics To Focus On" icon="book" accent="#0D9488">
+        <Text style={panelStyles.metaText}>Opens Learning Paths — Not YouTube</Text>
         <View style={panelStyles.videoGrid}>
           {focusChapterCards.map((v, i) => (
             <TouchableOpacity
@@ -1223,9 +1223,9 @@ export function PlanTabMobile({
               <Text style={panelStyles.videoSubj}>{v.subj}</Text>
               <Ionicons name="library-outline" size={26} color="#0F766E" style={{ alignSelf: 'center', marginVertical: 8 }} />
               <Text style={panelStyles.videoTitle}>{v.title}</Text>
-              <Text style={panelStyles.metaText}>Focus score: {Math.round(v.mastery)}%</Text>
+              <Text style={panelStyles.metaText}>Focus Score: {Math.round(v.mastery)}%</Text>
               <Text style={[panelStyles.metaText, { color: '#0F766E', fontWeight: '700', marginTop: 4 }]}>
-                Open in Learning Paths →
+                Open In Learning Paths →
               </Text>
             </TouchableOpacity>
           ))}

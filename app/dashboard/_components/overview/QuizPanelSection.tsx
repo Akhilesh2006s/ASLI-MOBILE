@@ -117,7 +117,7 @@ export default function QuizPanelSection() {
   const openQuiz = (quiz: PanelQuiz) => {
     if (quiz.isDaily && dailyStatus?.lockedUntilTomorrow) {
       Alert.alert(
-        'Already completed',
+        'Already Completed',
         'You’ve finished today’s daily quiz. Tomorrow’s set unlocks after midnight (IST).'
       );
       return;
@@ -137,11 +137,11 @@ export default function QuizPanelSection() {
           </View>
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.title}>Quiz</Text>
-            <Text style={styles.subtitle}>Start a quiz · see your previous %</Text>
+            <Text style={styles.subtitle}>Start A Quiz · See Your Previous %</Text>
           </View>
         </View>
         <TouchableOpacity onPress={() => router.push('/iq-rank-boost-subjects')} activeOpacity={0.8}>
-          <Text style={styles.viewAll}>View all</Text>
+          <Text style={styles.viewAll}>View All</Text>
         </TouchableOpacity>
       </View>
 
@@ -152,7 +152,7 @@ export default function QuizPanelSection() {
       ) : quizzes.length === 0 ? (
         <View style={styles.emptyBox}>
           <Ionicons name="locate-outline" size={28} color="#7dd3fc" />
-          <Text style={styles.emptyTitle}>No quizzes yet</Text>
+          <Text style={styles.emptyTitle}>No Quizzes Yet</Text>
           <Text style={styles.emptySub}>Assigned quizzes will show up here.</Text>
         </View>
       ) : (
@@ -172,7 +172,7 @@ export default function QuizPanelSection() {
                     </Text>
                     <Text style={styles.itemMeta}>
                       {quiz.isDaily
-                        ? 'Daily · Class bank'
+                        ? 'Daily · Class Bank'
                         : typeof quiz.subject === 'object'
                           ? quiz.subject?.name || 'Quiz'
                           : 'Quiz'}
@@ -195,7 +195,7 @@ export default function QuizPanelSection() {
                   {prevPercent != null ? (
                     <Text style={styles.prevPct}>{prevPercent}%</Text>
                   ) : (
-                    <Text style={styles.notAttempted}>Not attempted</Text>
+                    <Text style={styles.notAttempted}>Not Attempted</Text>
                   )}
                 </View>
 
@@ -216,11 +216,11 @@ export default function QuizPanelSection() {
                         }
                       }}
                     >
-                      <Text style={styles.outlineBtnText}>View today’s result</Text>
+                      <Text style={styles.outlineBtnText}>View Today’s Result</Text>
                     </TouchableOpacity>
                     <View style={styles.lockedBtn}>
                       <Ionicons name="lock-closed" size={14} color="#64748b" />
-                      <Text style={styles.lockedBtnText}>Locked until tomorrow</Text>
+                      <Text style={styles.lockedBtnText}>Locked Until Tomorrow</Text>
                     </View>
                   </View>
                 ) : (
@@ -240,7 +240,7 @@ export default function QuizPanelSection() {
           <View style={styles.unlockCard}>
             <View style={styles.extraHeader}>
               <Ionicons name="lock-closed" size={14} color="#0369a1" />
-              <Text style={styles.extraTitle}>Next unlock</Text>
+              <Text style={styles.extraTitle}>Next Unlock</Text>
             </View>
             <Text style={styles.extraBody}>
               {dailyStatus?.lockedUntilTomorrow
@@ -253,7 +253,7 @@ export default function QuizPanelSection() {
                 Unlocks{' '}
                 {dailyStatus?.nextUnlockDateKey
                   ? formatDateKeyLabel(dailyStatus.nextUnlockDateKey)
-                  : 'tomorrow'}
+                  : 'Tomorrow'}
               </Text>
             </View>
           </View>
@@ -262,10 +262,10 @@ export default function QuizPanelSection() {
             <View style={styles.prevHeader}>
               <View style={styles.extraHeader}>
                 <Ionicons name="trophy" size={14} color="#0f766e" />
-                <Text style={[styles.extraTitle, { color: '#0f766e' }]}>Previous results</Text>
+                <Text style={[styles.extraTitle, { color: '#0f766e' }]}>Previous Results</Text>
               </View>
               <TouchableOpacity onPress={() => router.push('/iq-rank-boost-subjects')}>
-                <Text style={styles.seeAll}>See all</Text>
+                <Text style={styles.seeAll}>See All</Text>
               </TouchableOpacity>
             </View>
             {dailyStatus?.history?.length ? (

@@ -101,7 +101,7 @@ export default function RankingsTab({ rankings }: Props) {
     <View style={styles.wrap}>
       <View style={styles.pageHeader}>
         <Text style={styles.pageTitle}>Your Performance Rankings</Text>
-        <Text style={styles.pageSub}>Your rank and percentile across all exams</Text>
+        <Text style={styles.pageSub}>Your Rank And Percentile Across All Exams</Text>
       </View>
 
       <View style={[styles.topThreeGrid, isTablet && styles.topThreeGridTablet]}>
@@ -173,7 +173,7 @@ export default function RankingsTab({ rankings }: Props) {
                   </Text>
                   <Text style={styles.leaderboardMeta} numberOfLines={2}>
                     {attempt != null ? `Attempt ${attempt} • ` : ''}
-                    {ranking.obtainedMarks ?? 0}/{ranking.totalMarks ?? 0} marks
+                    {ranking.obtainedMarks ?? 0}/{ranking.totalMarks ?? 0} Marks
                     {completedLabel ? ` • ${completedLabel}` : ''}
                   </Text>
                 </View>

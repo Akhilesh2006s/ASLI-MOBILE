@@ -221,7 +221,7 @@ export default function StudentRiskAnalysisModal({
       }
       Alert.alert('Success', 'PDF downloaded and sent to student successfully!');
     } catch (err: any) {
-      Alert.alert('Error', err?.friendlyMessage || err?.message || 'Failed to download PDF');
+      Alert.alert('Error', err?.friendlyMessage || err?.message || 'Failed To Download PDF');
     } finally {
       setDownloading(false);
     }
@@ -252,7 +252,7 @@ export default function StudentRiskAnalysisModal({
               <Text style={styles.title}>AI Student Risk Analysis</Text>
               {studentName ? <Text style={styles.subtitle}>— {studentName}</Text> : null}
               <Text style={styles.description}>
-                Comprehensive AI-powered analysis of student performance patterns and risk assessment
+                Comprehensive AI-Powered Analysis Of Student Performance Patterns And Risk Assessment
               </Text>
             </View>
             <Pressable
@@ -276,15 +276,15 @@ export default function StudentRiskAnalysisModal({
             {loading ? (
               <View style={styles.centerBox}>
                 <ActivityIndicator size="large" color="#ea580c" />
-                <Text style={styles.loadingTitle}>Analyzing student performance with AI…</Text>
-                <Text style={styles.mutedText}>This may take a few moments</Text>
+                <Text style={styles.loadingTitle}>Analyzing Student Performance With AI…</Text>
+                <Text style={styles.mutedText}>This May Take A Few Moments</Text>
               </View>
             ) : noExamData ? (
               <View style={styles.centerBox}>
                 <View style={styles.emptyIconWrap}>
                   <Ionicons name="sparkles" size={32} color="#ea580c" />
                 </View>
-                <Text style={styles.emptyTitle}>Not enough data yet</Text>
+                <Text style={styles.emptyTitle}>Not Enough Data Yet</Text>
                 <Text style={styles.mutedText}>
                   {studentName ? `${studentName} hasn't` : "This student hasn't"} completed any exams in the
                   selected period. AI risk analysis will be available after their first exam result is recorded.
@@ -414,7 +414,7 @@ export default function StudentRiskAnalysisModal({
                 </SectionCard>
 
                 {Object.keys(data.subjectBreakdown || {}).length > 0 ? (
-                  <SectionCard title="Subject-wise Analysis" icon="book-outline">
+                  <SectionCard title="Subject-Wise Analysis" icon="book-outline">
                     {Object.entries(data.subjectBreakdown).map(([subject, subjectData]) => {
                       const perf = performanceStyle(subjectData.performance);
                       return (
@@ -447,7 +447,7 @@ export default function StudentRiskAnalysisModal({
                     </Text>
                     {data.dataPoints ? (
                       <Text style={styles.metaText}>
-                        Based on {data.dataPoints} exam{data.dataPoints !== 1 ? 's' : ''}
+                        Based On {data.dataPoints} exam{data.dataPoints !== 1 ? 's' : ''}
                       </Text>
                     ) : null}
                   </View>
@@ -472,7 +472,7 @@ export default function StudentRiskAnalysisModal({
                   <Ionicons name="download-outline" size={18} color="#fff" />
                 )}
                 <Text style={styles.primaryBtnText}>
-                  {downloading ? 'Generating…' : 'Download PDF & Send to Student'}
+                  {downloading ? 'Generating…' : 'Download PDF & Send To Student'}
                 </Text>
               </AdminScalePressable>
               <AdminScalePressable style={styles.refreshBtn} onPress={() => void fetchAnalysis()}>

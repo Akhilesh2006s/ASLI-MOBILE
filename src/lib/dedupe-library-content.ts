@@ -1,4 +1,4 @@
-import { filterContentsBySchoolProgram, filterByProductCategory } from './school-program';
+import { filterContentsBySchoolProgram, filterByProductCategory, filterVideosForEduOtt, filterVideosForLearningPath } from './school-program';
 import {
   filterLibraryContentsForSubjectSlot,
   formatProductCategoryLabel,
@@ -36,6 +36,7 @@ export type LibraryContentRow = {
   driveLink?: string;
   classNumber?: string | number | null;
   productCategory?: string | null;
+  board?: string | null;
   subject?:
     | {
         _id?: string;
@@ -212,6 +213,7 @@ export function dedupeLibraryContents<T extends LibraryContentRow>(
 export type PrepareLibraryContentsOptions = {
   subjectSlot?: LibrarySubjectContext | null;
   schoolIitCategories?: string[];
+  surface?: 'learning-path' | 'eduott';
 };
 
 /**
@@ -232,6 +234,11 @@ export function prepareLibraryContents<T extends LibraryContentRow>(
       }>,
       options.schoolIitCategories,
     ) as T[];
+  }
+  if (options?.surface === 'learning-path') {
+    list = filterVideosForLearningPath(list);
+  } else if (options?.surface === 'eduott') {
+    list = filterVideosForEduOtt(list);
   }
   if (options?.subjectSlot) {
     list = filterLibraryContentsForSubjectSlot(list, options.subjectSlot);

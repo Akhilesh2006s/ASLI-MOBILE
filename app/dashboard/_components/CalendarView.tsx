@@ -201,7 +201,7 @@ export default function CalendarView({ contents: propContents, onMarkAsDone, com
 
   const handleSubmitHomework = async () => {
     if (!selectedHomework || !submissionLink.trim()) {
-      Alert.alert('Validation Error', 'Please provide a submission link');
+      Alert.alert('Validation Error', 'Please Provide A Submission Link');
       return;
     }
 
@@ -222,16 +222,16 @@ export default function CalendarView({ contents: propContents, onMarkAsDone, com
 
       if (response.ok) {
         handleMarkAsDone(selectedHomework._id);
-        Alert.alert('Success', 'Homework submitted successfully!');
+        Alert.alert('Success', 'Homework Submitted Successfully!');
         setIsSubmissionOpen(false);
         setSubmissionLink('');
         setSubmissionDescription('');
       } else {
-        Alert.alert('Error', 'Failed to submit homework');
+        Alert.alert('Error', 'Failed To Submit Homework');
       }
     } catch (error) {
       console.error('Error submitting homework:', error);
-      Alert.alert('Error', 'An error occurred while submitting homework');
+      Alert.alert('Error', 'An Error Occurred While Submitting Homework');
     }
   };
 
@@ -272,8 +272,8 @@ export default function CalendarView({ contents: propContents, onMarkAsDone, com
       {weeks.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Ionicons name="calendar-outline" size={64} color="#5B6779" />
-          <Text style={styles.emptyText}>No scheduled content</Text>
-          <Text style={styles.emptySubtext}>Content will appear here when scheduled</Text>
+          <Text style={styles.emptyText}>No Scheduled Content</Text>
+          <Text style={styles.emptySubtext}>Content Will Appear Here When Scheduled</Text>
         </View>
       ) : (
         weeks.map((week) => {
@@ -292,7 +292,7 @@ export default function CalendarView({ contents: propContents, onMarkAsDone, com
                     {formatDateRange(week.weekStart, week.weekEnd)}
                   </Text>
                   <View style={styles.weekBadge}>
-                    <Text style={styles.weekBadgeText}>{week.contents.length} items</Text>
+                    <Text style={styles.weekBadgeText}>{week.contents.length} Items</Text>
                   </View>
                 </View>
                 <Ionicons
@@ -417,7 +417,7 @@ export default function CalendarView({ contents: propContents, onMarkAsDone, com
                 <Text style={styles.inputLabel}>Description (Optional)</Text>
                 <TextInput
                   style={[styles.input, styles.textArea]}
-                  placeholder="Add any notes..."
+                  placeholder="Add Any Notes..."
                   value={submissionDescription}
                   onChangeText={setSubmissionDescription}
                   multiline

@@ -228,7 +228,7 @@ export default function CreateOrderScreen() {
   };
 
   const handleDeleteCatalog = (bundle: ProductBundle) => {
-    Alert.alert('Delete product?', `Remove "${bundle.name}" from catalog?`, [
+    Alert.alert('Delete Product?', `Remove "${bundle.name}" from catalog?`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -292,7 +292,7 @@ export default function CreateOrderScreen() {
         documentName: uploaded.name,
       }));
     } catch (e: unknown) {
-      Alert.alert('Upload failed', e instanceof Error ? e.message : 'Could not upload document');
+      Alert.alert('Upload Failed', e instanceof Error ? e.message : 'Could not upload document');
     } finally {
       setUploadingDoc(false);
     }
@@ -322,7 +322,7 @@ export default function CreateOrderScreen() {
     const result = await saveOrderDraft(state, editingOrderId);
     setSubmitting(null);
     if (result.success) {
-      Alert.alert('Saved', result.message || 'Draft saved', [{ text: 'OK', onPress: () => router.back() }]);
+      Alert.alert('Saved', result.message || 'Draft Saved', [{ text: 'OK', onPress: () => router.back() }]);
     } else {
       Alert.alert('Error', result.message);
     }
@@ -333,7 +333,7 @@ export default function CreateOrderScreen() {
     const result = await confirmOrder(state, editingOrderId);
     setSubmitting(null);
     if (result.success) {
-      Alert.alert('Success', result.message || 'Order confirmed', [
+      Alert.alert('Success', result.message || 'Order Confirmed', [
         { text: 'OK', onPress: () => router.back() },
       ]);
     } else {
@@ -350,7 +350,7 @@ export default function CreateOrderScreen() {
           <SafeAreaView style={s.safe}>
             <View style={s.loadingBox}>
               <ActivityIndicator size="large" color="#ea580c" />
-              <Text style={s.loadingText}>Loading order…</Text>
+              <Text style={s.loadingText}>Loading Order…</Text>
             </View>
           </SafeAreaView>
         </AppBackground>
@@ -408,7 +408,7 @@ export default function CreateOrderScreen() {
               <Text style={s.sectionTitle}>Select School</Text>
               <TextInput
                 style={s.input}
-                placeholder="Search schools…"
+                placeholder="Search Schools…"
                 value={schoolSearch}
                 onChangeText={setSchoolSearch}
               />
@@ -481,8 +481,8 @@ export default function CreateOrderScreen() {
                 </TouchableOpacity>
               ) : (
                 <GlassPanel style={s.customForm} radius={10} tone="strong">
-                  <TextInput style={s.input} placeholder="Product name" value={customName} onChangeText={setCustomName} />
-                  <TextInput style={s.input} placeholder="Class / bundle" value={customClass} onChangeText={setCustomClass} />
+                  <TextInput style={s.input} placeholder="Product Name" value={customName} onChangeText={setCustomName} />
+                  <TextInput style={s.input} placeholder="Class / Bundle" value={customClass} onChangeText={setCustomClass} />
                   <TextInput style={s.input} placeholder="Price (₹)" value={customPrice} onChangeText={setCustomPrice} keyboardType="numeric" />
                   <View style={s.row}>
                     <TouchableOpacity style={s.btnOutline} onPress={() => setShowCustomForm(false)}>
@@ -499,7 +499,7 @@ export default function CreateOrderScreen() {
               {selectedProducts.map((p) => (
                 <View key={p.id} style={s.addedCard}>
                   <Text style={s.productTitle}>{p.name}</Text>
-                  <Text style={s.productMeta}>{formatInr(p.price)} each</Text>
+                  <Text style={s.productMeta}>{formatInr(p.price)} Each</Text>
                   <View style={s.qtyRow}>
                     <TouchableOpacity
                       style={s.qtyBtn}
@@ -549,7 +549,7 @@ export default function CreateOrderScreen() {
               <Pressable style={s.selectField} onPress={() => setOrderTypePicker(true)}>
                 <Text style={s.fieldLabel}>Order Type *</Text>
                 <Text style={financial.orderType ? s.fieldValue : s.fieldPlaceholder}>
-                  {financial.orderType || 'Select order type'}
+                  {financial.orderType || 'Select Order Type'}
                 </Text>
               </Pressable>
               {step3Errors.orderType && <Text style={s.errorText}>{step3Errors.orderType}</Text>}
@@ -557,7 +557,7 @@ export default function CreateOrderScreen() {
               <Pressable style={s.selectField} onPress={() => setCategoryPicker(true)}>
                 <Text style={s.fieldLabel}>Category *</Text>
                 <Text style={financial.category ? s.fieldValue : s.fieldPlaceholder}>
-                  {financial.category || 'Select category'}
+                  {financial.category || 'Select Category'}
                 </Text>
               </Pressable>
               {step3Errors.category && <Text style={s.errorText}>{step3Errors.category}</Text>}
@@ -573,7 +573,7 @@ export default function CreateOrderScreen() {
               <Pressable style={s.selectField} onPress={() => setShowDatePicker(true)}>
                 <Text style={s.fieldLabel}>Payment Due Date *</Text>
                 <Text style={financial.paymentDueDate ? s.fieldValue : s.fieldPlaceholder}>
-                  {financial.paymentDueDate || 'Select date'}
+                  {financial.paymentDueDate || 'Select Date'}
                 </Text>
               </Pressable>
               {step3Errors.paymentDueDate && <Text style={s.errorText}>{step3Errors.paymentDueDate}</Text>}
@@ -633,7 +633,7 @@ export default function CreateOrderScreen() {
                   ) : (
                     <>
                       <Ionicons name="cloud-upload-outline" size={24} color="#ea580c" />
-                      <Text style={s.uploadText}>Upload PDF or image</Text>
+                      <Text style={s.uploadText}>Upload PDF or Image</Text>
                     </>
                   )}
                 </TouchableOpacity>

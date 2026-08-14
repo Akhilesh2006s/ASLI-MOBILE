@@ -108,7 +108,7 @@ export default function BrowseView() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Digital Library</Text>
-      <Text style={styles.subtitle}>Browse by Type</Text>
+      <Text style={styles.subtitle}>Browse By Type</Text>
 
       {/* Content Type Cards */}
       <View style={styles.typesGrid}>
@@ -131,7 +131,7 @@ export default function BrowseView() {
                 </View>
                 <Text style={styles.typeLabel}>{type.label}</Text>
                 <Text style={styles.typeCount}>
-                  {isLoading ? '...' : `${contentTypeCounts[type.id] || 0} files`}
+                  {isLoading ? '...' : `${contentTypeCounts[type.id] || 0} Files`}
                 </Text>
               </View>
             </GlassPanel>
@@ -144,7 +144,7 @@ export default function BrowseView() {
         <View style={styles.contentSection}>
           <View style={styles.contentHeader}>
             <Text style={styles.contentTitle}>
-              {selectedType} ({content.length} {content.length === 1 ? 'file' : 'files'})
+              {selectedType} ({content.length} {content.length === 1 ? 'File' : 'Files'})
             </Text>
             <TouchableOpacity onPress={() => setSelectedType(null)}>
               <Ionicons name="close-circle" size={24} color="#6b7280" />
@@ -156,7 +156,7 @@ export default function BrowseView() {
           ) : content.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="document" size={64} color="#5B6779" />
-              <Text style={styles.emptyStateText}>No content found for this type.</Text>
+              <Text style={styles.emptyStateText}>No Content Found For This Type.</Text>
             </View>
           ) : (
             <View style={styles.contentList}>

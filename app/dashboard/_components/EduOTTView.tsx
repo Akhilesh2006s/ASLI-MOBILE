@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import Header from './eduott/Header';
+import TeacherPageHero from '../../../src/components/teacher/TeacherPageHero';
 import SearchBar from './eduott/SearchBar';
 import StudentFilterDropdown from '../../../src/components/student/StudentFilterDropdown';
 import EduOTTVideoCard from '../../../src/components/eduott/EduOTTVideoCard';
@@ -26,13 +27,15 @@ import {
   isLibraryVideoRow,
   type LibraryContentRow,
 } from '../../../src/lib/dedupe-library-content';
-import { getVideoDisplayTitle } from '../../../src/lib/video-chapter-schedule';
+import { getVideoDisplayTitle, sortContentsChapterWise } from '../../../src/lib/video-chapter-schedule';
 import {
   extractPlainSubjectName,
   getSubjectClassLabel,
+  formatSubjectWithIitCategory,
 } from '../../../src/lib/subject-names';
 import { useEduOTTFilters } from '../../../src/contexts/edu-ott-filter-context';
 import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
+import { isIitTrackContent } from '../../../src/lib/library-content-labels';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { eduOttListScrollBottomPad, isTabletLayout } from '../../../src/lib/responsive-layout';
 
@@ -54,10 +57,8 @@ function buildVideosUrl(
   selectedSubject: string | null
 ): string {
   const params = new URLSearchParams({ type: 'Video', surface: 'eduott' });
-  if (role === 'student') {
-    if (selectedClass) params.set('class', selectedClass);
-    if (selectedSubject) params.set('subject', selectedSubject);
-  }
+  if (selectedClass) params.set('class', selectedClass);
+  if (selectedSubject) params.set('subject', selectedSubject);
   return `${API_BASE_URL}/api/${role}/asli-prep-content?${params.toString()}`;
 }
 
@@ -67,10 +68,8 @@ function buildStreamsUrl(
   selectedSubject: string | null
 ): string {
   const params = new URLSearchParams();
-  if (role === 'student') {
-    if (selectedClass) params.set('class', selectedClass);
-    if (selectedSubject) params.set('subject', selectedSubject);
-  }
+  if (selectedClass) params.set('class', selectedClass);
+  if (selectedSubject) params.set('subject', selectedSubject);
   const q = params.toString();
   return `${API_BASE_URL}/api/${role}/streams${q ? `?${q}` : ''}`;
 }
@@ -202,6 +201,9 @@ interface VideoItem {
   subjectId?: string;
   subjectName?: string;
   classNumber?: string;
+  productCategory?: string;
+  subject?: string;
+  class?: string;
   views?: number;
   watchProgress?: number;
 }
@@ -271,6 +273,12 @@ function mapContentToVideoItem(content: any): VideoItem {
     subjectId: subjectId ? String(subjectId) : '',
     subjectName: subjectName,
     classNumber: classNum,
+    productCategory: String(content.productCategory || content.subject?.productCategory || ''),
+    subject: extractPlainSubjectName(subjectName) || 'Subject',
+    class:
+      classNum ||
+      getSubjectClassLabel({ name: subjectName, classNumber: classNum }) ||
+      '',
     watchProgress: Number(content.watchProgress || content.progress || 0),
     isYouTubeVideo: !!(
       videoFileUrl &&
@@ -287,6 +295,16 @@ function mapAndDedupeVideos(list: unknown[]): VideoItem[] {
 }
 
 const EDUOTT_EDGE_PAD = STUDENT_SPACING.sm;
+const PREVIEW_VIDEO_COUNT = 3;
+
+type SubjectGroup = {
+  key: string;
+  subject: string;
+  classLabel: string;
+  subjectIds: string[];
+  productCategories: string[];
+  videos: VideoItem[];
+};
 
 function useEduOTTGridLayout() {
   const { width: screenWidth } = useWindowDimensions();
@@ -307,6 +325,9 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
   const insets = useSafeAreaInsets();
   const isTablet = isTabletLayout(width, height);
   const { isAsliPrepExclusive, loading: programLoading } = useSchoolProgram();
+  // Web EduOTT never hides videos for teachers/admins. Only students at
+  // non-Asli-Prep schools stay on live sessions.
+  const showOnDemandVideos = role !== 'student' || isAsliPrepExclusive;
   const useClientSideFilters = role !== 'student';
   const dashboardLabel = DASHBOARD_LABELS[role];
   const listScrollBottomPad = eduOttListScrollBottomPad(
@@ -336,12 +357,15 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
   const [searchTerm, setSearchTerm] = useState('');
   const [sessionSearchTerm, setSessionSearchTerm] = useState('');
   const [visibleCount, setVisibleCount] = useState(40);
+  const [subjectFocus, setSubjectFocus] = useState<SubjectGroup | null>(null);
+  const [subjectLibraryVideos, setSubjectLibraryVideos] = useState<VideoItem[]>([]);
+  const [subjectLibraryLoading, setSubjectLibraryLoading] = useState(false);
 
   useEffect(() => {
-    if (!programLoading && !isAsliPrepExclusive && activeTab === 'videos') {
+    if (!programLoading && !showOnDemandVideos && activeTab === 'videos') {
       setActiveTab('live-sessions');
     }
-  }, [programLoading, isAsliPrepExclusive, activeTab]);
+  }, [programLoading, showOnDemandVideos, activeTab]);
 
   useEffect(() => {
     let cancelled = false;
@@ -349,7 +373,7 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
       const token = await SecureStore.getItemAsync('authToken');
       if (!token) return;
       try {
-        if (!isAsliPrepExclusive) {
+        if (!showOnDemandVideos) {
           if (cancelled) return;
           setVideoCatalog([]);
           setVideosFetchFailed(false);
@@ -373,7 +397,7 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
         if (!cancelled) {
           setVideoCatalog([]);
           setSessionCatalog([]);
-          if (isAsliPrepExclusive) setVideosFetchFailed(true);
+          if (showOnDemandVideos) setVideosFetchFailed(true);
         }
       }
     }
@@ -383,12 +407,85 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
     return () => {
       cancelled = true;
     };
-  }, [isAsliPrepExclusive, programLoading, role]);
+  }, [showOnDemandVideos, programLoading, role]);
 
   useEffect(
     () => setVisibleCount(40),
-    [searchTerm, listEpoch]
+    [searchTerm, listEpoch, subjectFocus?.key]
   );
+
+  useEffect(() => {
+    setSubjectFocus(null);
+    setSubjectLibraryVideos([]);
+  }, [selectedClass, selectedSubject, listEpoch]);
+
+  useEffect(() => {
+    if (!subjectFocus) {
+      setSubjectLibraryVideos([]);
+      setSubjectLibraryLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      setSubjectLibraryLoading(true);
+      try {
+        const token = await SecureStore.getItemAsync('authToken');
+        if (!token) return;
+        const params = new URLSearchParams({ type: 'Video', surface: 'eduott' });
+        if (subjectFocus.classLabel) params.set('class', subjectFocus.classLabel);
+        if (subjectFocus.subjectIds[0]) params.set('subject', subjectFocus.subjectIds[0]);
+        else if (subjectFocus.subject) params.set('subject', subjectFocus.subject);
+
+        const { ok, payload } = await fetchJsonPayload(
+          `${API_BASE_URL}/api/${role}/asli-prep-content?${params.toString()}`,
+          authHeaders(token),
+        );
+        if (!ok || cancelled) return;
+
+        const rows = rowsFromVideoPayload(payload, false);
+        const idSet = new Set(subjectFocus.subjectIds.map(String));
+        const subjectKey = subjectFocus.subject.toLowerCase();
+        const classKey = String(subjectFocus.classLabel || '').trim();
+
+        const matched = rows.filter((row) => {
+          const subjectRef = typeof row.subject === 'object' ? row.subject : null;
+          const subjectIdRef = typeof row.subjectId === 'object' ? row.subjectId : null;
+          const sid = String(
+            subjectRef?._id ||
+              subjectIdRef?._id ||
+              (typeof row.subject === 'string' ? row.subject : '') ||
+              (typeof row.subjectId === 'string' ? row.subjectId : '') ||
+              '',
+          );
+          if (idSet.size > 0 && idSet.has(sid)) return true;
+
+          const rawName = String(subjectRef?.name || subjectIdRef?.name || (typeof row.subject === 'string' ? row.subject : '') || '');
+          const plain = extractPlainSubjectName(rawName).toLowerCase();
+          if (plain !== subjectKey) return false;
+
+          const rowClass =
+            getSubjectClassLabel(subjectRef || subjectIdRef || { classNumber: row.classNumber }) ||
+            String(row.classNumber || '').trim();
+          if (classKey && rowClass && classKey !== rowClass) return false;
+
+          return isIitTrackContent(row) || idSet.has(sid);
+        });
+
+        const iitOnly = matched.filter((row) => isIitTrackContent(row));
+        const list = mapAndDedupeVideos(iitOnly.length > 0 ? iitOnly : matched);
+        if (!cancelled) setSubjectLibraryVideos(list);
+      } catch {
+        if (!cancelled) setSubjectLibraryVideos([]);
+      } finally {
+        if (!cancelled) setSubjectLibraryLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [subjectFocus, role]);
 
   useEffect(() => {
     if (programLoading) {
@@ -398,7 +495,7 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
       setLoading(false);
       return;
     }
-    if (!isAsliPrepExclusive) {
+    if (!showOnDemandVideos) {
       setVideos([]);
       setLoading(false);
       return;
@@ -454,7 +551,7 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
     };
   }, [
     activeTab,
-    isAsliPrepExclusive,
+    showOnDemandVideos,
     programLoading,
     role,
     useClientSideFilters,
@@ -590,14 +687,81 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
   );
 
   const filteredVideos = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
     return classSubjectFilteredVideos.filter((video) => {
-      const matchesSearch =
-        !searchTerm ||
-        video.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (video.description || '').toLowerCase().includes(searchTerm.toLowerCase());
-      return matchesSearch;
+      if (!q) return true;
+      return (
+        video.title.toLowerCase().includes(q) ||
+        (video.description || '').toLowerCase().includes(q) ||
+        (video.subjectName || '').toLowerCase().includes(q) ||
+        (video.subject || '').toLowerCase().includes(q)
+      );
     });
   }, [classSubjectFilteredVideos, searchTerm]);
+
+  const subjectGroups = useMemo((): SubjectGroup[] => {
+    const map = new Map<string, SubjectGroup>();
+    for (const video of filteredVideos) {
+      const subject =
+        video.subject || extractPlainSubjectName(video.subjectName || '') || 'Subject';
+      const classLabel =
+        video.class ||
+        getSubjectClassLabel({
+          name: video.subjectName,
+          classNumber: video.classNumber,
+        }) ||
+        video.classNumber ||
+        '';
+      const key = `${classLabel}::${subject}`.toLowerCase();
+      let group = map.get(key);
+      if (!group) {
+        group = {
+          key,
+          subject,
+          classLabel,
+          subjectIds: [],
+          productCategories: [],
+          videos: [],
+        };
+        map.set(key, group);
+      }
+      group.videos.push(video);
+      const sid = String(video.subjectId || '').trim();
+      if (sid && !group.subjectIds.includes(sid)) group.subjectIds.push(sid);
+      const cat = String(video.productCategory || '').trim().toUpperCase();
+      if (cat && !group.productCategories.includes(cat)) group.productCategories.push(cat);
+    }
+    return Array.from(map.values())
+      .map((group) => ({
+        ...group,
+        videos: sortContentsChapterWise(group.videos.map((v) => ({ ...v, type: 'Video' }))),
+      }))
+      .sort((a, b) => {
+        const classCmp =
+          (parseInt(a.classLabel, 10) || 0) - (parseInt(b.classLabel, 10) || 0) ||
+          a.classLabel.localeCompare(b.classLabel);
+        if (classCmp) return classCmp;
+        return a.subject.localeCompare(b.subject);
+      });
+  }, [filteredVideos]);
+
+  const focusVideos = useMemo(() => {
+    if (!subjectFocus) return [];
+    const live = subjectGroups.find((g) => g.key === subjectFocus.key);
+    const source =
+      subjectLibraryVideos.length > 0
+        ? subjectLibraryVideos
+        : live?.videos || subjectFocus.videos;
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return source;
+    return source.filter(
+      (video) =>
+        video.title.toLowerCase().includes(q) ||
+        (video.description || '').toLowerCase().includes(q) ||
+        (video.subjectName || '').toLowerCase().includes(q) ||
+        (video.subject || '').toLowerCase().includes(q),
+    );
+  }, [subjectFocus, subjectGroups, subjectLibraryVideos, searchTerm]);
 
   const filteredSessions = useMemo(() => {
     return classSubjectFilteredSessions.filter((session) => {
@@ -608,11 +772,6 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
       return matchesSearch;
     });
   }, [classSubjectFilteredSessions, sessionSearchTerm]);
-
-  const visibleVideos = useMemo(
-    () => filteredVideos.slice(0, visibleCount),
-    [filteredVideos, visibleCount]
-  );
 
   const classDropdownOptions = useMemo(
     () => [
@@ -675,7 +834,7 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
       return;
     }
     try {
-      if (isAsliPrepExclusive) {
+      if (showOnDemandVideos) {
         const { list: videoList, ok } = await fetchRoleVideos(token, role);
         setVideoCatalog(videoList);
         setVideosFetchFailed(!ok);
@@ -718,13 +877,18 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
     } finally {
       setRefreshing(false);
     }
-  }, [selectedClass, selectedSubject, isAsliPrepExclusive, role, useClientSideFilters]);
+  }, [selectedClass, selectedSubject, showOnDemandVideos, role, useClientSideFilters]);
+
+  const visibleFocusVideos = useMemo(
+    () => focusVideos.slice(0, visibleCount),
+    [focusVideos, visibleCount]
+  );
 
   const onEndReached = useCallback(() => {
-    if (visibleCount < filteredVideos.length) {
-      setVisibleCount(prev => prev + 10);
+    if (subjectFocus && visibleCount < focusVideos.length) {
+      setVisibleCount((prev) => prev + 10);
     }
-  }, [visibleCount, filteredVideos.length]);
+  }, [subjectFocus, visibleCount, focusVideos.length]);
 
   const clearAllFilters = useCallback((): void => {
     setSelectedClass(null);
@@ -745,23 +909,23 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
   };
 
   const videoEmptyContent = useMemo((): EmptyStateContent => {
-    if (!isAsliPrepExclusive) {
+    if (!showOnDemandVideos) {
       return {
         icon: 'school-outline' as const,
-        title: 'Videos not available',
+        title: 'Videos Not Available',
         subtitle:
           'On-demand videos are included with Asli Prep schools. You can still join live classes from the Live tab.',
-        actionLabel: 'View live sessions',
+        actionLabel: 'View Live Sessions',
         onAction: () => setActiveTab('live-sessions'),
       };
     }
     if (videosFetchFailed) {
       return {
         icon: 'cloud-offline-outline' as const,
-        title: 'Couldn’t load videos',
+        title: 'Couldn’t Load Videos',
         subtitle:
           'The video library is temporarily unavailable. Pull down to refresh, or try again in a moment.',
-        actionLabel: 'Try again',
+        actionLabel: 'Try Again',
         onAction: (): void => {
           void onRefresh();
         },
@@ -770,9 +934,9 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
     if (searchTerm.trim() && classSubjectFilteredVideos.length > 0) {
       return {
         icon: 'search-outline' as const,
-        title: 'No matching videos',
+        title: 'No Matching Videos',
         subtitle: `Nothing matched “${searchTerm.trim()}”. Try a different keyword or clear your search.`,
-        actionLabel: 'Clear search',
+        actionLabel: 'Clear Search',
         onAction: () => setSearchTerm(''),
       };
     }
@@ -782,19 +946,19 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
       if (selectedSubject) parts.push(selectedSubject);
       return {
         icon: 'filter-outline' as const,
-        title: 'No videos for these filters',
+        title: 'No Videos For These Filters',
         subtitle:
           parts.length > 0
             ? `No videos found for ${parts.join(' · ')}. Try another class or subject, or clear filters to browse all videos.`
             : 'No videos match your current filters. Clear filters to see everything available.',
-        actionLabel: 'Clear filters',
+        actionLabel: 'Clear Filters',
         onAction: clearAllFilters,
       };
     }
     if (videoCatalog.length === 0) {
       return {
         icon: 'videocam-outline' as const,
-        title: 'No videos yet',
+        title: 'No Videos Yet',
         subtitle: 'Your school has not published any videos yet. Pull down to refresh, or check live sessions for upcoming classes.',
         actionLabel: 'Refresh',
         onAction: () => void onRefresh(),
@@ -802,13 +966,13 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
     }
     return {
       icon: 'videocam-outline' as const,
-      title: 'No videos found',
+      title: 'No Videos Found',
       subtitle: 'Try another class, subject, or search term—or clear filters to see all available videos.',
-      actionLabel: hasVideoFilters ? 'Clear filters' : undefined,
+      actionLabel: hasVideoFilters ? 'Clear Filters' : undefined,
       onAction: hasVideoFilters ? clearAllFilters : undefined,
     };
   }, [
-    isAsliPrepExclusive,
+    showOnDemandVideos,
     videosFetchFailed,
     searchTerm,
     classSubjectFilteredVideos.length,
@@ -824,25 +988,25 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
     if (sessionSearchTerm.trim() && classSubjectFilteredSessions.length > 0) {
       return {
         icon: 'search-outline' as const,
-        title: 'No matching sessions',
+        title: 'No Matching Sessions',
         subtitle: `Nothing matched “${sessionSearchTerm.trim()}”. Try another keyword or clear your search.`,
-        actionLabel: 'Clear search',
+        actionLabel: 'Clear Search',
         onAction: () => setSessionSearchTerm(''),
       };
     }
     if (hasSessionFilters && sessionCatalog.length > 0) {
       return {
         icon: 'filter-outline' as const,
-        title: 'No sessions for these filters',
+        title: 'No Sessions For These Filters',
         subtitle: 'Try another class or subject, or clear filters to see all scheduled live classes.',
-        actionLabel: 'Clear filters',
+        actionLabel: 'Clear Filters',
         onAction: clearAllFilters,
       };
     }
     if (sessionCatalog.length === 0) {
       return {
         icon: 'radio-outline' as const,
-        title: 'No live sessions right now',
+        title: 'No Live Sessions Right Now',
         subtitle: 'When your teachers schedule a class, it will show up here. Pull down to refresh.',
         actionLabel: 'Refresh',
         onAction: () => void onRefresh(),
@@ -850,9 +1014,9 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
     }
     return {
       icon: 'radio-outline' as const,
-      title: 'No sessions match filters',
+      title: 'No Sessions Match Filters',
       subtitle: 'Try another search or clear filters to browse all live sessions.',
-      actionLabel: hasSessionFilters ? 'Clear filters' : undefined,
+      actionLabel: hasSessionFilters ? 'Clear Filters' : undefined,
       onAction: hasSessionFilters ? clearAllFilters : undefined,
     };
   }, [
@@ -909,6 +1073,97 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
     />
   ), [handlePlayVideo, gridCardWidth]);
 
+  const groupTrackLabel = useCallback((group: SubjectGroup) => {
+    return group.productCategories[0]
+      ? formatSubjectWithIitCategory(group.subject, group.productCategories[0])
+      : `${group.subject} IIT`;
+  }, []);
+
+  const renderSubjectHero = useCallback(
+    (trackLabel: string, classLabel: string | undefined, videoCountLabel: string) => (
+      <View style={styles.focusHero}>
+        <View style={styles.focusHeroIcon}>
+          <Ionicons name="play-circle" size={26} color={STUDENT.primaryDark} />
+        </View>
+        <View style={styles.focusHeroBody}>
+          <View style={styles.focusHeroTitleRow}>
+            <Text style={styles.focusHeroTitle} numberOfLines={2}>
+              {trackLabel}
+            </Text>
+            <View style={styles.focusIitBadge}>
+              <Text style={styles.focusIitBadgeText}>IIT</Text>
+            </View>
+          </View>
+          <View style={styles.focusChipRow}>
+            {classLabel ? (
+              <View style={styles.focusChip}>
+                <Ionicons name="school-outline" size={12} color={STUDENT.primaryDark} />
+                <Text style={styles.focusChipText}>Class {classLabel}</Text>
+              </View>
+            ) : null}
+            <View style={styles.focusChip}>
+              <Ionicons name="videocam-outline" size={12} color={STUDENT.primaryDark} />
+              <Text style={styles.focusChipText}>{videoCountLabel}</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    ),
+    [],
+  );
+
+  const renderSubjectGroup = useCallback(
+    ({ item: group }: { item: SubjectGroup }) => {
+      const preview = group.videos.slice(0, PREVIEW_VIDEO_COUNT);
+      const trackLabel = groupTrackLabel(group);
+      return (
+        <View style={styles.subjectSection}>
+          {renderSubjectHero(
+            trackLabel,
+            group.classLabel || undefined,
+            `${group.videos.length} video${group.videos.length === 1 ? '' : 's'}`,
+          )}
+          <View style={isGrid ? styles.previewGrid : styles.previewStack}>
+            {preview.map((video) => (
+              <EduOTTVideoCard
+                key={video._id}
+                variant="student"
+                style={gridCardWidth != null ? { width: gridCardWidth } : undefined}
+                title={video.title}
+                durationSeconds={video.duration}
+                subjectLabel={extractPlainSubjectName(video.subjectName || '').trim() || undefined}
+                classLabel={
+                  getSubjectClassLabel({
+                    name: video.subjectName,
+                    classNumber: video.classNumber,
+                  }) || undefined
+                }
+                thumbnailUrl={video.thumbnailUrl}
+                youtubeUrl={video.youtubeUrl}
+                fileUrl={video.fileUrl}
+                videoUrl={video.videoUrl}
+                onPress={() => handlePlayVideo(video)}
+              />
+            ))}
+          </View>
+          <TouchableOpacity
+            style={styles.viewLibraryBtn}
+            activeOpacity={0.88}
+            onPress={() => {
+              setActiveTab('videos');
+              setSearchTerm('');
+              setSubjectFocus(group);
+            }}
+          >
+            <Text style={styles.viewLibraryBtnText}>View Full Library</Text>
+            <Ionicons name="chevron-forward" size={16} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      );
+    },
+    [groupTrackLabel, handlePlayVideo, isGrid, gridCardWidth, renderSubjectHero],
+  );
+
   const renderSessionItem = useCallback(({ item }: { item: LiveSession }) => {
     const statusColor = getStatusColor(item.status);
     const joinable = canJoinLiveSession(item);
@@ -923,7 +1178,7 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
           </View>
         </View>
         <Text style={styles.sessionDescription} numberOfLines={2}>
-          {item.description || 'Live class session'}
+          {item.description || 'Live Class Session'}
         </Text>
         <View style={styles.sessionMeta}>
           <Text style={styles.sessionMetaText}>
@@ -952,11 +1207,29 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
   }, [handleJoinLive]);
 
   const videoKeyExtractor = useCallback((item: VideoItem) => item._id, []);
+  const groupKeyExtractor = useCallback((item: SubjectGroup) => item.key, []);
 
   const listHeader = (
     <>
-      <Header username={username} dashboardLabel={dashboardLabel} />
+      {role === 'teacher' ? (
+        <View style={{ marginBottom: 12 }}>
+          <TeacherPageHero
+            tone="eduott"
+            badge="EduOTT"
+            extraBadge="IIT Exclusive"
+            title="IIT prep videos."
+            accent="Only for your track."
+            accentColor="#FCD34D"
+            subtitle="IIT track videos and live sessions for your classes. Board curriculum videos stay in Learning Paths."
+            icon="videocam-outline"
+          />
+        </View>
+      ) : (
+        <Header username={username} dashboardLabel={dashboardLabel} />
+      )}
 
+      {!subjectFocus ? (
+        <>
       <GlassPanel style={styles.summaryCard} radius={STUDENT_RADIUS.inner}>
         <View style={styles.summaryTop}>
           <View style={styles.summaryIcon}>
@@ -965,12 +1238,12 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
           <View style={{ flex: 1 }}>
             <Text style={styles.summaryTitle}>EduOTT</Text>
             <Text style={styles.summarySubtitle}>
-              {isAsliPrepExclusive ? 'Videos & Live Classes' : 'Live Classes'}
+              {showOnDemandVideos ? 'Videos & Live Classes' : 'Live Classes'}
             </Text>
           </View>
         </View>
         <View style={styles.summaryStats}>
-          {isAsliPrepExclusive && (
+          {showOnDemandVideos && (
             <TouchableOpacity
               style={[styles.statChip, activeTab === 'videos' && styles.statChipActive]}
               activeOpacity={0.85}
@@ -1009,6 +1282,8 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
           onChange={(v) => setSelectedSubject(v === 'all' ? null : v)}
         />
       </View>
+        </>
+      ) : null}
     </>
   );
 
@@ -1030,38 +1305,100 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
       );
     }
 
+    if (subjectFocus) {
+      const trackLabel = groupTrackLabel(subjectFocus);
+      return (
+        <FlatList
+          key={`eduott-focus-${subjectFocus.key}-${numColumns}`}
+          data={subjectLibraryLoading ? [] : visibleFocusVideos}
+          keyExtractor={videoKeyExtractor}
+          renderItem={renderVideoItem}
+          numColumns={numColumns}
+          columnWrapperStyle={isGrid ? styles.columnWrapper : undefined}
+          ListHeaderComponent={
+            <>
+              {listHeader}
+              <TouchableOpacity
+                style={styles.backPill}
+                onPress={() => {
+                  setSubjectFocus(null);
+                  setSubjectLibraryVideos([]);
+                  setSearchTerm('');
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Back to all IIT subjects"
+              >
+                <Ionicons name="chevron-back" size={16} color={STUDENT.primaryDark} />
+                <Text style={styles.backPillText}>All subjects</Text>
+              </TouchableOpacity>
+              {renderSubjectHero(
+                trackLabel,
+                subjectFocus.classLabel || undefined,
+                subjectLibraryLoading
+                  ? 'Loading…'
+                  : `${focusVideos.length} video${focusVideos.length === 1 ? '' : 's'}`,
+              )}
+              <SearchBar
+                value={searchTerm}
+                onChangeText={setSearchTerm}
+                placeholder="Search videos in this subject..."
+              />
+              {subjectLibraryLoading ? renderSkeletons() : null}
+            </>
+          }
+          ListEmptyComponent={
+            subjectLibraryLoading ? null : renderEmptyStateCard(videoEmptyContent)
+          }
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          onEndReached={onEndReached}
+          onEndReachedThreshold={0.35}
+          contentContainerStyle={[
+            styles.listContainer,
+            { paddingBottom: listScrollBottomPad },
+            isGrid && styles.listContainerGrid,
+            focusVideos.length === 0 && styles.listContainerEmpty,
+          ]}
+          maxToRenderPerBatch={8}
+          initialNumToRender={8}
+          windowSize={9}
+          removeClippedSubviews
+          showsVerticalScrollIndicator={false}
+        />
+      );
+    }
+
     return (
       <FlatList
-        key={`eduott-videos-${numColumns}`}
-        data={visibleVideos}
-        keyExtractor={videoKeyExtractor}
-        renderItem={renderVideoItem}
-        numColumns={numColumns}
-        columnWrapperStyle={isGrid ? styles.columnWrapper : undefined}
+        key={`eduott-subjects-${numColumns}`}
+        data={subjectGroups}
+        keyExtractor={groupKeyExtractor}
+        renderItem={renderSubjectGroup}
         ListHeaderComponent={
           <>
             {listHeader}
-            <SearchBar value={searchTerm} onChangeText={setSearchTerm} />
-            {filteredVideos.length > 0 ? (
+            <SearchBar
+              value={searchTerm}
+              onChangeText={setSearchTerm}
+              placeholder="Search IIT Subjects Or Videos..."
+            />
+            {subjectGroups.length > 0 ? (
               <Text style={styles.resultsCount}>
-                Showing {visibleVideos.length} of {filteredVideos.length}
+                {subjectGroups.length} IIT Subject{subjectGroups.length === 1 ? '' : 's'} ·{' '}
+                {filteredVideos.length} Video{filteredVideos.length === 1 ? '' : 's'}
               </Text>
             ) : null}
           </>
         }
         ListEmptyComponent={renderEmptyStateCard(videoEmptyContent)}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        onEndReached={onEndReached}
-        onEndReachedThreshold={0.35}
         contentContainerStyle={[
           styles.listContainer,
           { paddingBottom: listScrollBottomPad },
-          isGrid && styles.listContainerGrid,
-          filteredVideos.length === 0 && styles.listContainerEmpty,
+          subjectGroups.length === 0 && styles.listContainerEmpty,
         ]}
-        maxToRenderPerBatch={8}
-        initialNumToRender={8}
-        windowSize={9}
+        maxToRenderPerBatch={6}
+        initialNumToRender={4}
+        windowSize={8}
         removeClippedSubviews
         showsVerticalScrollIndicator={false}
       />
@@ -1090,7 +1427,7 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
             <SearchBar
               value={sessionSearchTerm}
               onChangeText={setSessionSearchTerm}
-              placeholder="Search live sessions..."
+              placeholder="Search Live Sessions..."
             />
           </>
         }
@@ -1202,6 +1539,125 @@ const styles = StyleSheet.create({
     ...STUDENT_TYPO.caption,
     color: STUDENT.textMuted,
     marginBottom: STUDENT_SPACING.sm,
+  },
+  subjectSection: {
+    marginBottom: 22,
+    paddingBottom: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(109, 91, 208, 0.16)',
+  },
+  previewStack: {
+    gap: 12,
+  },
+  previewGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: STUDENT_SPACING.md,
+  },
+  viewLibraryBtn: {
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#0284c7',
+    borderRadius: 12,
+    paddingVertical: 12,
+  },
+  viewLibraryBtnText: {
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: 14,
+  },
+  backPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 2,
+    marginBottom: 10,
+    paddingVertical: 6,
+    paddingLeft: 4,
+    paddingRight: 12,
+    borderRadius: 999,
+    backgroundColor: STUDENT.navActiveBg,
+    borderWidth: 1,
+    borderColor: 'rgba(109, 91, 208, 0.18)',
+  },
+  backPillText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: STUDENT.primaryDark,
+  },
+  focusHero: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: STUDENT_RADIUS.card,
+    backgroundColor: 'rgba(255,255,255,0.82)',
+    borderWidth: 1,
+    borderColor: 'rgba(109, 91, 208, 0.16)',
+    ...STUDENT.shadow.sm,
+  },
+  focusHeroIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: STUDENT.navActiveBg,
+  },
+  focusHeroBody: {
+    flex: 1,
+    minWidth: 0,
+  },
+  focusHeroTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  focusHeroTitle: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '800',
+    color: STUDENT.text,
+    letterSpacing: -0.3,
+  },
+  focusIitBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    backgroundColor: 'rgba(251, 191, 36, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.5)',
+  },
+  focusIitBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    color: '#B45309',
+  },
+  focusChipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 8,
+  },
+  focusChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: STUDENT.bgAccent,
+  },
+  focusChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: STUDENT.primaryDark,
   },
   emptyCard: {
     marginTop: STUDENT_SPACING.lg,

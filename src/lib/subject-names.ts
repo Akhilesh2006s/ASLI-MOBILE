@@ -81,6 +81,30 @@ export function displaySubjectName(name: string): string {
   return extractPlainSubjectName(base) || base;
 }
 
+/** Physics + ALPHA → "Physics IIT Alpha". Empty/General track stays the plain name. */
+export function formatSubjectWithIitCategory(
+  name: string,
+  productCategory?: string | null,
+): string {
+  const base = displaySubjectName(name) || String(name || '').trim();
+  if (!base) return '';
+  const rawCat = String(productCategory || '')
+    .toUpperCase()
+    .trim()
+    .replace(/^IIT_/, '');
+  if (!rawCat || rawCat === 'GENERAL' || rawCat === 'NONE' || rawCat === 'ALL') {
+    return base;
+  }
+  const trackLabel = rawCat
+    .split('_')
+    .map((p) => p.charAt(0) + p.slice(1).toLowerCase())
+    .join(' ');
+  if (new RegExp(`\\biit\\s+${trackLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(base)) {
+    return base;
+  }
+  return `${base} IIT ${trackLabel}`;
+}
+
 export function inferClassNumberFromPrepContent(
   items?: Array<{ classNumber?: string }> | null
 ): string | null {

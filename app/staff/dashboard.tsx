@@ -68,7 +68,7 @@ export default function StaffDashboardScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#2563eb" />
-          <Text style={styles.loadingText}>Loading staff dashboard...</Text>
+          <Text style={styles.loadingText}>Loading Staff Dashboard...</Text>
         </View>
       </SafeAreaView>
     );
@@ -111,7 +111,7 @@ export default function StaffDashboardScreen() {
         {(students || []).slice(0, 20).map((item, idx) => (
           <GlassPanel key={item?._id || item?.id || idx} style={styles.listCard} radius={12} tone="strong">
             <Text style={styles.listTitle}>{item?.fullName || item?.name || item?.email || 'User'}</Text>
-            <Text style={styles.listSubtitle}>{item?.email || item?.subject || 'No additional details'}</Text>
+            <Text style={styles.listSubtitle}>{item?.email || item?.subject || 'No Additional Details'}</Text>
           </GlassPanel>
         ))}
       </ScrollView>

@@ -1,3 +1,5 @@
+import { sortContentsChapterWise } from './video-chapter-schedule';
+
 export const CONTENT_TYPE_ORDER = [
   'Video',
   'TextBook',
@@ -28,7 +30,13 @@ export function groupContentsByType<T extends GroupableContent>(items: T[]): { t
     ...Object.keys(grouped).filter((type) => !CONTENT_TYPE_ORDER.includes(type as (typeof CONTENT_TYPE_ORDER)[number])),
   ];
 
-  return ordered.map((type) => ({ type, items: grouped[type] }));
+  return ordered.map((type) => ({
+    type,
+    items:
+      String(type).toLowerCase() === 'video'
+        ? sortContentsChapterWise(grouped[type])
+        : grouped[type],
+  }));
 }
 
 /** Split board type sections + a trailing IIT section (peer to TextBook / Materials). */
@@ -37,7 +45,9 @@ export function groupLearningPathContentsWithIit<T extends GroupableContent>(
   isIit: (item: T) => boolean,
 ): { type: string; items: T[]; iit?: boolean }[] {
   const board = items.filter((item) => !isIit(item));
-  const iit = items.filter((item) => isIit(item));
+  const iit = items.filter(
+    (item) => isIit(item) && String(item.type || '').toLowerCase() !== 'video',
+  );
   const sections = groupContentsByType(board).map((s) => ({ ...s, iit: false as boolean | undefined }));
   if (iit.length > 0) {
     sections.push({ type: 'IIT', items: iit, iit: true });

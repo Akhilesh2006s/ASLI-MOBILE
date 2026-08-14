@@ -37,6 +37,71 @@ export function getContentSubjectId(content: {
   return '';
 }
 
+/** Title Case each word (e.g. "introduction to chemistry" → "Introduction To Chemistry"). */
+export function toTitleCaseWords(value: string): string {
+  return String(value || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => {
+      if (/^\d+$/.test(word)) return word;
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(' ');
+}
+
+/**
+ * Pull chapter/module numbers out of legacy title strings so we can rebuild a
+ * consistent label: "Chapter Name - Chapter N - Module M".
+ */
+function parseLegacyVideoTitle(raw: string): {
+  name: string;
+  chapter: string;
+  module: string;
+} {
+  let name = String(raw || '').trim();
+  let chapter = '';
+  let module = '';
+
+  // "chapter - 2 module - 1 · MATERIALS AROUND US"
+  let m = name.match(
+    /^chapter\s*[-–—]?\s*(\d+)\s+module\s*[-–—]?\s*(\d+)\s*[·•|]\s*(.+)$/i,
+  );
+  if (m) {
+    return { chapter: m[1], module: m[2], name: m[3].trim() };
+  }
+
+  // "chapter - 2 · NAME" / "module - 1 · NAME"
+  m = name.match(/^chapter\s*[-–—]?\s*(\d+)\s*[·•|]\s*(.+)$/i);
+  if (m) return { chapter: m[1], module: '', name: m[2].trim() };
+  m = name.match(/^module\s*[-–—]?\s*(\d+)\s*[·•|]\s*(.+)$/i);
+  if (m) return { chapter: '', module: m[1], name: m[2].trim() };
+
+  // "NAME - Module 4 - Chapter-1" (legacy wrong order)
+  m = name.match(
+    /^(.+?)\s*[-–—]\s*Module\s*[-–—]?\s*(\d+)\s*[-–—]\s*Chapter\s*[-–—]?\s*(\d+)\s*$/i,
+  );
+  if (m) return { name: m[1].trim(), module: m[2], chapter: m[3] };
+
+  // "NAME - Chapter 1 - Module 2"
+  m = name.match(
+    /^(.+?)\s*[-–—]\s*Chapter\s*[-–—]?\s*(\d+)\s*[-–—]\s*Module\s*[-–—]?\s*(\d+)\s*$/i,
+  );
+  if (m) return { name: m[1].trim(), chapter: m[2], module: m[3] };
+
+  // "NAME - Chapter 1" / "NAME - Module 2"
+  m = name.match(/^(.+?)\s*[-–—]\s*Chapter\s*[-–—]?\s*(\d+)\s*$/i);
+  if (m) return { name: m[1].trim(), chapter: m[2], module: '' };
+  m = name.match(/^(.+?)\s*[-–—]\s*Module\s*[-–—]?\s*(\d+)\s*$/i);
+  if (m) return { name: m[1].trim(), chapter: '', module: m[2] };
+
+  return { name, chapter, module };
+}
+
+/**
+ * Video titles: Chapter Name - Chapter N - Module M (Title Case name).
+ * Same format as web Digital Library.
+ */
 export function getVideoDisplayTitle(content: {
   type?: string;
   title?: string;
@@ -44,20 +109,107 @@ export function getVideoDisplayTitle(content: {
   chapter?: string;
   module?: string;
 }): string {
-  const title = String(content.title || content.topic || '').trim() || 'Untitled Video';
-  if (!isVideoContentType(content.type)) return title;
-  const chapter = videoNumberOnly(content.chapter);
-  const mod = videoNumberOnly(content.module);
-  if (!chapter && !mod) return title;
-  if (chapter && mod) return `chapter - ${chapter} module - ${mod} · ${title}`;
-  if (chapter) return `chapter - ${chapter} · ${title}`;
-  return `module - ${mod} · ${title}`;
+  const rawTitle = String(content.title || content.topic || '').trim() || 'Untitled Video';
+  if (!isVideoContentType(content.type)) return rawTitle;
+
+  const parsed = parseLegacyVideoTitle(rawTitle);
+  const chapter =
+    videoNumberOnly(content.chapter) || videoNumberOnly(parsed.chapter);
+  const mod = videoNumberOnly(content.module) || videoNumberOnly(parsed.module);
+  const chapterName =
+    toTitleCaseWords(parsed.name) || toTitleCaseWords(rawTitle) || 'Untitled Video';
+
+  if (chapter && mod) return `${chapterName} - Chapter ${chapter} - Module ${mod}`;
+  if (chapter) return `${chapterName} - Chapter ${chapter}`;
+  if (mod) return `${chapterName} - Module ${mod}`;
+  return chapterName;
 }
 
 export function getSortedChapterNumbers(videos: { chapter?: string }[]): string[] {
   return [...new Set(videos.map((v) => videoNumberOnly(v.chapter)).filter(Boolean))].sort(
     (a, b) => parseInt(a, 10) - parseInt(b, 10)
   );
+}
+
+export function chapterNumberFromContent(item: {
+  title?: string;
+  topic?: string;
+  chapter?: string;
+  module?: string;
+  type?: string;
+}): number | null {
+  const fromField = parseInt(videoNumberOnly(item.chapter), 10);
+  if (Number.isFinite(fromField) && fromField > 0) return fromField;
+  const display = getVideoDisplayTitle(item);
+  const fromDisplay = display.match(/\bChapter\s+(\d+)\b/i);
+  if (fromDisplay) {
+    const n = parseInt(fromDisplay[1], 10);
+    return Number.isNaN(n) ? null : n;
+  }
+  const raw = String(item.title || item.topic || '');
+  const fromRaw = raw.match(/\b(?:chapter|ch\.?)\s*[-–—:]?\s*(\d+)\b/i);
+  if (fromRaw) {
+    const n = parseInt(fromRaw[1], 10);
+    return Number.isNaN(n) ? null : n;
+  }
+  return null;
+}
+
+function moduleNumberFromContent(item: {
+  title?: string;
+  topic?: string;
+  chapter?: string;
+  module?: string;
+  type?: string;
+}): number | null {
+  const fromField = parseInt(videoNumberOnly(item.module), 10);
+  if (Number.isFinite(fromField) && fromField > 0) return fromField;
+  const display = getVideoDisplayTitle(item);
+  const fromDisplay = display.match(/\bModule\s+(\d+)\b/i);
+  if (fromDisplay) {
+    const n = parseInt(fromDisplay[1], 10);
+    return Number.isNaN(n) ? null : n;
+  }
+  const raw = String(item.title || item.topic || '');
+  const fromRaw = raw.match(/\bmodule\s*[-–—:]?\s*(\d+)\b/i);
+  if (fromRaw) {
+    const n = parseInt(fromRaw[1], 10);
+    return Number.isNaN(n) ? null : n;
+  }
+  return null;
+}
+
+/** Chapter 1 → 2 → … → 10 (not 1, 10, 2). Then module, then title. */
+export function compareContentsChapterWise(
+  a: { title?: string; topic?: string; chapter?: string; module?: string; type?: string },
+  b: { title?: string; topic?: string; chapter?: string; module?: string; type?: string },
+): number {
+  const aCh = chapterNumberFromContent(a);
+  const bCh = chapterNumberFromContent(b);
+  if (aCh != null && bCh != null && aCh !== bCh) return aCh - bCh;
+  if (aCh != null && bCh == null) return -1;
+  if (aCh == null && bCh != null) return 1;
+
+  const aMod = moduleNumberFromContent(a);
+  const bMod = moduleNumberFromContent(b);
+  if (aMod != null && bMod != null && aMod !== bMod) return aMod - bMod;
+  if (aMod != null && bMod == null) return -1;
+  if (aMod == null && bMod != null) return 1;
+
+  return getVideoDisplayTitle(a).localeCompare(getVideoDisplayTitle(b), undefined, {
+    numeric: true,
+    sensitivity: 'base',
+  });
+}
+
+export function sortContentsChapterWise<T extends {
+  title?: string;
+  topic?: string;
+  chapter?: string;
+  module?: string;
+  type?: string;
+}>(items: T[]): T[] {
+  return [...items].sort(compareContentsChapterWise);
 }
 
 export function isChapterFullyComplete(

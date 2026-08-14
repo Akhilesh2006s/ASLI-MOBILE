@@ -113,13 +113,13 @@ export default function TimetableView() {
       });
       setPreviewUri(asset.uri);
     } catch {
-      Alert.alert('Pick failed', 'Could not open the photo picker.');
+      Alert.alert('Pick Failed', 'Could not open the photo picker.');
     }
   };
 
   const savePhoto = async () => {
     if (!selectedClassId || !pendingAsset) {
-      Alert.alert('Missing info', 'Select a class and choose a photo first.');
+      Alert.alert('Missing Info', 'Select a class and choose a photo first.');
       return;
     }
     try {
@@ -139,12 +139,12 @@ export default function TimetableView() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.message || 'Upload failed');
-      Alert.alert('Saved', json?.message || 'Timetable photo saved');
+      Alert.alert('Saved', json?.message || 'Timetable Photo Saved');
       setPendingAsset(null);
       setPreviewUri(null);
       await load();
     } catch (error: any) {
-      Alert.alert('Upload failed', error?.message || 'Could not save photo');
+      Alert.alert('Upload Failed', error?.message || 'Could Not Save Photo');
     } finally {
       setUploading(false);
     }
@@ -160,10 +160,10 @@ export default function TimetableView() {
       );
       const json = await res.json();
       if (!res.ok) throw new Error(json?.message || 'Delete failed');
-      Alert.alert('Removed', 'Timetable photo removed');
+      Alert.alert('Removed', 'Timetable Photo Removed');
       await load();
     } catch (error: any) {
-      Alert.alert('Delete failed', error?.message || 'Could not remove photo');
+      Alert.alert('Delete Failed', error?.message || 'Could Not Remove Photo');
     }
   };
 
@@ -177,10 +177,10 @@ export default function TimetableView() {
         <View style={styles.content}>
           <Text style={styles.pageTitle}>Timetable Photos</Text>
           <Text style={styles.pageSub}>
-            Upload one photo per class &amp; section (e.g. 6A)
+            Upload One Photo Per Class &amp; Section (e.g. 6A)
           </Text>
           <AdminGlassCard>
-            <Text style={styles.label}>Class &amp; section</Text>
+            <Text style={styles.label}>Class &amp; Section</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
               {classes.map((c) => {
                 const active = c._id === selectedClassId;
@@ -203,13 +203,13 @@ export default function TimetableView() {
             </ScrollView>
 
             {classes.length === 0 ? (
-              <AdminEmptyState title="No classes" message="Create classes first, then upload photos." />
+              <AdminEmptyState title="No Classes" message="Create classes first, then upload photos." />
             ) : (
               <>
                 <View style={styles.actions}>
                   <Pressable style={styles.btnOutline} onPress={() => void pickPhoto()}>
                     <Ionicons name="image-outline" size={18} color="#0369a1" />
-                    <Text style={styles.btnOutlineText}>Choose photo</Text>
+                    <Text style={styles.btnOutlineText}>Choose Photo</Text>
                   </Pressable>
                   <Pressable
                     style={[styles.btnPrimary, (!pendingAsset || uploading) && styles.btnDisabled]}
@@ -228,8 +228,8 @@ export default function TimetableView() {
                     <Ionicons name="camera-outline" size={28} color="#38bdf8" />
                     <Text style={styles.dropTitle}>
                       {selectedClass
-                        ? `Upload ${classLabel(selectedClass)} timetable`
-                        : 'Select a class'}
+                        ? `Upload ${classLabel(selectedClass)} Timetable`
+                        : 'Select A Class'}
                     </Text>
                   </Pressable>
                 )}
@@ -237,7 +237,7 @@ export default function TimetableView() {
                 {existing && !pendingAsset ? (
                   <Pressable style={styles.removeBtn} onPress={() => void removePhoto()}>
                     <Ionicons name="trash-outline" size={16} color="#e11d48" />
-                    <Text style={styles.removeText}>Remove photo</Text>
+                    <Text style={styles.removeText}>Remove Photo</Text>
                   </Pressable>
                 ) : null}
               </>

@@ -86,13 +86,13 @@ export default function QuizzesView() {
 
   const handleCreateQuiz = async () => {
     if (!newQuiz.title || !newQuiz.subject) {
-      Alert.alert('Validation Error', 'Please fill in all required fields');
+      Alert.alert('Validation Error', 'Please Fill In All Required Fields');
       return;
     }
 
     try {
       await adminService.createQuiz(newQuiz);
-      Alert.alert('Success', 'Quiz created successfully');
+      Alert.alert('Success', 'Quiz Created Successfully');
       setIsCreateModalOpen(false);
       setNewQuiz({
         title: '',
@@ -105,7 +105,7 @@ export default function QuizzesView() {
       fetchQuizzes();
     } catch (error) {
       console.error('Failed to create quiz:', error);
-      Alert.alert('Error', 'An error occurred');
+      Alert.alert('Error', 'An Error Occurred');
     }
   };
 
@@ -129,7 +129,7 @@ export default function QuizzesView() {
     <>
       <AdminScreenShell refreshing={refreshing} onRefresh={onRefresh}>
         <AdminSearchBar
-          placeholder="Search quizzes..."
+          placeholder="Search Quizzes..."
           value={searchTerm}
           onChangeText={setSearchTerm}
           style={{ marginBottom: spacing.sm }}
@@ -141,8 +141,8 @@ export default function QuizzesView() {
         {filteredQuizzes.length === 0 ? (
           <AdminEmptyState
             icon="help-circle-outline"
-            title="No quizzes found"
-            message="Create your first quiz to get started"
+            title="No Quizzes Found"
+            message="Create Your First Quiz To Get Started"
           />
         ) : (
           filteredQuizzes.map((quiz, index) => {
@@ -219,7 +219,7 @@ export default function QuizzesView() {
             <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Title *</Text>
             <TextInput
               style={[styles.input, { borderColor: colors.inputBorder, color: colors.text, backgroundColor: colors.inputBg }]}
-              placeholder="Quiz title"
+              placeholder="Quiz Title"
               placeholderTextColor={colors.textMuted}
               value={newQuiz.title}
               onChangeText={(text) => setNewQuiz({ ...newQuiz, title: text })}
@@ -230,7 +230,7 @@ export default function QuizzesView() {
             <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Description</Text>
             <TextInput
               style={[styles.input, styles.textArea, { borderColor: colors.inputBorder, color: colors.text, backgroundColor: colors.inputBg }]}
-              placeholder="Quiz description"
+              placeholder="Quiz Description"
               placeholderTextColor={colors.textMuted}
               value={newQuiz.description}
               onChangeText={(text) => setNewQuiz({ ...newQuiz, description: text })}

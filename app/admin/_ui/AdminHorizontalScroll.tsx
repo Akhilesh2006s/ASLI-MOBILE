@@ -30,7 +30,7 @@ export default function AdminHorizontalScroll({
   children,
   contentContainerStyle,
   style,
-  hint = 'Swipe for more',
+  hint = 'Swipe For More',
 }: Props) {
   const { colors } = useAdminTheme();
   const [viewportW, setViewportW] = useState(0);

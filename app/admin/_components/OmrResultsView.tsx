@@ -86,7 +86,7 @@ export default function OmrResultsView() {
         if (list?.[0]?._id) setSelectedBatchId(list[0]._id);
       })
       .catch((err: any) => {
-        Alert.alert('Could not load Results', err?.friendlyMessage || err?.message || 'Request failed');
+        Alert.alert('Could Not Load Results', err?.friendlyMessage || err?.message || 'Request failed');
       })
       .finally(() => setLoading(false));
   }, [loadBatches, loadStudents]);
@@ -98,7 +98,7 @@ export default function OmrResultsView() {
       return;
     }
     loadBatchDetail(selectedBatchId).catch((err: any) => {
-      Alert.alert('Batch load failed', err?.friendlyMessage || err?.message || 'Request failed');
+      Alert.alert('Batch Load Failed', err?.friendlyMessage || err?.message || 'Request failed');
     });
   }, [selectedBatchId, loadBatchDetail]);
 
@@ -262,7 +262,7 @@ export default function OmrResultsView() {
         >
           <Ionicons name="link-outline" size={16} color="#fff" />
           <Text style={[styles.actionBtnText, { color: '#fff' }]}>
-            {savingAssign ? 'Saving…' : 'Save assignments'}
+            {savingAssign ? 'Saving…' : 'Save Assignments'}
           </Text>
         </AdminScalePressable>
       </View>
@@ -272,9 +272,9 @@ export default function OmrResultsView() {
         onPress={() => setBatchPickerOpen(true)}
       >
         <View style={{ flex: 1 }}>
-          <Text style={[styles.pickerLabel, { color: colors.textMuted }]}>Uploaded test</Text>
+          <Text style={[styles.pickerLabel, { color: colors.textMuted }]}>Uploaded Test</Text>
           <Text style={[styles.pickerValue, { color: colors.text }]} numberOfLines={1}>
-            {batchMeta?.testTitle || 'Select an uploaded OMR score list'}
+            {batchMeta?.testTitle || 'Select An Uploaded OMR Score List'}
           </Text>
           {batchMeta ? (
             <Text style={[styles.pickerMeta, { color: colors.textMuted }]} numberOfLines={1}>
@@ -336,13 +336,13 @@ export default function OmrResultsView() {
       {!selectedBatchId ? (
         <AdminEmptyState
           icon="scan-outline"
-          title="No score list selected"
+          title="No Score List Selected"
           message="Upload a Score List CSV from OMR scanning to get started."
         />
       ) : filteredRows.length === 0 ? (
         <AdminEmptyState
           icon="search-outline"
-          title="No rows match"
+          title="No Rows Match"
           message="Try clearing search or the unassigned filter."
         />
       ) : (
@@ -356,7 +356,7 @@ export default function OmrResultsView() {
           ) : (
             <View style={[styles.badge, { backgroundColor: '#D1FAE5' }]}>
               <Ionicons name="checkmark-circle" size={14} color="#065F46" />
-              <Text style={{ color: '#065F46', fontWeight: '700', fontSize: 12 }}>All assigned</Text>
+              <Text style={{ color: '#065F46', fontWeight: '700', fontSize: 12 }}>All Assigned</Text>
             </View>
           )}
 
@@ -399,7 +399,7 @@ export default function OmrResultsView() {
                 >
                   <Ionicons name="person-add-outline" size={15} color={colors.primary} />
                   <Text style={[styles.assignBtnText, { color: colors.text }]} numberOfLines={1}>
-                    {assigned ? formatStudentLabel(assigned) : 'Search student…'}
+                    {assigned ? formatStudentLabel(assigned) : 'Search Student…'}
                   </Text>
                 </AdminScalePressable>
               </AdminGlassCard>
@@ -411,12 +411,12 @@ export default function OmrResultsView() {
       {/* Batch picker */}
       <AdminModalShell
         visible={batchPickerOpen}
-        title="Select OMR test"
+        title="Select OMR Test"
         onClose={() => setBatchPickerOpen(false)}
       >
         {batches.length === 0 ? (
           <Text style={{ color: colors.textMuted, textAlign: 'center', paddingVertical: 24 }}>
-            No uploads yet
+            No Uploads Yet
           </Text>
         ) : (
           <ScrollView style={{ maxHeight: 360 }}>
@@ -435,7 +435,7 @@ export default function OmrResultsView() {
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontWeight: '700', color: colors.text }}>{b.testTitle}</Text>
                     <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
-                      {left > 0 ? `${left} unassigned` : 'all assigned'} · {b.rowCount} rows
+                      {left > 0 ? `${left} unassigned` : 'All Assigned'} · {b.rowCount} rows
                     </Text>
                   </View>
                   {active ? <Ionicons name="checkmark-circle" size={20} color={colors.primary} /> : null}
@@ -449,7 +449,7 @@ export default function OmrResultsView() {
       {/* Assign student */}
       <AdminModalShell
         visible={!!assignRowId}
-        title="Assign student"
+        title="Assign Student"
         onClose={() => {
           setAssignRowId(null);
           setAssignSearch('');
@@ -506,7 +506,7 @@ export default function OmrResultsView() {
           style={{ maxHeight: 280, marginTop: 10 }}
           ListEmptyComponent={
             <Text style={{ textAlign: 'center', color: colors.textMuted, paddingVertical: 24 }}>
-              {students.length === 0 ? 'No students found for this school' : 'No students match'}
+              {students.length === 0 ? 'No Students Found For This School' : 'No Students Match'}
             </Text>
           }
           renderItem={({ item }) => {
@@ -565,7 +565,7 @@ export default function OmrResultsView() {
               {uploading ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
-                <Text style={{ color: '#fff', fontWeight: '700' }}>Import scores</Text>
+                <Text style={{ color: '#fff', fontWeight: '700' }}>Import Scores</Text>
               )}
             </AdminScalePressable>
           </View>
@@ -581,7 +581,7 @@ export default function OmrResultsView() {
         >
           <Ionicons name="document-attach-outline" size={18} color={colors.primary} />
           <Text style={{ color: colors.text, fontWeight: '700' }}>
-            {pickedFile ? 'Change file' : 'Choose CSV / Excel'}
+            {pickedFile ? 'Change File' : 'Choose CSV / Excel'}
           </Text>
         </AdminScalePressable>
         {pickedFile ? (

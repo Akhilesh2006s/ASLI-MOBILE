@@ -2,7 +2,6 @@ import { useCallback, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import adminService from '../../src/services/api/adminService';
 import { exportCsvFile } from '../../src/utils/csvExport';
@@ -11,9 +10,9 @@ import { ErrorState, GlassPanel, LoadingState } from '../../src/components/ui';
 import { AdminScalePressable, AdminSectionHeader, useAdminTheme } from './_ui';
 
 const REPORTS = [
-  { id: 'attendance', label: 'Attendance Report', icon: 'calendar-outline' as const, desc: 'Daily & monthly attendance summaries' },
-  { id: 'performance', label: 'Performance Report', icon: 'trending-up-outline' as const, desc: 'Student scores and class averages' },
-  { id: 'exams', label: 'Exam Results', icon: 'document-text-outline' as const, desc: 'Detailed exam outcome reports' },
+  { id: 'attendance', label: 'Attendance Report', icon: 'calendar-outline' as const, desc: 'Daily & Monthly Attendance Summaries' },
+  { id: 'performance', label: 'Performance Report', icon: 'trending-up-outline' as const, desc: 'Student Scores And Class Averages' },
+  { id: 'exams', label: 'Exam Results', icon: 'document-text-outline' as const, desc: 'Detailed Exam Outcome Reports' },
 ];
 
 export default function AdminReports() {
@@ -30,17 +29,17 @@ export default function AdminReports() {
       const response = await adminService.downloadReport(type, format);
       if (format === 'pdf') {
         const message = response?.data?.message || 'Report generated on server.';
-        Alert.alert('Report ready', message);
+        Alert.alert('Report Ready', message);
       } else if (typeof response?.data === 'string') {
         await exportCsvFile(
           response.data,
           `${type}_report_${new Date().toISOString().slice(0, 10)}.csv`
         );
       } else {
-        Alert.alert('Export failed', 'No CSV data returned from the server.');
+        Alert.alert('Export Failed', 'No CSV data returned from the server.');
       }
     } catch (e: any) {
-      setError(e?.response?.data?.message || e?.message || 'Could not download report');
+      setError(e?.response?.data?.message || e?.message || 'Could Not Download Report');
     } finally {
       setLoadingType(null);
     }
@@ -68,14 +67,15 @@ export default function AdminReports() {
           icon="download-outline"
         />
 
-        {REPORTS.map((r, idx) => (
+        {REPORTS.map((r, idx) => {
+            const palette = colors.dashboardStatCards[idx % colors.dashboardStatCards.length];
+            return (
             <View key={r.id} style={[styles.reportCard, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder, borderRadius: radius.lg }]}>
-              <LinearGradient
-                colors={[...colors.statGradients[idx % colors.statGradients.length]]}
-                style={[styles.reportIcon, { borderRadius: radius.md }]}
+              <View
+                style={[styles.reportIcon, { borderRadius: radius.md, backgroundColor: palette.iconBg }]}
               >
-                <Ionicons name={r.icon} size={22} color="#fff" />
-              </LinearGradient>
+                <Ionicons name={r.icon} size={22} color={palette.accent} />
+              </View>
               <View style={styles.reportInfo}>
                 <Text style={[styles.reportTitle, { color: colors.text }]}>{r.label}</Text>
                 <Text style={[styles.reportDesc, { color: colors.textMuted }]}>{r.desc}</Text>
@@ -101,7 +101,8 @@ export default function AdminReports() {
                 </AdminScalePressable>
               </View>
             </View>
-        ))}
+            );
+        })}
       </ScrollView>
     </SafeAreaView>
   );

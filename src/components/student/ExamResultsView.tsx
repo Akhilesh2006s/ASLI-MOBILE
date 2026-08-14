@@ -201,7 +201,7 @@ export default function ExamResultsView({
 
         {summary.subjects.length > 0 ? (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Subject-wise Performance</Text>
+            <Text style={styles.cardTitle}>Subject-Wise Performance</Text>
             <View style={styles.subjectGrid}>
               {summary.subjects.map(([subject, score]) => {
                 const total = Number(score.total) || 0;
@@ -256,7 +256,7 @@ export default function ExamResultsView({
           </View>
           <View style={styles.breakdownRow}>
             <Ionicons name="calculator-outline" size={18} color="#8B5CF6" />
-            <Text style={styles.breakdownLabel}>Avg. per Question</Text>
+            <Text style={styles.breakdownLabel}>Avg. Per Question</Text>
             <Text style={[styles.breakdownValue, { color: '#7C3AED' }]}>
               {formatTime(summary.avgPerQuestion)}
             </Text>
@@ -284,7 +284,7 @@ export default function ExamResultsView({
 
           <TouchableOpacity style={styles.ghostBtn} onPress={onBack} activeOpacity={0.85}>
             <Ionicons name="arrow-back" size={18} color="#475569" />
-            <Text style={styles.ghostBtnText}>Back to Exams</Text>
+            <Text style={styles.ghostBtnText}>Back To Exams</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

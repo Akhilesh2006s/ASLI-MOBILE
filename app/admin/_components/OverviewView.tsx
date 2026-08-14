@@ -387,7 +387,7 @@ export default function OverviewView({ onNavigate }: Props) {
               Detailed School Analysis
             </Text>
             <Text style={[styles.analysisSubtitle, { color: DASH.skyMuted }]}>
-              Comprehensive insights about your students
+              Comprehensive Insights About Your Students
             </Text>
           </View>
         </View>
@@ -426,7 +426,7 @@ export default function OverviewView({ onNavigate }: Props) {
                   );
                 })
               ) : (
-                <Text style={[styles.empty, { color: DASH.skyMuted }]}>No class data</Text>
+                <Text style={[styles.empty, { color: DASH.skyMuted }]}>No Class Data</Text>
               )}
             </AnalysisPanel>
 
@@ -495,7 +495,7 @@ export default function OverviewView({ onNavigate }: Props) {
                   />
                 ))
               ) : (
-                <Text style={[styles.empty, { color: DASH.skyMuted }]}>No subject data</Text>
+                <Text style={[styles.empty, { color: DASH.skyMuted }]}>No Subject Data</Text>
               )}
             </AnalysisPanel>
           </View>
@@ -522,10 +522,10 @@ export default function OverviewView({ onNavigate }: Props) {
           <Text style={[styles.assignSub, { color: DASH.skyMuted }]}>Total Students Assigned</Text>
           <Text style={[styles.assignValue, { color: statCards[1].accent }]}>{stats.totalStudents}</Text>
           <Text style={[styles.assignDesc, { color: DASH.skyMuted }]}>
-            Students specifically assigned to your admin account
+            Students Specifically Assigned To Your Admin Account
           </Text>
           <View style={styles.assignCta}>
-            <Text style={[styles.assignCtaText, { color: statCards[1].accent }]}>View details</Text>
+            <Text style={[styles.assignCtaText, { color: statCards[1].accent }]}>View Details</Text>
             <Ionicons name="arrow-forward" size={14} color={statCards[1].accent} />
           </View>
         </Pressable>
@@ -549,10 +549,10 @@ export default function OverviewView({ onNavigate }: Props) {
           <Text style={[styles.assignSub, { color: DASH.skyMuted }]}>Total Teachers Assigned</Text>
           <Text style={[styles.assignValue, { color: statCards[3].accent }]}>{stats.totalTeachers}</Text>
           <Text style={[styles.assignDesc, { color: DASH.skyMuted }]}>
-            Teachers specifically assigned to your admin account
+            Teachers Specifically Assigned To Your Admin Account
           </Text>
           <View style={styles.assignCta}>
-            <Text style={[styles.assignCtaText, { color: statCards[3].accent }]}>View details</Text>
+            <Text style={[styles.assignCtaText, { color: statCards[3].accent }]}>View Details</Text>
             <Ionicons name="arrow-forward" size={14} color={statCards[3].accent} />
           </View>
         </Pressable>

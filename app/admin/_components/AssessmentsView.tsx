@@ -93,13 +93,13 @@ export default function AssessmentsView() {
 
   const handleCreateAssessment = async () => {
     if (!newAssessment.title || !newAssessment.subject) {
-      Alert.alert('Validation Error', 'Please fill in all required fields');
+      Alert.alert('Validation Error', 'Please Fill In All Required Fields');
       return;
     }
 
     try {
       await adminService.createAssessment(newAssessment);
-      Alert.alert('Success', 'Assessment created successfully');
+      Alert.alert('Success', 'Assessment Created Successfully');
       setIsCreateModalOpen(false);
       setNewAssessment({
         title: '',
@@ -115,7 +115,7 @@ export default function AssessmentsView() {
       fetchAssessments();
     } catch (error) {
       console.error('Failed to create assessment:', error);
-      Alert.alert('Error', 'An error occurred');
+      Alert.alert('Error', 'An Error Occurred');
     }
   };
 
@@ -220,7 +220,7 @@ export default function AssessmentsView() {
     <>
       <AdminScreenShell refreshing={refreshing} onRefresh={onRefresh}>
         <AdminSearchBar
-          placeholder="Search assessments..."
+          placeholder="Search Assessments..."
           value={searchTerm}
           onChangeText={setSearchTerm}
           style={{ marginBottom: spacing.sm }}
@@ -234,8 +234,8 @@ export default function AssessmentsView() {
         {filteredAssessments.length === 0 ? (
           <AdminEmptyState
             icon="document-text-outline"
-            title="No assessments found"
-            message="Create your first assessment to get started"
+            title="No Assessments Found"
+            message="Create Your First Assessment To Get Started"
           />
         ) : (
           filteredAssessments.map((assessment, index) => {
@@ -338,7 +338,7 @@ export default function AssessmentsView() {
             <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Title *</Text>
             <TextInput
               style={[styles.input, { borderColor: colors.inputBorder, color: colors.text, backgroundColor: colors.inputBg }]}
-              placeholder="Assessment title"
+              placeholder="Assessment Title"
               placeholderTextColor={colors.textMuted}
               value={newAssessment.title}
               onChangeText={(text) => setNewAssessment({ ...newAssessment, title: text })}
@@ -349,7 +349,7 @@ export default function AssessmentsView() {
             <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Description</Text>
             <TextInput
               style={[styles.input, styles.textArea, { borderColor: colors.inputBorder, color: colors.text, backgroundColor: colors.inputBg }]}
-              placeholder="Assessment description"
+              placeholder="Assessment Description"
               placeholderTextColor={colors.textMuted}
               value={newAssessment.description}
               onChangeText={(text) => setNewAssessment({ ...newAssessment, description: text })}
@@ -403,7 +403,7 @@ export default function AssessmentsView() {
 
           <View style={styles.inputRow}>
             <View style={[styles.inputContainer, { flex: 1, marginRight: 8 }]}>
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Duration (min)</Text>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Duration (Min)</Text>
               <TextInput
                 style={[styles.input, { borderColor: colors.inputBorder, color: colors.text, backgroundColor: colors.inputBg }]}
                 placeholder="60"

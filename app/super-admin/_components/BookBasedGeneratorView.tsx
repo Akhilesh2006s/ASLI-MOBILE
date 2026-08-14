@@ -110,7 +110,7 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
     try {
       setBooks(await fetchBookKnowledgeBooks());
     } catch (err: any) {
-      Alert.alert('Load failed', err?.message || 'Could not load books.');
+      Alert.alert('Load Failed', err?.message || 'Could not load books.');
     } finally {
       setBooksLoading(false);
     }
@@ -175,23 +175,23 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
 
   const generate = async (opts?: { forceUnlock?: boolean }) => {
     if (!bookId || !bookReady) {
-      Alert.alert('Select book', 'Choose an indexed textbook first.');
+      Alert.alert('Select Book', 'Choose an indexed textbook first.');
       return;
     }
     if (!selectedTool || !board || !classNumber || !subject || !topic || !subTopic) {
-      Alert.alert('Missing fields', 'Book, tool, board, class, subject, topic and sub topic are required.');
+      Alert.alert('Missing Fields', 'Book, tool, board, class, subject, topic and sub topic are required.');
       return;
     }
     if (!isValidGenerationRecordCount(generationRecordCount)) {
-      Alert.alert('Invalid count', `Enter ${GENERATION_RECORD_COUNT_MIN}–${GENERATION_RECORD_COUNT_MAX} records.`);
+      Alert.alert('Invalid Count', `Enter ${GENERATION_RECORD_COUNT_MIN}–${GENERATION_RECORD_COUNT_MAX} records.`);
       return;
     }
     if (isStoryLanguageTool(selectedTool) && !isStoryPassageLanguageSubject(subject)) {
-      Alert.alert('English, Hindi, or Telugu only', 'This tool works only with English, Hindi, or Telugu subjects.');
+      Alert.alert('English, Hindi, Or Telugu Only', 'This tool works only with English, Hindi, or Telugu subjects.');
       return;
     }
     if (isLanguageExcludedTool(selectedTool) && isStoryPassageLanguageSubject(subject)) {
-      Alert.alert('Language subjects not supported', LANGUAGE_EXCLUDED_TOOL_ERROR);
+      Alert.alert('Language Subjects Not Supported', LANGUAGE_EXCLUDED_TOOL_ERROR);
       return;
     }
     setIsGenerating(true);
@@ -218,12 +218,12 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
         perRecordCost: perRecord,
       });
       Alert.alert(
-        savedCount > 0 ? 'Batch saved' : 'Batch failed',
+        savedCount > 0 ? 'Batch Saved' : 'Batch Failed',
         `${savedCount}/${result.batchSize || generationRecordCount} saved · ${formatTokenCount(tokenUsage.totalTokens)} tokens · ${formatCostInr(cost.inr)}`,
       );
     } catch (err: any) {
       if (err?.locked) setGenerationLocked(true);
-      Alert.alert('Generation failed', err?.message || 'Could not generate.');
+      Alert.alert('Generation Failed', err?.message || 'Could not generate.');
     } finally {
       setIsGenerating(false);
     }
@@ -235,7 +235,7 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
       setGenerationLocked(false);
       await generate({ forceUnlock: true });
     } catch (err: any) {
-      Alert.alert('Could not clear lock', err?.message || 'Failed to release lock.');
+      Alert.alert('Could Not Clear Lock', err?.message || 'Failed to release lock.');
     }
   };
 
@@ -284,8 +284,8 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Step 2 — Choose Tool, Then Inputs</Text>
-        <Text style={[styles.subHeading, { marginTop: 0 }]}>1. Choose tool</Text>
-        <Text style={styles.subHeading}>Teacher tools</Text>
+        <Text style={[styles.subHeading, { marginTop: 0 }]}>1. Choose Tool</Text>
+        <Text style={styles.subHeading}>Teacher Tools</Text>
         {BOOK_BASED_TEACHER_TOOLS.map((tool) => (
           <Pressable
             key={`teacher-${tool.id}`}
@@ -296,7 +296,7 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
             <Text style={styles.toolDesc}>{tool.description}</Text>
           </Pressable>
         ))}
-        <Text style={styles.subHeading}>Student tools</Text>
+        <Text style={styles.subHeading}>Student Tools</Text>
         {BOOK_BASED_STUDENT_TOOLS.map((tool) => (
           <Pressable
             key={`student-${tool.id}`}
@@ -308,7 +308,7 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
           </Pressable>
         ))}
 
-        <Text style={[styles.subHeading, { marginTop: 16 }]}>2. Curriculum inputs</Text>
+        <Text style={[styles.subHeading, { marginTop: 16 }]}>2. Curriculum Inputs</Text>
         {!selectedTool ? (
           <Text style={styles.emptyText}>Select a tool above to unlock curriculum fields.</Text>
         ) : null}
@@ -383,7 +383,7 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
             </Pressable>
           ))}
         </ScrollView>
-        <Text style={styles.fieldLabel}>Records to generate ({GENERATION_RECORD_COUNT_MIN}–{GENERATION_RECORD_COUNT_MAX})</Text>
+        <Text style={styles.fieldLabel}>Records to Generate ({GENERATION_RECORD_COUNT_MIN}–{GENERATION_RECORD_COUNT_MAX})</Text>
         <TextInput
           style={styles.input}
           value={generationRecordCount}
@@ -401,7 +401,7 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
           selectedTool === 'homework-creator'
         ) ? (
           <>
-            <Text style={styles.fieldLabel}>Number of questions (1–40)</Text>
+            <Text style={styles.fieldLabel}>Number Of Questions (1–40)</Text>
             <TextInput
               style={styles.input}
               value={questionCount}
@@ -427,7 +427,7 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
         </Pressable>
         {generationLocked ? (
           <Pressable style={styles.lockBtn} onPress={() => void releaseLockAndRetry()}>
-            <Text style={styles.lockBtnText}>Clear lock & retry</Text>
+            <Text style={styles.lockBtnText}>Clear Lock & Retry</Text>
           </Pressable>
         ) : null}
       </View>
@@ -435,11 +435,11 @@ export default function BookBasedGeneratorView({ onOpenBookKnowledge }: Props) {
       {lastSummary ? (
         <View style={styles.summary}>
           <Text style={styles.summaryTitle}>
-            Last batch: {lastSummary.successCount}/{lastSummary.batchSize} saved
+            Last Batch: {lastSummary.successCount}/{lastSummary.batchSize} Saved
           </Text>
           <Text style={styles.summaryLine}>
-            {formatTokenCount(lastSummary.tokenUsage.totalTokens)} tokens · Batch {formatCostInr(lastSummary.cost.inr)}
-            {lastSummary.successCount > 0 ? ` · ~${formatCostInr(lastSummary.perRecordCost.inr)}/record` : ''}
+            {formatTokenCount(lastSummary.tokenUsage.totalTokens)} Tokens · Batch {formatCostInr(lastSummary.cost.inr)}
+            {lastSummary.successCount > 0 ? ` · ~${formatCostInr(lastSummary.perRecordCost.inr)}/Record` : ''}
           </Text>
         </View>
       ) : null}

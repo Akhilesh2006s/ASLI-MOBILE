@@ -37,7 +37,7 @@ export default function CombinedAnalyticsView({ defaultTab = 'overview' }: Combi
             color={mainTab === 'overview' ? '#fff' : '#6b7280'}
           />
           <Text style={[styles.mainTabText, mainTab === 'overview' && styles.mainTabTextActive]}>
-            Platform overview
+            Platform Overview
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -50,7 +50,7 @@ export default function CombinedAnalyticsView({ defaultTab = 'overview' }: Combi
             color={mainTab === 'ai' ? '#fff' : '#6b7280'}
           />
           <Text style={[styles.mainTabText, mainTab === 'ai' && styles.mainTabTextActive]}>
-            Exam & AI insights
+            Exam & AI Insights
           </Text>
         </TouchableOpacity>
       </View>

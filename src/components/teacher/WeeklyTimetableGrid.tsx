@@ -220,11 +220,11 @@ export default function WeeklyTimetableGrid({
   const minWidth = DAY_COL + timeSlots.length * TIME_COL;
   const defaultFooterHint =
     variant === 'admin' && interactive
-      ? 'Tap empty slot to add · tap session to edit'
+      ? 'Tap Empty Slot To Add · Tap Session To Edit'
       : variant === 'admin'
-        ? 'Tap a session for details'
+        ? 'Tap A Session For Details'
         : onEntryClick
-          ? 'Tap a class to mark as completed'
+          ? 'Tap A Class To Mark As Completed'
           : undefined;
   const hint = footerHint ?? defaultFooterHint;
 
@@ -248,7 +248,7 @@ export default function WeeklyTimetableGrid({
           >
             <View style={[styles.cornerCell, { width: DAY_COL, backgroundColor: theme.cornerBg, borderRightColor: theme.timeBorder }]}>
               <Ionicons name="time-outline" size={14} color={theme.cornerIcon} />
-              <Text style={[styles.cornerText, { color: theme.cornerText }]}>TIME</Text>
+              <Text style={[styles.cornerText, { color: theme.cornerText }]}>Time</Text>
             </View>
             {timeSlots.map((hour) => (
               <View key={hour} style={[styles.timeHeader, { width: TIME_COL, borderRightColor: theme.timeBorder }]}>
@@ -345,7 +345,7 @@ export default function WeeklyTimetableGrid({
 
       <View style={[styles.footer, { borderTopColor: theme.footerBorder, backgroundColor: theme.footerBg }]}>
         <View style={[styles.footerDot, { backgroundColor: theme.footerDotBg, borderColor: theme.footerDotBorder }]} />
-        <Text style={[styles.footerText, { color: theme.footerText }]}>Monday – Saturday · same weekly pattern</Text>
+        <Text style={[styles.footerText, { color: theme.footerText }]}>Monday – Saturday · Same Weekly Pattern</Text>
         {hint ? <Text style={[styles.footerHint, { color: theme.footerText }]}>{hint}</Text> : null}
       </View>
     </View>

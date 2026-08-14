@@ -163,7 +163,7 @@ export default function ProfileView({ user, stats, onNavigate, onLogout }: Props
           <GlassPanel style={styles.backRow} radius={TEACHER_RADIUS.lg} tone="medium">
             <View style={styles.backRowInner}>
               <Ionicons name="arrow-back" size={20} color={TEACHER.primaryLight} />
-              <Text style={styles.backText}>Back to Profile</Text>
+              <Text style={styles.backText}>Back To Profile</Text>
             </View>
           </GlassPanel>
         </Pressable>
@@ -181,7 +181,7 @@ export default function ProfileView({ user, stats, onNavigate, onLogout }: Props
           <GlassPanel style={styles.backRow} radius={TEACHER_RADIUS.lg} tone="medium">
             <View style={styles.backRowInner}>
               <Ionicons name="arrow-back" size={20} color={TEACHER.primaryLight} />
-              <Text style={styles.backText}>Back to Profile</Text>
+              <Text style={styles.backText}>Back To Profile</Text>
             </View>
           </GlassPanel>
         </Pressable>
@@ -201,7 +201,7 @@ export default function ProfileView({ user, stats, onNavigate, onLogout }: Props
         ) : (
           <View style={styles.empty}>
             <Ionicons name="calendar-outline" size={40} color={TEACHER.textMuted} />
-            <Text style={styles.emptyText}>No events this month</Text>
+            <Text style={styles.emptyText}>No Events This Month</Text>
           </View>
         )}
       </ScrollView>

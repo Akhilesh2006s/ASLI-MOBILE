@@ -249,7 +249,7 @@ export default function CalendarView() {
 
   const handleEventSubmit = async () => {
     if (!eventForm.name.trim() || !eventForm.date) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      Alert.alert('Error', 'Please Fill In All Required Fields');
       return;
     }
 
@@ -279,13 +279,13 @@ export default function CalendarView() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      Alert.alert('Success', isEditMode ? 'Event updated successfully' : 'Event created successfully');
+      Alert.alert('Success', isEditMode ? 'Event Updated Successfully' : 'Event Created Successfully');
       setIsEventModalOpen(false);
       resetForm();
       fetchEvents();
     } catch (error: any) {
       console.error('Error saving event:', error);
-      Alert.alert('Error', error?.response?.data?.message || 'Failed to save event');
+      Alert.alert('Error', error?.response?.data?.message || 'Failed To Save Event');
     }
   };
 
@@ -301,11 +301,11 @@ export default function CalendarView() {
           try {
             const eventId = event._id || event.id;
             await api.delete(`/api/admin/events/${eventId}`);
-            Alert.alert('Success', 'Event deleted successfully');
+            Alert.alert('Success', 'Event Deleted Successfully');
             setIsViewModalOpen(false);
             fetchEvents();
           } catch {
-            Alert.alert('Error', 'Failed to delete event');
+            Alert.alert('Error', 'Failed To Delete Event');
           }
         },
       },
@@ -355,7 +355,7 @@ export default function CalendarView() {
       <AdminSectionHeader
         icon="calendar"
         title="Calendar"
-        subtitle="Manage and view your events"
+        subtitle="Manage And View Your Events"
         action={
           <AdminScalePressable
             onPress={() => setCurrentDate(new Date())}
@@ -453,7 +453,7 @@ export default function CalendarView() {
         {monthlyEventsByDate.length === 0 ? (
           <AdminEmptyState
             icon="calendar-outline"
-            title="No events this month"
+            title="No Events This Month"
             message="No events or exams scheduled this month."
             action={
               <AdminScalePressable
@@ -547,7 +547,7 @@ export default function CalendarView() {
             style={[styles.input, { borderColor: colors.inputBorder, color: colors.text, backgroundColor: colors.inputBg }]}
             value={eventForm.name}
             onChangeText={(text) => setEventForm({ ...eventForm, name: text })}
-            placeholder="Enter event name"
+            placeholder="Enter Event Name"
             placeholderTextColor={colors.textMuted}
           />
         </View>
@@ -568,7 +568,7 @@ export default function CalendarView() {
             style={[styles.input, styles.textArea, { borderColor: colors.inputBorder, color: colors.text, backgroundColor: colors.inputBg }]}
             value={eventForm.description}
             onChangeText={(text) => setEventForm({ ...eventForm, description: text })}
-            placeholder="Enter event description"
+            placeholder="Enter Event Description"
             placeholderTextColor={colors.textMuted}
             multiline
             numberOfLines={4}

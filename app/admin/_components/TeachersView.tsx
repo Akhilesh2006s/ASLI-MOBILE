@@ -456,7 +456,7 @@ export default function TeachersView() {
   }, [classAssignPicker, classesList, teacherSubjectOptions]);
 
   const classAssignPickerTitle =
-    classAssignPicker?.field === 'classId' ? 'Select class' : 'Select subject';
+    classAssignPicker?.field === 'classId' ? 'Select Class' : 'Select Subject';
 
   const handleAssignSubjectsSubmit = async () => {
     if (!assigningForTeacher) return;
@@ -492,11 +492,11 @@ export default function TeachersView() {
       (row) => (row.classId && !row.subjectId) || (!row.classId && row.subjectId),
     );
     if (incomplete) {
-      Alert.alert('Incomplete row', 'Each row needs both a class and a subject.');
+      Alert.alert('Incomplete Row', 'Each row needs both a class and a subject.');
       return;
     }
     if ((assigningForTeacher.subjects || []).length === 0) {
-      Alert.alert('Assign subjects first', 'Assign subjects to this teacher before linking classes.');
+      Alert.alert('Assign Subjects First', 'Assign subjects to this teacher before linking classes.');
       return;
     }
 
@@ -525,7 +525,7 @@ export default function TeachersView() {
     const subjectsValue =
       subjectNames.length > 0
         ? subjectNames.slice(0, 3).join(', ') + (subjectNames.length > 3 ? ` (+${subjectNames.length - 3})` : '')
-        : 'No subjects assigned';
+        : 'No Subjects Assigned';
     const resolvedAssignedClasses = getResolvedAssignedClasses(getTeacherClassIds(teacher), classesList);
 
     const DetailRow = ({
@@ -592,7 +592,7 @@ export default function TeachersView() {
               </Text>
             </TouchableOpacity>
             <Text style={styles.teacherEmailHint} numberOfLines={1}>
-              {teacher.email || 'No email'}
+              {teacher.email || 'No Email'}
             </Text>
           </View>
           <View style={[styles.activePill, !teacher.isActive && styles.activePillOff]}>
@@ -675,7 +675,7 @@ export default function TeachersView() {
               })
             ) : (
               <View style={styles.noClassesAssignedWrap}>
-                <Text style={styles.noClassesAssigned}>No classes assigned</Text>
+                <Text style={styles.noClassesAssigned}>No Classes Assigned</Text>
               </View>
             )}
           </AdminCardScrollBox>
@@ -740,7 +740,7 @@ export default function TeachersView() {
       <View style={styles.innerShell}>
       <AdminSectionHeader
         title="Teacher Management"
-        subtitle="Manage teachers and their assignments"
+        subtitle="Manage Teachers And Their Assignments"
         icon="people-outline"
       />
 
@@ -765,7 +765,7 @@ export default function TeachersView() {
         <AdminSkeletonList count={4} />
       ) : filteredTeachers.length === 0 ? (
         <AdminEmptyState
-          title="No teachers found"
+          title="No Teachers Found"
           message="Try a different search or add a new teacher."
           icon="people-outline"
         />
@@ -828,7 +828,7 @@ export default function TeachersView() {
                 <Text style={styles.formLabel}>Full Name *</Text>
                 <TextInput
                   style={styles.formInput}
-                  placeholder="Enter teacher's full name"
+                  placeholder="Enter Teacher's Full Name"
                   value={newTeacher.fullName}
                   onChangeText={(text) => setNewTeacher({ ...newTeacher, fullName: text })}
                   placeholderTextColor="#5B6779"
@@ -839,7 +839,7 @@ export default function TeachersView() {
                 <Text style={styles.formLabel}>Email *</Text>
                 <TextInput
                   style={styles.formInput}
-                  placeholder="Enter email address"
+                  placeholder="Enter Email Address"
                   value={newTeacher.email}
                   onChangeText={(text) => setNewTeacher({ ...newTeacher, email: text })}
                   keyboardType="email-address"
@@ -852,7 +852,7 @@ export default function TeachersView() {
                 <Text style={styles.formLabel}>Phone *</Text>
                 <TextInput
                   style={styles.formInput}
-                  placeholder="10-digit mobile number"
+                  placeholder="10-Digit Mobile Number"
                   value={newTeacher.phone}
                   onChangeText={(text) => setNewTeacher({ ...newTeacher, phone: text.replace(/[^\d+\s-]/g, '') })}
                   keyboardType="phone-pad"
@@ -864,7 +864,7 @@ export default function TeachersView() {
                 <Text style={styles.formLabel}>Department *</Text>
                 <TextInput
                   style={styles.formInput}
-                  placeholder="Enter department"
+                  placeholder="Enter Department"
                   value={newTeacher.department}
                   onChangeText={(text) => setNewTeacher({ ...newTeacher, department: text })}
                   placeholderTextColor="#5B6779"
@@ -876,7 +876,7 @@ export default function TeachersView() {
                 <View style={styles.passwordRow}>
                   <TextInput
                     style={[styles.formInput, styles.passwordInput]}
-                    placeholder="Minimum 6 characters"
+                    placeholder="Minimum 6 Characters"
                     value={newTeacher.password}
                     onChangeText={(text) => setNewTeacher({ ...newTeacher, password: text })}
                     secureTextEntry={!showNewTeacherPassword}
@@ -905,7 +905,7 @@ export default function TeachersView() {
                 <Text style={styles.formLabel}>Qualifications</Text>
                 <TextInput
                   style={[styles.formInput, styles.formTextArea]}
-                  placeholder="Enter qualifications"
+                  placeholder="Enter Qualifications"
                   value={newTeacher.qualifications}
                   onChangeText={(text) => setNewTeacher({ ...newTeacher, qualifications: text })}
                   multiline
@@ -959,7 +959,7 @@ export default function TeachersView() {
                       .join(', ')}
                   </Text>
                 ) : (
-                  <Text style={styles.formErrorHint}>Please select at least one subject</Text>
+                  <Text style={styles.formErrorHint}>Please Select At Least One Subject</Text>
                 )}
               </View>
             </ScrollView>
@@ -1024,7 +1024,7 @@ export default function TeachersView() {
                 <Text style={styles.formLabel}>Full Name *</Text>
                 <TextInput
                   style={styles.formInput}
-                  placeholder="Enter teacher's full name"
+                  placeholder="Enter Teacher's Full Name"
                   value={editTeacher.fullName}
                   onChangeText={(text) => setEditTeacher({ ...editTeacher, fullName: text })}
                   placeholderTextColor="#5B6779"
@@ -1035,7 +1035,7 @@ export default function TeachersView() {
                 <Text style={styles.formLabel}>Email *</Text>
                 <TextInput
                   style={styles.formInput}
-                  placeholder="Enter email address"
+                  placeholder="Enter Email Address"
                   value={editTeacher.email}
                   onChangeText={(text) => setEditTeacher({ ...editTeacher, email: text })}
                   keyboardType="email-address"
@@ -1048,7 +1048,7 @@ export default function TeachersView() {
                 <Text style={styles.formLabel}>Phone</Text>
                 <TextInput
                   style={styles.formInput}
-                  placeholder="Enter phone number"
+                  placeholder="Enter Phone Number"
                   value={editTeacher.phone}
                   onChangeText={(text) => setEditTeacher({ ...editTeacher, phone: text })}
                   keyboardType="phone-pad"
@@ -1060,7 +1060,7 @@ export default function TeachersView() {
                 <Text style={styles.formLabel}>Department *</Text>
                 <TextInput
                   style={styles.formInput}
-                  placeholder="Enter department"
+                  placeholder="Enter Department"
                   value={editTeacher.department}
                   onChangeText={(text) => setEditTeacher({ ...editTeacher, department: text })}
                   placeholderTextColor="#5B6779"
@@ -1071,7 +1071,7 @@ export default function TeachersView() {
                 <Text style={styles.formLabel}>Qualifications</Text>
                 <TextInput
                   style={[styles.formInput, styles.formTextArea]}
-                  placeholder="Enter qualifications"
+                  placeholder="Enter Qualifications"
                   value={editTeacher.qualifications}
                   onChangeText={(text) => setEditTeacher({ ...editTeacher, qualifications: text })}
                   multiline
@@ -1119,7 +1119,7 @@ export default function TeachersView() {
             <View style={styles.assignModalHeader}>
               <View style={styles.assignModalTitleBlock}>
                 <Text style={styles.assignModalTitle}>
-                  Assign Subjects to {assigningForTeacher?.fullName ?? ''}
+                  Assign Subjects To {assigningForTeacher?.fullName ?? ''}
                 </Text>
                 <Text style={styles.assignModalDesc}>Select the subjects this teacher will teach.</Text>
               </View>
@@ -1204,7 +1204,7 @@ export default function TeachersView() {
             <View style={styles.assignModalHeader}>
               <View style={styles.assignModalTitleBlock}>
                 <Text style={styles.assignModalTitle}>
-                  Assign to Class — {assigningForTeacher?.fullName ?? ''}
+                  Assign To Class — {assigningForTeacher?.fullName ?? ''}
                 </Text>
                 <Text style={styles.assignModalDesc}>
                   Pick a class and the subject this teacher will teach there.
@@ -1227,7 +1227,7 @@ export default function TeachersView() {
               </Text>
             ) : (
               <>
-                <Text style={styles.assignSectionLabel}>Class + subject rows</Text>
+                <Text style={styles.assignSectionLabel}>Class + Subject Rows</Text>
                 <ScrollView
                   style={[styles.assignScroll, styles.assignClassListBorder]}
                   nestedScrollEnabled
@@ -1236,10 +1236,10 @@ export default function TeachersView() {
                 >
                   {classSubjectAssignments.map((row, index) => {
                     const classLabel =
-                      classesList.find((c) => c.id === row.classId)?.name || 'Select class';
+                      classesList.find((c) => c.id === row.classId)?.name || 'Select Class';
                     const subjectLabel =
                       teacherSubjectOptions.find((s) => s.id === row.subjectId)?.name ||
-                      'Select subject';
+                      'Select Subject';
                     return (
                       <View key={`assign-row-${index}`} style={styles.classAssignRow}>
                         <TouchableOpacity
@@ -1289,7 +1289,7 @@ export default function TeachersView() {
                 >
                   <MaterialCommunityIcons name="plus" size={18} color={colors.primary} />
                   <Text style={[styles.classAssignAddBtnText, { color: colors.primary }]}>
-                    Add class + subject
+                    Add Class + Subject
                   </Text>
                 </TouchableOpacity>
               </>
@@ -1313,7 +1313,7 @@ export default function TeachersView() {
                 disabled={assignSubmitting || (assigningForTeacher?.subjects || []).length === 0}
               >
                 <Text style={styles.assignPrimaryBtnText}>
-                  {assignSubmitting ? 'Saving…' : 'Save assignments'}
+                  {assignSubmitting ? 'Saving…' : 'Save Assignments'}
                 </Text>
               </TouchableOpacity>
             </View>

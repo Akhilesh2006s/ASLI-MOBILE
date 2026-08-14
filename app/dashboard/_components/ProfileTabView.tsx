@@ -277,7 +277,7 @@ export default function ProfileTabView({ user, onLogout }: Props) {
         : profile?.board || '';
 
   const logout = () => {
-    Alert.alert('Logout', 'Sign out of your account?', [
+    Alert.alert('Logout', 'Sign Out Of Your Account?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Logout',
@@ -409,7 +409,7 @@ export default function ProfileTabView({ user, onLogout }: Props) {
               );
               })}
             </View>
-            <Text style={styles.weekTotal}>Total: {weeklyHoursTotal} hours this week</Text>
+            <Text style={styles.weekTotal}>Total: {weeklyHoursTotal} Hours This Week</Text>
             <Text style={styles.weekSub}>From Exams, Content Sessions, And App Study Time.</Text>
           </>
         )}

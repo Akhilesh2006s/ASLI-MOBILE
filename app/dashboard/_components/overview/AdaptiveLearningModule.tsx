@@ -85,10 +85,13 @@ function getSubjectIcon(name: string): keyof typeof Ionicons.glyphMap {
   return 'book-outline';
 }
 
+const FOCUS_CHAPTERS_VISIBLE = 2;
+
 function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
   const [cards, setCards] = useState<AdaptiveCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedFocusIds, setExpandedFocusIds] = useState<Record<string, boolean>>({});
 
   const fetchAdaptive = useCallback(async () => {
     try {
@@ -102,7 +105,7 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
       if (status === 401 || status === 403) {
         setError('Sign in to load adaptive recommendations.');
       } else {
-        setError(e instanceof Error ? e.message : 'Could not load recommendations');
+        setError(e instanceof Error ? e.message : 'Could Not Load Recommendations');
       }
       setCards([]);
     } finally {
@@ -194,7 +197,7 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.subjectName}>{rec.subjectName}</Text>
                     <Text style={styles.subjectMeta}>
-                      Exam score {Math.round(examScore)}% · Weak topics: {rec.weakTopicCount}
+                      Exam Score {Math.round(examScore)}% · Weak Topics: {rec.weakTopicCount}
                     </Text>
                     <View style={styles.progressBar}>
                       <View style={[styles.progressFill, { width: `${Math.min(100, examScore)}%` }]} />
@@ -210,7 +213,10 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
                 {Array.isArray(rec.focusChapters) && rec.focusChapters.length > 0 ? (
                   <View style={styles.focusWrap}>
                     <Text style={styles.focusLabel}>CHAPTERS / SUBTOPICS TO FOCUS ON</Text>
-                    {rec.focusChapters.map((ch) => (
+                    {(expandedFocusIds[rec.subjectId]
+                      ? rec.focusChapters
+                      : rec.focusChapters.slice(0, FOCUS_CHAPTERS_VISIBLE)
+                    ).map((ch) => (
                       <TouchableOpacity
                         key={ch.chapter}
                         style={styles.focusChip}
@@ -224,11 +230,34 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
                           {(ch.wrong || 0) > 0 ? `${ch.wrong} wrong` : ''}
                           {(ch.wrong || 0) > 0 && (ch.skipped || 0) > 0 ? ' · ' : ''}
                           {(ch.skipped || 0) > 0 ? `${ch.skipped} skipped` : ''}
-                          {(ch.wrong || 0) === 0 && (ch.skipped || 0) === 0 ? 'From recent exams' : ''}
-                          {' · Study this'}
+                          {(ch.wrong || 0) === 0 && (ch.skipped || 0) === 0 ? 'From Recent Exams' : ''}
+                          {' · Study This'}
                         </Text>
                       </TouchableOpacity>
                     ))}
+                    {rec.focusChapters.length > FOCUS_CHAPTERS_VISIBLE ? (
+                      <TouchableOpacity
+                        style={styles.moreBtn}
+                        onPress={() =>
+                          setExpandedFocusIds((prev) => ({
+                            ...prev,
+                            [rec.subjectId]: !prev[rec.subjectId],
+                          }))
+                        }
+                        accessibilityRole="button"
+                        accessibilityLabel={
+                          expandedFocusIds[rec.subjectId]
+                            ? 'Show fewer chapters'
+                            : `Show ${rec.focusChapters.length - FOCUS_CHAPTERS_VISIBLE} more chapters`
+                        }
+                      >
+                        <Text style={styles.moreBtnText}>
+                          {expandedFocusIds[rec.subjectId]
+                            ? 'Show Less'
+                            : `+${rec.focusChapters.length - FOCUS_CHAPTERS_VISIBLE} More`}
+                        </Text>
+                      </TouchableOpacity>
+                    ) : null}
                   </View>
                 ) : null}
 
@@ -283,7 +312,7 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
                     <Text style={styles.gapTitle}>No Matching Library Items</Text>
                     {rec.gapsWithoutContent.slice(0, 3).map((topic) => (
                       <Text key={topic} style={styles.gapItem}>
-                        No content for: {topic}
+                        No Content For: {topic}
                       </Text>
                     ))}
                   </View>
@@ -383,6 +412,21 @@ const styles = StyleSheet.create({
   },
   focusChapter: { fontSize: 13, fontWeight: '700', color: STUDENT.text },
   focusMeta: { fontSize: 11, color: STUDENT.textMuted, marginTop: 2 },
+  moreBtn: {
+    alignSelf: 'flex-start',
+    marginTop: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: `${STUDENT_SKY.accent}14`,
+    borderWidth: 1,
+    borderColor: `${STUDENT_SKY.accent}33`,
+  },
+  moreBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: STUDENT_SKY.accentDark,
+  },
   recLabel: {
     fontSize: 10,
     fontWeight: '800',

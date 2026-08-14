@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import omrService, { type OmrTeacherRow } from '../../../src/services/api/omrService';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO } from '../../../src/theme/teacher';
 import { GlassPanel } from '../../../src/components/ui';
+import { TeacherPageHero } from '../../../src/components/teacher';
 
 export default function OmrResultsView() {
   const [rows, setRows] = useState<OmrTeacherRow[]>([]);
@@ -29,7 +30,7 @@ export default function OmrResultsView() {
       const data = await omrService.getTeacherResults();
       setRows(Array.isArray(data) ? data : []);
     } catch (err: any) {
-      setError(err?.friendlyMessage || err?.message || 'Failed to load Offline Results');
+      setError(err?.friendlyMessage || err?.message || 'Failed To Load Offline Results');
       setRows([]);
     } finally {
       setLoading(false);
@@ -65,25 +66,17 @@ export default function OmrResultsView() {
         <RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} tintColor={TEACHER.primary} />
       }
     >
-      <GlassPanel style={styles.header} radius={TEACHER_RADIUS.lg} tone="medium">
-        <View style={styles.headerRow}>
-          <View style={styles.headerIcon}>
-            <Ionicons name="scan-outline" size={22} color={TEACHER.secondary} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.title}>Offline Results</Text>
-            <Text style={styles.subtitle}>
-              Scores for students in your classes after admin assigns Candidate IDs.
-            </Text>
-          </View>
-        </View>
-      </GlassPanel>
+      <TeacherPageHero
+        title="Offline Results"
+        subtitle="Offline scores for students in your classes (after school admin assigns Candidate IDs)."
+        icon="scan-outline"
+      />
 
       <View style={styles.searchWrap}>
         <Ionicons name="search" size={16} color={TEACHER.textMuted} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search student or test"
+          placeholder="Search Student Or Test"
           placeholderTextColor={TEACHER.textMuted}
           value={search}
           onChangeText={setSearch}
@@ -129,7 +122,7 @@ export default function OmrResultsView() {
                 </View>
               </View>
               <Text style={styles.testTitle} numberOfLines={2}>
-                {r.testTitle || 'OMR test'}
+                {r.testTitle || 'OMR Test'}
               </Text>
               <Text style={styles.testNo}>#{r.testNo || '—'}</Text>
               <View style={styles.statsRow}>

@@ -87,13 +87,13 @@ export default function TeacherAssessmentsView() {
 
   const handleCreateAssessment = async () => {
     if (!newAssessment.title || !newAssessment.subject) {
-      Alert.alert('Validation Error', 'Please fill in all required fields');
+      Alert.alert('Validation Error', 'Please Fill In All Required Fields');
       return;
     }
 
     try {
       await teacherService.createAssessment(newAssessment);
-      Alert.alert('Success', 'Assessment created successfully');
+      Alert.alert('Success', 'Assessment Created Successfully');
       setIsCreateModalOpen(false);
       setNewAssessment({
         title: '',
@@ -110,7 +110,7 @@ export default function TeacherAssessmentsView() {
       fetchAssessments();
     } catch (error) {
       console.error('Failed to create assessment:', error);
-      Alert.alert('Error', 'An error occurred');
+      Alert.alert('Error', 'An Error Occurred');
     }
   };
 
@@ -126,7 +126,7 @@ export default function TeacherAssessmentsView() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={TEACHER.primary} />
-        <Text style={styles.loadingText}>Loading assessments...</Text>
+        <Text style={styles.loadingText}>Loading Assessments...</Text>
       </View>
     );
   }
@@ -159,7 +159,7 @@ export default function TeacherAssessmentsView() {
           <Ionicons name="search" size={20} color={TEACHER.textMuted} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search assessments..."
+            placeholder="Search Assessments..."
             placeholderTextColor={TEACHER.textMuted}
             value={searchTerm}
             onChangeText={setSearchTerm}
@@ -220,8 +220,8 @@ export default function TeacherAssessmentsView() {
             <View style={styles.emptyIcon}>
               <Ionicons name="document-text-outline" size={28} color={TEACHER.primary} />
             </View>
-            <Text style={styles.emptyText}>No assessments found</Text>
-            <Text style={styles.emptySubtext}>Create your first assessment to get started</Text>
+            <Text style={styles.emptyText}>No Assessments Found</Text>
+            <Text style={styles.emptySubtext}>Create Your First Assessment To Get Started</Text>
           </GlassPanel>
         ) : (
           filteredAssessments.map((assessment, index) => {
@@ -334,7 +334,7 @@ export default function TeacherAssessmentsView() {
               <Text style={styles.inputLabel}>Title *</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Assessment title"
+                placeholder="Assessment Title"
                 value={newAssessment.title}
                 onChangeText={(text) => setNewAssessment({ ...newAssessment, title: text })}
               />
@@ -344,7 +344,7 @@ export default function TeacherAssessmentsView() {
               <Text style={styles.inputLabel}>Description</Text>
               <TextInput
                 style={[styles.input, styles.textArea]}
-                placeholder="Assessment description"
+                placeholder="Assessment Description"
                 value={newAssessment.description}
                 onChangeText={(text) => setNewAssessment({ ...newAssessment, description: text })}
                 multiline
@@ -408,7 +408,7 @@ export default function TeacherAssessmentsView() {
 
             <View style={styles.inputRow}>
               <View style={[styles.inputContainer, { flex: 1, marginRight: 8 }]}>
-                <Text style={styles.inputLabel}>Duration (min)</Text>
+                <Text style={styles.inputLabel}>Duration (Min)</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="60"

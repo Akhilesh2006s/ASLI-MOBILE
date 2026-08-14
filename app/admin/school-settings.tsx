@@ -33,7 +33,7 @@ export default function SchoolSettings() {
         workingHours: s?.workingHours || '',
       });
     } catch (e: any) {
-      setError(e?.message || 'Could not load school settings');
+      setError(e?.message || 'Could Not Load School Settings');
     } finally {
       setLoading(false);
     }
@@ -50,14 +50,14 @@ export default function SchoolSettings() {
       await adminService.updateSchoolSettings(form);
       Alert.alert('Saved', 'School settings updated successfully.');
     } catch (e: any) {
-      setError(e?.message || 'Could not save settings');
+      setError(e?.message || 'Could Not Save Settings');
     } finally {
       setSaving(false);
     }
   };
 
   const fields = [
-    { key: 'schoolName' as const, label: 'School Name', icon: 'business-outline' as const, placeholder: 'Enter school name' },
+    { key: 'schoolName' as const, label: 'School Name', icon: 'business-outline' as const, placeholder: 'Enter School Name' },
     { key: 'board' as const, label: 'Board / Curriculum', icon: 'book-outline' as const, placeholder: 'e.g. CBSE, ICSE' },
     { key: 'workingHours' as const, label: 'Working Hours', icon: 'time-outline' as const, placeholder: 'e.g. 8:00 AM – 3:00 PM' },
   ];
@@ -82,7 +82,7 @@ export default function SchoolSettings() {
 
           <AdminSectionHeader
             title="General Settings"
-            subtitle="Configure your school profile"
+            subtitle="Configure Your School Profile"
             icon="settings-outline"
           />
 

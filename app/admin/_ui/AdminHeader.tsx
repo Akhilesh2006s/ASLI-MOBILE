@@ -32,10 +32,8 @@ function AdminHeader({ userName, subtitle, schoolUser, showSchoolBrand = false, 
   const schoolBranding = getSchoolBranding(schoolUser);
   const schoolLogoUrl = schoolBranding?.schoolLogo ?? null;
 
-  // `wrap` is transparent so the app artwork shows through the gradient's
-  // rounded bottom corners instead of an opaque square block.
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, { paddingTop: insets.top + 8 }]}>
       <LinearGradient
         colors={[...colors.headerGradient]}
         start={{ x: 0, y: 0 }}
@@ -43,15 +41,12 @@ function AdminHeader({ userName, subtitle, schoolUser, showSchoolBrand = false, 
         style={[
           styles.gradient,
           compact ? styles.gradientCompact : null,
-          { paddingTop: insets.top + 14 },
+          { borderRadius: radius.xl },
         ]}
       >
-        <View style={styles.decorCircle} />
-        <View style={[styles.decorCircle, styles.decorCircleSm]} />
-
         <View style={styles.topRow}>
           <View style={styles.userBlock}>
-            <View style={[styles.avatar, { borderRadius: radius.full }]}>
+            <View style={[styles.avatar, { borderRadius: radius.full, backgroundColor: 'rgba(255,255,255,0.72)' }]}>
               {schoolLogoUrl ? (
                 <Image
                   source={{ uri: schoolLogoUrl }}
@@ -60,31 +55,45 @@ function AdminHeader({ userName, subtitle, schoolUser, showSchoolBrand = false, 
                   accessibilityLabel={`${schoolBranding?.schoolName || 'School'} logo`}
                 />
               ) : (
-                <Text style={styles.avatarText}>{initials}</Text>
+                <Text style={[styles.avatarText, { color: colors.primaryDark }]}>{initials}</Text>
               )}
             </View>
             <View style={styles.textBlock}>
-              <Text style={styles.greeting}>
+              <Text style={[styles.greeting, { color: colors.textSecondary }]}>
                 {adminGreeting()}, {firstName}
               </Text>
               {showSchoolBrand ? (
                 <SchoolBrandRow
                   schoolName={schoolBranding?.schoolName}
-                  variant="onPrimary"
+                  variant="onLight"
                   showLogo={!schoolLogoUrl}
                   style={styles.schoolBrand}
                   fullWidth
                 />
               ) : null}
-              <Text style={[styles.roleLabel, compact ? styles.roleLabelCompact : null]}>
+              <Text
+                style={[
+                  styles.roleLabel,
+                  compact ? styles.roleLabelCompact : null,
+                  { color: colors.text },
+                ]}
+              >
                 Admin Dashboard
               </Text>
-              {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+              {subtitle ? (
+                <Text style={[styles.subtitle, { color: colors.primaryDark }]}>{subtitle}</Text>
+              ) : null}
             </View>
           </View>
           {onMenu ? (
-            <AdminScalePressable style={styles.iconBtn} onPress={onMenu}>
-              <Ionicons name="menu" size={22} color="#fff" />
+            <AdminScalePressable
+              style={[
+                styles.iconBtn,
+                { backgroundColor: 'rgba(255,255,255,0.7)', borderColor: 'rgba(15, 118, 110, 0.16)' },
+              ]}
+              onPress={onMenu}
+            >
+              <Ionicons name="menu" size={22} color={colors.primaryDark} />
             </AdminScalePressable>
           ) : null}
         </View>
@@ -95,35 +104,17 @@ function AdminHeader({ userName, subtitle, schoolUser, showSchoolBrand = false, 
 
 const styles = StyleSheet.create({
   wrap: {
-    // No elevation/shadow — floating chrome over scrolling content tanks FPS.
     backgroundColor: 'transparent',
+    paddingHorizontal: 12,
+    paddingBottom: 10,
   },
   gradient: {
-    paddingHorizontal: 20,
-    paddingBottom: 22,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     overflow: 'hidden',
   },
   gradientCompact: {
-    paddingBottom: 18,
-  },
-  decorCircle: {
-    position: 'absolute',
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    top: -40,
-    right: -30,
-  },
-  decorCircleSm: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    top: 20,
-    right: 60,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    paddingVertical: 12,
   },
   topRow: {
     flexDirection: 'row',
@@ -134,66 +125,61 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    gap: 14,
+    gap: 12,
   },
   avatar: {
-    width: 48,
-    height: 48,
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.4)',
+    width: 42,
+    height: 42,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.8)',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
   avatarLogo: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
   },
   avatarText: {
-    color: '#fff',
     fontWeight: '800',
-    fontSize: 17,
+    fontSize: 16,
   },
   textBlock: {
     flex: 1,
     minWidth: 0,
   },
   greeting: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.9)',
+    fontSize: 12,
     fontWeight: '500',
+    marginBottom: 2,
   },
   roleLabel: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '800',
-    color: '#fff',
-    marginTop: 2,
-    letterSpacing: -0.5,
+    letterSpacing: -0.4,
+    lineHeight: 26,
   },
   roleLabelCompact: {
-    fontSize: 20,
+    fontSize: 18,
+    lineHeight: 22,
   },
   schoolBrand: {
-    marginTop: 6,
-    marginBottom: 4,
+    marginTop: 4,
+    marginBottom: 2,
     maxWidth: '100%',
   },
   subtitle: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.85)',
     marginTop: 3,
-    fontWeight: '500',
+    fontWeight: '700',
   },
   iconBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.28)',
   },
 });
 

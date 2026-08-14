@@ -1,20 +1,15 @@
 import React, { memo, useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions, Modal, Pressable, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../../src/lib/api-config';
-import GlassCard from '../../../../src/components/student/GlassCard';
 import StudentCardDecor from '../../../../src/components/student/StudentCardDecor';
-import StudentExamPreviewCard from '../../../../src/components/student/StudentExamPreviewCard';
 import {
   buildExamCalendarEntries,
   buildSchoolEventCalendarEntries,
-  buildDayExamMarkers,
   formatCalendarDateKey,
   parseCalendarDate,
-  type ExamCalendarEntry,
   type ExamDayRole,
 } from '../../../../src/lib/exam-calendar-entries';
 import { STUDENT, STUDENT_RADIUS, STUDENT_SKY } from '../../../../src/theme/student';
@@ -35,16 +30,13 @@ type CalendarEntry = {
   windowEnd?: Date;
 };
 
-const EXAM_MARKER_COLORS = {
-  start: '#059669',
-  end: '#e11d48',
-  middle: '#d97706',
-  single: '#0284c7',
-  quiz: '#f59e0b',
-  event: '#0ea5e9',
-} as const;
-
 const CAL_SKY = STUDENT_SKY;
+const DAY_SELECTED = '#4f46e5';
+const DAY_TODAY_BG = '#eef2ff';
+const DAY_TODAY_BORDER = '#c7d2fe';
+const DAY_TODAY_TEXT = '#4338ca';
+const COUNT_ORANGE_BG = '#ffedd5';
+const COUNT_ORANGE_TEXT = '#c2410c';
 
 const WEEKDAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] as const;
 
@@ -54,44 +46,6 @@ function isSameCalendarDay(a: Date, b: Date): boolean {
     a.getMonth() === b.getMonth() &&
     a.getDate() === b.getDate()
   );
-}
-
-function getPrimaryMarkerColor(
-  dayMarkers: ReturnType<typeof buildDayExamMarkers> | undefined,
-  entries: CalendarEntry[] | undefined
-): string | null {
-  if (!dayMarkers?.totalCount && !entries?.length) return null;
-  if (dayMarkers?.examStartCount) return EXAM_MARKER_COLORS.start;
-  if (dayMarkers?.examEndCount) return EXAM_MARKER_COLORS.end;
-  // Middle-of-window days no longer get exam dots — only open/close dates
-  if (dayMarkers?.examSingleCount) return EXAM_MARKER_COLORS.single;
-  if (dayMarkers?.quizCount) return EXAM_MARKER_COLORS.quiz;
-  if (entries?.some((e) => e.type === 'event')) return EXAM_MARKER_COLORS.event;
-  return CAL_SKY.accent;
-}
-
-function dayHasExamSpan(dayKey: string, entriesByDate: Record<string, CalendarEntry[]>): boolean {
-  return (entriesByDate[dayKey] || []).some((entry) => entry.type === 'exam');
-}
-
-function getDayRangeConnectors(
-  dayKey: string,
-  rowIndex: number,
-  colIndex: number,
-  calendarDays: (Date | null)[],
-  entriesByDate: Record<string, CalendarEntry[]>
-): { connectLeft: boolean; connectRight: boolean } {
-  if (!dayHasExamSpan(dayKey, entriesByDate)) {
-    return { connectLeft: false, connectRight: false };
-  }
-  const prev = colIndex > 0 ? calendarDays[rowIndex * 7 + colIndex - 1] : null;
-  const next = colIndex < 6 ? calendarDays[rowIndex * 7 + colIndex + 1] : null;
-  const prevKey = prev ? formatCalendarDateKey(prev) : '';
-  const nextKey = next ? formatCalendarDateKey(next) : '';
-  return {
-    connectLeft: Boolean(prev && dayHasExamSpan(prevKey, entriesByDate)),
-    connectRight: Boolean(next && dayHasExamSpan(nextKey, entriesByDate)),
-  };
 }
 
 type StudyCalendarLayout = 'auto' | 'calendar-only' | 'events-only';
@@ -109,8 +63,6 @@ type Props = {
 function StudyCalendarSectionComponent({
   incompleteQuizzes,
   exams,
-  examAttemptCounts = {},
-  studentClassNumber,
   onOpenQuiz,
   onOpenExam,
   layout = 'auto',
@@ -123,6 +75,7 @@ function StudyCalendarSectionComponent({
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [daySheetOpen, setDaySheetOpen] = useState(false);
   const [schoolCalendarEvents, setSchoolCalendarEvents] = useState<any[]>([]);
 
   const calendarMonthKey = `${calendarMonth.getFullYear()}-${String(calendarMonth.getMonth() + 1).padStart(2, '0')}`;
@@ -187,14 +140,6 @@ function StudyCalendarSectionComponent({
     return acc;
   }, [calendarEntries]);
 
-  const dayMarkersByDate = useMemo(() => {
-    const acc: Record<string, ReturnType<typeof buildDayExamMarkers>> = {};
-    Object.entries(entriesByDate).forEach(([key, entries]) => {
-      acc[key] = buildDayExamMarkers(entries);
-    });
-    return acc;
-  }, [entriesByDate]);
-
   const selectedDateEntries = useMemo(() => {
     const key = formatCalendarDateKey(selectedDate);
     return (entriesByDate[key] || []).sort((a, b) => a.date.getTime() - b.date.getTime());
@@ -226,7 +171,15 @@ function StudyCalendarSectionComponent({
     setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1));
   };
 
+  const openDay = (day: Date) => {
+    setSelectedDate(day);
+    setDaySheetOpen(true);
+  };
+
+  const closeDaySheet = () => setDaySheetOpen(false);
+
   const openEntry = (entry: CalendarEntry) => {
+    closeDaySheet();
     if (entry.type === 'exam') {
       const examId = String(entry.id || entry.source?._id || entry.source?.id || '');
       if (examId) onOpenExam(examId);
@@ -237,15 +190,17 @@ function StudyCalendarSectionComponent({
     }
   };
 
-  const showMobileDateNav = !isTablet && layout === 'events-only';
-
-  const shiftSelectedDate = (days: number) => {
-    setSelectedDate((prev) => {
-      const next = new Date(prev);
-      next.setDate(prev.getDate() + days);
-      return next;
-    });
+  const typeMeta = (type: CalendarEntry['type']) => {
+    if (type === 'exam') return { label: 'EXAM', bg: '#e11d48', text: '#ffffff' };
+    if (type === 'quiz') return { label: 'QUIZ', bg: '#0d9488', text: '#ffffff' };
+    return { label: 'EVENT', bg: '#4f46e5', text: '#ffffff' };
   };
+
+  const scheduledCount = selectedDateEntries.length;
+  const scheduledLabel =
+    scheduledCount === 0
+      ? 'No Scheduled Items'
+      : `${scheduledCount} scheduled item${scheduledCount === 1 ? '' : 's'}`;
 
   const renderCalendarCard = () => (
       <LinearGradient
@@ -294,69 +249,49 @@ function StudyCalendarSectionComponent({
                     return <View key={`e-${idx}`} style={styles.dayCell} />;
                   }
                   const dayKey = formatCalendarDateKey(day);
-                  const dayMarkers = dayMarkersByDate[dayKey];
-                  const dayEntries = entriesByDate[dayKey];
+                  const itemCount = (entriesByDate[dayKey] || []).length;
                   const isSelected = isSameCalendarDay(selectedDate, day);
                   const isToday = isSameCalendarDay(today, day);
-                  const accentColor = getPrimaryMarkerColor(dayMarkers, dayEntries);
-                  const { connectLeft, connectRight } = getDayRangeConnectors(
-                    dayKey,
-                    rowIndex,
-                    colIndex,
-                    calendarDays,
-                    entriesByDate
-                  );
-                  const showAccent = Boolean(accentColor) && !isSelected;
 
                   return (
                     <TouchableOpacity
                       key={dayKey}
                       style={styles.dayCell}
-                      onPress={() => setSelectedDate(day)}
+                      onPress={() => openDay(day)}
                       activeOpacity={0.7}
                     >
                       <View
                         style={[
                           styles.dayCellInner,
-                          showAccent && {
-                            backgroundColor: `${accentColor}18`,
-                          },
                           isToday && !isSelected && styles.dayCellInnerToday,
-                          isSelected && !isToday && styles.dayCellInnerSelected,
-                          isToday && isSelected && styles.dayCellInnerTodaySelected,
+                          isSelected && styles.dayCellInnerSelected,
                         ]}
                       >
-                        {showAccent && connectLeft ? (
-                          <View
-                            style={[
-                              styles.dayRangeLine,
-                              styles.dayRangeLineLeft,
-                              { backgroundColor: accentColor! },
-                            ]}
-                          />
-                        ) : null}
-                        {showAccent && connectRight ? (
-                          <View
-                            style={[
-                              styles.dayRangeLine,
-                              styles.dayRangeLineRight,
-                              { backgroundColor: accentColor! },
-                            ]}
-                          />
-                        ) : null}
                         <Text
                           style={[
                             styles.dayNum,
                             isToday && !isSelected && styles.dayNumToday,
-                            isSelected && !isToday && styles.dayNumSelected,
-                            isToday && isSelected && styles.dayNumTodaySelected,
-                            showAccent && !isToday && !isSelected && { color: accentColor!, fontWeight: '700' },
+                            isSelected && styles.dayNumSelected,
                           ]}
                         >
                           {day.getDate()}
                         </Text>
-                        {showAccent ? (
-                          <View style={[styles.dayAccentBar, { backgroundColor: accentColor! }]} />
+                        {itemCount > 0 ? (
+                          <View
+                            style={[
+                              styles.countBadge,
+                              isSelected ? styles.countBadgeSelected : styles.countBadgeIdle,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.countBadgeText,
+                                isSelected ? styles.countBadgeTextSelected : styles.countBadgeTextIdle,
+                              ]}
+                            >
+                              {itemCount}
+                            </Text>
+                          </View>
                         ) : null}
                       </View>
                     </TouchableOpacity>
@@ -365,173 +300,91 @@ function StudyCalendarSectionComponent({
               </View>
             ))}
           </View>
-
-          <View style={styles.legendRow}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: EXAM_MARKER_COLORS.start }]} />
-              <Text style={styles.legendText}>Opens</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: EXAM_MARKER_COLORS.middle }]} />
-              <Text style={styles.legendText}>Active</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: EXAM_MARKER_COLORS.end }]} />
-              <Text style={styles.legendText}>Closes</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: EXAM_MARKER_COLORS.quiz }]} />
-              <Text style={styles.legendText}>Quiz</Text>
-            </View>
-          </View>
         </View>
       </LinearGradient>
   );
 
-  const renderEventsCard = () => (
-      <GlassCard
-        variant="glass"
-        padding={14}
-        style={isTablet ? styles.cardFillTablet : styles.cardFill}
-      >
-        <Text style={styles.eventsTitle}>Study & exams</Text>
-        {showMobileDateNav ? (
-          <View style={styles.mobileDateNav}>
-            <TouchableOpacity onPress={() => shiftSelectedDate(-1)} hitSlop={8} accessibilityLabel="Previous day">
-              <Ionicons name="chevron-back" size={22} color={STUDENT.textSecondary} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={goToToday} style={styles.mobileDateCenter} accessibilityLabel="Go to today">
-              <Text style={styles.mobileDateLabel}>
-                {selectedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+  const renderDaySheet = () => (
+    <Modal
+      visible={daySheetOpen}
+      transparent
+      animationType="fade"
+      onRequestClose={closeDaySheet}
+    >
+      <View style={styles.sheetOverlay}>
+        <Pressable style={StyleSheet.absoluteFillObject} onPress={closeDaySheet} />
+        <View style={styles.sheetCard}>
+          <View style={styles.sheetHeader}>
+            <View style={styles.sheetHeaderText}>
+              <Text style={styles.sheetDate}>
+                {selectedDate.toLocaleDateString('en-US', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                })}
               </Text>
-              {formatCalendarDateKey(selectedDate) !== formatCalendarDateKey(new Date()) ? (
-                <Text style={styles.mobileDateTodayHint}>Tap For Today</Text>
-              ) : null}
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => shiftSelectedDate(1)} hitSlop={8} accessibilityLabel="Next day">
-              <Ionicons name="chevron-forward" size={22} color={STUDENT.textSecondary} />
+              <Text style={styles.sheetCount}>{scheduledLabel}</Text>
+            </View>
+            <TouchableOpacity onPress={closeDaySheet} hitSlop={10} accessibilityLabel="Close">
+              <Ionicons name="close" size={20} color="#64748b" />
             </TouchableOpacity>
           </View>
-        ) : (
-          <Text style={styles.eventsSub}>
-            {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
-            {' · '}Class timetable is in the table below
-          </Text>
-        )}
-        {showMobileDateNav ? (
-          <Text style={styles.eventsSubMobile}>Class Timetable Is In The Table Below</Text>
-        ) : null}
-        {selectedDateEntries.length === 0 ? (
-          <View style={styles.eventsEmpty}>
-            <Ionicons name="calendar-outline" size={32} color={STUDENT.surfaceBorder} />
-            <Text style={styles.eventsEmptyTitle}>No Study Tasks Or Exams</Text>
-            <Text style={styles.eventsEmptySub}>
-              Class Sessions For This Day Are In The Timetable Table Below.
-            </Text>
-          </View>
-        ) : (
-          <View style={isTablet ? styles.eventsListTablet : undefined}>
-            {selectedDateEntries.map((entry, entryIndex) => {
-            if (entry.type === 'exam') {
-              const examEntry = entry as ExamCalendarEntry;
-              const examId = String(examEntry.id || examEntry.source?._id || examEntry.source?.id || '');
-              const usedAttempts = examAttemptCounts[examId] || 0;
-              return (
-                <StudentExamPreviewCard
-                  key={`${entry.type}-${entry.id}-${entry.date.getTime()}-${entry.examDayRole || 'exam'}`}
-                  exam={examEntry.source || examEntry}
-                  examDayRole={examEntry.examDayRole}
-                  usedAttempts={usedAttempts}
-                  studentClassNumber={studentClassNumber}
-                  hasAttempted={usedAttempts > 0}
-                  colorIndex={entryIndex}
-                  style={
-                    isTablet
-                      ? { width: '100%', maxWidth: '100%', alignSelf: 'stretch' as const }
-                      : undefined
-                  }
-                  onViewInExams={() => onOpenExam(examId)}
-                  onStartPress={() => router.push(`/exam/${examId}`)}
-                />
-              );
-            }
 
-            if (entry.type === 'event') {
-              return (
-                <View
-                  key={`${entry.type}-${entry.id}-${entry.date.getTime()}`}
-                  style={styles.eventRow}
-                >
-                  <View style={styles.eventTop}>
-                    <Text style={styles.eventTitle} numberOfLines={2}>
-                      {entry.title}
-                    </Text>
-                    <View style={[styles.typeBadge, styles.badgeEvent]}>
-                      <Text style={styles.typeBadgeText}>EVENT</Text>
+          <ScrollView style={styles.sheetList} contentContainerStyle={styles.sheetListContent}>
+            {scheduledCount === 0 ? (
+              <View style={styles.sheetEmpty}>
+                <Ionicons name="calendar-outline" size={22} color="#cbd5e1" />
+                <Text style={styles.sheetEmptyTitle}>Nothing On This Day</Text>
+                <Text style={styles.sheetEmptySub}>Quizzes, exams, and school events will show here.</Text>
+              </View>
+            ) : (
+              selectedDateEntries.map((entry) => {
+                const meta = typeMeta(entry.type);
+                const canOpen = entry.type === 'exam' || entry.type === 'quiz';
+                return (
+                  <TouchableOpacity
+                    key={`${entry.type}-${entry.id}-${entry.date.getTime()}-${entry.examDayRole || ''}`}
+                    style={styles.itemCard}
+                    onPress={canOpen ? () => openEntry(entry) : undefined}
+                    activeOpacity={canOpen ? 0.85 : 1}
+                    disabled={!canOpen}
+                  >
+                    <View style={[styles.typeBadge, { backgroundColor: meta.bg }]}>
+                      <Text style={[styles.typeBadgeText, { color: meta.text }]}>{meta.label}</Text>
                     </View>
-                  </View>
-                  <Text style={styles.eventSubject}>{entry.subject}</Text>
-                  {entry.source?.description ? (
-                    <Text style={styles.eventTime} numberOfLines={3}>
-                      {entry.source.description}
-                    </Text>
-                  ) : null}
-                </View>
-              );
-            }
-
-            return (
-              <TouchableOpacity
-                key={`${entry.type}-${entry.id}-${entry.date.getTime()}-quiz`}
-                style={styles.eventRow}
-                onPress={() => openEntry(entry)}
-                activeOpacity={0.85}
-              >
-                <View style={styles.eventTop}>
-                  <Text style={styles.eventTitle} numberOfLines={1}>
-                    {entry.title}
-                  </Text>
-                  <View style={[styles.typeBadge, styles.badgeQuiz]}>
-                    <Text style={styles.typeBadgeText}>QUIZ</Text>
-                  </View>
-                </View>
-                <Text style={styles.eventSubject}>{entry.subject}</Text>
-                <Text style={styles.eventTime}>
-                  {entry.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-          </View>
-        )}
-      </GlassCard>
+                    <View style={styles.itemBody}>
+                      <Text style={styles.itemTitle} numberOfLines={1}>
+                        {entry.title || 'Scheduled Item'}
+                      </Text>
+                      <View style={styles.itemMetaRow}>
+                        {entry.subject ? (
+                          <Text style={styles.itemSubject} numberOfLines={1}>
+                            {entry.subject}
+                          </Text>
+                        ) : null}
+                        <View style={styles.itemTimeWrap}>
+                          <Ionicons name="time-outline" size={12} color="#0ea5e9" />
+                          <Text style={styles.itemTime}>
+                            {entry.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            )}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
   );
-
-  if (layout === 'calendar-only') {
-    return <View style={styles.wrap}>{renderCalendarCard()}</View>;
-  }
-
-  if (layout === 'events-only') {
-    return <View style={styles.wrap}>{renderEventsCard()}</View>;
-  }
 
   return (
     <View style={[styles.wrap, isTablet && styles.wrapTablet]}>
-      {isTablet ? (
-        <>
-          <View style={[styles.tabletCol, styles.tabletColCalendar]}>
-            <View style={styles.tabletPanel}>{renderCalendarCard()}</View>
-          </View>
-          <View style={[styles.tabletCol, styles.tabletColEvents]}>
-            <View style={styles.tabletPanel}>{renderEventsCard()}</View>
-          </View>
-        </>
-      ) : (
-        <>
-          {renderCalendarCard()}
-          {renderEventsCard()}
-        </>
-      )}
+      {renderCalendarCard()}
+      {layout !== 'calendar-only' ? renderDaySheet() : null}
     </View>
   );
 }
@@ -539,33 +392,7 @@ function StudyCalendarSectionComponent({
 const styles = StyleSheet.create({
   wrap: { gap: 12, width: '100%' },
   wrapTablet: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: 16,
     width: '100%',
-  },
-  tabletCol: {
-    minWidth: 0,
-    alignSelf: 'stretch',
-  },
-  tabletPanel: {
-    flex: 1,
-    width: '100%',
-    alignSelf: 'stretch',
-  },
-  tabletColCalendar: {
-    flex: 1,
-    minWidth: 0,
-  },
-  tabletColEvents: {
-    flex: 1,
-    minWidth: 0,
-  },
-  cardFill: { width: '100%', alignSelf: 'stretch' },
-  cardFillTablet: {
-    flex: 1,
-    height: '100%',
-    alignSelf: 'stretch',
   },
   calGradientShell: {
     width: '100%',
@@ -649,128 +476,151 @@ const styles = StyleSheet.create({
     backgroundColor: CAL_SKY.divider,
     marginBottom: 8,
   },
-  grid: { gap: 2, paddingTop: 2 },
-  gridRow: { flexDirection: 'row' },
+  grid: { gap: 4, paddingTop: 2 },
+  gridRow: { flexDirection: 'row', gap: 4 },
   dayCell: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 2,
+    paddingVertical: 1,
   },
   dayCellInner: {
-    width: 36,
-    height: 42,
+    width: '100%',
+    minHeight: 44,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    backgroundColor: CAL_SKY.dayCell,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
   },
   dayCellInnerToday: {
-    borderWidth: 2,
-    borderColor: CAL_SKY.accentSoft,
-    backgroundColor: CAL_SKY.todayBg,
+    backgroundColor: DAY_TODAY_BG,
+    borderColor: DAY_TODAY_BORDER,
   },
   dayCellInnerSelected: {
-    backgroundColor: CAL_SKY.accent,
-  },
-  dayCellInnerTodaySelected: {
-    backgroundColor: CAL_SKY.accentDark,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.9)',
+    backgroundColor: DAY_SELECTED,
+    borderColor: DAY_SELECTED,
   },
   dayNum: {
     fontSize: 13,
     fontWeight: '600',
-    color: STUDENT.textSecondary,
+    color: '#374151',
     lineHeight: 16,
-    zIndex: 2,
     includeFontPadding: false,
     textAlignVertical: 'center',
   },
-  dayNumToday: { color: CAL_SKY.accentDark, fontWeight: '700' },
+  dayNumToday: { color: DAY_TODAY_TEXT, fontWeight: '700' },
   dayNumSelected: { color: '#ffffff', fontWeight: '700' },
-  dayNumTodaySelected: {
-    color: '#ffffff',
+  countBadge: {
+    position: 'absolute',
+    top: 3,
+    right: 3,
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 4,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countBadgeIdle: {
+    backgroundColor: COUNT_ORANGE_BG,
+  },
+  countBadgeSelected: {
+    backgroundColor: '#ffffff',
+  },
+  countBadgeText: {
+    fontSize: 9,
     fontWeight: '800',
+    lineHeight: 11,
   },
-  dayAccentBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 3,
-    borderBottomLeftRadius: 10,
-    borderBottomRightRadius: 10,
-    zIndex: 1,
+  countBadgeTextIdle: {
+    color: COUNT_ORANGE_TEXT,
   },
-  dayRangeLine: {
-    position: 'absolute',
-    bottom: 0,
-    height: 3,
-    zIndex: 1,
+  countBadgeTextSelected: {
+    color: DAY_SELECTED,
   },
-  dayRangeLineLeft: {
-    left: -4,
-    right: '50%',
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.35)',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
   },
-  dayRangeLineRight: {
-    left: '50%',
-    right: -4,
+  sheetCard: {
+    width: '100%',
+    maxWidth: 360,
+    alignSelf: 'center',
+    borderRadius: 20,
+    overflow: 'hidden',
+    backgroundColor: '#f8fbff',
+    borderWidth: 1,
+    borderColor: '#e0f2fe',
+    shadowColor: '#38bdf8',
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
   },
-  legendRow: {
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0f2fe',
+    backgroundColor: '#f0f9ff',
+  },
+  sheetHeaderText: { flex: 1, minWidth: 0 },
+  sheetDate: { fontSize: 15, fontWeight: '800', color: '#0f172a' },
+  sheetCount: { marginTop: 2, fontSize: 12, color: '#64748b', fontWeight: '500' },
+  sheetList: { maxHeight: 280 },
+  sheetListContent: { padding: 10, gap: 8 },
+  sheetEmpty: {
+    alignItems: 'center',
+    paddingVertical: 22,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
+    gap: 4,
+  },
+  sheetEmptyTitle: { fontSize: 13, fontWeight: '600', color: '#475569' },
+  sheetEmptySub: { fontSize: 11, color: '#94a3b8', textAlign: 'center' },
+  itemCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  typeBadge: {
+    marginTop: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  typeBadgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.4 },
+  itemBody: { flex: 1, minWidth: 0 },
+  itemTitle: { fontSize: 14, fontWeight: '700', color: '#1e293b' },
+  itemMetaRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: CAL_SKY.divider,
-  },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendText: { fontSize: 11, color: CAL_SKY.legendText, fontWeight: '600' },
-  eventsTitle: { fontSize: 16, fontWeight: '800', color: STUDENT.text },
-  eventsListTablet: {
-    flex: 1,
-    width: '100%',
-    gap: 8,
-  },
-  mobileDateNav: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 8,
-    marginBottom: 4,
-    paddingVertical: 6,
-    paddingHorizontal: 4,
-    borderRadius: STUDENT_RADIUS.inner,
-    backgroundColor: STUDENT.bgAccent,
+    gap: 8,
+    marginTop: 4,
   },
-  mobileDateCenter: { flex: 1, alignItems: 'center', paddingHorizontal: 8 },
-  mobileDateLabel: { fontSize: 14, fontWeight: '700', color: STUDENT.text },
-  mobileDateTodayHint: { fontSize: 10, color: STUDENT.primary, fontWeight: '600', marginTop: 2 },
-  eventsSub: { fontSize: 12, color: STUDENT.textMuted, marginTop: 4, marginBottom: 10 },
-  eventsSubMobile: { fontSize: 12, color: STUDENT.textMuted, marginBottom: 10 },
-  eventsEmpty: { alignItems: 'center', paddingVertical: 16, gap: 6 },
-  eventsEmptyTitle: { fontSize: 14, fontWeight: '600', color: STUDENT.textSecondary },
-  eventsEmptySub: { fontSize: 12, color: STUDENT.textMuted, textAlign: 'center' },
-  eventRow: {
-    borderWidth: 1,
-    borderColor: STUDENT.surfaceBorder,
-    borderRadius: STUDENT_RADIUS.inner,
-    padding: 12,
-    marginBottom: 8,
-  },
-  eventTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  eventTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: STUDENT.text },
-  typeBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  badgeQuiz: { backgroundColor: `${STUDENT.warning}18` },
-  badgeEvent: { backgroundColor: '#FEF3C7' },
-  typeBadgeText: { fontSize: 10, fontWeight: '800', color: STUDENT.textSecondary },
-  eventSubject: { fontSize: 12, color: STUDENT.textMuted, marginTop: 4 },
-  eventTime: { fontSize: 11, color: STUDENT.textMuted, marginTop: 2 },
+  itemSubject: { fontSize: 12, color: '#64748b', flexShrink: 1 },
+  itemTimeWrap: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  itemTime: { fontSize: 11, color: '#64748b', fontWeight: '500' },
 });
 
 export default memo(StudyCalendarSectionComponent);

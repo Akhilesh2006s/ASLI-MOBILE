@@ -72,7 +72,7 @@ export default function VidyaAIView({ adminId: adminIdProp, adminName: adminName
         <View style={[styles.emptyIcon, { backgroundColor: colors.primaryMuted }]}>
           <Ionicons name="chatbubbles-outline" size={40} color={colors.primary} />
         </View>
-        <Text style={[styles.loadingText, { color: colors.textMuted }]}>Sign in to use Vidya AI</Text>
+        <Text style={[styles.loadingText, { color: colors.textMuted }]}>Sign In To Use Vidya AI</Text>
       </View>
     );
   }

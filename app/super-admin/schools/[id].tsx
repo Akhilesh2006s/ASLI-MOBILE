@@ -47,12 +47,12 @@ export default function SchoolDetailScreen() {
       try {
         const response = await api.get(`/api/super-admin/admins/${id}/school-detail`);
         const json = response?.data;
-        if (!json?.success) throw new Error(json?.message || 'Failed to load school');
+        if (!json?.success) throw new Error(json?.message || 'Failed to Load School');
         setProfile(json.data.profile);
         setStats(json.data.stats || { students: 0, teachers: 0 });
         setBilling(json.data.billing);
       } catch (err: any) {
-        setError(err?.friendlyMessage || err?.message || 'Could not load school');
+        setError(err?.friendlyMessage || err?.message || 'Could Not Load School');
         setProfile(null);
       } finally {
         setLoading(false);
@@ -76,11 +76,11 @@ export default function SchoolDetailScreen() {
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#f97316" />
-          <Text style={styles.loadingText}>Loading school details…</Text>
+          <Text style={styles.loadingText}>Loading School Details…</Text>
         </View>
       ) : error || !profile ? (
         <View style={styles.center}>
-          <Text style={styles.errorText}>{error || 'School not found'}</Text>
+          <Text style={styles.errorText}>{error || 'School Not Found'}</Text>
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scroll}>
@@ -104,7 +104,7 @@ export default function SchoolDetailScreen() {
           </View>
 
           <View style={styles.statsCard}>
-            <Text style={styles.statsTitle}>On platform</Text>
+            <Text style={styles.statsTitle}>On Platform</Text>
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
                 <Text style={styles.statVal}>{stats.students}</Text>
@@ -121,7 +121,7 @@ export default function SchoolDetailScreen() {
             <Text style={styles.sectionTitle}>Administrator</Text>
             <DetailRow label="Name" value={profile.name} />
             <DetailRow label="Email" value={profile.email} />
-            <DetailRow label="Contact person" value={profile.contactPerson} />
+            <DetailRow label="Contact Person" value={profile.contactPerson} />
             <DetailRow label="Phone" value={profile.phone} />
             <DetailRow
               label="Joined"
@@ -130,8 +130,8 @@ export default function SchoolDetailScreen() {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Address & school</Text>
-            <DetailRow label="Door no." value={sd.doorNo} />
+            <Text style={styles.sectionTitle}>Address & School</Text>
+            <DetailRow label="Door No." value={sd.doorNo} />
             <DetailRow label="Street" value={sd.street} />
             <DetailRow label="Area" value={sd.area} />
             <DetailRow label="City" value={sd.city} />
@@ -147,13 +147,13 @@ export default function SchoolDetailScreen() {
                   : undefined
               }
             />
-            <DetailRow label="Total strength" value={sd.totalStrength} />
-            <DetailRow label="School type" value={sd.schoolType} />
+            <DetailRow label="Total Strength" value={sd.totalStrength} />
+            <DetailRow label="School Type" value={sd.schoolType} />
             <DetailRow label="Place" value={profile.place} />
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Vidya AI chatbot access</Text>
+            <Text style={styles.sectionTitle}>Vidya AI Chatbot Access</Text>
             <View style={styles.accessRow}>
               <Text style={styles.accessLabel}>Teachers</Text>
               <Text style={styles.accessValue}>
@@ -172,7 +172,7 @@ export default function SchoolDetailScreen() {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Admin portal access</Text>
+            <Text style={styles.sectionTitle}>Admin Portal Access</Text>
             {isUnlimitedPortalAccess(profile.permissions) ? (
               <Text style={styles.accessFull}>Full portal access — all modules enabled.</Text>
             ) : (
@@ -186,7 +186,7 @@ export default function SchoolDetailScreen() {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Subscription & billing</Text>
+            <Text style={styles.sectionTitle}>Subscription & Billing</Text>
             {!billing?.razorpayConfigured ? (
               <Text style={styles.billingNote}>Razorpay is not configured on the server.</Text>
             ) : null}

@@ -31,7 +31,7 @@ function resolveUrl(imageUrl?: string): string {
 }
 
 /** Teacher personal timetable — one photo, no class link. */
-export default function TimetableView() {
+export default function TimetableView({ scrollable = true }: { scrollable?: boolean }) {
   const [photo, setPhoto] = useState<Photo | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -82,13 +82,13 @@ export default function TimetableView() {
       });
       setPreviewUri(asset.uri);
     } catch {
-      Alert.alert('Pick failed', 'Could not open the photo picker.');
+      Alert.alert('Pick Failed', 'Could not open the photo picker.');
     }
   };
 
   const savePhoto = async () => {
     if (!pendingAsset) {
-      Alert.alert('Choose a photo', 'Pick a timetable image first.');
+      Alert.alert('Choose A Photo', 'Pick a timetable image first.');
       return;
     }
     try {
@@ -106,13 +106,13 @@ export default function TimetableView() {
         body: form,
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json?.message || 'Upload failed');
-      Alert.alert('Saved', json?.message || 'Timetable photo saved');
+      if (!res.ok) throw new Error(json?.message || 'Upload Failed');
+      Alert.alert('Saved', json?.message || 'Timetable Photo Saved');
       setPendingAsset(null);
       setPreviewUri(null);
       await load();
     } catch (error: any) {
-      Alert.alert('Upload failed', error?.message || 'Could not save photo');
+      Alert.alert('Upload Failed', error?.message || 'Could Not Save Photo');
     } finally {
       setUploading(false);
     }
@@ -127,11 +127,11 @@ export default function TimetableView() {
         headers: { ...headers },
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json?.message || 'Delete failed');
+      if (!res.ok) throw new Error(json?.message || 'Delete Failed');
       setPhoto(null);
-      Alert.alert('Removed', 'Timetable photo removed');
+      Alert.alert('Removed', 'Timetable Photo Removed');
     } catch (error: any) {
-      Alert.alert('Delete failed', error?.message || 'Could not remove photo');
+      Alert.alert('Delete Failed', error?.message || 'Could Not Remove Photo');
     } finally {
       setUploading(false);
     }
@@ -147,8 +147,7 @@ export default function TimetableView() {
     );
   }
 
-  return (
-    <ScrollView contentContainerStyle={styles.content}>
+  const body = (
       <View style={[glassCard, styles.card]}>
         <Text style={styles.title}>My Timetable</Text>
         <Text style={styles.sub}>Upload one timetable photo for yourself — no class needed.</Text>
@@ -156,7 +155,7 @@ export default function TimetableView() {
         <View style={styles.actions}>
           <Pressable style={styles.btnOutline} onPress={() => void pickPhoto()}>
             <Ionicons name="image-outline" size={18} color="#0369a1" />
-            <Text style={styles.btnOutlineText}>Choose photo</Text>
+            <Text style={styles.btnOutlineText}>Choose Photo</Text>
           </Pressable>
           <Pressable
             style={[styles.btnPrimary, (!pendingAsset || uploading) && styles.btnDisabled]}
@@ -172,13 +171,13 @@ export default function TimetableView() {
           <View>
             <Image source={{ uri: displayUri }} style={styles.preview} resizeMode="contain" />
             {pendingAsset ? (
-              <Text style={styles.previewHint}>Preview — tap Save to keep</Text>
+              <Text style={styles.previewHint}>Preview — Tap Save To Keep</Text>
             ) : null}
           </View>
         ) : (
           <Pressable style={styles.drop} onPress={() => void pickPhoto()}>
             <Ionicons name="camera-outline" size={28} color="#38bdf8" />
-            <Text style={styles.dropTitle}>Upload your timetable photo</Text>
+            <Text style={styles.dropTitle}>Upload Your Timetable Photo</Text>
           </Pressable>
         )}
 
@@ -189,10 +188,19 @@ export default function TimetableView() {
             onPress={() => void removePhoto()}
           >
             <Ionicons name="trash-outline" size={16} color="#e11d48" />
-            <Text style={styles.btnDangerText}>Remove photo</Text>
+            <Text style={styles.btnDangerText}>Remove Photo</Text>
           </Pressable>
         ) : null}
       </View>
+  );
+
+  if (!scrollable) {
+    return <View style={styles.content}>{body}</View>;
+  }
+
+  return (
+    <ScrollView contentContainerStyle={styles.content}>
+      {body}
     </ScrollView>
   );
 }

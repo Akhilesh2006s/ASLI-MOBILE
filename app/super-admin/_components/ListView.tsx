@@ -49,7 +49,7 @@ export default function ListView({ title, endpoint, icon }: ListViewProps) {
           {items.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Ionicons name={icon} size={64} color="#5B6779" />
-              <Text style={styles.emptyText}>No items found</Text>
+              <Text style={styles.emptyText}>No Items Found</Text>
             </View>
           ) : (
             items.map((item, index) => (

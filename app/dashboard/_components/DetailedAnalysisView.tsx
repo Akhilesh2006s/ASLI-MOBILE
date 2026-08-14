@@ -264,7 +264,7 @@ export default function DetailedAnalysisView({
         clearTimeout(timeoutId);
         const payload = await response.json().catch(() => ({}));
         if (!response.ok || !payload?.success) {
-          throw new Error(payload?.message || 'Failed to generate AI report');
+          throw new Error(payload?.message || 'Failed To Generate AI Report');
         }
         if (!cancelled) setAiAnalysis(payload?.data?.analysis || null);
       } catch (error: any) {
@@ -272,7 +272,7 @@ export default function DetailedAnalysisView({
           setAiError(
             error?.name === 'AbortError'
               ? 'AI report is taking longer than expected. Try again in a moment.'
-              : error?.message || 'AI report unavailable'
+              : error?.message || 'AI Report Unavailable'
           );
         }
       } finally {
@@ -300,11 +300,11 @@ export default function DetailedAnalysisView({
     return (
       <View style={[styles.container, styles.missingState]}>
         <Ionicons name="document-text-outline" size={40} color="#5B6779" />
-        <Text style={styles.missingTitle}>Exam data unavailable</Text>
+        <Text style={styles.missingTitle}>Exam Data Unavailable</Text>
         <Text style={styles.missingText}>Open an attempted exam and tap View Details.</Text>
         {!embedded ? (
           <TouchableOpacity onPress={onBack} style={styles.missingBack}>
-            <Text style={styles.missingBackText}>Go back</Text>
+            <Text style={styles.missingBackText}>Go Back</Text>
           </TouchableOpacity>
         ) : null}
       </View>
@@ -357,7 +357,7 @@ export default function DetailedAnalysisView({
         ) : (
           <View style={styles.advancedUnavailable}>
             <Ionicons name="stats-chart-outline" size={36} color="#5B6779" />
-            <Text style={styles.advancedUnavailableTitle}>Advanced analytics unavailable</Text>
+            <Text style={styles.advancedUnavailableTitle}>Advanced Analytics Unavailable</Text>
             <Text style={styles.advancedUnavailableText}>
               Exam details could not be loaded. Go back and open this attempt again from View Details.
             </Text>

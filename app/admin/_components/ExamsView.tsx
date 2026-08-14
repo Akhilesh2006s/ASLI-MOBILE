@@ -125,12 +125,12 @@ function formatAverageScore(score?: string): string {
 }
 
 const LIST_CLASS_CHIPS = [
-  { id: 'all', label: 'All classes' },
+  { id: 'all', label: 'All Classes' },
   ...CLASS_FILTER_OPTIONS.map((c) => ({ id: c, label: `Class ${c}` })),
 ];
 
 const DETAIL_CLASS_CHIPS = [
-  { id: '', label: 'All classes' },
+  { id: '', label: 'All Classes' },
   ...CLASS_FILTER_OPTIONS.map((c) => ({ id: c, label: `Class ${c}` })),
 ];
 
@@ -138,7 +138,7 @@ function normalizeExam(raw: any): Exam {
   const qLen = Array.isArray(raw?.questions) ? raw.questions.length : undefined;
   return {
     _id: String(raw?._id || raw?.id || ''),
-    title: raw?.title || raw?.name || 'Untitled exam',
+    title: raw?.title || raw?.name || 'Untitled Exam',
     description: raw?.description,
     examType: raw?.examType || 'practice',
     classNumber: raw?.classNumber,
@@ -160,7 +160,7 @@ function normalizeExam(raw: any): Exam {
 }
 
 function getExamAudienceLabel(exam: Exam): string {
-  if (exam.isAllBoards) return 'All schools & boards';
+  if (exam.isAllBoards) return 'All Schools & Boards';
   if (exam.isSchoolSpecific && exam.targetSchools?.length) {
     const names = exam.targetSchools
       .map((school) => {
@@ -168,10 +168,10 @@ function getExamAudienceLabel(exam: Exam): string {
         return school.schoolName || school.fullName || '';
       })
       .filter(Boolean);
-    return names.length ? names.join(', ') : 'Selected schools';
+    return names.length ? names.join(', ') : 'Selected Schools';
   }
-  if (exam.isBoardSpecific) return 'Schools on your board';
-  return 'All schools';
+  if (exam.isBoardSpecific) return 'Schools On Your Board';
+  return 'All Schools';
 }
 
 function parseExamsResponse(responseData: any): Exam[] {
@@ -508,7 +508,7 @@ export default function ExamsView() {
         <View style={styles.innerShell} onLayout={onShellLayout}>
         <AdminScalePressable onPress={closeExamDetail} style={styles.backRow}>
           <Ionicons name="arrow-back" size={20} color={colors.primary} />
-          <Text style={[styles.backText, { color: colors.primary }]}>Back to Exams</Text>
+          <Text style={[styles.backText, { color: colors.primary }]}>Back To Exams</Text>
         </AdminScalePressable>
 
         <View style={styles.detailTitleRow}>
@@ -546,7 +546,7 @@ export default function ExamsView() {
             onPress={() => setShowFilters((v) => !v)}
             style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
           >
-            <AdminSectionHeader icon="filter-outline" title="Filters (optional)" />
+            <AdminSectionHeader icon="filter-outline" title="Filters (Optional)" />
             <Ionicons
               name={showFilters ? 'chevron-up' : 'chevron-down'}
               size={18}
@@ -579,7 +579,7 @@ export default function ExamsView() {
           />
           <View style={styles.dateRow}>
             <View style={styles.dateField}>
-              <Text style={[styles.filterLabel, { color: colors.textMuted }]}>Start date</Text>
+              <Text style={[styles.filterLabel, { color: colors.textMuted }]}>Start Date</Text>
               <TextInput
                 value={filters.startDate}
                 onChangeText={(startDate) => setFilters((prev) => ({ ...prev, startDate }))}
@@ -597,7 +597,7 @@ export default function ExamsView() {
               />
             </View>
             <View style={styles.dateField}>
-              <Text style={[styles.filterLabel, { color: colors.textMuted }]}>End date</Text>
+              <Text style={[styles.filterLabel, { color: colors.textMuted }]}>End Date</Text>
               <TextInput
                 value={filters.endDate}
                 onChangeText={(endDate) => setFilters((prev) => ({ ...prev, endDate }))}
@@ -642,7 +642,7 @@ export default function ExamsView() {
                         : getExamClassStrings(selectedExam);
                     return classes.length === 1
                       ? `Class ${normalizeClassNumberForDisplay(classes[0])} students`
-                      : 'Eligible students';
+                      : 'Eligible Students';
                   })(),
                   value: analytics?.totalStudents ?? 0,
                   icon: 'people',
@@ -655,13 +655,13 @@ export default function ExamsView() {
                   gradientIndex: 1,
                 },
                 {
-                  label: 'Not attempted',
+                  label: 'Not Attempted',
                   value: analytics?.notAttemptedCount ?? 0,
                   icon: 'close-circle',
                   gradientIndex: 2,
                 },
                 {
-                  label: 'Avg score',
+                  label: 'Avg Score',
                   value: formatAverageScore(analytics?.averageScore),
                   icon: 'stats-chart',
                   gradientIndex: 3,
@@ -680,7 +680,7 @@ export default function ExamsView() {
               <AdminGlassCard style={{ marginBottom: spacing.sm }}>
                 <AdminSectionHeader
                   icon="trophy-outline"
-                  title={`Student ranking (${allRanked.length})`}
+                  title={`Student Ranking (${allRanked.length})`}
                 />
                 {visible.map((performer, idx) => (
                   <View
@@ -725,8 +725,8 @@ export default function ExamsView() {
                   >
                     <Text style={[styles.applyBtnText, { color: colors.primary }]}>
                       {showAllPerformers
-                        ? 'Show less'
-                        : `Show more (${allRanked.length - 10} more)`}
+                        ? 'Show Less'
+                        : `Show More (${allRanked.length - 10} More)`}
                     </Text>
                   </AdminScalePressable>
                 ) : null}
@@ -737,7 +737,7 @@ export default function ExamsView() {
             <AdminGlassCard style={{ marginBottom: spacing.sm }}>
               <AdminSectionHeader
                 icon="list-outline"
-                title={`Attempt details (${results.length})`}
+                title={`Attempt Details (${results.length})`}
                 action={
                   <AdminScalePressable
                     onPress={() => void exportToCsv()}
@@ -987,7 +987,7 @@ export default function ExamsView() {
                     {subjects.length > 0 ? (
                       <>
                         <Text style={[styles.detailSectionTitle, { color: colors.text }]}>
-                          Subject breakdown
+                          Subject Breakdown
                         </Text>
                         {subjects.map((s) => (
                           <View
@@ -1049,7 +1049,7 @@ export default function ExamsView() {
       </AdminGlassCard>
 
       <AdminSearchBar
-        placeholder="Search exams..."
+        placeholder="Search Exams..."
         value={searchTerm}
         onChangeText={setSearchTerm}
         style={{ marginBottom: spacing.sm }}
@@ -1067,13 +1067,13 @@ export default function ExamsView() {
       {exams.length === 0 ? (
         <AdminEmptyState
           icon="eye-outline"
-          title="No exams available"
+          title="No Exams Available"
           message="Exams are created by Super Admin."
         />
       ) : filteredExams.length === 0 ? (
         <AdminEmptyState
           icon="filter-outline"
-          title="No exams for this class"
+          title="No Exams For This Class"
           message='Choose another class or "All classes".'
         />
       ) : (
@@ -1127,7 +1127,7 @@ export default function ExamsView() {
               <View style={[styles.audienceBanner, { backgroundColor: colors.inputBg, borderColor: colors.surfaceBorder }]}>
                 <Ionicons name="people-outline" size={15} color={colors.primary} />
                 <View style={styles.audienceTextWrap}>
-                  <Text style={[styles.audienceLabel, { color: colors.textMuted }]}>Who can see this exam</Text>
+                  <Text style={[styles.audienceLabel, { color: colors.textMuted }]}>Who Can See This Exam</Text>
                   <Text style={[styles.audienceValue, { color: colors.text }]}>
                     {getExamAudienceLabel(exam)}
                   </Text>
@@ -1154,7 +1154,7 @@ export default function ExamsView() {
                 </View>
               </View>
               <Text style={[styles.createdBy, { color: colors.textMuted }]}>
-                Created by: {exam.createdBy?.fullName || 'Super Admin'}
+                Created By: {exam.createdBy?.fullName || 'Super Admin'}
               </Text>
               <View style={styles.ctaRow}>
                 <AdminScalePressable

@@ -1,13 +1,11 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, SectionList, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Image } from 'expo-image';
-import * as SecureStore from 'expo-secure-store';
-import { API_BASE_URL } from '../src/lib/api-config';
+import api from '../src/services/api/api';
 import { useContentViewerBack } from '../src/hooks/useBackNavigation';
 import { openContentPreview } from '../src/utils/openContentPreview';
 import { useSchoolProgram } from '../src/hooks/useSchoolProgram';
@@ -16,8 +14,16 @@ import {
   type ContentTypeName,
 } from '../src/lib/school-program';
 import { prepareLibraryContents, getLibraryContentDisplayTitle } from '../src/lib/dedupe-library-content';
-import { getVideoDisplayTitle } from '../src/lib/video-chapter-schedule';
+import { libraryContentMatchesSubject } from '../src/lib/library-content-labels';
+import {
+  learningPathDisplayName,
+  prepareStudentLearningPathSubjects,
+} from '../src/lib/learning-path-subjects';
+import { getVideoDisplayTitle, sortContentsChapterWise } from '../src/lib/video-chapter-schedule';
 import { GlassPanel } from '../src/components/ui';
+
+const HEADER_GRADIENT = ['#0f766e', '#0284c7', '#0891b2'] as const;
+const ACCENT = '#0284c7';
 
 interface Content {
   _id: string;
@@ -101,34 +107,15 @@ export default function AsliPrepContent() {
 
   const fetchSubjects = async () => {
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      const userResponse = await fetch(`${API_BASE_URL}/api/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (userResponse.ok) {
-        const userData = await userResponse.json();
-        const board = userData.user?.board;
-        
-        if (board) {
-          const subjectsResponse = await fetch(`${API_BASE_URL}/api/super-admin/boards/${board}/subjects`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          });
-
-          if (subjectsResponse.ok) {
-            const data = await subjectsResponse.json();
-            if (data.success) {
-              setSubjects(data.data || []);
-            }
-          }
-        }
-      }
+      const { data } = await api.get('/api/student/subjects');
+      const list = Array.isArray(data?.subjects)
+        ? data.subjects
+        : Array.isArray(data?.data)
+          ? data.data
+          : Array.isArray(data)
+            ? data
+            : [];
+      setSubjects(prepareStudentLearningPathSubjects(list));
     } catch (error) {
       console.error('Failed to fetch subjects:', error);
     }
@@ -141,29 +128,16 @@ export default function AsliPrepContent() {
     setIsLoading(true);
 
     try {
-      const token = await SecureStore.getItemAsync('authToken');
       const queryParams = new URLSearchParams();
-      if (filters.subject && filters.subject !== 'all') queryParams.append('subject', filters.subject);
       if (filters.type && filters.type !== 'all') queryParams.append('type', filters.type);
-      if (filters.topic && filters.topic.trim()) queryParams.append('topic', filters.topic.trim());
-      // Match Learning Path Digital Library tile counts: do not send
-      // surface=learning-path (that drops IIT-track videos, so Video looks empty).
+      queryParams.append('surface', 'learning-path');
 
-      const response = await fetch(`${API_BASE_URL}/api/student/asli-prep-content?${queryParams}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
+      const { data } = await api.get(`/api/student/asli-prep-content?${queryParams}`);
       if (seq !== fetchSeqRef.current) return;
 
-      if (response.ok) {
-        const data = await response.json();
-        const rows = Array.isArray(data?.data) ? data.data : [];
-        if (data?.success !== false) {
-          setContents(prepareLibraryContents(rows, isAsliPrepExclusive));
-        }
+      const rows = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+      if (data?.success !== false) {
+        setContents(prepareLibraryContents(rows, isAsliPrepExclusive, { surface: 'learning-path' }));
       }
     } catch (error) {
       console.error('Failed to fetch content:', error);
@@ -172,7 +146,7 @@ export default function AsliPrepContent() {
         setIsLoading(false);
       }
     }
-  }, [filters, isAsliPrepExclusive, programLoading]);
+  }, [filters.type, isAsliPrepExclusive, programLoading]);
 
   useEffect(() => {
     void fetchContents();
@@ -202,12 +176,28 @@ export default function AsliPrepContent() {
     }
   };
 
-  const getSubjectId = (content: Content) => {
-    if (typeof content.subject === 'string') return content.subject;
-    if (content.subject?._id) return content.subject._id;
-    if (typeof content.subjectId === 'string') return content.subjectId;
-    return content.subjectId?._id;
-  };
+  const getSubjectName = useCallback((content: Content) => {
+    const sub = content.subjectId || content.subject;
+    if (!sub) return '';
+    if (typeof sub === 'string') return sub;
+    return sub.name || '';
+  }, []);
+
+  const subjectChips = useMemo(() => {
+    const chips: Array<{ id: string; label: string; mergedSubjectIds?: string[] }> = subjects.map((s) => ({
+      id: String(s._id || s.id),
+      label: learningPathDisplayName(s.name),
+      mergedSubjectIds: Array.isArray(s.mergedSubjectIds) ? s.mergedSubjectIds : undefined,
+    }));
+    const seen = new Set(chips.map((c) => c.label.toLowerCase()));
+    for (const row of contents) {
+      const label = learningPathDisplayName(getSubjectName(row));
+      if (!label || seen.has(label.toLowerCase())) continue;
+      seen.add(label.toLowerCase());
+      chips.push({ id: `name:${label}`, label });
+    }
+    return chips.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }));
+  }, [subjects, contents, getSubjectName]);
 
   const formatFileSize = (bytes?: number) => {
     if (!bytes) return 'N/A';
@@ -227,16 +217,42 @@ export default function AsliPrepContent() {
   const normalizedType = (value?: string) => String(value || '').trim().toLowerCase();
 
   const filteredContents = useMemo(() => {
-    return contents.filter((content) => {
-      const subjectId = getSubjectId(content);
-      const matchesSubject = filters.subject === 'all' || subjectId === filters.subject;
+    const selected = subjectChips.find((chip) => chip.id === filters.subject);
+    const rows = contents.filter((content) => {
+      const matchesSubject =
+        filters.subject === 'all' ||
+        (selected
+          ? libraryContentMatchesSubject(content, {
+              _id: selected.id.startsWith('name:') ? undefined : selected.id,
+              name: selected.label,
+              mergedSubjectIds: selected.mergedSubjectIds,
+            })
+          : false);
       const matchesType =
         filters.type === 'all' || normalizedType(content.type) === normalizedType(filters.type);
+      const q = filters.topic.trim().toLowerCase();
       const matchesTopic =
-        !filters.topic || content.topic?.toLowerCase().includes(filters.topic.toLowerCase());
+        !q ||
+        content.topic?.toLowerCase().includes(q) ||
+        String(content.title || '').toLowerCase().includes(q) ||
+        getSubjectName(content).toLowerCase().includes(q);
       return matchesSubject && matchesType && matchesTopic;
     });
-  }, [contents, filters]);
+    const isVideoList = normalizedType(filters.type) === 'video';
+    return isVideoList ? sortContentsChapterWise(rows) : rows;
+  }, [contents, filters, subjectChips, getSubjectName]);
+
+  const subjectSections = useMemo(() => {
+    const groups = new Map<string, Content[]>();
+    for (const row of filteredContents) {
+      const title = learningPathDisplayName(getSubjectName(row)) || 'Other';
+      if (!groups.has(title)) groups.set(title, []);
+      groups.get(title)!.push(row);
+    }
+    return [...groups.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0], undefined, { sensitivity: 'base' }))
+      .map(([title, data]) => ({ title, data }));
+  }, [filteredContents, getSubjectName]);
 
   const handleOpenContent = useCallback(
     (content: Content) => {
@@ -256,16 +272,10 @@ export default function AsliPrepContent() {
     []
   );
 
-  const getSubjectName = useCallback((content: Content) => {
-    const sub = content.subjectId || content.subject;
-    if (!sub) return '';
-    if (typeof sub === 'string') return sub;
-    return sub.name || '';
-  }, []);
-
   const renderContentItem = useCallback(({ item: content }: { item: Content }) => {
     const typeColor = getTypeColor(content.type);
     const subjectName = getSubjectName(content);
+    const isVideo = normalizedType(content.type) === 'video';
     return (
       <TouchableOpacity
         style={styles.contentCard}
@@ -273,7 +283,7 @@ export default function AsliPrepContent() {
         activeOpacity={0.7}
       >
         {/* the touchable stays for hit area; the glass card carries the padding and row */}
-        <GlassPanel style={styles.contentCardInner} radius={12} tone="medium">
+        <GlassPanel style={styles.contentCardInner} contentStyle={styles.contentCardBody} radius={12} tone="medium">
           <View style={styles.contentRow}>
             <View style={[styles.contentIcon, { backgroundColor: typeColor + '20' }]}>
               <Ionicons name={getTypeIcon(content.type) as any} size={24} color={typeColor} />
@@ -288,13 +298,15 @@ export default function AsliPrepContent() {
                 </View>
                 {subjectName ? (
                   <View style={styles.subjectBadge}>
-                    <Text style={styles.subjectBadgeText}>{subjectName}</Text>
+                    <Text style={styles.subjectBadgeText}>
+                      {learningPathDisplayName(subjectName)}
+                    </Text>
                   </View>
                 ) : null}
               </View>
 
               <Text style={styles.contentTitle}>
-                {content.type === 'Video'
+                {isVideo
                   ? getVideoDisplayTitle(content)
                   : getLibraryContentDisplayTitle(content)}
               </Text>
@@ -312,13 +324,13 @@ export default function AsliPrepContent() {
                     <Text style={styles.metaText}>{formatDuration(content.duration)}</Text>
                   </View>
                 ) : null}
-                {content.size != null && content.size > 0 ? (
+                {!isVideo && content.size != null && content.size > 0 ? (
                   <View style={styles.metaItem}>
                     <Ionicons name="document" size={14} color="#6b7280" />
                     <Text style={styles.metaText}>{formatFileSize(content.size)}</Text>
                   </View>
                 ) : null}
-                {typeof content.views === 'number' ? (
+                {typeof content.views === 'number' && content.views > 0 ? (
                   <View style={styles.metaItem}>
                     <Ionicons name="eye" size={14} color="#6b7280" />
                     <Text style={styles.metaText}>{content.views} views</Text>
@@ -326,29 +338,37 @@ export default function AsliPrepContent() {
                 ) : null}
               </View>
             </View>
+          </View>
 
+          {isVideo ? (
+            <TouchableOpacity
+              style={styles.watchBtn}
+              onPress={() => handleOpenContent(content)}
+              activeOpacity={0.88}
+            >
+              <LinearGradient colors={['#0284c7', '#0f766e']} style={styles.watchBtnGrad}>
+                <Ionicons name="play" size={16} color="#fff" />
+                <Text style={styles.watchBtnText}>Watch Video</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          ) : (
             <TouchableOpacity
               style={[styles.downloadButton, { backgroundColor: typeColor }]}
-              onPress={(e) => {
-                e.stopPropagation();
-                handleOpenContent(content);
-              }}
+              onPress={() => handleOpenContent(content)}
             >
               <Ionicons name="eye" size={20} color="#fff" />
             </TouchableOpacity>
-          </View>
+          )}
         </GlassPanel>
       </TouchableOpacity>
     );
   }, [handleOpenContent, getSubjectName]);
 
-  const keyExtractor = useCallback((item: Content) => item._id, []);
-
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar style="light" />
       <LinearGradient
-        colors={['#9333ea', '#c026d3']}
+        colors={[...HEADER_GRADIENT]}
         style={styles.header}
       >
         <View style={styles.headerContent}>
@@ -399,14 +419,14 @@ export default function AsliPrepContent() {
               All Subjects
             </Text>
           </TouchableOpacity>
-          {subjects.map(subject => (
+          {subjectChips.map((subject) => (
             <TouchableOpacity
-              key={subject._id}
-              style={[styles.filterChip, filters.subject === subject._id && styles.filterChipActive]}
-              onPress={() => setFilters({ ...filters, subject: subject._id })}
+              key={subject.id}
+              style={[styles.filterChip, filters.subject === subject.id && styles.filterChipActive]}
+              onPress={() => setFilters({ ...filters, subject: subject.id })}
             >
-              <Text style={[styles.filterChipText, filters.subject === subject._id && styles.filterChipTextActive]}>
-                {subject.name}
+              <Text style={[styles.filterChipText, filters.subject === subject.id && styles.filterChipTextActive]}>
+                {subject.label}
               </Text>
             </TouchableOpacity>
           ))}
@@ -432,7 +452,7 @@ export default function AsliPrepContent() {
       {/* Content List */}
       {programLoading || isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#9333ea" />
+          <ActivityIndicator size="large" color={ACCENT} />
           <Text style={styles.loadingText}>Loading content...</Text>
         </View>
       ) : filteredContents.length === 0 ? (
@@ -442,13 +462,22 @@ export default function AsliPrepContent() {
           <Text style={styles.emptySubtext}>Try adjusting your filters</Text>
         </View>
       ) : (
-        <FlatList
-          data={filteredContents}
+        <SectionList
+          sections={subjectSections}
           renderItem={renderContentItem}
-          keyExtractor={keyExtractor}
+          keyExtractor={(item) => item._id}
+          renderSectionHeader={({ section }) => (
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionHeaderText}>{section.title}</Text>
+              <Text style={styles.sectionHeaderCount}>
+                {section.data.length} {section.data.length === 1 ? 'file' : 'files'}
+              </Text>
+            </View>
+          )}
           contentContainerStyle={styles.contentList}
           style={styles.content}
           showsVerticalScrollIndicator={false}
+          stickySectionHeadersEnabled={false}
           removeClippedSubviews={true}
           maxToRenderPerBatch={10}
           updateCellsBatchingPeriod={50}
@@ -543,7 +572,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   filterChipActive: {
-    backgroundColor: '#9333ea',
+    backgroundColor: ACCENT,
   },
   filterChipText: {
     fontSize: 14,
@@ -589,6 +618,23 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 32,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 4,
+    paddingBottom: 10,
+  },
+  sectionHeaderText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F766E',
+  },
+  sectionHeaderCount: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
+  },
   contentCard: {
     borderRadius: 12,
     marginBottom: 12,
@@ -596,6 +642,9 @@ const styles = StyleSheet.create({
   contentCardInner: {
     borderRadius: 12,
     padding: 16,
+  },
+  contentCardBody: {
+    gap: 12,
   },
   // GlassPanel wraps children in its own view, so the row lives one level in
   contentRow: {
@@ -669,8 +718,23 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    marginTop: 8,
+    alignSelf: 'flex-end',
+  },
+  watchBtn: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  watchBtnGrad: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+  },
+  watchBtnText: {
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: 14,
   },
 });
 

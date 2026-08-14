@@ -81,12 +81,12 @@ function SubscriptionCard({ subscription }: { subscription: SubscriptionRow }) {
         </View>
       </View>
       <View style={styles.periodBlock}>
-        <Text style={styles.periodLabel}>Current period</Text>
+        <Text style={styles.periodLabel}>Current Period</Text>
         <Text style={styles.periodValue}>{formatDate(subscription.currentStart)}</Text>
         <Text style={styles.periodArrow}>→ {formatDate(subscription.currentEnd)}</Text>
       </View>
       <Text style={styles.paidLeft}>
-        Paid / left: {subscription.paidCount ?? '—'} / {subscription.remainingCount ?? '—'}
+        Paid / Left: {subscription.paidCount ?? '—'} / {subscription.remainingCount ?? '—'}
       </Text>
     </View>
   );
@@ -169,7 +169,7 @@ export default function SubscriptionManagementView() {
       }
     >
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Payments & subscriptions</Text>
+        <Text style={styles.headerTitle}>Payments & Subscriptions</Text>
         <Text style={styles.headerSubtitle}>
           Manage school orders, Razorpay payments, and subscriptions.
         </Text>
@@ -209,7 +209,7 @@ export default function SubscriptionManagementView() {
       ) : loading && !data ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#f97316" />
-          <Text style={styles.loadingText}>Loading payments & subscriptions...</Text>
+          <Text style={styles.loadingText}>Loading Payments & Subscriptions...</Text>
         </View>
       ) : (
         <>
@@ -241,7 +241,7 @@ export default function SubscriptionManagementView() {
                 <View style={styles.warningAlert}>
                   <Ionicons name="warning" size={20} color="#92400e" />
                   <View style={styles.alertTextBlock}>
-                    <Text style={styles.alertTitle}>Razorpay not connected</Text>
+                    <Text style={styles.alertTitle}>Razorpay Not Connected</Text>
                     <Text style={styles.alertDesc}>
                       Add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to your server .env, then restart
                       the API.
@@ -254,7 +254,7 @@ export default function SubscriptionManagementView() {
                 <View style={styles.errorAlert}>
                   <Ionicons name="alert-circle" size={20} color="#dc2626" />
                   <View style={styles.alertTextBlock}>
-                    <Text style={styles.alertTitle}>Razorpay error</Text>
+                    <Text style={styles.alertTitle}>Razorpay Error</Text>
                     <Text style={styles.errorAlertText}>{data.razorpayError}</Text>
                   </View>
                 </View>
@@ -269,7 +269,7 @@ export default function SubscriptionManagementView() {
                     end={{ x: 1, y: 1 }}
                   >
                     <Ionicons name="cash" size={28} color="#fff" />
-                    <Text style={styles.statCardLabel}>Captured revenue</Text>
+                    <Text style={styles.statCardLabel}>Captured Revenue</Text>
                     <Text style={styles.statCardValue}>{formatInr(data.summary.capturedAmountInr)}</Text>
                   </LinearGradient>
                 </View>
@@ -313,7 +313,7 @@ export default function SubscriptionManagementView() {
 
               {mainTab === 'payments' ? (
                 <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Recent payments</Text>
+                  <Text style={styles.sectionTitle}>Recent Payments</Text>
                   {data.payments.length === 0 ? (
                     <View style={styles.emptyBox}>
                       <Text style={styles.emptyText}>No payments returned from Razorpay.</Text>

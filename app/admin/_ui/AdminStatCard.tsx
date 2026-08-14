@@ -29,9 +29,7 @@ export default function AdminStatCard({
   grid = !compact,
 }: Props) {
   const { colors, radius, typo } = useAdminTheme();
-  const gradient = colors.statGradients[gradientIndex % colors.statGradients.length];
-  // Solid fill — LinearGradient × N stat tiles was a measurable paint cost on tab open.
-  const fill = gradient[1] || gradient[0];
+  const palette = colors.dashboardStatCards[gradientIndex % colors.dashboardStatCards.length];
 
   const displayValue = loading ? '—' : value;
   const horizontal = compact || grid;
@@ -48,21 +46,27 @@ export default function AdminStatCard({
         style={[
           styles.fill,
           horizontal && styles.fillHorizontal,
-          { borderRadius: radius.lg, backgroundColor: fill },
+          {
+            borderRadius: radius.lg,
+            backgroundColor: palette.bg,
+            borderWidth: 1,
+            borderColor: 'rgba(15, 118, 110, 0.08)',
+          },
         ]}
       >
         <View style={styles.compactInner}>
-          <View style={styles.iconWrapCompact}>
-            <Ionicons name={icon} size={20} color="#fff" />
+          <View style={[styles.iconWrapCompact, { backgroundColor: palette.iconBg }]}>
+            <Ionicons name={icon} size={20} color={palette.accent} />
           </View>
           <View style={styles.textBlock}>
-            <Text style={styles.label} numberOfLines={2}>
+            <Text style={[styles.label, { color: palette.accent }]} numberOfLines={2}>
               {label}
             </Text>
             <Text
               style={[
                 typo.stat,
                 styles.value,
+                { color: colors.text },
                 horizontal ? styles.valueHorizontal : null,
               ]}
               numberOfLines={1}
@@ -72,7 +76,7 @@ export default function AdminStatCard({
               {displayValue}
             </Text>
             {subtext ? (
-              <Text style={styles.subtext} numberOfLines={1}>
+              <Text style={[styles.subtext, { color: colors.textMuted }]} numberOfLines={1}>
                 {subtext}
               </Text>
             ) : null}
@@ -113,7 +117,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.22)',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -125,20 +128,16 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 11,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.88)',
+    fontWeight: '700',
     letterSpacing: 0.3,
   },
-  value: {
-    color: '#fff',
-  },
+  value: {},
   valueHorizontal: {
     fontSize: 24,
     lineHeight: 28,
   },
   subtext: {
     fontSize: 10,
-    color: 'rgba(255,255,255,0.75)',
     marginTop: 2,
   },
 });

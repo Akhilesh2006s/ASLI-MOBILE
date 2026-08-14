@@ -26,11 +26,11 @@ export default function AuditLogsView() {
       setError('');
       const res = await apiFetch('/api/super-admin/audit-logs?page=1&limit=50');
       const json = await res.json();
-      if (!res.ok) throw new Error(json?.message || 'Failed to load audit logs');
+      if (!res.ok) throw new Error(json?.message || 'Failed to Load Audit Logs');
       const list = json?.data?.items || json?.data?.logs || json?.logs || json?.data || [];
       setRows(Array.isArray(list) ? list : []);
     } catch (e: any) {
-      setError(e?.message || 'Failed to load audit logs');
+      setError(e?.message || 'Failed to Load Audit Logs');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -50,15 +50,15 @@ export default function AuditLogsView() {
       keyExtractor={(item, i) => String(item._id || i)}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} />}
       contentContainerStyle={styles.list}
-      ListEmptyComponent={<EmptyState icon="shield-checkmark-outline" title="No audit events" subtitle="Security and admin actions will appear here." />}
+      ListEmptyComponent={<EmptyState icon="shield-checkmark-outline" title="No Audit Events" subtitle="Security and admin actions will appear here." />}
       renderItem={({ item }) => (
         <GlassPanel style={[styles.card, { borderColor: t.border }]}>
-          <Text style={[styles.action, { color: t.text }]}>{item.action || 'event'}</Text>
+          <Text style={[styles.action, { color: t.text }]}>{item.action || 'Event'}</Text>
           <Text style={[styles.summary, { color: t.textMuted }]} numberOfLines={3}>
             {item.summary || '—'}
           </Text>
           <Text style={[styles.meta, { color: t.textMuted }]}>
-            {(item.actor?.name || item.actor?.email || 'system') +
+            {(item.actor?.name || item.actor?.email || 'System') +
               (item.actor?.role ? ` · ${item.actor.role}` : '') +
               (item.at ? ` · ${new Date(item.at).toLocaleString()}` : '')}
           </Text>

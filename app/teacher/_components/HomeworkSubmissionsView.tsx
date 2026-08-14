@@ -156,7 +156,7 @@ export default function HomeworkSubmissionsView() {
             </LinearGradient>
             <View style={{ flex: 1 }}>
               <Text style={styles.headerTitle}>Homework Submissions</Text>
-              <Text style={styles.headerSub}>View and manage student homework submissions</Text>
+              <Text style={styles.headerSub}>View And Manage Student Homework Submissions</Text>
             </View>
           </View>
           <Pressable onPress={() => setShowCreate(true)}>
@@ -177,7 +177,7 @@ export default function HomeworkSubmissionsView() {
           {groups.length === 0 ? (
             <View style={styles.empty}>
               <Ionicons name="document-text-outline" size={48} color={TEACHER.textMuted} />
-              <Text style={styles.emptyText}>No homework assignments found for your assigned subjects</Text>
+              <Text style={styles.emptyText}>No Homework Assignments Found For Your Assigned Subjects</Text>
             </View>
           ) : (
             groups.map((group) => {
@@ -217,7 +217,7 @@ export default function HomeworkSubmissionsView() {
                   {isOpen ? (
                     <View style={styles.subs}>
                       {group.submissions.length === 0 ? (
-                        <Text style={styles.noSubs}>No submissions yet</Text>
+                        <Text style={styles.noSubs}>No Submissions Yet</Text>
                       ) : (
                         group.submissions.map((sub: any) => {
                           const student = sub.student || sub.studentId || {};
@@ -254,7 +254,7 @@ export default function HomeworkSubmissionsView() {
         <View style={styles.sectionCardInner}>
           <View style={styles.sectionHeader}>
             <Ionicons name="people" size={18} color={TEACHER.primaryLight} />
-            <Text style={styles.sectionTitle}>Submissions by Students</Text>
+            <Text style={styles.sectionTitle}>Submissions By Students</Text>
           </View>
           {classList.length === 0 ? (
             <Text style={styles.emptyText}>No classes assigned yet.</Text>
@@ -272,7 +272,7 @@ export default function HomeworkSubmissionsView() {
                     <View style={styles.classTitleWrap}>
                       <Text style={styles.classTitle}>{classNum}</Text>
                     </View>
-                    <Text style={styles.classCount}>{rows.length} student{rows.length !== 1 ? 's' : ''}</Text>
+                    <Text style={styles.classCount}>{rows.length} Student{rows.length !== 1 ? 's' : ''}</Text>
                   </Pressable>
                   {open ? (
                     rows.map((row) => {
@@ -281,7 +281,7 @@ export default function HomeworkSubmissionsView() {
                       return (
                         <View key={student._id || student.id || classNum} style={styles.studentSubBlock}>
                           <Text style={styles.subName}>{student.fullName || student.name || 'Student'}</Text>
-                          <Text style={styles.subMeta}>{subs.length} submission{subs.length !== 1 ? 's' : ''}</Text>
+                          <Text style={styles.subMeta}>{subs.length} Submission{subs.length !== 1 ? 's' : ''}</Text>
                           {subs.slice(0, 3).map((sub: any, i: number) => (
                             <Text key={i} style={styles.subMeta}>
                               {sub.homeworkId?.title || sub.title || 'Homework'}

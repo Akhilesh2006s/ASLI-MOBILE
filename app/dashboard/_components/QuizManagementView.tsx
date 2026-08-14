@@ -105,7 +105,7 @@ export default function QuizManagementView() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#3b82f6" />
-        <Text style={styles.loadingText}>Loading quizzes...</Text>
+        <Text style={styles.loadingText}>Loading Quizzes...</Text>
       </View>
     );
   }
@@ -115,7 +115,7 @@ export default function QuizManagementView() {
       {/* Header */}
       <GlassPanel radius={0} bordered={false} tone="light" style={styles.header}>
         <Text style={styles.headerTitle}>Quiz Management</Text>
-        <Text style={styles.headerSubtitle}>Practice and test your knowledge</Text>
+        <Text style={styles.headerSubtitle}>Practice And Test Your Knowledge</Text>
       </GlassPanel>
 
       {/* Search and Filters */}
@@ -125,7 +125,7 @@ export default function QuizManagementView() {
           <Ionicons name="search" size={20} color="#6b7280" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search quizzes..."
+            placeholder="Search Quizzes..."
             placeholderTextColor="#5B6779"
             value={searchTerm}
             onChangeText={setSearchTerm}
@@ -175,8 +175,8 @@ export default function QuizManagementView() {
         {filteredQuizzes.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="help-circle-outline" size={64} color="#5B6779" />
-            <Text style={styles.emptyText}>No quizzes found</Text>
-            <Text style={styles.emptySubtext}>Try adjusting your filters</Text>
+            <Text style={styles.emptyText}>No Quizzes Found</Text>
+            <Text style={styles.emptySubtext}>Try Adjusting Your Filters</Text>
           </View>
         ) : (
           filteredQuizzes.map((quiz) => {
@@ -202,11 +202,11 @@ export default function QuizManagementView() {
                   </View>
                   <View style={styles.detailItem}>
                     <Ionicons name="time" size={16} color="#6b7280" />
-                    <Text style={styles.detailText}>{quiz.duration} mins</Text>
+                    <Text style={styles.detailText}>{quiz.duration} Mins</Text>
                   </View>
                   <View style={styles.detailItem}>
                     <Ionicons name="help-circle" size={16} color="#6b7280" />
-                    <Text style={styles.detailText}>{quiz.totalQuestions} questions</Text>
+                    <Text style={styles.detailText}>{quiz.totalQuestions} Questions</Text>
                   </View>
                   <View style={styles.detailItem}>
                     <Ionicons name="trophy" size={16} color="#6b7280" />

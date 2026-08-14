@@ -446,7 +446,7 @@ export default function StudentsView() {
         onPress: async () => {
           try {
             await api.delete(`/api/admin/students/${id}`);
-            Alert.alert('Success', 'Student deleted successfully');
+            Alert.alert('Success', 'Student Deleted Successfully');
             fetchStudents();
           } catch (error: any) {
             console.error('Failed to delete student:', error);
@@ -532,7 +532,7 @@ export default function StudentsView() {
         fetchStudents();
         Alert.alert('Success', 'Student details updated successfully!');
       } else {
-        Alert.alert('Error', response?.data?.message || 'Failed to update student');
+        Alert.alert('Error', response?.data?.message || 'Failed To Update Student');
       }
     } catch (error: any) {
       console.error('Failed to update student:', error);
@@ -553,7 +553,7 @@ export default function StudentsView() {
         fetchStudents();
         Alert.alert('Success', 'Class assigned successfully!');
       } else {
-        Alert.alert('Error', response?.data?.message || 'Failed to assign class');
+        Alert.alert('Error', response?.data?.message || 'Failed To Assign Class');
       }
     } catch (error: any) {
       console.error('Failed to assign class:', error);
@@ -614,7 +614,7 @@ export default function StudentsView() {
                 {student.name || 'Unknown Student'}
               </Text>
               <Text style={styles.studentEmail} numberOfLines={1}>
-                {student.email || 'No email'}
+                {student.email || 'No Email'}
               </Text>
             </View>
             <View style={[styles.classBadge, { backgroundColor: colors.primaryMuted, borderColor: colors.surfaceBorder }]}>
@@ -634,7 +634,7 @@ export default function StudentsView() {
             <View style={styles.metaItem}>
               <Ionicons name="time-outline" size={14} color={colors.primary} />
               <Text style={[styles.metaItemText, { color: colors.textSecondary }]}>
-                Last login:{' '}
+                Last Login:{' '}
                 {student.lastLogin ? new Date(student.lastLogin).toLocaleDateString() : 'Never'}
               </Text>
             </View>
@@ -739,8 +739,8 @@ export default function StudentsView() {
     if (filteredStudents.length === 0) {
       return (
         <AdminEmptyState
-          title="No students found"
-          message="Try adjusting your search criteria or add new students"
+          title="No Students Found"
+          message="Try Adjusting Your Search Criteria Or Add New Students"
           icon="people-outline"
           action={
             <AdminScalePressable
@@ -974,8 +974,8 @@ export default function StudentsView() {
           <AdminFilterChips
             chips={[
               { id: 'all', label: 'All Students' },
-              { id: 'class-wise', label: 'Class-wise' },
-              { id: 'section-wise', label: 'Section-wise' },
+              { id: 'class-wise', label: 'Class-Wise' },
+              { id: 'section-wise', label: 'Section-Wise' },
             ]}
             selected={studentViewMode}
             onSelect={(id) => setStudentViewMode(id as ViewMode)}
@@ -984,36 +984,39 @@ export default function StudentsView() {
 
         <AdminHorizontalScroll
           style={styles.actionsBlock}
-          hint="Swipe for more actions"
+          hint="Swipe For More Actions"
           contentContainerStyle={styles.actionButtonsRow}
         >
-          <AdminScalePressable style={[styles.exportBtn, { backgroundColor: colors.warning }]} onPress={handleExportStudents}>
-            <Ionicons name="download-outline" size={16} color="#fff" />
-            <Text style={styles.actionBtnText}>Export</Text>
+          <AdminScalePressable
+            style={[styles.exportBtn, { backgroundColor: colors.warningMuted }]}
+            onPress={handleExportStudents}
+          >
+            <Ionicons name="download-outline" size={16} color={colors.warning} />
+            <Text style={[styles.actionBtnText, { color: colors.warning }]}>Export</Text>
           </AdminScalePressable>
           <AdminScalePressable
-            style={[styles.uploadBtn, { backgroundColor: colors.success }]}
+            style={[styles.uploadBtn, { backgroundColor: colors.successMuted }]}
             onPress={() => setIsUploadModalVisible(true)}
           >
-            <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
-            <Text style={styles.actionBtnText}>Upload CSV</Text>
+            <Ionicons name="cloud-upload-outline" size={16} color={colors.success} />
+            <Text style={[styles.actionBtnText, { color: colors.success }]}>Upload CSV</Text>
           </AdminScalePressable>
           <AdminScalePressable
-            style={[styles.addBtn, { backgroundColor: colors.primary }]}
+            style={[styles.addBtn, { backgroundColor: colors.primaryMuted }]}
             onPress={() => setIsAddModalVisible(true)}
           >
-            <Ionicons name="person-add" size={16} color="#fff" />
-            <Text style={styles.actionBtnText}>Add Student</Text>
+            <Ionicons name="person-add" size={16} color={colors.primary} />
+            <Text style={[styles.actionBtnText, { color: colors.primary }]}>Add Student</Text>
           </AdminScalePressable>
           <AdminScalePressable
-            style={[styles.deleteAllBtn, { backgroundColor: colors.danger }]}
+            style={[styles.deleteAllBtn, { backgroundColor: colors.dangerMuted }]}
             onPress={() => {
               setDeleteAllConfirmStep(1);
               setIsDeleteAllModalVisible(true);
             }}
           >
-            <Ionicons name="trash-outline" size={16} color="#fff" />
-            <Text style={styles.actionBtnText}>Delete All</Text>
+            <Ionicons name="trash-outline" size={16} color={colors.danger} />
+            <Text style={[styles.actionBtnText, { color: colors.danger }]}>Delete All</Text>
           </AdminScalePressable>
         </AdminHorizontalScroll>
       </View>
@@ -1026,16 +1029,12 @@ export default function StudentsView() {
               {filteredStudents.length} students found
             </Text>
           </View>
-          <AdminScalePressable style={styles.exportDataBtn} onPress={handleExportStudents}>
-            <LinearGradient
-              colors={[...colors.fabGradient]}
-              style={styles.exportDataGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            >
-              <Ionicons name="download-outline" size={16} color="#fff" />
-              <Text style={styles.exportDataText}>Export Data</Text>
-            </LinearGradient>
+          <AdminScalePressable
+            style={[styles.exportDataBtn, { backgroundColor: colors.primaryMuted }]}
+            onPress={handleExportStudents}
+          >
+            <Ionicons name="download-outline" size={16} color={colors.primary} />
+            <Text style={[styles.exportDataText, { color: colors.primary }]}>Export Data</Text>
           </AdminScalePressable>
         </View>
         {renderDirectoryContent()}
@@ -1089,7 +1088,7 @@ export default function StudentsView() {
               </Text>
               <TouchableOpacity style={styles.filePickArea} onPress={pickCsvFile}>
                 <Ionicons name="document-text-outline" size={40} color={colors.primary} />
-                <Text style={styles.filePickTitle}>Tap to select CSV file</Text>
+                <Text style={styles.filePickTitle}>Tap To Select CSV File</Text>
                 {selectedFile ? (
                   <Text style={styles.filePickName}>{selectedFile.name}</Text>
                 ) : null}
@@ -1220,7 +1219,7 @@ export default function StudentsView() {
                 <Text style={styles.label}>Full Name *</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Enter full name"
+                  placeholder="Enter Full Name"
                   value={newStudent.name}
                   onChangeText={(text) => setNewStudent({ ...newStudent, name: text })}
                 />
@@ -1235,7 +1234,7 @@ export default function StudentsView() {
                   keyboardType="default"
                   autoCapitalize="none"
                 />
-                <Text style={styles.helperText}>Ids like 1724 are saved as 1724@example.com</Text>
+                <Text style={styles.helperText}>Ids Like 1724 Are Saved As 1724@example.com</Text>
               </View>
               <View style={styles.formRow}>
                 <View style={[styles.formGroup, styles.formHalf]}>
@@ -1268,7 +1267,7 @@ export default function StudentsView() {
                 <Text style={styles.label}>Phone (Optional)</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="10-digit mobile"
+                  placeholder="10-Digit Mobile"
                   value={newStudent.phone}
                   onChangeText={(text) =>
                     setNewStudent({
@@ -1284,7 +1283,7 @@ export default function StudentsView() {
                 <View style={styles.passwordRow}>
                   <TextInput
                     style={[styles.input, styles.passwordInput]}
-                    placeholder="Min 6 characters"
+                    placeholder="Min 6 Characters"
                     value={newStudent.password}
                     onChangeText={(text) => setNewStudent({ ...newStudent, password: text })}
                     secureTextEntry={!showNewStudentPassword}
@@ -1362,7 +1361,7 @@ export default function StudentsView() {
                   value={editStudent.email}
                   editable={false}
                 />
-                <Text style={styles.helperText}>Email cannot be changed</Text>
+                <Text style={styles.helperText}>Email Cannot Be Changed</Text>
               </View>
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Class Number</Text>
@@ -1425,7 +1424,7 @@ export default function StudentsView() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Assign Class to Student</Text>
+              <Text style={styles.modalTitle}>Assign Class To Student</Text>
               <TouchableOpacity
                 onPress={() => setIsAssignClassModalVisible(false)}
                 accessibilityRole="button"
@@ -1437,7 +1436,7 @@ export default function StudentsView() {
             <ScrollView style={styles.modalBody}>
               {selectedStudentForClass ? (
                 <Text style={styles.assignHint}>
-                  Assign a class to {selectedStudentForClass.name}
+                  Assign A Class To {selectedStudentForClass.name}
                 </Text>
               ) : null}
               {availableClasses.length === 0 ? (
@@ -1668,7 +1667,6 @@ const styles = StyleSheet.create({
   actionBtnText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#fff',
   },
   directoryContainer: {
     marginBottom: 16,
@@ -1702,20 +1700,16 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   exportDataBtn: {
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  exportDataGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
   exportDataText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#fff',
   },
   accordionList: {
     padding: 14,

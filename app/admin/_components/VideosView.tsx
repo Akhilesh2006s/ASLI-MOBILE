@@ -95,7 +95,7 @@ export default function VideosView() {
 
   const handleCreateVideo = async () => {
     if (!newVideo.title || !newVideo.subject) {
-      Alert.alert('Validation Error', 'Please fill in all required fields');
+      Alert.alert('Validation Error', 'Please Fill In All Required Fields');
       return;
     }
 
@@ -104,7 +104,7 @@ export default function VideosView() {
         ...newVideo,
         subjectId: newVideo.subject,
       });
-      Alert.alert('Success', 'Video created successfully');
+      Alert.alert('Success', 'Video Created Successfully');
       setIsCreateModalOpen(false);
       setNewVideo({
         title: '',
@@ -121,7 +121,7 @@ export default function VideosView() {
       fetchVideos();
     } catch (error) {
       console.error('Failed to create video:', error);
-      Alert.alert('Error', 'An error occurred');
+      Alert.alert('Error', 'An Error Occurred');
     }
   };
 
@@ -167,7 +167,7 @@ export default function VideosView() {
     <>
       <AdminScreenShell refreshing={refreshing} onRefresh={onRefresh}>
         <AdminSearchBar
-          placeholder="Search videos..."
+          placeholder="Search Videos..."
           value={searchTerm}
           onChangeText={setSearchTerm}
           style={{ marginBottom: spacing.sm }}
@@ -179,8 +179,8 @@ export default function VideosView() {
         {filteredVideos.length === 0 ? (
           <AdminEmptyState
             icon="videocam-outline"
-            title="No videos found"
-            message="Create your first video to get started"
+            title="No Videos Found"
+            message="Create Your First Video To Get Started"
           />
         ) : (
           filteredVideos.map((video, index) => {
@@ -270,7 +270,7 @@ export default function VideosView() {
             <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Title *</Text>
             <TextInput
               style={[styles.input, { borderColor: colors.inputBorder, color: colors.text, backgroundColor: colors.inputBg }]}
-              placeholder="Video title"
+              placeholder="Video Title"
               placeholderTextColor={colors.textMuted}
               value={newVideo.title}
               onChangeText={(text) => setNewVideo({ ...newVideo, title: text })}
@@ -281,7 +281,7 @@ export default function VideosView() {
             <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Description</Text>
             <TextInput
               style={[styles.input, styles.textArea, { borderColor: colors.inputBorder, color: colors.text, backgroundColor: colors.inputBg }]}
-              placeholder="Video description"
+              placeholder="Video Description"
               placeholderTextColor={colors.textMuted}
               value={newVideo.description}
               onChangeText={(text) => setNewVideo({ ...newVideo, description: text })}
@@ -394,7 +394,7 @@ export default function VideosView() {
 
           <View style={styles.inputRow}>
             <View style={[styles.inputContainer, { flex: 1, marginRight: 8 }]}>
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Duration (min)</Text>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Duration (Min)</Text>
               <TextInput
                 style={[styles.input, { borderColor: colors.inputBorder, color: colors.text, backgroundColor: colors.inputBg }]}
                 placeholder="30"

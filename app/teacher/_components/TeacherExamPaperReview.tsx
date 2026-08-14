@@ -85,14 +85,14 @@ function optionLetter(i: number) {
 function StudentLists({ question }: { question: QuestionStat }) {
   const groups = [
     {
-      title: 'Attempted & correct',
+      title: 'Attempted & Correct',
       color: TEACHER.success,
       bg: '#ECFDF5',
       students: question.studentsCorrect || [],
       icon: 'checkmark-circle' as const,
     },
     {
-      title: 'Attempted but wrong',
+      title: 'Attempted But Wrong',
       color: TEACHER.danger,
       bg: '#FEF2F2',
       students: question.studentsWrong || [],
@@ -159,7 +159,7 @@ function QuestionCard({
           <Text style={styles.qBadgeText}>Q{question.questionNumber}</Text>
         </View>
         {question.subject ? <Text style={styles.qSubject}>{question.subject}</Text> : null}
-        <Text style={styles.qPct}>{question.classCorrectPct}% class</Text>
+        <Text style={styles.qPct}>{question.classCorrectPct}% Class</Text>
       </View>
       <Text style={styles.qText}>{question.questionText || `Question ${question.questionNumber}`}</Text>
 
@@ -203,8 +203,8 @@ function QuestionCard({
       {(showResult || options.length === 0) && (
         <View style={styles.answerRow}>
           <View style={[styles.answerBox, { backgroundColor: '#EEF2FF' }]}>
-            <Text style={styles.answerLbl}>Your pick</Text>
-            <Text style={styles.answerVal}>{selected || 'Not selected'}</Text>
+            <Text style={styles.answerLbl}>Your Pick</Text>
+            <Text style={styles.answerVal}>{selected || 'Not Selected'}</Text>
           </View>
           <View style={[styles.answerBox, { backgroundColor: '#ECFDF5' }]}>
             <Text style={styles.answerLbl}>Correct</Text>
@@ -250,7 +250,7 @@ export default function TeacherExamPaperReview({ classNumber = 'all' }: Props) {
       });
     } catch (e) {
       setExams([]);
-      setError(e instanceof Error ? e.message : 'Could not load exams');
+      setError(e instanceof Error ? e.message : 'Could Not Load Exams');
     } finally {
       setLoadingExams(false);
     }
@@ -273,7 +273,7 @@ export default function TeacherExamPaperReview({ classNumber = 'all' }: Props) {
         setDiscussIndex(0);
       } catch (e) {
         setAnalytics(null);
-        setError(e instanceof Error ? e.message : 'Could not load paper');
+        setError(e instanceof Error ? e.message : 'Could Not Load Paper');
       } finally {
         setLoadingPaper(false);
       }
@@ -292,7 +292,7 @@ export default function TeacherExamPaperReview({ classNumber = 'all' }: Props) {
   const questions = analytics?.questions || [];
   const studentReports = analytics?.studentReports || [];
   const selectedExamTitle = useMemo(
-    () => exams.find((e) => e._id === examId)?.title || analytics?.examTitle || 'Select exam',
+    () => exams.find((e) => e._id === examId)?.title || analytics?.examTitle || 'Select Exam',
     [exams, examId, analytics?.examTitle],
   );
 
@@ -302,7 +302,7 @@ export default function TeacherExamPaperReview({ classNumber = 'all' }: Props) {
 
   const renderStudentSheet = () => (
     <View style={styles.reportsBlock}>
-      <Text style={styles.sectionTitle}>Individual student reports</Text>
+      <Text style={styles.sectionTitle}>Individual Student Reports</Text>
       {studentReports.map((s) => (
         <Pressable key={s.studentId} style={styles.reportRow} onPress={() => setReport(s)}>
           <Ionicons name="person-circle-outline" size={22} color={TEACHER.primary} />
@@ -311,7 +311,7 @@ export default function TeacherExamPaperReview({ classNumber = 'all' }: Props) {
             <Text style={styles.reportMeta}>
               {s.attempted
                 ? `${s.percentage != null ? Number(s.percentage).toFixed(1) : '—'}% · ${s.correctAnswers}✓ ${s.wrongAnswers}✗`
-                : 'Not attempted'}
+                : 'Not Attempted'}
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={16} color={TEACHER.textMuted} />
@@ -325,8 +325,8 @@ export default function TeacherExamPaperReview({ classNumber = 'all' }: Props) {
       <View style={styles.headerRow}>
         <Ionicons name="document-text" size={20} color={TEACHER.primary} />
         <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Exam paper review</Text>
-          <Text style={styles.sub}>Discuss paper full-screen or show answers inline</Text>
+          <Text style={styles.title}>Exam Paper Review</Text>
+          <Text style={styles.sub}>Discuss Paper Full-Screen Or Show Answers Inline</Text>
         </View>
         <Pressable
           onPress={() => {
@@ -341,7 +341,7 @@ export default function TeacherExamPaperReview({ classNumber = 'all' }: Props) {
 
       <Pressable style={styles.picker} onPress={() => setPickerOpen(true)}>
         <Text style={styles.pickerText} numberOfLines={1}>
-          {loadingExams ? 'Loading exams…' : selectedExamTitle}
+          {loadingExams ? 'Loading Exams…' : selectedExamTitle}
         </Text>
         <Ionicons name="chevron-down" size={16} color={TEACHER.textMuted} />
       </Pressable>
@@ -356,8 +356,8 @@ export default function TeacherExamPaperReview({ classNumber = 'all' }: Props) {
         <>
           {analytics ? (
             <Text style={styles.metaLine}>
-              {analytics.studentsAttempted}/{analytics.totalStudents} attempted · {analytics.totalQuestions}{' '}
-              questions
+              {analytics.studentsAttempted}/{analytics.totalStudents} Attempted · {analytics.totalQuestions}{' '}
+              Questions
             </Text>
           ) : null}
 
@@ -370,7 +370,7 @@ export default function TeacherExamPaperReview({ classNumber = 'all' }: Props) {
               }}
             >
               <Ionicons name="easel-outline" size={16} color="#fff" />
-              <Text style={styles.actionPrimaryText}>Discuss paper</Text>
+              <Text style={styles.actionPrimaryText}>Discuss Paper</Text>
             </Pressable>
             <Pressable
               style={[styles.actionBtn, showAnswers ? styles.actionActive : styles.actionOutline]}
@@ -382,7 +382,7 @@ export default function TeacherExamPaperReview({ classNumber = 'all' }: Props) {
                 color={showAnswers ? '#fff' : TEACHER.primary}
               />
               <Text style={showAnswers ? styles.actionPrimaryText : styles.actionOutlineText}>
-                {showAnswers ? 'Hide answers' : 'Show answers'}
+                {showAnswers ? 'Hide Answers' : 'Show Answers'}
               </Text>
             </Pressable>
           </View>
@@ -412,7 +412,7 @@ export default function TeacherExamPaperReview({ classNumber = 'all' }: Props) {
       <Modal visible={pickerOpen} transparent animationType="fade" onRequestClose={() => setPickerOpen(false)}>
         <Pressable style={styles.modalOverlay} onPress={() => setPickerOpen(false)}>
           <View style={styles.pickerSheet}>
-            <Text style={styles.pickerSheetTitle}>Select exam</Text>
+            <Text style={styles.pickerSheetTitle}>Select Exam</Text>
             <ScrollView style={{ maxHeight: 360 }}>
               {exams.map((e) => (
                 <Pressable
@@ -426,8 +426,8 @@ export default function TeacherExamPaperReview({ classNumber = 'all' }: Props) {
                   <Text style={styles.pickerItemText}>{e.title}</Text>
                   <Text style={styles.pickerItemMeta}>
                     {(e.studentsAttempted || 0) > 0
-                      ? `${e.studentsAttempted} attempted`
-                      : 'No attempts yet'}
+                      ? `${e.studentsAttempted} Attempted`
+                      : 'No Attempts Yet'}
                   </Text>
                 </Pressable>
               ))}
@@ -495,7 +495,7 @@ export default function TeacherExamPaperReview({ classNumber = 'all' }: Props) {
                 <Text style={styles.sub}>
                   {report?.attempted
                     ? `${report.percentage != null ? Number(report.percentage).toFixed(1) : '—'}% · ${report.correctAnswers} correct · ${report.wrongAnswers} wrong`
-                    : 'Did not attempt'}
+                    : 'Did Not Attempt'}
                 </Text>
               </View>
               <Pressable onPress={() => setReport(null)} style={styles.closeChip}>

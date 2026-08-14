@@ -1,22 +1,18 @@
 import { useState, useEffect, useMemo, useCallback, memo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions, Alert, ActivityIndicator } from 'react-native';
 import type React from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { setupAppStateListener } from '../../../src/utils/studyTimeTracker';
 import { setupSessionTimeSync } from '../../../src/lib/session-time-sync';
-import QuickStatsModule from './overview/QuickStatsModule';
 import LearningProgressModule from './overview/LearningProgressModule';
 import AdaptiveLearningModule from './overview/AdaptiveLearningModule';
 import WeeklyDigestCard from '../../../src/components/student/WeeklyDigestCard';
-import TodaysTasksSection from './overview/TodaysTasksSection';
 import StudyCalendarSection from './overview/StudyCalendarSection';
-import ClassTimetableSection from './overview/ClassTimetableSection';
 import QuizPanelSection from './overview/QuizPanelSection';
-import MyHomeworkSection from './overview/MyHomeworkSection';
+import HomeShortcutCard from '../../../src/components/student/HomeShortcutCard';
 import {
   buildTodaysTasksContentList,
   capTodaysTasksForDay,
@@ -34,22 +30,21 @@ import {
 } from '../../../src/lib/todays-tasks-helpers';
 import { StudentHomeHeader } from '../../../src/components/student';
 import StudentCardDecor from '../../../src/components/student/StudentCardDecor';
-import TeacherDiaryFeed from '../../../src/components/student/TeacherDiaryFeed';
 import { STUDENT } from '../../../src/theme/student';
 import { GlassPanel } from '../../../src/components/ui';
 import { openContentPreview } from '../../../src/utils/openContentPreview';
 import { resolveIsAsliPrepExclusive } from '../../../src/lib/school-program';
 import { prepareLibraryContents } from '../../../src/lib/dedupe-library-content';
 import { buildExamAttemptCounts } from '../../../src/lib/student-exam-display';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 
-/** Web-parity home modules only — no RemarksView/DigitalLibrary extras */
+/** Student Home matches web dashboard: welcome, stats, calendar, quiz, diary, homework, remarks, risk, progress. */
 
 interface OverviewViewProps {
   user: any;
   onGoExams?: () => void;
   onOpenExam?: (examId: string) => void;
-  onGoProfile?: () => void;
-  onLogout?: () => void;
 }
 
 const STAT_SUMMARY_CARDS = {
@@ -81,13 +76,9 @@ const STAT_SUMMARY_CARDS = {
 
 const OverviewView = memo(function OverviewView({
   user,
-  onGoExams,
   onOpenExam,
-  onGoProfile,
-  onLogout,
 }: OverviewViewProps) {
   const { width } = useWindowDimensions();
-  const compact = width < 380;
   const isTablet = width >= 768;
   const [stats, setStats] = useState({
     questionsAnswered: 0,
@@ -122,6 +113,7 @@ const OverviewView = memo(function OverviewView({
   const [examAttemptCounts, setExamAttemptCounts] = useState<Record<string, number>>({});
   const [remarks, setRemarks] = useState<any[]>([]);
   const [riskReports, setRiskReports] = useState<any[]>([]);
+  const [downloadingRiskId, setDownloadingRiskId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingSchedule, setIsLoadingSchedule] = useState(true);
   const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
@@ -293,7 +285,8 @@ const OverviewView = memo(function OverviewView({
               const contentData = await contentResponse.json();
               const contents = prepareLibraryContents(
                 contentData.data || contentData || [],
-                isAsliPrepExclusive
+                isAsliPrepExclusive,
+                { surface: 'learning-path' }
               );
               const totalContent = contents.length;
               learningPathProgress = totalContent > 0 ? Math.round((completedIds.length / totalContent) * 100) : 0;
@@ -707,7 +700,7 @@ const OverviewView = memo(function OverviewView({
     []
   );
 
-  const { totalTodos, completedTodos, todayProgress, efficiency, efficiencySubtext } = useMemo(() => {
+  const { efficiency } = useMemo(() => {
     const { quizzes, content } = dailyTasks;
     const total = content.length + quizzes.length;
     const completed =
@@ -720,25 +713,15 @@ const OverviewView = memo(function OverviewView({
     const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
 
     let eff = 0;
-    let subtext = 'Content & quizzes';
     if (total > 0) {
       eff = progress;
-      subtext = `${completed}/${total} tasks done`;
     } else if (scheduleCompletionStats.total > 0) {
       eff = scheduleCompletionStats.completionPercent;
-      subtext = `${scheduleCompletionStats.completed}/${scheduleCompletionStats.total} items done`;
     } else if (overallProgress > 0) {
       eff = Math.round(overallProgress);
-      subtext = 'Overall learning progress';
     }
 
-    return {
-      totalTodos: total,
-      completedTodos: completed,
-      todayProgress: progress,
-      efficiency: eff,
-      efficiencySubtext: subtext,
-    };
+    return { efficiency: eff };
   }, [dailyTasks, completedScheduleIds, trackedCompletedContentIds, scheduleCompletionStats, overallProgress, isDailyTaskCompleted]);
 
   const { studyTodayProgress, studyWeekProgress } = useMemo(() => {
@@ -751,7 +734,6 @@ const OverviewView = memo(function OverviewView({
   }, [studyTimeToday, studyTimeThisWeek]);
 
   const dayStreak = Number(user?.dayStreak ?? 0);
-  const schoolName = String(user?.assignedAdmin?.schoolName || user?.schoolName || '').trim();
 
   const calendarSectionProps = {
     incompleteQuizzes,
@@ -777,6 +759,47 @@ const OverviewView = memo(function OverviewView({
     onOpenExam: (examId: string) => onOpenExam?.(examId),
   };
 
+  const downloadRiskReport = useCallback(async (report: any) => {
+    const reportId = String(report?._id || '');
+    if (!reportId) return;
+    try {
+      setDownloadingRiskId(reportId);
+      const token = await SecureStore.getItemAsync('authToken');
+      if (!token) {
+        Alert.alert('Sign In Required', 'Please Sign In Again To Download This Report.');
+        return;
+      }
+      const filename = String(report.pdfFilename || `risk-analysis-${reportId}.pdf`).replace(
+        /[^\w.\-]+/g,
+        '_',
+      );
+      const path = `${FileSystem.cacheDirectory || ''}${filename}`;
+      const result = await FileSystem.downloadAsync(
+        `${API_BASE_URL}/api/student/risk-analysis-reports/${encodeURIComponent(reportId)}/download`,
+        path,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (result.status !== 200) {
+        Alert.alert('Download Failed', 'The Report Could Not Be Downloaded Right Now.');
+        return;
+      }
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(result.uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Share Risk Analysis PDF',
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        Alert.alert('Saved', 'The PDF Was Downloaded On This Device.');
+      }
+    } catch {
+      Alert.alert('Download Failed', 'Could Not Open The Risk Analysis PDF.');
+    } finally {
+      setDownloadingRiskId(null);
+    }
+  }, []);
+
   const renderStatCard = (
     cardKey: 'today' | 'study' | 'week' | 'efficiency',
     body: React.ReactNode
@@ -796,19 +819,19 @@ const OverviewView = memo(function OverviewView({
       <View style={[styles.statIconWrap, { backgroundColor: STAT_SUMMARY_CARDS.today.iconBg }]}>
         <Ionicons name={STAT_SUMMARY_CARDS.today.icon} size={20} color={STAT_SUMMARY_CARDS.today.accent} />
       </View>
-      <Text style={styles.statLabel}>Today's Progress</Text>
+      <Text style={styles.statLabel}>Overall Progress</Text>
       <Text style={[styles.statValue, { color: STAT_SUMMARY_CARDS.today.accent }]}>
-        {completedTodos}/{totalTodos}
+        {Math.round(overallProgress)}%
       </Text>
       <View style={[styles.statProgressBar, { backgroundColor: `${STAT_SUMMARY_CARDS.today.accent}22` }]}>
         <View
           style={[
             styles.statProgressFill,
-            { width: `${todayProgress}%`, backgroundColor: STAT_SUMMARY_CARDS.today.accent },
+            { width: `${Math.min(100, Math.max(0, Math.round(overallProgress)))}%`, backgroundColor: STAT_SUMMARY_CARDS.today.accent },
           ]}
         />
       </View>
-      <Text style={styles.statSubtext}>Tasks Completed {todayProgress}%</Text>
+      <Text style={styles.statSubtext}>Across All Subjects</Text>
     </>
   );
 
@@ -820,7 +843,7 @@ const OverviewView = memo(function OverviewView({
       <Text style={styles.statLabel}>Study Time</Text>
       <Text style={[styles.statValue, { color: STAT_SUMMARY_CARDS.study.accent }]}>
         {studyTimeToday >= 60
-          ? `${(studyTimeToday / 60).toFixed(1)} hrs`
+          ? `${(studyTimeToday / 60).toFixed(1)} Hrs`
           : studyTimeToday < 1 && studyTimeToday > 0
             ? '<1m'
             : `${Math.round(studyTimeToday)}m`}
@@ -833,7 +856,7 @@ const OverviewView = memo(function OverviewView({
           ]}
         />
       </View>
-      <Text style={styles.statSubtext}>Study time today</Text>
+      <Text style={styles.statSubtext}>Logged In Today</Text>
     </>
   );
 
@@ -845,7 +868,7 @@ const OverviewView = memo(function OverviewView({
       <Text style={styles.statLabel}>This Week</Text>
       <Text style={[styles.statValue, { color: STAT_SUMMARY_CARDS.week.accent }]}>
         {studyTimeThisWeek >= 60
-          ? `${(studyTimeThisWeek / 60).toFixed(1)} hrs`
+          ? `${(studyTimeThisWeek / 60).toFixed(1)} Hrs`
           : studyTimeThisWeek < 1 && studyTimeThisWeek > 0
             ? '<1m'
             : `${Math.round(studyTimeThisWeek)}m`}
@@ -858,7 +881,7 @@ const OverviewView = memo(function OverviewView({
           ]}
         />
       </View>
-      <Text style={styles.statSubtext}>Study time this week</Text>
+      <Text style={styles.statSubtext}>Study Time This Week</Text>
     </>
   );
 
@@ -881,7 +904,7 @@ const OverviewView = memo(function OverviewView({
           ]}
         />
       </View>
-      <Text style={styles.statSubtext}>{efficiencySubtext}</Text>
+      <Text style={styles.statSubtext}>Completion Rate</Text>
     </>
   );
 
@@ -891,50 +914,46 @@ const OverviewView = memo(function OverviewView({
         <StudentCardDecor variant="screen" />
       </View>
 
-      <StudentHomeHeader
-        user={user}
-        streak={dayStreak}
-        onAvatarPress={onGoProfile}
-        onLogout={onLogout}
-      />
+      <StudentHomeHeader user={user} streak={dayStreak} />
 
-      {/* Summary Statistics + calendar (tablet: stats row, then aligned calendar | events) */}
-      {isTablet ? (
-        <>
-          <View style={styles.tabletStatsGrid}>
-            {renderStatCard('today', todayStatBody)}
-            {renderStatCard('study', studyStatBody)}
-            {renderStatCard('week', weekStatBody)}
-            {renderStatCard('efficiency', efficiencyStatBody)}
-          </View>
-          <QuizPanelSection />
+      <View style={isTablet ? styles.tabletStatsGrid : styles.statsGrid}>
+        {renderStatCard('study', studyStatBody)}
+        {renderStatCard('week', weekStatBody)}
+        {renderStatCard('efficiency', efficiencyStatBody)}
+        {renderStatCard('today', todayStatBody)}
+      </View>
+
+      <View style={[styles.pairRow, isTablet && styles.pairRowTablet]}>
+        <View style={isTablet ? styles.pairPrimary : undefined}>
           <StudyCalendarSection {...calendarSectionProps} />
-        </>
-      ) : (
-        <>
-          <View style={styles.statsGrid}>
-            {renderStatCard('today', todayStatBody)}
-            {renderStatCard('study', studyStatBody)}
-            {renderStatCard('week', weekStatBody)}
-            {renderStatCard('efficiency', efficiencyStatBody)}
-          </View>
+        </View>
+        <View style={isTablet ? styles.pairSecondary : undefined}>
           <QuizPanelSection />
-          <StudyCalendarSection {...calendarSectionProps} />
-        </>
-      )}
+        </View>
+      </View>
 
-      <ClassTimetableSection />
-
-      <TodaysTasksSection
-        incompleteQuizzes={dailyTasks.quizzes}
-        incompleteContent={dailyTasks.content}
-        completedScheduleIds={completedScheduleIds}
-        isLoading={isLoadingSchedule}
-        onToggleComplete={handleToggleScheduleComplete}
-        onOpenItem={handleOpenScheduleItem}
-      />
-
-      <TeacherDiaryFeed />
+      <View style={[styles.pairRow, isTablet && styles.pairRowTablet]}>
+        <View style={isTablet ? styles.pairHalf : undefined}>
+          <HomeShortcutCard
+            title="Teachers Report"
+            subtitle="Daily Class Updates From Teachers."
+            icon="people"
+            tint="#eef2ff"
+            accent="#7c3aed"
+            onPress={() => router.push('/teachers-report')}
+          />
+        </View>
+        <View style={isTablet ? styles.pairHalf : undefined}>
+          <HomeShortcutCard
+            title="My Homework"
+            subtitle="View And Manage Your Assignments."
+            icon="bag-handle"
+            tint="#fff7ed"
+            accent="#f97316"
+            onPress={() => router.push('/assignments')}
+          />
+        </View>
+      </View>
 
       {remarks.length > 0 ? (
         <GlassPanel style={styles.sectionCard} radius={18}>
@@ -971,23 +990,31 @@ const OverviewView = memo(function OverviewView({
           </View>
           {riskReports.map((report: any) => (
             <View key={report._id} style={styles.riskCard}>
-              <Text style={styles.riskTitle}>Performance Risk Analysis Report</Text>
-              <Text style={styles.riskMeta}>
-                Sent By {report.adminId?.fullName || 'Administrator'} On{' '}
-                {new Date(report.sentAt).toLocaleDateString()}
-              </Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.riskTitle}>Performance Risk Analysis Report</Text>
+                <Text style={styles.riskMeta}>
+                  Sent By {report.adminId?.fullName || 'Administrator'} On{' '}
+                  {new Date(report.sentAt).toLocaleDateString()}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.riskDownloadBtn}
+                onPress={() => void downloadRiskReport(report)}
+                disabled={downloadingRiskId === String(report._id)}
+                accessibilityRole="button"
+                accessibilityLabel="Download PDF"
+              >
+                {downloadingRiskId === String(report._id) ? (
+                  <ActivityIndicator size="small" color="#c2410c" />
+                ) : (
+                  <Ionicons name="download-outline" size={16} color="#c2410c" />
+                )}
+                <Text style={styles.riskDownloadText}>Download PDF</Text>
+              </TouchableOpacity>
             </View>
           ))}
         </GlassPanel>
       ) : null}
-
-      <MyHomeworkSection
-        allContent={scheduleAllContent}
-        homeworkSubmissions={homeworkSubmissions}
-        isLoading={isLoadingSubmissions}
-      />
-
-      <QuickStatsModule stats={stats} />
 
       <LearningProgressModule
         overallProgress={overallProgress}
@@ -1023,6 +1050,18 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'stretch',
   },
+  pairRow: {
+    gap: 16,
+    width: '100%',
+  },
+  pairRowTablet: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 12,
+  },
+  pairPrimary: { flex: 2, minWidth: 0 },
+  pairSecondary: { flex: 1, minWidth: 0 },
+  pairHalf: { flex: 1, minWidth: 0 },
   quickStatsScroll: {
     gap: 10,
     paddingBottom: 4,
@@ -1488,11 +1527,24 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 8,
     backgroundColor: 'rgba(255,247,237,0.55)',
-    borderLeftWidth: 4,
-    borderLeftColor: '#f97316',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   riskTitle: { fontSize: 14, fontWeight: '700', color: '#111827' },
   riskMeta: { fontSize: 12, color: '#6b7280', marginTop: 4 },
+  riskDownloadBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#fdba74',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  riskDownloadText: { fontSize: 12, fontWeight: '700', color: '#c2410c' },
   homeworkHeader: {
     flexDirection: 'row',
     alignItems: 'center',

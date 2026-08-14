@@ -151,7 +151,7 @@ export default function ProgressChartsView() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading charts...</Text>
+        <Text style={styles.loadingText}>Loading Charts...</Text>
       </View>
     );
   }
@@ -161,7 +161,7 @@ export default function ProgressChartsView() {
       {/* Study Time Chart */}
       {studyTimeData && (
         <View style={styles.section}>
-          {renderBarChart(studyTimeData, 'Weekly Study Time (minutes)', '#3b82f6')}
+          {renderBarChart(studyTimeData, 'Weekly Study Time (Minutes)', '#3b82f6')}
         </View>
       )}
 
@@ -184,7 +184,7 @@ export default function ProgressChartsView() {
                 />
               </View>
               <Text style={styles.subjectStats}>
-                {subject.completed} of {subject.total} completed
+                {subject.completed} Of {subject.total} Completed
               </Text>
             </GlassPanel>
           ))}

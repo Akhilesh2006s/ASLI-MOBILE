@@ -98,6 +98,7 @@ export default function TeacherSubjectContentScreen() {
       const raw = Array.isArray(contentRes.data) ? contentRes.data : [];
       setContents(
         prepareLibraryContents(raw, asliPrep, {
+          surface: 'learning-path',
           subjectSlot: {
             classNumber: subData?.classNumber,
             productCategory: subData?.productCategory,
@@ -221,15 +222,15 @@ export default function TeacherSubjectContentScreen() {
         </Pressable>
         <View style={styles.topText}>
           <Text style={styles.title}>{subject?.name || 'Subject'}</Text>
-          <Text style={styles.sub}>{filtered.length} items</Text>
+          <Text style={styles.sub}>{filtered.length} Items</Text>
         </View>
       </View>
 
       <View style={styles.filtersRow}>
         {classOptions.length > 0 ? (
           <FilterDropdown
-            label="Filter by Class"
-            placeholder="Filter by Class"
+            label="Filter By Class"
+            placeholder="Filter By Class"
             value={classFilter}
             onChange={setClassFilter}
             options={[
@@ -244,8 +245,8 @@ export default function TeacherSubjectContentScreen() {
         ) : null}
         {trackOptions.length > 1 ? (
           <FilterDropdown
-            label="Filter by Track"
-            placeholder="Filter by Track"
+            label="Filter By Track"
+            placeholder="Filter By Track"
             value={trackFilter}
             onChange={setTrackFilter}
             options={[
@@ -260,8 +261,8 @@ export default function TeacherSubjectContentScreen() {
         ) : null}
         {contents.length > 0 ? (
           <FilterDropdown
-            label="Filter by Type"
-            placeholder="Filter by Type"
+            label="Filter By Type"
+            placeholder="Filter By Type"
             value={typeFilter}
             onChange={setTypeFilter}
             options={[
@@ -286,14 +287,14 @@ export default function TeacherSubjectContentScreen() {
           }}
         >
           <Ionicons name="close-circle" size={16} color={TEACHER.primaryLight} />
-          <Text style={styles.clearBtnText}>Clear filters</Text>
+          <Text style={styles.clearBtnText}>Clear Filters</Text>
         </Pressable>
       ) : null}
 
       <ScrollView style={styles.listScroll} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
         {typeSections.length === 0 ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyText}>No content for selected filters</Text>
+            <Text style={styles.emptyText}>No Content For Selected Filters</Text>
           </View>
         ) : (
           typeSections.map((section) => (

@@ -19,7 +19,7 @@ interface VidyaAICornerButtonProps {
 
 const messages = [
   'Need help managing your school?',
-  'Ask me about student management',
+  'Ask Me About Student Management',
   'Need help with class assignments?',
   'Ask me about teacher management?',
 ];

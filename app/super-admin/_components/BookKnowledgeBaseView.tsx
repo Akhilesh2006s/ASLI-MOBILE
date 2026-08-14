@@ -121,7 +121,7 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
         else stopIndexPolling();
       } catch (err: any) {
         toast({
-          title: 'Load failed',
+          title: 'Load Failed',
           description: err?.friendlyMessage || err?.message || 'Could not load book knowledge data.',
           variant: 'destructive',
         });
@@ -151,21 +151,21 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
   const handleImportOne = async (contentId: string) => {
     const id = String(contentId || '').trim();
     if (!id) {
-      toast({ title: 'Import failed', description: 'This content item is missing an id.', variant: 'destructive' });
+      toast({ title: 'Import Failed', description: 'This content item is missing an id.', variant: 'destructive' });
       return;
     }
     setImportingIds((prev) => new Set(prev).add(id));
     try {
       const result = await importBookFromContent(id);
       toast({
-        title: result.alreadyImported ? 'Already linked' : 'Imported',
+        title: result.alreadyImported ? 'Already Linked' : 'Imported',
         description: result.message || `${result.data?.title || 'Book'} is ready for indexing.`,
       });
       await refreshLists({ silent: true });
       startIndexPolling();
     } catch (err: any) {
       toast({
-        title: 'Import failed',
+        title: 'Import Failed',
         description: err?.friendlyMessage || err?.message || 'Could not import content.',
         variant: 'destructive',
       });
@@ -181,7 +181,7 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
   const handleBulkImport = async () => {
     const ids = [...selectedImportIds].map((id) => String(id || '').trim()).filter(Boolean);
     if (!ids.length) {
-      toast({ title: 'Select items', description: 'Choose at least one content item to import.', variant: 'destructive' });
+      toast({ title: 'Select Items', description: 'Choose at least one content item to import.', variant: 'destructive' });
       return;
     }
     setImportLoading(true);
@@ -189,7 +189,7 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
       const result = await importBooksFromContentBulk(ids);
       const failedCount = Number(result.summary?.failed || 0);
       toast({
-        title: 'Bulk import complete',
+        title: 'Bulk Import Complete',
         description: result.message || `Imported ${result.summary?.imported || 0} books.`,
         variant: failedCount > 0 ? 'destructive' : undefined,
       });
@@ -202,7 +202,7 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
           .join(' · ');
         setTimeout(() => {
           toast({
-            title: 'Why some imports failed',
+            title: 'Why Some Imports Failed',
             description: detail + (failedCount > 5 ? ' · …' : ''),
             variant: 'destructive',
           });
@@ -213,7 +213,7 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
       startIndexPolling();
     } catch (err: any) {
       toast({
-        title: 'Bulk import failed',
+        title: 'Bulk Import Failed',
         description: err?.friendlyMessage || err?.message || 'Could not import.',
         variant: 'destructive',
       });
@@ -225,7 +225,7 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
   const handleUpload = async () => {
     if (!title.trim() || !board || !classLabel || !subject) {
       toast({
-        title: 'Missing fields',
+        title: 'Missing Fields',
         description: 'Title, board, class, and subject are required.',
         variant: 'destructive',
       });
@@ -254,13 +254,13 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
       const result = await uploadBookKnowledgePdf(formData);
       setTitle('');
       toast({
-        title: 'Book uploaded',
+        title: 'Book Uploaded',
         description: result.message || 'Indexing started.',
       });
       await refreshLists({ silent: true });
       startIndexPolling();
     } catch (err: any) {
-      toast({ title: 'Upload failed', description: err?.message || 'Could not upload book.', variant: 'destructive' });
+      toast({ title: 'Upload Failed', description: err?.message || 'Could not upload book.', variant: 'destructive' });
     } finally {
       setUploading(false);
     }
@@ -277,14 +277,14 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
       await refreshLists({ silent: true });
       startIndexPolling();
     } catch (err: any) {
-      toast({ title: 'Reindex failed', description: err?.message || 'Could not reindex.', variant: 'destructive' });
+      toast({ title: 'Reindex Failed', description: err?.message || 'Could not reindex.', variant: 'destructive' });
     } finally {
       setReindexingId(null);
     }
   };
 
   const handleDelete = (book: BookRow) => {
-    Alert.alert('Delete book', `Remove "${book.title}" from knowledge base?`, [
+    Alert.alert('Delete Book', `Remove "${book.title}" from knowledge base?`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -295,7 +295,7 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
             await deleteBookKnowledgeBook(book._id);
             await loadAll();
           } catch (err: any) {
-            Alert.alert('Delete failed', err?.message || 'Could not delete.');
+            Alert.alert('Delete Failed', err?.message || 'Could not delete.');
           } finally {
             setDeletingId(null);
           }
@@ -345,20 +345,20 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
           <Text style={styles.statValue}>{books.filter((b) => b.processingStatus === 'indexed').length}</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statLabel}>To import</Text>
+          <Text style={styles.statLabel}>To Import</Text>
           <Text style={styles.statValue}>{pendingImportable.length}</Text>
         </View>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Import from Content</Text>
+        <Text style={styles.sectionTitle}>Import From Content</Text>
         <View style={styles.rowBetween}>
           <Pressable onPress={() => setShowImported((v) => !v)}>
-            <Text style={styles.toggleText}>{showImported ? 'Hide linked' : 'Show linked'}</Text>
+            <Text style={styles.toggleText}>{showImported ? 'Hide Linked' : 'Show Linked'}</Text>
           </Pressable>
           {selectedImportIds.size > 0 ? (
             <Pressable style={styles.emeraldBtn} onPress={() => void handleBulkImport()} disabled={importLoading}>
-              {importLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.emeraldBtnText}>Import selected ({selectedImportIds.size})</Text>}
+              {importLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.emeraldBtnText}>Import Selected ({selectedImportIds.size})</Text>}
             </Pressable>
           ) : null}
         </View>
@@ -443,7 +443,7 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
         </ScrollView>
         {subject ? (
           <>
-            <Text style={styles.fieldLabel}>Topic (optional)</Text>
+            <Text style={styles.fieldLabel}>Topic (Optional)</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
               {(loadingTopics ? [] : topics).map((t) => (
                 <Pressable key={t} style={[styles.chip, topic === t && styles.chipActive]} onPress={() => setTopic(t)}>
@@ -455,7 +455,7 @@ export default function BookKnowledgeBaseView({ onOpenBookBasedGenerator }: Prop
         ) : null}
         {topic ? (
           <>
-            <Text style={styles.fieldLabel}>Sub Topic (optional)</Text>
+            <Text style={styles.fieldLabel}>Sub Topic (Optional)</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
               {(loadingSubtopics ? [] : subtopics).map((st) => (
                 <Pressable key={st} style={[styles.chip, subTopic === st && styles.chipActive]} onPress={() => setSubTopic(st)}>

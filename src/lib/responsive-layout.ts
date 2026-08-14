@@ -56,8 +56,7 @@ export function eduOttListScrollBottomPad(
   if (role === 'student') {
     return basePad + studentFloatingTabBarReserve(bottomInset);
   }
-  if (role === 'admin' || tablet) return basePad;
-  return basePad + EDUOTT_TAB_BAR_SCROLL_PAD;
+  return basePad;
 }
 
 export function adminModalMaxWidth(width: number, tablet: boolean): number | undefined {

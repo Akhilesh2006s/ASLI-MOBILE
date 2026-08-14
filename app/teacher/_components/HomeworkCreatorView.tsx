@@ -105,7 +105,7 @@ export default function HomeworkCreatorView() {
       {showForm ? (
         <GlassPanel style={styles.form} radius={TEACHER_RADIUS.lg} tone="strong">
           <Text style={styles.label}>Title</Text>
-          <TextInput style={styles.input} value={form.title} onChangeText={(t) => setForm((f) => ({ ...f, title: t }))} placeholderTextColor={TEACHER.textMuted} placeholder="Assignment title" />
+          <TextInput style={styles.input} value={form.title} onChangeText={(t) => setForm((f) => ({ ...f, title: t }))} placeholderTextColor={TEACHER.textMuted} placeholder="Assignment Title" />
           <Text style={styles.label}>Class</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
             {classes.map((c) => {
@@ -135,7 +135,7 @@ export default function HomeworkCreatorView() {
           <TextInput style={styles.input} value={form.dueDate} onChangeText={(t) => setForm((f) => ({ ...f, dueDate: t }))} placeholder="YYYY-MM-DD" placeholderTextColor={TEACHER.textMuted} />
           <Text style={styles.label}>Description</Text>
           <TextInput style={[styles.input, styles.area]} value={form.description} onChangeText={(t) => setForm((f) => ({ ...f, description: t }))} multiline placeholderTextColor={TEACHER.textMuted} />
-          <Text style={styles.label}>Drive Link (optional)</Text>
+          <Text style={styles.label}>Drive Link (Optional)</Text>
           <TextInput style={styles.input} value={form.driveLink} onChangeText={(t) => setForm((f) => ({ ...f, driveLink: t }))} placeholder="https://..." placeholderTextColor={TEACHER.textMuted} />
           <Pressable style={styles.saveBtn} onPress={submit}>
             <Text style={styles.saveBtnText}>Create Assignment</Text>
@@ -151,7 +151,7 @@ export default function HomeworkCreatorView() {
             <View style={styles.progressRow}>
               <Ionicons name="people-outline" size={16} color={TEACHER.primaryLight} />
               <Text style={styles.progressText}>
-                {hw.submitted}/{hw.total} submitted
+                {hw.submitted}/{hw.total} Submitted
               </Text>
             </View>
           </GlassPanel>
@@ -161,7 +161,7 @@ export default function HomeworkCreatorView() {
       {!homework.length && !showForm ? (
         <View style={styles.empty}>
           <Ionicons name="document-text-outline" size={40} color={TEACHER.textMuted} />
-          <Text style={styles.emptyText}>No homework assignments yet</Text>
+          <Text style={styles.emptyText}>No Homework Assignments Yet</Text>
         </View>
       ) : null}
     </View>

@@ -93,15 +93,54 @@ export function classAccentIndex(key: string, paletteSize: number): number {
   return gradeIndex % paletteSize;
 }
 
+function uniqueSubjectNames(names: string[]): string[] {
+  const seen = new Set<string>();
+  return names.filter((name) => {
+    const key = name.toLowerCase();
+    if (!name || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+/** Pull subject names from a string, array, or populated `{ name }` rows. */
+export function parseSubjectNames(raw: unknown): string[] {
+  const names: string[] = [];
+  const add = (value: unknown) => {
+    if (value == null || value === '') return;
+    if (Array.isArray(value)) {
+      value.forEach(add);
+      return;
+    }
+    if (typeof value === 'object' && value !== null && 'name' in value) {
+      add((value as { name?: unknown }).name);
+      return;
+    }
+    String(value)
+      .split(',')
+      .map((part) => formatSubjectLabel(part.trim()))
+      .filter(Boolean)
+      .forEach((name) => names.push(name));
+  };
+  add(raw);
+  return uniqueSubjectNames(names);
+}
+
 /** Comma-separated subjects → "Biology, English, Maths, SL Hindi". */
 export function formatSubjectList(raw: string): string {
-  const trimmed = String(raw || '').trim();
-  if (!trimmed) return 'General';
-  return trimmed
-    .split(',')
-    .map((part) => formatSubjectLabel(part.trim()))
-    .filter(Boolean)
-    .join(', ');
+  const names = parseSubjectNames(raw);
+  return names.length ? names.join(', ') : 'General';
+}
+
+/** First `visible` subjects, with a leftover count for a "+N more" chip. */
+export function summarizeSubjects(
+  raw: unknown,
+  visible = 2
+): { shown: string[]; extra: number; all: string[] } {
+  const all = parseSubjectNames(raw);
+  if (all.length === 0) return { shown: ['General'], extra: 0, all: ['General'] };
+  if (all.length <= visible) return { shown: all, extra: 0, all };
+  return { shown: all.slice(0, visible), extra: all.length - visible, all };
 }
 
 export function formatTeacherTimeGreeting(): string {

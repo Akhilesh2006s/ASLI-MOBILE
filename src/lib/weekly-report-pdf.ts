@@ -113,6 +113,12 @@ h1{margin:8px 0 4px;font-size:22px}.sub{margin:0;font-size:13px;opacity:.92}
 .tile{border:1px solid #e2e8f0;border-radius:12px;padding:10px;background:#f8fafc}
 .tile-label{font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase}
 .tile-value{margin-top:4px;font-size:18px;font-weight:800}
+.tile-hint{margin-top:2px;font-size:10px;color:#94a3b8}
+.list{list-style:none;padding:0;margin:8px 0 0}
+.list li{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid #e2e8f0}
+.list-title{font-size:13px;font-weight:600;color:#334155}
+.list-pct{font-size:13px;font-weight:800}
+.empty{font-size:12px;color:#64748b}
 .highlights{margin-top:16px;padding:12px;border-radius:12px;background:#f0f9ff;border:1px solid #bae6fd}
 </style></head><body>
 <div class="hero"><div class="brand">AsliLearn · Teacher weekly report</div>
@@ -120,21 +126,46 @@ h1{margin:8px 0 4px;font-size:22px}.sub{margin:0;font-size:13px;opacity:.92}
 <p class="sub">${esc(input.summary || '')}</p>
 <p class="sub" style="margin-top:8px">${esc(input.studentName || '')}${input.schoolName ? ` · ${esc(input.schoolName)}` : ''}</p>
 </div>
-<div class="section"><h2>Your activity</h2><div class="grid">
-<div class="tile"><div class="tile-label">Logins</div><div class="tile-value">${esc(n(m.loginCount))}</div></div>
-<div class="tile"><div class="tile-label">Sessions</div><div class="tile-value">${esc(n(m.sessions))}</div></div>
-<div class="tile"><div class="tile-label">Time</div><div class="tile-value">${esc(m.totalTimeLabel || `${n(m.minutes)} min`)}</div></div>
-<div class="tile"><div class="tile-label">Status</div><div class="tile-value">${esc(m.status || '—')}</div></div>
-</div></div>
-<div class="section"><h2>Teaching with AI</h2><div class="grid">
-<div class="tile"><div class="tile-label">AI resources</div><div class="tile-value">${esc(n(m.generationsCreated))}</div></div>
-<div class="tile"><div class="tile-label">Vidya asks</div><div class="tile-value">${esc(n(m.aiDoubts))}</div></div>
-<div class="tile"><div class="tile-label">Tool opens</div><div class="tile-value">${esc(n(m.aiToolUses))}</div></div>
-<div class="tile"><div class="tile-label">School students</div><div class="tile-value">${esc(n(m.schoolStudentsAccessed))}</div></div>
-</div></div>
+${section(
+  'Your activity',
+  `<div class="grid">
+    ${tile('Logins this week', String(n(m.loginCount)), 'Days you opened the app')}
+    ${tile('Sessions', String(n(m.sessions)))}
+    ${tile('Time on platform', String(m.totalTimeLabel || `${n(m.minutes)} min`))}
+    ${tile('Last active', String(m.lastActiveDate || '—'))}
+    ${tile('Status (14 days)', String(m.status || '—'))}
+    ${tile('Active days (14d)', String(n(m.activeDays)))}
+    ${tile('Classes assigned', String(n(m.classesAssigned)))}
+    ${tile('Students in classes', String(n(m.studentsInClasses)))}
+  </div>`,
+)}
+${section(
+  'Teaching with AI',
+  `<div class="grid">
+    ${tile('AI resources created', String(n(m.generationsCreated)))}
+    ${tile('Vidya AI asks', String(n(m.aiDoubts)))}
+    ${tile('Tool opens', String(n(m.aiToolUses)))}
+  </div>
+  ${usageRows(
+    toolsUsed.slice(0, 8).map((t) => ({
+      title: t.name || 'Tool',
+      detail: Array.isArray(t.subjects) && t.subjects.length ? t.subjects.slice(0, 3).join(' · ') : '',
+      value: `${n(t.count)}×`,
+    })),
+    'No AI tools used this week yet.',
+  )}`,
+)}
+${section(
+  'Your school this week',
+  `<div class="grid">
+    ${tile('Students accessed', String(n(m.schoolStudentsAccessed)))}
+    ${tile('School sessions', String(n(m.schoolSessions)))}
+    ${tile('Teachers active', String(n(m.schoolTeachersActive)))}
+  </div>`,
+)}
 ${
   highlights.length
-    ? `<div class="highlights"><strong>This week</strong><ul>${highlights.map((h) => `<li>${esc(h)}</li>`).join('')}</ul></div>`
+    ? `<div class="highlights"><strong>This week at a glance</strong><ul>${highlights.map((h) => `<li>${esc(h)}</li>`).join('')}</ul></div>`
     : ''
 }
 </body></html>`;

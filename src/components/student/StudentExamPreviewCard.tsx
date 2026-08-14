@@ -163,13 +163,13 @@ export default function StudentExamPreviewCard({
             color="#fff"
           />
           <Text style={styles.startButtonText}>
-            {forceSubmit ? 'Submit saved exam' : canResume ? 'Resume exam' : 'Start exam'}
+            {forceSubmit ? 'Submit Saved Exam' : canResume ? 'Resume Exam' : 'Start Exam'}
           </Text>
         </TouchableOpacity>
       ) : variant === 'upcoming' ? (
         <View style={styles.upcomingButton}>
           <Ionicons name="calendar-outline" size={16} color={STUDENT.textMuted} />
-          <Text style={styles.upcomingButtonText}>Not yet available</Text>
+          <Text style={styles.upcomingButtonText}>Not Yet Available</Text>
         </View>
       ) : null}
       {hasAttempted && onViewInExams ? (
@@ -181,7 +181,7 @@ export default function StudentExamPreviewCard({
           accessibilityLabel="View in attempted exams"
         >
           <Ionicons name="eye-outline" size={16} color={STUDENT.primaryDark} />
-          <Text style={styles.reviewText}>View in Attempted Exams</Text>
+          <Text style={styles.reviewText}>View In Attempted Exams</Text>
         </TouchableOpacity>
       ) : null}
     </GlassPanel>

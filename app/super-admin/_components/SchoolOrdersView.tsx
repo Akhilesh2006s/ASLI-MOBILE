@@ -90,7 +90,7 @@ export default function SchoolOrdersView({
       const data = await fetchOrders();
       setOrders(data);
     } catch (e: unknown) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to load orders');
+      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to Load Orders');
       setOrders([]);
     } finally {
       setLoading(false);
@@ -136,7 +136,7 @@ export default function SchoolOrdersView({
 
   const handleDelete = (order: SavedOrder) => {
     Alert.alert(
-      'Delete order?',
+      'Delete Order?',
       `${order.orderNumber} for ${order.schoolName} will be permanently removed.`,
       [
         { text: 'Cancel', style: 'cancel' },
@@ -152,9 +152,9 @@ export default function SchoolOrdersView({
               if (result.success) {
                 setSelectedOrder(null);
                 await load(true);
-                Alert.alert('Deleted', result.message || 'Order removed');
+                Alert.alert('Deleted', result.message || 'Order Removed');
               } else {
-                Alert.alert('Error', result.message || 'Could not delete order');
+                Alert.alert('Error', result.message || 'Could Not Delete Order');
               }
             })();
           },
@@ -167,7 +167,7 @@ export default function SchoolOrdersView({
     return (
       <View style={styles.loadingBox}>
         <ActivityIndicator size="large" color="#f97316" />
-        <Text style={styles.loadingText}>Loading school orders…</Text>
+        <Text style={styles.loadingText}>Loading School Orders…</Text>
       </View>
     );
   }
@@ -176,7 +176,7 @@ export default function SchoolOrdersView({
     <View style={styles.emptyBox}>
       <Ionicons name="bag-outline" size={40} color="#fdba74" />
       <Text style={styles.emptyTitle}>
-        {orders.length === 0 ? 'No orders yet' : 'No matching orders'}
+        {orders.length === 0 ? 'No Orders Yet' : 'No Matching Orders'}
       </Text>
       <Text style={styles.emptyDesc}>
         {orders.length === 0
@@ -249,9 +249,9 @@ export default function SchoolOrdersView({
 
       <View style={styles.statsGrid}>
         <StatCard label="Total orders" value={stats.total} />
-        <StatCard label="Confirmed" value={stats.confirmed} accent="#059669" hint="Live orders" />
-        <StatCard label="Drafts" value={stats.drafts} accent="#d97706" hint="Pending review" />
-        <StatCard label="Revenue" value={formatInr(stats.revenue)} accent="#ea580c" hint="Confirmed total" />
+        <StatCard label="Confirmed" value={stats.confirmed} accent="#059669" hint="Live Orders" />
+        <StatCard label="Drafts" value={stats.drafts} accent="#d97706" hint="Pending Review" />
+        <StatCard label="Revenue" value={formatInr(stats.revenue)} accent="#ea580c" hint="Confirmed Total" />
       </View>
 
       <ScrollView
@@ -277,7 +277,7 @@ export default function SchoolOrdersView({
         <Ionicons name="search" size={18} color="#5B6779" style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search orders…"
+          placeholder="Search Orders…"
           placeholderTextColor="#5B6779"
           value={search}
           onChangeText={setSearch}

@@ -17,7 +17,11 @@ type Entry = {
   teacherId?: { fullName?: string };
 };
 
-export default function TeacherDiaryFeed() {
+type Props = {
+  showHeader?: boolean;
+};
+
+export default function TeacherDiaryFeed({ showHeader = true }: Props) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -47,12 +51,14 @@ export default function TeacherDiaryFeed() {
 
   return (
     <View style={styles.wrap}>
-      <PremiumSectionHeader
-        title="Teachers report"
-        subtitle="Daily class updates from teachers at your school."
-        icon="book-outline"
-        accent={STUDENT.primary}
-      />
+      {showHeader ? (
+        <PremiumSectionHeader
+          title="Teachers Report"
+          subtitle="Daily class updates from teachers at your school."
+          icon="book-outline"
+          accent={STUDENT.primary}
+        />
+      ) : null}
       {entries.length === 0 ? (
         <GlassCard variant="glass" style={styles.card}>
           <Text style={styles.empty}>No teacher updates yet.</Text>

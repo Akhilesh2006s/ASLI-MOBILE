@@ -39,7 +39,7 @@ export default function AttendanceTrackerView() {
       );
       setHistory(Array.isArray(hist) ? hist : []);
     } catch (e: any) {
-      setError(e?.message || 'Could not load attendance data');
+      setError(e?.message || 'Could Not Load Attendance Data');
     } finally {
       setLoading(false);
     }
@@ -62,7 +62,7 @@ export default function AttendanceTrackerView() {
       await teacherService.invalidateCache('attendance');
       await load();
     } catch (e: any) {
-      setError(e?.message || 'Could not submit attendance');
+      setError(e?.message || 'Could Not Submit Attendance');
     } finally {
       setSubmitting(false);
     }
@@ -90,7 +90,7 @@ export default function AttendanceTrackerView() {
           </Pressable>
           <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
             {students.length === 0 ? (
-              <EmptyState icon="people-outline" title="No students" subtitle="Select a class to mark attendance." />
+              <EmptyState icon="people-outline" title="No Students" subtitle="Select a class to mark attendance." />
             ) : (
               students.map((s, index) => {
                 const id = s._id || s.id || s.fullName || '';
@@ -138,7 +138,7 @@ export default function AttendanceTrackerView() {
       ) : (
         <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
           {history.length === 0 ? (
-            <EmptyState icon="time-outline" title="No history" subtitle="Past attendance records appear here." />
+            <EmptyState icon="time-outline" title="No History" subtitle="Past attendance records appear here." />
           ) : (
             history.map((h, i) => (
               <Animated.View key={i} entering={FadeInDown.duration(350).delay(Math.min(i * 60, 480))}>

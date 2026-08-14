@@ -189,7 +189,7 @@ export default function IQRankBoostQuestionGenerator({ classNumber, onBack }: Pr
           subtopic: p.subtopic,
         }));
       } else {
-        throw new Error(data?.message || 'Failed to generate questions');
+        throw new Error(data?.message || 'Failed to Generate Questions');
       }
     } catch (err: any) {
       Alert.alert('Error', err?.friendlyMessage || err?.message || 'Failed to generate questions.');
@@ -211,19 +211,19 @@ export default function IQRankBoostQuestionGenerator({ classNumber, onBack }: Pr
           <Ionicons name="arrow-back" size={22} color="#111827" />
           <Text style={styles.backText}>Back</Text>
         </Pressable>
-        <Text style={styles.title}>Generate Questions for Class {classNumber}</Text>
-        <Text style={styles.subtitle}>Use AI to generate MCQ questions for Quiz activities</Text>
+        <Text style={styles.title}>Generate Questions For Class {classNumber}</Text>
+        <Text style={styles.subtitle}>Use AI To Generate MCQ Questions For Quiz Activities</Text>
       </View>
 
       <GlassPanel style={styles.card} radius={12} tone="strong">
         <Text style={styles.cardTitle}>Question Generation Settings</Text>
-        <Text style={styles.cardDesc}>Configure the parameters for AI-generated questions</Text>
+        <Text style={styles.cardDesc}>Configure The Parameters For AI-Generated Questions</Text>
 
         <Text style={styles.sectionLabel}>Filter Options</Text>
         <View style={styles.formGroup}>
           <Text style={styles.label}>Class</Text>
           <TextInput style={[styles.input, styles.inputDisabled]} value={String(classNumber)} editable={false} />
-          <Text style={styles.hint}>Current class</Text>
+          <Text style={styles.hint}>Current Class</Text>
         </View>
 
         <View style={styles.formGroup}>
@@ -235,7 +235,7 @@ export default function IQRankBoostQuestionGenerator({ classNumber, onBack }: Pr
           ) : (
             <Pressable style={styles.pickerField} onPress={() => setSubjectPickerOpen(true)}>
               <Text style={selectedSubject ? styles.pickerValue : styles.pickerPlaceholder}>
-                {selectedSubject?.name || 'Select subject'}
+                {selectedSubject?.name || 'Select Subject'}
               </Text>
               <Ionicons name="chevron-down" size={18} color="#5B6779" />
             </Pressable>
@@ -249,7 +249,7 @@ export default function IQRankBoostQuestionGenerator({ classNumber, onBack }: Pr
           ) : topics.length > 0 ? (
             <Pressable style={styles.pickerField} onPress={() => setTopicPickerOpen(true)}>
               <Text style={form.topic ? styles.pickerValue : styles.pickerPlaceholder}>
-                {form.topic || 'All Topics (optional)'}
+                {form.topic || 'All Topics (Optional)'}
               </Text>
               <Ionicons name="chevron-down" size={18} color="#5B6779" />
             </Pressable>
@@ -258,10 +258,10 @@ export default function IQRankBoostQuestionGenerator({ classNumber, onBack }: Pr
               style={styles.input}
               value={form.topic}
               onChangeText={(v) => setForm((p) => ({ ...p, topic: v, subtopic: '' }))}
-              placeholder="Enter topic (optional)"
+              placeholder="Enter Topic (Optional)"
             />
           )}
-          <Text style={styles.hint}>Optional filter</Text>
+          <Text style={styles.hint}>Optional Filter</Text>
         </View>
 
         <View style={styles.formGroup}>
@@ -270,16 +270,16 @@ export default function IQRankBoostQuestionGenerator({ classNumber, onBack }: Pr
             style={[styles.input, !form.topic && styles.inputDisabled]}
             value={form.subtopic}
             onChangeText={(v) => setForm((p) => ({ ...p, subtopic: v }))}
-            placeholder="Enter subtopic (optional)"
+            placeholder="Enter Subtopic (Optional)"
             editable={!!form.topic}
           />
-          <Text style={styles.hint}>Optional filter</Text>
+          <Text style={styles.hint}>Optional Filter</Text>
         </View>
 
         <Text style={styles.sectionLabel}>Generation Settings</Text>
         <View style={styles.formRow}>
           <View style={[styles.formGroup, { flex: 1 }]}>
-            <Text style={styles.label}>Number of Questions</Text>
+            <Text style={styles.label}>Number Of Questions</Text>
             <TextInput
               style={styles.input}
               keyboardType="numeric"
@@ -289,7 +289,7 @@ export default function IQRankBoostQuestionGenerator({ classNumber, onBack }: Pr
               }
               placeholder="10"
             />
-            <Text style={styles.hint}>Between 1 and 50</Text>
+            <Text style={styles.hint}>Between 1 And 50</Text>
           </View>
           <View style={[styles.formGroup, { flex: 1 }]}>
             <Text style={styles.label}>Difficulty Level</Text>

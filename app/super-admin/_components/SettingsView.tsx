@@ -28,7 +28,7 @@ type SettingsViewProps = {
 };
 
 const QUICK_LINKS: { view: SuperAdminView; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { view: 'vidya-ai', label: 'Vidya AI preferences', icon: 'sparkles-outline' },
+  { view: 'vidya-ai', label: 'Vidya AI Preferences', icon: 'sparkles-outline' },
   { view: 'calendar', label: 'School Calendar', icon: 'calendar-outline' },
   { view: 'exams', label: 'Exam Management', icon: 'document-text-outline' },
   { view: 'admins', label: 'School Management', icon: 'shield-outline' },
@@ -39,9 +39,9 @@ const QUICK_LINKS: { view: SuperAdminView; label: string; icon: keyof typeof Ion
 ];
 
 const DEPTH_OPTIONS: { value: ExplainDepth; label: string }[] = [
-  { value: 'concise', label: 'Concise — short answers' },
-  { value: 'balanced', label: 'Balanced — recommended' },
-  { value: 'detailed', label: 'Detailed — step-by-step' },
+  { value: 'concise', label: 'Concise — Short Answers' },
+  { value: 'balanced', label: 'Balanced — Recommended' },
+  { value: 'detailed', label: 'Detailed — Step-By-Step' },
 ];
 
 export default function SettingsView({ onNavigate }: SettingsViewProps) {
@@ -89,11 +89,11 @@ export default function SettingsView({ onNavigate }: SettingsViewProps) {
 
   const changePassword = async () => {
     if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
-      Alert.alert('Missing fields', 'Enter current, new, and confirm password.');
+      Alert.alert('Missing Fields', 'Enter current, new, and confirm password.');
       return;
     }
     if (passwordForm.newPassword.length < 8) {
-      Alert.alert('Too short', 'New password must be at least 8 characters.');
+      Alert.alert('Too Short', 'New password must be at least 8 characters.');
       return;
     }
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
@@ -104,14 +104,14 @@ export default function SettingsView({ onNavigate }: SettingsViewProps) {
     try {
       const res = await api.post('/api/super-admin/change-password', passwordForm);
       if (!res.data?.success) {
-        throw new Error(res.data?.message || 'Failed to change password');
+        throw new Error(res.data?.message || 'Failed to Change Password');
       }
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      Alert.alert('Password updated', 'Your super admin password was changed successfully.');
+      Alert.alert('Password Updated', 'Your super admin password was changed successfully.');
     } catch (err: any) {
       Alert.alert(
-        'Could not update password',
-        err?.response?.data?.message || err?.message || 'Try again',
+        'Could Not Update Password',
+        err?.response?.data?.message || err?.message || 'Try Again',
       );
     } finally {
       setChangingPassword(false);
@@ -152,25 +152,25 @@ export default function SettingsView({ onNavigate }: SettingsViewProps) {
 
       <GlassPanel style={styles.section} radius={10} tone="medium">
         <View style={styles.sectionInner}>
-          <Text style={styles.sectionTitle}>Vidya AI preferences</Text>
+          <Text style={styles.sectionTitle}>Vidya AI Preferences</Text>
           <Text style={styles.sectionHint}>
             Model choice and API credentials are configured on the server. Set tutor display preferences here.
           </Text>
           <Pressable style={styles.pickerRow} onPress={() => setDepthPickerOpen(true)}>
-            <Text style={styles.pickerLabel}>Default explanation depth</Text>
+            <Text style={styles.pickerLabel}>Default Explanation Depth</Text>
             <Text style={styles.pickerValue}>{depthLabel}</Text>
           </Pressable>
           <TouchableOpacity style={styles.saveButton} onPress={saveVidyaPrefs}>
-            <Text style={styles.saveButtonText}>Save preferences</Text>
+            <Text style={styles.saveButtonText}>Save Preferences</Text>
           </TouchableOpacity>
         </View>
       </GlassPanel>
 
       <GlassPanel style={styles.section} radius={10} tone="medium">
         <View style={styles.sectionInner}>
-          <Text style={styles.sectionTitle}>Change password</Text>
+          <Text style={styles.sectionTitle}>Change Password</Text>
           <Text style={styles.sectionHint}>Update the password for your logged-in super admin account.</Text>
-          <Text style={styles.fieldLabel}>Current password</Text>
+          <Text style={styles.fieldLabel}>Current Password</Text>
           <TextInput
             style={styles.input}
             secureTextEntry
@@ -179,7 +179,7 @@ export default function SettingsView({ onNavigate }: SettingsViewProps) {
             autoCapitalize="none"
             autoCorrect={false}
           />
-          <Text style={styles.fieldLabel}>New password</Text>
+          <Text style={styles.fieldLabel}>New Password</Text>
           <TextInput
             style={styles.input}
             secureTextEntry
@@ -188,8 +188,8 @@ export default function SettingsView({ onNavigate }: SettingsViewProps) {
             autoCapitalize="none"
             autoCorrect={false}
           />
-          <Text style={styles.fieldHint}>At least 8 characters</Text>
-          <Text style={styles.fieldLabel}>Confirm new password</Text>
+          <Text style={styles.fieldHint}>At Least 8 Characters</Text>
+          <Text style={styles.fieldLabel}>Confirm New Password</Text>
           <TextInput
             style={styles.input}
             secureTextEntry
@@ -206,7 +206,7 @@ export default function SettingsView({ onNavigate }: SettingsViewProps) {
             {changingPassword ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.saveButtonText}>Update password</Text>
+              <Text style={styles.saveButtonText}>Update Password</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -214,18 +214,18 @@ export default function SettingsView({ onNavigate }: SettingsViewProps) {
 
       <GlassPanel style={styles.section} radius={10} tone="medium">
         <View style={styles.sectionInner}>
-          <Text style={styles.sectionTitle}>Platform configuration</Text>
+          <Text style={styles.sectionTitle}>Platform Configuration</Text>
           <Text style={styles.sectionHint}>
             AI keys, JWT secrets, and database URLs are set in the backend .env — not editable here.
           </Text>
-          <Text style={styles.fieldLabel}>API base</Text>
+          <Text style={styles.fieldLabel}>API Base</Text>
           <Text style={styles.apiBase}>{API_BASE_URL || '—'}</Text>
         </View>
       </GlassPanel>
 
       <GlassPanel style={styles.section} radius={10} tone="medium">
         <View style={styles.sectionInner}>
-          <Text style={styles.sectionTitle}>Quick links</Text>
+          <Text style={styles.sectionTitle}>Quick Links</Text>
           <View style={styles.linksGrid}>
             {QUICK_LINKS.map((link) => (
               <TouchableOpacity
@@ -250,7 +250,7 @@ export default function SettingsView({ onNavigate }: SettingsViewProps) {
       <Modal visible={depthPickerOpen} transparent animationType="slide" onRequestClose={() => setDepthPickerOpen(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>Explanation depth</Text>
+            <Text style={styles.modalTitle}>Explanation Depth</Text>
             {DEPTH_OPTIONS.map((opt) => (
               <Pressable
                 key={opt.value}

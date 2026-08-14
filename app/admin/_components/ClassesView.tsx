@@ -623,7 +623,7 @@ export default function ClassesView() {
           </View>
         ))
       ) : (
-        <Text style={styles.listEmptyText}>No teachers assigned</Text>
+        <Text style={styles.listEmptyText}>No Teachers Assigned</Text>
       );
 
     const renderStudentRows = () =>
@@ -649,7 +649,7 @@ export default function ClassesView() {
           </View>
         ))
       ) : (
-        <Text style={styles.noStudentsText}>No students assigned to this class</Text>
+        <Text style={styles.noStudentsText}>No Students Assigned To This Class</Text>
       );
 
     return (
@@ -699,7 +699,7 @@ export default function ClassesView() {
             >
               {teacherCount > 0
                 ? `${teacherCount} ${teacherCount === 1 ? 'teacher' : 'teachers'}`
-                : 'No teachers assigned'}
+                : 'No Teachers Assigned'}
             </Text>
           </View>
           {cls.section ? (
@@ -849,7 +849,7 @@ export default function ClassesView() {
       <View style={styles.innerShell}>
       <AdminSectionHeader
         title="Class Management"
-        subtitle="Organize and manage your classes and students"
+        subtitle="Organize And Manage Your Classes And Students"
         icon="school-outline"
       />
 
@@ -858,47 +858,45 @@ export default function ClassesView() {
         <View style={styles.tabRow}>
           {CLASS_TABS.map((tab) => {
             const active = activeTab === tab.id;
-            const content = (
-              <View style={styles.tabBtnContent}>
-                <Ionicons name={tab.icon} size={20} color={active ? '#fff' : colors.textMuted} />
-                <View style={styles.tabLabelWrap}>
-                  {tab.lines.map((line, idx) => (
-                    <Text
-                      key={`${tab.id}-${idx}`}
-                      style={[styles.tabBtnText, active && styles.tabBtnTextActive]}
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                      minimumFontScale={0.75}
-                    >
-                      {line}
-                    </Text>
-                  ))}
-                </View>
-              </View>
-            );
-
             return (
               <TouchableOpacity
                 key={tab.id}
-                style={[styles.tabBtn, active && styles.tabBtnActiveShell]}
+                style={[
+                  styles.tabBtn,
+                  active && styles.tabBtnActiveShell,
+                  active && { backgroundColor: colors.navActiveBg, borderColor: colors.primaryMuted },
+                ]}
                 onPress={() => setActiveTab(tab.id)}
                 activeOpacity={0.85}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: active }}
                 accessibilityLabel={tab.label}
               >
-                {active ? (
-                  <LinearGradient
-                    colors={[...colors.fabGradient]}
-                    style={styles.tabBtnGradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                  >
-                    {content}
-                  </LinearGradient>
-                ) : (
-                  <View style={[styles.tabBtnInner, { backgroundColor: colors.bg }]}>{content}</View>
-                )}
+                <View style={[styles.tabBtnInner, { backgroundColor: active ? 'transparent' : colors.bg }]}>
+                  <View style={styles.tabBtnContent}>
+                    <Ionicons
+                      name={tab.icon}
+                      size={20}
+                      color={active ? colors.navActiveText : colors.textMuted}
+                    />
+                    <View style={styles.tabLabelWrap}>
+                      {tab.lines.map((line, idx) => (
+                        <Text
+                          key={`${tab.id}-${idx}`}
+                          style={[
+                            styles.tabBtnText,
+                            active && { color: colors.navActiveText },
+                          ]}
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                          minimumFontScale={0.75}
+                        >
+                          {line}
+                        </Text>
+                      ))}
+                    </View>
+                  </View>
+                </View>
               </TouchableOpacity>
             );
           })}
@@ -909,7 +907,7 @@ export default function ClassesView() {
         items={[
           { label: 'Classes', value: classes.length, icon: 'school', gradientIndex: 0 },
           { label: 'Students', value: totalStudents, icon: 'people', gradientIndex: 1 },
-          { label: 'Avg size', value: avgClassSize, icon: 'stats-chart', gradientIndex: 2 },
+          { label: 'Avg Size', value: avgClassSize, icon: 'stats-chart', gradientIndex: 2 },
           { label: 'Subjects', value: classSubjects.length, icon: 'book-outline', gradientIndex: 3 },
         ]}
       />
@@ -919,7 +917,7 @@ export default function ClassesView() {
           <AdminGlassCard delay={80} style={{ marginBottom: spacing.md, padding: spacing.md, gap: spacing.sm }}>
             <View style={styles.toolbarFilters}>
               <AdminSearchBar
-                placeholder="Search classes..."
+                placeholder="Search Classes..."
                 value={searchTerm}
                 onChangeText={setSearchTerm}
               />
@@ -941,19 +939,19 @@ export default function ClassesView() {
             <View style={styles.actionRow}>
               {classes.length > 0 && (
                 <AdminScalePressable
-                  style={[styles.deleteAllBtn, { backgroundColor: colors.danger }]}
+                  style={[styles.deleteAllBtn, { backgroundColor: colors.dangerMuted }]}
                   onPress={() => setIsDeleteAllModalVisible(true)}
                 >
-                  <Ionicons name="trash-outline" size={16} color="#fff" />
-                  <Text style={styles.deleteAllBtnText}>Delete All</Text>
+                  <Ionicons name="trash-outline" size={16} color={colors.danger} />
+                  <Text style={[styles.deleteAllBtnText, { color: colors.danger }]}>Delete All</Text>
                 </AdminScalePressable>
               )}
               <AdminScalePressable
-                style={[styles.addClassBtn, { backgroundColor: colors.primary }]}
+                style={[styles.addClassBtn, { backgroundColor: colors.primaryMuted }]}
                 onPress={() => setIsAddClassModalVisible(true)}
               >
-                <Ionicons name="add" size={18} color="#fff" />
-                <Text style={styles.addClassBtnText}>Add Class</Text>
+                <Ionicons name="add" size={18} color={colors.primary} />
+                <Text style={[styles.addClassBtnText, { color: colors.primary }]}>Add Class</Text>
               </AdminScalePressable>
             </View>
           </AdminGlassCard>
@@ -962,7 +960,7 @@ export default function ClassesView() {
             <AdminSkeletonList count={4} />
           ) : filteredClasses.length === 0 ? (
             <AdminEmptyState
-              title="No classes found"
+              title="No Classes Found"
               message="Create your first class using Add Class above."
               icon="school-outline"
             />
@@ -987,7 +985,7 @@ export default function ClassesView() {
 
       {activeTab === 'assign-subjects' && (
         <AdminGlassCard delay={80} style={styles.panelCard}>
-          <Text style={[styles.panelTitle, { color: colors.primary }]}>Assign Subjects to Class</Text>
+          <Text style={[styles.panelTitle, { color: colors.primary }]}>Assign Subjects To Class</Text>
           <Text style={styles.panelSubtitle}>
             Select a class, section, and subjects for that section only
           </Text>
@@ -997,7 +995,7 @@ export default function ClassesView() {
             <Text style={styles.selectTriggerText}>
               {selectedClassForSubjects
                 ? `Class ${selectedClassForSubjects}`
-                : 'Choose a class number'}
+                : 'Choose A Class Number'}
             </Text>
             <Ionicons name="chevron-down" size={16} color="#64748b" />
           </TouchableOpacity>
@@ -1015,8 +1013,8 @@ export default function ClassesView() {
               {selectedSectionForSubjects
                 ? `Section ${selectedSectionForSubjects}`
                 : selectedClassForSubjects
-                  ? 'Choose a section'
-                  : 'Select class first'}
+                  ? 'Choose A Section'
+                  : 'Select Class First'}
             </Text>
             <Ionicons name="chevron-down" size={16} color="#64748b" />
           </TouchableOpacity>
@@ -1209,7 +1207,7 @@ export default function ClassesView() {
 
       {renderPickerModal(
         subjectPickerOpen,
-        'Filter by Subject',
+        'Filter By Subject',
         [{ label: 'All Subjects', value: 'all' }, ...classSubjects.map((s) => ({ label: s, value: s }))],
         selectedSubject,
         setSelectedSubject,
@@ -1336,7 +1334,7 @@ export default function ClassesView() {
                 <Text style={styles.formLabel}>Description</Text>
                 <TextInput
                   style={[styles.formInput, styles.formTextArea]}
-                  placeholder="Optional description"
+                  placeholder="Optional Description"
                   value={newClass.description}
                   onChangeText={(text) => setNewClass({ ...newClass, description: text })}
                   multiline
@@ -1427,7 +1425,7 @@ export default function ClassesView() {
                 <Text style={styles.formLabel}>Description</Text>
                 <TextInput
                   style={[styles.formInput, styles.formTextArea]}
-                  placeholder="Optional description"
+                  placeholder="Optional Description"
                   value={editClass.description}
                   onChangeText={(text) => setEditClass({ ...editClass, description: text })}
                   multiline
@@ -1592,7 +1590,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     minHeight: 48,
   },
-  deleteAllBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  deleteAllBtnText: { fontWeight: '700', fontSize: 14 },
   addClassBtn: {
     flex: 1,
     flexDirection: 'row',
@@ -1603,7 +1601,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     minHeight: 48,
   },
-  addClassBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  addClassBtnText: { fontWeight: '700', fontSize: 14 },
   classCard: { padding: 14, marginBottom: 0 },
   classCardTablet: {
     width: '100%',

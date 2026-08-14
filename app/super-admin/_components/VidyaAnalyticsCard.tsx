@@ -33,7 +33,7 @@ export default function VidyaAnalyticsCard() {
       <Text style={styles.analyticsTitle}>Vidya AI — Last 7 Days</Text>
       <Text style={styles.analyticsStory}>{story.story}</Text>
       <View style={styles.progressRow}>
-        <Text style={styles.progressLabel}>Answered from your library</Text>
+        <Text style={styles.progressLabel}>Answered From Your Library</Text>
         <Text style={styles.progressValue}>{pct}%</Text>
       </View>
       <View style={styles.progressTrack}>
@@ -41,7 +41,7 @@ export default function VidyaAnalyticsCard() {
       </View>
       {Array.isArray(story.topUnservedTopics) && story.topUnservedTopics.length > 0 && (
         <View style={styles.gapBlock}>
-          <Text style={styles.gapTitle}>Content gaps (falling to Gemini):</Text>
+          <Text style={styles.gapTitle}>Content Gaps (Falling to Gemini):</Text>
           {story.topUnservedTopics.slice(0, 5).map((t: any, i: number) => (
             <Text key={i} style={styles.gapItem}>
               • {t._id?.subject} — Class {t._id?.classLabel} ({t.count} queries)

@@ -73,7 +73,7 @@ export default function SuperAdminVidyaChatPanel({ userId = 'super-admin' }: Pro
           <VidyaAvatar size={36} borderColor="#fdba74" />
           <View style={styles.headerText}>
             <Text style={styles.headerTitle}>Vidya AI</Text>
-            <Text style={styles.headerSub}>Platform metrics assistant</Text>
+            <Text style={styles.headerSub}>Platform Metrics Assistant</Text>
           </View>
         </View>
         <Pressable
@@ -101,7 +101,7 @@ export default function SuperAdminVidyaChatPanel({ userId = 'super-admin' }: Pro
       >
         {model.displayMessages.length === 0 ? (
           <View style={styles.emptyBlock}>
-            <Text style={styles.emptyTitle}>Ask about platform metrics</Text>
+            <Text style={styles.emptyTitle}>Ask About Platform Metrics</Text>
             <Text style={styles.emptyText}>
               Students, teachers, exams, attendance, and AI usage — answered from live data.
             </Text>

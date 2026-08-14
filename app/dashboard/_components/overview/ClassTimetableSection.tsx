@@ -58,7 +58,7 @@ function ClassTimetableSectionComponent() {
         ) : imageUrl ? (
           <Pressable onPress={() => router.push('/student/timetable')} accessibilityRole="button">
             <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="contain" />
-            <Text style={styles.hint}>Tap to view in app</Text>
+            <Text style={styles.hint}>Tap To View In App</Text>
           </Pressable>
         ) : (
           <Text style={styles.empty}>

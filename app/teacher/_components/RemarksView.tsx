@@ -81,7 +81,7 @@ export default function TeacherRemarksView() {
 
   const handleCreateRemark = async () => {
     if (!selectedStudent || !remarkText.trim()) {
-      Alert.alert('Validation Error', 'Please select a student and enter a remark');
+      Alert.alert('Validation Error', 'Please Select A Student And Enter A Remark');
       return;
     }
 
@@ -92,7 +92,7 @@ export default function TeacherRemarksView() {
         text: remarkText.trim(),
         isPositive,
       });
-      Alert.alert('Success', 'Remark added successfully');
+      Alert.alert('Success', 'Remark Added Successfully');
       setIsCreateModalOpen(false);
       setSelectedStudent('');
       setRemarkText('');
@@ -101,7 +101,7 @@ export default function TeacherRemarksView() {
       await teacherService.invalidateCache('remarks');
       fetchRemarks();
     } catch {
-      Alert.alert('Error', 'Failed to add remark');
+      Alert.alert('Error', 'Failed To Add Remark');
     }
   };
 
@@ -115,7 +115,7 @@ export default function TeacherRemarksView() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={TEACHER.primary} />
-        <Text style={styles.loadingText}>Loading remarks...</Text>
+        <Text style={styles.loadingText}>Loading Remarks...</Text>
       </View>
     );
   }
@@ -184,8 +184,8 @@ export default function TeacherRemarksView() {
         {filteredRemarks.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="chatbubble-outline" size={64} color={TEACHER.textMuted} />
-            <Text style={styles.emptyText}>No remarks found</Text>
-            <Text style={styles.emptySubtext}>Add your first remark to get started</Text>
+            <Text style={styles.emptyText}>No Remarks Found</Text>
+            <Text style={styles.emptySubtext}>Add Your First Remark To Get Started</Text>
           </View>
         ) : (
           filteredRemarks.map((remark, index) => (
@@ -346,7 +346,7 @@ export default function TeacherRemarksView() {
               <Text style={styles.inputLabel}>Remark *</Text>
               <TextInput
                 style={[styles.input, styles.textArea]}
-                placeholder="Enter your remark..."
+                placeholder="Enter Your Remark..."
                 placeholderTextColor={TEACHER.textMuted}
                 value={remarkText}
                 onChangeText={setRemarkText}

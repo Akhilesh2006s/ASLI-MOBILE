@@ -79,7 +79,7 @@ export default function StudentTimetable() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StudentScreenHeader
         title={photo?.label ? `Timetable · ${photo.label}` : 'Class Timetable'}
-        subtitle="Photo from your school"
+        subtitle="Photo From Your School"
         onBack={() => router.back()}
       />
       <ScrollView
@@ -102,13 +102,13 @@ export default function StudentTimetable() {
           <GlassPanel style={styles.card} radius={STUDENT_RADIUS.card} tone="strong">
             <Pressable onPress={() => setFullscreen(true)} accessibilityRole="imagebutton">
               <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="contain" />
-              <Text style={styles.hint}>Tap to view larger · pinch to zoom</Text>
+              <Text style={styles.hint}>Tap To View Larger · Pinch To Zoom</Text>
             </Pressable>
           </GlassPanel>
         ) : (
           <EmptyState
             icon="calendar-outline"
-            title="No timetable photo"
+            title="No Timetable Photo"
             subtitle="Ask your school admin or teacher to upload the class timetable photo."
           />
         )}
@@ -123,7 +123,7 @@ export default function StudentTimetable() {
         <SafeAreaView style={styles.fullscreen} edges={['top', 'bottom']}>
           <View style={styles.fullscreenHeader}>
             <Text style={styles.fullscreenTitle} numberOfLines={1}>
-              {photo?.label ? `${photo.label} timetable` : 'Class timetable'}
+              {photo?.label ? `${photo.label} timetable` : 'Class Timetable'}
             </Text>
             <Pressable
               onPress={() => setFullscreen(false)}

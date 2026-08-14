@@ -46,9 +46,11 @@ export default function DigitalLibraryBrowseSection({
     const load = async () => {
       setIsLoadingContent(true);
       try {
-        const { data } = await api.get('/api/student/asli-prep-content');
+        const { data } = await api.get('/api/student/asli-prep-content', {
+          params: { surface: 'learning-path' },
+        });
         if (cancelled) return;
-        setAllContent(prepareLibraryContents(data?.data || data || [], isAsliPrepExclusive));
+        setAllContent(prepareLibraryContents(data?.data || data || [], isAsliPrepExclusive, { surface: 'learning-path' }));
       } catch {
         if (!cancelled) setAllContent([]);
       } finally {
@@ -78,7 +80,7 @@ export default function DigitalLibraryBrowseSection({
       {showHeader ? (
         <PremiumSectionHeader
           title="Digital Library"
-          subtitle="Browse by type"
+          subtitle="Browse By Type"
           icon="library-outline"
           accent={STUDENT.accent}
         />

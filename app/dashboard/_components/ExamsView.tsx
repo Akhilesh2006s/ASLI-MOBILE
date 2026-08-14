@@ -691,7 +691,7 @@ export default function ExamsView({
     () => [
       {
         value: 'all',
-        label: 'All subjects',
+        label: 'All Subjects',
         count: classFilteredExams.length,
       },
       ...availableSubjectOptions.map((subject) => ({
@@ -742,7 +742,7 @@ export default function ExamsView({
           ) : null}
           <StudentFilterDropdown
             label="Subject"
-            placeholder="All subjects"
+            placeholder="All Subjects"
             value={examSubjectFilter}
             options={subjectFilterOptions}
             onChange={setExamSubjectFilter}
@@ -773,7 +773,7 @@ export default function ExamsView({
             <View style={styles.emptyState}>
               <GlassPanel tone="medium" radius={STUDENT_RADIUS.card} contentStyle={styles.emptyInner}>
                 <Ionicons name="document-text-outline" size={40} color={STUDENT.primary} />
-                <Text style={styles.emptyStateTitle}>No available exams</Text>
+                <Text style={styles.emptyStateTitle}>No Available Exams</Text>
                 <Text style={styles.emptyStateText}>
                   No active exams right now. Check Upcoming for scheduled papers.
                 </Text>
@@ -818,7 +818,7 @@ export default function ExamsView({
             <View style={styles.emptyState}>
               <GlassPanel tone="medium" radius={STUDENT_RADIUS.card} contentStyle={styles.emptyInner}>
                 <Ionicons name="checkmark-circle-outline" size={40} color={STUDENT.success} />
-                <Text style={styles.emptyStateTitle}>No attempted exams</Text>
+                <Text style={styles.emptyStateTitle}>No Attempted Exams</Text>
                 <Text style={styles.emptyStateText}>
                   Finish an available paper and your results will show up here.
                 </Text>
@@ -909,7 +909,7 @@ export default function ExamsView({
 
                     {totalAttempts > 1 ? (
                       <View style={styles.attemptPickerSection}>
-                        <Text style={styles.attemptPickerLabel}>View attempt</Text>
+                        <Text style={styles.attemptPickerLabel}>View Attempt</Text>
                         <TouchableOpacity
                           style={styles.attemptPickerTrigger}
                           onPress={() => setAttemptPickerExamId(examIdStr)}
@@ -941,11 +941,11 @@ export default function ExamsView({
                               {obtainedMarksDisplay}
                               <Text style={styles.attemptedScoreDenom}>/{totalMarksDisplay}</Text>
                             </Text>
-                            <Text style={styles.attemptedScoreLabel}>marks</Text>
+                            <Text style={styles.attemptedScoreLabel}>Marks</Text>
                             {!isTablet ? (
                               <Text style={styles.attemptedScoreMeta}>
-                                {displayResult.correctAnswers || 0} correct · {displayResult.wrongAnswers || 0} wrong ·{' '}
-                                {displayResult.unattempted || 0} skipped
+                                {displayResult.correctAnswers || 0} Correct · {displayResult.wrongAnswers || 0} Wrong ·{' '}
+                                {displayResult.unattempted || 0} Skipped
                               </Text>
                             ) : null}
                           </View>
@@ -1048,7 +1048,7 @@ export default function ExamsView({
             <View style={styles.emptyState}>
               <GlassPanel tone="medium" radius={STUDENT_RADIUS.card} contentStyle={styles.emptyInner}>
                 <Ionicons name="calendar-outline" size={40} color={STUDENT.primary} />
-                <Text style={styles.emptyStateTitle}>No upcoming exams</Text>
+                <Text style={styles.emptyStateTitle}>No Upcoming Exams</Text>
                 <Text style={styles.emptyStateText}>
                   Nothing scheduled yet — check Available when a paper goes live.
                 </Text>
@@ -1102,7 +1102,7 @@ export default function ExamsView({
             onPress={() => setAttemptPickerExamId(null)}
           />
           <View style={styles.attemptPickerSheet}>
-            <Text style={styles.attemptPickerSheetTitle}>View attempt</Text>
+            <Text style={styles.attemptPickerSheetTitle}>View Attempt</Text>
             {(attemptPickerExamId ? attemptHistoryByExamId.get(attemptPickerExamId) : [])?.map(
               (attemptRow) => {
                 const examIdStr = attemptPickerExamId!;
@@ -1146,7 +1146,7 @@ export default function ExamsView({
         <Modal visible transparent animationType="fade">
           <View style={styles.resultsLoadingOverlay}>
             <ActivityIndicator size="large" color="#ea580c" />
-            <Text style={styles.resultsLoadingText}>Loading exam details...</Text>
+            <Text style={styles.resultsLoadingText}>Loading Exam Details...</Text>
           </View>
         </Modal>
       ) : null}

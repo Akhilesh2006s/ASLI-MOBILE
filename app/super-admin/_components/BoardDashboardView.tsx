@@ -60,7 +60,7 @@ export default function BoardDashboardView({ boardCode = 'ASLI_EXCLUSIVE_SCHOOLS
         err?.friendlyMessage ||
           (isNetwork
             ? 'Could not reach the server. Check your connection and try again.'
-            : 'Error fetching board dashboard'),
+            : 'Error Fetching Board Dashboard'),
       );
       console.warn('Board dashboard fetch failed:', err?.code || err?.message || err);
     } finally {
@@ -189,7 +189,7 @@ export default function BoardDashboardView({ boardCode = 'ASLI_EXCLUSIVE_SCHOOLS
       <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#f97316" />
-          <Text style={styles.loadingText}>Loading board data...</Text>
+          <Text style={styles.loadingText}>Loading Board Data...</Text>
         </View>
       </ScrollView>
     );
@@ -200,7 +200,7 @@ export default function BoardDashboardView({ boardCode = 'ASLI_EXCLUSIVE_SCHOOLS
       <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle" size={64} color="#5B6779" />
-          <Text style={styles.errorText}>{error || 'No board data available'}</Text>
+          <Text style={styles.errorText}>{error || 'No Board Data Available'}</Text>
           <TouchableOpacity style={styles.refreshButton} onPress={fetchBoardDashboard}>
             <Text style={styles.refreshButtonText}>Refresh</Text>
           </TouchableOpacity>
@@ -280,7 +280,7 @@ export default function BoardDashboardView({ boardCode = 'ASLI_EXCLUSIVE_SCHOOLS
         <View style={styles.comparisonHeader}>
           <View>
             <Text style={styles.sectionTitle}>Board Performance Comparison</Text>
-            <Text style={styles.comparisonSubtitle}>Compare performance across all boards</Text>
+            <Text style={styles.comparisonSubtitle}>Compare Performance Across All Boards</Text>
           </View>
           <TouchableOpacity style={styles.refreshButtonSmall} onPress={fetchBoardComparison}>
             <Ionicons name="refresh" size={16} color="#6b7280" />
@@ -291,12 +291,12 @@ export default function BoardDashboardView({ boardCode = 'ASLI_EXCLUSIVE_SCHOOLS
         {isLoadingComparison ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="small" color="#f97316" />
-            <Text style={styles.loadingText}>Loading comparison data...</Text>
+            <Text style={styles.loadingText}>Loading Comparison Data...</Text>
           </View>
         ) : comparisonData.length === 0 ? (
           <View style={styles.emptyComparisonCard}>
             <Ionicons name="bar-chart" size={48} color="#5B6779" />
-            <Text style={styles.emptyComparisonText}>No comparison data available</Text>
+            <Text style={styles.emptyComparisonText}>No Comparison Data Available</Text>
           </View>
         ) : (
           <>
@@ -323,7 +323,7 @@ export default function BoardDashboardView({ boardCode = 'ASLI_EXCLUSIVE_SCHOOLS
 
             {/* Charts - Stacked vertically */}
             <View style={styles.chartsContainer}>
-              {renderBarChart('Number of Students', 'students', '#3b82f6')}
+              {renderBarChart('Number Of Students', 'students', '#3b82f6')}
               {renderBarChart('Average Score (%)', 'averageScore', '#10b981', 100)}
               {renderBarChart('Total Exam Attempts', 'totalAttempts', '#a855f7')}
               {renderBarChart('Participation Rate (%)', 'participationRate', '#f97316', 100)}

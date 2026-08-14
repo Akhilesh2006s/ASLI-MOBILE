@@ -22,7 +22,7 @@ export type RootStackParamList = {
 };
 
 export type StudentDashboardParams = {
-  tab?: 'home' | 'learning' | 'eduott' | 'exams' | 'vidya' | 'settings';
+  tab?: 'home' | 'learning' | 'eduott' | 'exams' | 'results' | 'timetable' | 'vidya';
 };
 export type TeacherDashboardParams = {
   tab?: 'dashboard' | 'students' | 'eduott' | 'learning-paths' | 'vidya-ai';

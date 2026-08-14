@@ -1,104 +1,63 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, {
-  FadeIn,
-  FadeOut,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+import { startTransition, useEffect, useRef, useState } from 'react';
+import {
+  Alert,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import authService from '../../src/services/api/authService';
 import teacherService, { type BackendStatus } from '../../src/services/api/teacherService';
 import { useTeacherBackendStatus } from '../../src/hooks/useTeacherBackendStatus';
 import { useAuth } from '../../src/context/AuthContext';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
-import { consumeTeacherDashboardTabIntent } from '../../src/lib/dashboard-tab-intent';
-import { TeacherTabBar, TeacherHeader, TeacherShimmer } from '../../src/components/teacher';
-import { BottomSheet, GlassPanel } from '../../src/components/ui';
-import type { TeacherTab } from '../../src/components/teacher';
-import { formatSubjectLabel, resolveTeacherDisplayName } from '../../src/lib/teacher-text';
+import { useVisitedTabs } from '../../src/hooks/useVisitedTabs';
+import {
+  consumeTeacherDashboardTabIntent,
+  type TeacherDashboardTabIntent,
+} from '../../src/lib/dashboard-tab-intent';
+import TeacherNavDrawer, {
+  TeacherNavPanel,
+  type TeacherNavId,
+} from '../../src/components/teacher/TeacherNavDrawer';
+import PortalTopBar from '../../src/components/layout/PortalTopBar';
+import { TeacherShimmer } from '../../src/components/teacher';
+import TeacherPageHero from '../../src/components/teacher/TeacherPageHero';
+import { LoadingState, VisitedTabPane } from '../../src/components/ui';
 import {
   extractLibraryContentList,
   isLibraryVideoRow,
 } from '../../src/lib/dedupe-library-content';
-import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../src/theme/teacher';
-import { Ionicons } from '@expo/vector-icons';
+import { resolveTeacherDisplayName } from '../../src/lib/teacher-text';
+import { TEACHER, TEACHER_SPACING } from '../../src/theme/teacher';
+import { useVidyaChatAccess } from '../../src/hooks/useVidyaChatAccess';
+import VidyaAIFloatingAssistant from '../../src/components/vidya/VidyaAIFloatingAssistant';
+import { EduOTTFilterProvider } from '../../src/contexts/edu-ott-filter-context';
+import OverviewView from './_components/OverviewView';
 import AIClassesView from './_components/AIClassesView';
 import StudentsView from './_components/StudentsView';
 import EduOTTView from './_components/EduOTTView';
-import { EduOTTFilterProvider } from '../../src/contexts/edu-ott-filter-context';
 import LearningPathsView from './_components/LearningPathsView';
 import VidyaAIView from './_components/VidyaAIView';
-import VidyaAIFloatingAssistant from '../../src/components/vidya/VidyaAIFloatingAssistant';
-import { useVidyaChatAccess } from '../../src/hooks/useVidyaChatAccess';
-import ContentView from './_components/ContentView';
-import ProfileView from './_components/ProfileView';
+import CalendarView from './_components/CalendarView';
+import OmrResultsView from './_components/OmrResultsView';
+import SettingsView from './_components/SettingsView';
 
-/** Matches web teacher dashboard tabs */
-type TabId = 'dashboard' | 'students' | 'eduott' | 'learning-paths' | 'vidya-ai';
-
-const ALL_TABS: TeacherTab[] = [
-  { id: 'dashboard', label: 'Home', icon: 'home-outline', activeIcon: 'home' },
-  { id: 'students', label: 'Students', icon: 'people-outline', activeIcon: 'people' },
-  { id: 'eduott', label: 'EduOTT', icon: 'play-circle-outline', activeIcon: 'play-circle' },
-  { id: 'learning-paths', label: 'Paths', icon: 'book-outline', activeIcon: 'book' },
-  { id: 'vidya-ai', label: 'Vidya AI', icon: 'sparkles-outline', activeIcon: 'sparkles' },
-];
-
-const TAB_PAGE_TITLES: Record<TabId, string> = {
-  dashboard: 'Home',
-  students: 'Students',
-  eduott: 'EduOTT',
-  'learning-paths': 'Learning Paths',
-  'vidya-ai': 'Vidya AI',
-};
+type TabId = TeacherNavId;
 
 type NavTarget = {
-  tab?: TabId;
   studentsSub?: 'list' | 'track-progress' | 'submissions' | 'daily' | 'remarks';
-  dashboardSub?: 'classes' | 'timetable' | 'schedule';
-  contentSub?: 'assessments' | 'videos' | 'homework' | 'quizzes' | 'omr';
   progressClassFilter?: string;
   progressStudentId?: string;
 };
-
-function usePressScale(to = 0.96) {
-  const scale = useSharedValue(1);
-  const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-  const onPressIn = () => { scale.value = withSpring(to, { damping: 14, stiffness: 300 }); };
-  const onPressOut = () => { scale.value = withSpring(1.0, { damping: 14, stiffness: 300 }); };
-  return { style, onPressIn, onPressOut };
-}
-
-function MenuItem({
-  icon,
-  label,
-  onPress,
-  danger,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  onPress: () => void;
-  danger?: boolean;
-}) {
-  const press = usePressScale();
-  return (
-    <Pressable onPress={onPress} onPressIn={press.onPressIn} onPressOut={press.onPressOut}>
-      <Animated.View style={[styles.menuItem, danger && styles.logoutItem, press.style]}>
-        <LinearGradient
-          colors={[TEACHER.primary + '30', TEACHER.primaryDark + '20']}
-          style={styles.menuIconBadge}
-        >
-          <Ionicons name={icon} size={16} color={danger ? TEACHER.danger : TEACHER.primaryLight} />
-        </LinearGradient>
-        <Text style={[styles.menuText, danger && { color: TEACHER.danger }]}>{label}</Text>
-      </Animated.View>
-    </Pressable>
-  );
-}
 
 function uniqueStudentCountFromClasses(classes: any[]): number {
   const ids = new Set<string>();
@@ -117,36 +76,22 @@ function uniqueStudentCountFromClasses(classes: any[]): number {
   return ids.size > 0 ? ids.size : fallback;
 }
 
-function visibleTeacherVideoCount(eduottPayload: unknown, uploaded: unknown[]): number {
-  const eduott = extractLibraryContentList(eduottPayload).filter(isLibraryVideoRow);
-  const uploads = Array.isArray(uploaded) ? uploaded : [];
-  return Math.max(eduott.length, uploads.length);
+function visibleTeacherVideoCount(eduottPayload: unknown): number {
+  return extractLibraryContentList(eduottPayload).filter(isLibraryVideoRow).length;
 }
 
-function pendingHomeworkCount(payload: unknown): number {
-  const record = payload && typeof payload === 'object' ? (payload as { homeworks?: unknown }) : null;
-  const groups = Array.isArray(record?.homeworks)
-    ? record.homeworks
-    : Array.isArray(payload)
-      ? payload
-      : [];
-  let count = 0;
-  for (const group of groups as Array<{ submissions?: unknown[] }>) {
-    const submissions = Array.isArray(group?.submissions) ? group.submissions : [];
-    for (const sub of submissions as Array<{ grade?: unknown; gradedAt?: unknown }>) {
-      if (sub?.grade == null && !sub?.gradedAt) count += 1;
-    }
-  }
-  return count;
+function mapTeacherIntent(intent: TeacherDashboardTabIntent): TabId {
+  if (intent === 'dashboard') return 'overview';
+  return intent as TabId;
 }
 
 export default function TeacherDashboard() {
   const { signOut } = useAuth();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
-  const [activeTab, setActiveTab] = useState<TabId>('dashboard');
+  const { active: activeTab, visited: visitedTabs, select: selectTab, setActive: setActiveTab } =
+    useVisitedTabs<TabId>('overview', { maxVisited: 5 });
   const [navTarget, setNavTarget] = useState<NavTarget>({});
   const [menuOpen, setMenuOpen] = useState(false);
-  const [overlay, setOverlay] = useState<'content' | 'profile' | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [learningPathsRefreshKey, setLearningPathsRefreshKey] = useState(0);
@@ -157,11 +102,20 @@ export default function TeacherDashboard() {
     pendingGrades: 0,
     totalVideos: 0,
   });
-  const [subjects, setSubjects] = useState<string[]>([]);
-  const [nextClass, setNextClass] = useState<{ label: string; countdown: string } | null>(null);
   const [stale, setStale] = useState(false);
   const { status: backendStatus, refresh: refreshBackendStatus } = useTeacherBackendStatus(false);
-  const scrollRef = useRef<ScrollView>(null);
+
+  const overviewScrollRef = useRef<ScrollView>(null);
+  const classesScrollRef = useRef<ScrollView>(null);
+  const calendarScrollRef = useRef<ScrollView>(null);
+  const settingsScrollRef = useRef<ScrollView>(null);
+
+  const tabScrollRefs: Partial<Record<TabId, React.RefObject<ScrollView | null>>> = {
+    overview: overviewScrollRef,
+    classes: classesScrollRef,
+    calendar: calendarScrollRef,
+    settings: settingsScrollRef,
+  };
 
   useBackNavigation('/teacher/dashboard', true);
 
@@ -169,13 +123,11 @@ export default function TeacherDashboard() {
     loadData();
   }, []);
 
-  // One-shot tab intent (back from tools / deep links). Never persist ?tab= across reload.
   useEffect(() => {
     const intent = consumeTeacherDashboardTabIntent();
     if (intent) {
-      setActiveTab(intent);
+      setActiveTab(mapTeacherIntent(intent));
     }
-    // Clear legacy sticky ?tab= from the URL without reopening that tab on reload.
     const raw = typeof tab === 'string' ? tab : Array.isArray(tab) ? tab[0] : undefined;
     if (raw) {
       router.replace('/teacher/dashboard');
@@ -183,18 +135,6 @@ export default function TeacherDashboard() {
   }, []);
 
   const vidyaChatEnabled = useVidyaChatAccess(user);
-
-  const teacherTabs = useMemo(
-    () =>
-      vidyaChatEnabled
-        ? ALL_TABS
-        : ALL_TABS.map((t) =>
-            t.id === 'vidya-ai'
-              ? { ...t, label: 'AI Tools' }
-              : t
-          ),
-    [vidyaChatEnabled]
-  );
 
   const loadData = async () => {
     try {
@@ -204,17 +144,12 @@ export default function TeacherDashboard() {
         return;
       }
 
-      const [meRes, dashRes, subjectsRes, timetableRes, classesRes, homeworkRes, eduottRes, videosRes] =
-        await Promise.allSettled([
-          teacherService.me(),
-          teacherService.dashboard(),
-          teacherService.subjects(),
-          teacherService.timetable(),
-          teacherService.classes(),
-          teacherService.homeworkSubmissionsGrouped(),
-          teacherService.asliPrepContent({ type: 'Video', surface: 'eduott' }),
-          teacherService.videos(),
-        ]);
+      const [meRes, dashRes, classesRes, eduottRes] = await Promise.allSettled([
+        teacherService.me(),
+        teacherService.dashboard(),
+        teacherService.classes(),
+        teacherService.asliPrepContent({ type: 'Video', surface: 'eduott' }),
+      ]);
 
       if (meRes.status === 'fulfilled') {
         setUser(meRes.value.data?.user ?? meRes.value.data);
@@ -244,39 +179,11 @@ export default function TeacherDashboard() {
         setStale((prev) => prev || classesRes.value.stale);
       }
 
-      if (homeworkRes.status === 'fulfilled') {
+      if (eduottRes.status === 'fulfilled') {
         setStats((prev) => ({
           ...prev,
-          pendingGrades: pendingHomeworkCount(homeworkRes.value.data),
+          totalVideos: visibleTeacherVideoCount(eduottRes.value.data),
         }));
-        setStale((prev) => prev || homeworkRes.value.stale);
-      }
-
-      const eduottList =
-        eduottRes.status === 'fulfilled' ? eduottRes.value.data : [];
-      const uploadedList =
-        videosRes.status === 'fulfilled'
-          ? Array.isArray(videosRes.value.data)
-            ? videosRes.value.data
-            : []
-          : [];
-      if (eduottRes.status === 'fulfilled' || videosRes.status === 'fulfilled') {
-        setStats((prev) => ({
-          ...prev,
-          totalVideos: visibleTeacherVideoCount(eduottList, uploadedList),
-        }));
-      }
-
-      if (subjectsRes.status === 'fulfilled') {
-        const subs = subjectsRes.value.data ?? [];
-        const names = subs
-          .map((s: any) => String(s.name || s.title || '').trim())
-          .filter(Boolean);
-        setSubjects([...new Set(names)]);
-      }
-
-      if (timetableRes.status === 'fulfilled') {
-        computeNextClass(timetableRes.value.data ?? []);
       }
 
       await refreshBackendStatus();
@@ -285,38 +192,6 @@ export default function TeacherDashboard() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const computeNextClass = (entries: any[]) => {
-    const now = new Date();
-    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const today = dayNames[now.getDay()];
-    const todayEntries = entries
-      .filter((e) => (e.dayOfWeek || e.day) === today && e.status !== 'Completed')
-      .sort((a, b) => String(a.startTime).localeCompare(String(b.startTime)));
-    const upcoming = todayEntries.find((e) => {
-      const [h, m] = String(e.startTime || '00:00').split(':').map(Number);
-      const slot = new Date(now);
-      slot.setHours(h, m, 0, 0);
-      return slot >= now;
-    });
-    if (upcoming) {
-      setNextClass({
-        label: `${formatSubjectLabel(upcoming.subject || 'Class')} · Class ${upcoming.classNumber || '—'} · ${upcoming.startTime}`,
-        countdown: formatCountdown(upcoming.startTime),
-      });
-    }
-  };
-
-  const formatCountdown = (startTime: string) => {
-    const now = new Date();
-    const [h, m] = String(startTime).split(':').map(Number);
-    const slot = new Date(now);
-    slot.setHours(h, m, 0, 0);
-    const diff = slot.getTime() - now.getTime();
-    if (diff <= 0) return 'Now';
-    const mins = Math.floor(diff / 60000);
-    return mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h ${mins % 60}m`;
   };
 
   const onRefresh = async () => {
@@ -331,15 +206,8 @@ export default function TeacherDashboard() {
   const resolvedBackendStatus: BackendStatus =
     backendStatus === 'online' && stale ? 'cached' : backendStatus;
 
-  const navigate = (target: NavTarget) => {
-    if (target.tab) setActiveTab(target.tab);
-    setNavTarget(target);
-    setOverlay(null);
-    setMenuOpen(false);
-  };
-
   const handleLogout = () => {
-    Alert.alert('Logout', 'Sign out?', [
+    Alert.alert('Logout', 'Sign out of your account?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Logout',
@@ -352,268 +220,241 @@ export default function TeacherDashboard() {
     ]);
   };
 
-  const renderTab = () => {
-    if (overlay === 'content') {
-      return <ContentView initialSubTab={navTarget.contentSub} />;
-    }
-    if (overlay === 'profile') {
-      return (
-        <ProfileView
-          user={user}
-          stats={stats}
-          onNavigate={(tab, sub) => {
-            if (tab === 'content') {
-              setOverlay('content');
-              setNavTarget({ contentSub: sub as any });
-            } else {
-              navigate({ tab: tab as TabId, dashboardSub: sub as any, studentsSub: sub as any });
-            }
-          }}
-          onLogout={() =>
-            Alert.alert('Logout', 'Sign out?', [
-              { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'Logout',
-                style: 'destructive',
-                onPress: async () => {
-                  await signOut();
-                  router.replace('/auth/login');
-                },
-              },
-            ])
-          }
-        />
-      );
-    }
+  const { width: windowWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const isTablet = windowWidth >= 768;
+  const pad = {
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    paddingBottom: 28 + Math.max(insets.bottom, 8),
+  };
 
-    switch (activeTab) {
-      case 'dashboard':
-        return (
-          <AIClassesView
-            stats={stats}
-            initialSubTab={navTarget.dashboardSub}
-            onOpenProgress={(classNum, studentId) =>
-              navigate({
-                tab: 'students',
-                studentsSub: 'track-progress',
-                progressClassFilter: classNum,
-                progressStudentId: studentId,
-              })
-            }
-          />
-        );
-      case 'students':
-        return (
-          <StudentsView
-            initialSubTab={navTarget.studentsSub}
-            progressClassFilter={navTarget.progressClassFilter}
-            progressStudentId={navTarget.progressStudentId}
-            onCloseStudentAnalysis={() => {
-              setNavTarget({});
-              setActiveTab('dashboard');
-            }}
-          />
-        );
-      case 'eduott':
-        return (
-          <View style={styles.fullTabPane}>
-            <EduOTTFilterProvider>
-              <EduOTTView username={resolveTeacherDisplayName(user)} />
-            </EduOTTFilterProvider>
-          </View>
-        );
-      case 'learning-paths':
-        return (
-          <View style={styles.fullTabPane}>
-            <LearningPathsView refreshKey={learningPathsRefreshKey} />
-          </View>
-        );
-      case 'vidya-ai':
-        return <VidyaAIView chatEnabled={vidyaChatEnabled} />;
-      default:
-        return <AIClassesView stats={stats} />;
+  const goToTab = (next: TabId, target?: NavTarget) => {
+    if (target) setNavTarget(target);
+    else setNavTarget({});
+    startTransition(() => {
+      selectTab(next);
+    });
+  };
+
+  const handleTabChange = (id: TeacherNavId) => {
+    if (id === activeTab) {
+      tabScrollRefs[id]?.current?.scrollTo({ y: 0, animated: true });
+      return;
     }
+    goToTab(id);
   };
 
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <StatusBar barStyle="dark-content" />
-        <TeacherShimmer variant="stats" />
+        <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+        <LoadingState variant="stats" style={{ padding: 16 }} />
         <TeacherShimmer variant="card" count={2} />
       </SafeAreaView>
     );
   }
 
-  const isFullHeight =
-    activeTab === 'vidya-ai' ||
-    activeTab === 'students' ||
-    activeTab === 'eduott' ||
-    activeTab === 'learning-paths' ||
-    !!overlay;
-
-  const showHomeHeader = activeTab === 'dashboard' && !overlay;
-  // Every tab now sits on the shared pastel artwork, so the header and tab bar
-  // always have real colour to blur — glass is no longer Vidya-AI-only.
-  const vidyaGlass = true;
-  const headerTitle =
-    overlay === 'content'
-      ? 'Content Manager'
-      : overlay === 'profile'
-        ? 'Profile'
-        : TAB_PAGE_TITLES[activeTab];
-
-  const homeHeader = (
-    <TeacherHeader
-      variant="home"
-      glass={vidyaGlass}
-      displayName={resolveTeacherDisplayName(user)}
-      user={user}
-      subjects={subjects}
-      nextClassLabel={nextClass?.label}
-      countdown={nextClass?.countdown}
-      onLogout={handleLogout}
-    />
-  );
-
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={isTablet ? [] : ['top']}>
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
-      {/* Compact headers stay fixed; home header scrolls with dashboard content. */}
-      {!showHomeHeader ? (
-        <TeacherHeader
-          variant="compact"
-          title={headerTitle}
-          glass={vidyaGlass}
-          displayName={resolveTeacherDisplayName(user)}
+      <View style={[styles.shell, isTablet && styles.shellTablet]}>
+        {isTablet ? (
+          <View style={styles.sidebar}>
+            <TeacherNavPanel
+              activeId={activeTab}
+              user={user}
+              onSelect={handleTabChange}
+              onLogout={handleLogout}
+            />
+          </View>
+        ) : null}
+
+        <View style={[styles.tabContent, isTablet && { paddingTop: insets.top }]}>
+          {isTablet ? null : (
+            <PortalTopBar
+              user={user}
+              onOpenMenu={() => setMenuOpen(true)}
+              onLogout={handleLogout}
+            />
+          )}
+
+          {resolvedBackendStatus === 'offline' ? (
+            <LinearGradient
+              colors={['#FEE2E2', '#FFFFFF']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.offlineBanner}
+            >
+              <Ionicons name="cloud-offline" size={16} color={TEACHER.danger} />
+              <Text style={styles.offlineBannerText}>Cannot reach server. Pull down to retry.</Text>
+              <Pressable onPress={onRefresh}>
+                <Text style={styles.retryText}>Retry</Text>
+              </Pressable>
+            </LinearGradient>
+          ) : null}
+
+          {visitedTabs.has('overview') ? (
+            <VisitedTabPane visible={activeTab === 'overview'}>
+              <ScrollView
+                ref={overviewScrollRef}
+                style={styles.scroll}
+                contentContainerStyle={pad}
+                refreshControl={
+                  <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={TEACHER.primary} />
+                }
+                showsVerticalScrollIndicator={false}
+              >
+                <OverviewView user={user} stats={stats} onGo={(id) => goToTab(id)} />
+              </ScrollView>
+            </VisitedTabPane>
+          ) : null}
+
+          {visitedTabs.has('classes') ? (
+            <VisitedTabPane visible={activeTab === 'classes'}>
+              <ScrollView
+                ref={classesScrollRef}
+                style={styles.scroll}
+                contentContainerStyle={pad}
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.heroWrap}>
+                  <TeacherPageHero
+                    title="My Classes"
+                    subtitle="Open a class to see students and jump into progress tracking."
+                    icon="school-outline"
+                  />
+                </View>
+                <AIClassesView
+                  stats={stats}
+                  hideSubNav
+                  hideStats
+                  onOpenProgress={(classNum, studentId) =>
+                    goToTab('students', {
+                      studentsSub: 'track-progress',
+                      progressClassFilter: classNum,
+                      progressStudentId: studentId,
+                    })
+                  }
+                />
+              </ScrollView>
+            </VisitedTabPane>
+          ) : null}
+
+          {visitedTabs.has('students') ? (
+            <VisitedTabPane visible={activeTab === 'students'}>
+              <StudentsView
+                initialSubTab={navTarget.studentsSub}
+                progressClassFilter={navTarget.progressClassFilter}
+                progressStudentId={navTarget.progressStudentId}
+                onCloseStudentAnalysis={() => {
+                  setNavTarget({});
+                  goToTab('students');
+                }}
+              />
+            </VisitedTabPane>
+          ) : null}
+
+          {visitedTabs.has('eduott') ? (
+            <VisitedTabPane visible={activeTab === 'eduott'}>
+              <View style={[styles.scroll, styles.fullPane]}>
+                <EduOTTFilterProvider>
+                  <EduOTTView username={resolveTeacherDisplayName(user)} />
+                </EduOTTFilterProvider>
+              </View>
+            </VisitedTabPane>
+          ) : null}
+
+          {visitedTabs.has('learning-paths') ? (
+            <VisitedTabPane visible={activeTab === 'learning-paths'}>
+              <LearningPathsView refreshKey={learningPathsRefreshKey} />
+            </VisitedTabPane>
+          ) : null}
+
+          {visitedTabs.has('vidya-ai') ? (
+            <VisitedTabPane visible={activeTab === 'vidya-ai'}>
+              <VidyaAIView chatEnabled={vidyaChatEnabled} />
+            </VisitedTabPane>
+          ) : null}
+
+          {visitedTabs.has('calendar') ? (
+            <VisitedTabPane visible={activeTab === 'calendar'}>
+              <ScrollView
+                ref={calendarScrollRef}
+                style={styles.scroll}
+                contentContainerStyle={pad}
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.heroWrap}>
+                  <TeacherPageHero
+                    title="Calendar"
+                    subtitle="Your timetable photo and day-by-day schedule."
+                    icon="calendar-outline"
+                  />
+                </View>
+                <CalendarView />
+              </ScrollView>
+            </VisitedTabPane>
+          ) : null}
+
+          {visitedTabs.has('results') ? (
+            <VisitedTabPane visible={activeTab === 'results'}>
+              <OmrResultsView />
+            </VisitedTabPane>
+          ) : null}
+
+          {visitedTabs.has('settings') ? (
+            <VisitedTabPane visible={activeTab === 'settings'}>
+              <ScrollView
+                ref={settingsScrollRef}
+                style={styles.scroll}
+                contentContainerStyle={pad}
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.heroWrap}>
+                  <TeacherPageHero
+                    title="Settings"
+                    subtitle="Update your teacher details and reset your password."
+                    icon="settings-outline"
+                  />
+                </View>
+                <SettingsView />
+              </ScrollView>
+            </VisitedTabPane>
+          ) : null}
+
+          {visitedTabs.has('reports') ? (
+            <VisitedTabPane visible={activeTab === 'reports'}>
+              <StudentsView
+                hideSubNav
+                initialSubTab="track-progress"
+                heroTitle="Reports"
+                heroSubtitle="Student analysis — exam results, usage, homework, and improvement insights."
+                heroIcon="bar-chart-outline"
+                onCloseStudentAnalysis={() => goToTab('reports')}
+              />
+            </VisitedTabPane>
+          ) : null}
+        </View>
+      </View>
+
+      {isTablet ? null : (
+        <TeacherNavDrawer
+          visible={menuOpen}
+          activeId={activeTab}
           user={user}
+          onClose={() => setMenuOpen(false)}
+          onSelect={handleTabChange}
           onLogout={handleLogout}
         />
-      ) : null}
-
-      {refreshing ? (
-        <Animated.Text entering={FadeIn.duration(200)} style={styles.syncingText}>
-          Syncing data…
-        </Animated.Text>
-      ) : null}
-
-      {overlay ? (
-        <Pressable onPress={() => setOverlay(null)}>
-          <GlassPanel style={styles.overlayBar} radius={TEACHER_RADIUS.md} tone="medium">
-            <View style={styles.overlayBarRow}>
-              <Ionicons name="arrow-back" size={18} color={TEACHER.primaryLight} />
-              <Text style={styles.overlayText}>{overlay === 'content' ? 'Content Manager' : 'Profile & More'}</Text>
-            </View>
-          </GlassPanel>
-        </Pressable>
-      ) : null}
-
-      {resolvedBackendStatus === 'offline' ? (
-        <LinearGradient
-          colors={['#FEE2E2', '#FFFFFF']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.offlineBanner}
-        >
-          <Ionicons name="cloud-offline" size={16} color={TEACHER.danger} />
-          <Text style={styles.offlineBannerText}>Cannot reach server. Pull down to retry.</Text>
-          <Pressable onPress={onRefresh}>
-            <Text style={styles.retryText}>Retry</Text>
-          </Pressable>
-        </LinearGradient>
-      ) : null}
-
-      <Animated.View
-        key={activeTab + (overlay ?? '')}
-        entering={FadeIn.duration(250)}
-        exiting={FadeOut.duration(200)}
-        style={[
-          styles.content,
-          isFullHeight &&
-            activeTab !== 'eduott' &&
-            activeTab !== 'learning-paths' &&
-            activeTab !== 'vidya-ai' &&
-            styles.contentFull,
-        ]}
-      >
-        {isFullHeight ? (
-          renderTab()
-        ) : (
-          <ScrollView
-            ref={scrollRef}
-            style={styles.scroll}
-            contentContainerStyle={[
-              styles.scrollContent,
-              showHomeHeader && styles.scrollContentWithHomeHeader,
-            ]}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={TEACHER.primary} />}
-            showsVerticalScrollIndicator={false}
-          >
-            {showHomeHeader ? homeHeader : null}
-            {renderTab()}
-          </ScrollView>
-        )}
-      </Animated.View>
-
-      {!overlay ? (
-        <TeacherTabBar
-          tabs={teacherTabs}
-          activeTab={activeTab}
-          glass={vidyaGlass}
-          onTabChange={(id) => {
-            if (id === activeTab && !['students', 'vidya-ai', 'eduott', 'learning-paths'].includes(id)) {
-              scrollRef.current?.scrollTo({ y: 0, animated: true });
-              return;
-            }
-            setNavTarget({});
-            setActiveTab(id as TabId);
-          }}
-        />
-      ) : null}
-
-      <BottomSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title="Menu">
-        <MenuItem
-          icon="folder-open-outline"
-          label="Content Manager"
-          onPress={() => { setOverlay('content'); setMenuOpen(false); }}
-        />
-        <MenuItem
-          icon="checkmark-done-outline"
-          label="Attendance"
-          onPress={() => { setMenuOpen(false); router.push('/teacher/attendance' as any); }}
-        />
-        <MenuItem
-          icon="calendar-outline"
-          label="Timetable"
-          onPress={() => navigate({ tab: 'dashboard', dashboardSub: 'timetable' })}
-        />
-        <MenuItem
-          icon="journal-outline"
-          label="Work Diary"
-          onPress={() => navigate({ tab: 'students', studentsSub: 'daily' })}
-        />
-        <MenuItem
-          icon="log-out-outline"
-          label="Logout"
-          danger
-          onPress={() => {
-            setMenuOpen(false);
-            Alert.alert('Logout', 'Sign out?', [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Logout', style: 'destructive', onPress: async () => { await signOut(); router.replace('/auth/login'); } },
-            ]);
-          }}
-        />
-      </BottomSheet>
+      )}
 
       {vidyaChatEnabled ? (
         <VidyaAIFloatingAssistant
           role="teacher"
-          hidden={overlay != null || activeTab === 'vidya-ai'}
-          onPress={() => {
-            setNavTarget({});
-            setActiveTab('vidya-ai');
-          }}
+          hidden={activeTab === 'vidya-ai'}
+          bottomOffset={16}
+          onPress={() => goToTab('vidya-ai')}
         />
       ) : null}
     </SafeAreaView>
@@ -621,35 +462,37 @@ export default function TeacherDashboard() {
 }
 
 const styles = StyleSheet.create({
-  // Transparent so AppBackground's artwork shows through.
-  container: { flex: 1, backgroundColor: 'transparent' },
-  content: { flex: 1, minHeight: 0 },
-  contentFull: { paddingBottom: 80 },
-  fullTabPane: { flex: 1, minHeight: 0 },
-  scroll: { flex: 1 },
-  scrollContent: { paddingBottom: 120, paddingTop: TEACHER_SPACING.sm },
-  scrollContentWithHomeHeader: { paddingTop: 0 },
-  syncingText: {
-    fontSize: 11,
-    color: TEACHER.textMuted,
-    textAlign: 'center',
-    paddingVertical: 4,
+  container: {
+    flex: 1,
+    backgroundColor: 'transparent',
   },
-  // Box styles live on the GlassPanel; the row layout moved to overlayBarRow
-  // because GlassPanel wraps its children in an extra view.
-  overlayBar: {
-    marginHorizontal: TEACHER_SPACING.lg,
-    marginVertical: TEACHER_SPACING.sm,
-    paddingHorizontal: TEACHER_SPACING.lg,
-    paddingVertical: TEACHER_SPACING.md,
-    borderRadius: TEACHER_RADIUS.md,
+  shell: {
+    flex: 1,
+    minHeight: 0,
   },
-  overlayBarRow: {
+  shellTablet: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
   },
-  overlayText: { color: TEACHER.text, fontWeight: '800', fontSize: 16 },
+  sidebar: {
+    width: 280,
+    overflow: 'hidden',
+    borderRightWidth: 1,
+    borderRightColor: 'rgba(255,255,255,0.6)',
+  },
+  tabContent: {
+    flex: 1,
+    minHeight: 0,
+  },
+  scroll: {
+    flex: 1,
+  },
+  heroWrap: {
+    marginBottom: TEACHER_SPACING.lg,
+  },
+  fullPane: {
+    flex: 1,
+    minHeight: 0,
+  },
   offlineBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -672,21 +515,4 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 13,
   },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: TEACHER_SPACING.md,
-    paddingVertical: TEACHER_SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: TEACHER.surfaceBorder,
-  },
-  menuIconBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  menuText: { fontSize: 16, fontWeight: '700', color: TEACHER.text, flex: 1 },
-  logoutItem: { borderBottomWidth: 0, borderColor: 'rgba(255,77,106,0.25)' },
 });

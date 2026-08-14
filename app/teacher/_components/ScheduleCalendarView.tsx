@@ -108,7 +108,7 @@ export default function ScheduleCalendarView() {
           endAt: row.endDate || row.startDate,
           startTime: normalizeTime(row.startDate, eventType === 'exam' ? '09:00' : '00:00'),
           endTime: normalizeTime(row.endDate, eventType === 'exam' ? '12:00' : '23:59'),
-          title: row.title || 'Untitled event',
+          title: row.title || 'Untitled Event',
           room: row.room || '',
           eventType,
           subject: row.subject || '',
@@ -187,7 +187,7 @@ export default function ScheduleCalendarView() {
             </View>
             <View>
               <Text style={styles.sectionTitle}>Schedule & Calendar</Text>
-              <Text style={styles.sectionSub}>Pick a date and manage your daily class slots</Text>
+              <Text style={styles.sectionSub}>Pick A Date And Manage Your Daily Class Slots</Text>
             </View>
           </View>
           <TeacherShimmer variant="list" count={4} />
@@ -207,7 +207,7 @@ export default function ScheduleCalendarView() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.sectionTitle}>Schedule & Calendar</Text>
-            <Text style={styles.sectionSub}>Pick a date and manage your daily class slots</Text>
+            <Text style={styles.sectionSub}>Pick A Date And Manage Your Daily Class Slots</Text>
           </View>
         </View>
 
@@ -305,8 +305,8 @@ export default function ScheduleCalendarView() {
               <View style={styles.scheduleEmptyIcon}>
                 <Ionicons name="calendar-outline" size={28} color={TEACHER.textMuted} />
               </View>
-              <Text style={styles.scheduleEmptyTitle}>No schedule for this day</Text>
-              <Text style={styles.scheduleEmptySub}>Select another date to view your schedule</Text>
+              <Text style={styles.scheduleEmptyTitle}>No Schedule For This Day</Text>
+              <Text style={styles.scheduleEmptySub}>Select Another Date To View Your Schedule</Text>
             </View>
           ) : (
             <ScrollView style={styles.entriesList} nestedScrollEnabled>
@@ -360,9 +360,9 @@ export default function ScheduleCalendarView() {
         <Pressable style={styles.detailOverlay} onPress={() => setDetailEntry(null)}>
           <Pressable onPress={(e) => e.stopPropagation()}>
             <GlassPanel style={styles.detailCard} radius={TEACHER_RADIUS.lg} tone="strong">
-            <Text style={styles.detailTitle}>{detailEntry?.title || 'Event details'}</Text>
+            <Text style={styles.detailTitle}>{detailEntry?.title || 'Event Details'}</Text>
             <Text style={styles.detailType}>
-              {detailEntry ? getEventLabel(detailEntry.eventType) : ''} details
+              {detailEntry ? getEventLabel(detailEntry.eventType) : ''} Details
             </Text>
             {detailEntry ? (
               (() => {

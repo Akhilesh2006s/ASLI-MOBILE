@@ -10,13 +10,20 @@ type Props = {
   role: VidyaAssistantRole;
   onPress: () => void;
   hidden?: boolean;
+  /** Extra space above the home indicator / tab bar. Defaults to 88. */
+  bottomOffset?: number;
 };
 
 /**
  * Floating Vidya orb. Admin uses a solid disc (no BlurView) so scroll under
  * the dashboard stays smooth; other roles keep the frosted look.
  */
-export default function VidyaAIFloatingAssistant({ role, onPress, hidden = false }: Props) {
+export default function VidyaAIFloatingAssistant({
+  role,
+  onPress,
+  hidden = false,
+  bottomOffset = 88,
+}: Props) {
   const insets = useSafeAreaInsets();
   const handlePress = useCallback(() => {
     onPress();
@@ -28,7 +35,7 @@ export default function VidyaAIFloatingAssistant({ role, onPress, hidden = false
 
   return (
     <View
-      style={[styles.container, { bottom: 88 + Math.max(insets.bottom, 8) }]}
+      style={[styles.container, { bottom: bottomOffset + Math.max(insets.bottom, 8) }]}
       pointerEvents="box-none"
     >
       <TouchableOpacity

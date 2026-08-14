@@ -120,7 +120,7 @@ export default function AssignmentsScreen() {
 
 const styles = StyleSheet.create({
   // transparent so the app-wide pastel artwork shows through the glass surfaces
-  container: { flex: 1, backgroundColor: 'transparent' },
+  container: { flex: 1, backgroundColor: '#F4F7FB' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: 10, color: '#6b7280' },
   header: {

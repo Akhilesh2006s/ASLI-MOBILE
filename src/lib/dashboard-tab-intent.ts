@@ -9,15 +9,22 @@ export type StudentDashboardTabIntent =
   | 'learning'
   | 'eduott'
   | 'exams'
-  | 'vidya'
-  | 'settings';
+  | 'results'
+  | 'timetable'
+  | 'vidya';
 
 export type TeacherDashboardTabIntent =
   | 'dashboard'
+  | 'overview'
+  | 'classes'
   | 'students'
   | 'eduott'
   | 'learning-paths'
-  | 'vidya-ai';
+  | 'vidya-ai'
+  | 'calendar'
+  | 'results'
+  | 'settings'
+  | 'reports';
 
 export type AdminDashboardTabIntent =
   | 'overview'

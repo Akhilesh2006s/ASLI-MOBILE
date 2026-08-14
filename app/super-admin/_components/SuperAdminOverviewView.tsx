@@ -160,7 +160,7 @@ export default function SuperAdminOverviewView({
             <GlassPanel style={styles.statsWidget} radius={10} tone="medium">
               <View style={styles.statsWidgetInner}>
                 <Text style={styles.statsWidgetValue}>{`${(stats.passRate || 0).toFixed(0)}%`}</Text>
-                <Text style={styles.statsWidgetLabel}>Pass rate data</Text>
+                <Text style={styles.statsWidgetLabel}>Pass Rate Data</Text>
               </View>
             </GlassPanel>
           </View>
@@ -177,7 +177,7 @@ export default function SuperAdminOverviewView({
               <View style={styles.vidyaCardText}>
                 <Text style={styles.vidyaCardTitle}>Vidya AI</Text>
                 <Text style={styles.vidyaCardSubtitle}>24/7 AI Tutor Support</Text>
-                <Text style={styles.vidyaCardClick}>Click to access Vidya AI →</Text>
+                <Text style={styles.vidyaCardClick}>Click To Access Vidya AI →</Text>
               </View>
               <View style={styles.vidyaCardImage}>
                 <VidyaAvatar size={72} borderColor="#fff" />
@@ -209,18 +209,18 @@ export default function SuperAdminOverviewView({
               </Text>
             </View>
             <View style={styles.studentAnalyticsRow}>
-              <Text style={styles.studentAnalyticsLabel}>Avg Exams per Student</Text>
+              <Text style={styles.studentAnalyticsLabel}>Avg Exams Per Student</Text>
               <Text style={[styles.studentAnalyticsValue, { color: '#14B8A6' }]}>
                 {(Number(stats.avgExamsPerStudent) || 0).toFixed(1)}
               </Text>
             </View>
             <View style={styles.engagementBlock}>
               <View style={styles.studentAnalyticsRow}>
-                <Text style={styles.studentAnalyticsLabel}>Content items</Text>
+                <Text style={styles.studentAnalyticsLabel}>Content Items</Text>
                 <Text style={styles.studentAnalyticsValue}>{contentVolume.toLocaleString()}</Text>
               </View>
               <View style={[styles.studentAnalyticsRow, { marginTop: 8 }]}>
-                <Text style={styles.studentAnalyticsLabel}>Active student rate</Text>
+                <Text style={styles.studentAnalyticsLabel}>Active Student Rate</Text>
                 <Text style={styles.studentAnalyticsValue}>{activeRate.toFixed(0)}%</Text>
               </View>
               <View style={styles.engagementBar}>
@@ -257,7 +257,7 @@ export default function SuperAdminOverviewView({
             <View style={styles.realtimeHeader}>
               <View style={styles.realtimeTitleRow}>
                 <Ionicons name="stats-chart" size={22} color="#14B8A6" />
-                <Text style={styles.realtimeTitle}>Real-time Analytics</Text>
+                <Text style={styles.realtimeTitle}>Real-Time Analytics</Text>
               </View>
               <TouchableOpacity
                 style={styles.realtimeRefresh}
@@ -273,7 +273,7 @@ export default function SuperAdminOverviewView({
               <GlassPanel style={styles.realtimeLoading} radius={10} tone="medium">
                 <View style={styles.realtimeLoadingInner}>
                   <ActivityIndicator size="small" color="#14B8A6" />
-                  <Text style={styles.realtimeLoadingText}>Loading real-time analytics...</Text>
+                  <Text style={styles.realtimeLoadingText}>Loading Real-Time Analytics...</Text>
                 </View>
               </GlassPanel>
             ) : realtimeAnalytics ? (
@@ -327,7 +327,7 @@ export default function SuperAdminOverviewView({
                             </Text>
                             {scorer.marks != null && scorer.totalMarks != null ? (
                               <Text style={styles.scorerMarks}>
-                                {scorer.marks}/{scorer.totalMarks} marks
+                                {scorer.marks}/{scorer.totalMarks} Marks
                               </Text>
                             ) : null}
                           </View>
@@ -342,7 +342,7 @@ export default function SuperAdminOverviewView({
                     <View style={styles.lowPerformingHeader}>
                       <Ionicons name="warning" size={18} color="#B91C1C" />
                       <Text style={styles.lowPerformingTitle}>
-                        Low-performing Admins (Needs Attention)
+                        Low-Performing Admins (Needs Attention)
                       </Text>
                     </View>
                     {(realtimeAnalytics.lowPerformingAdmins || []).map((admin, idx) => (
@@ -350,7 +350,7 @@ export default function SuperAdminOverviewView({
                         <View>
                           <Text style={styles.adminName}>{admin.adminName || 'Admin'}</Text>
                           <Text style={styles.adminMeta}>
-                            {admin.totalStudents ?? 0} students
+                            {admin.totalStudents ?? 0} Students
                           </Text>
                         </View>
                         <Text style={styles.adminScore}>{admin.averageScore ?? 0}%</Text>
@@ -375,7 +375,7 @@ export default function SuperAdminOverviewView({
                         <View>
                           <Text style={styles.adminPerfName}>{admin.adminName || 'Admin'}</Text>
                           <Text style={styles.adminPerfSub}>
-                            {admin.totalStudents ?? 0} students
+                            {admin.totalStudents ?? 0} Students
                           </Text>
                         </View>
                         <Text style={styles.adminPerfScore}>{admin.averageScore ?? 0}%</Text>
@@ -388,7 +388,7 @@ export default function SuperAdminOverviewView({
               <GlassPanel style={styles.placeholderCard} radius={10} tone="medium">
                 <View style={styles.placeholderCardInner}>
                   <Ionicons name="stats-chart" size={40} color="#5B6779" />
-                  <Text style={styles.placeholderSub}>No analytics data available</Text>
+                  <Text style={styles.placeholderSub}>No Analytics Data Available</Text>
                 </View>
               </GlassPanel>
             )}
@@ -410,7 +410,7 @@ export default function SuperAdminOverviewView({
                       <Text style={styles.insightTitle}>
                         {insight.title || insight.description || 'Insight'}
                       </Text>
-                      <Text style={styles.insightSub}>Recently generated</Text>
+                      <Text style={styles.insightSub}>Recently Generated</Text>
                     </View>
                   </View>
                 ))}

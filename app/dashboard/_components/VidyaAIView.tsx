@@ -27,7 +27,7 @@ function chunkItems<T>(items: T[], size: number): T[][] {
 }
 
 const HERO_STAT_CHIPS: { icon: keyof typeof Ionicons.glyphMap; title: string; copy: string }[] = [
-  { icon: 'book-outline', title: 'Learn', copy: 'Understand concepts clearly' },
+  { icon: 'book-outline', title: 'Learn', copy: 'Understand Concepts Clearly' },
   { icon: 'create-outline', title: 'Practise', copy: 'Questions, flashcards & tests' },
   { icon: 'compass-outline', title: 'Prepare', copy: 'Study guides, projects & plans' },
 ];
@@ -143,7 +143,7 @@ export default function VidyaAIView() {
         <View style={styles.heroBadge}>
           <Text style={styles.heroBadgeText}>VIDYA AI STUDIO</Text>
         </View>
-        <Text style={styles.sectionTitle}>What are you working on today?</Text>
+        <Text style={styles.sectionTitle}>What Are You Working On Today?</Text>
         <Text style={styles.sectionSubtitle}>{STUDENT_TOOLS_SUBTITLE}</Text>
         <View style={styles.heroStatsRow}>
           {HERO_STAT_CHIPS.map((stat) => (

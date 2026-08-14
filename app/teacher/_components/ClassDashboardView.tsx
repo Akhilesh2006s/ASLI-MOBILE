@@ -79,7 +79,7 @@ export default function ClassDashboardView() {
       });
       Alert.alert('Saved', 'Attendance marked successfully.');
     } catch {
-      Alert.alert('Synced locally', 'Attendance saved locally; will sync when online.');
+      Alert.alert('Synced Locally', 'Attendance saved locally; will sync when online.');
     } finally {
       setSyncing(false);
     }

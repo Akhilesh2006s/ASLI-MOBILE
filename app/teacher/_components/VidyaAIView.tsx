@@ -26,14 +26,14 @@ import {
 import VidyaAvatar from '../../../src/components/vidya/VidyaAvatar';
 import AiToolCard from '../../../src/components/ai-tools/AiToolCard';
 import { GlassPanel } from '../../../src/components/ui';
+import { TeacherPageHero } from '../../../src/components/teacher';
 import { TEACHER_SPACING } from '../../../src/theme/teacher';
 import { AI, AI_RADIUS, AI_SPACING, AI_TYPE } from '../../../src/theme/ai';
 
 const CONTENT_MAX = 1080;
 const BOARD_MIN_WIDTH = 1024;
 const GRID_GAP = TEACHER_SPACING.lg;
-/** Icon + label + bar padding for the floating teacher tab bar (excludes safe-area inset). */
-const TAB_BAR_CLEARANCE = 88;
+const TAB_BAR_CLEARANCE = 16;
 
 function chunkItems<T>(items: T[], size: number): T[][] {
   if (size <= 1) return items.map((item) => [item]);
@@ -116,6 +116,17 @@ export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: bool
       keyboardShouldPersistTaps="handled"
     >
       <View style={[styles.innerShell, { width: shellWidth }]}>
+        <View style={styles.heroWrap}>
+          <TeacherPageHero
+            badge="Vidya AI"
+            title="Vidya"
+            accent="AI"
+            accentColor="#DDD6FE"
+            subtitle="Generate lesson materials, worksheets, and teaching aids — curriculum-ready classroom support in one place."
+            icon="sparkles-outline"
+          />
+        </View>
+
         {chatEnabled ? (
         <Pressable
           onPress={() => router.push('/teacher/vidya-chat' as any)}
@@ -143,10 +154,7 @@ export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: bool
         ) : null}
 
         <View style={styles.section}>
-          <View style={styles.heroBadge}>
-            <Text style={styles.heroBadgeText}>TEACHER AI STUDIO</Text>
-          </View>
-          <Text style={styles.sectionTitle}>Create your next classroom resource</Text>
+          <Text style={styles.sectionTitle}>Create Your Next Classroom Resource</Text>
           <Text style={styles.sectionSubtitle}>{TEACHER_AI_TOOLS_SUBTITLE}</Text>
 
           <View style={styles.toolsGrid}>
@@ -204,6 +212,11 @@ const styles = StyleSheet.create({
   },
   innerShell: {
     alignSelf: 'center',
+  },
+  heroWrap: {
+    paddingHorizontal: TEACHER_SPACING.lg,
+    marginTop: TEACHER_SPACING.lg,
+    marginBottom: TEACHER_SPACING.sm,
   },
   chatCard: {
     marginHorizontal: TEACHER_SPACING.lg,

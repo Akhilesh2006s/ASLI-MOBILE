@@ -75,7 +75,7 @@ function ResultCard({ r, index }: { r: ResultItem; index: number }) {
           <Text style={styles.cardTitle}>{r.examName || r.title || 'Exam'}</Text>
           <Text style={styles.cardSub}>{r.subject || 'Subject'}</Text>
           <Text style={styles.cardMarks}>
-            {r.score ?? '—'}/{r.totalMarks ?? '—'} marks
+            {r.score ?? '—'}/{r.totalMarks ?? '—'} Marks
           </Text>
           <Badge label={passed ? 'Pass' : 'Fail'} color={passed ? STUDENT.success : STUDENT.danger} size="sm" />
         </View>
@@ -102,7 +102,7 @@ export default function StudentResults() {
         fetch(`${API_BASE_URL}/api/student/exam-results`, { headers }),
         fetch(`${API_BASE_URL}/api/student/omr-results`, { headers }),
       ]);
-      if (!examRes.ok && !omrRes.ok) throw new Error('Failed to load results');
+      if (!examRes.ok && !omrRes.ok) throw new Error('Failed To Load Results');
 
       const examData = examRes.ok ? await examRes.json() : null;
       const omrData = omrRes.ok ? await omrRes.json() : null;
@@ -144,7 +144,7 @@ export default function StudentResults() {
 
       setItems([...omrItems, ...examItems]);
     } catch (e: any) {
-      setError(e?.message || 'Could not load results');
+      setError(e?.message || 'Could Not Load Results');
     } finally {
       setLoading(false);
     }
@@ -171,7 +171,7 @@ export default function StudentResults() {
       <StudentScreenHeader title="Offline Results" onBack={() => router.back()} />
 
       <View style={styles.filters}>
-        <SearchBar value={query} onChangeText={setQuery} placeholder="Filter by subject..." />
+        <SearchBar value={query} onChangeText={setQuery} placeholder="Filter By Subject..." />
         <ChipNav chips={SORT_CHIPS} active={sort} onChange={(id) => setSort(id as typeof sort)} />
       </View>
 

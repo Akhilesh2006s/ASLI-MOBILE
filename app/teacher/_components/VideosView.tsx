@@ -73,7 +73,7 @@ export default function TeacherVideosView() {
 
   const handleCreateVideo = async () => {
     if (!newVideo.title || !newVideo.subject) {
-      Alert.alert('Validation Error', 'Please fill in all required fields');
+      Alert.alert('Validation Error', 'Please Fill In All Required Fields');
       return;
     }
 
@@ -82,7 +82,7 @@ export default function TeacherVideosView() {
         ...newVideo,
         subjectId: newVideo.subject,
       });
-      Alert.alert('Success', 'Video created successfully');
+      Alert.alert('Success', 'Video Created Successfully');
       setIsCreateModalOpen(false);
       setNewVideo({
         title: '',
@@ -99,7 +99,7 @@ export default function TeacherVideosView() {
       await teacherService.invalidateCache('videos');
       fetchVideos();
     } catch {
-      Alert.alert('Error', 'Failed to create video');
+      Alert.alert('Error', 'Failed To Create Video');
     }
   };
 
@@ -114,7 +114,7 @@ export default function TeacherVideosView() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={TEACHER.primary} />
-        <Text style={styles.loadingText}>Loading videos...</Text>
+        <Text style={styles.loadingText}>Loading Videos...</Text>
       </View>
     );
   }
@@ -127,7 +127,7 @@ export default function TeacherVideosView() {
           <Ionicons name="search" size={20} color="#6b7280" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search videos..."
+            placeholder="Search Videos..."
             placeholderTextColor="#5B6779"
             value={searchTerm}
             onChangeText={setSearchTerm}
@@ -169,8 +169,8 @@ export default function TeacherVideosView() {
         {filteredVideos.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="videocam-outline" size={64} color="#5B6779" />
-            <Text style={styles.emptyText}>No videos found</Text>
-            <Text style={styles.emptySubtext}>Create your first video to get started</Text>
+            <Text style={styles.emptyText}>No Videos Found</Text>
+            <Text style={styles.emptySubtext}>Create Your First Video To Get Started</Text>
           </View>
         ) : (
           filteredVideos.map((video, index) => {
@@ -200,12 +200,12 @@ export default function TeacherVideosView() {
                   <View style={styles.videoMeta}>
                     <View style={styles.metaItem}>
                       <Ionicons name="time" size={16} color={TEACHER.primaryLight} />
-                      <Text style={styles.metaText}>{video.duration} min</Text>
+                      <Text style={styles.metaText}>{video.duration} Min</Text>
                     </View>
                     {video.views !== undefined && (
                       <View style={styles.metaItem}>
                         <Ionicons name="eye" size={16} color={TEACHER.textMuted} />
-                        <Text style={styles.metaText}>{video.views} views</Text>
+                        <Text style={styles.metaText}>{video.views} Views</Text>
                       </View>
                     )}
                     {video.isYouTubeVideo && (
@@ -253,7 +253,7 @@ export default function TeacherVideosView() {
               <Text style={styles.inputLabel}>Title *</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Video title"
+                placeholder="Video Title"
                 value={newVideo.title}
                 onChangeText={(text) => setNewVideo({ ...newVideo, title: text })}
               />
@@ -263,7 +263,7 @@ export default function TeacherVideosView() {
               <Text style={styles.inputLabel}>Description</Text>
               <TextInput
                 style={[styles.input, styles.textArea]}
-                placeholder="Video description"
+                placeholder="Video Description"
                 value={newVideo.description}
                 onChangeText={(text) => setNewVideo({ ...newVideo, description: text })}
                 multiline
@@ -344,7 +344,7 @@ export default function TeacherVideosView() {
 
             <View style={styles.inputRow}>
               <View style={[styles.inputContainer, { flex: 1, marginRight: 8 }]}>
-                <Text style={styles.inputLabel}>Duration (min)</Text>
+                <Text style={styles.inputLabel}>Duration (Min)</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="30"

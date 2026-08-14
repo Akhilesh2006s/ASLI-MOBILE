@@ -10,7 +10,7 @@ interface SearchBarProps {
   placeholder?: string;
 }
 
-function SearchBarComponent({ value, onChangeText, placeholder = 'Search videos...' }: SearchBarProps) {
+function SearchBarComponent({ value, onChangeText, placeholder = 'Search Videos...' }: SearchBarProps) {
   return (
     <GlassPanel style={styles.container} radius={STUDENT_RADIUS.inner}>
       {/* Row layout lives on this inner view — GlassPanel wraps children itself. */}

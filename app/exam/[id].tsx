@@ -25,6 +25,7 @@ import * as SecureStore from 'expo-secure-store';
 import api, { AUTH_TOKEN_KEY } from '../../src/services/api/api';
 import { getDashboardPath } from '../../src/hooks/useBackNavigation';
 import ExamResultsView from '../../src/components/student/ExamResultsView';
+import ExamInstructionsScreen from '../../src/components/exam/ExamInstructionsScreen';
 import { GlassPanel } from '../../src/components/ui';
 import { ExamAnalysisResult, normalizeMongoId } from '../../src/lib/exam-analysis-helpers';
 import { normalizeAndFormatExamDisplayText, resolveAssertionReasonDisplay } from '../../src/lib/exam-text-normalize';
@@ -121,6 +122,13 @@ type Exam = {
   startDate?: string;
   endDate?: string;
   questions: Question[];
+  description?: string;
+  examType?: string;
+  totalMarks?: number;
+  totalQuestions?: number;
+  instructions?: string;
+  classNumber?: string | number;
+  negativeMarking?: boolean;
 };
 
 function normalizeQuestion(raw: any, index: number): Question {
@@ -353,7 +361,9 @@ export default function ExamPage() {
   const [questionTimings, setQuestionTimings] = useState<Record<string, number>>({});
   const [resumeNotice, setResumeNotice] = useState<string | null>(null);
   const [pendingForceSubmit, setPendingForceSubmit] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false);
   const submittedRef = useRef(false);
+  const hasStartedRef = useRef(false);
   const autoSubmitTriggeredRef = useRef(false);
   const submitInFlightRef = useRef(false);
   const submitExamRef = useRef<() => Promise<void>>(async () => {});
@@ -391,8 +401,9 @@ export default function ExamPage() {
   questionTimingsRef.current = questionTimings;
   currentIndexRef.current = currentIndex;
   examRef.current = exam;
+  hasStartedRef.current = hasStarted;
 
-  const examInProgress = !!exam && !submittedRef.current && !isLoading && !examResult;
+  const examInProgress = !!exam && hasStarted && !submittedRef.current && !isLoading && !examResult;
 
   const persistDraftNow = useCallback(async (opts?: {
     remainingSeconds?: number;
@@ -402,7 +413,7 @@ export default function ExamPage() {
     currentQuestionIndex?: number;
   }) => {
     const liveExam = examRef.current;
-    if (!liveExam || !id || submittedRef.current || submitInFlightRef.current) return;
+    if (!liveExam || !id || submittedRef.current || submitInFlightRef.current || !hasStartedRef.current) return;
     const durationSeconds = Math.max(60, Math.round((Number(liveExam.duration) || 60) * 60));
     const remainingSeconds = Math.max(
       0,
@@ -566,7 +577,7 @@ export default function ExamPage() {
   );
 
   useEffect(() => {
-    if (!exam?.questions?.length || examResult) return;
+    if (!exam?.questions?.length || examResult || !hasStarted) return;
     const current = exam.questions[currentIndex];
     const currentId = answerKey(current);
     if (!currentId) return;
@@ -576,7 +587,7 @@ export default function ExamPage() {
       return;
     }
     recordCurrentQuestionDuration();
-  }, [exam, currentIndex, examResult, recordCurrentQuestionDuration]);
+  }, [exam, currentIndex, examResult, hasStarted, recordCurrentQuestionDuration]);
 
   const submitExam = useCallback(async () => {
     if (!exam || submittedRef.current || submitInFlightRef.current) return;
@@ -754,7 +765,7 @@ export default function ExamPage() {
   }, [exitAttempts, examInProgress]);
 
   useEffect(() => {
-    if (!exam || timeLeft <= 0 || submittedRef.current) return;
+    if (!exam || !hasStarted || timeLeft <= 0 || submittedRef.current) return;
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -766,7 +777,13 @@ export default function ExamPage() {
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [exam, timeLeft]);
+  }, [exam, hasStarted, timeLeft]);
+
+  useEffect(() => {
+    if (!resumeNotice || pendingForceSubmit) return;
+    const t = setTimeout(() => setResumeNotice(null), 4500);
+    return () => clearTimeout(t);
+  }, [resumeNotice, pendingForceSubmit]);
 
   useEffect(() => {
     questionScrollRef.current?.scrollTo({ y: 0, animated: false });
@@ -878,18 +895,29 @@ export default function ExamPage() {
       const hydratedExam = { ...examData, _id: examId, questions };
       examRef.current = hydratedExam;
       setExam(hydratedExam);
-      if (draft) {
-        const restoredAnswers = normalizeMobileDraftAnswers(
-          draft.answers as Record<string, unknown>,
-        );
-        const restoredFlags = Array.isArray(draft.flaggedQuestions) ? draft.flaggedQuestions : [];
+
+      const restoredAnswers = draft
+        ? normalizeMobileDraftAnswers(draft.answers as Record<string, unknown>)
+        : {};
+      const restoredFlags = Array.isArray(draft?.flaggedQuestions) ? draft.flaggedQuestions : [];
+      const restoredIndex = Math.min(
+        Math.max(0, questions.length - 1),
+        Math.max(0, Number(draft?.currentQuestionIndex) || 0),
+      );
+      const resumeSeconds = Math.min(fullSeconds, Math.max(0, Number(draft?.remainingSeconds) || 0));
+      const draftLooksStarted =
+        Boolean(draft) &&
+        (Object.keys(restoredAnswers).length > 0 ||
+          restoredFlags.length > 0 ||
+          restoredIndex > 0 ||
+          (resumeSeconds > 0 && resumeSeconds < fullSeconds - 5));
+      const skipInstructions = Boolean(mustForceSubmit || examData?.forceSubmitExam || draftLooksStarted);
+
+      if (draft && skipInstructions) {
         const restoredTimings =
           draft.questionTimings && typeof draft.questionTimings === 'object'
             ? draft.questionTimings
             : {};
-        const maxIdx = Math.max(0, questions.length - 1);
-        const restoredIndex = Math.min(maxIdx, Math.max(0, draft.currentQuestionIndex || 0));
-        const resumeSeconds = Math.min(fullSeconds, Math.max(0, Number(draft.remainingSeconds) || 0));
 
         answersRef.current = restoredAnswers;
         flaggedRef.current = new Set(restoredFlags);
@@ -902,6 +930,8 @@ export default function ExamPage() {
         setQuestionTimings(restoredTimings);
         setCurrentIndex(restoredIndex);
         setTimeLeft(resumeSeconds);
+        setHasStarted(true);
+        hasStartedRef.current = true;
 
         const answered = Object.keys(restoredAnswers).length;
         const mm = Math.floor(resumeSeconds / 60);
@@ -919,9 +949,7 @@ export default function ExamPage() {
           setPendingForceSubmit(true);
         } else {
           setResumeNotice(
-            answered > 0 || resumeSeconds < fullSeconds - 5
-              ? `Resumed (${resumeUsed}/${resumeMax}) — ${answered} answer(s) · ${mm}:${String(ss).padStart(2, '0')} left`
-              : `Resuming (${resumeUsed}/${resumeMax}) — ${mm}:${String(ss).padStart(2, '0')} left`,
+            `Resumed (${resumeUsed}/${resumeMax}) — ${answered} answer(s) · ${mm}:${String(ss).padStart(2, '0')} left`,
           );
           void persistDraftNow({
             remainingSeconds: resumeSeconds,
@@ -932,19 +960,16 @@ export default function ExamPage() {
           });
         }
       } else if (examData?.forceSubmitExam) {
+        setHasStarted(true);
+        hasStartedRef.current = true;
         setResumeNotice(examData?.examWindowMessage || 'Exam window has ended.');
         timeLeftRef.current = 0;
         setTimeLeft(0);
       } else {
+        setHasStarted(false);
+        hasStartedRef.current = false;
         timeLeftRef.current = fullSeconds;
         setTimeLeft(fullSeconds);
-        void persistDraftNow({
-          remainingSeconds: fullSeconds,
-          answers: {},
-          flaggedQuestions: [],
-          questionTimings: {},
-          currentQuestionIndex: 0,
-        });
       }
 
     } catch {
@@ -1022,6 +1047,29 @@ export default function ExamPage() {
     ]);
   };
 
+  const handleBeginExam = useCallback(() => {
+    const liveExam = examRef.current;
+    const fullSeconds = Math.max(
+      timeLeftRef.current || 0,
+      Math.round((Number(liveExam?.duration) || 60) * 60),
+    );
+    if (timeLeftRef.current <= 0) {
+      timeLeftRef.current = fullSeconds;
+      setTimeLeft(fullSeconds);
+    }
+    lastTrackedQuestionIdRef.current = null;
+    questionEnterTimestampRef.current = Date.now();
+    hasStartedRef.current = true;
+    setHasStarted(true);
+    void persistDraftNow({
+      remainingSeconds: timeLeftRef.current || fullSeconds,
+      answers: answersRef.current || {},
+      flaggedQuestions: Array.from(flaggedRef.current || []),
+      questionTimings: questionTimingsRef.current || {},
+      currentQuestionIndex: currentIndexRef.current || 0,
+    });
+  }, [persistDraftNow]);
+
   const handleBackToDashboard = () => {
     router.replace(dashboardPath);
   };
@@ -1043,6 +1091,8 @@ export default function ExamPage() {
     submitInFlightRef.current = false;
     setExamResult(null);
     setIsGrading(false);
+    setHasStarted(false);
+    hasStartedRef.current = false;
     setAnswers({});
     setCurrentIndex(0);
     setTimeLeft((Number(exam.duration) || 60) * 60);
@@ -1052,8 +1102,10 @@ export default function ExamPage() {
     setShowQuestionDropdown(false);
     setFlaggedQuestions(new Set());
     setQuestionTimings({});
+    setResumeNotice(null);
     lastTrackedQuestionIdRef.current = null;
     questionEnterTimestampRef.current = Date.now();
+    void clearMobileExamDraft(String(id), draftUserIdRef.current);
   };
 
   const attemptsRemaining = exam
@@ -1099,7 +1151,31 @@ export default function ExamPage() {
     );
   }
 
-  if (!exam || !currentQuestion) {
+  if (!exam) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.centered}>
+          <Text style={styles.loadingText}>No exam data</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!hasStarted) {
+    return (
+      <>
+        <Stack.Screen options={{ gestureEnabled: true, headerShown: false }} />
+        <ExamInstructionsScreen
+          exam={exam}
+          questionCount={exam.questions.length || exam.totalQuestions || 0}
+          onStart={handleBeginExam}
+          onBack={() => router.replace(dashboardPath)}
+        />
+      </>
+    );
+  }
+
+  if (!currentQuestion) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centered}>
@@ -1194,7 +1270,7 @@ export default function ExamPage() {
         </Text>
         {flagged ? (
           <View style={styles.paletteFlagDot}>
-            <Ionicons name="flag" size={8} color="#92400e" />
+            <Ionicons name="bookmark" size={8} color="#92400e" />
           </View>
         ) : null}
       </TouchableOpacity>
@@ -1208,9 +1284,16 @@ export default function ExamPage() {
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <View style={styles.header}>
           <View style={styles.headerRow}>
-            <Text style={styles.examTitle} numberOfLines={2}>
-              {exam.title}
-            </Text>
+            <View style={styles.headerTitleWrap}>
+              <Text style={styles.examTitle} numberOfLines={1}>
+                {exam.title}
+              </Text>
+              <Text style={styles.headerSub}>
+                Q {currentIndex + 1}/{exam.questions.length}
+                {'  ·  '}
+                {answeredCount} answered
+              </Text>
+            </View>
             <View style={styles.headerActions}>
               <View
                 style={[
@@ -1242,29 +1325,17 @@ export default function ExamPage() {
             </View>
           </View>
           {resumeNotice ? (
-            <View style={styles.resumeNotice}>
-              <Text style={styles.resumeNoticeText}>{resumeNotice}</Text>
-              <TouchableOpacity onPress={() => setResumeNotice(null)} hitSlop={8}>
-                <Text style={styles.resumeDismiss}>Dismiss</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={styles.resumeNotice}
+              onPress={() => setResumeNotice(null)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.resumeNoticeText} numberOfLines={2}>
+                {resumeNotice}
+              </Text>
+              <Text style={styles.resumeDismiss}>OK</Text>
+            </TouchableOpacity>
           ) : null}
-          <View style={styles.progressMetaRow}>
-            <Text style={styles.progressMetaText}>
-              Question {currentIndex + 1} of {exam.questions.length}
-            </Text>
-            <Text style={styles.progressMetaText}>
-              {Math.round(((currentIndex + 1) / exam.questions.length) * 100)}%
-            </Text>
-          </View>
-          <View style={styles.progressTrack}>
-            <View
-              style={[
-                styles.progressFill,
-                { width: `${((currentIndex + 1) / exam.questions.length) * 100}%` },
-              ]}
-            />
-          </View>
           {exitAttempts > 0 ? (
             <Text
               style={[
@@ -1272,43 +1343,32 @@ export default function ExamPage() {
                 maxExitReached ? styles.exitAttemptsDanger : null,
               ]}
             >
-              Exit Attempts: {exitAttempts}/{MAX_EXIT_ATTEMPTS}
+              Exit attempts {exitAttempts}/{MAX_EXIT_ATTEMPTS}
             </Text>
           ) : null}
-        </View>
-
-        <GlassPanel style={styles.navPanel} radius={0} bordered={false}>
-          <View style={styles.navPanelTop}>
-            <Text style={styles.navPanelTitle}>Questions</Text>
-            <Text style={styles.navPanelMeta}>
-              {answeredCount} of {exam.questions.length} answered
-            </Text>
-          </View>
-
           <TouchableOpacity
-            style={styles.questionDropdown}
+            style={styles.allQuestionsBtn}
             onPress={() => setShowQuestionDropdown(true)}
             activeOpacity={0.85}
           >
-            <View style={styles.questionDropdownLeft}>
-              <Text style={styles.questionDropdownLabel}>Jump to question</Text>
-              <Text style={styles.questionDropdownValue}>
-                Question {currentIndex + 1} of {exam.questions.length}
-              </Text>
-            </View>
-            <View style={styles.questionDropdownRight}>
-              {hasCurrentAnswer ? (
-                <View style={[styles.statusPill, styles.statusPillAnswered]}>
-                  <Text style={styles.statusPillTextAnswered}>Answered</Text>
-                </View>
-              ) : null}
-              {flaggedQuestions.has(currentIndex) ? (
-                <Ionicons name="flag" size={16} color="#ca8a04" />
-              ) : null}
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </View>
+            <Ionicons name="grid-outline" size={16} color="#4f46e5" />
+            <Text style={styles.allQuestionsLabel}>All questions</Text>
+            <Text style={styles.allQuestionsMeta}>
+              {answeredCount}/{exam.questions.length}
+            </Text>
+            {hasCurrentAnswer ? (
+              <View style={[styles.statusPill, styles.statusPillAnswered]}>
+                <Text style={styles.statusPillTextAnswered}>Answered</Text>
+              </View>
+            ) : null}
+            {flaggedQuestions.has(currentIndex) ? (
+              <View style={[styles.statusPill, styles.statusPillReview]}>
+                <Text style={styles.statusPillTextReview}>Review</Text>
+              </View>
+            ) : null}
+            <Ionicons name="chevron-down" size={16} color="#6b7280" />
           </TouchableOpacity>
-        </GlassPanel>
+        </View>
 
         <ScrollView
           ref={questionScrollRef}
@@ -1318,20 +1378,11 @@ export default function ExamPage() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.questionCard}>
-            {(() => {
-              const heading = resolveAttemptSectionHeading(currentQuestion);
-              const prevHeading = resolveAttemptSectionHeading(
-                exam.questions[currentIndex - 1]
-              );
-              if (!heading || heading === prevHeading) return null;
-              return (
-                <View style={styles.sectionHeadingBanner}>
-                  <Text style={styles.sectionHeadingText}>{heading}</Text>
-                </View>
-              );
-            })()}
             <View style={styles.questionCardHeader}>
               <View style={styles.questionBadgeRow}>
+                <View style={styles.qNumberChip}>
+                  <Text style={styles.qNumberChipText}>Q{currentIndex + 1}</Text>
+                </View>
                 {currentQuestion.subject ? (
                   <View
                     style={[
@@ -1355,16 +1406,25 @@ export default function ExamPage() {
               </View>
               <TouchableOpacity
                 style={[
-                  styles.flagBtn,
-                  flaggedQuestions.has(currentIndex) && styles.flagBtnActive,
+                  styles.reviewBtn,
+                  flaggedQuestions.has(currentIndex) && styles.reviewBtnActive,
                 ]}
                 onPress={() => toggleFlagQuestion(currentIndex)}
+                activeOpacity={0.85}
               >
                 <Ionicons
-                  name={flaggedQuestions.has(currentIndex) ? 'flag' : 'flag-outline'}
-                  size={18}
-                  color={flaggedQuestions.has(currentIndex) ? '#ca8a04' : '#9ca3af'}
+                  name={flaggedQuestions.has(currentIndex) ? 'bookmark' : 'bookmark-outline'}
+                  size={16}
+                  color={flaggedQuestions.has(currentIndex) ? '#b45309' : '#64748b'}
                 />
+                <Text
+                  style={[
+                    styles.reviewBtnText,
+                    flaggedQuestions.has(currentIndex) && styles.reviewBtnTextActive,
+                  ]}
+                >
+                  {flaggedQuestions.has(currentIndex) ? 'Marked for review' : 'Mark for review'}
+                </Text>
               </TouchableOpacity>
             </View>
 
@@ -1582,7 +1642,7 @@ export default function ExamPage() {
         <Pressable style={styles.dropdownOverlay} onPress={() => setShowQuestionDropdown(false)}>
           <Pressable style={styles.dropdownSheet} onPress={(e) => e.stopPropagation()}>
             <View style={styles.dropdownSheetHeader}>
-              <Text style={styles.dropdownSheetTitle}>Select Question</Text>
+              <Text style={styles.dropdownSheetTitle}>All questions</Text>
               <TouchableOpacity onPress={() => setShowQuestionDropdown(false)} hitSlop={8}>
                 <Ionicons name="close" size={22} color="#374151" />
               </TouchableOpacity>
@@ -1660,7 +1720,7 @@ export default function ExamPage() {
               </View>
               <View style={styles.legendItem}>
                 <View style={[styles.legendDot, styles.legendDotFlagged]} />
-                <Text style={styles.legendText}>Flagged</Text>
+                <Text style={styles.legendText}>Review</Text>
               </View>
             </View>
           </Pressable>
@@ -1743,8 +1803,10 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headerTitleWrap: { flex: 1, minWidth: 0 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  examTitle: { flex: 1, fontSize: 16, fontWeight: '800', color: '#111827', lineHeight: 22 },
+  examTitle: { fontSize: 16, fontWeight: '800', color: '#111827', lineHeight: 20 },
+  headerSub: { marginTop: 3, fontSize: 12, fontWeight: '600', color: '#64748b' },
   timerPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1780,7 +1842,28 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   resumeNoticeText: { flex: 1, fontSize: 12, color: '#065f46', fontWeight: '600', lineHeight: 16 },
-  resumeDismiss: { fontSize: 12, color: '#047857', fontWeight: '700', textDecorationLine: 'underline' },
+  resumeDismiss: { fontSize: 12, color: '#047857', fontWeight: '700' },
+  allQuestionsBtn: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  allQuestionsLabel: { flex: 1, fontSize: 13, fontWeight: '700', color: '#312e81' },
+  allQuestionsMeta: { fontSize: 12, fontWeight: '700', color: '#64748b' },
+  qNumberChip: {
+    backgroundColor: '#fff7ed',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  qNumberChipText: { fontSize: 11, fontWeight: '800', color: '#c2410c' },
   progressMetaRow: {
     marginTop: 12,
     flexDirection: 'row',
@@ -1848,6 +1931,8 @@ const styles = StyleSheet.create({
   },
   statusPillAnswered: { backgroundColor: '#dcfce7' },
   statusPillTextAnswered: { fontSize: 10, fontWeight: '700', color: '#166534' },
+  statusPillReview: { backgroundColor: '#fef3c7' },
+  statusPillTextReview: { fontSize: 10, fontWeight: '700', color: '#92400e' },
   questionCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
@@ -1876,6 +1961,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
     marginBottom: 14,
   },
   sharedMatterCard: {
@@ -1955,7 +2042,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: 8,
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 1,
   },
   subjectBadge: {
     borderRadius: 999,
@@ -1970,15 +2058,23 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   marksBadgeText: { fontSize: 11, fontWeight: '700', color: '#4b5563' },
-  flagBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  reviewBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f9fafb',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
   },
-  flagBtnActive: { backgroundColor: '#fef9c3' },
+  reviewBtnActive: {
+    borderColor: '#fcd34d',
+    backgroundColor: '#fffbeb',
+  },
+  reviewBtnText: { fontSize: 11, fontWeight: '800', color: '#64748b' },
+  reviewBtnTextActive: { color: '#b45309' },
   questionTextRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -2051,12 +2147,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   prevBtn: {},
-  nextBtn: {},
+  nextBtn: { backgroundColor: '#ea580c', borderColor: '#ea580c' },
   clearNavBtn: { flexGrow: 0, flexShrink: 0, minWidth: 72 },
   submitNavBtn: { backgroundColor: '#dc2626', borderColor: '#dc2626' },
   navBtnDisabled: { backgroundColor: '#f3f4f6', borderColor: '#e5e7eb' },
   navBtnText: { color: '#374151', fontWeight: '700', fontSize: 15 },
-  nextBtnText: { color: '#374151', fontWeight: '700', fontSize: 15 },
+  nextBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
   clearNavBtnText: { color: '#374151', fontWeight: '700', fontSize: 15 },
   submitNavBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
   navBtnTextDisabled: { color: '#9ca3af' },

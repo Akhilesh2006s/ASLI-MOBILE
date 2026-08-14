@@ -31,7 +31,7 @@ export default function TeacherOmrResultsScreen() {
       const res = await api.get('/api/teacher/omr-results');
       setRows(Array.isArray(res?.data?.data) ? res.data.data : []);
     } catch (e: any) {
-      setError(e?.friendlyMessage || e?.message || 'Could not load results');
+      setError(e?.friendlyMessage || e?.message || 'Could Not Load Results');
     } finally {
       setLoading(false);
     }
@@ -51,7 +51,7 @@ export default function TeacherOmrResultsScreen() {
       </View>
 
       {loading ? (
-        <LoadingState message="Loading results…" />
+        <LoadingState message="Loading Results…" />
       ) : error ? (
         <ErrorState message={error} onRetry={load} />
       ) : rows.length === 0 ? (

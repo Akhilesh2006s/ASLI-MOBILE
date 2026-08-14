@@ -60,7 +60,7 @@ export default function AdminVidyaChatPanel({ adminId, adminName }: Props) {
     return (
       <View style={styles.loadingWrap}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.loadingText, { color: colors.textMuted }]}>Loading chat...</Text>
+        <Text style={[styles.loadingText, { color: colors.textMuted }]}>Loading Chat...</Text>
       </View>
     );
   }
@@ -77,7 +77,7 @@ export default function AdminVidyaChatPanel({ adminId, adminName }: Props) {
           <VidyaAvatar size={40} borderColor="#fdba74" />
           <View>
             <Text style={[styles.headerTitle, { color: colors.text }]}>Vidya AI</Text>
-            <Text style={[styles.headerSub, { color: colors.textMuted }]}>Admin assistant</Text>
+            <Text style={[styles.headerSub, { color: colors.textMuted }]}>Admin Assistant</Text>
           </View>
         </View>
         <AdminScalePressable

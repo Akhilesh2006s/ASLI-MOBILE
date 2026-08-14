@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -9,10 +9,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { TeacherShimmer } from '../../../src/components/teacher';
+import { TeacherShimmer, TeacherPageHero } from '../../../src/components/teacher';
 import { GlassPanel } from '../../../src/components/ui';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, TEACHER_TYPO, teacherSubjectBadgePalette, teacherSubjectIconName } from '../../../src/theme/teacher';
-import { GLASS_ROW, GLASS_VIOLET } from '../../../src/theme/glass';
+import { GLASS_ROW } from '../../../src/theme/glass';
 import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
 import {
   loadLearningPathCatalog,
@@ -118,7 +118,7 @@ function SubjectPathCard({
             <Ionicons name={iconName} size={22} color={palette.border} />
           </View>
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>{itemCount} items</Text>
+            <Text style={styles.badgeText}>{itemCount} Items</Text>
           </View>
         </View>
         <Text style={[styles.name, { color: palette.border }]} numberOfLines={2}>
@@ -152,7 +152,7 @@ function SubjectPathCard({
           </View>
         </View>
         <View style={styles.cta}>
-          <Text style={styles.ctaText}>View content</Text>
+          <Text style={styles.ctaText}>View Content</Text>
           <Ionicons name="arrow-forward" size={16} color={TEACHER.textOnPrimary} />
         </View>
       </GlassPanel>
@@ -185,16 +185,21 @@ export default function LearningPathsView({ refreshKey = 0 }: Props) {
   const { isGrid, cardWidth, isTablet } = useTeacherTabletGrid(subjects.length);
   const listMode = !isTablet;
 
-  const subtitle = useMemo(
-    () =>
-      isAsliPrepExclusive
-        ? 'Asli Prep catalog — open a subject for textbooks, materials, and videos.'
-        : 'Open a subject for textbooks, materials, and videos.',
-    [isAsliPrepExclusive]
-  );
-
   if (programLoading || loading) {
-    return <TeacherShimmer variant="card" count={3} />;
+    return (
+      <ScrollView style={styles.container} contentContainerStyle={styles.listContent}>
+        <TeacherPageHero
+          tone="paths"
+          badge="Learning Paths"
+          title="Learn with clarity."
+          accent="Grow every day."
+          accentColor="#9EE7FF"
+          subtitle="Subjects, textbooks, videos, and study materials for the classes you teach — all in one place."
+          icon="school-outline"
+        />
+        <TeacherShimmer variant="card" count={3} />
+      </ScrollView>
+    );
   }
 
   return (
@@ -203,29 +208,22 @@ export default function LearningPathsView({ refreshKey = 0 }: Props) {
       contentContainerStyle={styles.listContent}
       showsVerticalScrollIndicator={false}
     >
-      <GlassPanel
-        tone="strong"
-        elevated
-        colors={[...GLASS_VIOLET]}
-        radius={TEACHER_RADIUS.xl}
-        style={styles.banner}
-        contentStyle={styles.bannerInner}
-      >
-        <View style={styles.bannerIcon}>
-          <Ionicons name="book-outline" size={22} color={TEACHER.primaryDark} />
-        </View>
-        <View style={styles.bannerText}>
-          <Text style={styles.bannerTitle}>Browse subjects</Text>
-          <Text style={styles.bannerSub}>{subtitle}</Text>
-        </View>
-      </GlassPanel>
+      <TeacherPageHero
+        tone="paths"
+        badge="Learning Paths"
+        title="Learn with clarity."
+        accent="Grow every day."
+        accentColor="#9EE7FF"
+        subtitle="Subjects, textbooks, videos, and study materials for the classes you teach — all in one place."
+        icon="school-outline"
+      />
 
       {!subjects.length ? (
         <GlassPanel tone="medium" radius={TEACHER_RADIUS.card} contentStyle={styles.emptyInner}>
           <View style={styles.emptyIcon}>
             <Ionicons name="school-outline" size={28} color={TEACHER.primary} />
           </View>
-          <Text style={styles.emptyTitle}>No subjects yet</Text>
+          <Text style={styles.emptyTitle}>No Subjects Yet</Text>
           <Text style={styles.emptySub}>
             Catalog content for your assigned subjects will show up here.
           </Text>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -51,6 +51,12 @@ export default function StudentTabBar({ tabs, activeTab, onTabChange }: Props) {
     >
       <View style={[styles.bar, isTablet && styles.barTablet]}>
         <GlassSurface intensity={60} colors={TAB_BAR_TINT} />
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          bounces={false}
+          contentContainerStyle={styles.barInner}
+        >
         {tabs.map((tab) => {
           const active = tab.id === activeTab;
           const iconName = active ? tab.activeIcon : tab.icon;
@@ -58,7 +64,7 @@ export default function StudentTabBar({ tabs, activeTab, onTabChange }: Props) {
             <Pressable
               key={tab.id}
               onPress={() => handleTabPress(tab.id)}
-              style={styles.tab}
+              style={[styles.tab, tabs.length > 6 && styles.tabCompact]}
               accessibilityLabel={tab.label}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
@@ -81,6 +87,7 @@ export default function StudentTabBar({ tabs, activeTab, onTabChange }: Props) {
             </Pressable>
           );
         })}
+        </ScrollView>
       </View>
     </View>
   );
@@ -112,6 +119,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     ...GLASS_SHADOW.soft,
   },
+  barInner: {
+    flexGrow: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: '100%',
+  },
   barTablet: {
     maxWidth: TAB_BAR_MAX_WIDTH,
   },
@@ -122,6 +135,12 @@ const styles = StyleSheet.create({
     gap: 2,
     paddingVertical: 2,
     minWidth: 0,
+  },
+  tabCompact: {
+    flexGrow: 1,
+    flexShrink: 0,
+    minWidth: 58,
+    maxWidth: 78,
   },
   activeCircle: {
     width: ACTIVE_CIRCLE,

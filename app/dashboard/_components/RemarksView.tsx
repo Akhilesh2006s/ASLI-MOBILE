@@ -45,7 +45,7 @@ export default function RemarksView() {
         </View>
         <View>
           <Text style={styles.headerTitle}>Teacher Remarks</Text>
-          <Text style={styles.headerSubtitle}>Feedback from your teachers</Text>
+          <Text style={styles.headerSubtitle}>Feedback From Your Teachers</Text>
         </View>
       </View>
 
@@ -55,7 +55,7 @@ export default function RemarksView() {
         <View style={styles.emptyState}>
           <Ionicons name="chatbubbles-outline" size={64} color="#5B6779" />
           <Text style={styles.emptyStateTitle}>No Remarks Yet</Text>
-          <Text style={styles.emptyStateText}>Your teachers haven't left any remarks yet.</Text>
+          <Text style={styles.emptyStateText}>Your Teachers Haven't Left Any Remarks Yet.</Text>
         </View>
       ) : (
         <ScrollView style={styles.content}>

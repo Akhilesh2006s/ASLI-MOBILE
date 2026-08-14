@@ -80,7 +80,7 @@ export default function OmrResultsView() {
         return list[0]?._id || null;
       });
     } catch (err: any) {
-      setError(err?.friendlyMessage || err?.message || 'Failed to load Offline Results');
+      setError(err?.friendlyMessage || err?.message || 'Failed To Load Offline Results');
       setHistory([]);
       setSelectedId(null);
     } finally {
@@ -134,7 +134,7 @@ export default function OmrResultsView() {
       const csv = buildCsvContent(['Field', 'Value'], rows);
       await exportCsvFile(csv, `omr-result-${selected.testNo || selected._id}.csv`);
     } catch (err: any) {
-      Alert.alert('Export failed', err?.message || 'Could not export CSV');
+      Alert.alert('Export Failed', err?.message || 'Could Not Export CSV');
     } finally {
       setExporting(false);
     }
@@ -185,8 +185,8 @@ export default function OmrResultsView() {
         <View style={{ flex: 1 }}>
           <Text style={styles.sectionTitle}>Offline Results</Text>
           <Text style={styles.sectionSub}>
-            Sheet scores from your school
-            {history.length ? ` · ${history.length} test${history.length === 1 ? '' : 's'}` : ''}
+            Sheet Scores From Your School
+            {history.length ? ` · ${history.length} Test${history.length === 1 ? '' : 's'}` : ''}
           </Text>
         </View>
         <TouchableOpacity
@@ -231,7 +231,7 @@ export default function OmrResultsView() {
 
         <View style={styles.heroMeta}>
           <Text style={styles.overallLabel}>Overall score</Text>
-          <Text style={styles.testTitle}>{selected.testTitle || 'OMR test'}</Text>
+          <Text style={styles.testTitle}>{selected.testTitle || 'OMR Test'}</Text>
           <View style={styles.metaRow}>
             {formatTestDate(selected.testDate) ? (
               <View style={styles.metaChip}>
@@ -279,7 +279,7 @@ export default function OmrResultsView() {
         </View>
       </GlassPanel>
 
-      <Text style={styles.blockTitle}>Subject performance</Text>
+      <Text style={styles.blockTitle}>Subject Performance</Text>
       <View style={styles.subjectGrid}>
         {subjects.map((s) => {
           const max = subjectMax(s.score);
@@ -315,7 +315,7 @@ export default function OmrResultsView() {
 
       {history.length > 1 ? (
         <>
-          <Text style={styles.blockTitle}>All OMR tests</Text>
+          <Text style={styles.blockTitle}>All OMR Tests</Text>
           <View style={styles.historyList}>
             {history.map((h) => {
               const active = h._id === selected._id;
@@ -349,7 +349,7 @@ export default function OmrResultsView() {
       <Modal visible={pickerOpen} transparent animationType="fade" onRequestClose={() => setPickerOpen(false)}>
         <Pressable style={styles.modalBackdrop} onPress={() => setPickerOpen(false)}>
           <Pressable style={styles.modalSheet} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.modalTitle}>Choose OMR exam</Text>
+            <Text style={styles.modalTitle}>Choose OMR Exam</Text>
             <ScrollView style={{ maxHeight: 360 }}>
               {history.map((h) => (
                 <TouchableOpacity

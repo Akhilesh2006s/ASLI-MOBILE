@@ -222,7 +222,7 @@ export default function StudentProgressView() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#3b82f6" />
-        <Text style={styles.loadingText}>Loading progress...</Text>
+        <Text style={styles.loadingText}>Loading Progress...</Text>
       </View>
     );
   }
@@ -242,7 +242,7 @@ export default function StudentProgressView() {
               <View style={[styles.progressFill, { width: `${stats.overallProgress}%` }]} />
             </View>
             <Text style={styles.progressText}>
-              {stats.completedContent} of {stats.totalContent} items completed
+              {stats.completedContent} Of {stats.totalContent} Items Completed
             </Text>
           </LinearGradient>
 
@@ -301,7 +301,7 @@ export default function StudentProgressView() {
       {/* Subject Progress */}
       {stats && stats.subjectProgress.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Subject-wise Progress</Text>
+          <Text style={styles.sectionTitle}>Subject-Wise Progress</Text>
           {stats.subjectProgress.map((subject) => (
             <GlassPanel key={subject.subjectId} style={styles.subjectCard} radius={12}>
               <View style={styles.subjectHeader}>
@@ -312,7 +312,7 @@ export default function StudentProgressView() {
                 <View style={[styles.subjectProgressFill, { width: `${subject.progress}%` }]} />
               </View>
               <Text style={styles.subjectStats}>
-                {subject.completed} of {subject.total} completed
+                {subject.completed} Of {subject.total} Completed
               </Text>
             </GlassPanel>
           ))}
@@ -325,8 +325,8 @@ export default function StudentProgressView() {
         {progressRecords.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="document-text-outline" size={64} color="#5B6779" />
-            <Text style={styles.emptyText}>No progress records yet</Text>
-            <Text style={styles.emptySubtext}>Start learning to see your progress here</Text>
+            <Text style={styles.emptyText}>No Progress Records Yet</Text>
+            <Text style={styles.emptySubtext}>Start Learning To See Your Progress Here</Text>
           </View>
         ) : (
           progressRecords.map((record) => (
