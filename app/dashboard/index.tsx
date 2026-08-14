@@ -216,6 +216,7 @@ export default function StudentDashboard() {
               style={styles.scroll}
               contentContainerStyle={pad}
               showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
             >
               <LearningPathsView />
             </ScrollView>

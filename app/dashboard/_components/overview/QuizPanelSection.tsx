@@ -208,8 +208,8 @@ export default function QuizPanelSection() {
                         const key = dailyStatus?.today?.dateKey;
                         if (key) {
                           router.push({
-                            pathname: '/iq-rank-boost-subjects',
-                            params: { review: key },
+                            pathname: '/daily-quiz-review',
+                            params: { dateKey: key },
                           });
                         } else {
                           router.push('/iq-rank-boost-subjects');
@@ -276,8 +276,8 @@ export default function QuizPanelSection() {
                   activeOpacity={0.85}
                   onPress={() =>
                     router.push({
-                      pathname: '/iq-rank-boost-subjects',
-                      params: { review: row.dateKey },
+                      pathname: '/daily-quiz-review',
+                      params: { dateKey: row.dateKey },
                     })
                   }
                 >

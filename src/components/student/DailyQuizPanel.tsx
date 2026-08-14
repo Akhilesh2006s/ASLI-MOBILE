@@ -3,14 +3,11 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Modal,
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../lib/api-config';
@@ -48,26 +45,6 @@ type DailyHistoryRow = {
   correctCount?: number;
   totalQuestions?: number;
   completedAt?: string;
-};
-
-type DailyReviewQuestion = {
-  questionText: string;
-  options?: { text: string; isCorrect?: boolean }[];
-  correctAnswer?: string;
-  userAnswer?: string | null;
-  isCorrect?: boolean;
-  explanation?: string;
-};
-
-type DailyReviewPayload = {
-  dateKey: string;
-  score: number;
-  correctCount: number;
-  incorrectCount: number;
-  unattempted: number;
-  totalQuestions: number;
-  completedAt?: string;
-  questions: DailyReviewQuestion[];
 };
 
 type DailyStatus = {
@@ -109,35 +86,16 @@ export default function DailyQuizPanel({ embedded = false }: Props) {
   const [subjects, setSubjects] = useState<SubjectWithQuizzes[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dailyStatus, setDailyStatus] = useState<DailyStatus | null>(null);
-  const [reviewOpen, setReviewOpen] = useState(false);
-  const [reviewLoading, setReviewLoading] = useState(false);
-  const [review, setReview] = useState<DailyReviewPayload | null>(null);
   const loadedOnce = useRef(false);
 
-  const openPreviousResult = useCallback(async (dateKey: string) => {
-    try {
-      setReviewOpen(true);
-      setReviewLoading(true);
-      setReview(null);
-      const token = await SecureStore.getItemAsync('authToken');
-      const res = await fetch(
-        `${API_BASE_URL}/api/student/daily-quiz-result/${encodeURIComponent(dateKey)}`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      const json = await res.json().catch(() => null);
-      if (!res.ok || !json?.success || !json?.data) {
-        Alert.alert('Could not open result', json?.message || 'No saved review for that day.');
-        setReviewOpen(false);
-        return;
-      }
-      setReview(json.data as DailyReviewPayload);
-    } catch {
-      Alert.alert('Could not open result', 'Check your connection and try again.');
-      setReviewOpen(false);
-    } finally {
-      setReviewLoading(false);
+  const openPreviousResult = useCallback((dateKey?: string) => {
+    const key = String(dateKey || dailyStatus?.today?.dateKey || dailyStatus?.history?.[0]?.dateKey || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) {
+      Alert.alert('No result yet', 'Finish today’s daily quiz to view a saved review.');
+      return;
     }
-  }, []);
+    router.push({ pathname: '/daily-quiz-review', params: { dateKey: key } });
+  }, [dailyStatus]);
 
   const load = useCallback(async () => {
     try {
@@ -270,12 +228,6 @@ export default function DailyQuizPanel({ embedded = false }: Props) {
     }
   };
 
-  const closeReview = () => {
-    setReviewOpen(false);
-    setReview(null);
-    setReviewLoading(false);
-  };
-
   return (
     <View>
       {isLoading ? (
@@ -370,10 +322,8 @@ export default function DailyQuizPanel({ embedded = false }: Props) {
                             <TouchableOpacity
                               style={styles.outlineBtn}
                               activeOpacity={0.85}
-                              onPress={() => {
-                                const key = dailyStatus?.today?.dateKey;
-                                if (key) void openPreviousResult(key);
-                              }}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                              onPress={() => openPreviousResult(dailyStatus?.today?.dateKey)}
                             >
                               <Text style={styles.outlineBtnText}>View result</Text>
                             </TouchableOpacity>
@@ -439,7 +389,7 @@ export default function DailyQuizPanel({ embedded = false }: Props) {
                             key={row.dateKey}
                             style={styles.prevRow}
                             activeOpacity={0.8}
-                            onPress={() => void openPreviousResult(row.dateKey)}
+                            onPress={() => openPreviousResult(row.dateKey)}
                           >
                             <Text style={styles.prevDate}>{formatDateKeyLabel(row.dateKey)}</Text>
                             <View style={styles.prevScoreRow}>
@@ -463,94 +413,6 @@ export default function DailyQuizPanel({ embedded = false }: Props) {
             ))}
           </View>
         )}
-
-      <Modal visible={reviewOpen} animationType="slide" transparent onRequestClose={closeReview}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalSheet}>
-            <View style={styles.modalHeader}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.modalTitle}>
-                  {review
-                    ? `Daily quiz · ${formatDateKeyLabel(review.dateKey)}`
-                    : 'Previous result'}
-                </Text>
-                <Text style={styles.modalSub}>
-                  {reviewLoading ? 'Loading your saved review…' : 'Your saved answers and score'}
-                </Text>
-              </View>
-              <TouchableOpacity onPress={closeReview} style={styles.modalClose}>
-                <Ionicons name="close" size={22} color="#475569" />
-              </TouchableOpacity>
-            </View>
-
-            {reviewLoading ? (
-              <View style={styles.modalLoading}>
-                <ActivityIndicator color="#0284c7" />
-                <Text style={styles.loadingText}>Loading review…</Text>
-              </View>
-            ) : review ? (
-              <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 24 }}>
-                <LinearGradient colors={['#0ea5e9', '#0d9488']} style={styles.reviewScoreCard}>
-                  <Text style={styles.reviewScoreLabel}>Score</Text>
-                  <Text style={styles.reviewScoreValue}>{review.score}%</Text>
-                  <Text style={styles.reviewScoreMeta}>
-                    {review.correctCount}/{review.totalQuestions} correct
-                  </Text>
-                </LinearGradient>
-                {(review.questions || []).map((q, index) => {
-                  const expected = q.correctAnswer || q.options?.find((o) => o.isCorrect)?.text || '';
-                  const userAnswer = q.userAnswer;
-                  const isCorrect = q.isCorrect ?? Boolean(userAnswer && userAnswer === expected);
-                  const isAnswered = Boolean(userAnswer);
-                  return (
-                    <View key={`q-${index}`} style={styles.reviewQCard}>
-                      <View style={styles.reviewQTop}>
-                        <Text style={styles.reviewQLabel}>Q{index + 1}</Text>
-                        <View
-                          style={[
-                            styles.reviewBadge,
-                            isCorrect
-                              ? styles.badgeOk
-                              : isAnswered
-                                ? styles.badgeBad
-                                : styles.badgeSkip,
-                          ]}
-                        >
-                          <Text style={styles.reviewBadgeText}>
-                            {isCorrect ? 'Correct' : isAnswered ? 'Incorrect' : 'Skipped'}
-                          </Text>
-                        </View>
-                      </View>
-                      <Text style={styles.reviewPrompt}>{q.questionText}</Text>
-                      {(q.options || []).map((option, optIndex) => {
-                        const selected = userAnswer === option.text;
-                        const correctOpt = Boolean(option.isCorrect) || option.text === expected;
-                        return (
-                          <View
-                            key={`${index}-opt-${optIndex}`}
-                            style={[
-                              styles.reviewOpt,
-                              correctOpt && styles.reviewOptOk,
-                              selected && !correctOpt && styles.reviewOptBad,
-                            ]}
-                          >
-                            <Text style={styles.reviewOptText}>
-                              {String.fromCharCode(65 + optIndex)}. {option.text}
-                            </Text>
-                          </View>
-                        );
-                      })}
-                      {q.explanation ? (
-                        <Text style={styles.reviewExplain}>{q.explanation}</Text>
-                      ) : null}
-                    </View>
-                  );
-                })}
-              </ScrollView>
-            ) : null}
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }

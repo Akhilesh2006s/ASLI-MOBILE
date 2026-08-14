@@ -249,6 +249,7 @@ function AuthGate() {
       />
       <Stack.Screen name="iq-rank-boost-subjects" />
       <Stack.Screen name="iq-rank-boost-quiz/[quizId]" />
+      <Stack.Screen name="daily-quiz-review" />
       <Stack.Screen name="onboarding" />
       <Stack.Screen name="notifications" />
       <Stack.Screen name="student/timetable" />

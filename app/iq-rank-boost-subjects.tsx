@@ -430,7 +430,12 @@ export default function IQRankBoostSubjects() {
                               activeOpacity={0.85}
                               onPress={() => {
                                 const key = dailyStatus?.today?.dateKey;
-                                if (key) void openPreviousResult(key);
+                                if (key) {
+                                  router.push({
+                                    pathname: '/daily-quiz-review',
+                                    params: { dateKey: key },
+                                  });
+                                }
                               }}
                             >
                               <Text style={styles.outlineBtnText}>View result</Text>
@@ -494,7 +499,12 @@ export default function IQRankBoostSubjects() {
                             key={row.dateKey}
                             style={styles.prevRow}
                             activeOpacity={0.8}
-                            onPress={() => void openPreviousResult(row.dateKey)}
+                            onPress={() =>
+                              router.push({
+                                pathname: '/daily-quiz-review',
+                                params: { dateKey: row.dateKey },
+                              })
+                            }
                           >
                             <Text style={styles.prevDate}>{formatDateKeyLabel(row.dateKey)}</Text>
                             <View style={styles.prevScoreRow}>
