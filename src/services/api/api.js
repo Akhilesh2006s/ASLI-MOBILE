@@ -1,5 +1,5 @@
 import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import { storageDeleteItem, storageGetItem, storageSetItem } from '../../lib/safe-storage';
 
 const DEV_URL = 'https://api.aslilearn.ai';
 const PROD_URL = 'https://api.aslilearn.ai';
@@ -26,11 +26,11 @@ export const setInMemoryAuthToken = (token) => {
 
 const readTokenFromStorage = async () => {
   for (const key of TOKEN_KEYS) {
-    const value = await SecureStore.getItemAsync(key);
+    const value = await storageGetItem(key);
     if (value) {
       // Normalize legacy keys to primary key.
       if (key !== AUTH_TOKEN_KEY) {
-        await SecureStore.setItemAsync(AUTH_TOKEN_KEY, value);
+        await storageSetItem(AUTH_TOKEN_KEY, value);
       }
       return value;
     }
@@ -83,10 +83,10 @@ api.interceptors.response.use(
       if (shouldClearAuth) {
         inMemoryAuthToken = null;
         for (const key of TOKEN_KEYS) {
-          await SecureStore.deleteItemAsync(key);
+          await storageDeleteItem(key);
         }
-        await SecureStore.deleteItemAsync('userRole');
-        await SecureStore.deleteItemAsync('userEmail');
+        await storageDeleteItem('userRole');
+        await storageDeleteItem('userEmail');
       }
     }
 

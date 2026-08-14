@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { View, Image, StyleSheet, useWindowDimensions } from 'react-native';
+import { Platform, View, Image, StyleSheet, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   Easing,
@@ -13,6 +13,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { isAndroidTv } from '../lib/device';
 
 /** Hold long enough for the entrance spring to settle before exit. */
 export const SPLASH_DURATION_MS = 3800;
@@ -62,17 +63,45 @@ function PulseRing({ size, delay, color }: { size: number; delay: number; color:
   return <Animated.View style={[styles.ring, ringStyle]} pointerEvents="none" />;
 }
 
-export function AppSplash({ exiting = false }: AppSplashProps) {
+function useSplashLogoSize() {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-
   const availableWidth = width - insets.left - insets.right;
   const availableHeight = height - insets.top - insets.bottom;
-  // Larger mark: nearly full width, up to ~68% of height.
   const logoWidth = Math.min(availableWidth * 0.96, (availableHeight * 0.68) * LOGO_CONTENT_ASPECT);
   const logoHeight = logoWidth / LOGO_CONTENT_ASPECT;
-  const stageWidth = logoWidth * MAX_LOGO_SCALE;
-  const stageHeight = logoHeight * MAX_LOGO_SCALE;
+  return {
+    logoWidth,
+    logoHeight,
+    stageWidth: logoWidth * MAX_LOGO_SCALE,
+    stageHeight: logoHeight * MAX_LOGO_SCALE,
+  };
+}
+
+function TvStaticSplash() {
+  const { logoWidth, logoHeight, stageWidth, stageHeight } = useSplashLogoSize();
+  return (
+    <View style={styles.safeArea}>
+      <SafeAreaView style={styles.safeInner} edges={['top', 'bottom', 'left', 'right']}>
+        <View style={styles.container}>
+          <View style={[styles.stage, { width: stageWidth, height: stageHeight }]}>
+            <View style={[styles.logoWrap, { width: logoWidth, height: logoHeight }]}>
+              <Image
+                source={BRAND_LOGO}
+                style={{ width: logoWidth, height: logoHeight }}
+                resizeMode="contain"
+                accessibilityLabel="AsliLearn.ai"
+              />
+            </View>
+          </View>
+        </View>
+      </SafeAreaView>
+    </View>
+  );
+}
+
+function AnimatedPhoneSplash({ exiting = false }: AppSplashProps) {
+  const { logoWidth, logoHeight, stageWidth, stageHeight } = useSplashLogoSize();
 
   const logoScale = useSharedValue(0.82);
   const logoOpacity = useSharedValue(0);
@@ -145,7 +174,6 @@ export function AppSplash({ exiting = false }: AppSplashProps) {
   const ringBase = Math.min(logoWidth, logoHeight) * 0.78;
 
   return (
-    // Animate the full-screen wash so exit reveals login underneath (no solid-bg flash).
     <Animated.View style={[styles.safeArea, containerStyle]}>
       <SafeAreaView style={styles.safeInner} edges={['top', 'bottom', 'left', 'right']}>
         <View style={styles.container}>
@@ -169,6 +197,13 @@ export function AppSplash({ exiting = false }: AppSplashProps) {
       </SafeAreaView>
     </Animated.View>
   );
+}
+
+export function AppSplash({ exiting = false }: AppSplashProps) {
+  if (isAndroidTv() || Platform.isTV) {
+    return <TvStaticSplash />;
+  }
+  return <AnimatedPhoneSplash exiting={exiting} />;
 }
 
 export const SPLASH_EXIT_DURATION_MS = EXIT_DURATION_MS;

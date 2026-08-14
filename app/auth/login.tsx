@@ -20,7 +20,7 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import * as SecureStore from 'expo-secure-store';
+import { storageDeleteItem, storageGetItem, storageSetItem } from '../../src/lib/safe-storage';
 import * as Haptics from 'expo-haptics';
 import Animated, {
   Easing,
@@ -263,8 +263,8 @@ export default function Login() {
     if (!showForm) return;
     const load = async () => {
       try {
-        const email = await SecureStore.getItemAsync('rememberedEmail');
-        const password = await SecureStore.getItemAsync('rememberedPassword');
+        const email = await storageGetItem('rememberedEmail');
+        const password = await storageGetItem('rememberedPassword');
         if (email && password) {
           const next = { email, password };
           credentialsRef.current = next;
@@ -341,11 +341,11 @@ export default function Login() {
     try {
       const data = await signIn({ email, password });
       if (rememberMe) {
-        await SecureStore.setItemAsync('rememberedEmail', email);
-        await SecureStore.setItemAsync('rememberedPassword', password);
+        await storageSetItem('rememberedEmail', email);
+        await storageSetItem('rememberedPassword', password);
       } else {
-        await SecureStore.deleteItemAsync('rememberedEmail');
-        await SecureStore.deleteItemAsync('rememberedPassword');
+        await storageDeleteItem('rememberedEmail');
+        await storageDeleteItem('rememberedPassword');
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       redirectByRole(data?.user?.role || 'student');
@@ -357,7 +357,7 @@ export default function Login() {
       // Stale "Remember me" passwords often cause Invalid credentials after a reset.
       if (/invalid credentials/i.test(String(msg))) {
         try {
-          await SecureStore.deleteItemAsync('rememberedPassword');
+          await storageDeleteItem('rememberedPassword');
         } catch {
           /* ignore */
         }

@@ -1,5 +1,5 @@
-import * as SecureStore from 'expo-secure-store';
 import api, { AUTH_TOKEN_KEY, setInMemoryAuthToken } from './api';
+import { storageDeleteItem, storageGetItem, storageSetItem } from '../../lib/safe-storage';
 
 const USER_ROLE_KEY = 'userRole';
 const USER_EMAIL_KEY = 'userEmail';
@@ -7,18 +7,18 @@ const USER_EMAIL_KEY = 'userEmail';
 const persistAuth = async (token, user) => {
   const role = normalizeRole(user?.role) || 'student';
   const email = user?.email || '';
-  await SecureStore.setItemAsync(AUTH_TOKEN_KEY, token);
+  await storageSetItem(AUTH_TOKEN_KEY, token);
   // Keep interceptor auth in sync immediately after login.
   setInMemoryAuthToken(token);
-  await SecureStore.setItemAsync(USER_ROLE_KEY, role);
-  await SecureStore.setItemAsync(USER_EMAIL_KEY, email);
+  await storageSetItem(USER_ROLE_KEY, role);
+  await storageSetItem(USER_EMAIL_KEY, email);
 };
 
 const clearAuth = async () => {
   setInMemoryAuthToken(null);
-  await SecureStore.deleteItemAsync(AUTH_TOKEN_KEY);
-  await SecureStore.deleteItemAsync(USER_ROLE_KEY);
-  await SecureStore.deleteItemAsync(USER_EMAIL_KEY);
+  await storageDeleteItem(AUTH_TOKEN_KEY);
+  await storageDeleteItem(USER_ROLE_KEY);
+  await storageDeleteItem(USER_EMAIL_KEY);
 };
 
 /** Normalize API role variants: super_admin → super-admin */
@@ -69,14 +69,14 @@ const register = async (payload) => {
 };
 
 const getStoredAuth = async () => {
-  const token = (await SecureStore.getItemAsync(AUTH_TOKEN_KEY)) || null;
+  const token = (await storageGetItem(AUTH_TOKEN_KEY)) || null;
   if (token) {
     setInMemoryAuthToken(token);
   }
   return {
     token,
-    role: (await SecureStore.getItemAsync(USER_ROLE_KEY)) || null,
-    email: (await SecureStore.getItemAsync(USER_EMAIL_KEY)) || null,
+    role: (await storageGetItem(USER_ROLE_KEY)) || null,
+    email: (await storageGetItem(USER_EMAIL_KEY)) || null,
   };
 };
 
