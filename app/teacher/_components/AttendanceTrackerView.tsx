@@ -39,7 +39,7 @@ export default function AttendanceTrackerView() {
       );
       setHistory(Array.isArray(hist) ? hist : []);
     } catch (e: any) {
-      setError(e?.message || 'Could Not Load Attendance Data');
+      setError(e?.message || 'Could not load attendance data');
     } finally {
       setLoading(false);
     }
@@ -62,7 +62,7 @@ export default function AttendanceTrackerView() {
       await teacherService.invalidateCache('attendance');
       await load();
     } catch (e: any) {
-      setError(e?.message || 'Could Not Submit Attendance');
+      setError(e?.message || 'Could not submit attendance');
     } finally {
       setSubmitting(false);
     }

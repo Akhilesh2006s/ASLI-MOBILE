@@ -171,6 +171,7 @@ export default function StudentsView() {
   const [refreshing, setRefreshing] = useState(false);
   const [students, setStudents] = useState<Student[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState('');
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [isUploadModalVisible, setIsUploadModalVisible] = useState(false);
   const [isDeleteAllModalVisible, setIsDeleteAllModalVisible] = useState(false);
@@ -180,6 +181,7 @@ export default function StudentsView() {
   const [studentViewMode, setStudentViewMode] = useState<ViewMode>('class-wise');
   const [collapsedClasses, setCollapsedClasses] = useState<Record<string, boolean>>({});
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+  const [allListLimit, setAllListLimit] = useState(40);
   const [classPickerOpen, setClassPickerOpen] = useState(false);
   const [sectionPickerOpen, setSectionPickerOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -213,6 +215,17 @@ export default function StudentsView() {
     fetchStudents();
     fetchClasses();
   }, []);
+
+  // Debounce directory filtering so typing doesn't rebuild every card each keystroke.
+  useEffect(() => {
+    const timer = setTimeout(() => setSearchTerm(searchInput.trim()), 200);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  // Reset windowed "All" list when filters change.
+  useEffect(() => {
+    setAllListLimit(40);
+  }, [searchTerm, selectedClassFilter, selectedSectionFilter, studentViewMode]);
 
   useEffect(() => {
     setSelectedSectionFilter('all');
@@ -446,7 +459,7 @@ export default function StudentsView() {
         onPress: async () => {
           try {
             await api.delete(`/api/admin/students/${id}`);
-            Alert.alert('Success', 'Student Deleted Successfully');
+            Alert.alert('Success', 'Student deleted successfully');
             fetchStudents();
           } catch (error: any) {
             console.error('Failed to delete student:', error);
@@ -532,7 +545,7 @@ export default function StudentsView() {
         fetchStudents();
         Alert.alert('Success', 'Student details updated successfully!');
       } else {
-        Alert.alert('Error', response?.data?.message || 'Failed To Update Student');
+        Alert.alert('Error', response?.data?.message || 'Failed to update student');
       }
     } catch (error: any) {
       console.error('Failed to update student:', error);
@@ -553,7 +566,7 @@ export default function StudentsView() {
         fetchStudents();
         Alert.alert('Success', 'Class assigned successfully!');
       } else {
-        Alert.alert('Error', response?.data?.message || 'Failed To Assign Class');
+        Alert.alert('Error', response?.data?.message || 'Failed to assign class');
       }
     } catch (error: any) {
       console.error('Failed to assign class:', error);
@@ -562,11 +575,11 @@ export default function StudentsView() {
   };
 
   const toggleClassCollapse = (classKey: string) => {
-    setCollapsedClasses((prev) => ({ ...prev, [classKey]: !(prev[classKey] ?? false) }));
+    setCollapsedClasses((prev) => ({ ...prev, [classKey]: !(prev[classKey] ?? true) }));
   };
 
   const toggleSectionCollapse = (scopeKey: string) => {
-    setCollapsedSections((prev) => ({ ...prev, [scopeKey]: !(prev[scopeKey] ?? false) }));
+    setCollapsedSections((prev) => ({ ...prev, [scopeKey]: !(prev[scopeKey] ?? true) }));
   };
 
   const pickCsvFile = async () => {
@@ -585,7 +598,7 @@ export default function StudentsView() {
 
   const renderStudentCard = useCallback(
     (student: Student, index: number) => (
-      <AdminGlassCard key={String(student.id ?? student.email)} delay={index * 40} style={styles.studentCard}>
+      <AdminGlassCard key={String(student.id ?? student.email)} style={styles.studentCard}>
         <View style={styles.studentCardContent}>
           <View style={styles.studentHeader}>
             <View style={styles.studentAvatarContainer}>
@@ -740,7 +753,7 @@ export default function StudentsView() {
       return (
         <AdminEmptyState
           title="No Students Found"
-          message="Try Adjusting Your Search Criteria Or Add New Students"
+          message="Try adjusting your search criteria or add new students"
           icon="people-outline"
           action={
             <AdminScalePressable
@@ -756,9 +769,21 @@ export default function StudentsView() {
     }
 
     if (studentViewMode === 'all') {
+      const visible = filteredStudents.slice(0, allListLimit);
+      const hasMore = filteredStudents.length > visible.length;
       return (
         <View style={styles.studentsList}>
-          {filteredStudents.map((student, index) => renderStudentCard(student, index))}
+          {visible.map((student, index) => renderStudentCard(student, index))}
+          {hasMore ? (
+            <AdminScalePressable
+              style={[styles.loadMoreBtn, { borderColor: colors.surfaceBorder, backgroundColor: colors.primaryMuted }]}
+              onPress={() => setAllListLimit((n) => n + 40)}
+            >
+              <Text style={[styles.loadMoreBtnText, { color: colors.primary }]}>
+                Show more ({filteredStudents.length - visible.length} remaining)
+              </Text>
+            </AdminScalePressable>
+          ) : null}
         </View>
       );
     }
@@ -769,7 +794,7 @@ export default function StudentsView() {
           {Object.keys(classSectionGroups)
             .sort(sortByClassLabel)
             .map((classKey) => {
-              const isClassCollapsed = collapsedClasses[classKey] ?? false;
+              const isClassCollapsed = collapsedClasses[classKey] ?? true;
               const classCount = Object.values(classSectionGroups[classKey]).flat().length;
               return (
                 <View key={classKey} style={styles.accordionCard}>
@@ -799,7 +824,7 @@ export default function StudentsView() {
                         .sort()
                         .map((sectionKey) => {
                           const sectionScopeKey = `${classKey}::${sectionKey}`;
-                          const isSectionCollapsed = collapsedSections[sectionScopeKey] ?? false;
+                          const isSectionCollapsed = collapsedSections[sectionScopeKey] ?? true;
                           const sectionStudents = classSectionGroups[classKey][sectionKey];
                           return (
                             <View key={sectionScopeKey} style={styles.sectionCard}>
@@ -843,7 +868,7 @@ export default function StudentsView() {
         {Object.keys(sectionClassGroups)
           .sort()
           .map((sectionKey) => {
-            const isSectionCollapsed = collapsedSections[sectionKey] ?? false;
+            const isSectionCollapsed = collapsedSections[sectionKey] ?? true;
             const sectionCount = Object.values(sectionClassGroups[sectionKey]).flat().length;
             return (
               <View key={sectionKey} style={[styles.accordionCard, styles.sectionAccordionCard]}>
@@ -966,8 +991,8 @@ export default function StudentsView() {
 
         <AdminSearchBar
           placeholder="Search students by name, email, or class..."
-          value={searchTerm}
-          onChangeText={setSearchTerm}
+          value={searchInput}
+          onChangeText={setSearchInput}
         />
 
         <View style={styles.viewModeBlock}>
@@ -984,7 +1009,7 @@ export default function StudentsView() {
 
         <AdminHorizontalScroll
           style={styles.actionsBlock}
-          hint="Swipe For More Actions"
+          hint="Swipe for more actions"
           contentContainerStyle={styles.actionButtonsRow}
         >
           <AdminScalePressable
@@ -1088,7 +1113,7 @@ export default function StudentsView() {
               </Text>
               <TouchableOpacity style={styles.filePickArea} onPress={pickCsvFile}>
                 <Ionicons name="document-text-outline" size={40} color={colors.primary} />
-                <Text style={styles.filePickTitle}>Tap To Select CSV File</Text>
+                <Text style={styles.filePickTitle}>Tap to select CSV file</Text>
                 {selectedFile ? (
                   <Text style={styles.filePickName}>{selectedFile.name}</Text>
                 ) : null}
@@ -1160,7 +1185,7 @@ export default function StudentsView() {
                 <Text style={styles.warningText}>
                   {deleteAllConfirmStep === 1
                     ? `This will permanently delete ALL ${students.length} students. This cannot be undone.`
-                    : `FINAL WARNING: You are about to delete ALL ${students.length} students.`}
+                    : `Final warning: you are about to delete all ${students.length} students.`}
                 </Text>
               </View>
             </View>
@@ -1187,7 +1212,7 @@ export default function StudentsView() {
                 }}
               >
                 <Text style={styles.dangerSubmitText}>
-                  {deleteAllConfirmStep === 2 ? 'DELETE ALL STUDENTS' : 'Continue'}
+                  {deleteAllConfirmStep === 2 ? 'Delete all students' : 'Continue'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -1812,6 +1837,18 @@ const styles = StyleSheet.create({
   studentsList: {
     padding: 14,
     gap: 12,
+  },
+  loadMoreBtn: {
+    marginTop: 4,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+  },
+  loadMoreBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   studentCard: {
     borderRadius: 14,

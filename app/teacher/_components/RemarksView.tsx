@@ -101,7 +101,7 @@ export default function TeacherRemarksView() {
       await teacherService.invalidateCache('remarks');
       fetchRemarks();
     } catch {
-      Alert.alert('Error', 'Failed To Add Remark');
+      Alert.alert('Error', 'Failed to add remark');
     }
   };
 

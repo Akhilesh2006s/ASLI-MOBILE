@@ -30,7 +30,7 @@ export default function OmrResultsView() {
       const data = await omrService.getTeacherResults();
       setRows(Array.isArray(data) ? data : []);
     } catch (err: any) {
-      setError(err?.friendlyMessage || err?.message || 'Failed To Load Offline Results');
+      setError(err?.friendlyMessage || err?.message || 'Failed to load offline results');
       setRows([]);
     } finally {
       setLoading(false);

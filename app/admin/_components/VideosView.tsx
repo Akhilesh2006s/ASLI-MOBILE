@@ -95,7 +95,7 @@ export default function VideosView() {
 
   const handleCreateVideo = async () => {
     if (!newVideo.title || !newVideo.subject) {
-      Alert.alert('Validation Error', 'Please Fill In All Required Fields');
+      Alert.alert('Validation Error', 'Please fill in all required fields');
       return;
     }
 
@@ -104,7 +104,7 @@ export default function VideosView() {
         ...newVideo,
         subjectId: newVideo.subject,
       });
-      Alert.alert('Success', 'Video Created Successfully');
+      Alert.alert('Success', 'Video created successfully');
       setIsCreateModalOpen(false);
       setNewVideo({
         title: '',
@@ -121,7 +121,7 @@ export default function VideosView() {
       fetchVideos();
     } catch (error) {
       console.error('Failed to create video:', error);
-      Alert.alert('Error', 'An Error Occurred');
+      Alert.alert('Error', 'An error occurred');
     }
   };
 
@@ -180,7 +180,7 @@ export default function VideosView() {
           <AdminEmptyState
             icon="videocam-outline"
             title="No Videos Found"
-            message="Create Your First Video To Get Started"
+            message="Create your first video to get started"
           />
         ) : (
           filteredVideos.map((video, index) => {

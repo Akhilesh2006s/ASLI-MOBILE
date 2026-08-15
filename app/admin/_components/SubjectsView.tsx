@@ -385,7 +385,7 @@ export default function SubjectsView() {
         <DetailRow
           icon={<SvgIconPeople size={18} color={colors.textMuted} />}
           label="Teacher:"
-          value={subject.teacher?.fullName?.trim() ? subject.teacher.fullName : 'No Teacher Assigned'}
+          value={subject.teacher?.fullName?.trim() ? subject.teacher.fullName : 'No teacher assigned'}
           valueMuted={!subject.teacher}
         />
         <DetailRow
@@ -417,7 +417,7 @@ export default function SubjectsView() {
           </AdminCardScrollBox>
         ) : (
           <View style={styles.noClassesAssignedWrap}>
-            <Text style={styles.noClassesAssigned}>No Classes Assigned</Text>
+            <Text style={styles.noClassesAssigned}>No classes assigned</Text>
           </View>
         )}
       </View>
@@ -454,7 +454,7 @@ export default function SubjectsView() {
       <View style={styles.innerShell}>
       <AdminSectionHeader
         title="Browse Subjects"
-        subtitle="Assign Classes To Subjects Created By Super Admin"
+        subtitle="Assign classes to subjects created by Super Admin"
         icon="book-outline"
       />
 

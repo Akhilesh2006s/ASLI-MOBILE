@@ -31,7 +31,7 @@ export default function TeacherOmrResultsScreen() {
       const res = await api.get('/api/teacher/omr-results');
       setRows(Array.isArray(res?.data?.data) ? res.data.data : []);
     } catch (e: any) {
-      setError(e?.friendlyMessage || e?.message || 'Could Not Load Results');
+      setError(e?.friendlyMessage || e?.message || 'Could not load results');
     } finally {
       setLoading(false);
     }

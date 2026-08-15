@@ -33,9 +33,17 @@ function n(v: unknown, fallback = 0) {
 function MetricTile({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
   return (
     <View style={styles.tile}>
-      <Text style={styles.tileLabel}>{label}</Text>
-      <Text style={styles.tileValue}>{value}</Text>
-      {hint ? <Text style={styles.tileHint}>{hint}</Text> : null}
+      <Text style={styles.tileLabel} numberOfLines={2}>
+        {label}
+      </Text>
+      <Text style={styles.tileValue} numberOfLines={2}>
+        {value}
+      </Text>
+      {hint ? (
+        <Text style={styles.tileHint} numberOfLines={3}>
+          {hint}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -259,7 +267,7 @@ export default function WeeklyDigestCard({
 
           {(digest.highlights || []).length > 0 ? (
             <View style={styles.highlights}>
-              <Text style={styles.highlightsTitle}>This Week At A Glance</Text>
+              <Text style={styles.highlightsTitle}>This week at a glance</Text>
               {(digest.highlights || []).map((h) => (
                 <Text key={h} style={styles.highlightItem}>
                   • {h}
@@ -282,7 +290,7 @@ export default function WeeklyDigestCard({
 
           <SectionTitle icon="log-in-outline" title="Adoption" />
           <View style={styles.grid}>
-            <MetricTile label="Logins" value={n(m.loginCount)} hint="Days Opened" />
+            <MetricTile label="Logins" value={n(m.loginCount)} hint="Days opened" />
             <MetricTile label="Last active" value={m.lastActiveDate || '—'} />
             <MetricTile label="Activation" value={m.activationDate || '—'} />
           </View>
@@ -306,7 +314,7 @@ export default function WeeklyDigestCard({
               accessibilityLabel="Load more weekly report metrics"
             >
               <Ionicons name="chevron-down" size={16} color="#0369A1" />
-              <Text style={styles.loadMoreText}>Load More</Text>
+              <Text style={styles.loadMoreText}>Load more</Text>
             </TouchableOpacity>
           ) : (
             <>
@@ -426,7 +434,7 @@ export default function WeeklyDigestCard({
 
               {(digest.highlights || []).length > 0 ? (
                 <View style={styles.highlights}>
-                  <Text style={styles.highlightsTitle}>This Week At A Glance</Text>
+                  <Text style={styles.highlightsTitle}>This week at a glance</Text>
                   {(digest.highlights || []).map((h) => (
                     <Text key={h} style={styles.highlightItem}>• {h}</Text>
                   ))}
@@ -440,7 +448,7 @@ export default function WeeklyDigestCard({
                 accessibilityRole="button"
                 accessibilityLabel="Show less weekly report metrics"
               >
-                <Text style={styles.showLessText}>Show Less</Text>
+                <Text style={styles.showLessText}>Show less</Text>
               </TouchableOpacity>
             </>
           )}
@@ -476,7 +484,7 @@ export default function WeeklyDigestCard({
                 {isTeacher ? 'ASLILEARN · TEACHER WEEKLY REPORT' : 'ASLILEARN · WEEKLY REPORT'}
               </Text>
               <Text style={styles.modalTitle}>{digest?.title || 'Weekly Learning Report'}</Text>
-              <Text style={styles.modalSub}>{digest?.summary || 'Preview Then Share As PDF'}</Text>
+              <Text style={styles.modalSub}>{digest?.summary || 'Preview then share as PDF.'}</Text>
             </LinearGradient>
             <ScrollView style={styles.modalBody} contentContainerStyle={{ paddingBottom: 12 }}>
               <View style={styles.grid}>
@@ -561,9 +569,9 @@ const styles = StyleSheet.create({
   },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tile: {
-    width: '30%',
+    width: '47%',
     flexGrow: 1,
-    minWidth: 96,
+    minWidth: 140,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E2E8F0',
@@ -573,7 +581,7 @@ const styles = StyleSheet.create({
   },
   tileLabel: { fontSize: 9, fontWeight: '700', color: '#64748B', textTransform: 'uppercase' },
   tileValue: { marginTop: 2, fontSize: 15, fontWeight: '800', color: '#0F172A' },
-  tileHint: { fontSize: 10, color: '#94A3B8', marginTop: 1 },
+  tileHint: { fontSize: 10, color: '#94A3B8', marginTop: 2, lineHeight: 13 },
   listRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

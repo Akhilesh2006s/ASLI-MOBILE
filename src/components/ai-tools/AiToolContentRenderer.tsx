@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { resolveInteractiveAiToolViewer } from './resolve-interactive-ai-tool-viewer';
+import { resolveInteractiveAiToolViewer } from './ResolveInteractiveAiToolViewer';
 import AiToolWebView from './AiToolWebView';
 import { stripStructuredAiToolMetadata } from '../../lib/strip-ai-tool-metadata';
 import { coalesceAiToolRawContent } from '../../lib/ai-tool-display-content';

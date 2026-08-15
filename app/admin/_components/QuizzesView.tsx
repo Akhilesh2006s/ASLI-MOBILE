@@ -86,13 +86,13 @@ export default function QuizzesView() {
 
   const handleCreateQuiz = async () => {
     if (!newQuiz.title || !newQuiz.subject) {
-      Alert.alert('Validation Error', 'Please Fill In All Required Fields');
+      Alert.alert('Validation Error', 'Please fill in all required fields');
       return;
     }
 
     try {
       await adminService.createQuiz(newQuiz);
-      Alert.alert('Success', 'Quiz Created Successfully');
+      Alert.alert('Success', 'Quiz created successfully');
       setIsCreateModalOpen(false);
       setNewQuiz({
         title: '',
@@ -105,7 +105,7 @@ export default function QuizzesView() {
       fetchQuizzes();
     } catch (error) {
       console.error('Failed to create quiz:', error);
-      Alert.alert('Error', 'An Error Occurred');
+      Alert.alert('Error', 'An error occurred');
     }
   };
 
@@ -142,7 +142,7 @@ export default function QuizzesView() {
           <AdminEmptyState
             icon="help-circle-outline"
             title="No Quizzes Found"
-            message="Create Your First Quiz To Get Started"
+            message="Create your first quiz to get started"
           />
         ) : (
           filteredQuizzes.map((quiz, index) => {

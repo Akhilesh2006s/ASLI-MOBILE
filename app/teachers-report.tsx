@@ -1,16 +1,39 @@
-import { ScrollView, StyleSheet } from 'react-native';
+import { useCallback, useEffect, useRef } from 'react';
+import { BackHandler, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import TeacherDiaryFeed from '../src/components/student/TeacherDiaryFeed';
 import StudentScreenHeader from '../src/components/student/StudentScreenHeader';
+import { setStudentDashboardTabIntent } from '../src/lib/dashboard-tab-intent';
 
 export default function TeachersReportScreen() {
+  const router = useRouter();
+  const handlingBack = useRef(false);
+
+  const goBack = useCallback(() => {
+    if (handlingBack.current) return;
+    handlingBack.current = true;
+    setStudentDashboardTabIntent('home');
+    router.replace('/dashboard');
+    setTimeout(() => {
+      handlingBack.current = false;
+    }, 350);
+  }, [router]);
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      goBack();
+      return true;
+    });
+    return () => sub.remove();
+  }, [goBack]);
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StudentScreenHeader
-        title="Teachers Report"
-        subtitle="Daily class updates from teachers"
-        onBack={() => router.back()}
+        title="Teachers' Report"
+        subtitle="Daily class updates from teachers."
+        onBack={goBack}
       />
       <ScrollView
         style={styles.scroll}

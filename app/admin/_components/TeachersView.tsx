@@ -123,6 +123,8 @@ export default function TeachersView() {
   const [refreshing, setRefreshing] = useState(false);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [listLimit, setListLimit] = useState(40);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
@@ -167,6 +169,15 @@ export default function TeachersView() {
     fetchSubjectsList();
     fetchClassesList();
   }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSearchTerm(searchInput.trim()), 200);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  useEffect(() => {
+    setListLimit(40);
+  }, [searchTerm]);
 
   const fetchTeachers = useCallback(async () => {
     try {
@@ -525,7 +536,7 @@ export default function TeachersView() {
     const subjectsValue =
       subjectNames.length > 0
         ? subjectNames.slice(0, 3).join(', ') + (subjectNames.length > 3 ? ` (+${subjectNames.length - 3})` : '')
-        : 'No Subjects Assigned';
+        : 'No subjects assigned';
     const resolvedAssignedClasses = getResolvedAssignedClasses(getTeacherClassIds(teacher), classesList);
 
     const DetailRow = ({
@@ -675,7 +686,7 @@ export default function TeachersView() {
               })
             ) : (
               <View style={styles.noClassesAssignedWrap}>
-                <Text style={styles.noClassesAssigned}>No Classes Assigned</Text>
+                <Text style={styles.noClassesAssigned}>No classes assigned</Text>
               </View>
             )}
           </AdminCardScrollBox>
@@ -740,7 +751,7 @@ export default function TeachersView() {
       <View style={styles.innerShell}>
       <AdminSectionHeader
         title="Teacher Management"
-        subtitle="Manage Teachers And Their Assignments"
+        subtitle="Manage teachers and their assignments"
         icon="people-outline"
       />
 
@@ -756,8 +767,8 @@ export default function TeachersView() {
       <AdminGlassCard delay={80} style={{ marginBottom: spacing.md, padding: spacing.md }}>
         <AdminSearchBar
           placeholder="Search teachers by name, email, or department…"
-          value={searchTerm}
-          onChangeText={setSearchTerm}
+          value={searchInput}
+          onChangeText={setSearchInput}
         />
       </AdminGlassCard>
 
@@ -770,15 +781,27 @@ export default function TeachersView() {
           icon="people-outline"
         />
       ) : isTablet ? (
-        <AdminGridList
-          data={filteredTeachers}
-          columns={gridColumns}
-          keyExtractor={(item, index) => String(item.id || item.email || `teacher-${index}`)}
-          renderItem={(item, index) => renderTeacherCard(item, index)}
-        />
+        <View>
+          <AdminGridList
+            data={filteredTeachers.slice(0, listLimit)}
+            columns={gridColumns}
+            keyExtractor={(item, index) => String(item.id || item.email || `teacher-${index}`)}
+            renderItem={(item, index) => renderTeacherCard(item, index)}
+          />
+          {filteredTeachers.length > listLimit ? (
+            <AdminScalePressable
+              style={[styles.loadMoreBtn, { borderColor: colors.surfaceBorder, backgroundColor: colors.primaryMuted }]}
+              onPress={() => setListLimit((n) => n + 40)}
+            >
+              <Text style={[styles.loadMoreBtnText, { color: colors.primary }]}>
+                Show more ({filteredTeachers.length - listLimit} remaining)
+              </Text>
+            </AdminScalePressable>
+          ) : null}
+        </View>
       ) : (
         <View style={styles.listContent}>
-          {filteredTeachers.map((teacher, index) => (
+          {filteredTeachers.slice(0, listLimit).map((teacher, index) => (
             <View
               key={String(teacher.id || teacher.email || `teacher-${index}`)}
               style={styles.listCell}
@@ -786,6 +809,16 @@ export default function TeachersView() {
               {renderTeacherCard(teacher, index)}
             </View>
           ))}
+          {filteredTeachers.length > listLimit ? (
+            <AdminScalePressable
+              style={[styles.loadMoreBtn, { borderColor: colors.surfaceBorder, backgroundColor: colors.primaryMuted }]}
+              onPress={() => setListLimit((n) => n + 40)}
+            >
+              <Text style={[styles.loadMoreBtnText, { color: colors.primary }]}>
+                Show more ({filteredTeachers.length - listLimit} remaining)
+              </Text>
+            </AdminScalePressable>
+          ) : null}
         </View>
       )}
 
@@ -959,7 +992,7 @@ export default function TeachersView() {
                       .join(', ')}
                   </Text>
                 ) : (
-                  <Text style={styles.formErrorHint}>Please Select At Least One Subject</Text>
+                  <Text style={styles.formErrorHint}>Please select at least one subject</Text>
                 )}
               </View>
             </ScrollView>
@@ -1119,7 +1152,7 @@ export default function TeachersView() {
             <View style={styles.assignModalHeader}>
               <View style={styles.assignModalTitleBlock}>
                 <Text style={styles.assignModalTitle}>
-                  Assign Subjects To {assigningForTeacher?.fullName ?? ''}
+                  Assign subjects to {assigningForTeacher?.fullName ?? ''}
                 </Text>
                 <Text style={styles.assignModalDesc}>Select the subjects this teacher will teach.</Text>
               </View>
@@ -1204,7 +1237,7 @@ export default function TeachersView() {
             <View style={styles.assignModalHeader}>
               <View style={styles.assignModalTitleBlock}>
                 <Text style={styles.assignModalTitle}>
-                  Assign To Class — {assigningForTeacher?.fullName ?? ''}
+                  Assign to class — {assigningForTeacher?.fullName ?? ''}
                 </Text>
                 <Text style={styles.assignModalDesc}>
                   Pick a class and the subject this teacher will teach there.
@@ -1388,6 +1421,18 @@ const styles = StyleSheet.create({
     gap: GRID_GAP,
     paddingBottom: 8,
     width: '100%',
+  },
+  loadMoreBtn: {
+    marginTop: 4,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+  },
+  loadMoreBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   gridRow: {
     gap: GRID_GAP,

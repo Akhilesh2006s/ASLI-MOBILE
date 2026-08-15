@@ -678,11 +678,11 @@ export default function ExamsView({
 
   const examTabChips = useMemo(
     () => [
-      { id: 'available', label: 'Available Exams', shortLabel: 'Available' },
-      { id: 'attempted', label: 'Attempted Exams', shortLabel: 'Attempted' },
-      { id: 'ranking', label: 'My Rankings', shortLabel: 'Rankings' },
-      { id: 'upcoming', label: 'Upcoming Exams', shortLabel: 'Upcoming' },
-      { id: 'omr', label: 'Offline Results', shortLabel: 'Offline' },
+      { id: 'available', label: 'Available Exams', shortLabel: 'Available', borderColor: '#2563eb' },
+      { id: 'attempted', label: 'Attempted Exams', shortLabel: 'Attempted', borderColor: '#7c3aed' },
+      { id: 'ranking', label: 'My Rankings', shortLabel: 'Rankings', borderColor: '#ea580c' },
+      { id: 'upcoming', label: 'Upcoming Exams', shortLabel: 'Upcoming', borderColor: '#16a34a' },
+      { id: 'omr', label: 'Offline Results', shortLabel: 'Offline', borderColor: '#0d9488' },
     ],
     []
   );
@@ -874,6 +874,7 @@ export default function ExamsView({
                         ? { width: attemptedGridLayout.cardWidth, alignSelf: 'flex-start' as const }
                         : null,
                       isCalendarFocus && styles.examCardFocused,
+                      { borderColor: scheme.accent, borderWidth: 1.5 },
                     ]}
                     contentStyle={styles.attemptedCardInner}
                   >
@@ -911,7 +912,7 @@ export default function ExamsView({
                       <View style={styles.attemptPickerSection}>
                         <Text style={styles.attemptPickerLabel}>View Attempt</Text>
                         <TouchableOpacity
-                          style={styles.attemptPickerTrigger}
+                          style={[styles.attemptPickerTrigger, { borderColor: scheme.accent }]}
                           onPress={() => setAttemptPickerExamId(examIdStr)}
                         >
                           <View style={styles.attemptPickerValueWrap}>
@@ -927,7 +928,13 @@ export default function ExamsView({
                     ) : null}
 
                     <View style={[styles.attemptedCardMetrics, isTablet && styles.attemptedCardMetricsGrid]}>
-                      <View style={[styles.attemptedScoreBox, isTablet && styles.attemptedScoreBoxGrid]}>
+                      <View
+                        style={[
+                          styles.attemptedScoreBox,
+                          isTablet && styles.attemptedScoreBoxGrid,
+                          { borderColor: gradeBg, borderWidth: 1.5 },
+                        ]}
+                      >
                         <View style={[styles.attemptedScoreRow, isTablet && styles.attemptedScoreRowGrid]}>
                           <DonutChart
                             size={isTablet ? 68 : 78}
@@ -1016,6 +1023,7 @@ export default function ExamsView({
                         style={[
                           styles.attemptedDetailsButton,
                           isTablet && styles.attemptedDetailsButtonGrid,
+                          { borderColor: scheme.accent },
                         ]}
                         disabled={loadingExamResults}
                         onPress={() => void openAttemptedExamResults(exam, displayResult)}

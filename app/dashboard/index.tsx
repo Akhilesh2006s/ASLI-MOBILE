@@ -4,7 +4,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router';
 import authService from '../../src/services/api/authService';
 import { useAuth } from '../../src/context/AuthContext';
-import { useBackNavigation } from '../../src/hooks/useBackNavigation';
+import { useDashboardShellBack } from '../../src/hooks/useBackNavigation';
 import { useVisitedTabs } from '../../src/hooks/useVisitedTabs';
 import { consumeStudentDashboardTabIntent } from '../../src/lib/dashboard-tab-intent';
 import StudentNavDrawer, {
@@ -22,7 +22,6 @@ import ExamsTabView from './_components/ExamsTabView';
 import AITabView from './_components/AITabView';
 import OmrResultsView from './_components/OmrResultsView';
 import TimetableTabView from './_components/TimetableTabView';
-import VidyaAIFloatingAssistant from '../../src/components/vidya/VidyaAIFloatingAssistant';
 import TrialDailyQuizPrompt from '../../src/components/TrialDailyQuizPrompt';
 import { useVidyaChatAccess } from '../../src/hooks/useVidyaChatAccess';
 import { resolveStudentFirstName } from '../../src/lib/student-text';
@@ -33,7 +32,7 @@ export default function StudentDashboard() {
   const { signOut } = useAuth();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
   const { active: activeTab, visited: visitedTabs, select: selectTab, setActive: setActiveTab } =
-    useVisitedTabs<TabId>('home', { maxVisited: 5 });
+    useVisitedTabs<TabId>('home', { maxVisited: 1 });
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
@@ -54,8 +53,6 @@ export default function StudentDashboard() {
     timetable: timetableScrollRef,
     vidya: vidyaScrollRef,
   };
-
-  useBackNavigation('/dashboard', true);
 
   useEffect(() => {
     checkAuth();
@@ -158,6 +155,13 @@ export default function StudentDashboard() {
     });
   };
 
+  useDashboardShellBack({
+    isHome: activeTab === 'home',
+    goHome: () => goToTab('home'),
+    menuOpen,
+    closeMenu: () => setMenuOpen(false),
+  });
+
   const onSelectNav = (id: StudentNavId) => {
     if (id === 'profile') {
       router.push('/profile');
@@ -198,6 +202,15 @@ export default function StudentDashboard() {
             user={user}
             onOpenMenu={() => setMenuOpen(true)}
             onLogout={handleLogout}
+            onOpenChat={
+              vidyaChatEnabled
+                ? () => {
+                    requestAnimationFrame(() => {
+                      router.push('/ai-tutor');
+                    });
+                  }
+                : undefined
+            }
           />
         )}
         {visitedTabs.has('home') ? (
@@ -316,18 +329,6 @@ export default function StudentDashboard() {
         />
       )}
 
-      {vidyaChatEnabled ? (
-        <VidyaAIFloatingAssistant
-          role="student"
-          hidden={activeTab === 'vidya'}
-          bottomOffset={16}
-          onPress={() => {
-            requestAnimationFrame(() => {
-              router.push('/ai-tutor');
-            });
-          }}
-        />
-      ) : null}
       <TrialDailyQuizPrompt />
     </SafeAreaView>
   );

@@ -44,7 +44,7 @@ export function useAdminResponsiveLayout() {
   const compactStats = isTablet;
   const modalMaxWidth = isPhone ? undefined : Math.min(560, width - 48);
   const contentPaddingBottom = showBottomTabBar
-    ? 16
+    ? 12
     : ADMIN_TAB_BAR_CLEARANCE_TABLET;
 
   const statsRowStyle = useMemo(

@@ -41,7 +41,10 @@ function AdminHeader({ userName, subtitle, schoolUser, showSchoolBrand = false, 
         style={[
           styles.gradient,
           compact ? styles.gradientCompact : null,
-          { borderRadius: radius.xl },
+          {
+            borderRadius: radius.xl,
+            borderColor: colors.primaryLight,
+          },
         ]}
       >
         <View style={styles.topRow}>
@@ -105,13 +108,14 @@ function AdminHeader({ userName, subtitle, schoolUser, showSchoolBrand = false, 
 const styles = StyleSheet.create({
   wrap: {
     backgroundColor: 'transparent',
-    paddingHorizontal: 12,
-    paddingBottom: 10,
+    paddingHorizontal: 14,
+    paddingBottom: 12,
   },
   gradient: {
     paddingHorizontal: 16,
     paddingVertical: 14,
     overflow: 'hidden',
+    borderWidth: 1.5,
   },
   gradientCompact: {
     paddingVertical: 12,

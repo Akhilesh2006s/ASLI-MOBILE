@@ -250,7 +250,7 @@ export default function TeacherExamPaperReview({ classNumber = 'all' }: Props) {
       });
     } catch (e) {
       setExams([]);
-      setError(e instanceof Error ? e.message : 'Could Not Load Exams');
+      setError(e instanceof Error ? e.message : 'Could not load exams');
     } finally {
       setLoadingExams(false);
     }
@@ -273,7 +273,7 @@ export default function TeacherExamPaperReview({ classNumber = 'all' }: Props) {
         setDiscussIndex(0);
       } catch (e) {
         setAnalytics(null);
-        setError(e instanceof Error ? e.message : 'Could Not Load Paper');
+        setError(e instanceof Error ? e.message : 'Could not load paper');
       } finally {
         setLoadingPaper(false);
       }

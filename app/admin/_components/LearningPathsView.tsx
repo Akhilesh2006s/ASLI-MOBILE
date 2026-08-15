@@ -56,8 +56,9 @@ export default function LearningPathsView() {
   }, [isAsliPrepExclusive, programLoading]);
 
   useEffect(() => {
-    loadCatalog();
-  }, [loadCatalog]);
+    if (programLoading) return;
+    void loadCatalog();
+  }, [loadCatalog, programLoading]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -93,7 +94,7 @@ export default function LearningPathsView() {
           subtitle={
             isAsliPrepExclusive
               ? 'Browse by class, then subject'
-              : 'Curriculum library — Audio, TextBook & Homework'
+              : 'Curriculum library. Audio, TextBook and Homework.'
           }
         />
       </AdminGlassCard>
@@ -101,7 +102,7 @@ export default function LearningPathsView() {
       {subjectsWithContent.length === 0 ? (
         <AdminEmptyState
           icon="map-outline"
-          title="No Learning Paths Found"
+          title="No learning paths found"
           message={
             isAsliPrepExclusive
               ? 'No catalog content is available yet.'

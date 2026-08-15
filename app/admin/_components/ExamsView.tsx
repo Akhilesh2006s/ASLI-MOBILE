@@ -159,21 +159,6 @@ function normalizeExam(raw: any): Exam {
   };
 }
 
-function getExamAudienceLabel(exam: Exam): string {
-  if (exam.isAllBoards) return 'All Schools & Boards';
-  if (exam.isSchoolSpecific && exam.targetSchools?.length) {
-    const names = exam.targetSchools
-      .map((school) => {
-        if (typeof school === 'string') return school;
-        return school.schoolName || school.fullName || '';
-      })
-      .filter(Boolean);
-    return names.length ? names.join(', ') : 'Selected Schools';
-  }
-  if (exam.isBoardSpecific) return 'Schools On Your Board';
-  return 'All Schools';
-}
-
 function parseExamsResponse(responseData: any): Exam[] {
   const raw = responseData;
   let list: any[] = [];
@@ -508,7 +493,7 @@ export default function ExamsView() {
         <View style={styles.innerShell} onLayout={onShellLayout}>
         <AdminScalePressable onPress={closeExamDetail} style={styles.backRow}>
           <Ionicons name="arrow-back" size={20} color={colors.primary} />
-          <Text style={[styles.backText, { color: colors.primary }]}>Back To Exams</Text>
+          <Text style={[styles.backText, { color: colors.primary }]}>Back to exams</Text>
         </AdminScalePressable>
 
         <View style={styles.detailTitleRow}>
@@ -1073,7 +1058,7 @@ export default function ExamsView() {
       ) : filteredExams.length === 0 ? (
         <AdminEmptyState
           icon="filter-outline"
-          title="No Exams For This Class"
+          title="No exams for this class"
           message='Choose another class or "All classes".'
         />
       ) : (
@@ -1124,15 +1109,6 @@ export default function ExamsView() {
                   {exam.description}
                 </Text>
               )}
-              <View style={[styles.audienceBanner, { backgroundColor: colors.inputBg, borderColor: colors.surfaceBorder }]}>
-                <Ionicons name="people-outline" size={15} color={colors.primary} />
-                <View style={styles.audienceTextWrap}>
-                  <Text style={[styles.audienceLabel, { color: colors.textMuted }]}>Who Can See This Exam</Text>
-                  <Text style={[styles.audienceValue, { color: colors.text }]}>
-                    {getExamAudienceLabel(exam)}
-                  </Text>
-                </View>
-              </View>
               <View style={styles.metaChips}>
                 <View style={[styles.metaChip, { backgroundColor: colors.inputBg, borderColor: colors.surfaceBorder }]}>
                   <Ionicons name="time-outline" size={14} color={colors.textMuted} />
@@ -1154,7 +1130,7 @@ export default function ExamsView() {
                 </View>
               </View>
               <Text style={[styles.createdBy, { color: colors.textMuted }]}>
-                Created By: {exam.createdBy?.fullName || 'Super Admin'}
+                Created by: {exam.createdBy?.fullName || 'Super Admin'}
               </Text>
               <View style={styles.ctaRow}>
                 <AdminScalePressable
@@ -1389,18 +1365,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   viewerChipText: { fontSize: 12, fontWeight: '700' },
-  audienceBanner: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    padding: 10,
-    borderRadius: 10,
-    marginBottom: 8,
-    borderWidth: 1,
-  },
-  audienceTextWrap: { flex: 1, gap: 2 },
-  audienceLabel: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
-  audienceValue: { fontSize: 13, fontWeight: '700', lineHeight: 18 },
   cardTop: { marginBottom: 8 },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   typeBadge: {

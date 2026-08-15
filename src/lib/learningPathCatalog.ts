@@ -51,11 +51,18 @@ async function fetchTeacherPayload<T>(endpoint: string): Promise<T> {
 }
 
 function getContentSubjectId(content: any): string | null {
-  const subj = content?.subject;
-  if (subj == null) return null;
-  if (typeof subj === 'object' && subj._id != null) return String(subj._id);
-  if (typeof subj === 'string' && subj.trim()) return subj.trim();
-  return null;
+  const fromField = (value: unknown): string | null => {
+    if (value == null) return null;
+    if (typeof value === 'object' && value !== null && '_id' in value && (value as any)._id != null) {
+      return String((value as any)._id);
+    }
+    if (typeof value === 'object' && value !== null && 'id' in value && (value as any).id != null) {
+      return String((value as any).id);
+    }
+    if (typeof value === 'string' && value.trim()) return value.trim();
+    return null;
+  };
+  return fromField(content?.subject) || fromField(content?.subjectId);
 }
 
 async function fetchSubjects(role: LearningPathRole): Promise<any[]> {
@@ -232,6 +239,29 @@ export async function loadLearningPathCatalog(
       totalContent: asliPrepContent.length,
     });
   }
+
+  // Content whose subject id is not in /subjects still belongs on Learning Paths.
+  bySubjectId.forEach((items, subjectId) => {
+    if (consumedIds.has(subjectId)) return;
+    const sorted = sortContentNewestFirst(
+      dedupeLibraryContents(items, { collapseAcrossSubjects: true }),
+    );
+    if (sorted.length === 0) return;
+    const first = sorted[0];
+    const populated = first?.subject ?? first?.subjectId;
+    const nameFromPopulate =
+      typeof populated === 'object' && populated?.name ? populated.name : 'Subject';
+    merged.push({
+      _id: subjectId,
+      id: subjectId,
+      name: nameFromPopulate,
+      description: `Content for ${nameFromPopulate}`,
+      board: first?.board || '',
+      classNumber: first?.classNumber,
+      asliPrepContent: sorted,
+      totalContent: sorted.length,
+    });
+  });
 
   const withContent = merged.filter((row) => row.totalContent > 0);
 

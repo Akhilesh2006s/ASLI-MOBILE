@@ -93,13 +93,13 @@ export default function AssessmentsView() {
 
   const handleCreateAssessment = async () => {
     if (!newAssessment.title || !newAssessment.subject) {
-      Alert.alert('Validation Error', 'Please Fill In All Required Fields');
+      Alert.alert('Validation Error', 'Please fill in all required fields');
       return;
     }
 
     try {
       await adminService.createAssessment(newAssessment);
-      Alert.alert('Success', 'Assessment Created Successfully');
+      Alert.alert('Success', 'Assessment created successfully');
       setIsCreateModalOpen(false);
       setNewAssessment({
         title: '',
@@ -115,7 +115,7 @@ export default function AssessmentsView() {
       fetchAssessments();
     } catch (error) {
       console.error('Failed to create assessment:', error);
-      Alert.alert('Error', 'An Error Occurred');
+      Alert.alert('Error', 'An error occurred');
     }
   };
 
@@ -235,7 +235,7 @@ export default function AssessmentsView() {
           <AdminEmptyState
             icon="document-text-outline"
             title="No Assessments Found"
-            message="Create Your First Assessment To Get Started"
+            message="Create your first assessment to get started"
           />
         ) : (
           filteredAssessments.map((assessment, index) => {

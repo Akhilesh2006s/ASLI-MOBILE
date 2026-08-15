@@ -91,7 +91,12 @@ export default function StudentExamPreviewCard({
       tone="strong"
       elevated
       radius={18}
-      style={[styles.card, focused && styles.cardFocused, style]}
+      style={[
+        styles.card,
+        focused && styles.cardFocused,
+        { borderColor: accent, borderWidth: 1.5 },
+        style,
+      ]}
       contentStyle={styles.cardInner}
     >
       <Text style={styles.title}>{exam.title || 'Exam'}</Text>

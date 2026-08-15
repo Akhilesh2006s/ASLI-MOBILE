@@ -221,7 +221,7 @@ export default function StudentRiskAnalysisModal({
       }
       Alert.alert('Success', 'PDF downloaded and sent to student successfully!');
     } catch (err: any) {
-      Alert.alert('Error', err?.friendlyMessage || err?.message || 'Failed To Download PDF');
+      Alert.alert('Error', err?.friendlyMessage || err?.message || 'Failed to download PDF');
     } finally {
       setDownloading(false);
     }
@@ -252,7 +252,7 @@ export default function StudentRiskAnalysisModal({
               <Text style={styles.title}>AI Student Risk Analysis</Text>
               {studentName ? <Text style={styles.subtitle}>— {studentName}</Text> : null}
               <Text style={styles.description}>
-                Comprehensive AI-Powered Analysis Of Student Performance Patterns And Risk Assessment
+                Comprehensive AI-powered analysis of student performance patterns and risk assessment
               </Text>
             </View>
             <Pressable
@@ -472,7 +472,7 @@ export default function StudentRiskAnalysisModal({
                   <Ionicons name="download-outline" size={18} color="#fff" />
                 )}
                 <Text style={styles.primaryBtnText}>
-                  {downloading ? 'Generating…' : 'Download PDF & Send To Student'}
+                  {downloading ? 'Generating…' : 'Download PDF & send to student'}
                 </Text>
               </AdminScalePressable>
               <AdminScalePressable style={styles.refreshBtn} onPress={() => void fetchAnalysis()}>

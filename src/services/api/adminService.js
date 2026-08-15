@@ -1,13 +1,113 @@
 import api from './api';
 
-const getDashboardStats = async () => {
-  const response = await api.get('/api/admin/dashboard/stats');
-  return response?.data;
+/** In-memory SWR cache — single shared reference for admin dashboard data. */
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+const memory = {
+  stats: null,
+  analytics: null,
 };
 
-const getStudentAnalytics = async () => {
-  const response = await api.get('/api/admin/students/analytics');
-  return response?.data;
+let statsInflight = null;
+let analyticsInflight = null;
+
+function isFresh(entry) {
+  return entry != null && Date.now() - entry.ts < CACHE_TTL_MS;
+}
+
+function unwrapPayload(responseData) {
+  return responseData?.data?.data ?? responseData?.data ?? responseData ?? {};
+}
+
+/** Sync peek for instant first paint (no network). */
+export function peekDashboardStats() {
+  return memory.stats?.data ?? null;
+}
+
+export function peekStudentAnalytics() {
+  return memory.analytics?.data ?? null;
+}
+
+export function clearAdminDashboardCache() {
+  memory.stats = null;
+  memory.analytics = null;
+  statsInflight = null;
+  analyticsInflight = null;
+}
+
+/**
+ * Shared dashboard stats. Returns cached payload when fresh unless force=true.
+ * Concurrent callers share one in-flight request (single cache reference).
+ */
+const getDashboardStats = async ({ force = false } = {}) => {
+  if (!force && isFresh(memory.stats)) {
+    return memory.stats.data;
+  }
+
+  if (!force && statsInflight) {
+    return statsInflight;
+  }
+
+  const hadStale = memory.stats?.data ?? null;
+
+  statsInflight = (async () => {
+    try {
+      const response = await api.get('/api/admin/dashboard/stats');
+      const payload = unwrapPayload(response?.data);
+      const normalized = {
+        totalStudents: payload.totalStudents || 0,
+        totalTeachers: payload.totalTeachers || 0,
+        totalClasses: payload.totalClasses || 0,
+        activeUsers: payload.activeUsers || 0,
+      };
+      memory.stats = { data: normalized, ts: Date.now() };
+      return normalized;
+    } catch (error) {
+      if (hadStale) return hadStale;
+      throw error;
+    } finally {
+      statsInflight = null;
+    }
+  })();
+
+  return statsInflight;
+};
+
+const getStudentAnalytics = async ({ force = false } = {}) => {
+  if (!force && isFresh(memory.analytics)) {
+    return memory.analytics.data;
+  }
+
+  if (!force && analyticsInflight) {
+    return analyticsInflight;
+  }
+
+  const hadStale = memory.analytics?.data ?? null;
+
+  analyticsInflight = (async () => {
+    try {
+      const response = await api.get('/api/admin/students/analytics');
+      const payload = unwrapPayload(response?.data);
+      const normalized = {
+        classDistribution: payload.classDistribution || [],
+        performanceMetrics: payload.performanceMetrics || {
+          averageScore: 0,
+          totalExamsTaken: 0,
+          topPerformers: [],
+        },
+        subjectPerformance: payload.subjectPerformance || [],
+      };
+      memory.analytics = { data: normalized, ts: Date.now() };
+      return normalized;
+    } catch (error) {
+      if (hadStale) return hadStale;
+      throw error;
+    } finally {
+      analyticsInflight = null;
+    }
+  })();
+
+  return analyticsInflight;
 };
 
 const getAnalytics = async () => {
@@ -91,6 +191,9 @@ const downloadReport = async (type, format = 'csv') => {
 export default {
   getDashboardStats,
   getStudentAnalytics,
+  peekDashboardStats,
+  peekStudentAnalytics,
+  clearAdminDashboardCache,
   getAnalytics,
   getTeachers,
   getSubjects,

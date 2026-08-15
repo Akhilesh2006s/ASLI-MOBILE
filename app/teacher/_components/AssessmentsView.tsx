@@ -87,13 +87,13 @@ export default function TeacherAssessmentsView() {
 
   const handleCreateAssessment = async () => {
     if (!newAssessment.title || !newAssessment.subject) {
-      Alert.alert('Validation Error', 'Please Fill In All Required Fields');
+      Alert.alert('Validation Error', 'Please fill in all required fields');
       return;
     }
 
     try {
       await teacherService.createAssessment(newAssessment);
-      Alert.alert('Success', 'Assessment Created Successfully');
+      Alert.alert('Success', 'Assessment created successfully');
       setIsCreateModalOpen(false);
       setNewAssessment({
         title: '',
@@ -110,7 +110,7 @@ export default function TeacherAssessmentsView() {
       fetchAssessments();
     } catch (error) {
       console.error('Failed to create assessment:', error);
-      Alert.alert('Error', 'An Error Occurred');
+      Alert.alert('Error', 'An error occurred');
     }
   };
 

@@ -199,7 +199,7 @@ export default function OverviewView({ user, stats, onGo }: Props) {
         <Text style={styles.welcomeTitle}>Welcome,</Text>
         <Text style={styles.welcomeName}>{name}!</Text>
         <Text style={styles.welcomeSub}>
-          Your classes, students, and teaching tools are ready — pick up where you left off.
+          Your classes, students, and teaching tools are ready. Pick up where you left off.
         </Text>
       </LinearGradient>
 

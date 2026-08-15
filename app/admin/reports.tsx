@@ -10,9 +10,9 @@ import { ErrorState, GlassPanel, LoadingState } from '../../src/components/ui';
 import { AdminScalePressable, AdminSectionHeader, useAdminTheme } from './_ui';
 
 const REPORTS = [
-  { id: 'attendance', label: 'Attendance Report', icon: 'calendar-outline' as const, desc: 'Daily & Monthly Attendance Summaries' },
-  { id: 'performance', label: 'Performance Report', icon: 'trending-up-outline' as const, desc: 'Student Scores And Class Averages' },
-  { id: 'exams', label: 'Exam Results', icon: 'document-text-outline' as const, desc: 'Detailed Exam Outcome Reports' },
+  { id: 'attendance', label: 'Attendance Report', icon: 'calendar-outline' as const, desc: 'Daily & monthly attendance summaries' },
+  { id: 'performance', label: 'Performance Report', icon: 'trending-up-outline' as const, desc: 'Student scores and class averages' },
+  { id: 'exams', label: 'Exam Results', icon: 'document-text-outline' as const, desc: 'Detailed exam outcome reports' },
 ];
 
 export default function AdminReports() {
@@ -39,7 +39,7 @@ export default function AdminReports() {
         Alert.alert('Export Failed', 'No CSV data returned from the server.');
       }
     } catch (e: any) {
-      setError(e?.response?.data?.message || e?.message || 'Could Not Download Report');
+      setError(e?.response?.data?.message || e?.message || 'Could not download report');
     } finally {
       setLoadingType(null);
     }

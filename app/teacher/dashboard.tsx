@@ -18,7 +18,7 @@ import authService from '../../src/services/api/authService';
 import teacherService, { type BackendStatus } from '../../src/services/api/teacherService';
 import { useTeacherBackendStatus } from '../../src/hooks/useTeacherBackendStatus';
 import { useAuth } from '../../src/context/AuthContext';
-import { useBackNavigation } from '../../src/hooks/useBackNavigation';
+import { useDashboardShellBack } from '../../src/hooks/useBackNavigation';
 import { useVisitedTabs } from '../../src/hooks/useVisitedTabs';
 import {
   consumeTeacherDashboardTabIntent,
@@ -39,7 +39,6 @@ import {
 import { resolveTeacherDisplayName } from '../../src/lib/teacher-text';
 import { TEACHER, TEACHER_SPACING } from '../../src/theme/teacher';
 import { useVidyaChatAccess } from '../../src/hooks/useVidyaChatAccess';
-import VidyaAIFloatingAssistant from '../../src/components/vidya/VidyaAIFloatingAssistant';
 import { EduOTTFilterProvider } from '../../src/contexts/edu-ott-filter-context';
 import OverviewView from './_components/OverviewView';
 import AIClassesView from './_components/AIClassesView';
@@ -89,7 +88,7 @@ export default function TeacherDashboard() {
   const { signOut } = useAuth();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
   const { active: activeTab, visited: visitedTabs, select: selectTab, setActive: setActiveTab } =
-    useVisitedTabs<TabId>('overview', { maxVisited: 5 });
+    useVisitedTabs<TabId>('overview', { maxVisited: 1 });
   const [navTarget, setNavTarget] = useState<NavTarget>({});
   const [menuOpen, setMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -116,8 +115,6 @@ export default function TeacherDashboard() {
     calendar: calendarScrollRef,
     settings: settingsScrollRef,
   };
-
-  useBackNavigation('/teacher/dashboard', true);
 
   useEffect(() => {
     loadData();
@@ -237,6 +234,13 @@ export default function TeacherDashboard() {
     });
   };
 
+  useDashboardShellBack({
+    isHome: activeTab === 'overview',
+    goHome: () => goToTab('overview'),
+    menuOpen,
+    closeMenu: () => setMenuOpen(false),
+  });
+
   const handleTabChange = (id: TeacherNavId) => {
     if (id === activeTab) {
       tabScrollRefs[id]?.current?.scrollTo({ y: 0, animated: true });
@@ -276,6 +280,16 @@ export default function TeacherDashboard() {
               user={user}
               onOpenMenu={() => setMenuOpen(true)}
               onLogout={handleLogout}
+              onOpenChat={
+                vidyaChatEnabled
+                  ? () => {
+                      requestAnimationFrame(() => {
+                        router.push('/teacher/vidya-chat' as any);
+                      });
+                    }
+                  : undefined
+              }
+              chatAccessibilityLabel="Open Vidya AI Chat"
             />
           )}
 
@@ -448,15 +462,6 @@ export default function TeacherDashboard() {
           onLogout={handleLogout}
         />
       )}
-
-      {vidyaChatEnabled ? (
-        <VidyaAIFloatingAssistant
-          role="teacher"
-          hidden={activeTab === 'vidya-ai'}
-          bottomOffset={16}
-          onPress={() => goToTab('vidya-ai')}
-        />
-      ) : null}
     </SafeAreaView>
   );
 }

@@ -73,7 +73,7 @@ export default function TeacherVideosView() {
 
   const handleCreateVideo = async () => {
     if (!newVideo.title || !newVideo.subject) {
-      Alert.alert('Validation Error', 'Please Fill In All Required Fields');
+      Alert.alert('Validation Error', 'Please fill in all required fields');
       return;
     }
 
@@ -82,7 +82,7 @@ export default function TeacherVideosView() {
         ...newVideo,
         subjectId: newVideo.subject,
       });
-      Alert.alert('Success', 'Video Created Successfully');
+      Alert.alert('Success', 'Video created successfully');
       setIsCreateModalOpen(false);
       setNewVideo({
         title: '',
@@ -99,7 +99,7 @@ export default function TeacherVideosView() {
       await teacherService.invalidateCache('videos');
       fetchVideos();
     } catch {
-      Alert.alert('Error', 'Failed To Create Video');
+      Alert.alert('Error', 'Failed to create video');
     }
   };
 
