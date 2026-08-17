@@ -41,9 +41,8 @@ export default function AdminTabBar({ activeView, onTabChange }: Props) {
       style={[
         styles.wrap,
         {
-          paddingBottom: Math.max(insets.bottom, 8),
+          paddingBottom: Math.max(insets.bottom, 10),
           backgroundColor: '#EEF2E3',
-          borderTopColor: colors.surfaceBorder,
         },
       ]}
     >
@@ -52,7 +51,7 @@ export default function AdminTabBar({ activeView, onTabChange }: Props) {
           styles.bar,
           {
             backgroundColor: '#FFFFFF',
-            borderColor: colors.surfaceBorder,
+            borderColor: colors.primaryLight,
           },
         ]}
       >
@@ -86,13 +85,12 @@ export default function AdminTabBar({ activeView, onTabChange }: Props) {
 const styles = StyleSheet.create({
   wrap: {
     flexShrink: 0,
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 14,
+    paddingTop: 10,
   },
   bar: {
     borderRadius: 9999,
-    borderWidth: 1,
+    borderWidth: 1.5,
     overflow: 'hidden',
     flexDirection: 'row',
     alignItems: 'center',

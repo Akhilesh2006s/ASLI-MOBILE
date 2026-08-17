@@ -86,6 +86,54 @@ export function useBackNavigation(dashboardPath: string, preventBack: boolean = 
   }, [dashboardPath, preventBack, router]);
 }
 
+type DashboardShellBackOptions = {
+  /** True when the root/home tab of this dashboard is active. */
+  isHome: boolean;
+  /** Switch to the root/home tab. */
+  goHome: () => void;
+  menuOpen?: boolean;
+  closeMenu?: () => void;
+};
+
+/**
+ * Android back / edge-swipe for role dashboards:
+ * 1) close drawer if open
+ * 2) leave nested tab → home tab
+ * 3) on home, stay (do not pop back to login)
+ */
+export function useDashboardShellBack({
+  isHome,
+  goHome,
+  menuOpen = false,
+  closeMenu,
+}: DashboardShellBackOptions) {
+  const menuOpenRef = useRef(menuOpen);
+  const isHomeRef = useRef(isHome);
+  const goHomeRef = useRef(goHome);
+  const closeMenuRef = useRef(closeMenu);
+
+  menuOpenRef.current = menuOpen;
+  isHomeRef.current = isHome;
+  goHomeRef.current = goHome;
+  closeMenuRef.current = closeMenu;
+
+  useEffect(() => {
+    const onBack = () => {
+      if (menuOpenRef.current) {
+        closeMenuRef.current?.();
+        return true;
+      }
+      if (!isHomeRef.current) {
+        goHomeRef.current();
+        return true;
+      }
+      return true;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBack);
+    return () => sub.remove();
+  }, []);
+}
+
 export type ContentReturnTarget = 'eduott' | 'learning';
 
 export type StudentDashboardTab = StudentDashboardTabIntent;

@@ -4,7 +4,13 @@ import { STUDENT, STUDENT_RADIUS } from '../../theme/student';
 import { GLASS_RIM, GLASS_ROW } from '../../theme/glass';
 import GlassSurface from '../ui/GlassSurface';
 
-export type Chip = { id: string; label: string; shortLabel?: string };
+export type Chip = {
+  id: string;
+  label: string;
+  shortLabel?: string;
+  /** Optional accent used only for the active tab border. */
+  borderColor?: string;
+};
 
 type Props = {
   chips: Chip[];
@@ -23,6 +29,7 @@ export default function ChipNav({ chips, active, onChange }: Props) {
   const { width } = useWindowDimensions();
   const isMobile = width < TABLET_MIN_WIDTH;
   const scrollable = chips.length > 4;
+  const activeBorderColor = chips.find((chip) => chip.id === active)?.borderColor;
 
   const row = (
     <>
@@ -42,7 +49,15 @@ export default function ChipNav({ chips, active, onChange }: Props) {
             accessibilityState={{ selected: isActive }}
             accessibilityLabel={chip.label}
           >
-            <View style={[styles.pill, isActive && styles.pillActive]}>
+            <View
+              style={[
+                styles.pill,
+                isActive && styles.pillActive,
+                isActive && chip.borderColor
+                  ? { borderColor: chip.borderColor }
+                  : null,
+              ]}
+            >
               <Text
                 style={[
                   styles.tabText,
@@ -61,7 +76,12 @@ export default function ChipNav({ chips, active, onChange }: Props) {
   );
 
   return (
-    <View style={styles.wrap}>
+    <View
+      style={[
+        styles.wrap,
+        activeBorderColor ? { borderColor: activeBorderColor } : null,
+      ]}
+    >
       <GlassSurface intensity={50} tone="medium" />
       {scrollable ? (
         <ScrollView

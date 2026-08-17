@@ -139,12 +139,12 @@ export default function TimetableView() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.message || 'Upload failed');
-      Alert.alert('Saved', json?.message || 'Timetable Photo Saved');
+      Alert.alert('Saved', json?.message || 'Timetable photo saved');
       setPendingAsset(null);
       setPreviewUri(null);
       await load();
     } catch (error: any) {
-      Alert.alert('Upload Failed', error?.message || 'Could Not Save Photo');
+      Alert.alert('Upload Failed', error?.message || 'Could not save photo');
     } finally {
       setUploading(false);
     }
@@ -160,10 +160,10 @@ export default function TimetableView() {
       );
       const json = await res.json();
       if (!res.ok) throw new Error(json?.message || 'Delete failed');
-      Alert.alert('Removed', 'Timetable Photo Removed');
+      Alert.alert('Removed', 'Timetable photo removed');
       await load();
     } catch (error: any) {
-      Alert.alert('Delete Failed', error?.message || 'Could Not Remove Photo');
+      Alert.alert('Delete Failed', error?.message || 'Could not remove photo');
     }
   };
 
@@ -229,7 +229,7 @@ export default function TimetableView() {
                     <Text style={styles.dropTitle}>
                       {selectedClass
                         ? `Upload ${classLabel(selectedClass)} Timetable`
-                        : 'Select A Class'}
+                        : 'Select a class'}
                     </Text>
                   </Pressable>
                 )}

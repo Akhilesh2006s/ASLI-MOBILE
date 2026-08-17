@@ -1,10 +1,20 @@
-import { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+  BackHandler,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import studentService from '../src/services/api/studentService';
 import { GlassPanel } from '../src/components/ui';
+import { setStudentDashboardTabIntent } from '../src/lib/dashboard-tab-intent';
 
 type AssignmentItem = {
   _id?: string;
@@ -19,10 +29,30 @@ type AssignmentItem = {
 };
 
 export default function AssignmentsScreen() {
+  const router = useRouter();
+  const handlingBack = useRef(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [items, setItems] = useState<AssignmentItem[]>([]);
+
+  const goBack = useCallback(() => {
+    if (handlingBack.current) return;
+    handlingBack.current = true;
+    setStudentDashboardTabIntent('home');
+    router.replace('/dashboard');
+    setTimeout(() => {
+      handlingBack.current = false;
+    }, 350);
+  }, [router]);
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      goBack();
+      return true;
+    });
+    return () => sub.remove();
+  }, [goBack]);
 
   const loadAssignments = useCallback(async () => {
     try {
@@ -50,6 +80,18 @@ export default function AssignmentsScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={goBack}
+            style={styles.iconBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+          >
+            <Ionicons name="arrow-back" size={20} color="#111827" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Assignments</Text>
+          <View style={styles.iconBtn} />
+        </View>
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#2563eb" />
           <Text style={styles.loadingText}>Loading assignments...</Text>
@@ -61,11 +103,21 @@ export default function AssignmentsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+        <TouchableOpacity
+          onPress={goBack}
+          style={styles.iconBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
           <Ionicons name="arrow-back" size={20} color="#111827" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Assignments</Text>
-        <TouchableOpacity onPress={() => router.push('/dashboard')} style={styles.iconBtn}>
+        <TouchableOpacity
+          onPress={goBack}
+          style={styles.iconBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Home"
+        >
           <Ionicons name="home-outline" size={20} color="#111827" />
         </TouchableOpacity>
       </View>
@@ -107,7 +159,7 @@ export default function AssignmentsScreen() {
                 {item.feedback ? <Text style={styles.feedbackText}>Feedback: {item.feedback}</Text> : null}
                 <TouchableOpacity style={styles.actionBtn}>
                   <Ionicons name="open-outline" size={16} color="#2563eb" />
-                  <Text style={styles.actionBtnText}>View Details</Text>
+                  <Text style={styles.actionBtnText}>View details</Text>
                 </TouchableOpacity>
               </GlassPanel>
             );
@@ -119,7 +171,6 @@ export default function AssignmentsScreen() {
 }
 
 const styles = StyleSheet.create({
-  // transparent so the app-wide pastel artwork shows through the glass surfaces
   container: { flex: 1, backgroundColor: '#F4F7FB' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: 10, color: '#6b7280' },

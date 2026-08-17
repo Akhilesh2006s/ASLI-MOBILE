@@ -11,10 +11,13 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../../../src/services/api/api';
+import adminService, {
+  peekDashboardStats,
+  peekStudentAnalytics,
+} from '../../../src/services/api/adminService';
 import { useIsTablet } from '../../../src/hooks/useIsTablet';
 import type { AdminNavView } from './AdminNavDrawer';
-import { AdminSkeletonStats, useAdminTheme } from '../_ui';
+import { useAdminTheme } from '../_ui';
 
 /** Admin dashboard overview — keep free of Reanimated for scroll/perf stability. */
 interface Stats {
@@ -216,58 +219,57 @@ function SubjectBar({
   );
 }
 
-export default function OverviewView({ onNavigate }: Props) {
+export default memo(function OverviewView({ onNavigate }: Props) {
   const { spacing, radius } = useAdminTheme();
   const { width } = useWindowDimensions();
   const isTablet = useIsTablet();
   const isWide = isTablet || width >= 680;
 
-  const [stats, setStats] = useState<Stats>({
-    totalStudents: 0,
-    totalTeachers: 0,
-    totalClasses: 0,
-    activeUsers: 0,
-  });
-  const [studentAnalytics, setStudentAnalytics] = useState<StudentAnalytics>({
-    classDistribution: [],
-    performanceMetrics: { averageScore: 0, totalExamsTaken: 0, topPerformers: [] },
-    subjectPerformance: [],
-  });
-  const [isLoadingStats, setIsLoadingStats] = useState(true);
-  const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
+  const cachedStats = peekDashboardStats();
+  const cachedAnalytics = peekStudentAnalytics();
+
+  const [stats, setStats] = useState<Stats>(
+    () =>
+      cachedStats || {
+        totalStudents: 0,
+        totalTeachers: 0,
+        totalClasses: 0,
+        activeUsers: 0,
+      }
+  );
+  const [studentAnalytics, setStudentAnalytics] = useState<StudentAnalytics>(
+    () =>
+      cachedAnalytics || {
+        classDistribution: [],
+        performanceMetrics: { averageScore: 0, totalExamsTaken: 0, topPerformers: [] },
+        subjectPerformance: [],
+      }
+  );
+  const [isLoadingStats, setIsLoadingStats] = useState(!cachedStats);
+  const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(!cachedAnalytics);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchAdminStats = useCallback(async () => {
+  const fetchAdminStats = useCallback(async (force = false) => {
     try {
-      const response = await api.get('/api/admin/dashboard/stats');
-      const payload = response?.data?.data || response?.data || {};
-      setStats({
-        totalStudents: payload.totalStudents || 0,
-        totalTeachers: payload.totalTeachers || 0,
-        totalClasses: payload.totalClasses || 0,
-        activeUsers: payload.activeUsers || 0,
-      });
+      const normalized = await adminService.getDashboardStats({ force });
+      setStats(normalized);
     } catch (error) {
-      console.error('Failed to fetch admin stats:', error);
+      console.warn('Failed to fetch admin stats:', (error as any)?.friendlyMessage || (error as any)?.message);
+    } finally {
+      setIsLoadingStats(false);
     }
   }, []);
 
-  const fetchStudentAnalytics = useCallback(async () => {
+  const fetchStudentAnalytics = useCallback(async (force = false) => {
     try {
       setIsLoadingAnalytics(true);
-      const response = await api.get('/api/admin/students/analytics');
-      const payload = response?.data?.data || response?.data || {};
-      setStudentAnalytics({
-        classDistribution: payload.classDistribution || [],
-        performanceMetrics: payload.performanceMetrics || {
-          averageScore: 0,
-          totalExamsTaken: 0,
-          topPerformers: [],
-        },
-        subjectPerformance: payload.subjectPerformance || [],
-      });
+      const normalized = await adminService.getStudentAnalytics({ force });
+      setStudentAnalytics(normalized);
     } catch (error) {
-      console.error('Failed to fetch student analytics:', error);
+      console.warn(
+        'Failed to fetch student analytics:',
+        (error as any)?.friendlyMessage || (error as any)?.message
+      );
     } finally {
       setIsLoadingAnalytics(false);
     }
@@ -275,22 +277,18 @@ export default function OverviewView({ onNavigate }: Props) {
 
   const loadAll = useCallback(async () => {
     setIsLoadingStats(true);
-    await fetchAdminStats();
-    setIsLoadingStats(false);
-    await fetchStudentAnalytics();
+    await Promise.all([fetchAdminStats(true), fetchStudentAnalytics(true)]);
   }, [fetchAdminStats, fetchStudentAnalytics]);
 
   useEffect(() => {
     let cancelled = false;
     let deferTimer: ReturnType<typeof setTimeout> | null = null;
     (async () => {
-      setIsLoadingStats(true);
-      await fetchAdminStats();
+      // Paint from shared cache immediately; refresh in background when stale/missing.
+      await fetchAdminStats(false);
       if (cancelled) return;
-      setIsLoadingStats(false);
-      // Defer analytics so the stats shell paints first (Hermes-safe; no InteractionManager).
       deferTimer = setTimeout(() => {
-        if (!cancelled) void fetchStudentAnalytics();
+        if (!cancelled) void fetchStudentAnalytics(false);
       }, 0);
     })();
     return () => {
@@ -311,10 +309,6 @@ export default function OverviewView({ onNavigate }: Props) {
   const topClassDistribution = studentAnalytics.classDistribution?.slice(0, 5) || [];
   const topSubjectPerformance = studentAnalytics.subjectPerformance?.slice(0, 4) || [];
   const statCards = DASHBOARD_STAT_CARDS;
-
-  if (isLoadingStats && !refreshing) {
-    return <AdminSkeletonStats />;
-  }
 
   return (
     <ScrollView
@@ -337,6 +331,7 @@ export default function OverviewView({ onNavigate }: Props) {
           icon="people"
           theme={statCards[0]}
           wide={isTablet}
+          loading={isLoadingStats}
         />
         <MemoStatCard
           label="Active Classes"
@@ -344,6 +339,7 @@ export default function OverviewView({ onNavigate }: Props) {
           icon="school"
           theme={statCards[1]}
           wide={isTablet}
+          loading={isLoadingStats}
         />
         <MemoStatCard
           label="Active Users"
@@ -351,6 +347,7 @@ export default function OverviewView({ onNavigate }: Props) {
           icon="pulse"
           theme={statCards[2]}
           wide={isTablet}
+          loading={isLoadingStats}
         />
         <MemoStatCard
           label="Teachers"
@@ -358,6 +355,7 @@ export default function OverviewView({ onNavigate }: Props) {
           icon="person"
           theme={statCards[3]}
           wide={isTablet}
+          loading={isLoadingStats}
         />
       </View>
 
@@ -387,7 +385,7 @@ export default function OverviewView({ onNavigate }: Props) {
               Detailed School Analysis
             </Text>
             <Text style={[styles.analysisSubtitle, { color: DASH.skyMuted }]}>
-              Comprehensive Insights About Your Students
+              Comprehensive insights about your students
             </Text>
           </View>
         </View>
@@ -426,7 +424,7 @@ export default function OverviewView({ onNavigate }: Props) {
                   );
                 })
               ) : (
-                <Text style={[styles.empty, { color: DASH.skyMuted }]}>No Class Data</Text>
+                <Text style={[styles.empty, { color: DASH.skyMuted }]}>No class data</Text>
               )}
             </AnalysisPanel>
 
@@ -495,7 +493,7 @@ export default function OverviewView({ onNavigate }: Props) {
                   />
                 ))
               ) : (
-                <Text style={[styles.empty, { color: DASH.skyMuted }]}>No Subject Data</Text>
+                <Text style={[styles.empty, { color: DASH.skyMuted }]}>No subject data</Text>
               )}
             </AnalysisPanel>
           </View>
@@ -522,7 +520,7 @@ export default function OverviewView({ onNavigate }: Props) {
           <Text style={[styles.assignSub, { color: DASH.skyMuted }]}>Total Students Assigned</Text>
           <Text style={[styles.assignValue, { color: statCards[1].accent }]}>{stats.totalStudents}</Text>
           <Text style={[styles.assignDesc, { color: DASH.skyMuted }]}>
-            Students Specifically Assigned To Your Admin Account
+            Students specifically assigned to your admin account
           </Text>
           <View style={styles.assignCta}>
             <Text style={[styles.assignCtaText, { color: statCards[1].accent }]}>View Details</Text>
@@ -549,7 +547,7 @@ export default function OverviewView({ onNavigate }: Props) {
           <Text style={[styles.assignSub, { color: DASH.skyMuted }]}>Total Teachers Assigned</Text>
           <Text style={[styles.assignValue, { color: statCards[3].accent }]}>{stats.totalTeachers}</Text>
           <Text style={[styles.assignDesc, { color: DASH.skyMuted }]}>
-            Teachers Specifically Assigned To Your Admin Account
+            Teachers specifically assigned to your admin account
           </Text>
           <View style={styles.assignCta}>
             <Text style={[styles.assignCtaText, { color: statCards[3].accent }]}>View Details</Text>
@@ -559,12 +557,12 @@ export default function OverviewView({ onNavigate }: Props) {
       </View>
     </ScrollView>
   );
-}
+});
 
 const styles = StyleSheet.create({
   // Sky wash — Dashboard tab only.
   container: { flex: 1, minHeight: 0, backgroundColor: DASH.wash },
-  content: { padding: 16, paddingBottom: 40 },
+  content: { padding: 16, paddingBottom: 48 },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',

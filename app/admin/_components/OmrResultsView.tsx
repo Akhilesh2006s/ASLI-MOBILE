@@ -86,7 +86,7 @@ export default function OmrResultsView() {
         if (list?.[0]?._id) setSelectedBatchId(list[0]._id);
       })
       .catch((err: any) => {
-        Alert.alert('Could Not Load Results', err?.friendlyMessage || err?.message || 'Request failed');
+        Alert.alert('Could not load results', err?.friendlyMessage || err?.message || 'Request failed');
       })
       .finally(() => setLoading(false));
   }, [loadBatches, loadStudents]);
@@ -274,7 +274,7 @@ export default function OmrResultsView() {
         <View style={{ flex: 1 }}>
           <Text style={[styles.pickerLabel, { color: colors.textMuted }]}>Uploaded Test</Text>
           <Text style={[styles.pickerValue, { color: colors.text }]} numberOfLines={1}>
-            {batchMeta?.testTitle || 'Select An Uploaded OMR Score List'}
+            {batchMeta?.testTitle || 'Select an uploaded OMR score list'}
           </Text>
           {batchMeta ? (
             <Text style={[styles.pickerMeta, { color: colors.textMuted }]} numberOfLines={1}>
@@ -336,13 +336,13 @@ export default function OmrResultsView() {
       {!selectedBatchId ? (
         <AdminEmptyState
           icon="scan-outline"
-          title="No Score List Selected"
+          title="No score list selected"
           message="Upload a Score List CSV from OMR scanning to get started."
         />
       ) : filteredRows.length === 0 ? (
         <AdminEmptyState
           icon="search-outline"
-          title="No Rows Match"
+          title="No rows match"
           message="Try clearing search or the unassigned filter."
         />
       ) : (
@@ -416,7 +416,7 @@ export default function OmrResultsView() {
       >
         {batches.length === 0 ? (
           <Text style={{ color: colors.textMuted, textAlign: 'center', paddingVertical: 24 }}>
-            No Uploads Yet
+            No uploads yet
           </Text>
         ) : (
           <ScrollView style={{ maxHeight: 360 }}>
@@ -506,7 +506,7 @@ export default function OmrResultsView() {
           style={{ maxHeight: 280, marginTop: 10 }}
           ListEmptyComponent={
             <Text style={{ textAlign: 'center', color: colors.textMuted, paddingVertical: 24 }}>
-              {students.length === 0 ? 'No Students Found For This School' : 'No Students Match'}
+              {students.length === 0 ? 'No students found for this school' : 'No students match'}
             </Text>
           }
           renderItem={({ item }) => {

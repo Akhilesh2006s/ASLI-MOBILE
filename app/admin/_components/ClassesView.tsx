@@ -104,6 +104,8 @@ export default function ClassesView() {
   const [subjectPickerOpen, setSubjectPickerOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [classCardTabById, setClassCardTabById] = useState<Record<string, 'teachers' | 'students'>>({});
+  /** Phone: rosters stay closed until opened — avoids mounting every student under every class. */
+  const [rosterOpenById, setRosterOpenById] = useState<Record<string, boolean>>({});
   const [isAddClassModalVisible, setIsAddClassModalVisible] = useState(false);
   const [isEditClassModalVisible, setIsEditClassModalVisible] = useState(false);
   const [editingClassId, setEditingClassId] = useState<string | null>(null);
@@ -597,9 +599,12 @@ export default function ClassesView() {
     const studentCount = cls.students?.length ?? 0;
     const detailTab = classCardTabById[cls.id] ?? 'teachers';
 
-    const renderTeacherRows = () =>
-      teacherCount > 0 ? (
-        cls.teachers!.map((teacher) => (
+    const renderTeacherRows = (limit?: number) => {
+      const rows = limit != null ? cls.teachers!.slice(0, limit) : cls.teachers!;
+      const hidden = teacherCount - rows.length;
+      return teacherCount > 0 ? (
+        <>
+          {rows.map((teacher) => (
           <View
             key={teacher.id}
             style={[styles.teacherItem, { backgroundColor: colors.primaryMuted, borderColor: colors.surfaceBorder }]}
@@ -621,14 +626,22 @@ export default function ClassesView() {
               <Text style={styles.teacherBadgeText}>Teacher</Text>
             </View>
           </View>
-        ))
+          ))}
+          {hidden > 0 ? (
+            <Text style={styles.listEmptyText}>+{hidden} more teachers</Text>
+          ) : null}
+        </>
       ) : (
-        <Text style={styles.listEmptyText}>No Teachers Assigned</Text>
+        <Text style={styles.listEmptyText}>No teachers assigned</Text>
       );
+    };
 
-    const renderStudentRows = () =>
-      studentCount > 0 ? (
-        cls.students!.map((student) => (
+    const renderStudentRows = (limit?: number) => {
+      const rows = limit != null ? cls.students!.slice(0, limit) : cls.students!;
+      const hidden = studentCount - rows.length;
+      return studentCount > 0 ? (
+        <>
+          {rows.map((student) => (
           <View key={student.id} style={styles.studentItem}>
             <View style={styles.studentInfo}>
               <Text style={styles.studentName} numberOfLines={1}>
@@ -647,10 +660,17 @@ export default function ClassesView() {
               <Text style={styles.studentStatusText}>{student.status || 'active'}</Text>
             </View>
           </View>
-        ))
+          ))}
+          {hidden > 0 ? (
+            <Text style={styles.noStudentsText}>+{hidden} more students</Text>
+          ) : null}
+        </>
       ) : (
-        <Text style={styles.noStudentsText}>No Students Assigned To This Class</Text>
+        <Text style={styles.noStudentsText}>No students assigned to this class</Text>
       );
+    };
+
+    const rosterOpen = rosterOpenById[cls.id] ?? false;
 
     return (
       <AdminGlassCard
@@ -699,7 +719,7 @@ export default function ClassesView() {
             >
               {teacherCount > 0
                 ? `${teacherCount} ${teacherCount === 1 ? 'teacher' : 'teachers'}`
-                : 'No Teachers Assigned'}
+                : 'No teachers assigned'}
             </Text>
           </View>
           {cls.section ? (
@@ -761,22 +781,40 @@ export default function ClassesView() {
                 </TouchableOpacity>
               </View>
               <AdminCardScrollBox style={styles.cardDetailScrollTablet}>
-                {detailTab === 'teachers' ? renderTeacherRows() : renderStudentRows()}
+                {detailTab === 'teachers' ? renderTeacherRows(12) : renderStudentRows(12)}
               </AdminCardScrollBox>
             </>
-          ) : (
+          ) : rosterOpen ? (
             <>
               {teacherCount > 0 && (
                 <View style={styles.teachersBlock}>
-                  <Text style={styles.blockTitle}>Assigned Teachers:</Text>
-                  <AdminCardScrollBox style={styles.teachersScroll}>{renderTeacherRows()}</AdminCardScrollBox>
+                  <Text style={styles.blockTitle}>Assigned teachers:</Text>
+                  <AdminCardScrollBox style={styles.teachersScroll}>{renderTeacherRows(8)}</AdminCardScrollBox>
                 </View>
               )}
               <View style={styles.studentsBlock}>
-                <Text style={[styles.blockTitle, styles.studentsBlockTitlePhone]}>Students List:</Text>
-                <AdminCardScrollBox style={styles.studentsScroll}>{renderStudentRows()}</AdminCardScrollBox>
+                <Text style={[styles.blockTitle, styles.studentsBlockTitlePhone]}>Students list:</Text>
+                <AdminCardScrollBox style={styles.studentsScroll}>{renderStudentRows(8)}</AdminCardScrollBox>
               </View>
+              <TouchableOpacity
+                style={[styles.rosterToggleBtn, { borderColor: colors.surfaceBorder }]}
+                onPress={() => setRosterOpenById((prev) => ({ ...prev, [cls.id]: false }))}
+                activeOpacity={0.85}
+              >
+                <Text style={[styles.rosterToggleText, { color: colors.primary }]}>Hide roster</Text>
+              </TouchableOpacity>
             </>
+          ) : (
+            <TouchableOpacity
+              style={[styles.rosterToggleBtn, { borderColor: colors.surfaceBorder, backgroundColor: colors.primaryMuted }]}
+              onPress={() => setRosterOpenById((prev) => ({ ...prev, [cls.id]: true }))}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="people-outline" size={16} color={colors.primary} />
+              <Text style={[styles.rosterToggleText, { color: colors.primary }]}>
+                Show roster ({teacherCount} teachers · {studentCount} students)
+              </Text>
+            </TouchableOpacity>
           )}
         </View>
 
@@ -849,7 +887,7 @@ export default function ClassesView() {
       <View style={styles.innerShell}>
       <AdminSectionHeader
         title="Class Management"
-        subtitle="Organize And Manage Your Classes And Students"
+        subtitle="Organize and manage your classes and students"
         icon="school-outline"
       />
 
@@ -995,7 +1033,7 @@ export default function ClassesView() {
             <Text style={styles.selectTriggerText}>
               {selectedClassForSubjects
                 ? `Class ${selectedClassForSubjects}`
-                : 'Choose A Class Number'}
+                : 'Choose a class number'}
             </Text>
             <Ionicons name="chevron-down" size={16} color="#64748b" />
           </TouchableOpacity>
@@ -1013,8 +1051,8 @@ export default function ClassesView() {
               {selectedSectionForSubjects
                 ? `Section ${selectedSectionForSubjects}`
                 : selectedClassForSubjects
-                  ? 'Choose A Section'
-                  : 'Select Class First'}
+                  ? 'Choose a section'
+                  : 'Select class first'}
             </Text>
             <Ionicons name="chevron-down" size={16} color="#64748b" />
           </TouchableOpacity>
@@ -1207,7 +1245,7 @@ export default function ClassesView() {
 
       {renderPickerModal(
         subjectPickerOpen,
-        'Filter By Subject',
+        'Filter by subject',
         [{ label: 'All Subjects', value: 'all' }, ...classSubjects.map((s) => ({ label: s, value: s }))],
         selectedSubject,
         setSelectedSubject,
@@ -1659,6 +1697,18 @@ const styles = StyleSheet.create({
   },
   statValueMuted: { color: '#0ea5e9', fontWeight: '600' },
   blockTitle: { fontSize: 13, fontWeight: '800', color: '#0c4a6e', marginBottom: 8 },
+  rosterToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 4,
+  },
+  rosterToggleText: { fontSize: 13, fontWeight: '700' },
   teachersBlock: { marginBottom: 12 },
   teachersScroll: { width: '100%', maxWidth: '100%', alignSelf: 'stretch', maxHeight: 160 },
   cardDetailTabs: {

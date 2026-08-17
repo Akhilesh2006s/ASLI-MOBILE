@@ -10,19 +10,19 @@ import React, {
 import { Alert, InteractionManager, Keyboard, Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useBackNavigation } from '../../src/hooks/useBackNavigation';
+import { useDashboardShellBack } from '../../src/hooks/useBackNavigation';
 import { useVisitedTabs } from '../../src/hooks/useVisitedTabs';
 import { consumeAdminDashboardTabIntent } from '../../src/lib/dashboard-tab-intent';
 import { useAuth } from '../../src/context/AuthContext';
 import authService from '../../src/services/api/authService';
 import { LoadingState, VisitedTabPane } from '../../src/components/ui';
 import { EduOTTFilterProvider } from '../../src/contexts/edu-ott-filter-context';
-import VidyaAIFloatingAssistant from '../../src/components/vidya/VidyaAIFloatingAssistant';
 import AdminNavDrawer, { adminNavLabel, type AdminNavView } from './_components/AdminNavDrawer';
+import OverviewView from './_components/OverviewView';
 import { AdminHeader, AdminTabBar, useAdminTheme } from './_ui';
 import { useAdminResponsiveLayout } from './_ui/useAdminResponsiveLayout';
+import adminService from '../../src/services/api/adminService';
 
-const OverviewView = lazy(() => import('./_components/OverviewView'));
 const AnalyticsDashboardView = lazy(() => import('./_components/AnalyticsDashboardView'));
 const StudentsView = lazy(() => import('./_components/StudentsView'));
 const ClassesView = lazy(() => import('./_components/ClassesView'));
@@ -39,8 +39,9 @@ const TimetableView = lazy(() => import('./_components/TimetableView'));
 const CalendarView = lazy(() => import('./_components/CalendarView'));
 const VidyaAIView = lazy(() => import('./_components/VidyaAIView'));
 
-/** Keep overview + a couple recent tabs mounted; unmount older ones to cut lag. */
-const MAX_VISITED_TABS = 3;
+/** Overview stays pinned; keep one other recent tab mounted to avoid remount/refetch lag. */
+const MAX_VISITED_TABS = 2;
+const PINNED_ADMIN_VIEWS = ['overview'] as const satisfies readonly AdminNavView[];
 
 const ADMIN_VIEWS: AdminNavView[] = [
   'overview',
@@ -113,7 +114,7 @@ function TabFallback() {
 }
 
 export default function AdminDashboard() {
-  const { signOut, user: authUser } = useAuth();
+  const { signOut, user: authUser, role: authRole, isLoading: authLoading } = useAuth();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
   const { spacing } = useAdminTheme();
   const { shellPaddingBottom, showBottomTabBar } = useAdminResponsiveLayout();
@@ -122,7 +123,10 @@ export default function AdminDashboard() {
     visited: visitedViews,
     select: selectView,
     setActive: setActiveView,
-  } = useVisitedTabs<AdminNavView>('overview', { maxVisited: MAX_VISITED_TABS });
+  } = useVisitedTabs<AdminNavView>('overview', {
+    maxVisited: MAX_VISITED_TABS,
+    pinned: PINNED_ADMIN_VIEWS,
+  });
   const [menuOpen, setMenuOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -137,8 +141,6 @@ export default function AdminDashboard() {
       ? { schoolName: authUser.schoolName, schoolLogo: authUser.schoolLogo }
       : schoolProfile;
 
-  useBackNavigation('/admin/dashboard', true);
-
   const openMenu = useCallback(() => setMenuOpen(true), []);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
 
@@ -151,6 +153,13 @@ export default function AdminDashboard() {
     [selectView],
   );
 
+  useDashboardShellBack({
+    isHome: currentView === 'overview',
+    goHome: () => goToView('overview'),
+    menuOpen,
+    closeMenu: closeMenu,
+  });
+
   /** Close drawer first, then switch after interactions — avoids animation + mount fighting. */
   const onSelectFromDrawer = useCallback(
     (view: AdminNavView) => {
@@ -162,9 +171,92 @@ export default function AdminDashboard() {
     [goToView],
   );
 
-  useEffect(() => {
-    checkAuth();
+  const applyAdminProfile = useCallback((user: any) => {
+    setUserName(user.fullName || user.schoolName || 'Admin');
+    setAdminId(String(user._id || user.id || ''));
+    setSchoolProfile({
+      schoolName: user.schoolName,
+      schoolLogo: user.schoolLogo,
+    });
   }, []);
+
+  const softRefreshMe = useCallback(async () => {
+    try {
+      const data = await authService.me();
+      if (data?.user?.role === 'admin') {
+        applyAdminProfile(data.user);
+      }
+    } catch {
+      /* offline / network — keep cached profile */
+    }
+  }, [applyAdminProfile]);
+
+  const checkAuth = useCallback(async () => {
+    try {
+      const auth = await authService.getStoredAuth();
+      const token = auth.token;
+      const userRole = auth.role;
+
+      if (!token) {
+        router.replace('/auth/login');
+        return;
+      }
+
+      if (userRole === 'admin') {
+        setIsAuthenticated(true);
+        setIsLoading(false);
+        if (authUser?.role === 'admin') {
+          applyAdminProfile(authUser);
+        }
+      }
+
+      const data = await authService.me();
+      if (data?.user?.role === 'admin') {
+        setIsAuthenticated(true);
+        applyAdminProfile(data.user);
+      } else {
+        router.replace('/auth/login');
+      }
+    } catch (error: any) {
+      const message = String(error?.friendlyMessage || error?.message || '').toLowerCase();
+      const isNetworkIssue =
+        error?.isNetworkError === true ||
+        error?.isTimeout === true ||
+        error?.code === 'ERR_NETWORK' ||
+        error?.code === 'ECONNABORTED' ||
+        message.includes('network request failed') ||
+        message.includes('network error') ||
+        message.includes('unable to connect') ||
+        message.includes('timeout');
+
+      if (isNetworkIssue) {
+        setIsAuthenticated(true);
+      } else {
+        console.warn('Auth check failed:', error?.friendlyMessage || error?.message || 'Unknown error');
+        await authService.clearAuth();
+        router.replace('/auth/login');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [applyAdminProfile, authUser]);
+
+  useEffect(() => {
+    // Wait for AuthContext so we can skip a duplicate /me gate when already admin.
+    if (authLoading) return;
+
+    if (authUser?.role === 'admin' || authRole === 'admin') {
+      setIsAuthenticated(true);
+      setIsLoading(false);
+      if (authUser?.role === 'admin') {
+        applyAdminProfile(authUser);
+      }
+      void softRefreshMe();
+      return;
+    }
+
+    void checkAuth();
+  }, [authLoading, authUser, authRole, applyAdminProfile, softRefreshMe, checkAuth]);
 
   // One-shot tab intent. Never persist ?tab= across reload.
   useEffect(() => {
@@ -179,7 +271,12 @@ export default function AdminDashboard() {
     }
   }, []);
 
+  // Only track keyboard on Vidya — elsewhere it was re-rendering every admin pane.
   useEffect(() => {
+    if (currentView !== 'vidya-ai') {
+      setKeyboardOpen(false);
+      return;
+    }
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
     const subShow = Keyboard.addListener(showEvent, () => setKeyboardOpen(true));
@@ -188,57 +285,10 @@ export default function AdminDashboard() {
       subShow.remove();
       subHide.remove();
     };
-  }, []);
-
-  const checkAuth = async () => {
-    try {
-      const auth = await authService.getStoredAuth();
-      const token = auth.token;
-      const userRole = auth.role;
-
-      if (!token) {
-        router.replace('/auth/login');
-        return;
-      }
-
-      if (userRole === 'admin') {
-        setIsAuthenticated(true);
-        setIsLoading(false);
-      }
-
-      const data = await authService.me();
-      if (data?.user?.role === 'admin') {
-        setIsAuthenticated(true);
-        setUserName(data.user.fullName || data.user.schoolName || 'Admin');
-        setAdminId(String(data.user._id || data.user.id || ''));
-        setSchoolProfile({
-          schoolName: data.user.schoolName,
-          schoolLogo: data.user.schoolLogo,
-        });
-      } else {
-        router.replace('/auth/login');
-      }
-    } catch (error) {
-      console.error('Auth check failed:', error);
-      const message = String((error as any)?.message || '').toLowerCase();
-      const isNetworkIssue =
-        message.includes('network request failed') ||
-        message.includes('network error') ||
-        message.includes('timeout');
-
-      if (isNetworkIssue) {
-        setIsAuthenticated(true);
-      } else {
-        await authService.clearAuth();
-        router.replace('/auth/login');
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [currentView]);
 
   const handleLogout = () => {
-    Alert.alert('Logout', 'Sign out of admin panel?', [
+    Alert.alert('Logout', 'Sign out of your account?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Logout',
@@ -246,6 +296,7 @@ export default function AdminDashboard() {
         onPress: async () => {
           setMenuOpen(false);
           try {
+            adminService.clearAdminDashboardCache();
             await signOut();
           } catch {
             await authService.clearAuth();
@@ -303,9 +354,13 @@ export default function AdminDashboard() {
               {ADMIN_VIEWS.map((view) =>
                 visitedViews.has(view) ? (
                   <VisitedTabPane key={view} visible={currentView === view}>
-                    <Suspense fallback={<TabFallback />}>
-                      {renderAdminView(view, viewOpts)}
-                    </Suspense>
+                    {view === 'overview' ? (
+                      renderAdminView(view, viewOpts)
+                    ) : (
+                      <Suspense fallback={<TabFallback />}>
+                        {renderAdminView(view, viewOpts)}
+                      </Suspense>
+                    )}
                   </VisitedTabPane>
                 ) : null,
               )}
@@ -324,12 +379,6 @@ export default function AdminDashboard() {
         onClose={closeMenu}
         onSelect={onSelectFromDrawer}
         onLogout={handleLogout}
-      />
-
-      <VidyaAIFloatingAssistant
-        role="admin"
-        hidden={isVidya || keyboardOpen}
-        onPress={() => goToView('vidya-ai')}
       />
     </SafeAreaView>
   );

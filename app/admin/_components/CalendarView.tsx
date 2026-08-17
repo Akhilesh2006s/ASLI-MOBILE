@@ -249,7 +249,7 @@ export default function CalendarView() {
 
   const handleEventSubmit = async () => {
     if (!eventForm.name.trim() || !eventForm.date) {
-      Alert.alert('Error', 'Please Fill In All Required Fields');
+      Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
 
@@ -279,13 +279,13 @@ export default function CalendarView() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      Alert.alert('Success', isEditMode ? 'Event Updated Successfully' : 'Event Created Successfully');
+      Alert.alert('Success', isEditMode ? 'Event updated successfully' : 'Event created successfully');
       setIsEventModalOpen(false);
       resetForm();
       fetchEvents();
     } catch (error: any) {
       console.error('Error saving event:', error);
-      Alert.alert('Error', error?.response?.data?.message || 'Failed To Save Event');
+      Alert.alert('Error', error?.response?.data?.message || 'Failed to save event');
     }
   };
 
@@ -301,11 +301,11 @@ export default function CalendarView() {
           try {
             const eventId = event._id || event.id;
             await api.delete(`/api/admin/events/${eventId}`);
-            Alert.alert('Success', 'Event Deleted Successfully');
+            Alert.alert('Success', 'Event deleted successfully');
             setIsViewModalOpen(false);
             fetchEvents();
           } catch {
-            Alert.alert('Error', 'Failed To Delete Event');
+            Alert.alert('Error', 'Failed to delete event');
           }
         },
       },
@@ -355,7 +355,7 @@ export default function CalendarView() {
       <AdminSectionHeader
         icon="calendar"
         title="Calendar"
-        subtitle="Manage And View Your Events"
+        subtitle="Manage and view your events"
         action={
           <AdminScalePressable
             onPress={() => setCurrentDate(new Date())}

@@ -936,7 +936,7 @@ const OverviewView = memo(function OverviewView({
         <View style={isTablet ? styles.pairHalf : undefined}>
           <HomeShortcutCard
             title="Teachers Report"
-            subtitle="Daily Class Updates From Teachers."
+            subtitle="Daily class updates from teachers."
             icon="people"
             tint="#eef2ff"
             accent="#7c3aed"
@@ -946,7 +946,7 @@ const OverviewView = memo(function OverviewView({
         <View style={isTablet ? styles.pairHalf : undefined}>
           <HomeShortcutCard
             title="My Homework"
-            subtitle="View And Manage Your Assignments."
+            subtitle="View and manage your assignments."
             icon="bag-handle"
             tint="#fff7ed"
             accent="#f97316"

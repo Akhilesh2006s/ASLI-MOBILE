@@ -5,13 +5,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useBackNavigation } from '../../src/hooks/useBackNavigation';
+import { useDashboardShellBack } from '../../src/hooks/useBackNavigation';
 import { consumeSuperAdminDashboardTabIntent } from '../../src/lib/dashboard-tab-intent';
 import { API_BASE_URL } from '../../src/services/api/api';
 import { useAuth } from '../../src/context/AuthContext';
 import AdminsView from './_components/AdminsView';
 import VidyaAIView from './_components/VidyaAIView';
-import VidyaAIFloatingAssistant from '../../src/components/vidya/VidyaAIFloatingAssistant';
 import BoardComparisonView from './_components/BoardComparisonView';
 import BoardDashboardView from './_components/BoardDashboardView';
 import SubjectContentManagementView from './_components/SubjectContentManagementView';
@@ -87,8 +86,6 @@ export default function SuperAdminDashboard() {
     return () => clearTimeout(timer);
   }, []);
 
-  useBackNavigation('/super-admin-dashboard', true);
-
   // One-shot tab intent. Never persist ?tab= across reload (was reopening Vidya).
   useEffect(() => {
     const intent = consumeSuperAdminDashboardTabIntent();
@@ -157,6 +154,13 @@ export default function SuperAdminDashboard() {
       setSelectedBoard('ASLI_EXCLUSIVE_SCHOOLS');
     }
   };
+
+  useDashboardShellBack({
+    isHome: currentView === 'dashboard',
+    goHome: () => handleViewChange('dashboard'),
+    menuOpen,
+    closeMenu: () => setMenuOpen(false),
+  });
 
   const handleLogout = () => {
     Alert.alert('Logout', 'Sign out of super admin panel?', [
@@ -293,12 +297,6 @@ export default function SuperAdminDashboard() {
         onClose={() => setMenuOpen(false)}
         onSelect={handleViewChange}
         onLogout={handleLogout}
-      />
-
-      <VidyaAIFloatingAssistant
-        role="super_admin"
-        hidden={currentView === 'vidya-ai'}
-        onPress={() => handleViewChange('vidya-ai')}
       />
     </SafeAreaView>
   );
