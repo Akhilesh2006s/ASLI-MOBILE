@@ -41,12 +41,12 @@ type Props = {
   onNavigate?: (view: AdminNavView) => void;
 };
 
-/** Dashboard-only palette — sky blue + white (does not affect other admin tabs). */
+/** Dashboard-only palette — light sky + white (no navy / dark fills). */
 const DASH = {
   sky: '#0EA5E9',
   skyDeep: '#0284C7',
-  skyDark: '#0369A1',
-  skyInk: '#0C4A6E',
+  skyDark: '#38BDF8',
+  skyInk: '#0284C7',
   skyMuted: '#64748B',
   white: '#FFFFFF',
   wash: '#F0F9FF',
@@ -315,7 +315,7 @@ export default memo(function OverviewView({ onNavigate }: Props) {
       style={styles.container}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
-      // Opaque fill avoids expensive blending over AppBackground artwork while scrolling.
+      // Page wash is transparent so AppBackground artwork shows through.
       removeClippedSubviews={Platform.OS === 'android'}
       overScrollMode="never"
       nestedScrollEnabled={false}
@@ -375,10 +375,10 @@ export default memo(function OverviewView({ onNavigate }: Props) {
           <View
             style={[
               styles.analysisIconBox,
-              { borderRadius: radius.md, backgroundColor: ANALYSIS_ACCENTS.shell.accent },
+              { borderRadius: radius.md, backgroundColor: DASH.soft },
             ]}
           >
-            <Ionicons name="bar-chart" size={22} color="#FFFFFF" />
+            <Ionicons name="bar-chart" size={22} color={ANALYSIS_ACCENTS.shell.accent} />
           </View>
           <View style={styles.analysisHeaderText}>
             <Text style={[styles.analysisTitle, { color: ANALYSIS_ACCENTS.shell.accent }]}>
@@ -561,7 +561,7 @@ export default memo(function OverviewView({ onNavigate }: Props) {
 
 const styles = StyleSheet.create({
   // Sky wash — Dashboard tab only.
-  container: { flex: 1, minHeight: 0, backgroundColor: DASH.wash },
+  container: { flex: 1, minHeight: 0, backgroundColor: 'transparent' },
   content: { padding: 16, paddingBottom: 48 },
   statsGrid: {
     flexDirection: 'row',

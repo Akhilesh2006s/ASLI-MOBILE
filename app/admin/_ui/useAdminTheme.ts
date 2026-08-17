@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { useColorScheme } from 'react-native';
 import {
   ADMIN_RADIUS,
   ADMIN_SHADOW,
@@ -12,10 +11,11 @@ import {
 } from '../../../src/theme/admin';
 
 export function useAdminTheme() {
-  const systemScheme = useColorScheme();
-  const scheme: AdminColorScheme = systemScheme === 'dark' ? 'dark' : 'light';
+  // Admin stays light indigo — system dark mode previously flipped the portal
+  // to a forest-green palette that does not match the web admin.
+  const scheme: AdminColorScheme = 'light';
   const colors = useMemo(() => getAdminColors(scheme), [scheme]);
-  const isDark = scheme === 'dark';
+  const isDark = false;
 
   return {
     scheme,

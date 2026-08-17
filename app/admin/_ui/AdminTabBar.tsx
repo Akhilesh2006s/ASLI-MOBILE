@@ -42,7 +42,7 @@ export default function AdminTabBar({ activeView, onTabChange }: Props) {
         styles.wrap,
         {
           paddingBottom: Math.max(insets.bottom, 10),
-          backgroundColor: '#EEF2E3',
+          backgroundColor: 'transparent',
         },
       ]}
     >

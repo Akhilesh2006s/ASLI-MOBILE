@@ -319,7 +319,6 @@ export default function SubjectsView() {
       style={[styles.subjectCard, isTablet && styles.subjectCardTablet]}
       noAnimation={isTablet}
     >
-      <View style={[styles.subjectAccentBar, { backgroundColor: colors.primary }]} />
       <View style={styles.cardTopRow}>
         <View
           style={[
@@ -581,17 +580,9 @@ const styles = StyleSheet.create({
   },
   subjectCard: {
     padding: 14,
-    paddingLeft: 16,
   },
   subjectCardTablet: {
     width: '100%',
-  },
-  subjectAccentBar: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 4,
   },
   kvBlockTablet: {
     gap: 6,
@@ -699,7 +690,7 @@ const styles = StyleSheet.create({
     paddingLeft: 30,
   },
   kvValueMuted: {
-    color: '#0F766E',
+    color: '#4F46E5',
     fontWeight: '600',
   },
   cardActions: {
@@ -808,7 +799,7 @@ const styles = StyleSheet.create({
   },
   classPickerEmpty: {
     fontSize: 13,
-    color: '#0F766E',
+    color: '#4F46E5',
     paddingVertical: 8,
   },
   classPickerScroll: {

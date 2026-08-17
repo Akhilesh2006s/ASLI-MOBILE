@@ -1047,7 +1047,7 @@ export default function StudentsView() {
       </View>
 
       <AdminGlassCard delay={120} style={styles.directoryContainer}>
-        <View style={[styles.directoryHeader, { borderBottomColor: colors.surfaceBorder, backgroundColor: colors.bg }]}>
+        <View style={[styles.directoryHeader, { borderBottomColor: colors.surfaceBorder, backgroundColor: colors.surface }]}>
           <View style={styles.directoryHeaderLeft}>
             <Text style={[styles.directoryTitle, { color: colors.text }]}>Students Directory</Text>
             <Text style={[styles.directorySubtitle, { color: colors.primary }]}>
@@ -1522,7 +1522,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    borderLeftWidth: 4,
     alignItems: 'center',
   },
   summaryIconWrap: {
@@ -1658,7 +1657,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#14B8A6',
+    backgroundColor: '#4F46E5',
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
@@ -1667,7 +1666,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#10b981',
+    backgroundColor: '#6366F1',
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
@@ -1720,7 +1719,7 @@ const styles = StyleSheet.create({
   },
   directorySubtitle: {
     fontSize: 13,
-    color: '#0F766E',
+    color: '#4F46E5',
     marginTop: 4,
     fontWeight: '500',
   },
@@ -1993,7 +1992,7 @@ const styles = StyleSheet.create({
   assignClassBtnText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#0F766E',
+    color: '#4F46E5',
   },
   loadingContainer: {
     justifyContent: 'center',
@@ -2029,7 +2028,7 @@ const styles = StyleSheet.create({
   addFirstButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0F766E',
+    backgroundColor: '#4F46E5',
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 12,
@@ -2083,7 +2082,7 @@ const styles = StyleSheet.create({
     color: '#334155',
   },
   pickerItemTextActive: {
-    color: '#0F766E',
+    color: '#4F46E5',
   },
   modalOverlay: {
     flex: 1,
@@ -2143,7 +2142,7 @@ const styles = StyleSheet.create({
   },
   helperText: {
     fontSize: 12,
-    color: '#0F766E',
+    color: '#4F46E5',
     marginTop: 4,
   },
   passwordRow: {
@@ -2197,7 +2196,7 @@ const styles = StyleSheet.create({
   },
   filePickName: {
     fontSize: 13,
-    color: '#0F766E',
+    color: '#4F46E5',
     marginTop: 4,
   },
   warningBox: {
@@ -2232,7 +2231,7 @@ const styles = StyleSheet.create({
   },
   classPickItemActive: {
     backgroundColor: 'rgba(217, 119, 6, 0.12)',
-    borderColor: '#0F766E',
+    borderColor: '#4F46E5',
     borderWidth: 2,
   },
   classPickName: {

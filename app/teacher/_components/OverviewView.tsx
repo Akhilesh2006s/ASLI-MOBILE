@@ -95,8 +95,6 @@ const SHORTCUTS: Array<{
   hint: string;
   icon: keyof typeof Ionicons.glyphMap;
 }> = [
-  { tab: 'classes', label: 'My Classes', hint: 'Class Roster Cards', icon: 'school-outline' },
-  { tab: 'students', label: 'Students', hint: 'Progress & Submissions', icon: 'people-outline' },
   { tab: 'calendar', label: 'Calendar', hint: 'Timetable & Schedule', icon: 'calendar-outline' },
   { tab: 'vidya-ai', label: 'Vidya AI', hint: 'Generate Teaching Aids', icon: 'sparkles-outline' },
 ];

@@ -78,11 +78,15 @@ function qKey(q: QuestionStat) {
   return `${q.questionId}-${q.index}`;
 }
 
+const LIST_PREVIEW = 3;
+const REPORT_PREVIEW = 5;
+
 function optionLetter(i: number) {
   return String.fromCharCode(65 + i);
 }
 
 function StudentLists({ question }: { question: QuestionStat }) {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const groups = [
     {
       title: 'Attempted & Correct',
@@ -109,26 +113,46 @@ function StudentLists({ question }: { question: QuestionStat }) {
 
   return (
     <View style={styles.listsWrap}>
-      {groups.map((g) => (
-        <View key={g.title} style={[styles.listCard, { backgroundColor: g.bg, borderColor: `${g.color}33` }]}>
-          <View style={styles.listHead}>
-            <Ionicons name={g.icon} size={14} color={g.color} />
-            <Text style={[styles.listTitle, { color: g.color }]} numberOfLines={1}>
-              {g.title}
-            </Text>
-            <Text style={[styles.listCount, { color: g.color }]}>({g.students.length})</Text>
-          </View>
-          {g.students.length === 0 ? (
-            <Text style={styles.listEmpty}>None</Text>
-          ) : (
-            g.students.map((s) => (
-              <Text key={s.id} style={styles.listName} numberOfLines={1}>
-                {s.name}
+      {groups.map((g) => {
+        const extra = Math.max(0, g.students.length - LIST_PREVIEW);
+        const open = Boolean(expanded[g.title]);
+        const shown = open || extra === 0 ? g.students : g.students.slice(0, LIST_PREVIEW);
+        return (
+          <View key={g.title} style={[styles.listCard, { backgroundColor: g.bg, borderColor: `${g.color}33` }]}>
+            <View style={styles.listHead}>
+              <Ionicons name={g.icon} size={14} color={g.color} />
+              <Text style={[styles.listTitle, { color: g.color }]} numberOfLines={1}>
+                {g.title}
               </Text>
-            ))
-          )}
-        </View>
-      ))}
+              <Text style={[styles.listCount, { color: g.color }]}>({g.students.length})</Text>
+            </View>
+            {g.students.length === 0 ? (
+              <Text style={styles.listEmpty}>None</Text>
+            ) : (
+              <>
+                {shown.map((s) => (
+                  <Text key={s.id} style={styles.listName} numberOfLines={1}>
+                    {s.name}
+                  </Text>
+                ))}
+                {extra > 0 ? (
+                  <Pressable
+                    onPress={() => setExpanded((prev) => ({ ...prev, [g.title]: !open }))}
+                    accessibilityRole="button"
+                    accessibilityLabel={open ? 'Show fewer students' : `Show ${extra} more students`}
+                    hitSlop={6}
+                    style={styles.moreBtn}
+                  >
+                    <Text style={[styles.moreBtnText, { color: g.color }]}>
+                      {open ? 'Show less' : `+${extra} more`}
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </>
+            )}
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -231,6 +255,7 @@ export default function TeacherExamPaperReview({ classNumber = 'all' }: Props) {
   const [discussIndex, setDiscussIndex] = useState(0);
   const [selectedByQ, setSelectedByQ] = useState<Record<string, string>>({});
   const [report, setReport] = useState<StudentReport | null>(null);
+  const [showAllReports, setShowAllReports] = useState(false);
 
   const loadExams = useCallback(async () => {
     setLoadingExams(true);
@@ -271,6 +296,7 @@ export default function TeacherExamPaperReview({ classNumber = 'all' }: Props) {
         setSelectedByQ({});
         setShowAnswers(false);
         setDiscussIndex(0);
+        setShowAllReports(false);
       } catch (e) {
         setAnalytics(null);
         setError(e instanceof Error ? e.message : 'Could not load paper');
@@ -300,25 +326,44 @@ export default function TeacherExamPaperReview({ classNumber = 'all' }: Props) {
     setSelectedByQ((prev) => ({ ...prev, [key]: opt }));
   };
 
-  const renderStudentSheet = () => (
-    <View style={styles.reportsBlock}>
-      <Text style={styles.sectionTitle}>Individual Student Reports</Text>
-      {studentReports.map((s) => (
-        <Pressable key={s.studentId} style={styles.reportRow} onPress={() => setReport(s)}>
-          <Ionicons name="person-circle-outline" size={22} color={TEACHER.primary} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.reportName}>{s.name}</Text>
-            <Text style={styles.reportMeta}>
-              {s.attempted
-                ? `${s.percentage != null ? Number(s.percentage).toFixed(1) : '—'}% · ${s.correctAnswers}✓ ${s.wrongAnswers}✗`
-                : 'Not Attempted'}
+  const renderStudentSheet = () => {
+    const extra = Math.max(0, studentReports.length - REPORT_PREVIEW);
+    const shown =
+      showAllReports || extra === 0 ? studentReports : studentReports.slice(0, REPORT_PREVIEW);
+    return (
+      <View style={styles.reportsBlock}>
+        <Text style={styles.sectionTitle}>Individual Student Reports</Text>
+        {shown.map((s) => (
+          <Pressable key={s.studentId} style={styles.reportRow} onPress={() => setReport(s)}>
+            <Ionicons name="person-circle-outline" size={22} color={TEACHER.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.reportName}>{s.name}</Text>
+              <Text style={styles.reportMeta}>
+                {s.attempted
+                  ? `${s.percentage != null ? Number(s.percentage).toFixed(1) : '—'}% · ${s.correctAnswers}✓ ${s.wrongAnswers}✗`
+                  : 'Not Attempted'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={TEACHER.textMuted} />
+          </Pressable>
+        ))}
+        {extra > 0 ? (
+          <Pressable
+            onPress={() => setShowAllReports((open) => !open)}
+            accessibilityRole="button"
+            accessibilityLabel={
+              showAllReports ? 'Show fewer student reports' : `Show ${extra} more student reports`
+            }
+            style={styles.moreRow}
+          >
+            <Text style={styles.moreRowText}>
+              {showAllReports ? 'Show less' : `+${extra} more`}
             </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={16} color={TEACHER.textMuted} />
-        </Pressable>
-      ))}
-    </View>
-  );
+          </Pressable>
+        ) : null}
+      </View>
+    );
+  };
 
   return (
     <GlassPanel style={styles.root} radius={TEACHER_RADIUS.lg} tone="strong">
@@ -623,6 +668,12 @@ const styles = StyleSheet.create({
   listCount: { fontSize: 11, fontWeight: '600' },
   listEmpty: { fontSize: 11, color: TEACHER.textMuted },
   listName: { fontSize: 12, color: TEACHER.text, marginTop: 2 },
+  moreBtn: {
+    alignSelf: 'flex-start',
+    marginTop: 6,
+    paddingVertical: 2,
+  },
+  moreBtnText: { fontSize: 12, fontWeight: '800' },
   reportsBlock: { marginTop: 8, gap: 8 },
   sectionTitle: { fontSize: 14, fontWeight: '800', color: TEACHER.text },
   reportRow: {
@@ -637,6 +688,16 @@ const styles = StyleSheet.create({
   },
   reportName: { fontSize: 14, fontWeight: '700', color: TEACHER.text },
   reportMeta: { fontSize: 11, color: TEACHER.textMuted, marginTop: 2 },
+  moreRow: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+    backgroundColor: '#EEF2FF',
+  },
+  moreRowText: { fontSize: 13, fontWeight: '800', color: TEACHER.primary },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(15,23,42,0.45)',

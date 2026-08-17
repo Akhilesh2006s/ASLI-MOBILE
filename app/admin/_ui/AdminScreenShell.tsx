@@ -20,8 +20,8 @@ type Props = ScrollViewProps & {
 };
 
 /**
- * Admin scroll shell — opaque, no enter animations, no BlurView.
- * Transparent shells over AppBackground + spring enters are a major FPS cliff.
+ * Admin scroll shell — transparent page wash so AppBackground shows through.
+ * Cards and headers stay opaque; no BlurView / enter animations.
  */
 export default function AdminScreenShell({
   children,
@@ -39,10 +39,10 @@ export default function AdminScreenShell({
   const defaultBottomPad = isPhone ? spacing.xl : spacing.lg + 16;
 
   return (
-    <View style={[styles.flex, { backgroundColor: colors.bgElevated }]}>
+    <View style={[styles.flex, { backgroundColor: colors.bg }]}>
       <ScrollView
         {...rest}
-        style={[styles.flex, { backgroundColor: colors.bgElevated }, style]}
+        style={[styles.flex, { backgroundColor: colors.bg }, style]}
         contentContainerStyle={[
           !noPadding && {
             padding: spacing.md,

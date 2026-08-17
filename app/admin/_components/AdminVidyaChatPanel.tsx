@@ -209,7 +209,7 @@ export default function AdminVidyaChatPanel({ adminId, adminName }: Props) {
             paddingHorizontal: spacing.md,
             paddingBottom: 8 + keyboardLift,
             borderTopColor: colors.surfaceBorder,
-            backgroundColor: '#EEF2E3',
+            backgroundColor: 'transparent',
           },
         ]}
       >

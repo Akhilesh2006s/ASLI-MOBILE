@@ -41,15 +41,21 @@ function AdminHeader({ userName, subtitle, schoolUser, showSchoolBrand = false, 
         style={[
           styles.gradient,
           compact ? styles.gradientCompact : null,
-          {
-            borderRadius: radius.xl,
-            borderColor: colors.primaryLight,
-          },
+          { borderRadius: radius.xl },
         ]}
       >
         <View style={styles.topRow}>
           <View style={styles.userBlock}>
-            <View style={[styles.avatar, { borderRadius: radius.full, backgroundColor: 'rgba(255,255,255,0.72)' }]}>
+            <View
+              style={[
+                styles.avatar,
+                {
+                  borderRadius: radius.full,
+                  backgroundColor: colors.primaryMuted,
+                  borderColor: 'rgba(99,102,241,0.28)',
+                },
+              ]}
+            >
               {schoolLogoUrl ? (
                 <Image
                   source={{ uri: schoolLogoUrl }}
@@ -58,7 +64,7 @@ function AdminHeader({ userName, subtitle, schoolUser, showSchoolBrand = false, 
                   accessibilityLabel={`${schoolBranding?.schoolName || 'School'} logo`}
                 />
               ) : (
-                <Text style={[styles.avatarText, { color: colors.primaryDark }]}>{initials}</Text>
+                <Text style={[styles.avatarText, { color: colors.primary }]}>{initials}</Text>
               )}
             </View>
             <View style={styles.textBlock}>
@@ -84,7 +90,7 @@ function AdminHeader({ userName, subtitle, schoolUser, showSchoolBrand = false, 
                 Admin Dashboard
               </Text>
               {subtitle ? (
-                <Text style={[styles.subtitle, { color: colors.primaryDark }]}>{subtitle}</Text>
+                <Text style={[styles.subtitle, { color: colors.primary }]}>{subtitle}</Text>
               ) : null}
             </View>
           </View>
@@ -92,11 +98,11 @@ function AdminHeader({ userName, subtitle, schoolUser, showSchoolBrand = false, 
             <AdminScalePressable
               style={[
                 styles.iconBtn,
-                { backgroundColor: 'rgba(255,255,255,0.7)', borderColor: 'rgba(15, 118, 110, 0.16)' },
+                { backgroundColor: colors.surface, borderColor: 'rgba(99,102,241,0.22)' },
               ]}
               onPress={onMenu}
             >
-              <Ionicons name="menu" size={22} color={colors.primaryDark} />
+              <Ionicons name="menu" size={22} color={colors.primary} />
             </AdminScalePressable>
           ) : null}
         </View>
@@ -115,7 +121,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     overflow: 'hidden',
-    borderWidth: 1.5,
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.45)',
   },
   gradientCompact: {
     paddingVertical: 12,
@@ -135,7 +142,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.8)',
+    borderColor: 'rgba(99,102,241,0.22)',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',

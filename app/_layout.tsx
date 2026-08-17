@@ -157,9 +157,6 @@ function AuthGate() {
       <Stack.Screen
         name="admin/dashboard"
         options={{
-          // Opaque so AppBackground ImageBackground is fully covered — scrolling
-          // translucent admin UI over a live bitmap is a major FPS cliff.
-          contentStyle: { backgroundColor: '#EEF2E3' },
           freezeOnBlur: true,
         }}
       />
@@ -169,7 +166,6 @@ function AuthGate() {
           gestureEnabled: true,
           animation: 'slide_from_right',
           animationDuration: 220,
-          contentStyle: { backgroundColor: '#EEF2E3' },
         }}
       />
       <Stack.Screen
@@ -178,7 +174,6 @@ function AuthGate() {
           gestureEnabled: true,
           animation: 'slide_from_right',
           animationDuration: 220,
-          contentStyle: { backgroundColor: '#EEF2E3' },
         }}
       />
       <Stack.Screen

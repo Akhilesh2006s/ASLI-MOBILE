@@ -1071,7 +1071,6 @@ export default function ExamsView() {
           return (
             <View key={exam.cardKey} style={isTablet ? { width: cardWidth } : undefined}>
             <AdminGlassCard delay={index * 60} style={styles.examCard}>
-              <View style={[styles.examAccentBar, { backgroundColor: colors.primary }]} />
               <View style={styles.cardTop}>
                 <Text style={[typo.section, { color: colors.text }]} numberOfLines={2}>
                   {exam.title}
@@ -1191,14 +1190,6 @@ const styles = StyleSheet.create({
   examCard: {
     marginBottom: 0,
     overflow: 'hidden',
-    paddingLeft: 14,
-  },
-  examAccentBar: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 4,
   },
   backRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
   backText: { fontSize: 15, fontWeight: '700' },

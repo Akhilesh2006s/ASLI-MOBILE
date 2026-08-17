@@ -20,7 +20,7 @@ export const COLORS = {
 
   student: '#10B981',
   teacher: '#F59E0B',
-  admin: '#0F766E',
+  admin: '#6366F1',
   superAdmin: '#8B5CF6',
 
   bg: '#F4F7FB',

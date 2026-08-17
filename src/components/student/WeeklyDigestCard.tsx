@@ -196,20 +196,16 @@ export default function WeeklyDigestCard({
           <SectionTitle icon="log-in-outline" title="Your activity" />
           <View style={styles.grid}>
             <MetricTile label="Logins this week" value={n(m.loginCount)} hint="Days you opened the app" />
-            <MetricTile label="Sessions" value={n(m.sessions)} hint="Times you started using it" />
             <MetricTile
               label="Time on platform"
               value={m.totalTimeLabel || `${n(m.minutes)} min`}
               hint="Total time spent this week"
             />
-            <MetricTile label="Last active" value={m.lastActiveDate || '—'} hint="Your most recent visit" />
             <MetricTile
-              label="Status (14 days)"
-              value={String(m.status || '—')}
-              hint="Active if used in last 14 days"
+              label="AI resources created"
+              value={n(m.generationsCreated)}
+              hint="Worksheets, notes & more you made"
             />
-            <MetricTile label="Active days (14d)" value={n(m.activeDays)} hint="Days used in last 2 weeks" />
-            <MetricTile label="Classes assigned" value={n(m.classesAssigned)} hint="Classes you teach" />
             <MetricTile
               label="Students in classes"
               value={n(m.studentsInClasses)}
@@ -217,65 +213,97 @@ export default function WeeklyDigestCard({
             />
           </View>
 
-          <SectionTitle icon="sparkles-outline" title="Teaching with AI" />
-          <View style={styles.grid}>
-            <MetricTile
-              label="AI resources created"
-              value={n(m.generationsCreated)}
-              hint="Worksheets, notes & more you made"
-            />
-            <MetricTile label="Vidya AI asks" value={n(m.aiDoubts)} hint="Questions you asked Vidya AI" />
-            <MetricTile label="Tool opens" value={n(m.aiToolUses)} hint="Times you opened an AI tool" />
-          </View>
-          {(Array.isArray(m.toolsUsed) ? m.toolsUsed : []).length > 0 ? (
-            (m.toolsUsed as Array<{ name?: string; count?: number; subjects?: string[] }>)
-              .slice(0, 8)
-              .map((tool, idx) => (
-                <View key={`${tool.name}-${idx}`} style={styles.listRow}>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={styles.listTitle} numberOfLines={1}>{tool.name || 'Tool'}</Text>
-                    {Array.isArray(tool.subjects) && tool.subjects.length > 0 ? (
-                      <Text style={styles.listSub} numberOfLines={1}>
-                        {tool.subjects.slice(0, 3).join(' · ')}
-                      </Text>
-                    ) : null}
-                  </View>
-                  <Text style={styles.listPct}>{n(tool.count)}×</Text>
-                </View>
-              ))
+          {!showAllMetrics ? (
+            <TouchableOpacity
+              style={styles.loadMoreBtn}
+              onPress={() => setShowAllMetrics(true)}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Show more weekly report options"
+            >
+              <Ionicons name="add-circle-outline" size={16} color="#0369A1" />
+              <Text style={styles.loadMoreText}>+ More Options</Text>
+            </TouchableOpacity>
           ) : (
-            <Text style={styles.mutedSmall}>No AI Tools Used This Week Yet.</Text>
+            <>
+              <View style={styles.grid}>
+                <MetricTile label="Sessions" value={n(m.sessions)} hint="Times you started using it" />
+                <MetricTile label="Last active" value={m.lastActiveDate || '—'} hint="Your most recent visit" />
+                <MetricTile
+                  label="Status (14 days)"
+                  value={String(m.status || '—')}
+                  hint="Active if used in last 14 days"
+                />
+                <MetricTile label="Active days (14d)" value={n(m.activeDays)} hint="Days used in last 2 weeks" />
+                <MetricTile label="Classes assigned" value={n(m.classesAssigned)} hint="Classes you teach" />
+              </View>
+
+              <SectionTitle icon="sparkles-outline" title="Teaching with AI" />
+              <View style={styles.grid}>
+                <MetricTile label="Vidya AI asks" value={n(m.aiDoubts)} hint="Questions you asked Vidya AI" />
+                <MetricTile label="Tool opens" value={n(m.aiToolUses)} hint="Times you opened an AI tool" />
+              </View>
+              {(Array.isArray(m.toolsUsed) ? m.toolsUsed : []).length > 0 ? (
+                (m.toolsUsed as Array<{ name?: string; count?: number; subjects?: string[] }>)
+                  .slice(0, 8)
+                  .map((tool, idx) => (
+                    <View key={`${tool.name}-${idx}`} style={styles.listRow}>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={styles.listTitle} numberOfLines={1}>{tool.name || 'Tool'}</Text>
+                        {Array.isArray(tool.subjects) && tool.subjects.length > 0 ? (
+                          <Text style={styles.listSub} numberOfLines={1}>
+                            {tool.subjects.slice(0, 3).join(' · ')}
+                          </Text>
+                        ) : null}
+                      </View>
+                      <Text style={styles.listPct}>{n(tool.count)}×</Text>
+                    </View>
+                  ))
+              ) : (
+                <Text style={styles.mutedSmall}>No AI Tools Used This Week Yet.</Text>
+              )}
+
+              <SectionTitle icon="people-outline" title="Your school this week" />
+              <View style={styles.grid}>
+                <MetricTile
+                  label="Students accessed"
+                  value={n(m.schoolStudentsAccessed)}
+                  hint="Students who used the app"
+                />
+                <MetricTile
+                  label="School sessions"
+                  value={n(m.schoolSessions)}
+                  hint="Total sessions across your school"
+                />
+                <MetricTile
+                  label="Teachers active"
+                  value={n(m.schoolTeachersActive)}
+                  hint="Colleagues active this week"
+                />
+              </View>
+
+              {(digest.highlights || []).length > 0 ? (
+                <View style={styles.highlights}>
+                  <Text style={styles.highlightsTitle}>This Week At A Glance</Text>
+                  {(digest.highlights || []).map((h) => (
+                    <Text key={h} style={styles.highlightItem}>
+                      • {formatAiToolText(h)}
+                    </Text>
+                  ))}
+                </View>
+              ) : null}
+
+              <TouchableOpacity
+                style={styles.showLessBtn}
+                onPress={() => setShowAllMetrics(false)}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Show fewer weekly report options"
+              >
+                <Text style={styles.showLessText}>Show Less</Text>
+              </TouchableOpacity>
+            </>
           )}
-
-          <SectionTitle icon="people-outline" title="Your school this week" />
-          <View style={styles.grid}>
-            <MetricTile
-              label="Students accessed"
-              value={n(m.schoolStudentsAccessed)}
-              hint="Students who used the app"
-            />
-            <MetricTile
-              label="School sessions"
-              value={n(m.schoolSessions)}
-              hint="Total sessions across your school"
-            />
-            <MetricTile
-              label="Teachers active"
-              value={n(m.schoolTeachersActive)}
-              hint="Colleagues active this week"
-            />
-          </View>
-
-          {(digest.highlights || []).length > 0 ? (
-            <View style={styles.highlights}>
-              <Text style={styles.highlightsTitle}>This Week At A Glance</Text>
-              {(digest.highlights || []).map((h) => (
-                <Text key={h} style={styles.highlightItem}>
-                  • {formatAiToolText(h)}
-                </Text>
-              ))}
-            </View>
-          ) : null}
 
           <TouchableOpacity style={styles.cta} onPress={() => setPreviewOpen(true)} activeOpacity={0.9}>
             <LinearGradient colors={['#0EA5E9', '#0F766E']} style={styles.ctaGrad}>

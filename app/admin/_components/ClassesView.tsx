@@ -1861,7 +1861,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     marginBottom: 8,
   },
-  subjectPickRowActive: { borderColor: '#0F766E', backgroundColor: 'rgba(15, 118, 110, 0.08)' },
+  subjectPickRowActive: { borderColor: '#4F46E5', backgroundColor: 'rgba(79, 70, 229, 0.08)' },
   subjectPickText: { flex: 1 },
   subjectPickName: { fontSize: 15, fontWeight: '700', color: '#0f172a' },
   subjectPickMeta: { fontSize: 12, color: '#64748b', marginTop: 2 },
@@ -1959,7 +1959,7 @@ const styles = StyleSheet.create({
   },
   pickerItemActive: { backgroundColor: 'rgba(15, 118, 110, 0.12)' },
   pickerItemText: { fontSize: 15, fontWeight: '600', color: '#334155' },
-  pickerItemTextActive: { color: '#0F766E' },
+  pickerItemTextActive: { color: '#4F46E5' },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',

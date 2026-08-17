@@ -385,29 +385,29 @@ export default function AdminDashboard() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#EEF2E3' },
+  container: { flex: 1, backgroundColor: 'transparent' },
   shell: {
     flex: 1,
     flexDirection: 'row',
     minHeight: 0,
-    backgroundColor: '#EEF2E3',
+    backgroundColor: 'transparent',
   },
   mainColumn: {
     flex: 1,
     minWidth: 0,
     minHeight: 0,
-    backgroundColor: '#EEF2E3',
+    backgroundColor: 'transparent',
   },
   contentWrap: {
     flex: 1,
     minHeight: 0,
     position: 'relative',
     overflow: 'hidden',
-    backgroundColor: '#EEF2E3',
+    backgroundColor: 'transparent',
   },
   content: {
     flex: 1,
     minHeight: 0,
-    backgroundColor: '#EEF2E3',
+    backgroundColor: 'transparent',
   },
 });

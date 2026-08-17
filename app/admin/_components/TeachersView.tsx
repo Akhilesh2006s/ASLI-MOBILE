@@ -1601,7 +1601,7 @@ const styles = StyleSheet.create({
     paddingLeft: 30,
   },
   kvValueMuted: {
-    color: '#0F766E',
+    color: '#4F46E5',
     fontWeight: '600',
   },
   assignedClassesBlock: {
