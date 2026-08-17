@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, useWindowDimensions, InteractionManager } from 'react-native';
+import { View, Text, StyleSheet, Pressable, useWindowDimensions, InteractionManager } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { filterVisibleStudentTools, type StudentAiTool } from '../../../src/lib/student-ai-tools';
 import { ShimmerCard } from '../../../src/components/student/StudentShimmer';
 import AiToolCard from '../../../src/components/ai-tools/AiToolCard';
+import VidyaAvatar from '../../../src/components/vidya/VidyaAvatar';
 import { GlassPanel } from '../../../src/components/ui';
 import { AI, AI_RADIUS, AI_SHADOW, AI_SPACING, AI_TYPE } from '../../../src/theme/ai';
-import { STUDENT_SPACING } from '../../../src/theme/student';
+import { STUDENT, STUDENT_RADIUS, STUDENT_SPACING } from '../../../src/theme/student';
 
 const LIST_GAP = STUDENT_SPACING.md;
 const TOOLS_TABLET_MIN_WIDTH = 768;
@@ -32,7 +34,19 @@ const HERO_STAT_CHIPS: { icon: keyof typeof Ionicons.glyphMap; title: string; co
   { icon: 'compass-outline', title: 'Prepare', copy: 'Study guides, projects & plans' },
 ];
 
-export default function VidyaAIView() {
+function usePressScale(to = 0.98) {
+  const scale = useSharedValue(1);
+  const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const onPressIn = () => {
+    scale.value = withSpring(to, { damping: 14, stiffness: 300 });
+  };
+  const onPressOut = () => {
+    scale.value = withSpring(1, { damping: 14, stiffness: 300 });
+  };
+  return { style, onPressIn, onPressOut };
+}
+
+export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: boolean }) {
   const { width: screenWidth } = useWindowDimensions();
   const isTablet = screenWidth >= TOOLS_TABLET_MIN_WIDTH;
   const gridColumns = screenWidth >= TOOLS_WIDE_MIN_WIDTH ? 3 : isTablet ? 2 : 1;
@@ -41,6 +55,7 @@ export default function VidyaAIView() {
   const [subjectNames, setSubjectNames] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [ready, setReady] = useState(false);
+  const chatPress = usePressScale();
 
   // Let the Vidya tab paint first, then fetch — avoids a hitch on tab switch.
   useEffect(() => {
@@ -160,6 +175,31 @@ export default function VidyaAIView() {
         </View>
       </GlassPanel>
 
+      {chatEnabled ? (
+        <Pressable
+          onPress={() => {
+            requestAnimationFrame(() => {
+              router.push('/ai-tutor');
+            });
+          }}
+          onPressIn={chatPress.onPressIn}
+          onPressOut={chatPress.onPressOut}
+        >
+          <Animated.View style={chatPress.style}>
+            <GlassPanel style={styles.chatCard} radius={STUDENT_RADIUS.lg} tone="strong">
+              <View style={styles.chatCardRow}>
+                <VidyaAvatar size={48} borderColor="#c7d2fe" />
+                <View style={styles.chatTextWrap}>
+                  <Text style={styles.chatTitle}>Vidya AI Chat</Text>
+                  <Text style={styles.chatSub}>Ask Doubts · Instant Answers</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={STUDENT.primaryDark} />
+              </View>
+            </GlassPanel>
+          </Animated.View>
+        </Pressable>
+      ) : null}
+
       {!ready || isLoading ? (
         <View style={styles.toolsList}>
           {shimmerRows.map((row, rowIndex) => (
@@ -189,6 +229,29 @@ const styles = StyleSheet.create({
     borderRadius: AI_RADIUS.lg,
     padding: AI_SPACING.xl,
     ...AI_SHADOW,
+  },
+  chatCard: {
+    marginBottom: AI_SPACING.xl,
+    padding: STUDENT_SPACING.lg,
+    borderRadius: STUDENT_RADIUS.lg,
+    ...STUDENT.shadow.sm,
+  },
+  chatCardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: STUDENT_SPACING.md,
+  },
+  chatTextWrap: { flex: 1, minWidth: 0 },
+  chatTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: STUDENT.text,
+  },
+  chatSub: {
+    marginTop: 4,
+    fontSize: 13,
+    color: STUDENT.textMuted,
+    lineHeight: 18,
   },
   heroBadge: {
     alignSelf: 'flex-start',

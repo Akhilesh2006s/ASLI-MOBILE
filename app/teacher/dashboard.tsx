@@ -39,6 +39,7 @@ import {
 import { resolveTeacherDisplayName } from '../../src/lib/teacher-text';
 import { TEACHER, TEACHER_SPACING } from '../../src/theme/teacher';
 import { useVidyaChatAccess } from '../../src/hooks/useVidyaChatAccess';
+import VidyaAIFloatingAssistant from '../../src/components/vidya/VidyaAIFloatingAssistant';
 import { EduOTTFilterProvider } from '../../src/contexts/edu-ott-filter-context';
 import OverviewView from './_components/OverviewView';
 import AIClassesView from './_components/AIClassesView';
@@ -280,16 +281,6 @@ export default function TeacherDashboard() {
               user={user}
               onOpenMenu={() => setMenuOpen(true)}
               onLogout={handleLogout}
-              onOpenChat={
-                vidyaChatEnabled
-                  ? () => {
-                      requestAnimationFrame(() => {
-                        router.push('/teacher/vidya-chat' as any);
-                      });
-                    }
-                  : undefined
-              }
-              chatAccessibilityLabel="Open Vidya AI Chat"
             />
           )}
 
@@ -462,6 +453,18 @@ export default function TeacherDashboard() {
           onLogout={handleLogout}
         />
       )}
+      {vidyaChatEnabled ? (
+        <VidyaAIFloatingAssistant
+          role="teacher"
+          hidden={activeTab === 'vidya-ai'}
+          bottomOffset={16}
+          onPress={() => {
+            requestAnimationFrame(() => {
+              router.push('/teacher/vidya-chat' as any);
+            });
+          }}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

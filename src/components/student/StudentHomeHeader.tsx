@@ -5,6 +5,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { resolveStudentDisplayName } from '../../lib/student-text';
+import { formatTitleCase } from '../../lib/teacher-text';
 import { isVidyaEnabledForUser } from '../../lib/vidya-access';
 import StudentCardDecor from './StudentCardDecor';
 
@@ -19,7 +20,7 @@ export default function StudentHomeHeader({ user, streak = 0 }: Props) {
   const { width } = useWindowDimensions();
   const compact = width < 380;
   const displayName = resolveStudentDisplayName(user);
-  const stream = String(user?.educationStream || 'JEE').trim() || 'JEE';
+  const stream = formatTitleCase(String(user?.educationStream || 'JEE').trim() || 'JEE');
   const vidyaEnabled = isVidyaEnabledForUser(user);
   const robotSize = compact ? 112 : 140;
 
@@ -52,8 +53,8 @@ export default function StudentHomeHeader({ user, streak = 0 }: Props) {
             </Text>
             <Text style={styles.subtitle}>
               {vidyaEnabled
-                ? `Continue your ${stream} prep — Vidya AI has picks ready.`
-                : `Continue your ${stream} prep. Pick up where you left off.`}
+                ? `Continue Your ${stream} Prep—Vidya AI Has Picks Ready.`
+                : `Continue Your ${stream} Prep. Pick Up Where You Left Off.`}
             </Text>
           </View>
 

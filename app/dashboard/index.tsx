@@ -23,6 +23,7 @@ import AITabView from './_components/AITabView';
 import OmrResultsView from './_components/OmrResultsView';
 import TimetableTabView from './_components/TimetableTabView';
 import TrialDailyQuizPrompt from '../../src/components/TrialDailyQuizPrompt';
+import VidyaAIFloatingAssistant from '../../src/components/vidya/VidyaAIFloatingAssistant';
 import { useVidyaChatAccess } from '../../src/hooks/useVidyaChatAccess';
 import { resolveStudentFirstName } from '../../src/lib/student-text';
 
@@ -202,15 +203,6 @@ export default function StudentDashboard() {
             user={user}
             onOpenMenu={() => setMenuOpen(true)}
             onLogout={handleLogout}
-            onOpenChat={
-              vidyaChatEnabled
-                ? () => {
-                    requestAnimationFrame(() => {
-                      router.push('/ai-tutor');
-                    });
-                  }
-                : undefined
-            }
           />
         )}
         {visitedTabs.has('home') ? (
@@ -329,6 +321,18 @@ export default function StudentDashboard() {
         />
       )}
 
+      {vidyaChatEnabled ? (
+        <VidyaAIFloatingAssistant
+          role="student"
+          hidden={activeTab === 'vidya'}
+          bottomOffset={16}
+          onPress={() => {
+            requestAnimationFrame(() => {
+              router.push('/ai-tutor');
+            });
+          }}
+        />
+      ) : null}
       <TrialDailyQuizPrompt />
     </SafeAreaView>
   );
