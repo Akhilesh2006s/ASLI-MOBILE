@@ -37,6 +37,7 @@ import { API_BASE_URL } from '../../src/services/api/api';
 import { useAuth } from '../../src/context/AuthContext';
 import { useKeyboardDockLift } from '../../src/hooks/useKeyboardDockLift';
 import { GlassPanel } from '../../src/components/ui';
+import AppBackground from '../../src/components/ui/AppBackground';
 import { COLORS, FONT, RADIUS, SPACING } from '../../src/theme';
 
 /**
@@ -381,6 +382,7 @@ export default function Login() {
   };
 
   return (
+    <AppBackground>
     <View style={styles.root}>
       {/* the app-wide pastel artwork is the page background now, so no local gradient */}
       <StatusBar style="dark" />
@@ -529,6 +531,7 @@ export default function Login() {
         </SafeAreaView>
       ) : null}
     </View>
+    </AppBackground>
   );
 }
 

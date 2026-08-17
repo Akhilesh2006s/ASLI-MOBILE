@@ -63,7 +63,7 @@ const STATS: Array<{
   {
     key: 'totalStudents',
     label: 'Total Students',
-    caption: 'Across all your classes',
+    caption: 'Across All Your Classes',
     icon: 'people',
     tone: 'amber',
     motif: 'wave',
@@ -72,7 +72,7 @@ const STATS: Array<{
   {
     key: 'totalClasses',
     label: 'Active Classes',
-    caption: 'Currently running',
+    caption: 'Currently Running',
     icon: 'school',
     tone: 'violet',
     motif: 'bars',
@@ -81,7 +81,7 @@ const STATS: Array<{
   {
     key: 'totalVideos',
     label: 'Videos',
-    caption: 'Content available',
+    caption: 'Content Available',
     icon: 'play',
     tone: 'teal',
     motif: 'play',
@@ -95,10 +95,10 @@ const SHORTCUTS: Array<{
   hint: string;
   icon: keyof typeof Ionicons.glyphMap;
 }> = [
-  { tab: 'classes', label: 'My Classes', hint: 'Class roster cards', icon: 'school-outline' },
-  { tab: 'students', label: 'Students', hint: 'Progress & submissions', icon: 'people-outline' },
-  { tab: 'calendar', label: 'Calendar', hint: 'Timetable & schedule', icon: 'calendar-outline' },
-  { tab: 'vidya-ai', label: 'Vidya AI', hint: 'Generate teaching aids', icon: 'sparkles-outline' },
+  { tab: 'classes', label: 'My Classes', hint: 'Class Roster Cards', icon: 'school-outline' },
+  { tab: 'students', label: 'Students', hint: 'Progress & Submissions', icon: 'people-outline' },
+  { tab: 'calendar', label: 'Calendar', hint: 'Timetable & Schedule', icon: 'calendar-outline' },
+  { tab: 'vidya-ai', label: 'Vidya AI', hint: 'Generate Teaching Aids', icon: 'sparkles-outline' },
 ];
 
 function StatMotifArt({ motif, color }: { motif: StatMotif; color: string }) {
@@ -199,7 +199,7 @@ export default function OverviewView({ user, stats, onGo }: Props) {
         <Text style={styles.welcomeTitle}>Welcome,</Text>
         <Text style={styles.welcomeName}>{name}!</Text>
         <Text style={styles.welcomeSub}>
-          Your classes, students, and teaching tools are ready. Pick up where you left off.
+          Your Classes, Students, And Teaching Tools Are Ready. Pick Up Where You Left Off.
         </Text>
       </LinearGradient>
 

@@ -122,8 +122,22 @@ function AuthGate() {
       }}
     >
       <Stack.Screen name="index" />
-      <Stack.Screen name="auth/login" />
-      <Stack.Screen name="auth/register" />
+      <Stack.Screen
+        name="auth/login"
+        options={{
+          animation: 'fade',
+          contentStyle: { backgroundColor: '#F4F7FB' },
+        }}
+      />
+      <Stack.Screen
+        name="auth/register"
+        options={{
+          gestureEnabled: true,
+          animation: 'slide_from_right',
+          animationDuration: 220,
+          contentStyle: { backgroundColor: '#F4F7FB' },
+        }}
+      />
       <Stack.Screen
         name="dashboard/index"
         options={{
@@ -240,7 +254,16 @@ function AuthGate() {
       <Stack.Screen name="teacher/attendance" />
       <Stack.Screen name="teacher/quiz" />
       <Stack.Screen name="teacher/quiz/[quizId]" />
-      <Stack.Screen name="teacher/vidya-chat" />
+      <Stack.Screen
+        name="teacher/vidya-chat"
+        options={{
+          gestureEnabled: true,
+          animation: 'slide_from_right',
+          animationDuration: 220,
+          // Opaque so the frozen dashboard under this route cannot bleed through.
+          contentStyle: { backgroundColor: '#F4F7FB' },
+        }}
+      />
       <Stack.Screen name="teacher/subject/[id]" />
       <Stack.Screen name="super-admin/analytics" />
       <Stack.Screen name="super-admin/detailed-ai-analytics" />

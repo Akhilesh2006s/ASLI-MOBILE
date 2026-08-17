@@ -423,6 +423,7 @@ const styles = StyleSheet.create({
     marginBottom: 0,
     borderRadius: 0,
     borderWidth: 0,
+    backgroundColor: '#F4F7FB',
   },
   chatRootStandalone: {
     marginHorizontal: 0,
@@ -430,6 +431,7 @@ const styles = StyleSheet.create({
     marginBottom: 0,
     borderRadius: 0,
     borderWidth: 0,
+    backgroundColor: '#F4F7FB',
   },
   composerDock: {
     position: 'absolute',
@@ -437,12 +439,12 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 20,
     elevation: 20,
-    backgroundColor: TEACHER.bg,
+    backgroundColor: TEACHER.surface,
   },
   inputBar: {
     borderTopWidth: 1,
     borderTopColor: TEACHER.surfaceBorder,
-    backgroundColor: TEACHER.bg,
+    backgroundColor: TEACHER.surface,
     paddingHorizontal: TEACHER_SPACING.md,
     paddingTop: TEACHER_SPACING.sm,
   },

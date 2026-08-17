@@ -36,6 +36,7 @@ import { openContentPreview } from '../../../src/utils/openContentPreview';
 import { resolveIsAsliPrepExclusive } from '../../../src/lib/school-program';
 import { prepareLibraryContents } from '../../../src/lib/dedupe-library-content';
 import { buildExamAttemptCounts } from '../../../src/lib/student-exam-display';
+import { isIndividualAccount } from '../../../src/lib/individual-signup';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
@@ -932,28 +933,30 @@ const OverviewView = memo(function OverviewView({
         </View>
       </View>
 
-      <View style={[styles.pairRow, isTablet && styles.pairRowTablet]}>
-        <View style={isTablet ? styles.pairHalf : undefined}>
-          <HomeShortcutCard
-            title="Teachers Report"
-            subtitle="Daily class updates from teachers."
-            icon="people"
-            tint="#eef2ff"
-            accent="#7c3aed"
-            onPress={() => router.push('/teachers-report')}
-          />
+      {!isIndividualAccount(user) ? (
+        <View style={[styles.pairRow, isTablet && styles.pairRowTablet]}>
+          <View style={isTablet ? styles.pairHalf : undefined}>
+            <HomeShortcutCard
+              title="Teachers Report"
+              subtitle="Daily class updates from teachers."
+              icon="people"
+              tint="#eef2ff"
+              accent="#7c3aed"
+              onPress={() => router.push('/teachers-report')}
+            />
+          </View>
+          <View style={isTablet ? styles.pairHalf : undefined}>
+            <HomeShortcutCard
+              title="My Homework"
+              subtitle="View and manage your assignments."
+              icon="bag-handle"
+              tint="#fff7ed"
+              accent="#f97316"
+              onPress={() => router.push('/assignments')}
+            />
+          </View>
         </View>
-        <View style={isTablet ? styles.pairHalf : undefined}>
-          <HomeShortcutCard
-            title="My Homework"
-            subtitle="View and manage your assignments."
-            icon="bag-handle"
-            tint="#fff7ed"
-            accent="#f97316"
-            onPress={() => router.push('/assignments')}
-          />
-        </View>
-      </View>
+      ) : null}
 
       {remarks.length > 0 ? (
         <GlassPanel style={styles.sectionCard} radius={18}>

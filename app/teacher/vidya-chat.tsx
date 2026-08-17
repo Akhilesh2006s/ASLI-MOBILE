@@ -8,6 +8,7 @@ import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import { collectVidyaSubjectLabels } from '../../src/lib/vidya-subjects';
 import teacherService, { asArray } from '../../src/services/api/teacherService';
 import { TEACHER, TEACHER_SPACING } from '../../src/theme/teacher';
+import AppBackground from '../../src/components/ui/AppBackground';
 import VidyaAvatar from '../../src/components/vidya/VidyaAvatar';
 import { isVidyaEnabledForUser } from '../../src/lib/vidya-access';
 import VidyaAIViewChat from './_components/VidyaAIViewChat';
@@ -57,50 +58,51 @@ export default function TeacherVidyaChatScreen() {
   }, []);
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top']}>
-      <StatusBar barStyle="dark-content" />
-      <View style={styles.header}>
-        <LinearGradient
-          colors={[...TEACHER.headerGradient]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
-          <Ionicons name="arrow-back" size={22} color={TEACHER.text} />
-        </Pressable>
-        <View style={styles.headerText}>
-          <Text style={styles.title}>Vidya AI Chat</Text>
-          <Text style={styles.subtitle}>AI-Powered Teaching Assistant</Text>
-        </View>
-        <View style={styles.headerIcon}>
-          <VidyaAvatar size={40} borderColor="#93c5fd" />
-        </View>
-      </View>
-
-      <View style={styles.body}>
-        {!teacherId ? (
-          <View style={styles.loadingWrap}>
-            <ActivityIndicator size="large" color={TEACHER.primaryLight} />
-          </View>
-        ) : (
-          <VidyaAIViewChat
-            teacherId={teacherId}
-            teacherName={teacherName}
-            subject={primarySubject}
-            subjectOptions={subjectOptions}
-            fullPage
-            standalone
+    <AppBackground>
+      <SafeAreaView style={styles.screen} edges={['top']}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.header}>
+          <LinearGradient
+            colors={[...TEACHER.headerGradient]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
           />
-        )}
-      </View>
-    </SafeAreaView>
+          <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
+            <Ionicons name="arrow-back" size={22} color={TEACHER.text} />
+          </Pressable>
+          <View style={styles.headerText}>
+            <Text style={styles.title}>Vidya AI Chat</Text>
+            <Text style={styles.subtitle}>AI-Powered Teaching Assistant</Text>
+          </View>
+          <View style={styles.headerIcon}>
+            <VidyaAvatar size={40} borderColor="#93c5fd" />
+          </View>
+        </View>
+
+        <View style={styles.body}>
+          {!teacherId ? (
+            <View style={styles.loadingWrap}>
+              <ActivityIndicator size="large" color={TEACHER.primaryLight} />
+            </View>
+          ) : (
+            <VidyaAIViewChat
+              teacherId={teacherId}
+              teacherName={teacherName}
+              subject={primarySubject}
+              subjectOptions={subjectOptions}
+              fullPage
+              standalone
+            />
+          )}
+        </View>
+      </SafeAreaView>
+    </AppBackground>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
-    // Transparent so AppBackground's artwork shows through.
     flex: 1,
     backgroundColor: 'transparent',
   },
@@ -145,10 +147,12 @@ const styles = StyleSheet.create({
   body: {
     flex: 1,
     minHeight: 0,
+    backgroundColor: '#F4F7FB',
   },
   loadingWrap: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#F4F7FB',
   },
 });

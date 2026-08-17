@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as SecureStore from 'expo-secure-store';
 import api from '../../services/api/api';
 import { downloadWeeklyReportPdf } from '../../lib/weekly-report-pdf';
+import { formatAiToolText } from '../../lib/title-case';
 import GlassPanel from '../ui/GlassPanel';
 
 type DigestMetrics = Record<string, any>;
@@ -34,14 +35,14 @@ function MetricTile({ label, value, hint }: { label: string; value: string | num
   return (
     <View style={styles.tile}>
       <Text style={styles.tileLabel} numberOfLines={2}>
-        {label}
+        {formatAiToolText(label)}
       </Text>
       <Text style={styles.tileValue} numberOfLines={2}>
-        {value}
+        {typeof value === 'string' ? formatAiToolText(value) : value}
       </Text>
       {hint ? (
         <Text style={styles.tileHint} numberOfLines={3}>
-          {hint}
+          {formatAiToolText(hint)}
         </Text>
       ) : null}
     </View>
@@ -52,7 +53,7 @@ function SectionTitle({ icon, title }: { icon: keyof typeof Ionicons.glyphMap; t
   return (
     <View style={styles.sectionTitle}>
       <Ionicons name={icon} size={14} color="#0284C7" />
-      <Text style={styles.sectionTitleText}>{title}</Text>
+      <Text style={styles.sectionTitleText}>{formatAiToolText(title)}</Text>
     </View>
   );
 }
@@ -185,12 +186,12 @@ export default function WeeklyDigestCard({
         <Text style={styles.muted}>Loading…</Text>
       ) : !digest ? (
         <Text style={styles.muted}>
-          Your weekly digest will appear here every Monday. Tap refresh to build one for this week.
+          Your Weekly Digest Will Appear Here Every Monday. Tap Refresh To Build One For This Week.
         </Text>
       ) : hasRichTeacherMetrics ? (
         <View style={styles.body}>
-          <Text style={styles.title}>{digest.title}</Text>
-          <Text style={styles.summary}>{digest.summary}</Text>
+          <Text style={styles.title}>{formatAiToolText(String(digest.title || ''))}</Text>
+          <Text style={styles.summary}>{formatAiToolText(String(digest.summary || ''))}</Text>
 
           <SectionTitle icon="log-in-outline" title="Your activity" />
           <View style={styles.grid}>
@@ -243,7 +244,7 @@ export default function WeeklyDigestCard({
                 </View>
               ))
           ) : (
-            <Text style={styles.mutedSmall}>No AI tools used this week yet.</Text>
+            <Text style={styles.mutedSmall}>No AI Tools Used This Week Yet.</Text>
           )}
 
           <SectionTitle icon="people-outline" title="Your school this week" />
@@ -267,10 +268,10 @@ export default function WeeklyDigestCard({
 
           {(digest.highlights || []).length > 0 ? (
             <View style={styles.highlights}>
-              <Text style={styles.highlightsTitle}>This week at a glance</Text>
+              <Text style={styles.highlightsTitle}>This Week At A Glance</Text>
               {(digest.highlights || []).map((h) => (
                 <Text key={h} style={styles.highlightItem}>
-                  • {h}
+                  • {formatAiToolText(h)}
                 </Text>
               ))}
             </View>
@@ -279,14 +280,14 @@ export default function WeeklyDigestCard({
           <TouchableOpacity style={styles.cta} onPress={() => setPreviewOpen(true)} activeOpacity={0.9}>
             <LinearGradient colors={['#0EA5E9', '#0F766E']} style={styles.ctaGrad}>
               <Ionicons name="download-outline" size={16} color="#fff" />
-              <Text style={styles.ctaText}>Download PDF report</Text>
+              <Text style={styles.ctaText}>Download PDF Report</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
       ) : hasRichStudentMetrics ? (
         <View style={styles.body}>
-          <Text style={styles.title}>{digest.title}</Text>
-          <Text style={styles.summary}>{digest.summary}</Text>
+          <Text style={styles.title}>{formatAiToolText(String(digest.title || ''))}</Text>
+          <Text style={styles.summary}>{formatAiToolText(String(digest.summary || ''))}</Text>
 
           <SectionTitle icon="log-in-outline" title="Adoption" />
           <View style={styles.grid}>
@@ -314,7 +315,7 @@ export default function WeeklyDigestCard({
               accessibilityLabel="Load more weekly report metrics"
             >
               <Ionicons name="chevron-down" size={16} color="#0369A1" />
-              <Text style={styles.loadMoreText}>Load more</Text>
+              <Text style={styles.loadMoreText}>Load More</Text>
             </TouchableOpacity>
           ) : (
             <>
@@ -357,7 +358,7 @@ export default function WeeklyDigestCard({
                     </View>
                   ))
               ) : (
-                <Text style={styles.mutedSmall}>No AI tools used this week yet.</Text>
+                <Text style={styles.mutedSmall}>No AI Tools Used This Week Yet.</Text>
               )}
 
               <SectionTitle icon="library-outline" title="Subjects you used most" />
@@ -379,7 +380,7 @@ export default function WeeklyDigestCard({
               ) : m.topSubjects?.length ? (
                 <Text style={styles.summary}>{(m.topSubjects as string[]).slice(0, 5).join(', ')}</Text>
               ) : (
-                <Text style={styles.mutedSmall}>No subject activity this week yet.</Text>
+                <Text style={styles.mutedSmall}>No Subject Activity This Week Yet.</Text>
               )}
 
               <SectionTitle icon="clipboard-outline" title="Exams" />
@@ -434,9 +435,9 @@ export default function WeeklyDigestCard({
 
               {(digest.highlights || []).length > 0 ? (
                 <View style={styles.highlights}>
-                  <Text style={styles.highlightsTitle}>This week at a glance</Text>
+                  <Text style={styles.highlightsTitle}>This Week At A Glance</Text>
                   {(digest.highlights || []).map((h) => (
-                    <Text key={h} style={styles.highlightItem}>• {h}</Text>
+                    <Text key={h} style={styles.highlightItem}>• {formatAiToolText(h)}</Text>
                   ))}
                 </View>
               ) : null}
@@ -448,7 +449,7 @@ export default function WeeklyDigestCard({
                 accessibilityRole="button"
                 accessibilityLabel="Show less weekly report metrics"
               >
-                <Text style={styles.showLessText}>Show less</Text>
+                <Text style={styles.showLessText}>Show Less</Text>
               </TouchableOpacity>
             </>
           )}
@@ -456,16 +457,16 @@ export default function WeeklyDigestCard({
           <TouchableOpacity style={styles.cta} onPress={() => setPreviewOpen(true)} activeOpacity={0.9}>
             <LinearGradient colors={['#0EA5E9', '#0F766E']} style={styles.ctaGrad}>
               <Ionicons name="download-outline" size={16} color="#fff" />
-              <Text style={styles.ctaText}>Download PDF report</Text>
+              <Text style={styles.ctaText}>Download PDF Report</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
       ) : (
         <View style={styles.body}>
-          <Text style={styles.title}>{digest.title}</Text>
-          <Text style={styles.summary}>{digest.summary}</Text>
+          <Text style={styles.title}>{formatAiToolText(String(digest.title || ''))}</Text>
+          <Text style={styles.summary}>{formatAiToolText(String(digest.summary || ''))}</Text>
           {(digest.highlights || []).map((h) => (
-            <Text key={h} style={styles.highlightItem}>• {h}</Text>
+            <Text key={h} style={styles.highlightItem}>• {formatAiToolText(h)}</Text>
           ))}
           <TouchableOpacity style={styles.cta} onPress={() => setPreviewOpen(true)} activeOpacity={0.9}>
             <LinearGradient colors={['#0EA5E9', '#0F766E']} style={styles.ctaGrad}>
@@ -511,7 +512,7 @@ export default function WeeklyDigestCard({
                 )}
               </View>
               {(digest?.highlights || []).slice(0, 4).map((h) => (
-                <Text key={h} style={styles.highlightItem}>• {h}</Text>
+                <Text key={h} style={styles.highlightItem}>• {formatAiToolText(h)}</Text>
               ))}
             </ScrollView>
             <View style={styles.modalFooter}>
@@ -561,10 +562,9 @@ const styles = StyleSheet.create({
   summary: { fontSize: 12, color: '#64748B', marginBottom: 4 },
   sectionTitle: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 },
   sectionTitleText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
+    letterSpacing: 0.2,
     color: '#475569',
   },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -579,7 +579,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
-  tileLabel: { fontSize: 9, fontWeight: '700', color: '#64748B', textTransform: 'uppercase' },
+  tileLabel: { fontSize: 10, fontWeight: '700', color: '#64748B' },
   tileValue: { marginTop: 2, fontSize: 15, fontWeight: '800', color: '#0F172A' },
   tileHint: { fontSize: 10, color: '#94A3B8', marginTop: 2, lineHeight: 13 },
   listRow: {

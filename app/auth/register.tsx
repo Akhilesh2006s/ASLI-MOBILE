@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { GlassPanel } from '../../src/components/ui';
+import AppBackground from '../../src/components/ui/AppBackground';
 import authService from '../../src/services/api/authService';
 import { API_BASE_URL } from '../../src/services/api/api';
 import {
@@ -174,31 +175,42 @@ export default function Register() {
     }
   };
 
+  const goToLogin = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace('/auth/login');
+  }, [router]);
+
   if (success) {
     return (
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        <StatusBar style="dark" />
-        <View style={styles.successContainer}>
-          <View style={styles.successIcon}>
-            <Ionicons name="checkmark-circle" size={48} color="#059669" />
+      <AppBackground>
+        <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+          <StatusBar style="dark" />
+          <View style={styles.successContainer}>
+            <View style={styles.successIcon}>
+              <Ionicons name="checkmark-circle" size={48} color="#059669" />
+            </View>
+            <Text style={styles.successTitle}>Account created</Text>
+            <Text style={styles.successText}>{successMessage}</Text>
+            <Text style={styles.successHint}>
+              After {INDIVIDUAL_TRIAL_DAYS} days you will be asked to subscribe to continue.
+            </Text>
+            <TouchableOpacity
+              style={styles.successButton}
+              onPress={() => router.replace('/auth/login')}
+            >
+              <Text style={styles.successButtonText}>Go to Sign In</Text>
+            </TouchableOpacity>
           </View>
-          <Text style={styles.successTitle}>Account created</Text>
-          <Text style={styles.successText}>{successMessage}</Text>
-          <Text style={styles.successHint}>
-            After {INDIVIDUAL_TRIAL_DAYS} days you will be asked to subscribe to continue.
-          </Text>
-          <TouchableOpacity
-            style={styles.successButton}
-            onPress={() => router.replace('/auth/login')}
-          >
-            <Text style={styles.successButtonText}>Go to Sign In</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+        </SafeAreaView>
+      </AppBackground>
     );
   }
 
   return (
+    <AppBackground>
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar style="dark" />
       <KeyboardAvoidingView
@@ -214,7 +226,7 @@ export default function Register() {
             style={styles.backButton}
             accessibilityRole="button"
             accessibilityLabel="Go back"
-            onPress={() => router.back()}
+            onPress={goToLogin}
           >
             <Ionicons name="arrow-back" size={20} color="#0f172a" />
           </TouchableOpacity>
@@ -412,7 +424,7 @@ export default function Register() {
             <View style={styles.footer}>
               <Text style={styles.footerText}>
                 Already have an account?{' '}
-                <Text style={styles.footerLink} onPress={() => router.push('/auth/login')}>
+                <Text style={styles.footerLink} onPress={goToLogin}>
                   Sign in
                 </Text>
               </Text>
@@ -421,6 +433,7 @@ export default function Register() {
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+    </AppBackground>
   );
 }
 

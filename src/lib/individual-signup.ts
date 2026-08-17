@@ -1,6 +1,21 @@
 /** Shared options for individual teacher/student signup (mobile — mirrors web). */
 export const INDIVIDUAL_TRIAL_DAYS = 7;
 
+/**
+ * True for B2C / individual self-signup accounts (not enrolled by a school).
+ * The backend sets `isIndividualAccount` on login and `/api/auth/me`.
+ * These users don't have a school, so school-only features (Timetable,
+ * Offline Results, Teacher Reports, Homework) must be hidden for them.
+ */
+export function isIndividualAccount(user: any): boolean {
+  return Boolean(user?.isIndividualAccount);
+}
+
+/** True for a B2C individual student specifically (individual account + student role). */
+export function isIndividualStudent(user: any): boolean {
+  return isIndividualAccount(user) && user?.role === 'student';
+}
+
 export const INDIVIDUAL_COURSE_OPTIONS = [
   'CBSE',
   'STATE',

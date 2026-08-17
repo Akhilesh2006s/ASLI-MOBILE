@@ -26,6 +26,7 @@ import TrialDailyQuizPrompt from '../../src/components/TrialDailyQuizPrompt';
 import VidyaAIFloatingAssistant from '../../src/components/vidya/VidyaAIFloatingAssistant';
 import { useVidyaChatAccess } from '../../src/hooks/useVidyaChatAccess';
 import { resolveStudentFirstName } from '../../src/lib/student-text';
+import { isIndividualAccount } from '../../src/lib/individual-signup';
 
 type TabId = 'home' | 'learning' | 'eduott' | 'exams' | 'results' | 'timetable' | 'vidya';
 
@@ -73,8 +74,15 @@ export default function StudentDashboard() {
   }, []);
 
   const firstName = useMemo(() => resolveStudentFirstName(user), [user]);
+  const individualAccount = isIndividualAccount(user);
 
   const vidyaChatEnabled = useVidyaChatAccess(user);
+
+  useEffect(() => {
+    if (individualAccount && (activeTab === 'results' || activeTab === 'timetable')) {
+      setActiveTab('home');
+    }
+  }, [individualAccount, activeTab, setActiveTab]);
 
   const checkAuth = async () => {
     try {
@@ -140,6 +148,9 @@ export default function StudentDashboard() {
 
   const handleTabChange = (id: string) => {
     const next = id as TabId;
+    if (individualAccount && (next === 'results' || next === 'timetable')) {
+      return;
+    }
     if (next === activeTab) {
       tabScrollRefs[next]?.current?.scrollTo({ y: 0, animated: true });
       return;

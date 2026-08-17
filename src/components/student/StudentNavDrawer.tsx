@@ -9,6 +9,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import PortalNavChrome from '../layout/PortalNavChrome';
+import { isIndividualAccount } from '../../lib/individual-signup';
 
 export type StudentNavId =
   | 'home'
@@ -37,6 +38,13 @@ export const STUDENT_NAV_ITEMS: StudentNavItem[] = [
   { id: 'profile', label: 'Profile', icon: 'person-outline' },
 ];
 
+export function studentNavItemsForUser(user?: any): StudentNavItem[] {
+  if (isIndividualAccount(user)) {
+    return STUDENT_NAV_ITEMS.filter((item) => item.id !== 'results' && item.id !== 'timetable');
+  }
+  return STUDENT_NAV_ITEMS;
+}
+
 export function studentNavLabel(id: string): string {
   return STUDENT_NAV_ITEMS.find((item) => item.id === id)?.label ?? 'Dashboard';
 }
@@ -49,10 +57,10 @@ type PanelProps = {
   onLogout: () => void;
 };
 
-export function StudentNavPanel({ activeId, compact, onSelect, onLogout }: PanelProps) {
+export function StudentNavPanel({ activeId, user, compact, onSelect, onLogout }: PanelProps) {
   return (
     <PortalNavChrome
-      items={STUDENT_NAV_ITEMS}
+      items={studentNavItemsForUser(user)}
       activeId={activeId}
       compact={compact}
       onSelect={(id) => onSelect(id as StudentNavId)}

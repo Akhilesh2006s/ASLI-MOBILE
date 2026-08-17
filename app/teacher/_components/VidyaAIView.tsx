@@ -4,11 +4,13 @@ import {
   StyleSheet,
   ScrollView,
   View,
+  Pressable,
   useWindowDimensions,
   InteractionManager,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
@@ -18,7 +20,9 @@ import {
   TEACHER_AI_TOOLS_SUBTITLE,
 } from '../../../src/lib/teacher-ai-tools';
 import AiToolCard from '../../../src/components/ai-tools/AiToolCard';
-import { TEACHER_SPACING } from '../../../src/theme/teacher';
+import VidyaAvatar from '../../../src/components/vidya/VidyaAvatar';
+import { GlassPanel } from '../../../src/components/ui';
+import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../../src/theme/teacher';
 import { AI, AI_TYPE } from '../../../src/theme/ai';
 
 const CONTENT_MAX = 1080;
@@ -44,9 +48,22 @@ function useVidyaAILayout() {
   return { isGrid: columns > 1, columns, shellWidth, isTvView };
 }
 
-export default function VidyaAIView({ chatEnabled: _chatEnabled = true }: { chatEnabled?: boolean }) {
+function usePressScale(to = 0.98) {
+  const scale = useSharedValue(1);
+  const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const onPressIn = () => {
+    scale.value = withSpring(to, { damping: 14, stiffness: 300 });
+  };
+  const onPressOut = () => {
+    scale.value = withSpring(1, { damping: 14, stiffness: 300 });
+  };
+  return { style, onPressIn, onPressOut };
+}
+
+export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: boolean }) {
   const insets = useSafeAreaInsets();
   const { isGrid, columns, shellWidth, isTvView } = useVidyaAILayout();
+  const chatPress = usePressScale();
   const scrollBottomPad =
     TAB_BAR_CLEARANCE + Math.max(insets.bottom, 12) + TEACHER_SPACING.xl;
   const [subjectNames, setSubjectNames] = useState<string[]>([]);
@@ -99,6 +116,33 @@ export default function VidyaAIView({ chatEnabled: _chatEnabled = true }: { chat
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Create Your Next Classroom Resource</Text>
           <Text style={styles.sectionSubtitle}>{TEACHER_AI_TOOLS_SUBTITLE}</Text>
+
+          {chatEnabled ? (
+            <Pressable
+              onPress={() => {
+                requestAnimationFrame(() => {
+                  router.push('/teacher/vidya-chat' as any);
+                });
+              }}
+              onPressIn={chatPress.onPressIn}
+              onPressOut={chatPress.onPressOut}
+              accessibilityRole="button"
+              accessibilityLabel="Open Vidya AI Chat"
+            >
+              <Animated.View style={chatPress.style}>
+                <GlassPanel style={styles.chatCard} radius={TEACHER_RADIUS.lg} tone="strong">
+                  <View style={styles.chatCardRow}>
+                    <VidyaAvatar size={48} borderColor="#93c5fd" />
+                    <View style={styles.chatTextWrap}>
+                      <Text style={styles.chatTitle}>Vidya AI Chat</Text>
+                      <Text style={styles.chatSub}>Ask About Lessons, Quizzes, And Teaching Ideas</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={TEACHER.primaryDark} />
+                  </View>
+                </GlassPanel>
+              </Animated.View>
+            </Pressable>
+          ) : null}
 
           <View style={styles.toolsGrid}>
             {toolRows.map((row, rowIndex) => (
@@ -168,6 +212,29 @@ const styles = StyleSheet.create({
     ...AI_TYPE.body,
     color: AI.textSecondary,
     marginBottom: 20,
+  },
+  chatCard: {
+    marginBottom: TEACHER_SPACING.lg,
+    padding: TEACHER_SPACING.lg,
+    borderRadius: TEACHER_RADIUS.lg,
+    ...TEACHER.shadow.sm,
+  },
+  chatCardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: TEACHER_SPACING.md,
+  },
+  chatTextWrap: { flex: 1, minWidth: 0 },
+  chatTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: TEACHER.text,
+  },
+  chatSub: {
+    marginTop: 4,
+    fontSize: 13,
+    color: TEACHER.textMuted,
+    lineHeight: 18,
   },
   toolsGrid: {
     width: '100%',
