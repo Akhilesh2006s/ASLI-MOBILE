@@ -560,20 +560,16 @@ export default function TeacherToolPage() {
     if (cascade.loadingSubjects) return;
     setFormParams((prev) => {
       const currentSubject = prev.subject;
-      const hasCurrent =
-        currentSubject &&
-        subjectsForTool.some(
-          (s) => normalizeSubjectName(s) === normalizeSubjectName(String(currentSubject))
-        );
+      if (!currentSubject) return prev;
+      const hasCurrent = subjectsForTool.some(
+        (s) => normalizeSubjectName(s) === normalizeSubjectName(String(currentSubject))
+      );
       if (hasCurrent) return prev;
-      if (currentSubject) {
-        const next = { ...prev };
-        delete next.subject;
-        delete next.topic;
-        delete next.subTopic;
-        return next;
-      }
-      return { ...prev, subject: subjectsForTool[0] };
+      const next = { ...prev };
+      delete next.subject;
+      delete next.topic;
+      delete next.subTopic;
+      return next;
     });
   }, [subjectsForTool, formParams.gradeLevel, cascade.loadingSubjects]);
 

@@ -213,19 +213,41 @@ function Field({
   keyboardType?: 'default' | 'phone-pad';
   multiline?: boolean;
 }) {
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const isPassword = Boolean(secureTextEntry);
+
   return (
     <View style={styles.field}>
       <Text style={styles.fieldLabel}>{label}</Text>
-      <TextInput
-        style={[styles.input, multiline && styles.inputMultiline, !editable && styles.inputDisabled]}
-        value={value}
-        onChangeText={onChangeText}
-        editable={editable}
-        secureTextEntry={secureTextEntry}
-        keyboardType={keyboardType}
-        multiline={multiline}
-        placeholderTextColor={TEACHER.textMuted}
-      />
+      <View style={[styles.inputRow, multiline && styles.inputRowMultiline, !editable && styles.inputDisabled]}>
+        <TextInput
+          style={[styles.input, multiline && styles.inputMultiline, !editable && styles.inputTextDisabled]}
+          value={value}
+          onChangeText={onChangeText}
+          editable={editable}
+          secureTextEntry={isPassword && !passwordVisible}
+          keyboardType={keyboardType}
+          multiline={multiline}
+          autoCapitalize={isPassword ? 'none' : 'sentences'}
+          autoCorrect={false}
+          placeholderTextColor={TEACHER.textMuted}
+        />
+        {isPassword ? (
+          <Pressable
+            onPress={() => setPasswordVisible((prev) => !prev)}
+            style={styles.eyeBtn}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={passwordVisible ? 'Hide password' : 'Show password'}
+          >
+            <Ionicons
+              name={passwordVisible ? 'eye-outline' : 'eye-off-outline'}
+              size={20}
+              color={TEACHER.textMuted}
+            />
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -252,18 +274,32 @@ const styles = StyleSheet.create({
   },
   field: { marginBottom: 12 },
   fieldLabel: { marginBottom: 6, fontSize: 12, fontWeight: '800', color: TEACHER.textSecondary },
-  input: {
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: '#E2E8F0',
     borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    paddingRight: 4,
+  },
+  inputRowMultiline: { alignItems: 'flex-start' },
+  input: {
+    flex: 1,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 15,
     color: TEACHER.text,
-    backgroundColor: '#FFFFFF',
+  },
+  eyeBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   inputMultiline: { minHeight: 80, textAlignVertical: 'top' },
-  inputDisabled: { backgroundColor: '#F8FAFC', color: TEACHER.textMuted },
+  inputDisabled: { backgroundColor: '#F8FAFC' },
+  inputTextDisabled: { color: TEACHER.textMuted },
   primaryBtn: {
     marginTop: 4,
     backgroundColor: TEACHER.primaryDark,

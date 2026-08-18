@@ -15,7 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const BRAND_LOGO = require('../../../assets/logo-transparent.png');
-const SUPPORT_EMAIL = 'hello@aslilearn.ai';
+const SUPPORT_EMAIL = 'info@aslilearn.ai';
 
 export type PortalNavItem = {
   id: string;

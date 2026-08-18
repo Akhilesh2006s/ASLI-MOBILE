@@ -86,6 +86,11 @@ export default function TimetableView({ scrollable = true }: { scrollable?: bool
     }
   };
 
+  const clearPending = () => {
+    setPendingAsset(null);
+    setPreviewUri(null);
+  };
+
   const savePhoto = async () => {
     if (!pendingAsset) {
       Alert.alert('Choose A Photo', 'Pick a timetable image first.');
@@ -119,21 +124,43 @@ export default function TimetableView({ scrollable = true }: { scrollable?: bool
   };
 
   const removePhoto = async () => {
-    try {
-      setUploading(true);
-      const headers = await authHeaders();
-      const res = await fetch(`${API_BASE_URL}/api/timetable/my-photo`, {
-        method: 'DELETE',
-        headers: { ...headers },
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.message || 'Delete Failed');
-      setPhoto(null);
-      Alert.alert('Removed', 'Timetable Photo Removed');
-    } catch (error: any) {
-      Alert.alert('Delete Failed', error?.message || 'Could Not Remove Photo');
-    } finally {
-      setUploading(false);
+    Alert.alert('Remove timetable photo?', 'This will delete your saved timetable image.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: () => {
+          void (async () => {
+            try {
+              setUploading(true);
+              const headers = await authHeaders();
+              const res = await fetch(`${API_BASE_URL}/api/timetable/my-photo`, {
+                method: 'DELETE',
+                headers: { ...headers },
+              });
+              const json = await res.json();
+              if (!res.ok) throw new Error(json?.message || 'Delete failed');
+              setPhoto(null);
+              clearPending();
+              Alert.alert('Removed', 'Timetable photo removed.');
+            } catch (error: any) {
+              Alert.alert('Delete failed', error?.message || 'Could not remove photo.');
+            } finally {
+              setUploading(false);
+            }
+          })();
+        },
+      },
+    ]);
+  };
+
+  const handleRemovePress = () => {
+    if (pendingAsset) {
+      clearPending();
+      return;
+    }
+    if (photo) {
+      void removePhoto();
     }
   };
 
@@ -165,14 +192,46 @@ export default function TimetableView({ scrollable = true }: { scrollable?: bool
             <Ionicons name="cloud-upload-outline" size={18} color="#fff" />
             <Text style={styles.btnPrimaryText}>{uploading ? 'Saving…' : 'Save'}</Text>
           </Pressable>
+          {displayUri ? (
+            <Pressable
+              style={[styles.btnDangerCompact, uploading && styles.btnDisabled]}
+              disabled={uploading}
+              onPress={handleRemovePress}
+              accessibilityRole="button"
+              accessibilityLabel={pendingAsset ? 'Cancel selected photo' : 'Remove saved timetable photo'}
+            >
+              <Ionicons name="trash-outline" size={18} color="#e11d48" />
+            </Pressable>
+          ) : null}
         </View>
 
         {displayUri ? (
           <View>
-            <Image source={{ uri: displayUri }} style={styles.preview} resizeMode="contain" />
+            <View style={styles.previewWrap}>
+              <Image source={{ uri: displayUri }} style={styles.preview} resizeMode="contain" />
+              <Pressable
+                style={styles.previewRemoveBtn}
+                onPress={handleRemovePress}
+                disabled={uploading}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={pendingAsset ? 'Cancel selected photo' : 'Remove saved timetable photo'}
+              >
+                <Ionicons name="close-circle" size={28} color="#e11d48" />
+              </Pressable>
+            </View>
             {pendingAsset ? (
-              <Text style={styles.previewHint}>Preview — Tap Save To Keep</Text>
-            ) : null}
+              <Text style={styles.previewHint}>Preview — tap Save to keep, or Remove to cancel</Text>
+            ) : (
+              <Pressable
+                style={[styles.btnDanger, uploading && styles.btnDisabled]}
+                disabled={uploading}
+                onPress={handleRemovePress}
+              >
+                <Ionicons name="trash-outline" size={16} color="#e11d48" />
+                <Text style={styles.btnDangerText}>Remove Photo</Text>
+              </Pressable>
+            )}
           </View>
         ) : (
           <Pressable style={styles.drop} onPress={() => void pickPhoto()}>
@@ -181,16 +240,6 @@ export default function TimetableView({ scrollable = true }: { scrollable?: bool
           </Pressable>
         )}
 
-        {photo && !pendingAsset ? (
-          <Pressable
-            style={[styles.btnDanger, uploading && styles.btnDisabled]}
-            disabled={uploading}
-            onPress={() => void removePhoto()}
-          >
-            <Ionicons name="trash-outline" size={16} color="#e11d48" />
-            <Text style={styles.btnDangerText}>Remove Photo</Text>
-          </Pressable>
-        ) : null}
       </View>
   );
 
@@ -237,7 +286,24 @@ const styles = StyleSheet.create({
   },
   btnDisabled: { opacity: 0.5 },
   btnPrimaryText: { color: '#fff', fontWeight: '700' },
+  btnDangerCompact: {
+    width: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#fecdd3',
+    backgroundColor: '#fff1f2',
+  },
+  previewWrap: { position: 'relative' },
   preview: { width: '100%', height: 300, borderRadius: 12, backgroundColor: '#f8fafc' },
+  previewRemoveBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderRadius: 14,
+  },
   previewHint: {
     marginTop: 8,
     fontSize: 12,
