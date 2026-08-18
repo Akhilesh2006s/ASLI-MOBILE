@@ -5,6 +5,7 @@
 
 import * as SecureStore from 'expo-secure-store';
 import { AppState, AppStateStatus } from 'react-native';
+import { jwtUserId } from '../lib/jwt-payload';
 
 const MAX_CONTINUOUS_SESSION_MS = 30 * 60 * 1000;
 const MAX_ORPHAN_SESSION_MINUTES = 5;
@@ -23,12 +24,9 @@ async function withTrackerLock<T>(fn: () => Promise<T>): Promise<T> {
 async function getStorageKey(): Promise<string> {
   try {
     const token = await SecureStore.getItemAsync('authToken');
-    if (token) {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const userId = payload.userId || payload.id || payload._id;
-      if (userId) {
-        return `studyTimeData_${userId}`;
-      }
+    const userId = jwtUserId(token);
+    if (userId) {
+      return `studyTimeData_${userId}`;
     }
   } catch (error) {
     console.warn('Could not extract user ID from token:', error);

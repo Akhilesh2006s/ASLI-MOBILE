@@ -514,7 +514,7 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
       display: flex;
       align-items: center;
       justify-content: center;
-      touch-action: manipulation;
+      touch-action: none;
     }
     body.tv-mode #zoom-sizer,
     body.tv-mode #pages {
@@ -525,6 +525,25 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
       align-items: center;
       justify-content: center;
       overflow: hidden;
+    }
+    body.tv-mode #pages > *:not(:first-child) {
+      display: none !important;
+    }
+    body.tv-mode.tv-zoomed #zoom-sizer,
+    body.tv-mode.tv-zoomed #pages,
+    body.tv-mode.tv-zoomed .pdf-slot {
+      width: 100%;
+      height: 100%;
+      display: block;
+      overflow: hidden;
+    }
+    body.tv-mode.tv-zoomed .pdf-slot {
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-x pan-y;
+    }
+    body.tv-mode .pdf-slot {
+      touch-action: none;
     }
     canvas {
       display: block;
@@ -584,6 +603,9 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
       var lastTapY = 0;
       var pinchBound = false;
       var hiResTimer = null;
+      var swipeStartX = 0;
+      var swipeStartY = 0;
+      var swipeActive = false;
 
       function isTvView() {
         var cfg = window.__pdfViewerConfig;
@@ -597,7 +619,10 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
 
       function applyBodyMode() {
         if (isTvView()) document.body.classList.add('tv-mode');
-        else document.body.classList.remove('tv-mode');
+        else {
+          document.body.classList.remove('tv-mode');
+          document.body.classList.remove('tv-zoomed');
+        }
       }
 
       function postNative(msg) {
@@ -642,6 +667,29 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
         return pageSlots[currentPage] || null;
       }
 
+      function syncTvZoomLayout(z) {
+        if (!isTvView()) return;
+        var zoomed = z > 1.02;
+        document.body.classList.toggle('tv-zoomed', zoomed);
+        var frame = zoomFrameEl();
+        if (frame) frame.style.overflow = 'hidden';
+        var slot = pageSlots[currentPage];
+        if (!slot) return;
+        if (zoomed) {
+          slot.style.width = '100%';
+          slot.style.height = '100%';
+          slot.style.overflow = 'auto';
+        } else {
+          var baseW = Number(slot.getAttribute('data-base-w')) || 0;
+          var baseH = Number(slot.getAttribute('data-base-h')) || 0;
+          if (baseW) slot.style.width = baseW + 'px';
+          if (baseH) slot.style.height = baseH + 'px';
+          slot.style.overflow = 'hidden';
+          slot.scrollLeft = 0;
+          slot.scrollTop = 0;
+        }
+      }
+
       function applySlotZoom(slot, nextZoom, clientX, clientY) {
         if (!slot) return;
         var canvas = slot.querySelector('canvas');
@@ -675,8 +723,9 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
           inner.style.width = baseW + 'px';
           inner.style.height = baseH + 'px';
           canvas.style.transform = '';
-          if (frame) frame.style.overflow = 'auto';
+          if (frame && !isTvView()) frame.style.overflow = 'auto';
         }
+        syncTvZoomLayout(userZoom);
         postState();
       }
 
@@ -691,8 +740,7 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
       }
 
       function zoomAt(nextZoom, clientX, clientY) {
-        if (isTvView()) return;
-        applySlotZoom(pinchSlot || slotFromPoint(clientX, clientY), nextZoom, clientX, clientY);
+        applySlotZoom(pinchSlot || slotFromPoint(clientX, clientY) || pageSlots[currentPage], nextZoom, clientX, clientY);
       }
 
       function updatePageFromScroll() {
@@ -711,6 +759,12 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
         }
       }
 
+      function tvZoomLevel() {
+        var slot = pageSlots[currentPage];
+        if (slot) return Number(slot.getAttribute('data-zoom')) || 1;
+        return userZoom;
+      }
+
       function bindPinchZoom() {
         var frame = zoomFrameEl();
         if (!frame || pinchBound) return;
@@ -722,45 +776,83 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
         }, { passive: true });
 
         frame.addEventListener('touchstart', function (e) {
-          if (isTvView()) return;
           if (e.touches.length >= 2) {
             e.preventDefault();
+            swipeActive = false;
             var midStart = touchMid(e.touches);
-            pinchSlot = slotFromPoint(midStart.x, midStart.y);
-            pinchStartDist = touchDist(e.touches);
-            pinchStartZoom = pinchSlot ? (Number(pinchSlot.getAttribute('data-zoom')) || 1) : 1;
-          }
-        }, { passive: false, capture: true });
-
-        frame.addEventListener('touchmove', function (e) {
-          if (isTvView() || e.touches.length < 2) return;
-          e.preventDefault();
-          if (pinchStartDist <= 0) {
-            var mid0 = touchMid(e.touches);
-            pinchSlot = pinchSlot || slotFromPoint(mid0.x, mid0.y);
+            pinchSlot = slotFromPoint(midStart.x, midStart.y) || pageSlots[currentPage];
             pinchStartDist = touchDist(e.touches);
             pinchStartZoom = pinchSlot ? (Number(pinchSlot.getAttribute('data-zoom')) || 1) : 1;
             return;
           }
-          var mid = touchMid(e.touches);
-          zoomAt(pinchStartZoom * (touchDist(e.touches) / pinchStartDist), mid.x, mid.y);
+          if (isTvView() && e.touches.length === 1 && tvZoomLevel() <= 1.02) {
+            swipeActive = true;
+            swipeStartX = e.touches[0].clientX;
+            swipeStartY = e.touches[0].clientY;
+          } else {
+            swipeActive = false;
+          }
+        }, { passive: false, capture: true });
+
+        frame.addEventListener('touchmove', function (e) {
+          if (e.touches.length >= 2) {
+            e.preventDefault();
+            swipeActive = false;
+            if (pinchStartDist <= 0) {
+              var mid0 = touchMid(e.touches);
+              pinchSlot = pinchSlot || slotFromPoint(mid0.x, mid0.y) || pageSlots[currentPage];
+              pinchStartDist = touchDist(e.touches);
+              pinchStartZoom = pinchSlot ? (Number(pinchSlot.getAttribute('data-zoom')) || 1) : 1;
+              return;
+            }
+            var mid = touchMid(e.touches);
+            zoomAt(pinchStartZoom * (touchDist(e.touches) / pinchStartDist), mid.x, mid.y);
+            return;
+          }
+          if (swipeActive && isTvView() && tvZoomLevel() <= 1.02) {
+            e.preventDefault();
+          }
         }, { passive: false, capture: true });
 
         frame.addEventListener('touchend', function (e) {
-          if (isTvView()) return;
           if (e.touches.length >= 2) return;
           if (e.touches.length === 1) {
             pinchStartDist = 0;
             return;
           }
           var endedSlot = pinchSlot;
+          var wasPinch = pinchStartDist > 0;
           pinchStartDist = 0;
+          if (swipeActive && isTvView() && tvZoomLevel() <= 1.02 && e.changedTouches && e.changedTouches.length) {
+            var t0 = e.changedTouches[0];
+            var dx = t0.clientX - swipeStartX;
+            var dy = t0.clientY - swipeStartY;
+            var absX = Math.abs(dx);
+            var absY = Math.abs(dy);
+            swipeActive = false;
+            if (!wasPinch && Math.max(absX, absY) > 56) {
+              lastTapTime = 0;
+              pinchSlot = null;
+              if (window.__pdfViewer) {
+                if (absX > absY) {
+                  if (dx < 0) window.__pdfViewer.nextPage();
+                  else window.__pdfViewer.prevPage();
+                } else if (dy < 0) {
+                  window.__pdfViewer.nextPage();
+                } else {
+                  window.__pdfViewer.prevPage();
+                }
+              }
+              return;
+            }
+          }
+          swipeActive = false;
           if (e.changedTouches && e.changedTouches.length === 1) {
             var t = e.changedTouches[0];
             var now = Date.now();
             if (now - lastTapTime <= 320 && Math.hypot(t.clientX - lastTapX, t.clientY - lastTapY) < 44) {
               lastTapTime = 0;
-              pinchSlot = slotFromPoint(t.clientX, t.clientY);
+              pinchSlot = slotFromPoint(t.clientX, t.clientY) || pageSlots[currentPage];
               var currentZ = pinchSlot ? (Number(pinchSlot.getAttribute('data-zoom')) || 1) : 1;
               zoomAt(currentZ > 1.05 ? 1 : 2.25, t.clientX, t.clientY);
               scheduleHiResRefresh(pinchSlot);
@@ -792,7 +884,6 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
           window.innerWidth,
           window.innerHeight,
           isTvView() ? currentPage : 0,
-          isTvView() ? userZoom : 1,
           pdfDoc ? pdfDoc.numPages : 0
         ].join(':');
       }
@@ -830,16 +921,20 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
         var slot = pageSlots[num];
         if (!slot) return;
         if (!force && slot.getAttribute('data-ready')) return;
-        if (force && slot.getAttribute('data-ready') === 'pending') return;
+        var paintId = (Number(slot.getAttribute('data-paint')) || 0) + 1;
+        slot.setAttribute('data-paint', String(paintId));
         var keepZoom = Number(slot.getAttribute('data-zoom')) || 1;
         var keepScrollL = slot.scrollLeft;
         var keepScrollT = slot.scrollTop;
         slot.setAttribute('data-ready', 'pending');
         try {
           var page = await pdf.getPage(num);
+          if (Number(slot.getAttribute('data-paint')) !== paintId || pageSlots[num] !== slot) return;
           var baseViewport = page.getViewport({ scale: 1 });
           var size = availableSize();
-          var fitScale = size.w / baseViewport.width;
+          var fitScale = isTvView()
+            ? Math.min(size.w / baseViewport.width, size.h / baseViewport.height)
+            : size.w / baseViewport.width;
           if (!isFinite(fitScale) || fitScale <= 0) fitScale = 1;
           var pixelRatio = Math.min(window.devicePixelRatio || 1, 3);
           var quality = Math.max(1, Math.min(keepZoom, MAX_ZOOM));
@@ -856,7 +951,7 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
           canvas.height = backingH;
           var ctx = canvas.getContext('2d', { alpha: false });
           if (!ctx) {
-            slot.removeAttribute('data-ready');
+            if (Number(slot.getAttribute('data-paint')) === paintId) slot.removeAttribute('data-ready');
             return;
           }
           ctx.imageSmoothingEnabled = true;
@@ -881,12 +976,14 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
             inner.style.height = cssH + 'px';
             slot.style.overflow = 'hidden';
             slot.setAttribute('data-zoom', '1');
+            keepZoom = 1;
           }
           await page.render({
             canvasContext: ctx,
             viewport: renderViewport,
             intent: 'display',
           }).promise;
+          if (Number(slot.getAttribute('data-paint')) !== paintId || pageSlots[num] !== slot) return;
           var oldInner = slot.querySelector('.pdf-zoom-inner');
           if (oldInner && oldInner.parentNode === slot) slot.removeChild(oldInner);
           slot.appendChild(inner);
@@ -894,9 +991,13 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
             slot.scrollLeft = keepScrollL;
             slot.scrollTop = keepScrollT;
           }
+          if (isTvView()) {
+            userZoom = keepZoom;
+            syncTvZoomLayout(userZoom);
+          }
           slot.setAttribute('data-ready', '1');
         } catch (err) {
-          slot.removeAttribute('data-ready');
+          if (Number(slot.getAttribute('data-paint')) === paintId) slot.removeAttribute('data-ready');
         }
       }
 
@@ -984,45 +1085,46 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
         }
       }
 
-      async function drawPage(container, pdf, num, tv) {
-        var page = await pdf.getPage(num);
-        var baseViewport = page.getViewport({ scale: 1 });
-        var size = availableSize();
-        var fitScale = tv
-          ? Math.min(size.w / baseViewport.width, size.h / baseViewport.height)
-          : size.w / baseViewport.width;
-        if (!isFinite(fitScale) || fitScale <= 0) fitScale = 1;
-        var layoutScale = fitScale * (tv ? userZoom : 1);
-        var viewport = page.getViewport({ scale: layoutScale });
-        var pixelRatio = Math.min(window.devicePixelRatio || 1, 3);
-        var cssW = Math.max(1, Math.floor(viewport.width));
-        var cssH = Math.max(1, Math.floor(viewport.height));
-        var backingW = Math.max(1, Math.min(Math.floor(cssW * pixelRatio), MAX_CANVAS));
-        var backingH = Math.max(1, Math.min(Math.floor(cssH * pixelRatio), MAX_CANVAS));
-        var canvas = document.createElement('canvas');
-        canvas.style.width = cssW + 'px';
-        canvas.style.height = cssH + 'px';
-        canvas.width = backingW;
-        canvas.height = backingH;
-        var ctx = canvas.getContext('2d', { alpha: false });
-        if (!ctx) return;
-        ctx.imageSmoothingEnabled = true;
-        if (ctx.imageSmoothingQuality) ctx.imageSmoothingQuality = 'high';
-        ctx.setTransform(backingW / viewport.width, 0, 0, backingH / viewport.height, 0, 0);
-        container.appendChild(canvas);
-        try {
-          await page.render({
-            canvasContext: ctx,
-            viewport: viewport,
-            intent: 'display',
-          }).promise;
-        } catch (err) {
-          return;
+      function ensureTvSlot(pageNum) {
+        var container = pagesEl();
+        if (!container) return null;
+        var kids = container.children;
+        var slot = null;
+        if (kids.length === 1 && kids[0].classList && kids[0].classList.contains('pdf-slot')) {
+          slot = kids[0];
+        } else {
+          slot = pageSlots[pageNum];
+          if (slot && slot.parentNode) slot.parentNode.removeChild(slot);
+          container.innerHTML = '';
+          if (!slot || !slot.classList || !slot.classList.contains('pdf-slot')) {
+            slot = document.createElement('div');
+            slot.className = 'pdf-slot';
+          }
+          container.appendChild(slot);
         }
-        if (tv) {
-          container.style.overflow = 'auto';
-          container.style.alignItems = userZoom > 1.02 ? 'flex-start' : 'center';
+        while (container.children.length > 1) {
+          container.removeChild(container.lastChild);
         }
+        slot.setAttribute('data-page', String(pageNum));
+        pageSlots = [];
+        pageSlots[pageNum] = slot;
+        return slot;
+      }
+
+      function showTvPage(pageNum, resetZoom) {
+        if (!pdfDoc) return;
+        currentPage = Math.min(Math.max(1, pageNum), pdfDoc.numPages);
+        var slot = ensureTvSlot(currentPage);
+        if (resetZoom && slot) {
+          userZoom = 1;
+          slot.setAttribute('data-zoom', '1');
+          slot.scrollLeft = 0;
+          slot.scrollTop = 0;
+          document.body.classList.remove('tv-zoomed');
+        }
+        lastLayoutKey = layoutKey();
+        postState();
+        void paintSlot(pdfDoc, currentPage, true);
       }
 
       async function renderVisible(pdf) {
@@ -1034,20 +1136,24 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
         var tv = isTvView();
         applyBodyMode();
         await new Promise(function (r) { requestAnimationFrame(function () { requestAnimationFrame(r); }); });
+        if (token !== renderToken) return false;
         var key = layoutKey();
-        container.innerHTML = '';
 
         if (tv) {
           currentPage = Math.min(Math.max(1, currentPage), pdf.numPages);
-          await drawPage(container, pdf, currentPage, true);
+          ensureTvSlot(currentPage);
+          await paintSlot(pdf, currentPage, true);
           if (token !== renderToken) return false;
           lastLayoutKey = key;
+          bindPinchZoom();
           if (s) s.remove();
           if (p) p.remove();
           postNative('pdf-ready');
           postState();
           return true;
         }
+
+        container.innerHTML = '';
 
         var firstPage = await pdf.getPage(1);
         var baseViewport = firstPage.getViewport({ scale: 1 });
@@ -1083,70 +1189,60 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
         rerender();
       };
 
+      function viewerCenter() {
+        var frame = zoomFrameEl();
+        return {
+          x: frame ? frame.getBoundingClientRect().left + frame.clientWidth / 2 : window.innerWidth / 2,
+          y: frame ? frame.getBoundingClientRect().top + frame.clientHeight / 2 : window.innerHeight / 2
+        };
+      }
+
       window.__pdfViewer = {
         zoomBy: function (factor) {
-          if (isTvView()) {
-            userZoom = clampZoom(userZoom * factor);
-            lastLayoutKey = '';
-            rerender();
-            return;
-          }
-          var frame = zoomFrameEl();
-          var cx = frame ? frame.getBoundingClientRect().left + frame.clientWidth / 2 : window.innerWidth / 2;
-          var cy = frame ? frame.getBoundingClientRect().top + frame.clientHeight / 2 : window.innerHeight / 2;
-          zoomAt(userZoom * factor, cx, cy);
+          var slot = pageSlots[currentPage] || document.querySelector('.pdf-slot');
+          var c = viewerCenter();
+          pinchSlot = slot;
+          zoomAt((slot ? (Number(slot.getAttribute('data-zoom')) || 1) : userZoom) * factor, c.x, c.y);
+          scheduleHiResRefresh(slot);
+          pinchSlot = null;
         },
         setZoom: function (z) {
-          if (isTvView()) {
-            userZoom = clampZoom(z);
-            lastLayoutKey = '';
-            rerender();
-            return;
-          }
-          var frame = zoomFrameEl();
-          var cx = frame ? frame.getBoundingClientRect().left + frame.clientWidth / 2 : window.innerWidth / 2;
-          var cy = frame ? frame.getBoundingClientRect().top + frame.clientHeight / 2 : window.innerHeight / 2;
-          zoomAt(z, cx, cy);
+          var slot = pageSlots[currentPage] || document.querySelector('.pdf-slot');
+          var c = viewerCenter();
+          pinchSlot = slot;
+          zoomAt(z, c.x, c.y);
+          scheduleHiResRefresh(slot);
+          pinchSlot = null;
         },
         fitPage: function () {
-          if (isTvView()) {
-            userZoom = 1;
-            lastLayoutKey = '';
-            rerender();
-            return;
-          }
-          var frame = zoomFrameEl();
-          var cx = frame ? frame.getBoundingClientRect().left + frame.clientWidth / 2 : window.innerWidth / 2;
-          var cy = frame ? frame.getBoundingClientRect().top + frame.clientHeight / 2 : window.innerHeight / 2;
-          zoomAt(1, cx, cy);
+          var slot = pageSlots[currentPage] || document.querySelector('.pdf-slot');
+          var c = viewerCenter();
+          pinchSlot = slot;
+          zoomAt(1, c.x, c.y);
+          pinchSlot = null;
         },
         nextPage: function () {
           if (!pdfDoc || currentPage >= pdfDoc.numPages) return;
-          currentPage += 1;
-          lastLayoutKey = '';
           if (isTvView()) {
-            rerender();
+            showTvPage(currentPage + 1, true);
             return;
           }
-          window.__pdfViewer.goToPage(currentPage);
+          window.__pdfViewer.goToPage(currentPage + 1);
         },
         prevPage: function () {
           if (!pdfDoc || currentPage <= 1) return;
-          currentPage -= 1;
-          lastLayoutKey = '';
           if (isTvView()) {
-            rerender();
+            showTvPage(currentPage - 1, true);
             return;
           }
-          window.__pdfViewer.goToPage(currentPage);
+          window.__pdfViewer.goToPage(currentPage - 1);
         },
         goToPage: function (n) {
           if (!pdfDoc) return;
           var page = Math.min(Math.max(1, Math.floor(Number(n) || 1)), pdfDoc.numPages);
           currentPage = page;
           if (isTvView()) {
-            lastLayoutKey = '';
-            rerender();
+            showTvPage(page, true);
             return;
           }
           var container = pagesEl();

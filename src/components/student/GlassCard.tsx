@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, View, ViewStyle } from 'react-native';
+import { Pressable, Platform, StyleSheet, View, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { STUDENT, STUDENT_ANIMATION, STUDENT_RADIUS } from '../../theme/student';
@@ -57,7 +57,7 @@ export default function GlassCard({
       </GlassPanel>
     );
 
-    if (animate) {
+    if (animate && Platform.OS !== 'android') {
       return (
         <Animated.View
           style={[styles.outer, fillsParent && styles.pressableFill]}
@@ -88,13 +88,14 @@ export default function GlassCard({
       <View style={cardStyle}>{children}</View>
     );
 
-  const animatedInner = animate ? (
-    <Animated.View entering={FadeInDown.duration(STUDENT_ANIMATION.normal).delay(delay)}>
-      {inner}
-    </Animated.View>
-  ) : (
-    inner
-  );
+  const animatedInner =
+    animate && Platform.OS !== 'android' ? (
+      <Animated.View entering={FadeInDown.duration(STUDENT_ANIMATION.normal).delay(delay)}>
+        {inner}
+      </Animated.View>
+    ) : (
+      inner
+    );
 
   if (onPress) {
     return (
@@ -116,7 +117,7 @@ export default function GlassCard({
     );
   }
 
-  if (animate) {
+  if (animate && Platform.OS !== 'android') {
     return (
       <Animated.View
         style={[styles.outer, style]}

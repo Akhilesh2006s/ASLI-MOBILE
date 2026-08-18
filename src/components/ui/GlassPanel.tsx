@@ -8,13 +8,12 @@ import {
   StyleProp,
 } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import GlassSurface from './GlassSurface';
 import {
   GLASS_RADIUS,
   GLASS_RIM,
   GLASS_ROW,
   GLASS_SHADOW,
-  glassTone,
+  glassFillColor,
   type GlassTone,
 } from '../../theme/glass';
 
@@ -40,7 +39,7 @@ type Props = {
 const PRESS_SPRING = { damping: 18, stiffness: 260 };
 
 /**
- * Standard liquid-glass card. Prefer this over opaque `#fff` surfaces.
+ * Standard card surface. Paint the fill on this view — never as a sibling overlay.
  */
 export default function GlassPanel({
   children,
@@ -48,13 +47,11 @@ export default function GlassPanel({
   contentStyle,
   radius = GLASS_RADIUS.card,
   tone = 'medium',
-  colors,
   bordered = true,
   elevated = false,
   onPress,
 }: Props) {
   const isAndroid = Platform.OS === 'android';
-  const { intensity } = glassTone(tone);
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -62,15 +59,15 @@ export default function GlassPanel({
 
   const panelBody = (
     <View
+      collapsable={false}
       style={[
         styles.panel,
-        { borderRadius: radius },
+        { borderRadius: radius, backgroundColor: glassFillColor(tone) },
         bordered && styles.bordered,
         elevated && !isAndroid && GLASS_SHADOW.soft,
         !onPress && style,
       ]}
     >
-      <GlassSurface intensity={intensity} colors={colors} tone={tone} />
       <View style={[styles.content, contentStyle]}>{children}</View>
     </View>
   );
@@ -127,7 +124,6 @@ export const glassRowFillStrong = GLASS_ROW.fillStrong;
 const styles = StyleSheet.create({
   panel: {
     overflow: 'hidden',
-    backgroundColor: 'transparent',
   },
   bordered: {
     borderWidth: 1,

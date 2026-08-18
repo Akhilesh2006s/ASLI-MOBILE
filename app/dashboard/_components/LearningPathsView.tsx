@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions } from 'r
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   Easing,
-  FadeInDown,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -201,8 +200,7 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
   return (
     <View style={[styles.container, dark && styles.containerDark]}>
       {!dark ? (
-        <Animated.View entering={FadeInDown.duration(STUDENT_ANIMATION.normal)}>
-          <GlassPanel
+        <GlassPanel
             tone="strong"
             elevated
             colors={[...GLASS_VIOLET]}
@@ -224,7 +222,6 @@ export default function LearningPathsView({ dark }: { dark?: boolean }) {
               </Text>
             </View>
           </GlassPanel>
-        </Animated.View>
       ) : null}
 
       <View style={styles.tabsContainer}>

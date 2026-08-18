@@ -43,8 +43,8 @@ function useVidyaAILayout() {
   const { width, height } = useWindowDimensions();
   const isTvView = isTvOrBoardDisplay(width, height);
   const isBoard = width >= BOARD_MIN_WIDTH;
-  const columns = width >= 1040 ? 3 : width >= 700 ? 2 : 1;
-  const shellWidth = isBoard || isTvView ? width : Math.min(width, CONTENT_MAX);
+  const columns = isTvView ? 2 : width >= 1040 ? 3 : width >= 700 ? 2 : 1;
+  const shellWidth = isTvView ? '100%' : isBoard ? width : Math.min(width, CONTENT_MAX);
   return { isGrid: columns > 1, columns, shellWidth, isTvView };
 }
 
@@ -112,7 +112,7 @@ export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: bool
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
     >
-      <View style={[styles.innerShell, { width: shellWidth }]}>
+      <View style={[styles.innerShell, { width: shellWidth }, isTvView && { alignSelf: 'stretch' }]}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Create Your Next Classroom Resource</Text>
           <Text style={styles.sectionSubtitle}>{TEACHER_AI_TOOLS_SUBTITLE}</Text>

@@ -399,56 +399,58 @@ export default function TeacherExamPaperReview({ classNumber = 'all' }: Props) {
         <Text style={styles.empty}>No question data yet for this paper.</Text>
       ) : (
         <>
-          {analytics ? (
-            <Text style={styles.metaLine}>
-              {analytics.studentsAttempted}/{analytics.totalStudents} Attempted · {analytics.totalQuestions}{' '}
-              Questions
-            </Text>
-          ) : null}
-
-          <View style={styles.actions}>
-            <Pressable
-              style={[styles.actionBtn, styles.actionPrimary]}
-              onPress={() => {
-                setDiscussIndex(0);
-                setDiscussOpen(true);
-              }}
-            >
-              <Ionicons name="easel-outline" size={16} color="#fff" />
-              <Text style={styles.actionPrimaryText}>Discuss Paper</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.actionBtn, showAnswers ? styles.actionActive : styles.actionOutline]}
-              onPress={() => setShowAnswers((v) => !v)}
-            >
-              <Ionicons
-                name="eye-outline"
-                size={16}
-                color={showAnswers ? '#fff' : TEACHER.primary}
-              />
-              <Text style={showAnswers ? styles.actionPrimaryText : styles.actionOutlineText}>
-                {showAnswers ? 'Hide Answers' : 'Show Answers'}
+          <View style={styles.controlStack}>
+            {analytics ? (
+              <Text style={styles.metaLine}>
+                {analytics.studentsAttempted}/{analytics.totalStudents} Attempted · {analytics.totalQuestions}{' '}
+                Questions
               </Text>
-            </Pressable>
-          </View>
+            ) : null}
 
-          {showAnswers ? (
-            <View style={{ gap: 12 }}>
-              {questions.map((q) => (
-                <QuestionCard
-                  key={qKey(q)}
-                  question={q}
-                  revealAnswers
-                  selected={selectedByQ[qKey(q)] || null}
-                  onSelect={(opt) => selectOpt(qKey(q), opt)}
+            <View style={styles.actions}>
+              <Pressable
+                style={[styles.actionBtn, styles.actionPrimary]}
+                onPress={() => {
+                  setDiscussIndex(0);
+                  setDiscussOpen(true);
+                }}
+              >
+                <Ionicons name="easel-outline" size={16} color="#fff" />
+                <Text style={styles.actionPrimaryText}>Discuss Paper</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.actionBtn, showAnswers ? styles.actionActive : styles.actionOutline]}
+                onPress={() => setShowAnswers((v) => !v)}
+              >
+                <Ionicons
+                  name="eye-outline"
+                  size={16}
+                  color={showAnswers ? '#fff' : TEACHER.primary}
                 />
-              ))}
+                <Text style={showAnswers ? styles.actionPrimaryText : styles.actionOutlineText}>
+                  {showAnswers ? 'Hide Answers' : 'Show Answers'}
+                </Text>
+              </Pressable>
             </View>
-          ) : (
-            <Text style={styles.hint}>
-              Tap Discuss paper for a full-page walkthrough, or Show answers to review every question here.
-            </Text>
-          )}
+
+            {showAnswers ? (
+              <View style={{ gap: 12 }}>
+                {questions.map((q) => (
+                  <QuestionCard
+                    key={qKey(q)}
+                    question={q}
+                    revealAnswers
+                    selected={selectedByQ[qKey(q)] || null}
+                    onSelect={(opt) => selectOpt(qKey(q), opt)}
+                  />
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.hint}>
+                Tap Discuss paper for a full-page walkthrough, or Show answers to review every question here.
+              </Text>
+            )}
+          </View>
 
           {renderStudentSheet()}
         </>
@@ -584,8 +586,11 @@ const styles = StyleSheet.create({
     ...glassCard,
     backgroundColor: 'transparent',
     padding: 14,
-    gap: 10,
+    gap: 16,
     marginBottom: 4,
+  },
+  controlStack: {
+    gap: 16,
   },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   title: { ...TEACHER_TYPO.subtitle, color: TEACHER.text, fontWeight: '700' },
@@ -605,14 +610,17 @@ const styles = StyleSheet.create({
   error: { color: TEACHER.danger, fontSize: 13 },
   empty: { color: TEACHER.textMuted, fontSize: 13, textAlign: 'center', paddingVertical: 16 },
   metaLine: { fontSize: 12, color: TEACHER.textMuted },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  actions: { flexDirection: 'row', alignItems: 'stretch', gap: 10 },
   actionBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
     borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 12,
+    minHeight: 44,
   },
   actionPrimary: { backgroundColor: TEACHER.primary },
   actionActive: { backgroundColor: '#7C3AED' },

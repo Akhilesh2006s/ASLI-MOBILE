@@ -10,7 +10,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../theme/teacher';
-import GlassSurface from '../ui/GlassSurface';
+import { glassFillColor } from '../../theme/glass';
 
 export type TeacherTab = {
   id: string;
@@ -92,7 +92,6 @@ export default function TeacherTabBar({ tabs, activeTab, onTabChange, glass = tr
         style={styles.topGlow}
       />
       <View style={[styles.bar, glass && styles.barGlass]} onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}>
-        {glass ? <GlassSurface intensity={50} /> : null}
         {tabWidth > 0 ? (
           <Animated.View style={[styles.indicator, slideStyle, { left: 3 }]}>
             <LinearGradient
@@ -147,7 +146,7 @@ const styles = StyleSheet.create({
     ...TEACHER.shadow.lg,
   },
   barGlass: {
-    backgroundColor: 'transparent',
+    backgroundColor: glassFillColor('medium'),
     borderColor: 'rgba(255,255,255,0.55)',
     overflow: 'hidden',
     shadowOpacity: 0,

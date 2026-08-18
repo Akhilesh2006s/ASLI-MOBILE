@@ -71,12 +71,14 @@ function canAccessPath(pathname: string, role: string | null) {
   return true;
 }
 
-const STUDENT_PUSHED_SCREEN = {
+const OPAQUE_PUSHED_SCREEN = {
   gestureEnabled: true,
   animation: 'slide_from_right' as const,
   animationDuration: 220,
   contentStyle: { backgroundColor: '#F4F7FB' },
 };
+
+const STUDENT_PUSHED_SCREEN = OPAQUE_PUSHED_SCREEN;
 
 function AuthGate() {
   const { isLoading, isAuthenticated, role } = useAuth();
@@ -115,13 +117,18 @@ function AuthGate() {
     <Stack
       screenOptions={{
         headerShown: false,
-        // Transparent so the app-wide AppBackground artwork shows through every
-        // route. Screens that need to be opaque (video player, drive viewer)
-        // paint their own background over it.
-        contentStyle: { backgroundColor: 'transparent' },
+        // Opaque by default so a pushed screen fully covers the frozen dashboard.
+        // Transparent overlays left empty white cards stacked on the previous page.
+        gestureEnabled: true,
+        animation: 'slide_from_right',
+        animationDuration: 220,
+        contentStyle: { backgroundColor: '#F4F7FB' },
       }}
     >
-      <Stack.Screen name="index" />
+      <Stack.Screen
+        name="index"
+        options={{ animation: 'fade', contentStyle: { backgroundColor: 'transparent' } }}
+      />
       <Stack.Screen
         name="auth/login"
         options={{
@@ -142,12 +149,14 @@ function AuthGate() {
         name="dashboard/index"
         options={{
           freezeOnBlur: true,
+          animation: 'fade',
+          contentStyle: { backgroundColor: 'transparent' },
         }}
       />
       <Stack.Screen name="attendance" options={STUDENT_PUSHED_SCREEN} />
       <Stack.Screen name="assignments" options={STUDENT_PUSHED_SCREEN} />
       <Stack.Screen name="teachers-report" options={STUDENT_PUSHED_SCREEN} />
-      <Stack.Screen name="staff/dashboard" />
+      <Stack.Screen name="staff/dashboard" options={OPAQUE_PUSHED_SCREEN} />
       <Stack.Screen name="learning-paths" options={STUDENT_PUSHED_SCREEN} />
       <Stack.Screen name="subject/[id]" options={STUDENT_PUSHED_SCREEN} />
       <Stack.Screen name="quiz/[id]" options={STUDENT_PUSHED_SCREEN} />
@@ -158,28 +167,24 @@ function AuthGate() {
         name="admin/dashboard"
         options={{
           freezeOnBlur: true,
+          animation: 'fade',
+          contentStyle: { backgroundColor: 'transparent' },
         }}
       />
       <Stack.Screen
         name="admin/reports"
-        options={{
-          gestureEnabled: true,
-          animation: 'slide_from_right',
-          animationDuration: 220,
-        }}
+        options={OPAQUE_PUSHED_SCREEN}
       />
       <Stack.Screen
         name="admin/school-settings"
-        options={{
-          gestureEnabled: true,
-          animation: 'slide_from_right',
-          animationDuration: 220,
-        }}
+        options={OPAQUE_PUSHED_SCREEN}
       />
       <Stack.Screen
         name="teacher/dashboard"
         options={{
           freezeOnBlur: true,
+          animation: 'fade',
+          contentStyle: { backgroundColor: 'transparent' },
         }}
       />
       <Stack.Screen
@@ -241,14 +246,14 @@ function AuthGate() {
       <Stack.Screen name="iq-rank-boost-subjects" options={STUDENT_PUSHED_SCREEN} />
       <Stack.Screen name="iq-rank-boost-quiz/[quizId]" options={STUDENT_PUSHED_SCREEN} />
       <Stack.Screen name="daily-quiz-review" options={STUDENT_PUSHED_SCREEN} />
-      <Stack.Screen name="onboarding" />
+      <Stack.Screen name="onboarding" options={OPAQUE_PUSHED_SCREEN} />
       <Stack.Screen name="notifications" options={STUDENT_PUSHED_SCREEN} />
       <Stack.Screen name="student/timetable" options={STUDENT_PUSHED_SCREEN} />
       <Stack.Screen name="student/schedule" options={STUDENT_PUSHED_SCREEN} />
       <Stack.Screen name="student/results" options={STUDENT_PUSHED_SCREEN} />
-      <Stack.Screen name="teacher/attendance" />
-      <Stack.Screen name="teacher/quiz" />
-      <Stack.Screen name="teacher/quiz/[quizId]" />
+      <Stack.Screen name="teacher/attendance" options={OPAQUE_PUSHED_SCREEN} />
+      <Stack.Screen name="teacher/quiz" options={OPAQUE_PUSHED_SCREEN} />
+      <Stack.Screen name="teacher/quiz/[quizId]" options={OPAQUE_PUSHED_SCREEN} />
       <Stack.Screen
         name="teacher/vidya-chat"
         options={{
@@ -259,10 +264,10 @@ function AuthGate() {
           contentStyle: { backgroundColor: '#F4F7FB' },
         }}
       />
-      <Stack.Screen name="teacher/subject/[id]" />
-      <Stack.Screen name="super-admin/analytics" />
-      <Stack.Screen name="super-admin/detailed-ai-analytics" />
-      <Stack.Screen name="super-admin/schools/[id]" />
+      <Stack.Screen name="teacher/subject/[id]" options={OPAQUE_PUSHED_SCREEN} />
+      <Stack.Screen name="super-admin/analytics" options={OPAQUE_PUSHED_SCREEN} />
+      <Stack.Screen name="super-admin/detailed-ai-analytics" options={OPAQUE_PUSHED_SCREEN} />
+      <Stack.Screen name="super-admin/schools/[id]" options={OPAQUE_PUSHED_SCREEN} />
       <Stack.Screen
         name="super-admin/create-order"
         options={{

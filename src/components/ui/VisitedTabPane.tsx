@@ -6,7 +6,7 @@ type Props = {
   children: ReactNode;
 };
 
-/** Renders children while hidden (display:none) so tab state and scroll position are preserved. */
+/** Renders children while hidden so tab state and scroll position are preserved. */
 export function VisitedTabPane({ visible, children }: Props) {
   return (
     <View
@@ -28,5 +28,9 @@ const styles = StyleSheet.create({
   },
   hidden: {
     display: 'none',
+    width: 0,
+    height: 0,
+    overflow: 'hidden',
+    opacity: 0,
   },
 });

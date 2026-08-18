@@ -368,7 +368,8 @@ const PdfPreviewWebView = forwardRef<PdfPreviewHandle, Props>(function PdfPrevie
           scalesPageToFit={false}
           setBuiltInZoomControls={false}
           setDisplayZoomControls={false}
-          overScrollMode="content"
+          bounces={false}
+          overScrollMode={isTvView ? 'never' : 'content'}
           onMessage={onWebMessage}
         />
         {busy ? (

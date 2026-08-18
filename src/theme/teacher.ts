@@ -162,9 +162,7 @@ export function teacherSubjectIconName(subjectLabel: string): string {
 
 /** Card style for light surfaces */
 export const glassCard = {
-  // Transparent so the page artwork blurs through. Consumers that need an
-  // opaque card (native modals, chart interiors) set backgroundColor themselves.
-  backgroundColor: 'transparent',
+  backgroundColor: '#FFFFFF',
   borderWidth: 1,
   borderColor: TEACHER.surfaceBorder,
   borderRadius: TEACHER_RADIUS.lg,

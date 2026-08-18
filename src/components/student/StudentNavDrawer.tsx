@@ -55,9 +55,10 @@ type PanelProps = {
   compact?: boolean;
   onSelect: (id: StudentNavId) => void;
   onLogout: () => void;
+  onClose?: () => void;
 };
 
-export function StudentNavPanel({ activeId, user, compact, onSelect, onLogout }: PanelProps) {
+export function StudentNavPanel({ activeId, user, compact, onSelect, onLogout, onClose }: PanelProps) {
   return (
     <PortalNavChrome
       items={studentNavItemsForUser(user)}
@@ -66,6 +67,7 @@ export function StudentNavPanel({ activeId, user, compact, onSelect, onLogout }:
       onSelect={(id) => onSelect(id as StudentNavId)}
       onLogout={onLogout}
       onBrandPress={() => onSelect('home')}
+      onClose={onClose}
     />
   );
 }

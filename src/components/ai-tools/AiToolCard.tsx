@@ -3,7 +3,7 @@ import { Platform, Pressable, StyleSheet, Text, View, type ViewStyle } from 'rea
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { AI, AI_RADIUS, AI_SHADOW, AI_SPACING, AI_TYPE } from '../../theme/ai';
 import { formatAiToolText } from '../../lib/title-case';
-import GlassSurface from '../ui/GlassSurface';
+import { glassFillColor } from '../../theme/glass';
 
 type Props = {
   title: string;
@@ -63,7 +63,6 @@ export default function AiToolCard({
           animatedStyle,
         ]}
       >
-        {glass ? <GlassSurface intensity={55} tone="strong" /> : null}
         <View
           style={[
             styles.iconBox,
@@ -127,7 +126,7 @@ const styles = StyleSheet.create({
     borderRadius: AI_RADIUS.lg,
     borderWidth: 4,
     borderColor: 'rgba(255,255,255,0.65)',
-    backgroundColor: 'transparent',
+    backgroundColor: glassFillColor('strong'),
     padding: AI_SPACING.lg,
     ...AI_SHADOW,
   },
@@ -140,7 +139,7 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
   },
   cardGlassShell: {
-    backgroundColor: 'transparent',
+    backgroundColor: glassFillColor('strong'),
   },
   iconBox: {
     width: 54,

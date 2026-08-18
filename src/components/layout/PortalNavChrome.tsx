@@ -66,6 +66,7 @@ type Props = {
   onSelect: (id: string) => void;
   onLogout: () => void;
   onBrandPress?: () => void;
+  onClose?: () => void;
 };
 
 async function openSupport() {
@@ -187,6 +188,7 @@ export default function PortalNavChrome({
   onSelect,
   onLogout,
   onBrandPress,
+  onClose,
 }: Props) {
   const insets = useSafeAreaInsets();
 
@@ -194,11 +196,27 @@ export default function PortalNavChrome({
     <View style={styles.panel}>
       <SidebarAtmosphere />
 
+      {onClose ? (
+        <Pressable
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="Close menu"
+          hitSlop={8}
+          style={[styles.closeBtn, { top: insets.top + 12 }]}
+        >
+          <Ionicons name="close" size={22} color="#0f172a" />
+        </Pressable>
+      ) : null}
+
       {!compact ? (
         <Pressable
           onPress={onBrandPress}
           disabled={!onBrandPress}
-          style={[styles.brandCard, { marginTop: insets.top + 10 }]}
+          style={[
+            styles.brandCard,
+            { marginTop: insets.top + 10 },
+            onClose ? styles.brandCardWithClose : null,
+          ]}
           accessibilityLabel="Go to overview"
         >
           <View style={styles.logoOrbit}>
@@ -295,6 +313,24 @@ const styles = StyleSheet.create({
   floater: {
     position: 'absolute',
   },
+  closeBtn: {
+    position: 'absolute',
+    right: 12,
+    zIndex: 30,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(226,232,240,0.95)',
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 6,
+  },
   brandCard: {
     marginHorizontal: 12,
     flexDirection: 'row',
@@ -311,6 +347,9 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
     elevation: 3,
+  },
+  brandCardWithClose: {
+    paddingRight: 48,
   },
   logoOrbit: {
     width: 48,

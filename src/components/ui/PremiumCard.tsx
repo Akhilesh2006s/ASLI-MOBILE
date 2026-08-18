@@ -3,8 +3,7 @@ import { Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, FONT, RADIUS, SPACING } from '../../theme';
-import { GLASS_RIM, GLASS_SHADOW } from '../../theme/glass';
-import GlassSurface from './GlassSurface';
+import { GLASS_RIM, GLASS_SHADOW, glassFillColor } from '../../theme/glass';
 
 type Props = {
   title?: string;
@@ -27,7 +26,6 @@ export default function PremiumCard({
 }: Props) {
   const content = (
     <View style={[styles.card, style]}>
-      <GlassSurface intensity={55} tone="medium" />
       {gradient && title ? (
         <LinearGradient colors={[...gradient]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.header}>
           {icon ? (
@@ -71,7 +69,7 @@ export default function PremiumCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'transparent',
+    backgroundColor: glassFillColor('medium'),
     borderRadius: RADIUS.lg,
     borderWidth: 1,
     borderColor: GLASS_RIM.border,

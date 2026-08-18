@@ -2,6 +2,7 @@ import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from './api-config';
 import { updateStudyTime, getWeeklyStudyData, startSession, endSession } from '../utils/studyTimeTracker';
 import { toLocalDateKey } from './profile-overview-stats';
+import { jwtRole, jwtUserId } from './jwt-payload';
 
 const MAX_STUDY_MINUTES_PER_DAY = 12 * 60;
 const MAX_STUDY_MINUTES_PER_WEEK = MAX_STUDY_MINUTES_PER_DAY * 7;
@@ -101,8 +102,12 @@ export type SessionTimeData = {
   weeklyData: Record<string, number>;
 };
 
+function sessionTimePathFromToken(token?: string | null): string {
+  return jwtRole(token) === 'teacher' ? '/api/teacher/session-time' : '/api/student/session-time';
+}
+
 export async function fetchSessionTimeFromBackend(token: string): Promise<SessionTimeData | null> {
-  const response = await fetch(`${API_BASE_URL}/api/student/session-time`, {
+  const response = await fetch(`${API_BASE_URL}${sessionTimePathFromToken(token)}`, {
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
   });
   if (!response.ok) return null;
@@ -118,7 +123,7 @@ export async function fetchSessionTimeFromBackend(token: string): Promise<Sessio
 export async function saveSessionTimeToBackend(todayMinutes: number): Promise<void> {
   const token = await SecureStore.getItemAsync('authToken');
   if (!token || todayMinutes <= 0) return;
-  await fetch(`${API_BASE_URL}/api/student/session-time`, {
+  await fetch(`${API_BASE_URL}${sessionTimePathFromToken(token)}`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -132,12 +137,7 @@ export async function saveSessionTimeToBackend(todayMinutes: number): Promise<vo
 }
 
 async function readBaselineUserKey(token: string): Promise<string> {
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return String(payload.userId || payload.id || payload._id || token.slice(-12));
-  } catch {
-    return token.slice(-12);
-  }
+  return jwtUserId(token) || token.slice(-12);
 }
 
 async function initSessionBaseline(token: string, force = false): Promise<void> {

@@ -2,8 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, FONT, RADIUS, SPACING } from '../../theme';
-import { GLASS_RIM, GLASS_ROW, GLASS_SHADOW } from '../../theme/glass';
-import GlassSurface from './GlassSurface';
+import { GLASS_RIM, GLASS_ROW, GLASS_SHADOW, glassFillColor } from '../../theme/glass';
 
 export type TabItem = {
   id: string;
@@ -26,7 +25,6 @@ export default function BottomTabBar({ tabs, activeTab, onTabChange, roleColor =
   return (
     <View style={styles.wrap}>
       <View style={styles.bar}>
-        <GlassSurface intensity={58} tone="medium" />
         {tabs.map((tab) => {
           const active = tab.id === activeTab;
           const iconName = active && tab.activeIcon ? tab.activeIcon : tab.icon;
@@ -84,7 +82,7 @@ const styles = StyleSheet.create({
   },
   bar: {
     flexDirection: 'row',
-    backgroundColor: 'transparent',
+    backgroundColor: glassFillColor('medium'),
     borderRadius: RADIUS.xl,
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.xs,

@@ -91,3 +91,8 @@ export const GLASS_SHADOW = {
 export function glassTone(tone: GlassTone = 'medium'): GlassToneSpec {
   return GLASS_TONES[tone];
 }
+
+/** Solid card / bar fill. Never use an absolute overlay for this — Android Fabric leaks those as empty white boxes. */
+export function glassFillColor(tone: GlassTone = 'medium'): string {
+  return tone === 'light' ? '#FAFBFC' : '#FFFFFF';
+}

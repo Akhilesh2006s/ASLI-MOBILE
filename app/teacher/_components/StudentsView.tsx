@@ -50,7 +50,7 @@ export default function StudentsView({
   onCloseStudentAnalysis,
   hideSubNav,
   heroTitle = 'Students',
-  heroSubtitle = 'Roster, progress, homework submissions, and daily diary.',
+  heroSubtitle = 'Roster, Progress, Homework Submissions, And Daily Diary.',
   heroIcon = 'people-outline',
 }: Props) {
   const [activeSubTab, setActiveSubTab] = useState<StudentsSubTab>(initialSubTab || 'list');

@@ -16,7 +16,7 @@ import {
 } from '../../lib/teacher-text';
 import { TEACHER, TEACHER_SPACING, teacherSubjectBadgePalette } from '../../theme/teacher';
 import SchoolBrandRow from '../ui/SchoolBrandRow';
-import GlassSurface from '../ui/GlassSurface';
+import { glassFillColor } from '../../theme/glass';
 import type { BackendStatus } from '../../services/api/teacherService';
 
 type Props = {
@@ -106,7 +106,6 @@ export default function TeacherHeader({
           { paddingTop: Math.max(insets.top, TEACHER_SPACING.sm) + TEACHER_SPACING.xs },
         ]}
       >
-        {glass ? <GlassSurface intensity={50} /> : null}
         <View style={styles.compactMain}>
           <Text style={styles.compactTitle} numberOfLines={1}>
             {title || ' '}
@@ -137,7 +136,6 @@ export default function TeacherHeader({
       ]}
     >
       {/* Glass home: keep soft backdrop so greeting + name stay readable on artwork */}
-      {glass ? <GlassSurface intensity={42} /> : null}
       {glass ? null : (
         <>
           <LinearGradient
@@ -222,7 +220,7 @@ const styles = StyleSheet.create({
     borderBottomColor: TEACHER.surfaceBorder,
   },
   compactWrapGlass: {
-    backgroundColor: 'transparent',
+    backgroundColor: glassFillColor('medium'),
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.5)',
     overflow: 'hidden',
@@ -256,7 +254,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#38BDF8',
   },
   wrapGlass: {
-    backgroundColor: 'transparent',
+    backgroundColor: glassFillColor('light'),
     borderBottomWidth: 0,
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,

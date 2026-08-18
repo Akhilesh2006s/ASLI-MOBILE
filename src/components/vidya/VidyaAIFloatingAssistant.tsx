@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import GlassSurface from '../ui/GlassSurface';
+import { glassFillColor } from '../../theme/glass';
 import VidyaAvatar from './VidyaAvatar';
 
 export type VidyaAssistantRole = 'student' | 'admin' | 'teacher' | 'super_admin';
@@ -45,12 +45,6 @@ export default function VidyaAIFloatingAssistant({
         accessibilityRole="button"
         accessibilityLabel="Open Vidya AI"
       >
-        {lite ? <View style={styles.liteFill} /> : (
-          <GlassSurface
-            intensity={50}
-            colors={['rgba(255,255,255,0.55)', 'rgba(253,186,116,0.28)']}
-          />
-        )}
         <View style={styles.avatarWrap}>
           <VidyaAvatar size={52} borderColor="#fdba74" />
         </View>
@@ -75,6 +69,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.65)',
+    backgroundColor: glassFillColor('medium'),
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -87,10 +82,6 @@ const styles = StyleSheet.create({
   },
   orbLite: {
     borderColor: 'rgba(14, 165, 233, 0.25)',
-  },
-  liteFill: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#FFFFFF',
   },
   avatarWrap: {
     position: 'relative',

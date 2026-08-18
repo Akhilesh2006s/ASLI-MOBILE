@@ -650,7 +650,7 @@ export default function TrackProgressView({
             <View style={{ flex: 1 }}>
               <Text style={styles.headerTitle}>Track Student Progress</Text>
               <Text style={styles.headerSub}>
-                Expand Class → Section → View Student Progress
+                Expand Class → Section → Individual Student Progress
               </Text>
             </View>
           </View>

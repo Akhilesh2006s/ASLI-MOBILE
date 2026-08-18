@@ -1,8 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { GLASS_RIM, GLASS_ROW } from '../../theme/glass';
-import GlassSurface from './GlassSurface';
+import { GLASS_RIM, GLASS_ROW, glassFillColor } from '../../theme/glass';
 import { uiTheme } from './theme';
 
 type Props = {
@@ -15,7 +14,6 @@ type Props = {
 export default function AppHeader({ title, onBack, rightActionIcon, onRightAction }: Props) {
   return (
     <View style={styles.header}>
-      <GlassSurface intensity={50} tone="medium" />
       <TouchableOpacity
         style={styles.iconButton}
         onPress={onBack}
@@ -60,7 +58,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: uiTheme.spacing.md,
     paddingVertical: 12,
-    backgroundColor: 'transparent',
+    backgroundColor: glassFillColor('medium'),
     overflow: 'hidden',
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: GLASS_RIM.border,

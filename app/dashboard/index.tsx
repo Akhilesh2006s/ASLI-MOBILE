@@ -7,6 +7,7 @@ import { useAuth } from '../../src/context/AuthContext';
 import { useDashboardShellBack } from '../../src/hooks/useBackNavigation';
 import { useVisitedTabs } from '../../src/hooks/useVisitedTabs';
 import { consumeStudentDashboardTabIntent } from '../../src/lib/dashboard-tab-intent';
+import { isTvOrBoardDisplay } from '../../src/hooks/useIsTablet';
 import StudentNavDrawer, {
   StudentNavPanel,
   type StudentNavId,
@@ -136,9 +137,13 @@ export default function StudentDashboard() {
     ]);
   };
 
-  const { width: windowWidth } = useWindowDimensions();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isTablet = windowWidth >= 768;
+  const isTvView = isTvOrBoardDisplay(windowWidth, windowHeight);
+  const [tvSidebarOpen, setTvSidebarOpen] = useState(true);
+  const showSidebar = isTablet && (!isTvView || tvSidebarOpen);
+  const showTopBar = !isTablet || (isTvView && !tvSidebarOpen);
   const pad = {
     paddingHorizontal: 18,
     paddingTop: 10,
@@ -170,8 +175,11 @@ export default function StudentDashboard() {
   useDashboardShellBack({
     isHome: activeTab === 'home',
     goHome: () => goToTab('home'),
-    menuOpen,
-    closeMenu: () => setMenuOpen(false),
+    menuOpen: menuOpen || (isTvView && tvSidebarOpen),
+    closeMenu: () => {
+      setMenuOpen(false);
+      if (isTvView) setTvSidebarOpen(false);
+    },
   });
 
   const onSelectNav = (id: StudentNavId) => {
@@ -196,26 +204,30 @@ export default function StudentDashboard() {
   return (
     <SafeAreaView style={styles.container} edges={isTablet ? [] : ['top']}>
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
-      <View style={[styles.shell, isTablet && styles.shellTablet]}>
-        {isTablet ? (
+      <View style={[styles.shell, showSidebar && styles.shellTablet]}>
+        {showSidebar ? (
           <View style={styles.sidebar}>
             <StudentNavPanel
               activeId={activeTab}
               user={user}
               onSelect={onSelectNav}
               onLogout={handleLogout}
+              onClose={isTvView ? () => setTvSidebarOpen(false) : undefined}
             />
           </View>
         ) : null}
 
         <View style={[styles.tabContent, isTablet && { paddingTop: insets.top }]}>
-        {isTablet ? null : (
+        {showTopBar ? (
           <PortalTopBar
             user={user}
-            onOpenMenu={() => setMenuOpen(true)}
+            onOpenMenu={() => {
+              if (isTvView) setTvSidebarOpen(true);
+              else setMenuOpen(true);
+            }}
             onLogout={handleLogout}
           />
-        )}
+        ) : null}
         {visitedTabs.has('home') ? (
           <VisitedTabPane visible={activeTab === 'home'}>
             <ScrollView

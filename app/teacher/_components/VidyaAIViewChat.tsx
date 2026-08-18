@@ -8,6 +8,7 @@ import {
   Pressable,
   Platform,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
@@ -162,6 +163,17 @@ export default function VidyaAIViewChat({
   /** The opaque dock rounds itself instead of the card clipping it. */
   const cardRadius = fullPage || standalone ? 0 : TEACHER_RADIUS.lg;
 
+  const canClearChat =
+    !model.isPending && !model.isClearingChat && model.displayMessages.length > 0;
+
+  const confirmClearChat = () => {
+    if (!canClearChat) return;
+    Alert.alert('Clear Chat', 'This will delete the conversation history.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Clear', style: 'destructive', onPress: model.clearChat },
+    ]);
+  };
+
   const scrollToBottom = (animated = true) => {
     scrollViewRef.current?.scrollToEnd({ animated });
   };
@@ -180,30 +192,12 @@ export default function VidyaAIViewChat({
 
   return (
     <View style={[styles.chatRoot, fullPage && styles.chatRootFull, standalone && styles.chatRootStandalone]}>
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.mainScroll}
-        contentContainerStyle={[
-          styles.mainScrollContent,
-          { paddingBottom: composerHeight + keyboardLift + 16 },
-        ]}
-        showsVerticalScrollIndicator={false}
-        nestedScrollEnabled
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        bounces
-      >
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          nestedScrollEnabled
-          style={styles.modeTabsScroll}
-          contentContainerStyle={styles.modeTabs}
-        >
+      <View style={styles.chrome}>
+        <View style={styles.modeTabs}>
           {(Object.keys(TEACHING_MODES) as TeachingTab[]).map((tab) => {
             const active = teachingTab === tab;
             return (
-              <Pressable key={tab} onPress={() => setTeachingTab(tab)}>
+              <Pressable key={tab} onPress={() => setTeachingTab(tab)} style={styles.modeTabPress}>
                 {active ? (
                   <LinearGradient
                     colors={[TEACHER.primary, TEACHER.primaryDark]}
@@ -223,7 +217,7 @@ export default function VidyaAIViewChat({
               </Pressable>
             );
           })}
-        </ScrollView>
+        </View>
 
         <View style={styles.quickRow}>
           <Pressable
@@ -240,6 +234,7 @@ export default function VidyaAIViewChat({
             horizontal
             nestedScrollEnabled
             showsHorizontalScrollIndicator={false}
+            style={styles.quickChipsScroll}
             contentContainerStyle={styles.quickChips}
           >
             <Pressable style={styles.quickChip} onPress={() => model.onPromptClick(mode.quickA.prompt)}>
@@ -249,8 +244,32 @@ export default function VidyaAIViewChat({
               <Text style={styles.quickChipText}>{mode.quickB.label}</Text>
             </Pressable>
           </ScrollView>
+          <Pressable
+            onPress={confirmClearChat}
+            disabled={!canClearChat}
+            style={[styles.clearChatBtn, !canClearChat && styles.clearChatBtnDisabled]}
+            accessibilityRole="button"
+            accessibilityLabel="Clear Chat"
+          >
+            <Ionicons name="trash-outline" size={15} color={TEACHER.danger} />
+            <Text style={styles.clearChatText}>Clear Chat</Text>
+          </Pressable>
         </View>
+      </View>
 
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.mainScroll}
+        contentContainerStyle={[
+          styles.mainScrollContent,
+          { paddingBottom: composerHeight + keyboardLift + 16 },
+        ]}
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        bounces
+      >
         <View style={styles.messagesBlock}>
           {model.displayMessages.length === 0 ? (
             <View style={styles.starterBlock}>
@@ -448,26 +467,54 @@ const styles = StyleSheet.create({
     paddingHorizontal: TEACHER_SPACING.md,
     paddingTop: TEACHER_SPACING.sm,
   },
-  modeTabsScroll: {
-    flexGrow: 0,
+  chrome: {
     flexShrink: 0,
-    maxHeight: 48,
+    backgroundColor: '#F4F7FB',
+    borderBottomWidth: 1,
+    borderBottomColor: TEACHER.surfaceBorder,
+    paddingTop: TEACHER_SPACING.md,
   },
   modeTabs: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: TEACHER_SPACING.lg,
-    paddingVertical: TEACHER_SPACING.sm,
-    paddingTop: TEACHER_SPACING.md,
+    paddingHorizontal: TEACHER_SPACING.md,
+    marginBottom: TEACHER_SPACING.md,
+  },
+  modeTabPress: {
+    flex: 1,
+    minWidth: 0,
   },
   modeTab: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
+    minHeight: 42,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
     borderRadius: TEACHER_RADIUS.full,
     backgroundColor: TEACHER.surface,
     borderWidth: 1,
     borderColor: TEACHER.surfaceBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clearChatBtn: {
+    flexShrink: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    minHeight: 36,
+    paddingHorizontal: 10,
+    borderRadius: TEACHER_RADIUS.full,
+    backgroundColor: 'rgba(239,68,68,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.22)',
+  },
+  clearChatBtnDisabled: {
+    opacity: 0.4,
+  },
+  clearChatText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: TEACHER.danger,
   },
   modeTabActive: {
     borderColor: TEACHER.primary,
@@ -484,10 +531,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: TEACHER_SPACING.lg,
-    paddingVertical: TEACHER_SPACING.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: TEACHER.surfaceBorder,
+    paddingHorizontal: TEACHER_SPACING.md,
+    paddingTop: TEACHER_SPACING.sm,
+    paddingBottom: TEACHER_SPACING.md,
   },
   subjectBadge: {
     flexDirection: 'row',
@@ -505,6 +551,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: TEACHER.primaryLight,
     maxWidth: 100,
+  },
+  quickChipsScroll: {
+    flex: 1,
+    minWidth: 0,
   },
   quickChips: {
     flexDirection: 'row',

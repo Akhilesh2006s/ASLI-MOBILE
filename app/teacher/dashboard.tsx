@@ -18,12 +18,14 @@ import authService from '../../src/services/api/authService';
 import teacherService, { type BackendStatus } from '../../src/services/api/teacherService';
 import { useTeacherBackendStatus } from '../../src/hooks/useTeacherBackendStatus';
 import { useAuth } from '../../src/context/AuthContext';
+import { setupSessionTimeSync } from '../../src/lib/session-time-sync';
 import { useDashboardShellBack } from '../../src/hooks/useBackNavigation';
 import { useVisitedTabs } from '../../src/hooks/useVisitedTabs';
 import {
   consumeTeacherDashboardTabIntent,
   type TeacherDashboardTabIntent,
 } from '../../src/lib/dashboard-tab-intent';
+import { isTvOrBoardDisplay } from '../../src/hooks/useIsTablet';
 import TeacherNavDrawer, {
   TeacherNavPanel,
   type TeacherNavId,
@@ -119,6 +121,11 @@ export default function TeacherDashboard() {
 
   useEffect(() => {
     loadData();
+  }, []);
+
+  useEffect(() => {
+    const stop = setupSessionTimeSync(() => {});
+    return () => stop();
   }, []);
 
   useEffect(() => {
@@ -218,9 +225,13 @@ export default function TeacherDashboard() {
     ]);
   };
 
-  const { width: windowWidth } = useWindowDimensions();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isTablet = windowWidth >= 768;
+  const isTvView = isTvOrBoardDisplay(windowWidth, windowHeight);
+  const [tvSidebarOpen, setTvSidebarOpen] = useState(true);
+  const showSidebar = isTablet && (!isTvView || tvSidebarOpen);
+  const showTopBar = !isTablet || (isTvView && !tvSidebarOpen);
   const pad = {
     paddingHorizontal: 18,
     paddingTop: 10,
@@ -238,8 +249,11 @@ export default function TeacherDashboard() {
   useDashboardShellBack({
     isHome: activeTab === 'overview',
     goHome: () => goToTab('overview'),
-    menuOpen,
-    closeMenu: () => setMenuOpen(false),
+    menuOpen: menuOpen || (isTvView && tvSidebarOpen),
+    closeMenu: () => {
+      setMenuOpen(false);
+      if (isTvView) setTvSidebarOpen(false);
+    },
   });
 
   const handleTabChange = (id: TeacherNavId) => {
@@ -263,26 +277,30 @@ export default function TeacherDashboard() {
   return (
     <SafeAreaView style={styles.container} edges={isTablet ? [] : ['top']}>
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
-      <View style={[styles.shell, isTablet && styles.shellTablet]}>
-        {isTablet ? (
+      <View style={[styles.shell, showSidebar && styles.shellTablet]}>
+        {showSidebar ? (
           <View style={styles.sidebar}>
             <TeacherNavPanel
               activeId={activeTab}
               user={user}
               onSelect={handleTabChange}
               onLogout={handleLogout}
+              onClose={isTvView ? () => setTvSidebarOpen(false) : undefined}
             />
           </View>
         ) : null}
 
         <View style={[styles.tabContent, isTablet && { paddingTop: insets.top }]}>
-          {isTablet ? null : (
+          {showTopBar ? (
             <PortalTopBar
               user={user}
-              onOpenMenu={() => setMenuOpen(true)}
+              onOpenMenu={() => {
+                if (isTvView) setTvSidebarOpen(true);
+                else setMenuOpen(true);
+              }}
               onLogout={handleLogout}
             />
-          )}
+          ) : null}
 
           {resolvedBackendStatus === 'offline' ? (
             <LinearGradient
@@ -434,7 +452,7 @@ export default function TeacherDashboard() {
                 hideSubNav
                 initialSubTab="track-progress"
                 heroTitle="Reports"
-                heroSubtitle="Student analysis — exam results, usage, homework, and improvement insights."
+                heroSubtitle="Student Analysis — Exam Results, Usage, Homework, And Improvement Insights."
                 heroIcon="bar-chart-outline"
                 onCloseStudentAnalysis={() => goToTab('reports')}
               />

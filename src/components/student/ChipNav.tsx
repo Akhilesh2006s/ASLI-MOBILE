@@ -1,8 +1,7 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { STUDENT, STUDENT_RADIUS } from '../../theme/student';
-import { GLASS_RIM, GLASS_ROW } from '../../theme/glass';
-import GlassSurface from '../ui/GlassSurface';
+import { GLASS_RIM, GLASS_ROW, glassFillColor } from '../../theme/glass';
 
 export type Chip = {
   id: string;
@@ -82,7 +81,6 @@ export default function ChipNav({ chips, active, onChange }: Props) {
         activeBorderColor ? { borderColor: activeBorderColor } : null,
       ]}
     >
-      <GlassSurface intensity={50} tone="medium" />
       {scrollable ? (
         <ScrollView
           horizontal
@@ -105,7 +103,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: GLASS_RIM.border,
     overflow: 'hidden',
-    backgroundColor: 'transparent',
+    backgroundColor: glassFillColor('medium'),
   },
   row: {
     flexDirection: 'row',

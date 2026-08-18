@@ -1,9 +1,8 @@
-import { StyleSheet, View } from 'react-native';
 import {
   type GlassTone,
 } from '../../theme/glass';
 
-export { GLASS_BLUE } from '../../theme/glass';
+export { GLASS_BLUE, glassFillColor } from '../../theme/glass';
 
 type Props = {
   intensity?: number;
@@ -16,22 +15,12 @@ type Props = {
 };
 
 /**
- * Opaque surface fill for cards / sheets.
- * Frosted BlurView over AppBackground caused content bleed-through on modals
- * and pickers (iOS) and muddy grey cards (Android) — solid white everywhere.
+ * No-op fill. Callers must set `backgroundColor` on the parent view.
+ *
+ * An absolute-fill sibling used to paint the card white. On Android (Fabric)
+ * those overlays detach from the parent and stack as empty rounded rectangles
+ * over the screen when opening tabs or pushing routes.
  */
-export default function GlassSurface({
-  tone = 'medium',
-}: Props) {
-  return (
-    <View
-      style={[
-        StyleSheet.absoluteFillObject,
-        {
-          backgroundColor: tone === 'light' ? '#FAFBFC' : '#FFFFFF',
-        },
-      ]}
-      pointerEvents="none"
-    />
-  );
+export default function GlassSurface(_props: Props) {
+  return null;
 }

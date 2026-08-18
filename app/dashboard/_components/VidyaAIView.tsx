@@ -5,6 +5,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-na
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
+import { isTvOrBoardDisplay } from '../../../src/hooks/useIsTablet';
 import { filterVisibleStudentTools, type StudentAiTool } from '../../../src/lib/student-ai-tools';
 import { ShimmerCard } from '../../../src/components/student/StudentShimmer';
 import AiToolCard from '../../../src/components/ai-tools/AiToolCard';
@@ -47,9 +48,10 @@ function usePressScale(to = 0.98) {
 }
 
 export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: boolean }) {
-  const { width: screenWidth } = useWindowDimensions();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const isTvView = isTvOrBoardDisplay(screenWidth, screenHeight);
   const isTablet = screenWidth >= TOOLS_TABLET_MIN_WIDTH;
-  const gridColumns = screenWidth >= TOOLS_WIDE_MIN_WIDTH ? 3 : isTablet ? 2 : 1;
+  const gridColumns = isTvView ? 2 : screenWidth >= TOOLS_WIDE_MIN_WIDTH ? 3 : isTablet ? 2 : 1;
   const isGrid = gridColumns > 1;
 
   const [subjectNames, setSubjectNames] = useState<string[]>([]);
