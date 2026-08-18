@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useEffect, useState } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -139,16 +139,9 @@ const ANALYSIS_ACCENTS = {
   },
 } as const;
 
-const CLASS_BADGE_COLORS = [
-  { bg: DASH.soft, text: DASH.skyDeep },
-  { bg: DASH.chip, text: DASH.skyDark },
-  { bg: DASH.wash, text: DASH.sky },
-  { bg: DASH.soft, text: DASH.skyInk },
-  { bg: DASH.chip, text: DASH.skyDeep },
-] as const;
-
 function AnalysisPanel({
   title,
+  subtitle,
   icon,
   iconColor,
   panelBg,
@@ -156,6 +149,7 @@ function AnalysisPanel({
   children,
 }: {
   title: string;
+  subtitle?: string;
   icon: keyof typeof Ionicons.glyphMap;
   iconColor: string;
   panelBg?: string;
@@ -183,6 +177,9 @@ function AnalysisPanel({
         </View>
         <View style={styles.panelTitleWrap}>
           <Text style={[styles.panelTitle, { color: DASH.skyInk }]}>{title}</Text>
+          {subtitle ? (
+            <Text style={[styles.panelSubtitle, { color: DASH.skyMuted }]}>{subtitle}</Text>
+          ) : null}
         </View>
       </View>
       {children}
@@ -217,6 +214,22 @@ function SubjectBar({
       </View>
     </View>
   );
+}
+
+function formatClassDisplayName(raw: string): string {
+  const value = String(raw || '').trim();
+  if (!value || /^unknown$/i.test(value) || /^unassigned$/i.test(value)) return 'Unassigned';
+  if (/^class\b/i.test(value)) {
+    return value.replace(/^class\s+/i, 'Class ');
+  }
+  const num = value.match(/^(\d+)/)?.[1];
+  if (num) return `Class ${num}`;
+  return value;
+}
+
+function classSortValue(label: string): number {
+  const match = String(label).match(/(\d+)/);
+  return match ? parseInt(match[1], 10) : Number.MAX_SAFE_INTEGER;
 }
 
 export default memo(function OverviewView({ onNavigate }: Props) {
@@ -306,7 +319,22 @@ export default memo(function OverviewView({ onNavigate }: Props) {
   const goStudents = useCallback(() => onNavigate?.('students'), [onNavigate]);
   const goTeachers = useCallback(() => onNavigate?.('teachers'), [onNavigate]);
 
-  const topClassDistribution = studentAnalytics.classDistribution?.slice(0, 5) || [];
+  const classDistribution = useMemo(() => {
+    const rows = (studentAnalytics.classDistribution || [])
+      .map((item) => ({
+        label: formatClassDisplayName(item.className || item.class || ''),
+        count: Number(item.count) || 0,
+      }))
+      .filter((item) => item.count > 0)
+      .sort((a, b) => {
+        const byClass = classSortValue(a.label) - classSortValue(b.label);
+        if (byClass !== 0) return byClass;
+        return a.label.localeCompare(b.label);
+      });
+    const totalStudents = rows.reduce((sum, item) => sum + item.count, 0);
+    const maxCount = rows.reduce((max, item) => Math.max(max, item.count), 0);
+    return { rows, totalStudents, maxCount };
+  }, [studentAnalytics.classDistribution]);
   const topSubjectPerformance = studentAnalytics.subjectPerformance?.slice(0, 4) || [];
   const statCards = DASHBOARD_STAT_CARDS;
 
@@ -395,30 +423,51 @@ export default memo(function OverviewView({ onNavigate }: Props) {
         ) : (
           <View style={[styles.panelsRow, isWide && styles.panelsRowWide]}>
             <AnalysisPanel
-              title="Class Distribution"
+              title="Students by Class"
+              subtitle={
+                classDistribution.rows.length > 0
+                  ? `${classDistribution.totalStudents} students · ${classDistribution.rows.length} classes`
+                  : 'How many students are in each class'
+              }
               icon="school"
               iconColor={ANALYSIS_ACCENTS.class.accent}
               panelBg={ANALYSIS_ACCENTS.class.panel}
               borderColor={ANALYSIS_ACCENTS.class.border}
             >
-              {topClassDistribution.length > 0 ? (
-                topClassDistribution.map((item, idx) => {
-                  const badge = CLASS_BADGE_COLORS[idx % CLASS_BADGE_COLORS.length];
+              {classDistribution.rows.length > 0 ? (
+                classDistribution.rows.map((item, idx) => {
+                  const share =
+                    classDistribution.totalStudents > 0
+                      ? Math.round((item.count / classDistribution.totalStudents) * 100)
+                      : 0;
+                  const barWidth =
+                    classDistribution.maxCount > 0
+                      ? Math.max(8, Math.round((item.count / classDistribution.maxCount) * 100))
+                      : 0;
                   return (
                     <View
-                      key={`${item.className || item.class || 'c'}-${idx}`}
+                      key={`${item.label}-${idx}`}
                       style={[
-                        styles.rowItem,
-                        idx < topClassDistribution.length - 1 && styles.rowDivider,
+                        styles.classRow,
+                        idx < classDistribution.rows.length - 1 && styles.rowDivider,
                       ]}
                     >
-                      <View style={styles.rowLabelWrap}>
-                        <Text style={[styles.rowLabel, { color: DASH.skyInk }]}>
-                          {item.className || item.class || 'Unknown'}
+                      <View style={styles.classRowTop}>
+                        <Text style={[styles.className, { color: DASH.skyInk }]}>{item.label}</Text>
+                        <Text style={[styles.classCount, { color: DASH.skyDeep }]}>
+                          {item.count} {item.count === 1 ? 'student' : 'students'}
                         </Text>
                       </View>
-                      <View style={[styles.countBadge, { backgroundColor: badge.bg }]}>
-                        <Text style={[styles.countText, { color: badge.text }]}>{item.count || 0}</Text>
+                      <View style={styles.classBarRow}>
+                        <View style={[styles.barTrack, styles.classBarTrack, { backgroundColor: DASH.soft }]}>
+                          <View
+                            style={[
+                              styles.barFill,
+                              { width: `${barWidth}%`, backgroundColor: ANALYSIS_ACCENTS.class.accent },
+                            ]}
+                          />
+                        </View>
+                        <Text style={[styles.classShare, { color: DASH.skyMuted }]}>{share}%</Text>
                       </View>
                     </View>
                   );
@@ -666,6 +715,26 @@ const styles = StyleSheet.create({
   },
   panelTitleWrap: { flex: 1, minWidth: 0 },
   panelTitle: { fontSize: 14, fontWeight: '700' },
+  panelSubtitle: { fontSize: 12, marginTop: 2, lineHeight: 16 },
+  classRow: {
+    paddingVertical: 8,
+    gap: 6,
+  },
+  classRowTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  className: { fontSize: 14, fontWeight: '700', flex: 1 },
+  classCount: { fontSize: 13, fontWeight: '800' },
+  classBarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  classBarTrack: { flex: 1 },
+  classShare: { fontSize: 11, fontWeight: '700', minWidth: 32, textAlign: 'right' },
   rowItem: {
     flexDirection: 'row',
     alignItems: 'center',

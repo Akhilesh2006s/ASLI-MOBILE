@@ -132,8 +132,8 @@ const styles = StyleSheet.create({
     marginBottom: TEACHER_SPACING.sm,
     backgroundColor: '#F5F7FF',
     borderRadius: TEACHER_RADIUS.lg,
-    borderWidth: 1,
-    borderColor: '#C7D2FE',
+    borderWidth: 2,
+    borderColor: '#A5B4FC',
     padding: 5,
     zIndex: 20,
     elevation: 4,
@@ -170,12 +170,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     borderRadius: TEACHER_RADIUS.md,
     overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
   segmentInnerActive: {
     backgroundColor: 'transparent',
+    borderColor: 'transparent',
   },
   segmentInnerIdle: {
     backgroundColor: '#FFFFFF',
+    borderColor: '#A5B4FC',
   },
   segmentLabel: {
     fontSize: 11,

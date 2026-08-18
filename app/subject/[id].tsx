@@ -68,6 +68,7 @@ export default function SubjectContent() {
   const [content, setContent] = useState<LearningPathContentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedTypes, setExpandedTypes] = useState<Record<string, boolean>>({});
+  const [expandedClasses, setExpandedClasses] = useState<Record<string, boolean>>({});
   const goBack = useContentViewerBack(returnTo || undefined);
 
   const fetchSubjectData = useCallback(async () => {
@@ -155,6 +156,63 @@ export default function SubjectContent() {
     setExpandedTypes((prev) => ({ ...prev, [type]: !(prev[type] ?? true) }));
   };
 
+  const isClassGroupOpen = (key: string) => expandedClasses[key] ?? true;
+
+  const toggleClassGroup = (key: string) => {
+    setExpandedClasses((prev) => ({ ...prev, [key]: !(prev[key] ?? true) }));
+  };
+
+  const renderContentItem = (item: (typeof typeSections)[number]['items'][number], iit: boolean, index: number) => {
+    const video = isVideoContent(item);
+    return (
+      <TouchableOpacity
+        key={String(item._id || index)}
+        onPress={() => openContentItem(item)}
+        activeOpacity={0.7}
+      >
+        <GlassPanel style={styles.contentCard} radius={16}>
+          <View style={styles.contentHeader}>
+            <View
+              style={[
+                styles.contentIcon,
+                { backgroundColor: video ? '#dbeafe' : '#e8e3fa' },
+              ]}
+            >
+              <Ionicons
+                name={iconForType(item.type)}
+                size={24}
+                color={video ? '#3b82f6' : '#6d5bd0'}
+              />
+            </View>
+            <View style={styles.contentInfo}>
+              <Text style={styles.contentTitle}>
+                {video
+                  ? getVideoDisplayTitle(item)
+                  : iit
+                    ? formatIitLearningPathContentLabel(
+                        item,
+                        learningPathDisplayName(subject?.name || ''),
+                      ) || 'Content'
+                    : getLibraryContentDisplayTitle(item) || 'Content'}
+              </Text>
+              <Text style={styles.contentDescription} numberOfLines={2}>
+                {item.description || 'Learn more about this topic'}
+              </Text>
+            </View>
+            {item.completed ? (
+              <Ionicons name="checkmark-circle" size={24} color="#10b981" />
+            ) : null}
+          </View>
+          {item.duration ? (
+            <View style={styles.contentMeta}>
+              <Text style={styles.metaText}>{String(item.duration)}</Text>
+            </View>
+          ) : null}
+        </GlassPanel>
+      </TouchableOpacity>
+    );
+  };
+
   if (isLoading || programLoading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -210,56 +268,33 @@ export default function SubjectContent() {
                 </View>
               </Pressable>
               {isSectionOpen(section.type)
-                ? section.items.map((item, index) => {
-                    const video = isVideoContent(item);
-                    return (
-                      <TouchableOpacity
-                        key={String(item._id || index)}
-                        onPress={() => openContentItem(item)}
-                        activeOpacity={0.7}
-                      >
-                        <GlassPanel style={styles.contentCard} radius={16}>
-                          <View style={styles.contentHeader}>
-                            <View
-                              style={[
-                                styles.contentIcon,
-                                { backgroundColor: video ? '#dbeafe' : '#e8e3fa' },
-                              ]}
-                            >
+                ? section.iit && section.classGroups && section.classGroups.length > 0
+                  ? section.classGroups.map((group) => {
+                      const groupKey = `${section.type}::${group.key}`;
+                      const classOpen = isClassGroupOpen(groupKey);
+                      return (
+                        <View key={groupKey} style={styles.classGroup}>
+                          <Pressable
+                            style={styles.classHeader}
+                            onPress={() => toggleClassGroup(groupKey)}
+                          >
+                            <Text style={styles.classTitle}>{group.label}</Text>
+                            <View style={styles.typeHeaderRight}>
+                              <Text style={styles.typeCount}>{group.items.length}</Text>
                               <Ionicons
-                                name={iconForType(item.type)}
-                                size={24}
-                                color={video ? '#3b82f6' : '#6d5bd0'}
+                                name={classOpen ? 'chevron-up' : 'chevron-down'}
+                                size={16}
+                                color="#6b7280"
                               />
                             </View>
-                            <View style={styles.contentInfo}>
-                              <Text style={styles.contentTitle}>
-                                {video
-                                  ? getVideoDisplayTitle(item)
-                                  : section.iit
-                                    ? formatIitLearningPathContentLabel(
-                                        item,
-                                        learningPathDisplayName(subject?.name || ''),
-                                      ) || 'Content'
-                                    : getLibraryContentDisplayTitle(item) || 'Content'}
-                              </Text>
-                              <Text style={styles.contentDescription} numberOfLines={2}>
-                                {item.description || 'Learn more about this topic'}
-                              </Text>
-                            </View>
-                            {item.completed ? (
-                              <Ionicons name="checkmark-circle" size={24} color="#10b981" />
-                            ) : null}
-                          </View>
-                          {item.duration ? (
-                            <View style={styles.contentMeta}>
-                              <Text style={styles.metaText}>{String(item.duration)}</Text>
-                            </View>
-                          ) : null}
-                        </GlassPanel>
-                      </TouchableOpacity>
-                    );
-                  })
+                          </Pressable>
+                          {classOpen
+                            ? group.items.map((item, index) => renderContentItem(item, true, index))
+                            : null}
+                        </View>
+                      );
+                    })
+                  : section.items.map((item, index) => renderContentItem(item, Boolean(section.iit), index))
                 : null}
             </View>
           ))
@@ -338,6 +373,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#6b7280',
+  },
+  classGroup: {
+    marginTop: 4,
+  },
+  classHeader: {
+    marginHorizontal: 20,
+    marginTop: 4,
+    paddingVertical: 6,
+    paddingLeft: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  classTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#334155',
   },
   contentCard: {
     marginHorizontal: 20,

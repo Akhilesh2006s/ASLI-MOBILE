@@ -165,6 +165,14 @@ const sortByClassLabel = (a: string, b: string) => {
   return a.localeCompare(b);
 };
 
+const formatClassHeading = (classKey: string) => {
+  const value = String(classKey || '').trim();
+  if (!value || /^unassigned$/i.test(value)) return 'Unassigned';
+  if (/^class\b/i.test(value)) return value.replace(/^class\s+/i, 'Class ');
+  if (/^\d+$/.test(value)) return `Class ${value}`;
+  return value;
+};
+
 export default function StudentsView() {
   const { colors, spacing } = useAdminTheme();
   const { isPhone } = useAdminResponsiveLayout();
@@ -809,7 +817,7 @@ export default function StudentsView() {
                         size={18}
                         color={colors.primary}
                       />
-                      <Text style={styles.accordionTitle}>{classKey}</Text>
+                      <Text style={styles.accordionTitle}>{formatClassHeading(classKey)}</Text>
                     </View>
                     <View style={styles.countBadge}>
                       <Text style={styles.countBadgeText}>
@@ -903,7 +911,7 @@ export default function StudentsView() {
                         return (
                           <View key={`${sectionKey}::${classKey}`} style={styles.sectionCard}>
                             <View style={styles.sectionClassHeader}>
-                              <Text style={styles.sectionTitle}>{classKey}</Text>
+                              <Text style={styles.sectionTitle}>{formatClassHeading(classKey)}</Text>
                               <View style={styles.countBadge}>
                                 <Text style={styles.countBadgeText}>{classStudents.length}</Text>
                               </View>
@@ -958,7 +966,7 @@ export default function StudentsView() {
             onPress={() => setClassPickerOpen(true)}
           >
             <Text style={[styles.selectTriggerText, { color: colors.text }]} numberOfLines={1}>
-              {selectedClassFilter === 'all' ? 'Select Class' : selectedClassFilter}
+              {selectedClassFilter === 'all' ? 'Select Class' : formatClassHeading(selectedClassFilter)}
             </Text>
             <Ionicons name="chevron-down" size={16} color={colors.primary} />
           </TouchableOpacity>
@@ -1069,7 +1077,7 @@ export default function StudentsView() {
       {renderPickerModal(
         classPickerOpen,
         'Select Class',
-        [{ label: 'All Classes', value: 'all' }, ...allClasses.map((c) => ({ label: c, value: c }))],
+        [{ label: 'All Classes', value: 'all' }, ...allClasses.map((c) => ({ label: formatClassHeading(c), value: c }))],
         selectedClassFilter,
         setSelectedClassFilter,
         () => setClassPickerOpen(false)

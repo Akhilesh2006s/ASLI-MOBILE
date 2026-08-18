@@ -84,6 +84,7 @@ export default function TeacherSubjectContentScreen() {
   const [trackFilter, setTrackFilter] = useState<string | null>(null);
   const [preview, setPreview] = useState<ContentItem | null>(null);
   const [expandedTypes, setExpandedTypes] = useState<Record<string, boolean>>({});
+  const [expandedClasses, setExpandedClasses] = useState<Record<string, boolean>>({});
 
   const load = useCallback(async (subjectId: string, asliPrep: boolean) => {
     setLoading(true);
@@ -107,6 +108,7 @@ export default function TeacherSubjectContentScreen() {
       );
       setClasses(Array.isArray(classRes.data) ? classRes.data : []);
       setExpandedTypes({});
+      setExpandedClasses({});
     } catch {
       setSubject({ _id: subjectId, name: 'Subject' });
       setContents([]);
@@ -185,6 +187,12 @@ export default function TeacherSubjectContentScreen() {
   };
 
   const isSectionOpen = (type: string) => expandedTypes[type] ?? true;
+
+  const toggleClassGroup = (key: string) => {
+    setExpandedClasses((prev) => ({ ...prev, [key]: !(prev[key] ?? true) }));
+  };
+
+  const isClassGroupOpen = (key: string) => expandedClasses[key] ?? true;
 
   const openContent = (item: ContentItem) => {
     const hasPreview = Boolean(
@@ -311,7 +319,60 @@ export default function TeacherSubjectContentScreen() {
                 </View>
               </Pressable>
               {isSectionOpen(section.type)
-                ? section.items.map((item) => (
+                ? section.iit && section.classGroups && section.classGroups.length > 0
+                  ? section.classGroups.map((group) => {
+                      const groupKey = `${section.type}::${group.key}`;
+                      const classOpen = isClassGroupOpen(groupKey);
+                      return (
+                        <View key={groupKey} style={styles.classGroup}>
+                          <Pressable
+                            style={styles.classHeader}
+                            onPress={() => toggleClassGroup(groupKey)}
+                          >
+                            <Text style={styles.classTitle}>{group.label}</Text>
+                            <View style={styles.typeHeaderRight}>
+                              <Text style={styles.typeCount}>{group.items.length}</Text>
+                              <Ionicons
+                                name={classOpen ? 'chevron-up' : 'chevron-down'}
+                                size={16}
+                                color={TEACHER.textMuted}
+                              />
+                            </View>
+                          </Pressable>
+                          {classOpen
+                            ? group.items.map((item) => (
+                                <Pressable key={item._id} onPress={() => openContent(item)}>
+                                  <GlassPanel style={styles.item} radius={TEACHER_RADIUS.lg} tone="medium">
+                                    <View style={styles.itemRow}>
+                                      <View style={styles.itemIcon}>
+                                        <Ionicons
+                                          name={iconForType(item.type)}
+                                          size={20}
+                                          color={TEACHER.primaryLight}
+                                        />
+                                      </View>
+                                      <View style={styles.itemBody}>
+                                        <Text style={styles.itemTitle}>
+                                          {formatIitLearningPathContentLabel(
+                                            item,
+                                            learningPathDisplayName(subject?.name || ''),
+                                          )}
+                                        </Text>
+                                        {item.description ? (
+                                          <Text style={styles.itemDesc} numberOfLines={2}>
+                                            {item.description}
+                                          </Text>
+                                        ) : null}
+                                      </View>
+                                    </View>
+                                  </GlassPanel>
+                                </Pressable>
+                              ))
+                            : null}
+                        </View>
+                      );
+                    })
+                  : section.items.map((item) => (
                     <Pressable key={item._id} onPress={() => openContent(item)}>
                       <GlassPanel style={styles.item} radius={TEACHER_RADIUS.lg} tone="medium">
                         <View style={styles.itemRow}>
@@ -407,6 +468,15 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   typeTitle: { fontSize: 16, fontWeight: '800', color: TEACHER.text },
+  classGroup: { gap: TEACHER_SPACING.sm, paddingLeft: 4 },
+  classHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+  },
+  classTitle: { fontSize: 14, fontWeight: '800', color: TEACHER.textSecondary },
   typeHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   typeCount: { fontSize: 12, fontWeight: '700', color: TEACHER.textMuted },
   item: {
