@@ -57,6 +57,8 @@ const PdfPreviewWebView = forwardRef<PdfPreviewHandle, Props>(function PdfPrevie
   const webRef = useRef<WebView>(null);
   const webReadyRef = useRef(false);
   const [webReady, setWebReady] = useState(false);
+  const [viewerSize, setViewerSize] = useState({ width: 0, height: 0 });
+  const viewerSizeRef = useRef({ width: 0, height: 0 });
   const [urlTarget, setUrlTarget] = useState<PdfUrlLoadTarget | null>(null);
   const [base64Payload, setBase64Payload] = useState<string | null>(null);
   const [rendering, setRendering] = useState(true);
@@ -79,6 +81,17 @@ const PdfPreviewWebView = forwardRef<PdfPreviewHandle, Props>(function PdfPrevie
   titleRef.current = title;
   base64PayloadRef.current = base64Payload;
 
+  const viewerViewport = {
+    width: viewerSize.width > 2 ? viewerSize.width : width,
+    height: viewerSize.height > 2 ? viewerSize.height : height,
+  };
+  const viewerConfig = {
+    tv: isTvView,
+    nativePinch: false,
+    width: Math.round(viewerViewport.width),
+    height: Math.round(viewerViewport.height),
+  };
+
   const busy = rendering;
   const pageRef = useRef(page);
   const pageCountRef = useRef(pageCount);
@@ -94,7 +107,7 @@ const PdfPreviewWebView = forwardRef<PdfPreviewHandle, Props>(function PdfPrevie
   }, [webReady]);
 
   const injectWhenReady = useCallback((script: string) => {
-    const wrapped = `window.__pdfViewerConfig=${JSON.stringify({ tv: isTvView, nativePinch: false })};${script}`;
+    const wrapped = `window.__pdfViewerConfig=${JSON.stringify(viewerConfig)};${script}`;
     const run = () => {
       if (!mountedRef.current) return;
       if (webRef.current && webReadyRef.current) {
@@ -106,7 +119,7 @@ const PdfPreviewWebView = forwardRef<PdfPreviewHandle, Props>(function PdfPrevie
       setTimeout(run, 20);
     };
     run();
-  }, [isTvView]);
+  }, [viewerConfig.tv, viewerConfig.width, viewerConfig.height]);
 
   const loadBase64Fallback = useCallback(async () => {
     if (fallbackTriedRef.current) {
@@ -225,9 +238,9 @@ const PdfPreviewWebView = forwardRef<PdfPreviewHandle, Props>(function PdfPrevie
   useEffect(() => {
     if (!webReadyRef.current || !injectedRef.current) return;
     webRef.current?.injectJavaScript(
-      `window.__pdfViewerConfig=${JSON.stringify({ tv: isTvView, nativePinch: false })};if(typeof window.__pdfApplyConfig==='function'){window.__pdfApplyConfig();}true;`
+      `window.__pdfViewerConfig=${JSON.stringify(viewerConfig)};if(typeof window.__pdfApplyConfig==='function'){window.__pdfApplyConfig();}true;`
     );
-  }, [isTvView]);
+  }, [viewerConfig.tv, viewerConfig.width, viewerConfig.height]);
 
   const onWebMessage = useCallback(
     (event: WebViewMessageEvent) => {
@@ -349,12 +362,31 @@ const PdfPreviewWebView = forwardRef<PdfPreviewHandle, Props>(function PdfPrevie
   return (
     <View style={[styles.wrap, style]} collapsable={false}>
       {pageBar}
-      <View style={styles.viewerWrap}>
+      <View
+        style={styles.viewerWrap}
+        onLayout={(event) => {
+          const { width: layoutW, height: layoutH } = event.nativeEvent.layout;
+          if (layoutW < 2 || layoutH < 2) return;
+          const prev = viewerSizeRef.current;
+          if (Math.abs(prev.width - layoutW) < 2 && Math.abs(prev.height - layoutH) < 2) return;
+          viewerSizeRef.current = { width: layoutW, height: layoutH };
+          setViewerSize({ width: layoutW, height: layoutH });
+        }}
+      >
         <WebView
           key={reloadKey}
           ref={webRef}
-          source={{ html: buildPdfJsViewerShellHtml(isTvView, false), baseUrl: YOUTUBE_EMBED_ORIGIN }}
-          style={styles.viewer}
+          source={{
+            html: buildPdfJsViewerShellHtml(isTvView, false, { width, height }),
+            baseUrl: YOUTUBE_EMBED_ORIGIN,
+          }}
+          style={[
+            styles.viewer,
+            viewerSize.width > 2 && viewerSize.height > 2
+              ? { width: viewerSize.width, height: viewerSize.height }
+              : null,
+          ]}
+          containerStyle={styles.viewerContainer}
           pointerEvents={busy ? 'none' : 'auto'}
           originWhitelist={['*']}
           javaScriptEnabled
@@ -369,6 +401,7 @@ const PdfPreviewWebView = forwardRef<PdfPreviewHandle, Props>(function PdfPrevie
           setBuiltInZoomControls={false}
           setDisplayZoomControls={false}
           bounces={false}
+          automaticallyAdjustContentInsets={false}
           overScrollMode={isTvView ? 'never' : 'content'}
           onMessage={onWebMessage}
         />
@@ -427,9 +460,19 @@ const styles = StyleSheet.create({
   viewerWrap: {
     flex: 1,
     minHeight: 0,
+    width: '100%',
+    alignSelf: 'stretch',
+    overflow: 'hidden',
+  },
+  viewerContainer: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
   },
   viewer: {
     flex: 1,
+    width: '100%',
+    height: '100%',
     backgroundColor: '#525659',
   },
   overlay: {

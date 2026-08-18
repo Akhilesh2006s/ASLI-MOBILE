@@ -149,7 +149,7 @@ export default function MediaPreviewPanel({
 
   if (kind === 'pdf') {
     return (
-      <View style={styles.flex}>
+      <View style={[styles.flex, styles.pdfShell]}>
         <PdfPreviewWebView
           ref={pdfRef}
           fileUrl={fileUrl}
@@ -206,6 +206,7 @@ export default function MediaPreviewPanel({
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: '#FFFFFF' },
+  pdfShell: { backgroundColor: '#525659', width: '100%', alignSelf: 'stretch' },
   centered: {
     flex: 1,
     alignItems: 'center',

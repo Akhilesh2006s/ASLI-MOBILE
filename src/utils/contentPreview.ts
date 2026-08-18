@@ -461,10 +461,15 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
       margin: 0;
       padding: 0;
       width: 100%;
+      height: 100%;
       min-height: 100%;
       background: #525659;
     }
-    body.tv-mode { height: 100%; overflow: hidden; }
+    body.tv-mode {
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+    }
     #status {
       position: relative;
       z-index: 2;
@@ -475,11 +480,13 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
       font-size: 15px;
     }
     #zoom-frame {
-      position: fixed;
+      position: absolute;
       top: 0;
+      right: 0;
+      bottom: 0;
       left: 0;
-      width: 100vw;
-      height: 100vh;
+      width: 100%;
+      height: 100%;
       overflow: auto;
       -webkit-overflow-scrolling: touch;
       touch-action: pan-y;
@@ -521,7 +528,10 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
       padding: 0;
       height: 100%;
       width: 100%;
+      max-width: 100%;
+      max-height: 100%;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       overflow: hidden;
@@ -544,6 +554,9 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
     }
     body.tv-mode .pdf-slot {
       touch-action: none;
+      margin: 0 auto;
+      flex: 0 0 auto;
+      align-self: center;
     }
     canvas {
       display: block;
@@ -554,7 +567,7 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
       box-shadow: 0 2px 8px rgba(0,0,0,0.35);
     }
     body.tv-mode canvas {
-      margin: 0;
+      margin: 0 auto;
       max-width: none;
       box-shadow: 0 4px 24px rgba(0,0,0,0.45);
     }
@@ -617,7 +630,31 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
         return shortSide >= 500 && longSide >= 900;
       }
 
+      function applyNativeViewport() {
+        var cfg = window.__pdfViewerConfig || {};
+        var w = Math.round(Number(cfg.width) || 0);
+        var h = Math.round(Number(cfg.height) || 0);
+        if (w < 2 || h < 2) return;
+        var meta = document.querySelector('meta[name="viewport"]');
+        if (meta) {
+          meta.setAttribute(
+            'content',
+            'width=' + w + ', initial-scale=1.0, maximum-scale=1.0, user-scalable=no'
+          );
+        }
+        document.documentElement.style.width = w + 'px';
+        document.documentElement.style.height = h + 'px';
+        document.body.style.width = w + 'px';
+        document.body.style.height = h + 'px';
+        var frame = zoomFrameEl();
+        if (frame) {
+          frame.style.width = w + 'px';
+          frame.style.height = h + 'px';
+        }
+      }
+
       function applyBodyMode() {
+        applyNativeViewport();
         if (isTvView()) document.body.classList.add('tv-mode');
         else {
           document.body.classList.remove('tv-mode');
@@ -678,12 +715,14 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
         if (zoomed) {
           slot.style.width = '100%';
           slot.style.height = '100%';
+          slot.style.margin = '0';
           slot.style.overflow = 'auto';
         } else {
           var baseW = Number(slot.getAttribute('data-base-w')) || 0;
           var baseH = Number(slot.getAttribute('data-base-h')) || 0;
           if (baseW) slot.style.width = baseW + 'px';
           if (baseH) slot.style.height = baseH + 'px';
+          slot.style.margin = '0 auto';
           slot.style.overflow = 'hidden';
           slot.scrollLeft = 0;
           slot.scrollTop = 0;
@@ -869,9 +908,32 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
       }
 
       function availableSize() {
+        var cfg = window.__pdfViewerConfig || {};
         var frame = zoomFrameEl();
-        var w = window.innerWidth || (frame && frame.clientWidth) || document.documentElement.clientWidth || 320;
-        var h = window.innerHeight || (frame && frame.clientHeight) || document.documentElement.clientHeight || 480;
+        var vis = window.visualViewport;
+        var nativeW = Number(cfg.width) || 0;
+        var nativeH = Number(cfg.height) || 0;
+        var w;
+        var h;
+        if (isTvView()) {
+          w = Math.max(
+            (frame && frame.clientWidth) || 0,
+            (vis && vis.width) || 0,
+            document.documentElement.clientWidth || 0,
+            window.innerWidth || 0,
+            nativeW
+          );
+          h = Math.max(
+            (frame && frame.clientHeight) || 0,
+            (vis && vis.height) || 0,
+            document.documentElement.clientHeight || 0,
+            window.innerHeight || 0,
+            nativeH
+          );
+        } else {
+          w = (frame && frame.clientWidth) || window.innerWidth || document.documentElement.clientWidth || 320;
+          h = (frame && frame.clientHeight) || window.innerHeight || document.documentElement.clientHeight || 480;
+        }
         return {
           w: Math.max(w - PAGE_PAD, 200),
           h: Math.max(h - PAGE_PAD, 200)
@@ -879,10 +941,11 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
       }
 
       function layoutKey() {
+        var cfg = window.__pdfViewerConfig || {};
         return [
           isTvView() ? 'tv' : 'phone',
-          window.innerWidth,
-          window.innerHeight,
+          Math.round(Number(cfg.width) || window.innerWidth || 0),
+          Math.round(Number(cfg.height) || window.innerHeight || 0),
           isTvView() ? currentPage : 0,
           pdfDoc ? pdfDoc.numPages : 0
         ].join(':');
@@ -1339,12 +1402,31 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
 </body>
 </html>`;
 
-export function buildPdfJsViewerShellHtml(tv = false, nativePinch = false): string {
+export function buildPdfJsViewerShellHtml(
+  tv = false,
+  nativePinch = false,
+  viewport?: { width?: number; height?: number }
+): string {
+  const width = Math.round(Number(viewport?.width) || 0);
+  const height = Math.round(Number(viewport?.height) || 0);
+  const viewportMeta =
+    width > 0
+      ? `width=${width}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no`
+      : 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
   return PDF_JS_VIEWER_SHELL_HTML
+    .replace(
+      'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no',
+      viewportMeta
+    )
     .replace('<body>', tv ? '<body class="tv-mode">' : '<body>')
     .replace(
       '/*PDF_TV_CONFIG*/',
-      `window.__pdfViewerConfig=${JSON.stringify({ tv, nativePinch })};`
+      `window.__pdfViewerConfig=${JSON.stringify({
+        tv,
+        nativePinch,
+        width: width || undefined,
+        height: height || undefined,
+      })};`
     );
 }
 
