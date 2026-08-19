@@ -349,7 +349,12 @@ export default function Login() {
         await storageDeleteItem('rememberedPassword');
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      redirectByRole(data?.user?.role || 'student');
+      const u = data?.user;
+      if (u?.isIndividualAccount && u?.paymentRequired) {
+        router.replace('/auth/subscribe');
+        return;
+      }
+      redirectByRole(u?.role || 'student');
     } catch (err: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
       const fallback = `Cannot connect to server. Please check network and server status.\n${API_BASE_URL}`;

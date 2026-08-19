@@ -19,6 +19,15 @@ import {
   getExamIdFromResult,
 } from '../src/lib/profile-overview-stats';
 import { getMergedStudyTime, fetchWeeklySessionMinutes } from '../src/lib/session-time-sync';
+import {
+  IndividualSubscriptionReceiptCard,
+  TrialUpgradeBanner,
+} from '../src/components/b2c/IndividualSubscriptionReceipt';
+import {
+  receiptFromUser,
+  showActiveReceipt,
+  showTrialUpgrade,
+} from '../src/lib/individual-subscription';
 
 type ProfileTab = 'overview' | 'achievements' | 'progress' | 'settings';
 
@@ -51,6 +60,9 @@ export default function Profile() {
     const dayStreak = Number(profileData?.dayStreak ?? user?.dayStreak ?? 0);
     return { questionsSolved, accuracyRate, rank, dayStreak };
   }, [profileData, user]);
+
+  const accountUser = profileData || user;
+  const subscriptionReceipt = receiptFromUser(accountUser);
 
   useEffect(() => {
     loadUserData();
@@ -342,6 +354,48 @@ export default function Profile() {
 
         {activeTab === 'settings' && (
           <>
+            {accountUser?.isIndividualAccount ? (
+              <View style={styles.subscriptionSection}>
+                {showTrialUpgrade(accountUser) ? (
+                  <TrialUpgradeBanner
+                    daysLeft={accountUser.trialDaysLeft}
+                    trialEndsAt={accountUser.trialEndsAt}
+                  />
+                ) : null}
+                {showActiveReceipt(accountUser) && subscriptionReceipt ? (
+                  <>
+                    <IndividualSubscriptionReceiptCard receipt={subscriptionReceipt} />
+                    <TouchableOpacity
+                      style={styles.subscribeCta}
+                      onPress={() => router.push('/auth/subscribe')}
+                    >
+                      <Ionicons name="swap-horizontal-outline" size={20} color="#C2410C" />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.subscribeCtaTitle}>Manage or upgrade plan</Text>
+                        <Text style={styles.subscribeCtaBody}>Change package or renew early</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color="#C2410C" />
+                    </TouchableOpacity>
+                  </>
+                ) : null}
+                {!showActiveReceipt(accountUser) &&
+                !showTrialUpgrade(accountUser) &&
+                accountUser?.paymentRequired ? (
+                  <TouchableOpacity
+                    style={styles.subscribeCta}
+                    onPress={() => router.push('/auth/subscribe')}
+                  >
+                    <Ionicons name="card-outline" size={20} color="#C2410C" />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.subscribeCtaTitle}>Trial ended — subscribe to continue</Text>
+                      <Text style={styles.subscribeCtaBody}>View Boards, IIT, or both plans</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color="#C2410C" />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            ) : null}
+
             <GlassPanel style={styles.sectionCard} radius={14} tone="medium">
               <Text style={styles.sectionTitle}>Account</Text>
               <TouchableOpacity
@@ -626,6 +680,30 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.65)',
     padding: 14,
+  },
+  subscriptionSection: {
+    gap: 10,
+    marginBottom: 4,
+  },
+  subscribeCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FDBA74',
+    borderRadius: 14,
+    padding: 14,
+  },
+  subscribeCtaTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#9A3412',
+  },
+  subscribeCtaBody: {
+    marginTop: 2,
+    fontSize: 12,
+    color: '#C2410C',
   },
   sectionTitle: {
     fontSize: 22,

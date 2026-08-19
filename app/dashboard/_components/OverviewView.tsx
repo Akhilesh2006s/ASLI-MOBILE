@@ -39,6 +39,8 @@ import { buildExamAttemptCounts } from '../../../src/lib/student-exam-display';
 import { isIndividualAccount } from '../../../src/lib/individual-signup';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import { TrialUpgradeBanner } from '../../../src/components/b2c/IndividualSubscriptionReceipt';
+import { showTrialUpgrade } from '../../../src/lib/individual-subscription';
 
 /** Student Home matches web dashboard: welcome, stats, calendar, quiz, diary, homework, remarks, risk, progress. */
 
@@ -917,6 +919,12 @@ const OverviewView = memo(function OverviewView({
 
       <StudentHomeHeader user={user} streak={dayStreak} />
 
+      {showTrialUpgrade(user) ? (
+        <View style={styles.trialBannerWrap}>
+          <TrialUpgradeBanner daysLeft={user?.trialDaysLeft} trialEndsAt={user?.trialEndsAt} />
+        </View>
+      ) : null}
+
       <View style={isTablet ? styles.tabletStatsGrid : styles.statsGrid}>
         {renderStatCard('study', studyStatBody)}
         {renderStatCard('week', weekStatBody)}
@@ -926,10 +934,10 @@ const OverviewView = memo(function OverviewView({
 
       <View style={[styles.pairRow, isTablet && styles.pairRowTablet]}>
         <View style={isTablet ? styles.pairPrimary : undefined}>
+          <QuizPanelSection />
           <StudyCalendarSection {...calendarSectionProps} />
         </View>
         <View style={isTablet ? styles.pairSecondary : undefined}>
-          <QuizPanelSection />
         </View>
       </View>
 
@@ -1037,6 +1045,10 @@ const styles = StyleSheet.create({
   container: {
     gap: 16,
     position: 'relative',
+  },
+  trialBannerWrap: {
+    paddingHorizontal: 16,
+    marginTop: -4,
   },
   screenDecorWrap: {
     ...StyleSheet.absoluteFillObject,

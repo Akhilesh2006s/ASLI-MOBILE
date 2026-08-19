@@ -23,7 +23,15 @@ function getDashboardByRole(role: string | null) {
 }
 
 function isPublicPath(pathname: string) {
-  return pathname.startsWith('/auth/') || pathname === '/onboarding';
+  return pathname.startsWith('/auth/login') || pathname.startsWith('/auth/register') || pathname === '/onboarding';
+}
+
+function isSubscribePath(pathname: string) {
+  return pathname.startsWith('/auth/subscribe');
+}
+
+function needsIndividualPayment(user: { isIndividualAccount?: boolean; paymentRequired?: boolean } | null) {
+  return Boolean(user?.isIndividualAccount && user?.paymentRequired);
 }
 
 const STAFF_ROLES = ['student', 'admin', 'teacher', 'super-admin'] as const;
@@ -81,7 +89,7 @@ const OPAQUE_PUSHED_SCREEN = {
 const STUDENT_PUSHED_SCREEN = OPAQUE_PUSHED_SCREEN;
 
 function AuthGate() {
-  const { isLoading, isAuthenticated, role } = useAuth();
+  const { isLoading, isAuthenticated, role, user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -89,10 +97,18 @@ function AuthGate() {
     if (isLoading) return;
 
     const publicPath = isPublicPath(pathname);
+    const subscribePath = isSubscribePath(pathname);
 
     if (!isAuthenticated && !publicPath && pathname !== '/') {
       router.replace('/auth/login');
       return;
+    }
+
+    if (isAuthenticated && needsIndividualPayment(user)) {
+      if (!subscribePath) {
+        router.replace('/auth/subscribe');
+        return;
+      }
     }
 
     if (isAuthenticated && publicPath) {
@@ -103,7 +119,7 @@ function AuthGate() {
     if (isAuthenticated && !canAccessPath(pathname, role)) {
       router.replace(getDashboardByRole(role));
     }
-  }, [isLoading, isAuthenticated, pathname, role, router]);
+  }, [isLoading, isAuthenticated, pathname, role, user, router]);
 
   if (isLoading && pathname === '/') {
     return (
@@ -145,6 +161,7 @@ function AuthGate() {
           contentStyle: { backgroundColor: '#F4F7FB' },
         }}
       />
+      <Stack.Screen name="auth/subscribe" />
       <Stack.Screen
         name="dashboard/index"
         options={{

@@ -29,6 +29,8 @@ import {
   useAdminTheme,
 } from '../_ui';
 
+const ADMIN_OMR_READ_ONLY = true;
+
 function n(v: number | null | undefined): string {
   if (v === null || v === undefined || Number.isNaN(Number(v))) return '—';
   return String(v);
@@ -244,9 +246,23 @@ export default function OmrResultsView() {
     <AdminScreenShell>
       <AdminSectionHeader
         title="Offline Results"
-        subtitle="Upload Score List CSV/Excel and map Candidate IDs to students."
+        subtitle={
+          ADMIN_OMR_READ_ONLY
+            ? 'View offline test scores and student mappings for your school.'
+            : 'Upload Score List CSV/Excel and map Candidate IDs to students.'
+        }
       />
 
+      {ADMIN_OMR_READ_ONLY ? (
+        <AdminGlassCard style={{ marginBottom: spacing.md }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18 }}>
+            Offline results are uploaded by the platform team. Contact support if a new test needs
+            to be added.
+          </Text>
+        </AdminGlassCard>
+      ) : null}
+
+      {!ADMIN_OMR_READ_ONLY ? (
       <View style={styles.actionsRow}>
         <AdminScalePressable
           style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.surfaceBorder }]}
@@ -266,6 +282,7 @@ export default function OmrResultsView() {
           </Text>
         </AdminScalePressable>
       </View>
+      ) : null}
 
       <AdminScalePressable
         style={[styles.batchPicker, { borderColor: colors.surfaceBorder, backgroundColor: colors.surface }]}
@@ -390,18 +407,35 @@ export default function OmrResultsView() {
                   </Text>
                 </View>
 
-                <AdminScalePressable
-                  style={[styles.assignBtn, { borderColor: colors.surfaceBorder }]}
-                  onPress={() => {
-                    setAssignRowId(row._id);
-                    setAssignSearch('');
-                  }}
-                >
-                  <Ionicons name="person-add-outline" size={15} color={colors.primary} />
-                  <Text style={[styles.assignBtnText, { color: colors.text }]} numberOfLines={1}>
-                    {assigned ? formatStudentLabel(assigned) : 'Search Student…'}
+                {!ADMIN_OMR_READ_ONLY ? (
+                  <AdminScalePressable
+                    style={[styles.assignBtn, { borderColor: colors.surfaceBorder }]}
+                    onPress={() => {
+                      setAssignRowId(row._id);
+                      setAssignSearch('');
+                    }}
+                  >
+                    <Ionicons name="person-add-outline" size={15} color={colors.primary} />
+                    <Text style={[styles.assignBtnText, { color: colors.text }]} numberOfLines={1}>
+                      {assigned ? formatStudentLabel(assigned) : 'Search student…'}
+                    </Text>
+                  </AdminScalePressable>
+                ) : (
+                  <Text style={[styles.assignBtnText, { color: colors.textMuted }]} numberOfLines={2}>
+                    {assigned
+                      ? formatStudentLabel(assigned)
+                      : row.student
+                        ? formatStudentLabel({
+                            _id: row.student._id,
+                            fullName: row.student.fullName,
+                            email: row.student.email,
+                            classNumber: row.student.classNumber,
+                            section: row.student.section,
+                          })
+                        : 'Not assigned'}
                   </Text>
-                </AdminScalePressable>
+                )}
+                )}
               </AdminGlassCard>
             );
           })}
@@ -447,6 +481,7 @@ export default function OmrResultsView() {
       </AdminModalShell>
 
       {/* Assign student */}
+      {!ADMIN_OMR_READ_ONLY ? (
       <AdminModalShell
         visible={!!assignRowId}
         title="Assign Student"
@@ -535,8 +570,10 @@ export default function OmrResultsView() {
           }}
         />
       </AdminModalShell>
+      ) : null}
 
       {/* Upload */}
+      {!ADMIN_OMR_READ_ONLY ? (
       <AdminModalShell
         visible={uploadOpen}
         title="Upload OMR Score List"
@@ -593,6 +630,7 @@ export default function OmrResultsView() {
           </View>
         ) : null}
       </AdminModalShell>
+      ) : null}
     </AdminScreenShell>
   );
 }
