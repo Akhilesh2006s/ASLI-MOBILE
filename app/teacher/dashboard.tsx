@@ -46,6 +46,7 @@ import { EduOTTFilterProvider } from '../../src/contexts/edu-ott-filter-context'
 import OverviewView from './_components/OverviewView';
 import { TrialUpgradeBanner } from '../../src/components/b2c/IndividualSubscriptionReceipt';
 import { showTrialUpgrade } from '../../src/lib/individual-subscription';
+import { isIndividualAccount } from '../../src/lib/individual-signup';
 import AIClassesView from './_components/AIClassesView';
 import StudentsView from './_components/StudentsView';
 import EduOTTView from './_components/EduOTTView';
@@ -55,7 +56,7 @@ import CalendarView from './_components/CalendarView';
 import OmrResultsView from './_components/OmrResultsView';
 import SettingsView from './_components/SettingsView';
 
-type TabId = TeacherNavId;
+type TabId = Exclude<TeacherNavId, 'subscription'>;
 
 type NavTarget = {
   studentsSub?: 'list' | 'track-progress' | 'submissions' | 'daily' | 'remarks';
@@ -259,6 +260,13 @@ export default function TeacherDashboard() {
   });
 
   const handleTabChange = (id: TeacherNavId) => {
+    if (id === 'subscription') {
+      router.push('/auth/subscribe');
+      return;
+    }
+    if (id === 'results' && isIndividualAccount(user)) {
+      return;
+    }
     if (id === activeTab) {
       tabScrollRefs[id]?.current?.scrollTo({ y: 0, animated: true });
       return;
@@ -398,7 +406,7 @@ export default function TeacherDashboard() {
 
           {visitedTabs.has('vidya-ai') ? (
             <VisitedTabPane visible={activeTab === 'vidya-ai'}>
-              <VidyaAIView chatEnabled={vidyaChatEnabled} />
+              <VidyaAIView chatEnabled={vidyaChatEnabled} user={user} />
             </VisitedTabPane>
           ) : null}
 
@@ -472,7 +480,7 @@ export default function TeacherDashboard() {
           onSelect={handleTabChange}
           onLogout={handleLogout}
         />
-      ) : null}
+      )}
 
       {refreshing ? (
         <Animated.Text entering={FadeIn.duration(200)} style={styles.syncingText}>
@@ -601,7 +609,7 @@ export default function TeacherDashboard() {
           bottomOffset={16}
           onPress={() => {
             requestAnimationFrame(() => {
-              router.push('/teacher/vidya-chat' as any);
+              goToTab('vidya-ai');
             });
           }}
         />

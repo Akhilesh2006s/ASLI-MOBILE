@@ -18,11 +18,16 @@ import { receiptFromUser, showActiveReceipt } from '../../src/lib/individual-sub
 import { useAuth } from '../../src/context/AuthContext';
 import { INDIVIDUAL_TRIAL_DAYS } from '../../src/lib/individual-signup';
 import { COLORS, SPACING } from '../../src/theme';
+import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 
 export default function SubscribeScreen() {
   const router = useRouter();
   const { user, isLoading, isAuthenticated, signOut, refreshAuth } = useAuth();
   const [ready, setReady] = useState(false);
+
+  const paywallLocked = Boolean(user?.paymentRequired);
+  const homePath = user?.role === 'teacher' ? '/teacher/dashboard' : '/dashboard';
+  useBackNavigation(homePath, paywallLocked);
 
   useEffect(() => {
     if (isLoading) return;
@@ -48,10 +53,25 @@ export default function SubscribeScreen() {
   const showReceipt = showActiveReceipt(user) && existingReceipt;
   const isActive = user?.subscriptionStatus === 'active' && !user?.paymentRequired;
 
+  const goBack = () => {
+    if (paywallLocked) return;
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace(homePath);
+  };
+
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <StatusBar style="dark" />
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        {!paywallLocked ? (
+          <Pressable onPress={goBack} style={styles.backBtn} hitSlop={8}>
+            <Ionicons name="chevron-back" size={22} color={COLORS.text} />
+            <Text style={styles.backText}>Back</Text>
+          </Pressable>
+        ) : null}
         <View style={styles.hero}>
           <View style={styles.iconWrap}>
             <Ionicons name="card-outline" size={28} color="#C2410C" />
@@ -67,9 +87,9 @@ export default function SubscribeScreen() {
           </Text>
         </View>
 
-        <GlassPanel style={styles.trialBanner}>
+        <GlassPanel style={styles.trialBanner} contentStyle={styles.trialBannerInner}>
           <Ionicons name="time-outline" size={18} color="#B45309" />
-          <View style={{ flex: 1 }}>
+          <View style={styles.trialCopy}>
             <Text style={styles.trialTitle}>{isActive ? 'Subscription status: active' : `Trial status: ${onTrial ? 'active' : 'expired'}`}</Text>
             {isActive && existingReceipt?.validUntil ? (
               <Text style={styles.trialMeta}>
@@ -96,9 +116,13 @@ export default function SubscribeScreen() {
           userEmail={user?.email}
           initialClass={user?.classNumber || ''}
           initialTrack={initialTrack}
-          initialPackage={initialTrack ? 'iit' : 'board'}
+          initialPackage={initialTrack ? 'both' : 'board'}
           onPaid={() => void refreshAuth({ silent: true })}
         />
+
+        <Text style={styles.resourcesHint}>
+          Pick Boards + IIT to see Alpha / Beta / Gamma books, quizzes, Vidya AI, and practice exams tied to that track.
+        </Text>
 
         <Pressable
           onPress={async () => {
@@ -119,8 +143,18 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   loadingText: { color: COLORS.textMuted, fontSize: 14 },
-  scroll: { padding: SPACING.lg, paddingBottom: SPACING.xxxl },
-  hero: { alignItems: 'center', marginBottom: SPACING.lg },
+  scroll: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.xxxl },
+  backBtn: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    marginBottom: SPACING.md,
+    paddingVertical: 4,
+    paddingRight: 8,
+  },
+  backText: { fontSize: 16, fontWeight: '700', color: COLORS.text },
+  hero: { alignItems: 'center', marginBottom: SPACING.lg, paddingHorizontal: 4 },
   iconWrap: {
     width: 56,
     height: 56,
@@ -138,18 +172,24 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     textAlign: 'center',
     maxWidth: 420,
+    paddingHorizontal: 4,
   },
   trialBanner: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-    alignItems: 'flex-start',
     marginBottom: SPACING.lg,
     backgroundColor: '#FFFBEB',
   },
+  trialBannerInner: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    alignItems: 'flex-start',
+    padding: SPACING.md,
+  },
+  trialCopy: { flex: 1, minWidth: 0, paddingRight: 4 },
   trialTitle: { fontSize: 14, fontWeight: '700', color: '#92400E' },
-  trialMeta: { fontSize: 12, color: '#B45309', marginTop: 2 },
+  trialMeta: { fontSize: 12, color: '#B45309', marginTop: 4, lineHeight: 16 },
   signOut: {
     marginTop: SPACING.xl,
+    marginBottom: SPACING.lg,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -157,4 +197,12 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.md,
   },
   signOutText: { fontSize: 15, color: COLORS.textMuted, fontWeight: '600' },
+  resourcesHint: {
+    marginTop: SPACING.md,
+    fontSize: 13,
+    lineHeight: 18,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: 8,
+  },
 });

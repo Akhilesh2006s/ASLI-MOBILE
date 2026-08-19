@@ -17,6 +17,7 @@ import { API_BASE_URL } from '../../src/lib/api-config';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import { EmptyState, ErrorState, GlassPanel, LoadingState } from '../../src/components/ui';
 import StudentScreenHeader from '../../src/components/student/StudentScreenHeader';
+import { useSchoolOnlyGuard } from '../../src/components/b2c/SchoolOnlyGuard';
 import { STUDENT, STUDENT_RADIUS, STUDENT_SPACING } from '../../src/theme/student';
 
 type PhotoPayload = {
@@ -29,6 +30,7 @@ async function resolveAuthenticatedFileUrl(token: string): Promise<string> {
 }
 
 export default function StudentTimetable() {
+  const blocked = useSchoolOnlyGuard();
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const [loading, setLoading] = useState(true);
@@ -74,6 +76,8 @@ export default function StudentTimetable() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  if (blocked) return null;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>

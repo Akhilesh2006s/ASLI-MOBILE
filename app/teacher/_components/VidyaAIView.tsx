@@ -24,6 +24,9 @@ import VidyaAvatar from '../../../src/components/vidya/VidyaAvatar';
 import { GlassPanel } from '../../../src/components/ui';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING } from '../../../src/theme/teacher';
 import { AI, AI_TYPE } from '../../../src/theme/ai';
+import { isIndividualAccount } from '../../../src/lib/individual-signup';
+import { TrialUpgradeBanner } from '../../../src/components/b2c/IndividualSubscriptionReceipt';
+import { showTrialUpgrade } from '../../../src/lib/individual-subscription';
 
 const CONTENT_MAX = 1080;
 const BOARD_MIN_WIDTH = 1024;
@@ -60,13 +63,21 @@ function usePressScale(to = 0.98) {
   return { style, onPressIn, onPressOut };
 }
 
-export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: boolean }) {
+export default function VidyaAIView({
+  chatEnabled = true,
+  user: userProp,
+}: {
+  chatEnabled?: boolean;
+  user?: any;
+}) {
   const insets = useSafeAreaInsets();
   const { isGrid, columns, shellWidth, isTvView } = useVidyaAILayout();
   const chatPress = usePressScale();
   const scrollBottomPad =
     TAB_BAR_CLEARANCE + Math.max(insets.bottom, 12) + TEACHER_SPACING.xl;
   const [subjectNames, setSubjectNames] = useState<string[]>([]);
+  const [individualTeacher, setIndividualTeacher] = useState(() => isIndividualAccount(userProp));
+  const [trialUser, setTrialUser] = useState<any>(userProp || null);
 
   useEffect(() => {
     (async () => {
@@ -83,6 +94,15 @@ export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: bool
           .map((subj: any) => String(subj?.name || subj?.displayName || '').trim())
           .filter(Boolean);
         setSubjectNames(names);
+        const meRes = await fetch(`${API_BASE_URL}/api/auth/me`, {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        });
+        if (meRes.ok) {
+          const meJson = await meRes.json();
+          const me = meJson?.user || meJson;
+          setIndividualTeacher(isIndividualAccount(me));
+          setTrialUser(me);
+        }
       } catch {
         /* optional */
       }
@@ -114,8 +134,42 @@ export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: bool
     >
       <View style={[styles.innerShell, { width: shellWidth }, isTvView && { alignSelf: 'stretch' }]}>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Create Your Next Classroom Resource</Text>
+          {showTrialUpgrade(trialUser || userProp) ? (
+            <TrialUpgradeBanner
+              daysLeft={(trialUser || userProp)?.trialDaysLeft}
+              trialEndsAt={(trialUser || userProp)?.trialEndsAt}
+            />
+          ) : null}
+          <Text style={styles.sectionTitle}>
+            {individualTeacher ? 'AI Studio' : 'Create Your Next Classroom Resource'}
+          </Text>
           <Text style={styles.sectionSubtitle}>{TEACHER_AI_TOOLS_SUBTITLE}</Text>
+
+          {individualTeacher ? (
+            <View style={styles.studioRow}>
+              {[
+                { label: 'Lesson Planner', icon: 'book-outline' as const, route: '/teacher/tools/lesson-planner' },
+                { label: 'Worksheets', icon: 'clipboard-outline' as const, route: '/teacher/tools/worksheet-mcq-generator' },
+                { label: 'Question Papers', icon: 'document-text-outline' as const, route: '/teacher/tools/exam-question-paper-generator' },
+                { label: 'Profile & Subscription', icon: 'card-outline' as const, route: '/auth/subscribe' },
+              ].map((item) => (
+                <Pressable
+                  key={item.label}
+                  onPress={() =>
+                    requestAnimationFrame(() => {
+                      router.push(item.route as any);
+                    })
+                  }
+                  style={styles.studioCard}
+                >
+                  <View style={styles.studioIcon}>
+                    <Ionicons name={item.icon} size={20} color={TEACHER.primaryDark} />
+                  </View>
+                  <Text style={styles.studioLabel}>{item.label}</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
 
           {chatEnabled ? (
             <Pressable
@@ -134,8 +188,8 @@ export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: bool
                   <View style={styles.chatCardRow}>
                     <VidyaAvatar size={48} borderColor="#93c5fd" />
                     <View style={styles.chatTextWrap}>
-                      <Text style={styles.chatTitle}>Vidya AI Chat</Text>
-                      <Text style={styles.chatSub}>Ask About Lessons, Quizzes, And Teaching Ideas</Text>
+                      <Text style={styles.chatTitle}>Ask Vidya</Text>
+                      <Text style={styles.chatSub}>Lesson plans, assessments, and classroom help</Text>
                     </View>
                     <Ionicons name="chevron-forward" size={20} color={TEACHER.primaryDark} />
                   </View>
@@ -212,6 +266,40 @@ const styles = StyleSheet.create({
     ...AI_TYPE.body,
     color: AI.textSecondary,
     marginBottom: 20,
+  },
+  studioRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: TEACHER_SPACING.sm,
+    marginBottom: TEACHER_SPACING.lg,
+  },
+  studioCard: {
+    flexGrow: 1,
+    flexBasis: '46%',
+    minWidth: 140,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#E0E7FF',
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderRadius: TEACHER_RADIUS.lg,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+  },
+  studioIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  studioLabel: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '800',
+    color: TEACHER.text,
   },
   chatCard: {
     marginBottom: TEACHER_SPACING.lg,

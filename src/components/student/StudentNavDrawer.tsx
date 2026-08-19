@@ -16,10 +16,12 @@ export type StudentNavId =
   | 'learning'
   | 'eduott'
   | 'exams'
+  | 'quiz'
   | 'results'
   | 'timetable'
   | 'vidya'
-  | 'profile';
+  | 'profile'
+  | 'subscription';
 
 export type StudentNavItem = {
   id: StudentNavId;
@@ -32,20 +34,33 @@ export const STUDENT_NAV_ITEMS: StudentNavItem[] = [
   { id: 'learning', label: 'Learning Paths', icon: 'book-outline' },
   { id: 'eduott', label: 'EduOTT', icon: 'videocam-outline' },
   { id: 'exams', label: 'Exams', icon: 'document-text-outline' },
+  { id: 'quiz', label: 'Quiz', icon: 'trophy-outline' },
   { id: 'results', label: 'Offline Results', icon: 'scan-outline' },
   { id: 'timetable', label: 'Timetable', icon: 'calendar-outline' },
   { id: 'vidya', label: 'Vidya AI', icon: 'sparkles-outline' },
   { id: 'profile', label: 'Profile', icon: 'person-outline' },
 ];
 
+const SUBSCRIPTION_NAV_ITEM: StudentNavItem = {
+  id: 'subscription',
+  label: 'Subscription',
+  icon: 'card-outline',
+};
+
 export function studentNavItemsForUser(user?: any): StudentNavItem[] {
   if (isIndividualAccount(user)) {
-    return STUDENT_NAV_ITEMS.filter((item) => item.id !== 'results' && item.id !== 'timetable');
+    return [
+      ...STUDENT_NAV_ITEMS.filter((item) => item.id !== 'results' && item.id !== 'timetable').map((item) =>
+        item.id === 'exams' ? { ...item, label: 'Practice Exams' } : item,
+      ),
+      SUBSCRIPTION_NAV_ITEM,
+    ];
   }
   return STUDENT_NAV_ITEMS;
 }
 
 export function studentNavLabel(id: string): string {
+  if (id === 'subscription') return SUBSCRIPTION_NAV_ITEM.label;
   return STUDENT_NAV_ITEMS.find((item) => item.id === id)?.label ?? 'Dashboard';
 }
 

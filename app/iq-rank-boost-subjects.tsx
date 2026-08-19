@@ -9,6 +9,7 @@ import {
   RefreshControl,
   Modal,
   Alert,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../src/lib/api-config';
-import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
+import { getDashboardPath } from '../src/hooks/useBackNavigation';
 import { GlassPanel } from '../src/components/ui';
 
 interface Quiz {
@@ -262,6 +263,22 @@ export default function IQRankBoostSubjects() {
     });
   }, []);
 
+  const goBackToDashboard = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace(dashboardPath);
+  }, [dashboardPath]);
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      goBackToDashboard();
+      return true;
+    });
+    return () => sub.remove();
+  }, [goBackToDashboard]);
+
   useFocusEffect(
     useCallback(() => {
       void load();
@@ -280,8 +297,6 @@ export default function IQRankBoostSubjects() {
     // Clear deep-link param without remounting (keeps the review modal open)
     router.setParams({ review: '' });
   }, [reviewParam, openPreviousResult]);
-
-  useBackNavigation(dashboardPath, false);
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty.toLowerCase()) {
@@ -306,7 +321,7 @@ export default function IQRankBoostSubjects() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <LinearGradient colors={['#0284c7', '#0d9488']} style={styles.header}>
         <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => router.replace(dashboardPath)} style={styles.backButton}>
+          <TouchableOpacity onPress={goBackToDashboard} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
           <View style={styles.headerText}>

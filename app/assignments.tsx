@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import studentService from '../src/services/api/studentService';
 import { GlassPanel } from '../src/components/ui';
 import { setStudentDashboardTabIntent } from '../src/lib/dashboard-tab-intent';
+import { useSchoolOnlyGuard } from '../src/components/b2c/SchoolOnlyGuard';
 
 type AssignmentItem = {
   _id?: string;
@@ -29,6 +30,7 @@ type AssignmentItem = {
 };
 
 export default function AssignmentsScreen() {
+  const blocked = useSchoolOnlyGuard();
   const router = useRouter();
   const handlingBack = useRef(false);
   const [loading, setLoading] = useState(true);
@@ -76,6 +78,8 @@ export default function AssignmentsScreen() {
     await loadAssignments();
     setRefreshing(false);
   };
+
+  if (blocked) return null;
 
   if (loading) {
     return (

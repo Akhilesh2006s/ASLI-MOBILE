@@ -9,6 +9,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import PortalNavChrome from '../layout/PortalNavChrome';
+import { isIndividualAccount } from '../../lib/individual-signup';
 
 /** Matches web `teacherNav` in asli-frontend/src/lib/app-nav.ts */
 export type TeacherNavId =
@@ -21,7 +22,8 @@ export type TeacherNavId =
   | 'calendar'
   | 'results'
   | 'settings'
-  | 'reports';
+  | 'reports'
+  | 'subscription';
 
 export type TeacherNavItem = {
   id: TeacherNavId;
@@ -42,7 +44,24 @@ export const TEACHER_NAV_ITEMS: TeacherNavItem[] = [
   { id: 'reports', label: 'Reports', icon: 'bar-chart-outline' },
 ];
 
+const SUBSCRIPTION_NAV_ITEM: TeacherNavItem = {
+  id: 'subscription',
+  label: 'Subscription',
+  icon: 'card-outline',
+};
+
+export function teacherNavItemsForUser(user?: any): TeacherNavItem[] {
+  const items = isIndividualAccount(user)
+    ? TEACHER_NAV_ITEMS.filter((item) => item.id !== 'results')
+    : TEACHER_NAV_ITEMS;
+  if (isIndividualAccount(user)) {
+    return [...items, SUBSCRIPTION_NAV_ITEM];
+  }
+  return items;
+}
+
 export function teacherNavLabel(id: string): string {
+  if (id === 'subscription') return SUBSCRIPTION_NAV_ITEM.label;
   return TEACHER_NAV_ITEMS.find((item) => item.id === id)?.label ?? 'Overview';
 }
 
@@ -55,10 +74,10 @@ type PanelProps = {
   onClose?: () => void;
 };
 
-export function TeacherNavPanel({ activeId, compact, onSelect, onLogout, onClose }: PanelProps) {
+export function TeacherNavPanel({ activeId, user, compact, onSelect, onLogout, onClose }: PanelProps) {
   return (
     <PortalNavChrome
-      items={TEACHER_NAV_ITEMS}
+      items={teacherNavItemsForUser(user)}
       activeId={activeId}
       compact={compact}
       onSelect={(id) => onSelect(id as TeacherNavId)}

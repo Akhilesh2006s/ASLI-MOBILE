@@ -5,8 +5,10 @@ import { useRouter } from 'expo-router';
 import TeacherDiaryFeed from '../src/components/student/TeacherDiaryFeed';
 import StudentScreenHeader from '../src/components/student/StudentScreenHeader';
 import { setStudentDashboardTabIntent } from '../src/lib/dashboard-tab-intent';
+import { useSchoolOnlyGuard } from '../src/components/b2c/SchoolOnlyGuard';
 
 export default function TeachersReportScreen() {
+  const blocked = useSchoolOnlyGuard();
   const router = useRouter();
   const handlingBack = useRef(false);
 
@@ -27,6 +29,8 @@ export default function TeachersReportScreen() {
     });
     return () => sub.remove();
   }, [goBack]);
+
+  if (blocked) return null;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

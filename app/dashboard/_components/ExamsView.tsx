@@ -34,6 +34,7 @@ import {
   getExamClassLabelsForStudent,
   normalizeClassNumber,
 } from '../../../src/lib/exam-classes';
+import { isIndividualAccount } from '../../../src/lib/individual-signup';
 import { dedupeStudentExamResults } from '../../../src/lib/dedupe-exam-results';
 import { readMobileExamDraft } from '../../../src/lib/exam-attempt-draft';
 import ExamResultsView from '../../../src/components/student/ExamResultsView';
@@ -180,6 +181,7 @@ export default function ExamsView({
   const handledFocusExamIdRef = useRef<string | null>(null);
 
   const studentClassNumber = normalizeClassNumber(user?.classNumber);
+  const isB2cStudent = isIndividualAccount(user);
 
   useEffect(() => {
     fetchUser();
@@ -194,6 +196,10 @@ export default function ExamsView({
       void fetchResults();
     }, []),
   );
+
+  useEffect(() => {
+    if (isB2cStudent && activeTab === 'omr') setActiveTab('available');
+  }, [isB2cStudent, activeTab]);
 
   const fetchUser = async () => {
     try {
@@ -677,14 +683,24 @@ export default function ExamsView({
   ]);
 
   const examTabChips = useMemo(
-    () => [
-      { id: 'available', label: 'Available Exams', shortLabel: 'Available', borderColor: '#2563eb' },
-      { id: 'attempted', label: 'Attempted Exams', shortLabel: 'Attempted', borderColor: '#7c3aed' },
-      { id: 'ranking', label: 'My Rankings', shortLabel: 'Rankings', borderColor: '#ea580c' },
-      { id: 'upcoming', label: 'Upcoming Exams', shortLabel: 'Upcoming', borderColor: '#16a34a' },
-      { id: 'omr', label: 'Offline Results', shortLabel: 'Offline', borderColor: '#0d9488' },
-    ],
-    []
+    () => {
+      const chips = [
+        {
+          id: 'available',
+          label: isB2cStudent ? 'Practice papers' : 'Available Exams',
+          shortLabel: isB2cStudent ? 'Practice' : 'Available',
+          borderColor: '#2563eb',
+        },
+        { id: 'attempted', label: 'Attempted Exams', shortLabel: 'Attempted', borderColor: '#7c3aed' },
+        { id: 'ranking', label: 'My Rankings', shortLabel: 'Rankings', borderColor: '#ea580c' },
+        { id: 'upcoming', label: 'Upcoming Exams', shortLabel: 'Upcoming', borderColor: '#16a34a' },
+      ];
+      if (!isB2cStudent) {
+        chips.push({ id: 'omr', label: 'Offline Results', shortLabel: 'Offline', borderColor: '#0d9488' });
+      }
+      return chips;
+    },
+    [isB2cStudent]
   );
 
   const subjectFilterOptions = useMemo(
@@ -727,8 +743,14 @@ export default function ExamsView({
             <Ionicons name="document-text-outline" size={22} color={STUDENT.primaryDark} />
           </View>
           <View style={styles.headerTextWrap}>
-            <Text style={[styles.headerTitle, compact && { fontSize: 24 }]}>Exams</Text>
-            <Text style={styles.headerSubtitle}>Practice papers, results, and rankings in one place.</Text>
+            <Text style={[styles.headerTitle, compact && { fontSize: 24 }]}>
+              {isB2cStudent ? 'Practice exams' : 'Exams'}
+            </Text>
+            <Text style={styles.headerSubtitle}>
+              {isB2cStudent
+                ? 'Take class-wise practice exams tied to your Board or Asli Prep Alpha / Beta / Gamma track.'
+                : 'Practice papers, results, and rankings in one place.'}
+            </Text>
           </View>
         </View>
         <View style={styles.filtersRow}>
@@ -773,9 +795,13 @@ export default function ExamsView({
             <View style={styles.emptyState}>
               <GlassPanel tone="medium" radius={STUDENT_RADIUS.card} contentStyle={styles.emptyInner}>
                 <Ionicons name="document-text-outline" size={40} color={STUDENT.primary} />
-                <Text style={styles.emptyStateTitle}>No Available Exams</Text>
+                <Text style={styles.emptyStateTitle}>
+                  {isB2cStudent ? 'No practice exams open right now' : 'No Available Exams'}
+                </Text>
                 <Text style={styles.emptyStateText}>
-                  No active exams right now. Check Upcoming for scheduled papers.
+                  {isB2cStudent
+                    ? `Practice papers for${studentClassNumber ? ` Class ${studentClassNumber}` : ' your class'} appear here when a public practice exam is published for your Board or IIT track.`
+                    : 'No active exams right now. Check Upcoming for scheduled papers.'}
                 </Text>
               </GlassPanel>
             </View>

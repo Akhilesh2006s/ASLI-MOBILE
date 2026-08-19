@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   Pressable,
   ActivityIndicator,
   Alert,
@@ -163,10 +162,16 @@ export default function IndividualPlanCheckout({
 
   const packageOptions = useMemo(
     () =>
-      [
-        ['board', asPack(plans[billingRole].board)],
-        ['both', asPack(plans[billingRole].both)],
-      ] as const,
+      (billingRole === 'student'
+        ? ([
+            ['board', asPack(plans.student.board)],
+            ['iit', asPack(plans.student.iit)],
+            ['both', asPack(plans.student.both)],
+          ] as const)
+        : ([
+            ['board', asPack(plans.teacher.board)],
+            ['both', asPack(plans.teacher.both)],
+          ] as const)),
     [billingRole, plans],
   );
 
@@ -272,10 +277,23 @@ export default function IndividualPlanCheckout({
           </Pressable>
         </View>
       ) : (
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <View style={styles.form}>
+        <View style={styles.rateCard}>
+          <Text style={styles.rateKicker}>Individual membership</Text>
+          <Text style={styles.rateLine}>Boards — ₹{B2C_BOARD_PRICE} / month · ₹{B2C_BOARD_PRICE * 12} / year</Text>
+          {billingRole === 'student' ? (
+            <>
+              <Text style={styles.rateLine}>IIT Foundation — ₹{B2C_IIT_PRICE} / month · ₹{B2C_IIT_PRICE * 12} / year</Text>
+              <Text style={styles.rateLine}>Boards + IIT — ₹{B2C_STUDENT_BOTH_PRICE} / month · ₹{B2C_STUDENT_BOTH_PRICE * 12} / year</Text>
+            </>
+          ) : (
+            <Text style={styles.rateLine}>Boards + IIT teacher plan — billed yearly</Text>
+          )}
+        </View>
+
         <Text style={styles.label}>Class</Text>
         <View style={styles.pickerWrap}>
-          <Picker selectedValue={classLabel} onValueChange={onClassChange}>
+          <Picker selectedValue={classLabel} onValueChange={onClassChange} style={styles.picker}>
             {INDIVIDUAL_CLASS_OPTIONS.filter((c) => (classNumbersFromLabel(c) || 0) <= 10).map((c) => (
               <Picker.Item key={c} label={c} value={c} />
             ))}
@@ -293,12 +311,18 @@ export default function IndividualPlanCheckout({
                 onPress={() => setPackageType(id)}
                 style={[styles.packageBtn, selected && styles.packageBtnActive]}
               >
-                <Text style={[styles.packageTitle, selected && styles.packageTitleActive]}>
+                <Text style={[styles.packageTitle, selected && styles.packageTitleActive]} numberOfLines={2}>
                   {shown?.label || id}
                 </Text>
                 <Text style={styles.packagePrice}>
                   {shown ? `₹${shown.amountInr} ${periodLabel(shown.period)}` : '—'}
                 </Text>
+                {packOpt.year && packOpt.month ? (
+                  <Text style={styles.packageYear}>
+                    ₹{packOpt.year.amountInr} / year
+                    {packOpt.year.discountPercent ? ` · ${packOpt.year.discountPercent}% off` : ''}
+                  </Text>
+                ) : null}
               </Pressable>
             );
           })}
@@ -312,14 +336,16 @@ export default function IndividualPlanCheckout({
                 onPress={() => setBillingPeriod('month')}
                 style={[styles.periodBtn, billingPeriod === 'month' && styles.periodBtnActive]}
               >
-                <Text style={styles.periodLabel}>Monthly</Text>
+                <Text style={[styles.periodLabel, billingPeriod === 'month' && styles.periodLabelActive]}>
+                  Monthly
+                </Text>
                 <Text style={styles.periodPrice}>₹{pack.month.amountInr} / month</Text>
               </Pressable>
               <Pressable
                 onPress={() => setBillingPeriod('year')}
-                style={[styles.periodBtn, billingPeriod === 'year' && styles.periodYearActive]}
+                style={[styles.periodBtn, billingPeriod === 'year' && styles.periodBtnActive]}
               >
-                <Text style={[styles.periodLabel, { color: '#047857' }]}>
+                <Text style={[styles.periodLabel, billingPeriod === 'year' && styles.periodLabelActive]}>
                   Yearly{pack.year.discountPercent ? ` · ${pack.year.discountPercent}% off` : ''}
                 </Text>
                 <Text style={styles.periodPrice}>₹{pack.year.amountInr} / year</Text>
@@ -354,6 +380,10 @@ export default function IndividualPlanCheckout({
                   <Text style={[styles.trackBadge, { color: spec.colors.badge }]}>{spec.classes}</Text>
                   <Text style={styles.trackBook}>{spec.book}</Text>
                   <Text style={styles.trackHeadline}>{spec.headline}</Text>
+                  <Text style={styles.trackForWhom}>{spec.forWhom}</Text>
+                  {!allowed ? (
+                    <Text style={styles.trackUnavailable}>Not offered for {classLabel}. Choose a class in {spec.classes}.</Text>
+                  ) : null}
                   {selected && allowed ? (
                     <Ionicons name="checkmark-circle" size={20} color={spec.colors.selected} style={styles.trackCheck} />
                   ) : null}
@@ -363,12 +393,13 @@ export default function IndividualPlanCheckout({
           </>
         ) : (
           <Text style={styles.hint}>
-            Boards covers school-syllabus videos, notes, quizzes and practice exams.
+            Boards covers school-syllabus videos, notes, quizzes and practice exams. Add IIT Foundation anytime
+            for Asli Prep Alpha / Beta books and the tools tied to them.
           </Text>
         )}
 
         {selectedTrack && needsIitTrack ? (
-          <GlassPanel style={styles.summary}>
+          <GlassPanel style={styles.summary} contentStyle={styles.summaryInner}>
             <Text style={styles.summaryTitle}>What you get on {selectedTrack.book}</Text>
             {selectedTrack.points.map((item) => (
               <View key={item} style={styles.pointRow}>
@@ -379,8 +410,25 @@ export default function IndividualPlanCheckout({
           </GlassPanel>
         ) : null}
 
-        <GlassPanel style={styles.summary}>
+        <GlassPanel style={styles.summary} contentStyle={styles.summaryInner}>
           <Text style={styles.summaryKicker}>Your plan</Text>
+          {pack.month && pack.year ? (
+            <View style={styles.planPeriodToggle}>
+              {(['month', 'year'] as const).map((p) => (
+                <Pressable
+                  key={p}
+                  onPress={() => setBillingPeriod(p)}
+                  style={[styles.planPeriodChip, billingPeriod === p && styles.planPeriodChipActive]}
+                >
+                  <Text style={[styles.planPeriodChipText, billingPeriod === p && styles.planPeriodChipTextActive]}>
+                    {p === 'year'
+                      ? `Yearly${pack.year?.discountPercent ? ` · ${pack.year.discountPercent}% off` : ''}`
+                      : 'Monthly'}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
           <Text style={styles.summaryPrice}>
             ₹{price}
             <Text style={styles.summaryPeriod}> {periodLabel(period)}</Text>
@@ -408,7 +456,7 @@ export default function IndividualPlanCheckout({
             )}
           </Pressable>
         </GlassPanel>
-      </ScrollView>
+      </View>
       )}
 
       <RazorpayCheckoutModal
@@ -438,8 +486,25 @@ export default function IndividualPlanCheckout({
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingBottom: SPACING.xxxl, gap: SPACING.sm },
-  label: { fontSize: 14, fontWeight: '700', color: COLORS.text, marginTop: SPACING.sm },
+  form: { paddingBottom: SPACING.md, gap: SPACING.md },
+  rateCard: {
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    backgroundColor: '#F0F9FF',
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    gap: 4,
+  },
+  rateKicker: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#0369A1',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginBottom: 4,
+  },
+  rateLine: { fontSize: 13, color: COLORS.textSecondary, lineHeight: 18 },
+  label: { fontSize: 14, fontWeight: '700', color: COLORS.text },
   hint: { fontSize: 13, color: COLORS.textMuted, lineHeight: 18 },
   pickerWrap: {
     borderWidth: 1,
@@ -447,35 +512,41 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     backgroundColor: '#fff',
     overflow: 'hidden',
+    minHeight: 52,
+    justifyContent: 'center',
   },
-  packageRow: { flexDirection: 'row', gap: SPACING.sm },
+  picker: { width: '100%', color: COLORS.text },
+  packageRow: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm },
   packageBtn: {
-    flex: 1,
-    borderWidth: 1,
+    flexGrow: 1,
+    flexBasis: '30%',
+    minWidth: 100,
+    borderWidth: 1.5,
     borderColor: COLORS.border,
     borderRadius: RADIUS.md,
-    padding: SPACING.sm,
+    padding: SPACING.md,
     backgroundColor: '#fff',
   },
   packageBtnActive: { borderColor: COLORS.secondary, backgroundColor: '#F0F9FF' },
   packageTitle: { fontSize: 13, fontWeight: '700', color: COLORS.textSecondary },
   packageTitleActive: { color: '#0C4A6E' },
-  packagePrice: { fontSize: 11, color: COLORS.textMuted, marginTop: 4 },
+  packagePrice: { fontSize: 12, color: COLORS.textMuted, marginTop: 6, fontWeight: '600' },
+  packageYear: { fontSize: 11, color: '#047857', marginTop: 4, fontWeight: '600' },
   periodRow: { flexDirection: 'row', gap: SPACING.sm },
   periodBtn: {
     flex: 1,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: COLORS.border,
     borderRadius: RADIUS.md,
     padding: SPACING.md,
     backgroundColor: '#fff',
   },
   periodBtnActive: { borderColor: COLORS.secondary, backgroundColor: '#F0F9FF' },
-  periodYearActive: { borderColor: '#10B981', backgroundColor: '#ECFDF5' },
   periodLabel: { fontSize: 11, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase' },
+  periodLabelActive: { color: COLORS.secondary },
   periodPrice: { fontSize: 18, fontWeight: '800', color: COLORS.text, marginTop: 4 },
   trackCard: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderRadius: RADIUS.lg,
     padding: SPACING.md,
     marginTop: SPACING.sm,
@@ -484,8 +555,27 @@ const styles = StyleSheet.create({
   trackBadge: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
   trackBook: { fontSize: 17, fontWeight: '800', color: COLORS.text, marginTop: 2 },
   trackHeadline: { fontSize: 13, color: COLORS.textSecondary, marginTop: 4 },
+  trackForWhom: { fontSize: 12, color: COLORS.textMuted, marginTop: 8, lineHeight: 17 },
+  trackUnavailable: { fontSize: 12, fontWeight: '600', color: COLORS.textMuted, marginTop: 8 },
   trackCheck: { position: 'absolute', top: 12, right: 12 },
-  summary: { marginTop: SPACING.md },
+  summary: { marginTop: SPACING.sm },
+  summaryInner: { padding: SPACING.md },
+  planPeriodToggle: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    marginTop: 8,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.md,
+    backgroundColor: '#F8FAFC',
+    padding: 3,
+    gap: 4,
+  },
+  planPeriodChip: { borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
+  planPeriodChipActive: { backgroundColor: '#fff' },
+  planPeriodChipText: { fontSize: 12, fontWeight: '700', color: COLORS.textMuted },
+  planPeriodChipTextActive: { color: COLORS.secondary },
   summaryKicker: {
     fontSize: 11,
     fontWeight: '700',

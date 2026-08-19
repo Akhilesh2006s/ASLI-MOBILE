@@ -12,6 +12,8 @@ import { queryClient } from '../src/lib/queryClient';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
 import { AppSplash, SPLASH_DURATION_MS, SPLASH_EXIT_DURATION_MS } from '../src/components/AppSplash';
 import { useMemoryCleanup } from '../src/hooks/useMemoryCleanup';
+import { isSchoolOnlyStudentPath } from '../src/components/b2c/SchoolOnlyGuard';
+import { isIndividualAccount } from '../src/lib/individual-signup';
 
 void SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -113,6 +115,11 @@ function AuthGate() {
 
     if (isAuthenticated && publicPath) {
       router.replace(getDashboardByRole(role));
+      return;
+    }
+
+    if (isAuthenticated && role === 'student' && isIndividualAccount(user) && isSchoolOnlyStudentPath(pathname)) {
+      router.replace('/dashboard');
       return;
     }
 

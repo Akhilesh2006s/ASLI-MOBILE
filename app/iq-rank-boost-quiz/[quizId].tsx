@@ -82,17 +82,17 @@ export default function IQRankBoostQuiz() {
   }, [quizId]);
 
   const goToQuizList = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
     if (fromLearning) {
-      if (router.canGoBack()) {
-        router.back();
-        return;
-      }
       setStudentDashboardTabIntent('learning');
       setLearningPathsSubTabIntent('quizzes');
       router.replace('/dashboard');
       return;
     }
-    router.replace(LIST_PATH);
+    router.replace('/iq-rank-boost-subjects');
   }, [fromLearning]);
 
   useEffect(() => {

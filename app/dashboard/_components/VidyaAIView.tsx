@@ -13,6 +13,8 @@ import VidyaAvatar from '../../../src/components/vidya/VidyaAvatar';
 import { GlassPanel } from '../../../src/components/ui';
 import { AI, AI_RADIUS, AI_SHADOW, AI_SPACING, AI_TYPE } from '../../../src/theme/ai';
 import { STUDENT, STUDENT_RADIUS, STUDENT_SPACING } from '../../../src/theme/student';
+import { TrialUpgradeBanner } from '../../../src/components/b2c/IndividualSubscriptionReceipt';
+import { showTrialUpgrade } from '../../../src/lib/individual-subscription';
 
 const LIST_GAP = STUDENT_SPACING.md;
 const TOOLS_TABLET_MIN_WIDTH = 768;
@@ -47,7 +49,13 @@ function usePressScale(to = 0.98) {
   return { style, onPressIn, onPressOut };
 }
 
-export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: boolean }) {
+export default function VidyaAIView({
+  chatEnabled = true,
+  user,
+}: {
+  chatEnabled?: boolean;
+  user?: any;
+}) {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const isTvView = isTvOrBoardDisplay(screenWidth, screenHeight);
   const isTablet = screenWidth >= TOOLS_TABLET_MIN_WIDTH;
@@ -109,7 +117,10 @@ export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: bool
     return () => task.cancel();
   }, [ready]);
 
-  const visibleTools = useMemo(() => filterVisibleStudentTools(subjectNames), [subjectNames]);
+  const visibleTools = useMemo(
+    () => filterVisibleStudentTools(subjectNames, { includeChat: chatEnabled }),
+    [subjectNames, chatEnabled],
+  );
   const toolRows = useMemo(
     () => chunkItems(visibleTools, isGrid ? gridColumns : 1),
     [visibleTools, isGrid, gridColumns],
@@ -120,8 +131,11 @@ export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: bool
   );
 
   const openTool = (tool: StudentAiTool) => {
-    // Paint the press spring, then push — keeps the transition smooth.
     requestAnimationFrame(() => {
+      if (tool.id === 'ai-chat') {
+        router.push('/ai-tutor');
+        return;
+      }
       router.push({
         pathname: `/student/tools/${tool.id}` as any,
         params: { returnTab: 'vidya' },
@@ -156,6 +170,9 @@ export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: bool
 
   return (
     <View style={styles.container}>
+      {showTrialUpgrade(user) ? (
+        <TrialUpgradeBanner daysLeft={user?.trialDaysLeft} trialEndsAt={user?.trialEndsAt} />
+      ) : null}
       <GlassPanel radius={AI_RADIUS.lg} tone="strong" style={styles.hero}>
         <View style={styles.heroBadge}>
           <Text style={styles.heroBadgeText}>VIDYA AI STUDIO</Text>
@@ -192,8 +209,8 @@ export default function VidyaAIView({ chatEnabled = true }: { chatEnabled?: bool
               <View style={styles.chatCardRow}>
                 <VidyaAvatar size={48} borderColor="#c7d2fe" />
                 <View style={styles.chatTextWrap}>
-                  <Text style={styles.chatTitle}>Vidya AI Chat</Text>
-                  <Text style={styles.chatSub}>Ask Doubts · Instant Answers</Text>
+                  <Text style={styles.chatTitle}>Ask Vidya</Text>
+                  <Text style={styles.chatSub}>AI Chat Assistant · instant doubt solving</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={STUDENT.primaryDark} />
               </View>

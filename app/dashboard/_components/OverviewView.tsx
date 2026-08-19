@@ -79,6 +79,7 @@ const STAT_SUMMARY_CARDS = {
 
 const OverviewView = memo(function OverviewView({
   user,
+  onGoExams,
   onOpenExam,
 }: OverviewViewProps) {
   const { width } = useWindowDimensions();
@@ -964,7 +965,44 @@ const OverviewView = memo(function OverviewView({
             />
           </View>
         </View>
-      ) : null}
+      ) : (
+        <>
+        <View style={[styles.pairRow, isTablet && styles.pairRowTablet]}>
+          <View style={isTablet ? styles.pairHalf : undefined}>
+            <HomeShortcutCard
+              title="Practice Exams"
+              subtitle="Class-wise practice papers on your Board or Asli Prep Alpha / Beta / Gamma track."
+              icon="document-text"
+              tint="#fff7ed"
+              accent="#ea580c"
+              onPress={() => onGoExams?.()}
+            />
+          </View>
+          <View style={isTablet ? styles.pairHalf : undefined}>
+            <HomeShortcutCard
+              title="Your IIT book"
+              subtitle="Confirm Alpha, Beta or Gamma so quizzes and Vidya stay tied to that material."
+              icon="book"
+              tint="#f5f3ff"
+              accent="#7c3aed"
+              onPress={() => router.push('/auth/subscribe')}
+            />
+          </View>
+        </View>
+        <View style={[styles.pairRow, isTablet && styles.pairRowTablet]}>
+          <View style={isTablet ? styles.pairHalf : undefined}>
+            <HomeShortcutCard
+              title="Quiz"
+              subtitle="Daily and subject quizzes — same Quiz page as on the web."
+              icon="trophy"
+              tint="#fffbeb"
+              accent="#d97706"
+              onPress={() => router.push('/iq-rank-boost-subjects')}
+            />
+          </View>
+        </View>
+        </>
+      )}
 
       {remarks.length > 0 ? (
         <GlassPanel style={styles.sectionCard} radius={18}>

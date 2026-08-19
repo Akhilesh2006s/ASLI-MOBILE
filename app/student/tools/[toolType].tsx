@@ -50,6 +50,7 @@ import {
   resolveIsAsliPrepExclusive,
   resolveStudentCurriculumGradeLevel,
 } from '../../../src/lib/school-program-ai';
+import { resolveSchoolIitCategories } from '../../../src/lib/school-program';
 import {
   useCurriculumCascade,
 } from '../../../src/hooks/useCurriculumCascade';
@@ -474,8 +475,18 @@ export default function StudentToolPage() {
         }));
 
         const curriculumGrade = resolveStudentCurriculumGradeLevel(userData.user);
+        const tracks = resolveSchoolIitCategories(userData.user);
+        const batchLabel = BATCH_OPTIONS.find(
+          (option) => option.toUpperCase() === String(tracks[0] || '').toUpperCase(),
+        );
         if (curriculumGrade) {
-          setFormParams((prev) => ({ ...prev, gradeLevel: curriculumGrade }));
+          setFormParams((prev) => ({
+            ...prev,
+            gradeLevel: curriculumGrade,
+            ...(batchLabel && !prev.batch ? { batch: batchLabel } : {}),
+          }));
+        } else if (batchLabel) {
+          setFormParams((prev) => (prev.batch ? prev : { ...prev, batch: batchLabel }));
         }
       }
     } catch (error) {

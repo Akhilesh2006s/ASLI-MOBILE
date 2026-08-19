@@ -9,6 +9,7 @@ import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import { AnimatedStatInput, useCountUp } from '../../src/hooks/useCountUp';
 import { Badge, DonutChart, EmptyState, ErrorState, LoadingState, SearchBar } from '../../src/components/ui';
 import StudentScreenHeader from '../../src/components/student/StudentScreenHeader';
+import { useSchoolOnlyGuard } from '../../src/components/b2c/SchoolOnlyGuard';
 import GlassCard from '../../src/components/student/GlassCard';
 import ChipNav from '../../src/components/student/ChipNav';
 import {
@@ -85,6 +86,7 @@ function ResultCard({ r, index }: { r: ResultItem; index: number }) {
 }
 
 export default function StudentResults() {
+  const blocked = useSchoolOnlyGuard();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [items, setItems] = useState<ResultItem[]>([]);
@@ -165,6 +167,8 @@ export default function StudentResults() {
     else list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
     return list;
   }, [items, query, sort]);
+
+  if (blocked) return null;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

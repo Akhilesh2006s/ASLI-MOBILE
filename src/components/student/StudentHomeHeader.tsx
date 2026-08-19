@@ -63,6 +63,8 @@ export default function StudentHomeHeader({ user, streak = 0 }: Props) {
               source={VIDYA_ROBOT}
               style={{ width: robotSize - 8, height: robotSize - 8 }}
               contentFit="contain"
+              cachePolicy="memory-disk"
+              transition={0}
               accessibilityLabel="Vidya AI"
             />
           </View>
