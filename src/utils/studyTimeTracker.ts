@@ -3,9 +3,9 @@
  * Tracks foreground app session time (not video/quiz duration).
  */
 
-import * as SecureStore from 'expo-secure-store';
 import { AppState, AppStateStatus } from 'react-native';
 import { jwtUserId } from '../lib/jwt-payload';
+import { storageGetItem, storageSetItem } from '../lib/safe-storage';
 
 const MAX_CONTINUOUS_SESSION_MS = 30 * 60 * 1000;
 const MAX_ORPHAN_SESSION_MINUTES = 5;
@@ -21,18 +21,24 @@ async function withTrackerLock<T>(fn: () => Promise<T>): Promise<T> {
   return run;
 }
 
+let warnedDefaultKey = false;
+
 async function getStorageKey(): Promise<string> {
   try {
-    const token = await SecureStore.getItemAsync('authToken');
+    const token = await storageGetItem('authToken');
     const userId = jwtUserId(token);
     if (userId) {
+      warnedDefaultKey = false;
       return `studyTimeData_${userId}`;
     }
   } catch (error) {
     console.warn('Could not extract user ID from token:', error);
   }
 
-  console.warn('⚠️ Using default study time storage key');
+  if (__DEV__ && !warnedDefaultKey) {
+    warnedDefaultKey = true;
+    console.warn('Using default study time storage key until auth token is available');
+  }
   return 'studyTimeData';
 }
 
@@ -99,7 +105,7 @@ function computeDayTotal(todayData: DailyData, now: number, includeActive: boole
 
 async function getStudyTimeData(): Promise<StudyTimeData> {
   const STORAGE_KEY = await getStorageKey();
-  const stored = await SecureStore.getItemAsync(STORAGE_KEY);
+  const stored = await storageGetItem(STORAGE_KEY);
   const TODAY_KEY = todayDateKey();
   const WEEK_START = getStartOfWeek(new Date()).toDateString();
   const now = Date.now();
@@ -150,9 +156,23 @@ async function getStudyTimeData(): Promise<StudyTimeData> {
   return studyTimeData;
 }
 
+function compactStudyTimeData(data: StudyTimeData): StudyTimeData {
+  const dailyData: StudyTimeData['dailyData'] = {};
+  for (const [dateKey, day] of Object.entries(data.dailyData || {})) {
+    const sessions = Array.isArray(day?.sessions) ? day.sessions : [];
+    const open = sessions.filter((session) => !session.endTime).slice(-1);
+    dailyData[dateKey] = {
+      totalMinutes: day?.totalMinutes || 0,
+      sessions: open,
+      lastUpdate: day?.lastUpdate || Date.now(),
+    };
+  }
+  return { dailyData, weekStart: data.weekStart };
+}
+
 async function saveStudyTimeData(data: StudyTimeData): Promise<void> {
   const STORAGE_KEY = await getStorageKey();
-  await SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify(data));
+  await storageSetItem(STORAGE_KEY, JSON.stringify(compactStudyTimeData(data)));
 }
 
 let appStateListener: { remove: () => void } | null = null;

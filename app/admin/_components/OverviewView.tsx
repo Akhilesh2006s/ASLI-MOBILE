@@ -16,7 +16,7 @@ import adminService, {
   peekStudentAnalytics,
 } from '../../../src/services/api/adminService';
 import { useIsTablet } from '../../../src/hooks/useIsTablet';
-import type { AdminNavView } from './AdminNavDrawer';
+import type { AdminNavView } from './adminNav';
 import { useAdminTheme } from '../_ui';
 
 /** Admin dashboard overview — keep free of Reanimated for scroll/perf stability. */

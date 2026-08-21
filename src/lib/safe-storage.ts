@@ -6,7 +6,12 @@ import * as SecureStore from 'expo-secure-store';
  * Android TV boxes often have a broken Keystore. Calling expo-secure-store
  * there can abort the process ("keeps stopping"). Use AsyncStorage on TV and
  * fall back if SecureStore throws.
+ *
+ * Expo also warns (and will error) when a SecureStore value exceeds 2048 bytes.
+ * JWTs and study-time JSON can exceed that, so large values go to AsyncStorage.
  */
+const SECURE_STORE_MAX_BYTES = 2048;
+
 function useAsyncOnly(): boolean {
   return Platform.OS === 'android' && Platform.isTV === true;
 }
@@ -28,12 +33,19 @@ export async function storageGetItem(key: string): Promise<string | null> {
 }
 
 export async function storageSetItem(key: string, value: string): Promise<void> {
-  if (!useAsyncOnly()) {
+  const tooLarge = value.length >= SECURE_STORE_MAX_BYTES;
+  if (!useAsyncOnly() && !tooLarge) {
     try {
       await SecureStore.setItemAsync(key, value);
       return;
     } catch {
       /* fall through */
+    }
+  } else if (!useAsyncOnly() && tooLarge) {
+    try {
+      await SecureStore.deleteItemAsync(key);
+    } catch {
+      /* ignore */
     }
   }
   await AsyncStorage.setItem(key, value);

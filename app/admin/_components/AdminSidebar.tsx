@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { ADMIN_SIDEBAR_WIDTH } from '../../../src/hooks/useIsTablet';
 import { useAdminTheme } from '../_ui/useAdminTheme';
 import AdminNavPanel from './AdminNavPanel';
-import type { AdminNavView } from './AdminNavDrawer';
+import type { AdminNavView } from './adminNav';
 
 type Props = {
   activeView: AdminNavView;
