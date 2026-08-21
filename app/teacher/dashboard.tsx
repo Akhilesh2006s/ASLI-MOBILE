@@ -44,8 +44,6 @@ import { useVidyaChatAccess } from '../../src/hooks/useVidyaChatAccess';
 import VidyaAIFloatingAssistant from '../../src/components/vidya/VidyaAIFloatingAssistant';
 import { EduOTTFilterProvider } from '../../src/contexts/edu-ott-filter-context';
 import OverviewView from './_components/OverviewView';
-import { TrialUpgradeBanner } from '../../src/components/b2c/IndividualSubscriptionReceipt';
-import { showTrialUpgrade } from '../../src/lib/individual-subscription';
 import { isIndividualAccount } from '../../src/lib/individual-signup';
 import AIClassesView from './_components/AIClassesView';
 import StudentsView from './_components/StudentsView';
@@ -482,126 +480,6 @@ export default function TeacherDashboard() {
         />
       )}
 
-      {refreshing ? (
-        <Animated.Text entering={FadeIn.duration(200)} style={styles.syncingText}>
-          Syncing data…
-        </Animated.Text>
-      ) : null}
-
-      {overlay ? (
-        <Pressable onPress={() => setOverlay(null)}>
-          <GlassPanel style={styles.overlayBar} radius={12} tone="medium">
-            <View style={styles.overlayBarRow}>
-              <Ionicons name="arrow-back" size={18} color={TEACHER.primaryLight} />
-              <Text style={styles.overlayText}>{overlay === 'content' ? 'Content Manager' : 'Profile & More'}</Text>
-            </View>
-          </GlassPanel>
-        </Pressable>
-      ) : null}
-
-      {resolvedBackendStatus === 'offline' ? (
-        <LinearGradient
-          colors={['#FEE2E2', '#FFFFFF']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.offlineBanner}
-        >
-          <Ionicons name="cloud-offline" size={16} color={TEACHER.danger} />
-          <Text style={styles.offlineBannerText}>Cannot reach server. Pull down to retry.</Text>
-          <Pressable onPress={onRefresh}>
-            <Text style={styles.retryText}>Retry</Text>
-          </Pressable>
-        </LinearGradient>
-      ) : null}
-
-      <Animated.View
-        key={activeTab + (overlay ?? '')}
-        entering={FadeIn.duration(250)}
-        exiting={FadeOut.duration(200)}
-        style={[
-          styles.content,
-          isFullHeight &&
-            activeTab !== 'eduott' &&
-            activeTab !== 'learning-paths' &&
-            activeTab !== 'vidya-ai' &&
-            styles.contentFull,
-        ]}
-      >
-        {isFullHeight ? (
-          renderTab()
-        ) : (
-          <ScrollView
-            ref={scrollRef}
-            style={styles.scroll}
-            contentContainerStyle={[
-              styles.scrollContent,
-              showHomeHeader && styles.scrollContentWithHomeHeader,
-            ]}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={TEACHER.primary} />}
-            showsVerticalScrollIndicator={false}
-          >
-            {showHomeHeader ? homeHeader : null}
-            {showTrialUpgrade(user) ? (
-              <View style={styles.trialBannerWrap}>
-                <TrialUpgradeBanner daysLeft={user?.trialDaysLeft} trialEndsAt={user?.trialEndsAt} />
-              </View>
-            ) : null}
-            {renderTab()}
-          </ScrollView>
-        )}
-      </Animated.View>
-
-      {!overlay ? (
-        <TeacherTabBar
-          tabs={teacherTabs}
-          activeTab={activeTab}
-          glass={vidyaGlass}
-          onTabChange={(id) => {
-            if (id === activeTab && !['students', 'vidya-ai', 'eduott', 'learning-paths'].includes(id)) {
-              scrollRef.current?.scrollTo({ y: 0, animated: true });
-              return;
-            }
-            setNavTarget({});
-            setActiveTab(id as TabId);
-          }}
-        />
-      ) : null}
-
-      <BottomSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title="Menu">
-        <MenuItem
-          icon="folder-open-outline"
-          label="Content Manager"
-          onPress={() => { setOverlay('content'); setMenuOpen(false); }}
-        />
-        <MenuItem
-          icon="checkmark-done-outline"
-          label="Attendance"
-          onPress={() => { setMenuOpen(false); router.push('/teacher/attendance' as any); }}
-        />
-        <MenuItem
-          icon="calendar-outline"
-          label="Timetable"
-          onPress={() => navigate({ tab: 'dashboard', dashboardSub: 'timetable' })}
-        />
-        <MenuItem
-          icon="journal-outline"
-          label="Work Diary"
-          onPress={() => navigate({ tab: 'students', studentsSub: 'daily' })}
-        />
-        <MenuItem
-          icon="log-out-outline"
-          label="Logout"
-          danger
-          onPress={() => {
-            setMenuOpen(false);
-            Alert.alert('Logout', 'Sign out?', [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Logout', style: 'destructive', onPress: async () => { await signOut(); router.replace('/auth/login'); } },
-            ]);
-          }}
-        />
-      </BottomSheet>
-
       {vidyaChatEnabled ? (
         <VidyaAIFloatingAssistant
           role="teacher"
@@ -620,22 +498,6 @@ export default function TeacherDashboard() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: 'transparent' },
-  content: { flex: 1, minHeight: 0 },
-  contentFull: { paddingBottom: 80 },
-  fullTabPane: { flex: 1, minHeight: 0 },
-  scroll: { flex: 1 },
-  scrollContent: { paddingBottom: 120, paddingTop: TEACHER_SPACING.sm },
-  scrollContentWithHomeHeader: { paddingTop: 0 },
-  trialBannerWrap: {
-    paddingHorizontal: TEACHER_SPACING.lg,
-    marginBottom: TEACHER_SPACING.sm,
-  },
-  syncingText: {
-    fontSize: 11,
-    color: TEACHER.textMuted,
-    textAlign: 'center',
-    paddingVertical: 4,
-  },
   shell: {
     flex: 1,
     minHeight: 0,
