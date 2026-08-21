@@ -1,6 +1,6 @@
-import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
+import { isAndroidTv } from './device';
 
 /**
  * Android TV boxes often have a broken Keystore. Calling expo-secure-store
@@ -13,7 +13,7 @@ import * as SecureStore from 'expo-secure-store';
 const SECURE_STORE_MAX_BYTES = 2048;
 
 function useAsyncOnly(): boolean {
-  return Platform.OS === 'android' && Platform.isTV === true;
+  return isAndroidTv();
 }
 
 export async function storageGetItem(key: string): Promise<string | null> {

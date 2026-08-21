@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { BackHandler, View, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -14,6 +14,7 @@ import { AppSplash, SPLASH_DURATION_MS, SPLASH_EXIT_DURATION_MS } from '../src/c
 import { useMemoryCleanup } from '../src/hooks/useMemoryCleanup';
 import { isSchoolOnlyStudentPath } from '../src/components/b2c/SchoolOnlyGuard';
 import { isIndividualAccount } from '../src/lib/individual-signup';
+import { isAndroidTv } from '../src/lib/device';
 
 void SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -327,8 +328,14 @@ function SplashOverlay() {
     return () => clearTimeout(timer);
   }, [exiting]);
 
+  useEffect(() => {
+    if (!isAndroidTv()) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => sub.remove();
+  }, []);
+
   const onSplashLayout = useCallback(() => {
-    void SplashScreen.hideAsync();
+    void SplashScreen.hideAsync().catch(() => {});
   }, []);
 
   if (hidden) return null;

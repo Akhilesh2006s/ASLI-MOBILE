@@ -20,6 +20,18 @@ config.resolver = {
     semver: path.resolve(__dirname, 'node_modules', 'semver'),
   },
   resolveRequest: (context, moduleName, platform) => {
+    // Classroom TV panels crash inside the real SecureStore Keystore. App
+    // imports go through a wrapper; the wrapper itself still loads the package.
+    if (moduleName === 'expo-secure-store') {
+      const origin = String(context.originModulePath || '').replace(/\\/g, '/');
+      if (!origin.includes('/src/lib/tv-safe-secure-store')) {
+        return {
+          filePath: path.resolve(__dirname, 'src/lib/tv-safe-secure-store.ts'),
+          type: 'sourceFile',
+        };
+      }
+    }
+
     // react-native-screens@4.16.0 src entry imports ./_components/* which is not shipped;
     // force Metro to use the compiled lib build instead.
     if (moduleName === 'react-native-screens') {

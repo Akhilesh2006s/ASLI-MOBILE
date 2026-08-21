@@ -1,6 +1,7 @@
 package com.tech.aslilearnai
 import expo.modules.splashscreen.SplashScreenManager
 
+import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 
@@ -14,9 +15,16 @@ import expo.modules.ReactActivityDelegateWrapper
 class MainActivity : ReactActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     // Android TV / custom OEM splash APIs often crash inside SplashScreenManager.
-    try {
-      SplashScreenManager.registerOnActivity(this)
-    } catch (_: Throwable) {
+    val cfg = resources.configuration
+    val uiType = cfg.uiMode and Configuration.UI_MODE_TYPE_MASK
+    val isTv = uiType == Configuration.UI_MODE_TYPE_TELEVISION
+    val longSide = maxOf(cfg.screenWidthDp, cfg.screenHeightDp)
+    val isLargePanel = cfg.smallestScreenWidthDp >= 500 && longSide >= 900
+    if (!isTv && !isLargePanel) {
+      try {
+        SplashScreenManager.registerOnActivity(this)
+      } catch (_: Throwable) {
+      }
     }
     super.onCreate(null)
   }
@@ -48,6 +56,18 @@ class MainActivity : ReactActivity() {
     * @see <a href="https://developer.android.com/reference/android/app/Activity#onBackPressed()">onBackPressed</a>
     */
   override fun invokeDefaultOnBackPressed() {
+      val cfg = resources.configuration
+      val uiType = cfg.uiMode and Configuration.UI_MODE_TYPE_MASK
+      val isTv = uiType == Configuration.UI_MODE_TYPE_TELEVISION
+      val longSide = maxOf(cfg.screenWidthDp, cfg.screenHeightDp)
+      val isLargePanel = cfg.smallestScreenWidthDp >= 500 && longSide >= 900
+      if (isTv || isLargePanel) {
+          if (!moveTaskToBack(false)) {
+              super.invokeDefaultOnBackPressed()
+          }
+          return
+      }
+
       if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R) {
           if (!moveTaskToBack(false)) {
               // For non-root activities, use the default implementation to finish them.

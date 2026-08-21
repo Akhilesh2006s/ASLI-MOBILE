@@ -1,6 +1,7 @@
 import React from 'react';
 import { ImageBackground, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { isAndroidTv } from '../../lib/device';
 
 /**
  * The shared pastel gradient artwork that sits behind every dashboard. Glass
@@ -33,6 +34,23 @@ type Props = {
 };
 
 export default function AppBackground({ children, scrim = true }: Props) {
+  // 4K classroom panels OOM if this artwork is decoded at full screen.
+  if (isAndroidTv()) {
+    return (
+      <View style={styles.bg}>
+        {scrim ? (
+          <LinearGradient
+            colors={SCRIM}
+            locations={[0, 0.45, 1]}
+            style={StyleSheet.absoluteFillObject}
+            pointerEvents="none"
+          />
+        ) : null}
+        <View style={styles.content}>{children}</View>
+      </View>
+    );
+  }
+
   return (
     <ImageBackground source={BG_SOURCE} resizeMode="cover" style={styles.bg}>
       {scrim ? (
