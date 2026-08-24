@@ -45,6 +45,13 @@ interface AdaptiveCard {
   recommendedContent: RecommendedItem[];
 }
 
+interface AdaptiveDailyPlan {
+  subjectName: string;
+  focusTopic: string;
+  reason: string;
+  steps: Array<{ key: string; title: string; description: string; navigatePath: string }>;
+}
+
 function parseAdaptivePayload(json: Record<string, unknown>) {
   const root = json as { success?: boolean; data?: unknown };
   let payload = root.data ?? json;
@@ -59,7 +66,8 @@ function parseAdaptivePayload(json: Record<string, unknown>) {
     payload && typeof payload === 'object' && 'meta' in payload
       ? (payload as { meta?: Record<string, unknown> }).meta
       : undefined;
-  return { cards, meta };
+  const dailyPlan = (payload as { dailyPlan?: AdaptiveDailyPlan | null })?.dailyPlan || null;
+  return { cards, meta, dailyPlan };
 }
 
 function priorityStyle(priority: string) {
@@ -89,6 +97,7 @@ const FOCUS_CHAPTERS_VISIBLE = 2;
 
 function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
   const [cards, setCards] = useState<AdaptiveCard[]>([]);
+  const [dailyPlan, setDailyPlan] = useState<AdaptiveDailyPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedFocusIds, setExpandedFocusIds] = useState<Record<string, boolean>>({});
@@ -100,6 +109,7 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
       const { data: json } = await api.get('/api/student/adaptive-learning');
       const payload = parseAdaptivePayload(json);
       setCards(payload.cards);
+      setDailyPlan(payload.dailyPlan);
     } catch (e: any) {
       const status = e?.response?.status;
       if (status === 401 || status === 403) {
@@ -108,6 +118,7 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
         setError(e instanceof Error ? e.message : 'Could Not Load Recommendations');
       }
       setCards([]);
+      setDailyPlan(null);
     } finally {
       setLoading(false);
     }
@@ -181,6 +192,22 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
         </View>
       ) : (
         <View>
+          {dailyPlan ? (
+            <View style={styles.dailyPlan}>
+              <Text style={styles.dailyPlanTitle}>Today’s Plan · {dailyPlan.focusTopic}</Text>
+              <Text style={styles.dailyPlanReason}>{dailyPlan.reason}</Text>
+              {dailyPlan.steps.map((step, index) => (
+                <TouchableOpacity key={step.key} style={styles.dailyStep} onPress={() => router.push(step.navigatePath as any)}>
+                  <View style={styles.dailyStepNumber}><Text style={styles.dailyStepNumberText}>{index + 1}</Text></View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.dailyStepTitle}>{step.title}</Text>
+                    <Text style={styles.dailyStepDescription}>{step.description}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={STUDENT_SKY.accentDark} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : null}
           {cards.map((rec) => {
             const examScore = rec.examScorePercent ?? rec.progressPercent;
             const pri = priorityStyle(rec.priority);
@@ -328,6 +355,14 @@ function AdaptiveLearningModuleComponent({ dark }: { dark?: boolean }) {
 }
 
 const styles = StyleSheet.create({
+  dailyPlan: { backgroundColor: STUDENT_SKY.cardBg, borderWidth: 1, borderColor: `${STUDENT_SKY.accent}55`, borderRadius: STUDENT_RADIUS.inner, padding: 12, marginBottom: 12 },
+  dailyPlanTitle: { fontSize: 15, fontWeight: '800', color: STUDENT.text },
+  dailyPlanReason: { fontSize: 11, color: STUDENT.textMuted, marginTop: 3, marginBottom: 8 },
+  dailyStep: { flexDirection: 'row', alignItems: 'center', gap: 9, borderTopWidth: 1, borderTopColor: STUDENT_SKY.divider, paddingVertical: 9 },
+  dailyStepNumber: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: `${STUDENT_SKY.accent}18` },
+  dailyStepNumberText: { fontSize: 11, fontWeight: '800', color: STUDENT_SKY.accentDark },
+  dailyStepTitle: { fontSize: 13, fontWeight: '700', color: STUDENT.text },
+  dailyStepDescription: { fontSize: 10, color: STUDENT.textMuted, marginTop: 1 },
   skyShell: {
     borderRadius: 28,
     padding: 14,

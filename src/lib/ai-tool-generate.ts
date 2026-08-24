@@ -44,6 +44,9 @@ export type AiToolGenerationMeta = {
   chunksUsed?: number;
   structuredContent?: unknown;
   renderContent?: unknown;
+  practiceExamId?: string;
+  practiceExamPath?: string;
+  practiceQuestionCount?: number;
   citations?: Array<{
     index: number;
     subject: string;

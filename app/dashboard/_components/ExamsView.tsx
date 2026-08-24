@@ -57,6 +57,7 @@ interface Exam {
   title: string;
   description: string;
   examType: 'weekend' | 'mains' | 'advanced' | 'practice';
+  b2cPastPractice?: boolean;
   duration: number;
   totalQuestions: number;
   totalMarks: number;
@@ -338,6 +339,9 @@ export default function ExamsView({
     const endDate = new Date(exam.endDate);
 
     if (now < startDate) return { status: 'upcoming', color: '#fbbf24', bg: '#fef3c7' };
+    if (exam.b2cPastPractice === true) {
+      return { status: 'active', color: '#10b981', bg: '#d1fae5' };
+    }
     if (now > endDate) return { status: 'ended', color: '#ef4444', bg: '#fee2e2' };
     return { status: 'active', color: '#10b981', bg: '#d1fae5' };
   };
@@ -394,7 +398,7 @@ export default function ExamsView({
         const now = new Date();
         const startDate = new Date(exam.startDate);
         const endDate = new Date(exam.endDate);
-        return now >= startDate && now <= endDate;
+        return exam.b2cPastPractice === true || (now >= startDate && now <= endDate);
       }),
     [subjectFilteredExams, attemptCountByExamId]
   );

@@ -272,9 +272,17 @@ export function useVidyaChat({ userId, role, context }: UseVidyaChatOptions): Us
       }
 
       if (isStudentMentorMode) {
+        const historyPayload = localMessagesRef.current
+          .filter((m) => m.role === 'user' || m.role === 'assistant')
+          .slice(-12)
+          .map((m) => ({
+            role: m.role,
+            content: String(m.content || '').slice(0, 4000),
+          }));
         const result = await vidyaService.studentChat({
           message: data.message,
           studentId: userId,
+          history: historyPayload,
         });
         const replyText = String(
           result?.message ||

@@ -26,7 +26,11 @@ const vidyaService = {
   aiChat: (body: { userId: string; message: string; context?: Record<string, unknown> }) =>
     fetchJson<any>('/api/ai-chat', { method: 'POST', body: JSON.stringify(body) }),
 
-  studentChat: (body: { message: string; studentId: string }) =>
+  studentChat: (body: {
+    message: string;
+    studentId: string;
+    history?: Array<{ role: string; content: string }>;
+  }) =>
     fetchJson<any>('/api/vidya/student/chat', { method: 'POST', body: JSON.stringify(body) }),
 
   analyzeImage: (body: { image: string; context?: string }) =>
