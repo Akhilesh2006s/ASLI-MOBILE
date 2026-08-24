@@ -1,7 +1,7 @@
+import { storageGetItem } from '../../../src/lib/safe-storage';
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { useSchoolProgram } from '../../../src/hooks/useSchoolProgram';
 import { prepareLibraryContents } from '../../../src/lib/dedupe-library-content';
@@ -21,7 +21,7 @@ export default function ScheduleView() {
   const fetchScheduleItems = async () => {
     try {
       setIsLoading(true);
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       
       const [contentRes, quizzesRes] = await Promise.all([
         fetch(`${API_BASE_URL}/api/student/asli-prep-content`, {

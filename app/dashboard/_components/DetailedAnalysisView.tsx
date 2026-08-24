@@ -1,3 +1,4 @@
+import { storageGetItem } from '../../../src/lib/safe-storage';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
@@ -12,7 +13,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { resolveStudentDisplayName } from '../../../src/lib/student-text';
 import {
@@ -156,7 +156,7 @@ export default function DetailedAnalysisView({
   useEffect(() => {
     (async () => {
       try {
-        const token = await SecureStore.getItemAsync('authToken');
+        const token = await storageGetItem('authToken');
         const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         });
@@ -190,7 +190,7 @@ export default function DetailedAnalysisView({
         return;
       }
       try {
-        const token = await SecureStore.getItemAsync('authToken');
+        const token = await storageGetItem('authToken');
         const resultRowId = normalizeMongoId((result as ExamAnalysisResult & { _id?: unknown })._id);
         const rid = resultRowId ? `?resultId=${encodeURIComponent(resultRowId)}` : '';
         const res = await fetch(`${API_BASE_URL}/api/student/exam-results/${examIdStr}/review${rid}`, {
@@ -249,7 +249,7 @@ export default function DetailedAnalysisView({
       setAiLoading(true);
       setAiError('');
       try {
-        const token = await SecureStore.getItemAsync('authToken');
+        const token = await storageGetItem('authToken');
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 120_000);
         const response = await fetch(`${API_BASE_URL}/api/student/exam-results/ai-analysis`, {

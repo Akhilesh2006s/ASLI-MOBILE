@@ -1,3 +1,4 @@
+import { storageGetItem } from '../../lib/safe-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
@@ -11,7 +12,6 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as SecureStore from 'expo-secure-store';
 import api from '../../services/api/api';
 import { downloadWeeklyReportPdf } from '../../lib/weekly-report-pdf';
 import { formatAiToolText } from '../../lib/title-case';
@@ -95,7 +95,7 @@ export default function WeeklyDigestCard({
     void load(true);
     (async () => {
       try {
-        const raw = await SecureStore.getItemAsync('user');
+        const raw = await storageGetItem('user');
         if (!raw) return;
         const user = JSON.parse(raw);
         setStudentName(String(user?.fullName || user?.name || '').trim());

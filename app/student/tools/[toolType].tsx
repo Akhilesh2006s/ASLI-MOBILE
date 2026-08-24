@@ -1,3 +1,4 @@
+import { storageGetItem } from '../../../src/lib/safe-storage';
 import { useState, useEffect, useMemo, useCallback, useRef, type ReactNode } from 'react';
 import {
   View,
@@ -22,7 +23,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { formatAiToolText } from '../../../src/lib/title-case';
-import * as SecureStore from 'expo-secure-store';
 import {
   parseStudentDashboardTab,
   useStudentDashboardBack,
@@ -451,7 +451,7 @@ export default function StudentToolPage() {
 
   const fetchUser = async () => {
     try {
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       if (!token) return;
 
       const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
@@ -736,7 +736,7 @@ export default function StudentToolPage() {
     setFromAiFailure(false);
 
     try {
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       if (!token) {
         showInlineOutputMessage('Please sign in again.');
         return;
@@ -787,7 +787,7 @@ export default function StudentToolPage() {
           formParams.chapter ||
           formParams.projectTopic ||
           '';
-        const token = await SecureStore.getItemAsync('authToken');
+        const token = await storageGetItem('authToken');
         if (!token) throw new Error('Please sign in again.');
 
         const fallbackResult = await fetchAiToolGeneratedContentFallback({

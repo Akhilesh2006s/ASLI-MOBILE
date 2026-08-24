@@ -1,8 +1,8 @@
+import { storageGetItem } from '../../../src/lib/safe-storage';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
 import {
   fetchStudentTimetable,
   filterSlotsForToday,
@@ -51,7 +51,7 @@ export default function TodayScheduleSection() {
   useEffect(() => {
     (async () => {
       try {
-        const token = await SecureStore.getItemAsync('authToken');
+        const token = await storageGetItem('authToken');
         if (!token) return;
         const entries = await fetchStudentTimetable(token);
         const allSlots = timetableEntriesToSlots(entries);

@@ -1,7 +1,7 @@
+import { storageGetItem } from '../../../src/lib/safe-storage';
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { GlassPanel } from '../../../src/components/ui';
 
@@ -16,7 +16,7 @@ export default function RemarksView() {
   const fetchRemarks = async () => {
     try {
       setIsLoading(true);
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const response = await fetch(`${API_BASE_URL}/api/student/remarks`, {
         headers: {
           'Authorization': `Bearer ${token}`,

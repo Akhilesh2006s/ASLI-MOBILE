@@ -1,3 +1,4 @@
+import { storageGetItem } from '../../../src/lib/safe-storage';
 import { useCallback, useEffect, useState } from 'react';
 import {
   Image,
@@ -9,7 +10,6 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { API_BASE_URL } from '../../../src/lib/api-config';
@@ -34,7 +34,7 @@ export default function TimetableTabView({ user }: { user?: any }) {
   const load = useCallback(async () => {
     try {
       setError('');
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       if (!token) {
         setError('Please Sign In Again.');
         setPhoto(null);

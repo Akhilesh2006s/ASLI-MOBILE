@@ -1,3 +1,4 @@
+import { storageGetItem } from '../../../src/lib/safe-storage';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -10,7 +11,6 @@ import {
   View,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
-import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import {
@@ -66,7 +66,7 @@ export default function TimetableView() {
   );
 
   const authHeaders = useCallback(async () => {
-    const token = await SecureStore.getItemAsync('authToken');
+    const token = await storageGetItem('authToken');
     return token ? { Authorization: `Bearer ${token}` } : {};
   }, []);
 

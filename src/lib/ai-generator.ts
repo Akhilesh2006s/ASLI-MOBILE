@@ -1,5 +1,5 @@
+import { storageGetItem } from './safe-storage';
 import * as FileSystem from 'expo-file-system/legacy';
-import * as SecureStore from 'expo-secure-store';
 import { Share } from 'react-native';
 import api from '../services/api/api';
 import { API_BASE_URL } from './api-config';
@@ -382,7 +382,7 @@ export async function deleteAllGeneratorRecords(boardFilter: string) {
 }
 
 export async function downloadGeneratorPdf(recordId: string) {
-  const token = await SecureStore.getItemAsync('authToken');
+  const token = await storageGetItem('authToken');
   const url = `${API_BASE_URL}/api/ai-generator/pdf/${recordId}`;
   const path = `${FileSystem.cacheDirectory}ai-generator-${recordId}.pdf`;
   const result = await FileSystem.downloadAsync(url, path, {

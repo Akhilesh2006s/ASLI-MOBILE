@@ -1,3 +1,4 @@
+import { storageGetItem } from '../src/lib/safe-storage';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -9,7 +10,6 @@ import VidyaAvatar from '../src/components/vidya/VidyaAvatar';
 import { useAuth } from '../src/context/AuthContext';
 import { collectVidyaSubjectLabels } from '../src/lib/vidya-subjects';
 import { API_BASE_URL } from '../src/lib/api-config';
-import * as SecureStore from 'expo-secure-store';
 import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
 import { setStudentDashboardTabIntent } from '../src/lib/dashboard-tab-intent';
 import { resolveStudentDisplayName } from '../src/lib/student-text';
@@ -42,7 +42,7 @@ export default function AITutor() {
     let mounted = true;
     (async () => {
       try {
-        const token = await SecureStore.getItemAsync('authToken');
+        const token = await storageGetItem('authToken');
         const response = await fetch(`${API_BASE_URL}/api/student/subjects`, {
           headers: {
             Authorization: `Bearer ${token}`,

@@ -1,10 +1,10 @@
+import { storageGetItem } from '../src/lib/safe-storage';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../src/lib/api-config';
 import { useContentViewerBack } from '../src/hooks/useBackNavigation';
 import MediaPreviewPanel from '../src/components/shared/MediaPreviewPanel';
@@ -89,7 +89,7 @@ export default function DriveViewer() {
   const fetchFile = async () => {
     try {
       setIsLoading(true);
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const response = await fetch(`${API_BASE_URL}/api/student/drive-files/${fileId}`, {
         headers: {
           Authorization: `Bearer ${token}`,

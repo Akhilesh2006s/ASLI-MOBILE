@@ -1,8 +1,8 @@
+import { storageGetItem } from '../lib/safe-storage';
 import { useCallback, useEffect, useRef } from 'react';
 import { BackHandler } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
 import {
   setAdminDashboardTabIntent,
   setStudentDashboardTabIntent,
@@ -49,8 +49,8 @@ export function useBackNavigation(dashboardPath: string, preventBack: boolean = 
     authRef.current = { ready: false, authed: false };
     void (async () => {
       try {
-        const token = await SecureStore.getItemAsync('authToken');
-        const userRole = await SecureStore.getItemAsync('userRole');
+        const token = await storageGetItem('authToken');
+        const userRole = await storageGetItem('userRole');
         if (!cancelled) {
           authRef.current = { ready: true, authed: !!(token && userRole) };
         }
@@ -226,7 +226,7 @@ export async function navigateToDashboardSection(
   returnTo: ContentReturnTarget,
   method: 'navigate' | 'replace' = 'navigate'
 ) {
-  const role = await SecureStore.getItemAsync('userRole');
+  const role = await storageGetItem('userRole');
   const pathname = dashboardPathForRole(role);
   if (returnTo === 'eduott') {
     if (role === 'student') setStudentDashboardTabIntent('eduott');
@@ -317,7 +317,7 @@ export const useVideoPlayerBack = useContentViewerBack;
  */
 export async function getDashboardPath(): Promise<string | null> {
   try {
-    const userRole = await SecureStore.getItemAsync('userRole');
+    const userRole = await storageGetItem('userRole');
     
     switch (userRole) {
       case 'super-admin':

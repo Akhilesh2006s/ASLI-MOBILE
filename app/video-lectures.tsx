@@ -1,3 +1,4 @@
+import { storageGetItem } from '../src/lib/safe-storage';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -5,7 +6,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../src/lib/api-config';
 import { dedupeLibraryContents } from '../src/lib/dedupe-library-content';
 import { getVideoDisplayTitle } from '../src/lib/video-chapter-schedule';
@@ -56,7 +56,7 @@ export default function VideoLectures() {
   const fetchVideos = async () => {
     try {
       setIsLoading(true);
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const response = await fetch(`${API_BASE_URL}/api/student/videos`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -77,7 +77,7 @@ export default function VideoLectures() {
 
   const fetchSubjects = async () => {
     try {
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const response = await fetch(`${API_BASE_URL}/api/subjects`, {
         headers: {
           'Authorization': `Bearer ${token}`,

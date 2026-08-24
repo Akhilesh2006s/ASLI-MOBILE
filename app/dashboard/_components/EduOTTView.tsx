@@ -1,3 +1,4 @@
+import { storageGetItem } from '../../../src/lib/safe-storage';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
@@ -13,7 +14,6 @@ import { STUDENT, STUDENT_RADIUS, STUDENT_SPACING, STUDENT_TYPO } from '../../..
 import { GlassPanel } from '../../../src/components/ui';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import Header from './eduott/Header';
 import TeacherPageHero from '../../../src/components/teacher/TeacherPageHero';
@@ -370,7 +370,7 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
   useEffect(() => {
     let cancelled = false;
     async function loadCatalog() {
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       if (!token) return;
       try {
         if (!showOnDemandVideos) {
@@ -430,7 +430,7 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
     (async () => {
       setSubjectLibraryLoading(true);
       try {
-        const token = await SecureStore.getItemAsync('authToken');
+        const token = await storageGetItem('authToken');
         if (!token) return;
         const params = new URLSearchParams({ type: 'Video', surface: 'eduott' });
         if (subjectFocus.classLabel) params.set('class', subjectFocus.classLabel);
@@ -505,7 +505,7 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
     async function fetchVideos() {
       try {
         setLoading(true);
-        const token = await SecureStore.getItemAsync('authToken');
+        const token = await storageGetItem('authToken');
         if (!token) {
           setLoading(false);
           return;
@@ -569,7 +569,7 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
     async function fetchLiveSessions() {
       try {
         setLoadingSessions(true);
-        const token = await SecureStore.getItemAsync('authToken');
+        const token = await storageGetItem('authToken');
         if (!token) {
           setLoadingSessions(false);
           return;
@@ -828,7 +828,7 @@ export default function EduOTTView({ username = 'Student', role = 'student' }: E
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    const token = await SecureStore.getItemAsync('authToken');
+    const token = await storageGetItem('authToken');
     if (!token) {
       setRefreshing(false);
       return;

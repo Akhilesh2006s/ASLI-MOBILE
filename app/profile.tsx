@@ -1,3 +1,4 @@
+import { storageGetItem } from '../src/lib/safe-storage';
 import { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -10,7 +11,6 @@ import { setStudentDashboardTabIntent } from '../src/lib/dashboard-tab-intent';
 import { GlassPanel } from '../src/components/ui';
 import { useAuth } from '../src/context/AuthContext';
 import studentService from '../src/services/api/studentService';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../src/lib/api-config';
 import { dedupeStudentExamResults } from '../src/lib/dedupe-exam-results';
 import {
@@ -83,7 +83,7 @@ export default function Profile() {
       setUserEmail(apiUser?.email || null);
       setUserRole(apiUser?.role || role || null);
 
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       if (token) {
         const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
         const [resultsRes, rankingsRes, focusRes, progressRes] = await Promise.all([

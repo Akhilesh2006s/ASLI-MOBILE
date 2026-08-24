@@ -1,3 +1,4 @@
+import { storageGetItem } from '../../../src/lib/safe-storage';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
@@ -15,7 +16,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import * as SecureStore from 'expo-secure-store';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../../src/services/api/api';
 import { API_BASE_URL } from '../../../src/lib/api-config';
@@ -204,7 +204,7 @@ export default function StudentRiskAnalysisModal({
       }
       const reportId = body.data.reportId;
       const filename = body.data.filename || `risk-analysis-${studentId}.pdf`;
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const url = `${API_BASE_URL}${apiPrefix}/reports/download/${reportId}`;
       const path = `${FileSystem.cacheDirectory}${filename}`;
       await FileSystem.downloadAsync(url, path, {

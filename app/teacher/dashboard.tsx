@@ -34,10 +34,6 @@ import PortalTopBar from '../../src/components/layout/PortalTopBar';
 import { TeacherShimmer } from '../../src/components/teacher';
 import TeacherPageHero from '../../src/components/teacher/TeacherPageHero';
 import { LoadingState, VisitedTabPane } from '../../src/components/ui';
-import {
-  extractLibraryContentList,
-  isLibraryVideoRow,
-} from '../../src/lib/dedupe-library-content';
 import { resolveTeacherDisplayName } from '../../src/lib/teacher-text';
 import { TEACHER, TEACHER_SPACING } from '../../src/theme/teacher';
 import { useVidyaChatAccess } from '../../src/hooks/useVidyaChatAccess';
@@ -77,10 +73,6 @@ function uniqueStudentCountFromClasses(classes: any[]): number {
     }
   }
   return ids.size > 0 ? ids.size : fallback;
-}
-
-function visibleTeacherVideoCount(eduottPayload: unknown): number {
-  return extractLibraryContentList(eduottPayload).filter(isLibraryVideoRow).length;
 }
 
 function mapTeacherIntent(intent: TeacherDashboardTabIntent): TabId {
@@ -150,11 +142,10 @@ export default function TeacherDashboard() {
         return;
       }
 
-      const [meRes, dashRes, classesRes, eduottRes] = await Promise.allSettled([
+      const [meRes, dashRes, classesRes] = await Promise.allSettled([
         teacherService.me(),
         teacherService.dashboard(),
         teacherService.classes(),
-        teacherService.asliPrepContent({ type: 'Video', surface: 'eduott' }),
       ]);
 
       if (meRes.status === 'fulfilled') {
@@ -170,7 +161,7 @@ export default function TeacherDashboard() {
           totalStudents: s?.totalStudents ?? d?.students?.length ?? 0,
           totalClasses: s?.totalClasses ?? assigned.length ?? 0,
           pendingGrades: s?.pendingGrades ?? 0,
-          totalVideos: Array.isArray(d?.videos) ? d.videos.length : 0,
+          totalVideos: s?.totalVideos ?? (Array.isArray(d?.videos) ? d.videos.length : 0),
         });
         setStale((prev) => prev || dashRes.value.stale);
       }
@@ -183,13 +174,6 @@ export default function TeacherDashboard() {
           totalStudents: uniqueStudentCountFromClasses(classes),
         }));
         setStale((prev) => prev || classesRes.value.stale);
-      }
-
-      if (eduottRes.status === 'fulfilled') {
-        setStats((prev) => ({
-          ...prev,
-          totalVideos: visibleTeacherVideoCount(eduottRes.value.data),
-        }));
       }
 
       await refreshBackendStatus();

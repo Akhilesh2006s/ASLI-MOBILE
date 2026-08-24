@@ -1,3 +1,4 @@
+import { storageGetItem } from '../../../../src/lib/safe-storage';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -8,7 +9,6 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../../src/lib/api-config';
 import {
   ADVANCED_CHART_COLORS,
@@ -76,7 +76,7 @@ export default function AdvancedPerformanceDashboardMobile({
     setLoading(true);
     setError('');
     try {
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const resultQuery =
         resultId && String(resultId).trim()
           ? `?resultId=${encodeURIComponent(String(resultId).trim())}`

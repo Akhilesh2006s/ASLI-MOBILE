@@ -81,7 +81,7 @@ const STATS: Array<{
   {
     key: 'totalVideos',
     label: 'Videos',
-    caption: 'Content Available',
+    caption: 'Learning paths + IIT videos',
     icon: 'play',
     tone: 'teal',
     motif: 'play',

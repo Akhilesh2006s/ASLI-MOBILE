@@ -1,3 +1,4 @@
+import { storageGetItem, storageSetItem } from '../lib/safe-storage';
 /**
  * Study Time Tracker Utility for React Native
  * Tracks foreground app session time (not video/quiz duration).

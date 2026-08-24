@@ -1,3 +1,4 @@
+import { storageGetItem } from '../../src/lib/safe-storage';
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -14,7 +15,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../src/lib/api-config';
 import { GlassPanel } from '../../src/components/ui';
 import { STUDENT } from '../../src/theme/student';
@@ -111,7 +111,7 @@ export default function IQRankBoostQuiz() {
       setResults(null);
       setAnswers({});
       setCurrentQuestionIndex(0);
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const response = await fetch(
         `${API_BASE_URL}/api/student/iq-rank-questions?quizId=${encodeURIComponent(String(quizId))}`,
         {
@@ -217,7 +217,7 @@ export default function IQRankBoostQuiz() {
     setIsSubmitted(true);
 
     try {
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const subjectId =
         questions.length > 0 && questions[0].subject
           ? typeof questions[0].subject === 'object'

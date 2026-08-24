@@ -1,3 +1,4 @@
+import { storageGetItem } from '../../lib/safe-storage';
 import { useState, useCallback, useRef } from 'react';
 import {
   View,
@@ -9,7 +10,6 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../lib/api-config';
 import { GlassPanel } from '../ui';
 
@@ -100,7 +100,7 @@ export default function DailyQuizPanel({ embedded = false }: Props) {
   const load = useCallback(async () => {
     try {
       if (!loadedOnce.current) setIsLoading(true);
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const [quizzesResponse, resultsResponse, dailyStatusResponse] = await Promise.all([
         fetch(`${API_BASE_URL}/api/student/iq-rank-quizzes`, {
           headers: {

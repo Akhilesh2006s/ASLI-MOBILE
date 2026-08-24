@@ -1,5 +1,5 @@
+import { storageGetItem } from '../lib/safe-storage';
 import { useEffect, useMemo, useState } from 'react';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../lib/api-config';
 import {
   mergePreservingPrimaryOrder,
@@ -194,7 +194,7 @@ export function useCurriculumCascade(
     (async () => {
       setLoadingClasses(true);
       try {
-        const token = await SecureStore.getItemAsync('authToken');
+        const token = await storageGetItem('authToken');
         const qs = new URLSearchParams({ v: '4' });
         if (board) qs.set('board', board);
         if (productCategory !== undefined) qs.set('productCategory', productCategory);
@@ -224,7 +224,7 @@ export function useCurriculumCascade(
     (async () => {
       setLoadingSubjects(true);
       try {
-        const token = await SecureStore.getItemAsync('authToken');
+        const token = await storageGetItem('authToken');
         const qs = new URLSearchParams({ classId: gradeForApi, syllabus: 'curriculum-v3' });
         if (board) qs.set('board', board);
         if (productCategory !== undefined) qs.set('productCategory', productCategory);
@@ -264,7 +264,7 @@ export function useCurriculumCascade(
     (async () => {
       setLoadingTopics(true);
       try {
-        const token = await SecureStore.getItemAsync('authToken');
+        const token = await storageGetItem('authToken');
         const qs = new URLSearchParams({
           classId: gradeForApi,
           subjectId: subject,
@@ -309,7 +309,7 @@ export function useCurriculumCascade(
     (async () => {
       setLoadingSubtopics(true);
       try {
-        const token = await SecureStore.getItemAsync('authToken');
+        const token = await storageGetItem('authToken');
         const qs = new URLSearchParams({
           classId: gradeForApi,
           subjectId: subject,

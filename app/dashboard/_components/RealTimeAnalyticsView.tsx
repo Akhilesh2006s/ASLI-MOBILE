@@ -1,8 +1,8 @@
+import { storageGetItem } from '../../../src/lib/safe-storage';
 import { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { getMergedStudyTime } from '../../../src/lib/session-time-sync';
 import { GlassPanel } from '../../../src/components/ui';
@@ -53,7 +53,7 @@ export default function RealTimeAnalyticsView() {
 
   const fetchAnalytics = async () => {
     try {
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const headers = {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',

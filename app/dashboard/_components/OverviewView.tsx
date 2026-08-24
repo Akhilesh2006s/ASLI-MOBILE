@@ -1,9 +1,9 @@
+import { storageGetItem, storageSetItem } from '../../../src/lib/safe-storage';
 import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions, Alert, ActivityIndicator } from 'react-native';
 import type React from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { setupAppStateListener } from '../../../src/utils/studyTimeTracker';
 import { setupSessionTimeSync } from '../../../src/lib/session-time-sync';
@@ -125,7 +125,7 @@ const OverviewView = memo(function OverviewView({
   const fetchDashboardData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       if (!token) return;
 
       // Fetch exam results to calculate stats - with timeout
@@ -273,7 +273,7 @@ const OverviewView = memo(function OverviewView({
         const localProgressKey = `completed_content_${subjectId}`;
         let learningPathProgress = 0;
         try {
-          const stored = await SecureStore.getItemAsync(localProgressKey);
+          const stored = await storageGetItem(localProgressKey);
           const completedIds = stored ? JSON.parse(stored) : [];
           if (Array.isArray(completedIds)) {
             const contentResponse = await fetch(
@@ -553,21 +553,21 @@ const OverviewView = memo(function OverviewView({
       if (!isQuiz && subjectId) {
         const subjectKey = `completed_content_${subjectId}`;
         try {
-          const stored = await SecureStore.getItemAsync(subjectKey);
+          const stored = await storageGetItem(subjectKey);
           let completed: string[] = stored ? JSON.parse(stored) : [];
           if (isCurrentlyCompleted) {
             completed = completed.filter((id) => String(id) !== itemId);
           } else if (!completed.includes(itemId)) {
             completed.push(itemId);
           }
-          await SecureStore.setItemAsync(subjectKey, JSON.stringify(completed));
+          await storageSetItem(subjectKey, JSON.stringify(completed));
         } catch {
           /* ignore */
         }
       }
 
       if (!isQuiz && isVideoContentType(item.type)) {
-        const token = await SecureStore.getItemAsync('authToken');
+        const token = await storageGetItem('authToken');
         if (token) {
           fetch(`${API_BASE_URL}/api/student/content-progress`, {
             method: 'POST',
@@ -606,7 +606,7 @@ const OverviewView = memo(function OverviewView({
             [subjectId]: updatedDates,
           };
           setVideoChapterProgressBySubject(chapterProgressForRebuild);
-          const token = await SecureStore.getItemAsync('authToken');
+          const token = await storageGetItem('authToken');
           if (token) {
             fetch(`${API_BASE_URL}/api/student/video-chapter-progress`, {
               method: 'POST',
@@ -768,7 +768,7 @@ const OverviewView = memo(function OverviewView({
     if (!reportId) return;
     try {
       setDownloadingRiskId(reportId);
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       if (!token) {
         Alert.alert('Sign In Required', 'Please Sign In Again To Download This Report.');
         return;

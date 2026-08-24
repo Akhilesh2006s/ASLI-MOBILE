@@ -1,9 +1,9 @@
+import { storageGetItem } from '../../src/lib/safe-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Animated, { FadeInDown, useAnimatedProps } from 'react-native-reanimated';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../src/services/api/api';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import { AnimatedStatInput, useCountUp } from '../../src/hooks/useCountUp';
@@ -98,7 +98,7 @@ export default function StudentResults() {
   const load = useCallback(async () => {
     try {
       setError('');
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
       const [examRes, omrRes] = await Promise.all([
         fetch(`${API_BASE_URL}/api/student/exam-results`, { headers }),

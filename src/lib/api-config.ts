@@ -1,5 +1,5 @@
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../services/api/api';
+import { storageGetItem } from './safe-storage';
 
 /** Re-export so `import { API_BASE_URL } from '.../api-config'` resolves (not only default export). */
 export { API_BASE_URL };
@@ -9,8 +9,8 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
     ? endpoint 
     : `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
   
-  // Get token from secure store
-  const token = await SecureStore.getItemAsync('authToken');
+  // Use safe-storage — SecureStore can abort the process on some Android devices.
+  const token = await storageGetItem('authToken');
   
   const headers = {
     'Content-Type': 'application/json',

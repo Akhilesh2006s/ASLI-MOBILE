@@ -1,7 +1,7 @@
+import { storageGetItem } from '../../../../src/lib/safe-storage';
 import React, { memo, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, ActivityIndicator, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../../src/lib/api-config';
 import { GlassPanel } from '../../../../src/components/ui';
 import { STUDENT, STUDENT_RADIUS } from '../../../../src/theme/student';
@@ -20,7 +20,7 @@ function ClassTimetableSectionComponent() {
   useEffect(() => {
     (async () => {
       try {
-        const token = await SecureStore.getItemAsync('authToken');
+        const token = await storageGetItem('authToken');
         if (!token) return;
         const res = await fetch(`${API_BASE_URL}/api/timetable/photo`, {
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },

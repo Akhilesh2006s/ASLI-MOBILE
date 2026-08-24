@@ -1,3 +1,4 @@
+import { storageGetItem } from '../../../src/lib/safe-storage';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View,
@@ -13,7 +14,6 @@ import {
 import { useAnimatedProps } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import ChipNav from '../../../src/components/student/ChipNav';
 import StudentFilterDropdown from '../../../src/components/student/StudentFilterDropdown';
@@ -203,7 +203,7 @@ export default function ExamsView({
 
   const fetchUser = async () => {
     try {
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -222,7 +222,7 @@ export default function ExamsView({
   const fetchExams = async () => {
     try {
       setIsLoading(true);
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       };
@@ -237,7 +237,7 @@ export default function ExamsView({
       if (response.ok) {
         const data = await response.json();
         const examsList = Array.isArray(data) ? data : (data.data || data.exams || []);
-        const userRaw = await SecureStore.getItemAsync('user');
+        const userRaw = await storageGetItem('user');
         let userId: string | null = null;
         try {
           const parsed = userRaw ? JSON.parse(userRaw) : null;
@@ -266,7 +266,7 @@ export default function ExamsView({
 
   const fetchResults = async () => {
     try {
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const response = await fetch(`${API_BASE_URL}/api/student/exam-results`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -288,7 +288,7 @@ export default function ExamsView({
 
   const fetchRankings = async () => {
     try {
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const response = await fetch(`${API_BASE_URL}/api/student/rankings`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -505,7 +505,7 @@ export default function ExamsView({
       Number(displayResult.attemptNumber) >= 1 ? Number(displayResult.attemptNumber) : 1;
     setLoadingExamResults(true);
     try {
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const reviewQs =
         displayResult._id != null && String(displayResult._id).trim() !== ''
           ? `?resultId=${encodeURIComponent(String(displayResult._id))}`

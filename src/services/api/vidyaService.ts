@@ -16,8 +16,12 @@ async function fetchJson<T>(endpoint: string, options?: RequestInit): Promise<T>
 }
 
 const vidyaService = {
-  getChatSessions: (userId: string) =>
-    fetchJson<any[]>(`/api/users/${userId}/chat-sessions`),
+  getChatSessions: async (userId: string) => {
+    const data = await fetchJson<{ success?: boolean; sessions?: unknown[] }>(
+      `/api/users/${userId}/chat-sessions`,
+    );
+    return Array.isArray(data?.sessions) ? data.sessions : [];
+  },
 
   aiChat: (body: { userId: string; message: string; context?: Record<string, unknown> }) =>
     fetchJson<any>('/api/ai-chat', { method: 'POST', body: JSON.stringify(body) }),

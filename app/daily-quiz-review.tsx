@@ -1,3 +1,4 @@
+import { storageGetItem } from '../src/lib/safe-storage';
 import { useCallback, useEffect, useState } from 'react';
 import {
   View,
@@ -12,7 +13,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../src/lib/api-config';
 import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
 
@@ -86,7 +86,7 @@ export default function DailyQuizReviewScreen() {
     (async () => {
       try {
         setLoading(true);
-        const token = await SecureStore.getItemAsync('authToken');
+        const token = await storageGetItem('authToken');
         const res = await fetch(
           `${API_BASE_URL}/api/student/daily-quiz-result/${encodeURIComponent(dateKey)}`,
           { headers: { Authorization: `Bearer ${token}` } },

@@ -1,7 +1,7 @@
+import { storageGetItem } from '../../../src/lib/safe-storage';
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { ExamAnalysisResult, normalizeMongoId } from '../../../src/lib/exam-analysis-helpers';
 import DetailedAnalysisView from './DetailedAnalysisView';
@@ -22,7 +22,7 @@ export default function ExamAnalysisEntryView() {
     let cancelled = false;
     (async () => {
       try {
-        const token = await SecureStore.getItemAsync('authToken');
+        const token = await storageGetItem('authToken');
         const response = await fetch(`${API_BASE_URL}/api/student/exam-results`, {
           headers: {
             Authorization: `Bearer ${token}`,

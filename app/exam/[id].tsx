@@ -1,3 +1,4 @@
+import { storageGetItem } from '../../src/lib/safe-storage';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
@@ -21,7 +22,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { usePreventRemove } from '@react-navigation/native';
 import { API_BASE_URL } from '../../src/lib/api-config';
-import * as SecureStore from 'expo-secure-store';
 import api, { AUTH_TOKEN_KEY } from '../../src/services/api/api';
 import { getDashboardPath } from '../../src/hooks/useBackNavigation';
 import ExamResultsView from '../../src/components/student/ExamResultsView';
@@ -382,7 +382,7 @@ export default function ExamPage() {
     let cancelled = false;
     (async () => {
       try {
-        const token = await SecureStore.getItemAsync(AUTH_TOKEN_KEY);
+        const token = await storageGetItem(AUTH_TOKEN_KEY);
         if (!cancelled && token) {
           setUploadAuthHeaders({ Authorization: `Bearer ${token}` });
         }
@@ -442,7 +442,7 @@ export default function ExamPage() {
     };
     await writeMobileExamDraft(String(id), payload, draftUserIdRef.current);
     try {
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       await fetch(`${API_BASE_URL}/api/student/exams/${id}/attempt-draft`, {
         method: 'PUT',
         headers: {
@@ -791,7 +791,7 @@ export default function ExamPage() {
 
   const fetchExam = async () => {
     try {
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const response = await fetch(`${API_BASE_URL}/api/student/exams/${id}`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -829,7 +829,7 @@ export default function ExamPage() {
       const fullSeconds = (Number(examData.duration) || 60) * 60;
       let userId = '';
       try {
-        const userRaw = await SecureStore.getItemAsync('user');
+        const userRaw = await storageGetItem('user');
         if (userRaw) {
           const u = JSON.parse(userRaw);
           userId = String(u?._id || u?.id || '');

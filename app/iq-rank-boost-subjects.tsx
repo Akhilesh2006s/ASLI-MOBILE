@@ -1,3 +1,4 @@
+import { storageGetItem } from '../src/lib/safe-storage';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
@@ -15,7 +16,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../src/lib/api-config';
 import { getDashboardPath } from '../src/hooks/useBackNavigation';
 import { GlassPanel } from '../src/components/ui';
@@ -123,7 +123,7 @@ export default function IQRankBoostSubjects() {
       setReviewOpen(true);
       setReviewLoading(true);
       setReview(null);
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const res = await fetch(
         `${API_BASE_URL}/api/student/daily-quiz-result/${encodeURIComponent(dateKey)}`,
         { headers: { Authorization: `Bearer ${token}` } },
@@ -146,7 +146,7 @@ export default function IQRankBoostSubjects() {
   const load = useCallback(async () => {
     try {
       if (!loadedOnce.current) setIsLoading(true);
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const [quizzesResponse, resultsResponse, dailyStatusResponse] = await Promise.all([
         fetch(`${API_BASE_URL}/api/student/iq-rank-quizzes`, {
           headers: {

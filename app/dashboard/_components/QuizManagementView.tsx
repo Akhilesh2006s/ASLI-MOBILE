@@ -1,8 +1,8 @@
+import { storageGetItem } from '../../../src/lib/safe-storage';
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { router } from 'expo-router';
 import { GlassPanel } from '../../../src/components/ui';
@@ -52,7 +52,7 @@ export default function QuizManagementView() {
 
   const fetchSubjects = async () => {
     try {
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const response = await fetch(`${API_BASE_URL}/api/subjects`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -71,7 +71,7 @@ export default function QuizManagementView() {
   const fetchQuizzes = async () => {
     try {
       setIsLoading(true);
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const response = await fetch(`${API_BASE_URL}/api/student/quizzes`, {
         headers: {
           'Authorization': `Bearer ${token}`,

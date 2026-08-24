@@ -66,9 +66,15 @@ function PulseRing({ size, delay, color }: { size: number; delay: number; color:
 function useSplashLogoSize() {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const availableWidth = width - insets.left - insets.right;
-  const availableHeight = height - insets.top - insets.bottom;
-  const logoWidth = Math.min(availableWidth * 0.96, (availableHeight * 0.68) * LOGO_CONTENT_ASPECT);
+  // Foldables can report 0×0 briefly while unfolding — never animate from invalid size.
+  const safeW = Math.max(width || 0, 320);
+  const safeH = Math.max(height || 0, 480);
+  const availableWidth = safeW - insets.left - insets.right;
+  const availableHeight = safeH - insets.top - insets.bottom;
+  const logoWidth = Math.min(
+    Math.max(availableWidth * 0.96, 120),
+    Math.min(520, (availableHeight * 0.68) * LOGO_CONTENT_ASPECT),
+  );
   const logoHeight = logoWidth / LOGO_CONTENT_ASPECT;
   return {
     logoWidth,

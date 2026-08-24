@@ -1,7 +1,7 @@
+import { storageGetItem } from '../../lib/safe-storage';
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../services/api/api';
 import { STUDENT, STUDENT_TYPO } from '../../theme/student';
 import GlassCard from './GlassCard';
@@ -29,7 +29,7 @@ export default function TeacherDiaryFeed({ showHeader = true }: Props) {
   useEffect(() => {
     (async () => {
       try {
-        const token = await SecureStore.getItemAsync('authToken');
+        const token = await storageGetItem('authToken');
         const res = await fetch(`${API_BASE_URL}/api/student/teacher-work-diary?limit=10`, {
           headers: { Authorization: `Bearer ${token}` },
         });

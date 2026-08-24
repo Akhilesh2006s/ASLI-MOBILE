@@ -1,9 +1,9 @@
+import { storageGetItem, storageDeleteItem } from '../../src/lib/safe-storage';
 import { useState, useEffect } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
-import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDashboardShellBack } from '../../src/hooks/useBackNavigation';
 import { consumeSuperAdminDashboardTabIntent } from '../../src/lib/dashboard-tab-intent';
@@ -102,7 +102,7 @@ export default function SuperAdminDashboard() {
     try {
       const [me, emailFromStore] = await Promise.all([
         fetchCurrentUser().catch(() => null),
-        SecureStore.getItemAsync('userEmail'),
+        storageGetItem('userEmail'),
       ]);
       setUser({
         fullName: me?.fullName || me?.name || 'Super Admin',
@@ -172,9 +172,9 @@ export default function SuperAdminDashboard() {
           setMenuOpen(false);
           try {
             await signOut();
-            await SecureStore.deleteItemAsync('token');
-            await SecureStore.deleteItemAsync('accessToken');
-            await SecureStore.deleteItemAsync('jwtToken');
+            await storageDeleteItem('token');
+            await storageDeleteItem('accessToken');
+            await storageDeleteItem('jwtToken');
           } catch (error) {
             console.error('Logout failed:', error);
           } finally {

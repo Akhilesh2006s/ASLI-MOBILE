@@ -1,4 +1,4 @@
-import * as SecureStore from 'expo-secure-store';
+import { storageGetItem, storageSetItem } from './safe-storage';
 
 const SCHEDULE_KEY = 'completed_schedule_items';
 
@@ -50,12 +50,12 @@ export function getTaskTimeLabel(item: any, isQuiz: boolean) {
 export async function loadCompletedScheduleIds(): Promise<Set<string>> {
   const todayKey = new Date().toDateString();
   try {
-    const stored = await SecureStore.getItemAsync(SCHEDULE_KEY);
+    const stored = await storageGetItem(SCHEDULE_KEY);
     if (!stored) return new Set();
     const data = JSON.parse(stored);
     if (data.date && Array.isArray(data.completedIds)) {
       if (data.date === todayKey) return new Set(data.completedIds.map(String));
-      await SecureStore.setItemAsync(
+      await storageSetItem(
         SCHEDULE_KEY,
         JSON.stringify({ date: todayKey, completedIds: [] })
       );
@@ -70,7 +70,7 @@ export async function loadCompletedScheduleIds(): Promise<Set<string>> {
 
 export async function saveCompletedScheduleIds(ids: Set<string>) {
   const todayKey = new Date().toDateString();
-  await SecureStore.setItemAsync(
+  await storageSetItem(
     SCHEDULE_KEY,
     JSON.stringify({ date: todayKey, completedIds: Array.from(ids) })
   );
@@ -80,7 +80,7 @@ export async function collectCompletedContentIds(subjectIds: string[] = []): Pro
   const ids = new Set<string>();
   for (const subjectId of subjectIds) {
     try {
-      const stored = await SecureStore.getItemAsync(`completed_content_${subjectId}`);
+      const stored = await storageGetItem(`completed_content_${subjectId}`);
       if (!stored) continue;
       const list = JSON.parse(stored);
       if (Array.isArray(list)) list.forEach((id: string) => ids.add(String(id)));

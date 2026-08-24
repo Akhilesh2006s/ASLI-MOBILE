@@ -1,8 +1,8 @@
+import { storageGetItem } from '../../../../src/lib/safe-storage';
 import React, { memo, useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions, Modal, Pressable, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../../src/lib/api-config';
 import StudentCardDecor from '../../../../src/components/student/StudentCardDecor';
 import {
@@ -84,7 +84,7 @@ function StudyCalendarSectionComponent({
     let cancelled = false;
     (async () => {
       try {
-        const token = await SecureStore.getItemAsync('authToken');
+        const token = await storageGetItem('authToken');
         const response = await fetch(`${API_BASE_URL}/api/student/calendar/events?month=${calendarMonthKey}`, {
           headers: {
             Authorization: `Bearer ${token}`,

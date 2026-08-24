@@ -1,4 +1,3 @@
-import * as SecureStore from 'expo-secure-store';
 import api from '../services/api/api';
 import { toEditablePlainText } from './ai-tool-generations';
 import { fetchGeneratorBoardOptions } from './ai-generator';
@@ -494,4 +493,3 @@ export function toDisplayPlainText(content: string) {
   return toEditablePlainText(content);
 }
 
-export { SecureStore };

@@ -1,9 +1,9 @@
+import { storageGetItem } from '../src/lib/safe-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
 import { fetchStudentNotifications } from '../src/lib/student-notifications';
 import { useBackNavigation } from '../src/hooks/useBackNavigation';
 import { Badge, EmptyState, ErrorState, GlassPanel, LoadingState, SectionHeader } from '../src/components/ui';
@@ -47,7 +47,7 @@ export default function NotificationsScreen() {
   const load = useCallback(async () => {
     try {
       setError('');
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       if (!token) throw new Error('Not authenticated');
       const list = await fetchStudentNotifications(token);
       setItems(list);

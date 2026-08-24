@@ -1,4 +1,4 @@
-import * as SecureStore from 'expo-secure-store';
+import { storageGetItem } from '../lib/safe-storage';
 import { API_BASE_URL } from '../lib/api-config';
 
 let cachedAuthToken: string | null = null;
@@ -9,7 +9,7 @@ async function getAuthToken(): Promise<string> {
   if (cachedAuthToken !== null && Date.now() - authTokenLoadedAt < AUTH_TOKEN_CACHE_MS) {
     return cachedAuthToken;
   }
-  cachedAuthToken = (await SecureStore.getItemAsync('authToken')) || '';
+  cachedAuthToken = (await storageGetItem('authToken')) || '';
   authTokenLoadedAt = Date.now();
   return cachedAuthToken;
 }

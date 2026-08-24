@@ -1,3 +1,4 @@
+import { storageGetItem } from '../../../src/lib/safe-storage';
 import { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
 import {
   View,
@@ -20,7 +21,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { formatAiToolText } from '../../../src/lib/title-case';
 import {
@@ -813,7 +813,7 @@ export default function TeacherToolPage() {
     setFromAiFailure(false);
 
     try {
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       if (!token) {
         showInlineOutputMessage('Please sign in again.');
         return;
@@ -862,7 +862,7 @@ export default function TeacherToolPage() {
         if (!selectedClass || !selectedSubject) {
           throw new Error('Missing class or subject for fallback');
         }
-        const token = await SecureStore.getItemAsync('authToken');
+        const token = await storageGetItem('authToken');
         if (!token) throw new Error('Please sign in again.');
 
         const fallbackResult = await fetchAiToolGeneratedContentFallback({

@@ -1,3 +1,4 @@
+import { storageGetItem } from '../../../src/lib/safe-storage';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
@@ -18,7 +19,6 @@ import Animated, {
   withDelay,
   withTiming,
 } from 'react-native-reanimated';
-import * as SecureStore from 'expo-secure-store';
 import { resolveStudentDisplayName } from '../../../src/lib/student-text';
 import GlassCard from '../../../src/components/student/GlassCard';
 import { ShimmerCard } from '../../../src/components/student/StudentShimmer';
@@ -157,7 +157,7 @@ export default function ProfileTabView({ user, onLogout }: Props) {
     (async () => {
       setOverviewLoading(true);
       try {
-        const token = await SecureStore.getItemAsync('authToken');
+        const token = await storageGetItem('authToken');
         if (!token) return;
         const headers = {
           Authorization: `Bearer ${token}`,
@@ -215,7 +215,7 @@ export default function ProfileTabView({ user, onLogout }: Props) {
     let cancelled = false;
 
     const refreshStudySessions = async () => {
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const weeklySessions = await fetchWeeklySessionMinutes(token);
       if (!cancelled) {
         setSessionMinutesByDate(weeklySessions.backend);

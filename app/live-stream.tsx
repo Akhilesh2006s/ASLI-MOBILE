@@ -1,3 +1,4 @@
+import { storageGetItem } from '../src/lib/safe-storage';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
@@ -15,7 +16,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams } from 'expo-router';
 import { Video, ResizeMode } from 'expo-av';
-import * as SecureStore from 'expo-secure-store';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { API_BASE_URL } from '../src/lib/api-config';
 import { useContentViewerBack } from '../src/hooks/useBackNavigation';
@@ -110,7 +110,7 @@ export default function LiveStream() {
     if (joinedRef.current) return;
     joinedRef.current = true;
     try {
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       await fetch(`${API_BASE_URL}/api/streams/${id}/join`, {
         method: 'POST',
         headers: {
@@ -127,7 +127,7 @@ export default function LiveStream() {
   const fetchSession = async () => {
     try {
       setIsLoading(true);
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const response = await fetch(`${API_BASE_URL}/api/streams/${sessionId}`, {
         headers: {
           Authorization: `Bearer ${token}`,

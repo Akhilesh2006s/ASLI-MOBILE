@@ -1,3 +1,4 @@
+import { storageGetItem } from '../../src/lib/safe-storage';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
@@ -13,7 +14,6 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { API_BASE_URL } from '../../src/lib/api-config';
-import * as SecureStore from 'expo-secure-store';
 import { useBackNavigation, getDashboardPath } from '../../src/hooks/useBackNavigation';
 import MathRenderer from '../../src/components/MathRenderer';
 import { GlassPanel } from '../../src/components/ui';
@@ -122,7 +122,7 @@ export default function QuizPage() {
       try {
         setIsLoading(true);
         setLoadError(null);
-        const token = await SecureStore.getItemAsync('authToken');
+        const token = await storageGetItem('authToken');
         const response = await fetch(`${API_BASE_URL}/api/student/quizzes/${id}`, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -240,7 +240,7 @@ export default function QuizPage() {
     });
 
     try {
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const response = await fetch(`${API_BASE_URL}/api/student/quizzes/${activeQuiz._id}/submit`, {
         method: 'POST',
         headers: {

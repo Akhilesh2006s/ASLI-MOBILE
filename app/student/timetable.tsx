@@ -1,3 +1,4 @@
+import { storageGetItem } from '../../src/lib/safe-storage';
 import { useCallback, useEffect, useState } from 'react';
 import {
   Image,
@@ -11,7 +12,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
 import { API_BASE_URL } from '../../src/lib/api-config';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
@@ -44,7 +44,7 @@ export default function StudentTimetable() {
   const load = useCallback(async () => {
     try {
       setError('');
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       if (!token) {
         setError('Please sign in again.');
         setPhoto(null);

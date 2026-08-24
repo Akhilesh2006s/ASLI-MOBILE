@@ -1,4 +1,4 @@
-import * as SecureStore from 'expo-secure-store';
+import { storageGetItem } from '../../lib/safe-storage';
 import { API_BASE_URL } from '../../lib/api-config';
 import api from './api';
 
@@ -80,7 +80,7 @@ export async function importTimetableCsv(
 }
 
 async function fetchCsvText(path: string): Promise<string> {
-  const token = await SecureStore.getItemAsync('authToken');
+  const token = await storageGetItem('authToken');
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });

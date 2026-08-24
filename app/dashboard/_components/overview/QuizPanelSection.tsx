@@ -1,3 +1,4 @@
+import { storageGetItem } from '../../../../src/lib/safe-storage';
 import { useCallback, useEffect, useState } from 'react';
 import {
   View,
@@ -9,7 +10,6 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../../src/lib/api-config';
 import { GlassPanel } from '../../../../src/components/ui';
 import { STUDENT } from '../../../../src/theme/student';
@@ -66,7 +66,7 @@ export default function QuizPanelSection() {
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const [iqRes, dailyRes] = await Promise.all([
         fetch(`${API_BASE_URL}/api/student/iq-rank-quizzes`, {
           headers: { Authorization: `Bearer ${token}` },

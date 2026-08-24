@@ -1,8 +1,8 @@
+import { storageGetItem } from '../../../src/lib/safe-storage';
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { GlassPanel } from '../../../src/components/ui';
 
@@ -29,7 +29,7 @@ export default function StudentRankingView() {
   const fetchStudentRanking = async () => {
     setIsLoading(true);
     try {
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const response = await fetch(`${API_BASE_URL}/api/student/rankings`, {
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -1,3 +1,4 @@
+import { storageGetItem } from '../src/lib/safe-storage';
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -5,7 +6,6 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { API_BASE_URL } from '../src/lib/api-config';
-import * as SecureStore from 'expo-secure-store';
 import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
 import { GlassPanel } from '../src/components/ui';
 
@@ -28,7 +28,7 @@ export default function PracticeTests() {
 
   const fetchTests = async () => {
     try {
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const response = await fetch(`${API_BASE_URL}/api/student/quizzes`, {
         headers: {
           'Authorization': `Bearer ${token}`,

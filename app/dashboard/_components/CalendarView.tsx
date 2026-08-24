@@ -1,7 +1,7 @@
+import { storageGetItem } from '../../../src/lib/safe-storage';
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { router, useFocusEffect } from 'expo-router';
 import { openContentPreview } from '../../../src/utils/openContentPreview';
@@ -67,7 +67,7 @@ export default function CalendarView({ contents: propContents, onMarkAsDone, com
 
   const fetchContents = async () => {
     try {
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const response = await fetch(`${API_BASE_URL}/api/student/asli-prep-content`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -206,7 +206,7 @@ export default function CalendarView({ contents: propContents, onMarkAsDone, com
     }
 
     try {
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const response = await fetch(`${API_BASE_URL}/api/student/homework-submission`, {
         method: 'POST',
         headers: {

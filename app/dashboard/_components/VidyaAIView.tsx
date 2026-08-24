@@ -1,9 +1,9 @@
+import { storageGetItem } from '../../../src/lib/safe-storage';
 import { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, useWindowDimensions, InteractionManager } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { router } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { isTvOrBoardDisplay } from '../../../src/hooks/useIsTablet';
 import { filterVisibleStudentTools, type StudentAiTool } from '../../../src/lib/student-ai-tools';
@@ -83,7 +83,7 @@ export default function VidyaAIView({
     (async () => {
       setIsLoading(true);
       try {
-        const token = await SecureStore.getItemAsync('authToken');
+        const token = await storageGetItem('authToken');
         if (!token || cancelled) return;
         const res = await fetch(`${API_BASE_URL}/api/student/subjects`, {
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },

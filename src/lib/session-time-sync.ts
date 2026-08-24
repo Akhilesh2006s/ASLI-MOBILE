@@ -1,4 +1,4 @@
-import * as SecureStore from 'expo-secure-store';
+import { storageGetItem } from './safe-storage';
 import { API_BASE_URL } from './api-config';
 import { updateStudyTime, getWeeklyStudyData, startSession, endSession } from '../utils/studyTimeTracker';
 import { toLocalDateKey } from './profile-overview-stats';
@@ -121,7 +121,7 @@ export async function fetchSessionTimeFromBackend(token: string): Promise<Sessio
 }
 
 export async function saveSessionTimeToBackend(todayMinutes: number): Promise<void> {
-  const token = await SecureStore.getItemAsync('authToken');
+  const token = await storageGetItem('authToken');
   if (!token || todayMinutes <= 0) return;
   await fetch(`${API_BASE_URL}${sessionTimePathFromToken(token)}`, {
     method: 'POST',
@@ -189,7 +189,7 @@ export function resetSessionBaseline(): void {
 
 /** Merge local tracker with backend session-time (web dashboard parity). */
 export async function getMergedStudyTime(forceRefresh = false): Promise<{ today: number; thisWeek: number }> {
-  const token = await SecureStore.getItemAsync('authToken');
+  const token = await storageGetItem('authToken');
   if (token) {
     await initSessionBaseline(token, forceRefresh);
   }
@@ -237,7 +237,7 @@ function ensureSessionTimeSyncRunning(): () => void {
   };
 
   const bootstrap = async () => {
-    const token = await SecureStore.getItemAsync('authToken');
+    const token = await storageGetItem('authToken');
     if (token) {
       await initSessionBaseline(token, true);
     } else {

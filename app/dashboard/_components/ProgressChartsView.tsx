@@ -1,8 +1,8 @@
+import { storageGetItem } from '../../../src/lib/safe-storage';
 import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL } from '../../../src/lib/api-config';
 import { getWeeklyStudyData } from '../../../src/utils/studyTimeTracker';
 import { GlassPanel } from '../../../src/components/ui';
@@ -39,7 +39,7 @@ export default function ProgressChartsView() {
       setStudyTimeData({ labels, values, maxValue });
 
       // Fetch subject progress
-      const token = await SecureStore.getItemAsync('authToken');
+      const token = await storageGetItem('authToken');
       const progressRes = await fetch(`${API_BASE_URL}/api/student/learning-progress`, {
         headers: {
           'Authorization': `Bearer ${token}`,
