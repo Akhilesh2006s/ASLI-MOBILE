@@ -28,8 +28,6 @@ import VidyaAIFloatingAssistant from '../../src/components/vidya/VidyaAIFloating
 import { useVidyaChatAccess } from '../../src/hooks/useVidyaChatAccess';
 import { resolveStudentFirstName } from '../../src/lib/student-text';
 import { isIndividualAccount } from '../../src/lib/individual-signup';
-import { showTrialUpgrade } from '../../src/lib/individual-subscription';
-import { TrialUpgradeBanner } from '../../src/components/b2c/IndividualSubscriptionReceipt';
 
 type TabId = 'home' | 'learning' | 'eduott' | 'exams' | 'results' | 'timetable' | 'vidya';
 
@@ -237,11 +235,6 @@ export default function StudentDashboard() {
             }}
             onLogout={handleLogout}
           />
-        ) : null}
-        {showTrialUpgrade(user) && activeTab !== 'home' && activeTab !== 'vidya' ? (
-          <View style={{ paddingHorizontal: 18, paddingTop: 8 }}>
-            <TrialUpgradeBanner daysLeft={user?.trialDaysLeft} trialEndsAt={user?.trialEndsAt} />
-          </View>
         ) : null}
         {visitedTabs.has('home') ? (
           <VisitedTabPane visible={activeTab === 'home'}>

@@ -1,4 +1,3 @@
-import { storageGetItem, storageSetItem } from '../lib/safe-storage';
 /**
  * Study Time Tracker Utility for React Native
  * Tracks foreground app session time (not video/quiz duration).
@@ -10,6 +9,7 @@ import { storageGetItem, storageSetItem } from '../lib/safe-storage';
 
 const MAX_CONTINUOUS_SESSION_MS = 30 * 60 * 1000;
 const MAX_ORPHAN_SESSION_MINUTES = 5;
+const CORRUPTED_DAILY_CAP_MINUTES = 12 * 60;
 
 let trackerMutex: Promise<void> = Promise.resolve();
 
@@ -139,6 +139,14 @@ async function getStudyTimeData(): Promise<StudyTimeData> {
   if (!studyTimeData.dailyData) {
     studyTimeData.dailyData = {};
   }
+
+  Object.values(studyTimeData.dailyData).forEach((day) => {
+    if ((Number(day?.totalMinutes) || 0) >= CORRUPTED_DAILY_CAP_MINUTES) {
+      day.totalMinutes = 0;
+      day.sessions = [];
+      day.lastUpdate = now;
+    }
+  });
 
   if (!studyTimeData.dailyData[TODAY_KEY]) {
     studyTimeData.dailyData[TODAY_KEY] = {

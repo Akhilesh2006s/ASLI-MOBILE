@@ -1194,17 +1194,6 @@ export default function StudentToolPage() {
         actions={
           generatedContent ? (
             <View style={styles.resultActions}>
-              {(toolType === 'mock-test-builder' || toolType === 'smart-qa-practice-generator') && responseMeta?.practiceExamId ? (
-                <Pressable
-                  style={[styles.actionBtn, styles.actionBtnPrimary]}
-                  accessibilityRole="button"
-                  accessibilityLabel="Start generated practice exam"
-                  onPress={() => router.push(`/student-exams?examId=${responseMeta.practiceExamId}`)}
-                >
-                  <Ionicons name="clipboard-outline" size={16} color="#FFFFFF" />
-                  <Text style={styles.actionBtnPrimaryText}>Start Exam</Text>
-                </Pressable>
-              ) : null}
               <Pressable
                 style={styles.actionBtn}
                 accessibilityRole="button"

@@ -60,13 +60,6 @@ export const STUDENT_AI_TOOLS: StudentAiTool[] = [
     color: '#ec4899',
   },
   {
-    id: 'mock-test-builder',
-    name: 'Mock Test Builder',
-    description: 'Generate Mock Tests With Exam-Style Questions',
-    icon: 'checkmark-circle-outline',
-    color: '#6366f1',
-  },
-  {
     id: 'project-idea-lab',
     name: 'Project Idea Lab',
     description: 'Discover Activity And Project Ideas By Topic',

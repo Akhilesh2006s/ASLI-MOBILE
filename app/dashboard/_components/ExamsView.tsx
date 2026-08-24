@@ -51,6 +51,7 @@ import {
   getMarksPercentage,
   normalizeExamResultFromApi,
 } from '../../../src/lib/exam-analysis-helpers';
+import { useCurriculumCascade } from '../../../src/hooks/useCurriculumCascade';
 
 interface Exam {
   _id: string;
@@ -77,6 +78,13 @@ interface Exam {
   maxResumes?: number;
 }
 
+function removeInternalAccountLabels(value: unknown): string {
+  return String(value || '')
+    .replace(/\bB2C\b\s*/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 interface ExamResult {
   examId: string;
   totalQuestions: number;
@@ -94,6 +102,7 @@ type ExamsViewProps = {
   initialTab?: 'available' | 'attempted' | 'ranking' | 'upcoming' | 'omr';
   focusExamId?: string | null;
   onFocusExamHandled?: () => void;
+  openGenerator?: boolean;
 };
 
 const ATTEMPTED_CARD_SCHEMES = EXAM_CARD_GRADIENT_SCHEMES.map((scheme) => ({
@@ -158,6 +167,7 @@ export default function ExamsView({
   initialTab = 'available',
   focusExamId,
   onFocusExamHandled,
+  openGenerator = false,
 }: ExamsViewProps) {
   const { width } = useWindowDimensions();
   const compact = width < 380;
@@ -179,10 +189,42 @@ export default function ExamsView({
   } | null>(null);
   const [loadingExamResults, setLoadingExamResults] = useState(false);
   const [highlightedExamId, setHighlightedExamId] = useState<string | null>(null);
+  const [showGenerateExam, setShowGenerateExam] = useState(false);
+  const [generateBoard, setGenerateBoard] = useState('CBSE');
+  const [generateSubject, setGenerateSubject] = useState('');
+  const [generateTopic, setGenerateTopic] = useState('');
+  const [generateQuestionCount, setGenerateQuestionCount] = useState('10');
+  const [isGeneratingExam, setIsGeneratingExam] = useState(false);
   const handledFocusExamIdRef = useRef<string | null>(null);
 
   const studentClassNumber = normalizeClassNumber(user?.classNumber);
   const isB2cStudent = isIndividualAccount(user);
+  const examGeneratorCascade = useCurriculumCascade(
+    studentClassNumber ? `Class ${studentClassNumber}` : undefined,
+    generateSubject || undefined,
+    generateTopic || undefined,
+    generateBoard,
+  );
+
+  const generatePersonalExam = async () => {
+    try {
+      setIsGeneratingExam(true);
+      const token = await storageGetItem('authToken');
+      const response = await fetch(`${API_BASE_URL}/api/student/exams/generate-personal`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ board: generateBoard, subject: generateSubject, topic: generateTopic, questionCount: Number(generateQuestionCount), classNumber: studentClassNumber }),
+      });
+      const json = await response.json();
+      if (!response.ok || !json?.data?.examId) throw new Error(json?.message || 'Could not generate exam');
+      setShowGenerateExam(false);
+      router.push(`/exam/${json.data.examId}`);
+    } catch (error) {
+      Alert.alert('Could not generate exam', error instanceof Error ? error.message : 'Please try again.');
+    } finally {
+      setIsGeneratingExam(false);
+    }
+  };
 
   useEffect(() => {
     fetchUser();
@@ -201,6 +243,10 @@ export default function ExamsView({
   useEffect(() => {
     if (isB2cStudent && activeTab === 'omr') setActiveTab('available');
   }, [isB2cStudent, activeTab]);
+
+  useEffect(() => {
+    if (openGenerator && isB2cStudent) setShowGenerateExam(true);
+  }, [openGenerator, isB2cStudent]);
 
   const fetchUser = async () => {
     try {
@@ -247,7 +293,12 @@ export default function ExamsView({
           userId = null;
         }
         const enriched = await Promise.all(
-          (Array.isArray(examsList) ? examsList : []).map(async (exam: Exam) => {
+          (Array.isArray(examsList) ? examsList : []).map(async (rawExam: Exam) => {
+            const exam = {
+              ...rawExam,
+              title: removeInternalAccountLabels(rawExam.title) || 'Exam',
+              description: removeInternalAccountLabels(rawExam.description),
+            };
             if (exam?.hasInProgressDraft) return exam;
             const local = await readMobileExamDraft(String(exam._id), userId);
             return local ? { ...exam, hasInProgressDraft: true } : exam;
@@ -757,6 +808,12 @@ export default function ExamsView({
             </Text>
           </View>
         </View>
+        {isB2cStudent ? (
+          <TouchableOpacity style={styles.generateExamButton} onPress={() => setShowGenerateExam(true)}>
+            <Ionicons name="sparkles-outline" size={18} color="#FFFFFF" />
+            <Text style={styles.generateExamButtonText}>Generate Exam</Text>
+          </TouchableOpacity>
+        ) : null}
         <View style={styles.filtersRow}>
           {studentClassNumber ? (
             <View style={styles.filterGroup}>
@@ -775,6 +832,22 @@ export default function ExamsView({
           />
         </View>
       </GlassPanel>
+
+      <Modal visible={showGenerateExam} transparent animationType="fade" onRequestClose={() => setShowGenerateExam(false)}>
+        <View style={styles.generatorOverlay}>
+          <View style={styles.generatorSheet}>
+            <View style={styles.generatorTitleRow}><Text style={styles.generatorTitle}>Generate your exam</Text><TouchableOpacity onPress={() => setShowGenerateExam(false)}><Ionicons name="close" size={22} color={STUDENT.text} /></TouchableOpacity></View>
+            <Text style={styles.generatorSubtitle}>Builds a scored exam from questions available for your class and topic.</Text>
+            <StudentFilterDropdown label="Board / Track" placeholder="Select" value={generateBoard} options={[{value:'CBSE',label:'CBSE'},{value:'IIT',label:'IIT'}]} onChange={(value) => { setGenerateBoard(value); setGenerateSubject(''); setGenerateTopic(''); }} />
+            <StudentFilterDropdown label="Subject" placeholder={examGeneratorCascade.loadingSubjects ? 'Loading...' : 'Select subject'} value={generateSubject} options={examGeneratorCascade.subjects.map((value) => ({value,label:value}))} onChange={(value) => { setGenerateSubject(value); setGenerateTopic(''); }} />
+            <StudentFilterDropdown label="Topic" placeholder={examGeneratorCascade.loadingTopics ? 'Loading...' : 'Select topic'} value={generateTopic} options={examGeneratorCascade.topics.map((value) => ({value,label:value}))} onChange={setGenerateTopic} />
+            <StudentFilterDropdown label="Questions" placeholder="10 questions" value={generateQuestionCount} options={['10','15','20'].map((value) => ({value,label:`${value} questions`}))} onChange={setGenerateQuestionCount} />
+            <TouchableOpacity style={[styles.generatorSubmit, (!generateSubject || !generateTopic || isGeneratingExam) && styles.generatorSubmitDisabled]} disabled={!generateSubject || !generateTopic || isGeneratingExam} onPress={generatePersonalExam}>
+              {isGeneratingExam ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.generatorSubmitText}>Generate and start exam</Text>}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       <View style={styles.tabsContainer}>
         <ChipNav
@@ -1219,6 +1292,16 @@ export default function ExamsView({
 }
 
 const styles = StyleSheet.create({
+  generateExamButton: { marginTop: 12, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: STUDENT.primary, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 11 },
+  generateExamButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
+  generatorOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'center', padding: 20 },
+  generatorSheet: { backgroundColor: STUDENT.surface, borderRadius: 22, padding: 18, gap: 12, maxHeight: '90%' },
+  generatorTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  generatorTitle: { fontSize: 20, fontWeight: '800', color: STUDENT.text },
+  generatorSubtitle: { fontSize: 12, color: STUDENT.textMuted, marginBottom: 2 },
+  generatorSubmit: { minHeight: 48, borderRadius: 13, backgroundColor: STUDENT.primary, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
+  generatorSubmitDisabled: { opacity: 0.5 },
+  generatorSubmitText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
   examResultsModal: {
     flex: 1,
     backgroundColor: '#F8FAFC',

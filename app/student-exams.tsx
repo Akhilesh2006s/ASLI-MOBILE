@@ -9,7 +9,7 @@ import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigat
 import ExamsView from './dashboard/_components/ExamsView';
 
 export default function StudentExams() {
-  const { examId } = useLocalSearchParams<{ examId?: string }>();
+  const { examId, generate } = useLocalSearchParams<{ examId?: string; generate?: string }>();
   const [dashboardPath, setDashboardPath] = useState<string>('/dashboard');
 
   useEffect(() => {
@@ -44,7 +44,7 @@ export default function StudentExams() {
       </LinearGradient>
 
       <View style={styles.content}>
-        <ExamsView />
+        <ExamsView openGenerator={generate === '1'} />
       </View>
     </SafeAreaView>
   );

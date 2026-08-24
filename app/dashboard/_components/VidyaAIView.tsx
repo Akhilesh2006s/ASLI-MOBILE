@@ -13,8 +13,6 @@ import VidyaAvatar from '../../../src/components/vidya/VidyaAvatar';
 import { GlassPanel } from '../../../src/components/ui';
 import { AI, AI_RADIUS, AI_SHADOW, AI_SPACING, AI_TYPE } from '../../../src/theme/ai';
 import { STUDENT, STUDENT_RADIUS, STUDENT_SPACING } from '../../../src/theme/student';
-import { TrialUpgradeBanner } from '../../../src/components/b2c/IndividualSubscriptionReceipt';
-import { showTrialUpgrade } from '../../../src/lib/individual-subscription';
 
 const LIST_GAP = STUDENT_SPACING.md;
 const TOOLS_TABLET_MIN_WIDTH = 768;
@@ -170,9 +168,6 @@ export default function VidyaAIView({
 
   return (
     <View style={styles.container}>
-      {showTrialUpgrade(user) ? (
-        <TrialUpgradeBanner daysLeft={user?.trialDaysLeft} trialEndsAt={user?.trialEndsAt} />
-      ) : null}
       <GlassPanel radius={AI_RADIUS.lg} tone="strong" style={styles.hero}>
         <View style={styles.heroBadge}>
           <Text style={styles.heroBadgeText}>VIDYA AI STUDIO</Text>
