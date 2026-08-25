@@ -107,10 +107,15 @@ export const TEACHER_PORTAL_MODULE_GROUPS: {
     category: 'Teaching',
     modules: [
       { id: 'Dashboard', title: 'Dashboard' },
+      { id: 'My Classes', title: 'My classes' },
       { id: 'My Students', title: 'My students' },
       { id: 'Learning Paths', title: 'Learning paths' },
       { id: 'Edu OTT', title: 'Edu OTT & video' },
       { id: 'Vidya AI', title: 'Vidya AI' },
+      { id: 'Calendar', title: 'Calendar' },
+      { id: 'Offline Results', title: 'Offline results' },
+      { id: 'Settings', title: 'Settings' },
+      { id: 'Reports', title: 'Reports' },
     ],
   },
 ];
@@ -122,12 +127,15 @@ export const STUDENT_PORTAL_MODULE_GROUPS: {
   {
     category: 'Learning',
     modules: [
-      { id: 'Home', title: 'Home' },
+      { id: 'Dashboard', title: 'Dashboard' },
       { id: 'Learning Paths', title: 'Learning paths' },
       { id: 'Edu OTT', title: 'Edu OTT' },
       { id: 'Exams', title: 'Exams' },
+      { id: 'Quiz', title: 'Quiz' },
+      { id: 'Offline Results', title: 'Offline results' },
+      { id: 'Timetable', title: 'Timetable' },
       { id: 'Vidya AI', title: 'Vidya AI' },
-      { id: 'Settings', title: 'Settings' },
+      { id: 'Profile', title: 'Profile' },
     ],
   },
 ];

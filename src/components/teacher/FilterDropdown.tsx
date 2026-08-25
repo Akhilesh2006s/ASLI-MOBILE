@@ -161,6 +161,9 @@ const styles = StyleSheet.create({
   },
   triggerText: {
     flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
+    overflow: 'hidden',
     fontSize: 13,
     fontWeight: '600',
     color: TEACHER.text,

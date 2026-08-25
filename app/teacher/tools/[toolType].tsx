@@ -1579,6 +1579,8 @@ const styles = StyleSheet.create({
   required: { color: AI.orange },
   fieldCard: {
     minHeight: 62,
+    minWidth: 0,
+    overflow: 'hidden',
     borderRadius: AI_RADIUS.md,
     borderWidth: 1,
     borderColor: AI.border,
@@ -1606,9 +1608,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  fieldCardText: { flex: 1, minWidth: 0, gap: 2 },
+  fieldCardText: { flex: 1, flexShrink: 1, minWidth: 0, gap: 2, overflow: 'hidden' },
   fieldCardLabel: { fontSize: 12, lineHeight: 16, fontWeight: '700', color: AI.textMuted, letterSpacing: 0.2 },
-  fieldCardValue: { fontSize: 16, lineHeight: 21, fontWeight: '700', color: AI.text },
+  fieldCardValue: {
+    fontSize: 16,
+    lineHeight: 21,
+    fontWeight: '700',
+    color: AI.text,
+    flexShrink: 1,
+    minWidth: 0,
+    overflow: 'hidden',
+  },
   fieldCardPlaceholder: { color: AI.textMuted, fontWeight: '500' },
   fieldChevron: {
     width: 28,

@@ -184,6 +184,7 @@ export default function StudentsView() {
   const [isUploadModalVisible, setIsUploadModalVisible] = useState(false);
   const [isDeleteAllModalVisible, setIsDeleteAllModalVisible] = useState(false);
   const [deleteAllConfirmStep, setDeleteAllConfirmStep] = useState(1);
+  const [deleteAllConfirmation, setDeleteAllConfirmation] = useState('');
   const [selectedClassFilter, setSelectedClassFilter] = useState<string>('all');
   const [selectedSectionFilter, setSelectedSectionFilter] = useState<string>('all');
   const [studentViewMode, setStudentViewMode] = useState<ViewMode>('class-wise');
@@ -480,11 +481,19 @@ export default function StudentsView() {
 
   const handleDeleteAllStudents = async () => {
     try {
-      await api.delete('/api/admin/users/delete-all');
+      const phrase = `DELETE ${students.length} STUDENTS`;
+      if (deleteAllConfirmation.trim().toUpperCase() !== phrase) {
+        Alert.alert('Confirmation required', `Type exactly: ${phrase}`);
+        return;
+      }
+      await api.delete('/api/admin/users/delete-all', {
+        data: { expectedCount: students.length, confirmation: phrase },
+      });
       setStudents([]);
       setIsDeleteAllModalVisible(false);
       setDeleteAllConfirmStep(1);
-      Alert.alert('Success', 'All students have been deleted successfully!');
+      setDeleteAllConfirmation('');
+      Alert.alert('Students removed', 'The records are hidden from the active directory and remain recoverable.');
     } catch (error: any) {
       console.error('Failed to delete all students:', error);
       Alert.alert(
@@ -1041,16 +1050,6 @@ export default function StudentsView() {
             <Ionicons name="person-add" size={16} color={colors.primary} />
             <Text style={[styles.actionBtnText, { color: colors.primary }]}>Add Student</Text>
           </AdminScalePressable>
-          <AdminScalePressable
-            style={[styles.deleteAllBtn, { backgroundColor: colors.dangerMuted }]}
-            onPress={() => {
-              setDeleteAllConfirmStep(1);
-              setIsDeleteAllModalVisible(true);
-            }}
-          >
-            <Ionicons name="trash-outline" size={16} color={colors.danger} />
-            <Text style={[styles.actionBtnText, { color: colors.danger }]}>Delete All</Text>
-          </AdminScalePressable>
         </AdminHorizontalScroll>
       </View>
 
@@ -1160,7 +1159,20 @@ export default function StudentsView() {
         </View>
       </Modal>
 
-      {/* Delete All Modal */}
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel="Open student data danger zone"
+        style={{ alignSelf: 'center', padding: spacing.md, marginTop: spacing.lg }}
+        onPress={() => {
+          setDeleteAllConfirmStep(1);
+          setDeleteAllConfirmation('');
+          setIsDeleteAllModalVisible(true);
+        }}
+      >
+        <Text style={{ color: colors.textMuted, fontSize: 12 }}>Student data settings</Text>
+      </TouchableOpacity>
+
+      {/* Hidden danger-zone bulk removal modal */}
       <Modal
         visible={isDeleteAllModalVisible}
         transparent
@@ -1192,10 +1204,21 @@ export default function StudentsView() {
                 <Ionicons name="warning-outline" size={24} color="#dc2626" />
                 <Text style={styles.warningText}>
                   {deleteAllConfirmStep === 1
-                    ? `This will permanently delete ALL ${students.length} students. This cannot be undone.`
-                    : `Final warning: you are about to delete all ${students.length} students.`}
+                    ? `This removes all ${students.length} students from the active directory. Their records remain recoverable.`
+                    : `Type DELETE ${students.length} STUDENTS to confirm.`}
                 </Text>
               </View>
+              {deleteAllConfirmStep === 2 ? (
+                <TextInput
+                  value={deleteAllConfirmation}
+                  onChangeText={setDeleteAllConfirmation}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  placeholder={`DELETE ${students.length} STUDENTS`}
+                  style={[styles.input, { marginTop: spacing.md }]}
+                  accessibilityLabel="Bulk student removal confirmation phrase"
+                />
+              ) : null}
             </View>
             <View style={styles.modalFooter}>
               <TouchableOpacity
@@ -1218,6 +1241,10 @@ export default function StudentsView() {
                   if (deleteAllConfirmStep === 1) setDeleteAllConfirmStep(2);
                   else handleDeleteAllStudents();
                 }}
+                disabled={
+                  deleteAllConfirmStep === 2 &&
+                  deleteAllConfirmation.trim().toUpperCase() !== `DELETE ${students.length} STUDENTS`
+                }
               >
                 <Text style={styles.dangerSubmitText}>
                   {deleteAllConfirmStep === 2 ? 'Delete all students' : 'Continue'}

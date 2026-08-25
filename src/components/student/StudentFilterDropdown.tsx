@@ -113,6 +113,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 8,
+    minWidth: 0,
+    overflow: 'hidden',
     backgroundColor: STUDENT.surface,
     borderWidth: 1,
     borderColor: STUDENT.surfaceBorder,
@@ -122,6 +124,9 @@ const styles = StyleSheet.create({
   },
   triggerText: {
     flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
+    overflow: 'hidden',
     fontSize: 14,
     fontWeight: '600',
     color: STUDENT.text,

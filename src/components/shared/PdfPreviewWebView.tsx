@@ -290,6 +290,7 @@ const PdfPreviewWebView = forwardRef<PdfPreviewHandle, Props>(function PdfPrevie
   }, [rendering]);
 
   const showTvControls = isTvView;
+  const showZoomControls = true;
   const controlsReady = !busy && pageCount > 0;
   const canZoomOut = controlsReady && zoom > MIN_ZOOM + 0.01;
   const canZoomIn = controlsReady && zoom < MAX_ZOOM - 0.01;
@@ -413,8 +414,8 @@ const PdfPreviewWebView = forwardRef<PdfPreviewHandle, Props>(function PdfPrevie
         ) : null}
       </View>
 
-      {showTvControls ? (
-        <View style={styles.tvBar}>
+      {showZoomControls ? (
+        <View style={[styles.tvBar, !showTvControls && styles.phoneZoomBar]}>
           <TouchableOpacity
             style={[styles.tvBtn, !canZoomOut && styles.tvBtnDisabled]}
             onPress={() => injectViewerCommand(`v.zoomBy(${1 / ZOOM_STEP})`)}
@@ -522,6 +523,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#3c4043',
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: 'rgba(255,255,255,0.12)',
+  },
+  phoneZoomBar: {
+    paddingVertical: 8,
+    justifyContent: 'center',
   },
   tvBtn: {
     width: 48,
