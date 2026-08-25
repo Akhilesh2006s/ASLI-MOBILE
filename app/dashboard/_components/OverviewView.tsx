@@ -36,6 +36,10 @@ import { openContentPreview } from '../../../src/utils/openContentPreview';
 import { resolveIsAsliPrepExclusive } from '../../../src/lib/school-program';
 import { prepareLibraryContents } from '../../../src/lib/dedupe-library-content';
 import { buildExamAttemptCounts } from '../../../src/lib/student-exam-display';
+import {
+  buildLearningProgress,
+  overallFromSubjectProgress,
+} from '../../../src/lib/student-learning-progress';
 import { isIndividualAccount } from '../../../src/lib/individual-signup';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -121,240 +125,112 @@ const OverviewView = memo(function OverviewView({
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingSchedule, setIsLoadingSchedule] = useState(true);
   const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
+  const [isProgressLoading, setIsProgressLoading] = useState(true);
 
   const fetchDashboardData = useCallback(async () => {
     try {
       setIsLoading(true);
+      setIsProgressLoading(true);
       const token = await storageGetItem('authToken');
       if (!token) return;
 
-      // Fetch exam results to calculate stats - with timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      const authHeaders = {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      };
+      const timedFetch = (path: string, ms = 15000) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), ms);
+        return fetch(`${API_BASE_URL}${path}`, { headers: authHeaders, signal: controller.signal }).finally(() =>
+          clearTimeout(timeoutId)
+        );
+      };
 
-      const [meRes, examsRes, resultsRes, rankingsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/auth/me`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          signal: controller.signal
-        }),
-        fetch(`${API_BASE_URL}/api/student/exams`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          signal: controller.signal
-        }),
-        fetch(`${API_BASE_URL}/api/student/exam-results`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          signal: controller.signal
-        }),
-        fetch(`${API_BASE_URL}/api/student/rankings`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          signal: controller.signal
-        })
+      const settled = await Promise.allSettled([
+        timedFetch('/api/auth/me'),
+        timedFetch('/api/student/exams'),
+        timedFetch('/api/student/exam-results?lite=1', 20000),
+        timedFetch('/api/student/rankings'),
+        timedFetch('/api/student/subjects'),
       ]);
 
-      clearTimeout(timeoutId);
+      const readOkJson = async (result: PromiseSettledResult<Response>) => {
+        if (result.status !== 'fulfilled' || !result.value.ok) return null;
+        try {
+          return await result.value.json();
+        } catch {
+          return null;
+        }
+      };
+
+      const [meJson, examsJson, resultsJson, rankingsJson, subjectsJson] = await Promise.all(
+        settled.map((result) => readOkJson(result))
+      );
 
       let isAsliPrepExclusive = false;
-      if (meRes.ok) {
-        const meData = await meRes.json();
-        isAsliPrepExclusive = resolveIsAsliPrepExclusive(meData?.user);
-        const backendOverall = meData?.user?.overallProgress;
-        if (backendOverall !== undefined && backendOverall !== null) {
-          setOverallProgress(Number(backendOverall) || 0);
+      let backendOverall: number | null = null;
+      if (meJson?.user) {
+        isAsliPrepExclusive = resolveIsAsliPrepExclusive(meJson.user);
+        if (meJson.user.overallProgress !== undefined && meJson.user.overallProgress !== null) {
+          backendOverall = Number(meJson.user.overallProgress) || 0;
+          setOverallProgress(backendOverall);
         }
       }
 
-      let examsData: any[] = [];
-      if (examsRes.ok) {
-        const examsJson = await examsRes.json();
-        examsData = examsJson.data || examsJson.exams || [];
-        setExams(examsData);
-      }
+      const examsData = examsJson?.data || examsJson?.exams || [];
+      setExams(Array.isArray(examsData) ? examsData : []);
 
-      let resultsData = [];
-      if (resultsRes.ok) {
-        const resultsJson = await resultsRes.json();
-        resultsData = resultsJson.data || resultsJson.results || resultsJson || [];
-      }
-
+      const resultsData = Array.isArray(resultsJson?.data)
+        ? resultsJson.data
+        : Array.isArray(resultsJson?.results)
+          ? resultsJson.results
+          : Array.isArray(resultsJson)
+            ? resultsJson
+            : [];
       setExamAttemptCounts(buildExamAttemptCounts(resultsData));
 
-      let rankingsData = [];
-      if (rankingsRes.ok) {
-        const rankingsJson = await rankingsRes.json();
-        rankingsData = rankingsJson.data || rankingsJson.rankings || rankingsJson || [];
-      }
+      const rankingsData = rankingsJson?.data || rankingsJson?.rankings || rankingsJson || [];
+      const rankingList = Array.isArray(rankingsData) ? rankingsData : [];
 
-      // Calculate stats
       const totalQuestions = resultsData.reduce((sum: number, r: any) => sum + (r.totalQuestions || 0), 0);
       const correctAnswers = resultsData.reduce((sum: number, r: any) => sum + (r.correctAnswers || 0), 0);
-      const totalMarks = resultsData.reduce((sum: number, r: any) => sum + (r.totalMarks || 0), 0);
-      const obtainedMarks = resultsData.reduce((sum: number, r: any) => sum + (r.obtainedMarks || 0), 0);
       const avgAccuracy = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
-      const avgScore = totalMarks > 0 ? (obtainedMarks / totalMarks) * 100 : 0;
-      const avgRank = rankingsData.length > 0 
-        ? Math.round(rankingsData.reduce((sum: number, r: any) => sum + (r.rank || 0), 0) / rankingsData.length)
-        : 0;
+      const avgRank =
+        rankingList.length > 0
+          ? Math.round(rankingList.reduce((sum: number, r: any) => sum + (r.rank || 0), 0) / rankingList.length)
+          : 0;
 
       setStats({
         questionsAnswered: totalQuestions,
         accuracyRate: Math.round(avgAccuracy),
-        rank: avgRank || 0
-      });
-      // Match web logic: derive progress from exams + learning path completion
-      const subjectsResponse = await fetch(`${API_BASE_URL}/api/student/subjects`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      const subjectsData = subjectsResponse.ok ? await subjectsResponse.json() : {};
-      const subjectsList = subjectsData.subjects || subjectsData.data || [];
-
-      const subjectNameMap = new Map<string, string>();
-      subjectsList.forEach((subject: any) => {
-        const subjectName = subject.name || '';
-        const normalized = subjectName.toLowerCase();
-        subjectNameMap.set(normalized, subjectName);
-        if (normalized.includes('math')) {
-          subjectNameMap.set('maths', subjectName);
-          subjectNameMap.set('mathematics', subjectName);
-        }
-        if (normalized.includes('physics')) subjectNameMap.set('physics', subjectName);
-        if (normalized.includes('chemistry')) subjectNameMap.set('chemistry', subjectName);
+        rank: avgRank || 0,
       });
 
-      const examSubjectMap = new Map<string, { total: number; correct: number }>();
-      resultsData.forEach((result: any) => {
-        const subjectWise =
-          result?.subjectWiseScore ||
-          result?.subjectWiseScores ||
-          result?.subjectScores ||
-          null;
-        if (subjectWise && typeof subjectWise === 'object') {
-          Object.entries(subjectWise).forEach(([subject, score]: [string, any]) => {
-            if (!examSubjectMap.has(subject)) examSubjectMap.set(subject, { total: 0, correct: 0 });
-            const current = examSubjectMap.get(subject)!;
-            current.total += score.total || 0;
-            current.correct += score.correct || 0;
-          });
-        }
+      const subjectsList = Array.isArray(subjectsJson?.subjects)
+        ? subjectsJson.subjects
+        : Array.isArray(subjectsJson?.data)
+          ? subjectsJson.data
+          : [];
+      const finalProgressArray = await buildLearningProgress({
+        resultsData,
+        examsData: Array.isArray(examsData) ? examsData : [],
+        subjectsList,
       });
 
-      const mergedProgress = new Map<
-        string,
-        { id: string; name: string; progress: number; currentTopic: string }
-      >();
-      Array.from(examSubjectMap.entries()).forEach(([key, value]) => {
-        const progress = value.total > 0 ? Math.round((value.correct / value.total) * 100) : 0;
-        const name = subjectNameMap.get(key.toLowerCase()) || key.charAt(0).toUpperCase() + key.slice(1);
-        mergedProgress.set(key.toLowerCase(), {
-          id: key.toLowerCase(),
-          name,
-          progress,
-          currentTopic: `${name} - Recent Exams`,
-        });
-      });
-
-      for (const subject of subjectsList) {
-        const subjectId = subject._id || subject.id;
-        const subjectName = subject.name || 'Subject';
-        const localProgressKey = `completed_content_${subjectId}`;
-        let learningPathProgress = 0;
-        try {
-          const stored = await storageGetItem(localProgressKey);
-          const completedIds = stored ? JSON.parse(stored) : [];
-          if (Array.isArray(completedIds)) {
-            const contentResponse = await fetch(
-              `${API_BASE_URL}/api/student/asli-prep-content?subject=${encodeURIComponent(subjectId)}&surface=learning-path`,
-              {
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json'
-                }
-              }
-            );
-            if (contentResponse.ok) {
-              const contentData = await contentResponse.json();
-              const contents = prepareLibraryContents(
-                contentData.data || contentData || [],
-                isAsliPrepExclusive,
-                { surface: 'learning-path' }
-              );
-              const totalContent = contents.length;
-              learningPathProgress = totalContent > 0 ? Math.round((completedIds.length / totalContent) * 100) : 0;
-            }
-          }
-        } catch (e) {
-          // Ignore per-subject progress read errors
-        }
-
-        const existing = Array.from(mergedProgress.values()).find((s) => s.name === subjectName);
-        if (existing) {
-          existing.progress = Math.round((existing.progress + learningPathProgress) / 2);
-          existing.currentTopic = `${subjectName} - Learning Path`;
-        } else if (learningPathProgress > 0) {
-          mergedProgress.set(String(subjectId), {
-            id: String(subjectId),
-            name: subjectName,
-            progress: learningPathProgress,
-            currentTopic: `${subjectName} - Learning Path`,
-          });
-        }
-      }
-
-      const finalProgressArray = Array.from(mergedProgress.values());
       if (finalProgressArray.length > 0) {
         setSubjectProgress(finalProgressArray);
-        const calculatedOverallProgress = Math.round(
-          finalProgressArray.reduce((sum, s) => sum + (s.progress || 0), 0) / finalProgressArray.length
-        );
+        const calculatedOverallProgress = overallFromSubjectProgress(finalProgressArray);
         setOverallProgress(calculatedOverallProgress);
-        try {
-          await fetch(`${API_BASE_URL}/api/student/overall-progress`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ overallProgress: calculatedOverallProgress })
-          });
-        } catch (e) {
-          // Ignore save failures, UI already has calculated value
-        }
+        fetch(`${API_BASE_URL}/api/student/overall-progress`, {
+          method: 'POST',
+          headers: authHeaders,
+          body: JSON.stringify({ overallProgress: calculatedOverallProgress }),
+        }).catch(() => undefined);
       } else {
         setSubjectProgress([]);
-        try {
-          const meResponse = await fetch(`${API_BASE_URL}/api/auth/me`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          });
-          if (meResponse.ok) {
-            const meData = await meResponse.json();
-            const backendOverall = meData?.user?.overallProgress;
-            if (backendOverall !== undefined && backendOverall !== null) {
-              setOverallProgress(Number(backendOverall) || 0);
-            } else {
-              setOverallProgress(0);
-            }
-          }
-        } catch (e) {
-          setOverallProgress(0);
-        }
+        setOverallProgress(backendOverall ?? 0);
       }
+      setIsProgressLoading(false);
 
       setIsLoadingSchedule(true);
       const subjectIds = subjectsList.map((s: any) => String(s._id || s.id)).filter(Boolean);
@@ -523,6 +399,7 @@ const OverviewView = memo(function OverviewView({
     } finally {
       setIsLoading(false);
       setIsLoadingSchedule(false);
+      setIsProgressLoading(false);
     }
   }, []);
 
@@ -1068,6 +945,7 @@ const OverviewView = memo(function OverviewView({
       <LearningProgressModule
         overallProgress={overallProgress}
         subjectProgress={subjectProgress}
+        loading={isProgressLoading}
       />
 
       <AdaptiveLearningModule />

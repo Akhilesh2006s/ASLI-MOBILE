@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, RefreshControl, ScrollView, StatusBar, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -16,26 +16,33 @@ import PortalTopBar from '../../src/components/layout/PortalTopBar';
 import { LoadingState, VisitedTabPane } from '../../src/components/ui';
 import { STUDENT } from '../../src/theme/student';
 import OverviewView from './_components/OverviewView';
-import LearningPathsView from './_components/LearningPathsView';
-import EduOTTView from './_components/EduOTTView';
 import { EduOTTFilterProvider } from '../../src/contexts/edu-ott-filter-context';
-import ExamsTabView from './_components/ExamsTabView';
-import AITabView from './_components/AITabView';
-import OmrResultsView from './_components/OmrResultsView';
-import TimetableTabView from './_components/TimetableTabView';
 import TrialDailyQuizPrompt from '../../src/components/TrialDailyQuizPrompt';
 import VidyaAIFloatingAssistant from '../../src/components/vidya/VidyaAIFloatingAssistant';
 import { useVidyaChatAccess } from '../../src/hooks/useVidyaChatAccess';
 import { resolveStudentFirstName } from '../../src/lib/student-text';
 import { isIndividualAccount } from '../../src/lib/individual-signup';
 
+const LearningPathsView = lazy(() => import('./_components/LearningPathsView'));
+const EduOTTView = lazy(() => import('./_components/EduOTTView'));
+const ExamsTabView = lazy(() => import('./_components/ExamsTabView'));
+const AITabView = lazy(() => import('./_components/AITabView'));
+const OmrResultsView = lazy(() => import('./_components/OmrResultsView'));
+const TimetableTabView = lazy(() => import('./_components/TimetableTabView'));
+
 type TabId = 'home' | 'learning' | 'eduott' | 'exams' | 'results' | 'timetable' | 'vidya';
+
+const PINNED_TABS = ['home'] as const satisfies readonly TabId[];
+
+function TabFallback() {
+  return <LoadingState variant="stats" style={{ padding: 16 }} />;
+}
 
 export default function StudentDashboard() {
   const { signOut } = useAuth();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
   const { active: activeTab, visited: visitedTabs, select: selectTab, setActive: setActiveTab } =
-    useVisitedTabs<TabId>('home', { maxVisited: 1 });
+    useVisitedTabs<TabId>('home', { maxVisited: 5, pinned: PINNED_TABS });
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
@@ -60,6 +67,16 @@ export default function StudentDashboard() {
   useEffect(() => {
     checkAuth();
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const timer = setTimeout(() => {
+      void import('./_components/LearningPathsView');
+      void import('./_components/ExamsTabView');
+      void import('./_components/TimetableTabView');
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [isAuthenticated]);
 
   // One-shot tab intent (back from tools / deep links). Never persist ?tab= across reload.
   useEffect(() => {
@@ -160,16 +177,11 @@ export default function StudentDashboard() {
       tabScrollRefs[next]?.current?.scrollTo({ y: 0, animated: true });
       return;
     }
-    // Keep the tab-bar press responsive while heavy panes mount.
-    startTransition(() => {
-      selectTab(next);
-    });
+    selectTab(next);
   };
 
   const goToTab = (next: TabId) => {
-    startTransition(() => {
-      selectTab(next);
-    });
+    selectTab(next);
   };
 
   useDashboardShellBack({
@@ -268,7 +280,9 @@ export default function StudentDashboard() {
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
-              <LearningPathsView />
+              <Suspense fallback={<TabFallback />}>
+                <LearningPathsView />
+              </Suspense>
             </ScrollView>
           </VisitedTabPane>
         ) : null}
@@ -277,7 +291,9 @@ export default function StudentDashboard() {
           <VisitedTabPane visible={activeTab === 'eduott'}>
             <View style={[styles.scroll, styles.eduottPane]}>
               <EduOTTFilterProvider>
-                <EduOTTView username={firstName} />
+                <Suspense fallback={<TabFallback />}>
+                  <EduOTTView username={firstName} />
+                </Suspense>
               </EduOTTFilterProvider>
             </View>
           </VisitedTabPane>
@@ -292,10 +308,12 @@ export default function StudentDashboard() {
                 { paddingHorizontal: 12, paddingTop: pad.paddingTop },
               ]}
             >
-              <ExamsTabView
-                focusExamId={calendarFocusExamId}
-                onFocusExamHandled={() => setCalendarFocusExamId(null)}
-              />
+              <Suspense fallback={<TabFallback />}>
+                <ExamsTabView
+                  focusExamId={calendarFocusExamId}
+                  onFocusExamHandled={() => setCalendarFocusExamId(null)}
+                />
+              </Suspense>
             </View>
           </VisitedTabPane>
         ) : null}
@@ -308,7 +326,9 @@ export default function StudentDashboard() {
               contentContainerStyle={pad}
               showsVerticalScrollIndicator={false}
             >
-              <OmrResultsView />
+              <Suspense fallback={<TabFallback />}>
+                <OmrResultsView />
+              </Suspense>
             </ScrollView>
           </VisitedTabPane>
         ) : null}
@@ -321,7 +341,9 @@ export default function StudentDashboard() {
               contentContainerStyle={pad}
               showsVerticalScrollIndicator={false}
             >
-              <TimetableTabView user={user} />
+              <Suspense fallback={<TabFallback />}>
+                <TimetableTabView user={user} />
+              </Suspense>
             </ScrollView>
           </VisitedTabPane>
         ) : null}
@@ -334,7 +356,9 @@ export default function StudentDashboard() {
               contentContainerStyle={pad}
               showsVerticalScrollIndicator={false}
             >
-              <AITabView user={user} chatEnabled={vidyaChatEnabled} />
+              <Suspense fallback={<TabFallback />}>
+                <AITabView user={user} chatEnabled={vidyaChatEnabled} />
+              </Suspense>
             </ScrollView>
           </VisitedTabPane>
         ) : null}

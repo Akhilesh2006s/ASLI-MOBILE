@@ -3,11 +3,10 @@ import React, {
   lazy,
   useEffect,
   useState,
-  startTransition,
   useCallback,
   useMemo,
 } from 'react';
-import { Alert, InteractionManager, Keyboard, Platform, StyleSheet, View } from 'react-native';
+import { Alert, Keyboard, Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useDashboardShellBack } from '../../src/hooks/useBackNavigation';
@@ -41,7 +40,7 @@ const CalendarView = lazy(() => import('./_components/CalendarView'));
 const VidyaAIView = lazy(() => import('./_components/VidyaAIView'));
 
 /** Overview stays pinned; keep one other recent tab mounted to avoid remount/refetch lag. */
-const MAX_VISITED_TABS = 2;
+const MAX_VISITED_TABS = 5;
 const PINNED_ADMIN_VIEWS = ['overview'] as const satisfies readonly AdminNavView[];
 
 const ADMIN_VIEWS: AdminNavView[] = [
@@ -147,9 +146,7 @@ export default function AdminDashboard() {
 
   const goToView = useCallback(
     (view: AdminNavView) => {
-      startTransition(() => {
-        selectView(view);
-      });
+      selectView(view);
     },
     [selectView],
   );
@@ -161,13 +158,10 @@ export default function AdminDashboard() {
     closeMenu: closeMenu,
   });
 
-  /** Close drawer first, then switch after interactions — avoids animation + mount fighting. */
   const onSelectFromDrawer = useCallback(
     (view: AdminNavView) => {
+      goToView(view);
       setMenuOpen(false);
-      InteractionManager.runAfterInteractions(() => {
-        goToView(view);
-      });
     },
     [goToView],
   );

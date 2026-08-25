@@ -7,7 +7,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
-import { setStudentDashboardTabIntent } from '../src/lib/dashboard-tab-intent';
 import { GlassPanel } from '../src/components/ui';
 import { useAuth } from '../src/context/AuthContext';
 import studentService from '../src/services/api/studentService';
@@ -33,11 +32,10 @@ type ProfileTab = 'overview' | 'achievements' | 'progress' | 'settings';
 
 export default function Profile() {
   const router = useRouter();
-  const { role, user, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const { width } = useWindowDimensions();
   const compact = width < 380;
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState<string | null>(null);
   const [profileData, setProfileData] = useState<any>(null);
   const [dashboardPath, setDashboardPath] = useState<string>('/dashboard');
   const [activeTab, setActiveTab] = useState<ProfileTab>('overview');
@@ -81,7 +79,6 @@ export default function Profile() {
       const apiUser = me?.user || user;
       setProfileData(apiUser || null);
       setUserEmail(apiUser?.email || null);
-      setUserRole(apiUser?.role || role || null);
 
       const token = await storageGetItem('authToken');
       if (token) {
@@ -131,7 +128,6 @@ export default function Profile() {
     } catch (_) {
       setProfileData(user || null);
       setUserEmail(user?.email || null);
-      setUserRole(role || null);
     }
   };
 
@@ -422,125 +418,6 @@ export default function Profile() {
               </View>
             </GlassPanel>
 
-            <GlassPanel style={styles.sectionCard} radius={14} tone="medium">
-              <Text style={styles.sectionTitle}>Learning</Text>
-              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/learning-paths')}>
-                <View style={styles.menuLeft}>
-                  <View style={styles.menuIcon}>
-                    <Ionicons name="book-outline" size={18} color="#16a34a" />
-                  </View>
-                  <Text style={styles.menuText}>Learning Paths</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color="#5B6779" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/asli-prep-content')}>
-                <View style={styles.menuLeft}>
-                  <View style={styles.menuIcon}>
-                    <Ionicons name="library-outline" size={18} color="#2563eb" />
-                  </View>
-                  <Text style={styles.menuText}>Digital Library</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color="#5B6779" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/student/timetable')}>
-                <View style={styles.menuLeft}>
-                  <View style={styles.menuIcon}>
-                    <Ionicons name="calendar-outline" size={18} color="#0d9488" />
-                  </View>
-                  <Text style={styles.menuText}>Class Timetable</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color="#5B6779" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/student/schedule')}>
-                <View style={styles.menuLeft}>
-                  <View style={styles.menuIcon}>
-                    <Ionicons name="today-outline" size={18} color="#0d9488" />
-                  </View>
-                  <Text style={styles.menuText}>Study Schedule</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color="#5B6779" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/student/results')}>
-                <View style={styles.menuLeft}>
-                  <View style={styles.menuIcon}>
-                    <Ionicons name="scan-outline" size={18} color="#f59e0b" />
-                  </View>
-                  <Text style={styles.menuText}>Offline Results</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color="#5B6779" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/student-exams')}>
-                <View style={styles.menuLeft}>
-                  <View style={styles.menuIcon}>
-                    <Ionicons name="school-outline" size={18} color="#7c3aed" />
-                  </View>
-                  <Text style={styles.menuText}>My Exams</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color="#5B6779" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/practice-tests')}>
-                <View style={styles.menuLeft}>
-                  <View style={styles.menuIcon}>
-                    <Ionicons name="fitness-outline" size={18} color="#ea580c" />
-                  </View>
-                  <Text style={styles.menuText}>Practice Tests</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color="#5B6779" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => {
-                  setStudentDashboardTabIntent('vidya');
-                  router.push('/dashboard');
-                }}
-              >
-                <View style={styles.menuLeft}>
-                  <View style={styles.menuIcon}>
-                    <Ionicons name="sparkles-outline" size={18} color="#8b5cf6" />
-                  </View>
-                  <Text style={styles.menuText}>AI Tools</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color="#5B6779" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/drive-viewer')}>
-                <View style={styles.menuLeft}>
-                  <View style={styles.menuIcon}>
-                    <Ionicons name="folder-outline" size={18} color="#2563eb" />
-                  </View>
-                  <Text style={styles.menuText}>My Drive</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color="#5B6779" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/attendance')}>
-                <View style={styles.menuLeft}>
-                  <View style={styles.menuIcon}>
-                    <Ionicons name="calendar-number-outline" size={18} color="#f59e0b" />
-                  </View>
-                  <Text style={styles.menuText}>Attendance</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color="#5B6779" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/assignments')}>
-                <View style={styles.menuLeft}>
-                  <View style={styles.menuIcon}>
-                    <Ionicons name="clipboard-outline" size={18} color="#16a34a" />
-                  </View>
-                  <Text style={styles.menuText}>Assignments</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color="#5B6779" />
-              </TouchableOpacity>
-              {(userRole === 'teacher' || userRole === 'admin') ? (
-                <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/staff/dashboard')}>
-                  <View style={styles.menuLeft}>
-                    <View style={styles.menuIcon}>
-                      <Ionicons name="people-outline" size={18} color="#2563eb" />
-                    </View>
-                    <Text style={styles.menuText}>Staff Dashboard</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color="#5B6779" />
-                </TouchableOpacity>
-              ) : null}
-            </GlassPanel>
           </>
         )}
 

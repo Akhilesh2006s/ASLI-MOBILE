@@ -11,6 +11,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { GlassPanel } from '../../../../src/components/ui';
+import StudentShimmer from '../../../../src/components/student/StudentShimmer';
 import { STUDENT, STUDENT_RADIUS, STUDENT_TYPO, SUBJECT_COLORS } from '../../../../src/theme/student';
 
 interface SubjectProgress {
@@ -67,12 +68,14 @@ interface LearningProgressModuleProps {
   overallProgress: number;
   subjectProgress: SubjectProgress[];
   dark?: boolean;
+  loading?: boolean;
 }
 
 function LearningProgressModuleComponent({
   overallProgress,
   subjectProgress,
   dark,
+  loading,
 }: LearningProgressModuleProps) {
   const section = dark ? styles.sectionCardDark : styles.sectionCard;
 
@@ -87,44 +90,55 @@ function LearningProgressModuleComponent({
         </LinearGradient>
       </View>
 
-      <View style={styles.progressOverview}>
-        <View style={styles.progressHeader}>
-          <Text style={styles.progressLabel}>Overall Progress</Text>
-          <Text style={styles.progressPercentage}>{overallProgress}%</Text>
+      {loading ? (
+        <View style={styles.loadingWrap}>
+          <StudentShimmer width="100%" height={10} borderRadius={STUDENT_RADIUS.full} />
+          <StudentShimmer width="72%" height={12} borderRadius={8} style={{ marginTop: 14 }} />
+          <StudentShimmer width="100%" height={56} borderRadius={STUDENT_RADIUS.inner} style={{ marginTop: 10 }} />
+          <StudentShimmer width="100%" height={56} borderRadius={STUDENT_RADIUS.inner} style={{ marginTop: 10 }} />
         </View>
-        <AnimatedProgressBar progress={overallProgress} />
-      </View>
+      ) : (
+        <>
+          <View style={styles.progressOverview}>
+            <View style={styles.progressHeader}>
+              <Text style={styles.progressLabel}>Overall Progress</Text>
+              <Text style={styles.progressPercentage}>{overallProgress}%</Text>
+            </View>
+            <AnimatedProgressBar progress={overallProgress} />
+          </View>
 
-      <View style={styles.subjectProgressList}>
-        {subjectProgress.length > 0 ? (
-          subjectProgress.map((subject, index) => {
-            const iconMeta = getSubjectIcon(subject.name, index);
-            return (
-              <Animated.View
-                key={subject.id}
-                entering={FadeInDown.duration(320).delay(index * 60)}
-                style={styles.subjectCard}
-              >
-                <View style={styles.subjectRow}>
-                  <View style={[styles.subjectIcon, { backgroundColor: `${iconMeta.color}18` }]}>
-                    <Ionicons name={iconMeta.icon} size={18} color={iconMeta.color} />
-                  </View>
-                  <View style={styles.subjectDetails}>
-                    <Text style={styles.subjectName}>{subject.name}</Text>
-                    <Text style={styles.subjectTopic} numberOfLines={1}>
-                      {subject.currentTopic || `${subject.name} - Recent Exams`}
-                    </Text>
-                  </View>
-                  <Text style={styles.subjectProgressPercent}>{subject.progress}%</Text>
-                </View>
-                <AnimatedProgressBar progress={subject.progress} delay={80 * index} />
-              </Animated.View>
-            );
-          })
-        ) : (
-          <Text style={styles.noProgressText}>Complete Exams To See Your Subject-Wise Progress</Text>
-        )}
-      </View>
+          <View style={styles.subjectProgressList}>
+            {subjectProgress.length > 0 ? (
+              subjectProgress.map((subject, index) => {
+                const iconMeta = getSubjectIcon(subject.name, index);
+                return (
+                  <Animated.View
+                    key={subject.id}
+                    entering={FadeInDown.duration(320).delay(index * 60)}
+                    style={styles.subjectCard}
+                  >
+                    <View style={styles.subjectRow}>
+                      <View style={[styles.subjectIcon, { backgroundColor: `${iconMeta.color}18` }]}>
+                        <Ionicons name={iconMeta.icon} size={18} color={iconMeta.color} />
+                      </View>
+                      <View style={styles.subjectDetails}>
+                        <Text style={styles.subjectName}>{subject.name}</Text>
+                        <Text style={styles.subjectTopic} numberOfLines={1}>
+                          {subject.currentTopic || `${subject.name} - Recent Exams`}
+                        </Text>
+                      </View>
+                      <Text style={styles.subjectProgressPercent}>{subject.progress}%</Text>
+                    </View>
+                    <AnimatedProgressBar progress={subject.progress} delay={80 * index} />
+                  </Animated.View>
+                );
+              })
+            ) : (
+              <Text style={styles.noProgressText}>Complete Exams To See Your Subject-Wise Progress</Text>
+            )}
+          </View>
+        </>
+      )}
     </GlassPanel>
   );
 }
@@ -172,6 +186,10 @@ const styles = StyleSheet.create({
     color: STUDENT.textOnPrimary,
     fontSize: 11,
     fontWeight: '700',
+  },
+  loadingWrap: {
+    paddingTop: 4,
+    paddingBottom: 6,
   },
   progressOverview: {
     marginBottom: 14,

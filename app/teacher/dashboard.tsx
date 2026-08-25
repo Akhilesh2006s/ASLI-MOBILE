@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -84,7 +84,7 @@ export default function TeacherDashboard() {
   const { signOut } = useAuth();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
   const { active: activeTab, visited: visitedTabs, select: selectTab, setActive: setActiveTab } =
-    useVisitedTabs<TabId>('overview', { maxVisited: 1 });
+    useVisitedTabs<TabId>('overview', { maxVisited: 5, pinned: ['overview'] });
   const [navTarget, setNavTarget] = useState<NavTarget>({});
   const [menuOpen, setMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -226,9 +226,7 @@ export default function TeacherDashboard() {
   const goToTab = (next: TabId, target?: NavTarget) => {
     if (target) setNavTarget(target);
     else setNavTarget({});
-    startTransition(() => {
-      selectTab(next);
-    });
+    selectTab(next);
   };
 
   useDashboardShellBack({
