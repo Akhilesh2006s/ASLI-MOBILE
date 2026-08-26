@@ -188,8 +188,13 @@ const teacherService = {
 
   createHomework: (body: Record<string, unknown>) =>
     fetchJson<any>('/api/teacher/homework', { method: 'POST', body: JSON.stringify(body) }),
-  deleteHomework: (id: string) =>
-    fetchJson<any>(`/api/teacher/homework/${id}`, { method: 'DELETE' }),
+  deleteHomework: async (id: string) => {
+    try {
+      return await fetchJson<any>(`/api/teacher/homework/${id}`, { method: 'DELETE' });
+    } catch {
+      return fetchJson<any>(`/api/teacher/homework/${id}/delete`, { method: 'POST' });
+    }
+  },
   gradeHomework: (id: string, body: Record<string, unknown>) =>
     fetchJson<any>(`/api/teacher/homework-submissions/${id}/grade`, {
       method: 'POST',

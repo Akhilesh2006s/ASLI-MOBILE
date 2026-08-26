@@ -226,23 +226,33 @@ export default function HomeworkSubmissionsView() {
                     onPress={() => toggleHw(id)}
                   >
                     <View style={{ flex: 1 }}>
-                      <View style={styles.hwTitleRow}>
-                        <Text style={styles.hwTitle}>{hw.title || 'Untitled Homework'}</Text>
-                        {overdue ? (
-                          <View style={styles.badgeRed}><Text style={styles.badgeRedText}>Overdue</Text></View>
-                        ) : deadline && deadline >= new Date() ? (
-                          <View style={styles.badgeYellow}><Text style={styles.badgeYellowText}>Active</Text></View>
+                      <Text style={styles.hwTitle} numberOfLines={1}>{hw.title || 'Untitled Homework'}</Text>
+                      <View style={styles.hwMetaRow}>
+                        <View style={styles.hwMetaItem}>
+                          <Ionicons name="book" size={13} color="#7c3aed" />
+                          <Text style={styles.hwMetaText}>{hw.subject?.name || hw.subject || 'N/A'}</Text>
+                        </View>
+                        {hw.classNumber ? (
+                          <View style={styles.hwMetaItem}>
+                            <Ionicons name="school" size={13} color="#2563eb" />
+                            <Text style={styles.hwMetaText}>Class {hw.classNumber}</Text>
+                          </View>
+                        ) : null}
+                        {hw.topic ? (
+                          <View style={styles.hwMetaItem}>
+                            <Ionicons name="layers" size={13} color="#d97706" />
+                            <Text style={styles.hwMetaText}>{hw.topic}</Text>
+                          </View>
+                        ) : null}
+                        {deadline ? (
+                          <View style={styles.hwMetaItem}>
+                            <Ionicons name="time" size={13} color={overdue ? TEACHER.danger : '#059669'} />
+                            <Text style={[styles.hwMetaText, overdue && { color: TEACHER.danger }]} numberOfLines={1}>
+                              {deadline.toLocaleDateString()} {deadline.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </Text>
+                          </View>
                         ) : null}
                       </View>
-                      <Text style={styles.hwMeta}>
-                        Subject: {hw.subject?.name || hw.subject || 'N/A'}
-                        {hw.classNumber ? ` · Class: ${hw.classNumber}` : ''}
-                      </Text>
-                      {deadline ? (
-                        <Text style={[styles.deadline, overdue && { color: TEACHER.danger }]}>
-                          Deadline: {deadline.toLocaleDateString()}
-                        </Text>
-                      ) : null}
                     </View>
                     <Ionicons name={isOpen ? 'chevron-up' : 'chevron-down'} size={20} color={TEACHER.textMuted} />
                   </Pressable>
@@ -452,10 +462,10 @@ const styles = StyleSheet.create({
   // No fill: the surrounding hwCard glass reads through this header row.
   hwHeader: { flexDirection: 'row', alignItems: 'center', padding: 14 },
   hwOverdue: { borderLeftWidth: 4, borderLeftColor: TEACHER.danger },
-  hwTitleRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
   hwTitle: { fontSize: 15, fontWeight: '700', color: TEACHER.text },
-  hwMeta: { fontSize: 12, color: TEACHER.textMuted, marginTop: 4 },
-  deadline: { fontSize: 12, color: TEACHER.textMuted, marginTop: 2 },
+  hwMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingTop: 6, flexWrap: 'nowrap' },
+  hwMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  hwMetaText: { fontSize: 12, color: TEACHER.textMuted, fontWeight: '600' },
   hwActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 14, paddingBottom: 12 },
   viewBtn: {
     flexDirection: 'row',
@@ -481,10 +491,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   deleteBtnText: { fontSize: 12, fontWeight: '700', color: TEACHER.danger },
-  badgeRed: { backgroundColor: 'rgba(255,77,106,0.18)', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
-  badgeRedText: { fontSize: 10, fontWeight: '700', color: TEACHER.danger },
-  badgeYellow: { backgroundColor: 'rgba(255,184,48,0.18)', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
-  badgeYellowText: { fontSize: 10, fontWeight: '700', color: TEACHER.warning },
   subs: { padding: 12, backgroundColor: 'rgba(123,80,255,0.07)' },
   noSubs: { fontSize: 13, color: TEACHER.textMuted, fontStyle: 'italic' },
   subRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderTopWidth: 1, borderTopColor: TEACHER.surfaceBorder },
