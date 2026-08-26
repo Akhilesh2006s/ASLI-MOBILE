@@ -24,7 +24,6 @@ import {
 } from '../../utils/contentPreview';
 
 const ZOOM_STEP = 1.25;
-const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 4;
 
 export type PdfPreviewHandle = {
@@ -292,7 +291,8 @@ const PdfPreviewWebView = forwardRef<PdfPreviewHandle, Props>(function PdfPrevie
   const showTvControls = isTvView;
   const showZoomControls = true;
   const controlsReady = !busy && pageCount > 0;
-  const canZoomOut = controlsReady && zoom > MIN_ZOOM + 0.01;
+  // Fit page is the floor in both modes, so keep minus dead-button-free there.
+  const canZoomOut = controlsReady && zoom > 1.01;
   const canZoomIn = controlsReady && zoom < MAX_ZOOM - 0.01;
   const isFitPage = controlsReady && Math.abs(zoom - 1) < 0.02;
 

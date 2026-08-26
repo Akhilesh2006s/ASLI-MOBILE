@@ -31,6 +31,7 @@ export default function HomeworkSubmissionsView() {
   const [expandedHw, setExpandedHw] = useState<Set<string>>(new Set());
   const [expandedClasses, setExpandedClasses] = useState<Set<string>>(new Set());
   const [showCreate, setShowCreate] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [gradeTarget, setGradeTarget] = useState<any | null>(null);
   const [grade, setGrade] = useState('');
   const [feedback, setFeedback] = useState('');
@@ -102,6 +103,37 @@ export default function HomeworkSubmissionsView() {
       else next.add(cn);
       return next;
     });
+  };
+
+  const deleteHomework = (homework: any) => {
+    const id = String(homework?._id || homework?.id || '');
+    if (!id) return;
+    Alert.alert(
+      'Delete this homework?',
+      `Are you sure you want to delete "${homework.title || 'this homework'}"? Students will no longer see it.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              setDeletingId(id);
+              try {
+                await teacherService.deleteHomework(id);
+                await teacherService.invalidateCache('hw_grouped');
+                setGroups((prev) => prev.filter((g) => String(g.homework?._id || g.homework?.id) !== id));
+                Alert.alert('Deleted', 'Homework assignment removed.');
+              } catch {
+                Alert.alert('Error', 'Could not delete homework.');
+              } finally {
+                setDeletingId(null);
+              }
+            })();
+          },
+        },
+      ]
+    );
   };
 
   const submitHomework = async () => {
@@ -214,6 +246,28 @@ export default function HomeworkSubmissionsView() {
                     </View>
                     <Ionicons name={isOpen ? 'chevron-up' : 'chevron-down'} size={20} color={TEACHER.textMuted} />
                   </Pressable>
+                  <View style={styles.hwActions}>
+                    {hw.fileUrl ? (
+                      <Pressable
+                        style={styles.viewBtn}
+                        onPress={() => {
+                          const url = teacherService.resolveMediaUrl(hw.fileUrl);
+                          if (url) void Linking.openURL(url);
+                        }}
+                      >
+                        <Ionicons name="document-text-outline" size={14} color={TEACHER.primaryLight} />
+                        <Text style={styles.viewBtnText}>View File</Text>
+                      </Pressable>
+                    ) : null}
+                    <Pressable
+                      style={styles.deleteBtn}
+                      disabled={deletingId === id}
+                      onPress={() => deleteHomework(hw)}
+                    >
+                      <Ionicons name="trash-outline" size={14} color={TEACHER.danger} />
+                      <Text style={styles.deleteBtnText}>{deletingId === id ? 'Deleting…' : 'Delete'}</Text>
+                    </Pressable>
+                  </View>
                   {isOpen ? (
                     <View style={styles.subs}>
                       {group.submissions.length === 0 ? (
@@ -402,6 +456,31 @@ const styles = StyleSheet.create({
   hwTitle: { fontSize: 15, fontWeight: '700', color: TEACHER.text },
   hwMeta: { fontSize: 12, color: TEACHER.textMuted, marginTop: 4 },
   deadline: { fontSize: 12, color: TEACHER.textMuted, marginTop: 2 },
+  hwActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 14, paddingBottom: 12 },
+  viewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
+    backgroundColor: TEACHER.surfaceElevated,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  viewBtnText: { fontSize: 12, fontWeight: '700', color: TEACHER.primaryLight },
+  deleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(220,38,38,0.25)',
+    backgroundColor: 'rgba(254,226,226,0.7)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  deleteBtnText: { fontSize: 12, fontWeight: '700', color: TEACHER.danger },
   badgeRed: { backgroundColor: 'rgba(255,77,106,0.18)', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
   badgeRedText: { fontSize: 10, fontWeight: '700', color: TEACHER.danger },
   badgeYellow: { backgroundColor: 'rgba(255,184,48,0.18)', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },

@@ -20,6 +20,18 @@ const TOOLS_WIDE_MIN_WIDTH = 1024;
 const STUDENT_TOOLS_SUBTITLE =
   'Stuck on a concept? Revising a chapter? Preparing for a test? Vidya AI has a tool to help.';
 
+const HERO_STAT_CHIPS: {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  color: string;
+  iconBg: string;
+  border: string;
+}[] = [
+  { icon: 'book', title: 'Learn', color: '#7c3aed', iconBg: 'rgba(124,58,237,0.14)', border: 'rgba(124,58,237,0.22)' },
+  { icon: 'create', title: 'Practise', color: '#059669', iconBg: 'rgba(5,150,105,0.14)', border: 'rgba(5,150,105,0.22)' },
+  { icon: 'compass', title: 'Prepare', color: '#d97706', iconBg: 'rgba(217,119,6,0.16)', border: 'rgba(217,119,6,0.24)' },
+];
+
 function chunkItems<T>(items: T[], size: number): T[][] {
   if (size <= 1) return items.map((item) => [item]);
   const rows: T[][] = [];
@@ -28,12 +40,6 @@ function chunkItems<T>(items: T[], size: number): T[][] {
   }
   return rows;
 }
-
-const HERO_STAT_CHIPS: { icon: keyof typeof Ionicons.glyphMap; title: string; copy: string }[] = [
-  { icon: 'book-outline', title: 'Learn', copy: 'Understand Concepts Clearly' },
-  { icon: 'create-outline', title: 'Practise', copy: 'Questions, flashcards & tests' },
-  { icon: 'compass-outline', title: 'Prepare', copy: 'Study guides, projects & plans' },
-];
 
 function usePressScale(to = 0.98) {
   const scale = useSharedValue(1);
@@ -176,14 +182,13 @@ export default function VidyaAIView({
         <Text style={styles.sectionSubtitle}>{STUDENT_TOOLS_SUBTITLE}</Text>
         <View style={styles.heroStatsRow}>
           {HERO_STAT_CHIPS.map((stat) => (
-            <View key={stat.title} style={[styles.heroStatChip, isTablet && styles.heroStatChipWide]}>
-              <View style={styles.heroStatIcon}>
-                <Ionicons name={stat.icon} size={18} color={AI.primary} />
+            <View key={stat.title} style={[styles.heroStatChip, { borderColor: stat.border }]}>
+              <View style={[styles.heroStatIcon, { backgroundColor: stat.iconBg }]}>
+                <Ionicons name={stat.icon} size={18} color={stat.color} />
               </View>
-              <View style={styles.heroStatText}>
-                <Text style={styles.heroStatTitle}>{stat.title}</Text>
-                <Text style={styles.heroStatCopy}>{stat.copy}</Text>
-              </View>
+              <Text style={styles.heroStatTitle} numberOfLines={1}>
+                {stat.title}
+              </Text>
             </View>
           ))}
         </View>
@@ -293,45 +298,34 @@ const styles = StyleSheet.create({
   heroStatsRow: {
     marginTop: AI_SPACING.lg,
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: AI_SPACING.sm,
+    alignItems: 'stretch',
+    gap: 8,
   },
   heroStatChip: {
-    flexGrow: 1,
-    flexBasis: '100%',
+    flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: AI_SPACING.sm,
+    justifyContent: 'center',
+    gap: 6,
     borderRadius: AI_RADIUS.md,
     borderWidth: 1,
-    borderColor: AI.primaryBorder,
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    paddingHorizontal: AI_SPACING.md,
-    paddingVertical: AI_SPACING.sm,
-  },
-  heroStatChipWide: {
-    flexBasis: '31%',
+    backgroundColor: 'rgba(255,255,255,0.78)',
+    paddingHorizontal: 6,
+    paddingVertical: 10,
   },
   heroStatIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: AI_RADIUS.sm,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: AI.primarySoft,
   },
-  heroStatText: { flex: 1, minWidth: 0 },
   heroStatTitle: {
-    fontSize: 14,
-    lineHeight: 18,
+    fontSize: 12,
     fontWeight: '800',
     color: AI.text,
-  },
-  heroStatCopy: {
-    marginTop: 1,
-    fontSize: 12,
-    lineHeight: 16,
-    color: AI.textSecondary,
+    flexShrink: 1,
   },
   toolsList: {
     gap: LIST_GAP,

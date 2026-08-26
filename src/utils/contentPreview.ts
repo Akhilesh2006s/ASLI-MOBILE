@@ -548,14 +548,8 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
     body.tv-mode #pages > *:not(:first-child) {
       display: none !important;
     }
-    body.tv-mode.tv-zoomed #zoom-sizer,
-    body.tv-mode.tv-zoomed #pages,
-    body.tv-mode.tv-zoomed .pdf-slot {
-      width: 100%;
-      height: 100%;
-      display: block;
-      overflow: hidden;
-    }
+    /* TV zoom: the slot grows with the page but stays centred and capped to the
+       screen, so panning happens inside it instead of leaving a blank gutter. */
     body.tv-mode.tv-zoomed .pdf-slot {
       overflow: auto;
       -webkit-overflow-scrolling: touch;
@@ -576,7 +570,9 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
       box-shadow: 0 2px 8px rgba(0,0,0,0.35);
     }
     body.tv-mode canvas {
-      margin: 0 auto;
+      /* No auto margins: the slot is already centred, and an auto margin would
+         offset the canvas so transform-origin 0 0 zooms away from the page. */
+      margin: 0;
       max-width: none;
       box-shadow: 0 4px 24px rgba(0,0,0,0.45);
     }
@@ -715,26 +711,51 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
         return pageSlots[currentPage] || null;
       }
 
+      /** Visible viewer box in CSS px (native config wins once RN has measured it). */
+      function tvFrameBox() {
+        var frame = zoomFrameEl();
+        var cfg = window.__pdfViewerConfig || {};
+        var w = (frame && frame.clientWidth) || 0;
+        var h = (frame && frame.clientHeight) || 0;
+        if (w < 2) w = Math.round(Number(cfg.width) || window.innerWidth || 0);
+        if (h < 2) h = Math.round(Number(cfg.height) || window.innerHeight || 0);
+        return { w: Math.max(1, w), h: Math.max(1, h) };
+      }
+
+      /**
+       * TV: size the page slot to the zoomed page, capped by the viewer box, so the
+       * page stays centred and only the overflow is pannable. Returns the new box.
+       */
+      function applyTvSlotBox(slot, z) {
+        if (!slot) return null;
+        var baseW = Number(slot.getAttribute('data-base-w')) || 0;
+        var baseH = Number(slot.getAttribute('data-base-h')) || 0;
+        if (baseW < 1 || baseH < 1) return null;
+        var box = tvFrameBox();
+        var contentW = Math.max(1, Math.round(baseW * z));
+        var contentH = Math.max(1, Math.round(baseH * z));
+        var slotW = Math.min(contentW, box.w);
+        var slotH = Math.min(contentH, box.h);
+        var pannable = contentW > slotW + 1 || contentH > slotH + 1;
+        document.body.classList.toggle('tv-zoomed', z > 1.02);
+        slot.style.width = slotW + 'px';
+        slot.style.height = slotH + 'px';
+        slot.style.margin = '0 auto';
+        slot.style.overflow = pannable ? 'auto' : 'hidden';
+        var frame = zoomFrameEl();
+        if (frame) frame.style.overflow = 'hidden';
+        return { w: slotW, h: slotH, contentW: contentW, contentH: contentH };
+      }
+
       function syncTvZoomLayout(z) {
         if (!isTvView()) return;
-        var zoomed = z > 1.02;
-        document.body.classList.toggle('tv-zoomed', zoomed);
+        document.body.classList.toggle('tv-zoomed', z > 1.02);
         var frame = zoomFrameEl();
         if (frame) frame.style.overflow = 'hidden';
         var slot = pageSlots[currentPage];
         if (!slot) return;
-        if (zoomed) {
-          slot.style.width = '100%';
-          slot.style.height = '100%';
-          slot.style.margin = '0';
-          slot.style.overflow = 'auto';
-        } else {
-          var baseW = Number(slot.getAttribute('data-base-w')) || 0;
-          var baseH = Number(slot.getAttribute('data-base-h')) || 0;
-          if (baseW) slot.style.width = baseW + 'px';
-          if (baseH) slot.style.height = baseH + 'px';
-          slot.style.margin = '0 auto';
-          slot.style.overflow = 'hidden';
+        applyTvSlotBox(slot, z);
+        if (z <= 1.02) {
           slot.scrollLeft = 0;
           slot.scrollTop = 0;
         }
@@ -797,13 +818,23 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
 
         if (z > 1.02) {
           if (tv) {
-            // TV: pan inside the page slot (one page fills the screen).
-            slot.style.width = '100%';
-            slot.style.height = '100%';
-            slot.style.overflow = 'auto';
-            if (frame) frame.style.overflow = 'hidden';
-            slot.scrollLeft = contentX * z - (clientX - rect.left);
-            slot.scrollTop = contentY * z - (clientY - rect.top);
+            // TV: page stays centred, capped to the viewer box; pan inside the slot.
+            var tvBox = applyTvSlotBox(slot, z);
+            if (tvBox) {
+              var frameW = frame ? frame.clientWidth : (window.innerWidth || tvBox.w);
+              var frameH = frame ? frame.clientHeight : (window.innerHeight || tvBox.h);
+              // The flex parent re-centres the slot, so anchor on its new box.
+              var newLeft = frameRect.left + Math.max(0, (frameW - tvBox.w) / 2);
+              var newTop = frameRect.top + Math.max(0, (frameH - tvBox.h) / 2);
+              slot.scrollLeft = Math.max(
+                0,
+                Math.min(tvBox.contentW - tvBox.w, contentX * z - (clientX - newLeft))
+              );
+              slot.scrollTop = Math.max(
+                0,
+                Math.min(tvBox.contentH - tvBox.h, contentY * z - (clientY - newTop))
+              );
+            }
           } else {
             // Phone/tablet: grow the page; pan with the outer #zoom-frame (reliable in WebView).
             slot.style.width = Math.round(baseW * z) + 'px';
@@ -989,20 +1020,26 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
         var w;
         var h;
         if (isTvView()) {
-          w = Math.max(
-            (frame && frame.clientWidth) || 0,
-            (vis && vis.width) || 0,
-            document.documentElement.clientWidth || 0,
-            window.innerWidth || 0,
-            nativeW
-          );
-          h = Math.max(
-            (frame && frame.clientHeight) || 0,
-            (vis && vis.height) || 0,
-            document.documentElement.clientHeight || 0,
-            window.innerHeight || 0,
-            nativeH
-          );
+          // The frame is sized from the native viewer box, so trust it once measured;
+          // taking the max of every candidate overshoots and crops the page.
+          var frameW = (frame && frame.clientWidth) || 0;
+          var frameH = (frame && frame.clientHeight) || 0;
+          w = frameW > 2
+            ? frameW
+            : Math.max(
+                nativeW,
+                (vis && vis.width) || 0,
+                document.documentElement.clientWidth || 0,
+                window.innerWidth || 0
+              );
+          h = frameH > 2
+            ? frameH
+            : Math.max(
+                nativeH,
+                (vis && vis.height) || 0,
+                document.documentElement.clientHeight || 0,
+                window.innerHeight || 0
+              );
         } else {
           w = (frame && frame.clientWidth) || window.innerWidth || document.documentElement.clientWidth || 320;
           h = (frame && frame.clientHeight) || window.innerHeight || document.documentElement.clientHeight || 480;
@@ -1129,13 +1166,13 @@ export const PDF_JS_VIEWER_SHELL_HTML = `<!DOCTYPE html>
           var oldInner = slot.querySelector('.pdf-zoom-inner');
           if (oldInner && oldInner.parentNode === slot) slot.removeChild(oldInner);
           slot.appendChild(inner);
-          if (keepZoom > 1.02 && isTvView()) {
-            slot.scrollLeft = keepScrollL;
-            slot.scrollTop = keepScrollT;
-          }
           if (isTvView()) {
             userZoom = keepZoom;
             syncTvZoomLayout(userZoom);
+            if (keepZoom > 1.02) {
+              slot.scrollLeft = Math.max(0, Math.min(slot.scrollWidth - slot.clientWidth, keepScrollL));
+              slot.scrollTop = Math.max(0, Math.min(slot.scrollHeight - slot.clientHeight, keepScrollT));
+            }
           } else {
             userZoom = keepZoom;
             syncPhoneZoomClass();
