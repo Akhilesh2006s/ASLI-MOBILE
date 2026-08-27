@@ -155,7 +155,7 @@ export default function LearningPathsView() {
               </AdminScalePressable>
 
               {isClassExpanded
-                ? group.subjects.map((subject, index) => {
+                ? group.subjects.map((subject) => {
                 const subjectId = String(subject._id || subject.id);
                 const isExpanded = expandedSubjectId === subjectId;
                 const displayName = displaySubjectName(subject.name || 'Subject');
@@ -165,9 +165,11 @@ export default function LearningPathsView() {
                     key={subjectId}
                     style={[
                       styles.subjectBlock,
-                      index > 0
-                        ? { borderTopWidth: 1, borderTopColor: colors.surfaceBorder }
-                        : null,
+                      {
+                        backgroundColor: colors.bgElevated,
+                        borderColor: colors.surfaceBorder,
+                        borderRadius: radius.md,
+                      },
                     ]}
                   >
                     <AdminScalePressable
@@ -278,7 +280,9 @@ const styles = StyleSheet.create({
   },
   subjectBlock: {
     marginTop: 10,
-    paddingTop: 10,
+    padding: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
   },
   classBadge: {
     flexDirection: 'row',
