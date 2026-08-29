@@ -64,7 +64,7 @@ export async function getBillingConfig(): Promise<BillingConfigResponse> {
 }
 
 export async function createIndividualOrder(body: {
-  packageType: PlanPackage;
+  packageType: PlanPackage | 'school';
   period: 'month' | 'year';
   classLabel: string;
   track: string;
@@ -77,6 +77,13 @@ export async function createIndividualOrder(body: {
   if (!res.ok || !json.success) {
     throw new Error(json.message || 'Could not start payment.');
   }
+  return json;
+}
+
+export async function getSchoolStudentPlan(): Promise<any> {
+  const res = await apiFetch('/api/billing/student-school-plan');
+  const json = await res.json();
+  if (!res.ok || !json.success) throw new Error(json.message || 'Could not load student plan.');
   return json;
 }
 

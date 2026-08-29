@@ -350,7 +350,7 @@ export default function Profile() {
 
         {activeTab === 'settings' && (
           <>
-            {accountUser?.isIndividualAccount ? (
+            {(accountUser?.isIndividualAccount || accountUser?.isSchoolManagedSubscription) ? (
               <View style={styles.subscriptionSection}>
                 {showTrialUpgrade(accountUser) ? (
                   <TrialUpgradeBanner

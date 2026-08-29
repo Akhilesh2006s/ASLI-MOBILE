@@ -351,7 +351,7 @@ export default function Login() {
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       const u = data?.user;
-      if (u?.isIndividualAccount && u?.paymentRequired) {
+      if ((u?.isIndividualAccount || u?.isSchoolManagedSubscription) && u?.paymentRequired) {
         router.replace('/auth/subscribe');
         return;
       }

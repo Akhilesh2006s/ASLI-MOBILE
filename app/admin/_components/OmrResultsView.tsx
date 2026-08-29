@@ -435,7 +435,6 @@ export default function OmrResultsView() {
                         : 'Not assigned'}
                   </Text>
                 )}
-                )}
               </AdminGlassCard>
             );
           })}

@@ -52,7 +52,9 @@ const SUBSCRIPTION_NAV_ITEM: TeacherNavItem = {
 
 export function teacherNavItemsForUser(user?: any): TeacherNavItem[] {
   const items = isIndividualAccount(user)
-    ? TEACHER_NAV_ITEMS.filter((item) => item.id !== 'results')
+    ? TEACHER_NAV_ITEMS.filter(
+        (item) => !['classes', 'students', 'calendar', 'results', 'reports'].includes(item.id),
+      )
     : TEACHER_NAV_ITEMS;
   if (isIndividualAccount(user)) {
     return [...items, SUBSCRIPTION_NAV_ITEM];

@@ -101,6 +101,7 @@ type FormModalProps = {
 function SchoolFormModal({ visible, mode, form, setForm, submitting, onClose, onSubmit }: FormModalProps) {
   const [boardPicker, setBoardPicker] = useState(false);
   const [statePicker, setStatePicker] = useState(false);
+  const [paymentPicker, setPaymentPicker] = useState(false);
 
   const setDetail = (key: keyof SchoolFormState['schoolDetails'], value: string) => {
     setForm((p) => ({ ...p, schoolDetails: { ...p.schoolDetails, [key]: value } }));
@@ -237,6 +238,18 @@ function SchoolFormModal({ visible, mode, form, setForm, submitting, onClose, on
             />
           </View>
 
+          <Text style={styles.formSection}>Student subscription validation</Text>
+          <Text style={styles.formHint}>Only students are billed. Teachers and school administrators are excluded.</Text>
+          <View style={styles.switchRow}>
+            <Text style={styles.switchLabel}>Require Yearly Student Subscription</Text>
+            <Switch value={form.studentBillingEnabled} onValueChange={(v) => setForm((p) => ({ ...p, studentBillingEnabled: v }))} trackColor={{ true: '#4f46e5' }} />
+          </View>
+          {form.studentBillingEnabled ? <>
+            <Pressable style={styles.pickerTrigger} onPress={() => setPaymentPicker(true)}><Text style={styles.pickerTriggerText}>Payment: {form.studentPaymentMode === 'both' ? 'Online or Offline' : form.studentPaymentMode === 'online' ? 'Online' : 'Offline'}</Text><Ionicons name="chevron-down" size={18} color="#64748b" /></Pressable>
+            <TextInput style={styles.input} placeholder="Yearly Price (₹)" keyboardType="number-pad" value={form.studentAnnualPriceInr} onChangeText={(v) => setForm((p) => ({ ...p, studentAnnualPriceInr: v.replace(/\D/g, '') }))} />
+            <TextInput style={styles.input} placeholder="Trial Days" keyboardType="number-pad" value={form.studentTrialDays} onChangeText={(v) => setForm((p) => ({ ...p, studentTrialDays: v.replace(/\D/g, '').slice(0, 3) }))} />
+          </> : null}
+
           {mode === 'edit' ? (
             <View style={[styles.switchRow, { marginBottom: 24 }]}>
               <Text style={styles.switchLabel}>Active Account</Text>
@@ -259,6 +272,13 @@ function SchoolFormModal({ visible, mode, form, setForm, submitting, onClose, on
         options={[...CURRICULUM_BOARD_OPTIONS]}
         onSelect={(v) => setForm((p) => ({ ...p, board: v }))}
         onClose={() => setBoardPicker(false)}
+      />
+      <OptionPicker
+        visible={paymentPicker}
+        title="Student Payment Method"
+        options={[{value:'online',label:'Online'},{value:'offline',label:'Offline'},{value:'both',label:'Online or Offline'}]}
+        onSelect={(v) => setForm((p) => ({ ...p, studentPaymentMode: v as 'online' | 'offline' | 'both' }))}
+        onClose={() => setPaymentPicker(false)}
       />
       <OptionPicker
         visible={statePicker}

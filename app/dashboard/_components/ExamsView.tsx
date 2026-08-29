@@ -76,6 +76,7 @@ interface Exam {
   forceSubmitDraft?: boolean;
   resumeCount?: number;
   maxResumes?: number;
+  hideAvailabilityDates?: boolean;
 }
 
 function removeInternalAccountLabels(value: unknown): string {
@@ -195,6 +196,7 @@ export default function ExamsView({
   const [generateTopic, setGenerateTopic] = useState('');
   const [generateQuestionCount, setGenerateQuestionCount] = useState('10');
   const [isGeneratingExam, setIsGeneratingExam] = useState(false);
+  const [showAllAvailableExams, setShowAllAvailableExams] = useState(false);
   const handledFocusExamIdRef = useRef<string | null>(null);
 
   const studentClassNumber = normalizeClassNumber(user?.classNumber);
@@ -452,6 +454,10 @@ export default function ExamsView({
         return exam.b2cPastPractice === true || (now >= startDate && now <= endDate);
       }),
     [subjectFilteredExams, attemptCountByExamId]
+  );
+  const visibleAvailableExams = useMemo(
+    () => (showAllAvailableExams ? availableActiveExams : availableActiveExams.slice(0, 3)),
+    [availableActiveExams, showAllAvailableExams]
   );
 
   const attemptedResultRows = useMemo(() => {
@@ -884,7 +890,7 @@ export default function ExamsView({
             </View>
           ) : (
             <View style={[styles.examsList, availableGridLayout.isGrid && styles.examsListGrid]}>
-              {availableActiveExams.map((exam, index) => {
+              {visibleAvailableExams.map((exam, index) => {
                 const usedAttempts = attemptCountByExamId.get(String(exam._id)) || 0;
                 const isCalendarFocus = highlightedExamId === String(exam._id);
                 return (
@@ -904,6 +910,25 @@ export default function ExamsView({
                   />
                 );
               })}
+              {availableActiveExams.length > 3 ? (
+                <TouchableOpacity
+                  style={styles.availableCollapseButton}
+                  onPress={() => setShowAllAvailableExams((value) => !value)}
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: showAllAvailableExams }}
+                >
+                  <Ionicons
+                    name={showAllAvailableExams ? 'chevron-up' : 'chevron-down'}
+                    size={18}
+                    color={STUDENT.primaryDark}
+                  />
+                  <Text style={styles.availableCollapseText}>
+                    {showAllAvailableExams
+                      ? 'Show fewer tests'
+                      : `Show ${availableActiveExams.length - 3} more tests`}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
           )}
         </View>
@@ -1605,6 +1630,25 @@ const styles = StyleSheet.create({
   examsList: {
     width: '100%',
     gap: EXAMS_GRID_GAP,
+  },
+  availableCollapseButton: {
+    width: '100%',
+    minHeight: 46,
+    borderRadius: STUDENT_RADIUS.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: GLASS_ROW.border,
+    backgroundColor: GLASS_ROW.fillStrong,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  availableCollapseText: {
+    color: STUDENT.primaryDark,
+    fontSize: 14,
+    fontWeight: '800',
   },
   examHeader: {
     flexDirection: 'row',

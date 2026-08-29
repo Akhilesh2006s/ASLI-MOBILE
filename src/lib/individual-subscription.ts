@@ -53,7 +53,7 @@ export function formatReceiptDate(value: string | null | undefined) {
 }
 
 export function receiptFromUser(user: Record<string, unknown> | null | undefined): SubscriptionReceipt | null {
-  if (!user?.isIndividualAccount) return null;
+  if (!user?.isIndividualAccount && !user?.isSchoolManagedSubscription) return null;
   return {
     status: String(user.subscriptionStatus || ''),
     statusLabel:
@@ -85,12 +85,12 @@ export function receiptFromUser(user: Record<string, unknown> | null | undefined
 }
 
 export function showTrialUpgrade(user: Record<string, unknown> | null | undefined) {
-  return Boolean(user?.isIndividualAccount && user?.canSubscribeEarly && user?.trialActive);
+  return Boolean((user?.isIndividualAccount || user?.isSchoolManagedSubscription) && user?.canSubscribeEarly && user?.trialActive);
 }
 
 export function showActiveReceipt(user: Record<string, unknown> | null | undefined) {
   return Boolean(
-    user?.isIndividualAccount &&
+    (user?.isIndividualAccount || user?.isSchoolManagedSubscription) &&
       user?.subscriptionStatus === 'active' &&
       (user?.subscriptionExpiresAt || user?.lastPaidAt),
   );

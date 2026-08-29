@@ -37,6 +37,10 @@ export type SchoolAdmin = {
   studentPermissions: string[];
   vidyaEnabledForTeachers?: boolean;
   vidyaEnabledForStudents?: boolean;
+  studentBillingEnabled?: boolean;
+  studentPaymentMode?: 'online' | 'offline' | 'both';
+  studentAnnualPriceInr?: number;
+  studentTrialDays?: number;
   status: string;
   joinDate: string;
   stats?: {
@@ -342,6 +346,10 @@ export type SchoolFormState = {
   vidyaEnabledForTeachers: boolean;
   vidyaEnabledForStudents: boolean;
   isActive: boolean;
+  studentBillingEnabled: boolean;
+  studentPaymentMode: 'online' | 'offline' | 'both';
+  studentAnnualPriceInr: string;
+  studentTrialDays: string;
 };
 
 export function emptySchoolForm(): SchoolFormState {
@@ -365,6 +373,10 @@ export function emptySchoolForm(): SchoolFormState {
     vidyaEnabledForTeachers: true,
     vidyaEnabledForStudents: true,
     isActive: true,
+    studentBillingEnabled: false,
+    studentPaymentMode: 'offline',
+    studentAnnualPriceInr: '0',
+    studentTrialDays: '15',
   };
 }
 
@@ -401,6 +413,10 @@ export function schoolFormFromAdmin(admin: SchoolAdmin): SchoolFormState {
     vidyaEnabledForTeachers: admin.vidyaEnabledForTeachers !== false,
     vidyaEnabledForStudents: admin.vidyaEnabledForStudents !== false,
     isActive: admin.status === 'active' || admin.status === 'Active',
+    studentBillingEnabled: Boolean(admin.studentBillingEnabled),
+    studentPaymentMode: admin.studentPaymentMode || 'offline',
+    studentAnnualPriceInr: String(admin.studentAnnualPriceInr || 0),
+    studentTrialDays: String(admin.studentTrialDays || 15),
   };
 }
 
@@ -422,6 +438,10 @@ export function buildCreatePayload(form: SchoolFormState) {
     permissions: resolvePortalPermissions(form.accessMode, form.limitedFeatures),
     vidyaEnabledForTeachers: form.vidyaEnabledForTeachers,
     vidyaEnabledForStudents: form.vidyaEnabledForStudents,
+    studentBillingEnabled: form.studentBillingEnabled,
+    studentPaymentMode: form.studentPaymentMode,
+    studentAnnualPriceInr: Math.max(0, Number(form.studentAnnualPriceInr) || 0),
+    studentTrialDays: Math.min(365, Math.max(1, Number(form.studentTrialDays) || 15)),
     schoolDetails: { ...form.schoolDetails, state: form.state },
   };
 }
@@ -444,6 +464,10 @@ export function buildUpdatePayload(form: SchoolFormState) {
     permissions: resolvePortalPermissions(form.accessMode, form.limitedFeatures),
     vidyaEnabledForTeachers: form.vidyaEnabledForTeachers,
     vidyaEnabledForStudents: form.vidyaEnabledForStudents,
+    studentBillingEnabled: form.studentBillingEnabled,
+    studentPaymentMode: form.studentPaymentMode,
+    studentAnnualPriceInr: Math.max(0, Number(form.studentAnnualPriceInr) || 0),
+    studentTrialDays: Math.min(365, Math.max(1, Number(form.studentTrialDays) || 15)),
     schoolDetails: { ...form.schoolDetails, state: form.state },
   };
 }

@@ -50,6 +50,7 @@ export type StudentExamLike = {
   hasInProgressDraft?: boolean;
   canResumeExam?: boolean;
   forceSubmitDraft?: boolean;
+  hideAvailabilityDates?: boolean;
 };
 
 export function getExamIdFromResult(result: any): string | null {
@@ -61,7 +62,8 @@ export function getExamIdFromResult(result: any): string | null {
 }
 
 export function getMaxAttemptsForExam(exam: StudentExamLike): number {
-  return Math.max(1, Number(exam.maxAttempts) || 1);
+  const configured = Math.max(1, Number(exam.maxAttempts) || (exam.hideAvailabilityDates ? 5 : 1));
+  return exam.hideAvailabilityDates ? Math.min(5, configured) : configured;
 }
 
 export function getExamStatus(exam: StudentExamLike) {

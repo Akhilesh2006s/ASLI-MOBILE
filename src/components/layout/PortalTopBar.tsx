@@ -2,6 +2,8 @@ import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getSchoolBranding } from '../../lib/school-branding';
+import { isIndividualStudent } from '../../lib/individual-signup';
+import { resolveStudentDisplayName } from '../../lib/student-text';
 
 type Props = {
   user?: any;
@@ -12,6 +14,9 @@ type Props = {
 export default function PortalTopBar({ user, onOpenMenu, onLogout }: Props) {
   const branding = getSchoolBranding(user);
   const schoolName = branding?.schoolName || 'AsliLearn AI';
+  const individualStudent = isIndividualStudent(user);
+  const primaryName = individualStudent ? resolveStudentDisplayName(user) : schoolName;
+  const subtitle = individualStudent ? 'Individual Student · AsliLearn AI' : null;
 
   return (
     <View style={styles.bar} pointerEvents="box-none">
@@ -22,15 +27,18 @@ export default function PortalTopBar({ user, onOpenMenu, onLogout }: Props) {
               source={{ uri: branding.schoolLogo }}
               style={styles.logo}
               resizeMode="contain"
-              accessibilityLabel={`${schoolName} logo`}
+              accessibilityLabel={`${primaryName} logo`}
             />
           ) : (
-            <Ionicons name="school-outline" size={18} color="#ea580c" />
+            <Ionicons name={individualStudent ? 'person-outline' : 'school-outline'} size={18} color="#ea580c" />
           )}
         </View>
-        <Text style={styles.schoolName} numberOfLines={1}>
-          {schoolName}
-        </Text>
+        <View style={styles.identityText}>
+          <Text style={[styles.schoolName, individualStudent && styles.userName]} numberOfLines={1}>
+            {primaryName}
+          </Text>
+          {subtitle ? <Text style={styles.userSubtitle} numberOfLines={1}>{subtitle}</Text> : null}
+        </View>
       </View>
 
       <View style={styles.actions}>
@@ -86,12 +94,24 @@ const styles = StyleSheet.create({
   },
   logo: { width: 26, height: 26 },
   schoolName: {
-    flex: 1,
-    minWidth: 0,
     fontSize: 15,
     fontWeight: '800',
     color: '#0f172a',
     letterSpacing: -0.2,
+  },
+  identityText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  userName: {
+    fontSize: 17,
+    color: '#312e81',
+  },
+  userSubtitle: {
+    marginTop: 1,
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748b',
   },
   actions: {
     flexDirection: 'row',

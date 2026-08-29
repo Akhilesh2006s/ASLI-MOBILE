@@ -33,8 +33,8 @@ function isSubscribePath(pathname: string) {
   return pathname.startsWith('/auth/subscribe');
 }
 
-function needsIndividualPayment(user: { isIndividualAccount?: boolean; paymentRequired?: boolean } | null) {
-  return Boolean(user?.isIndividualAccount && user?.paymentRequired);
+function needsIndividualPayment(user: { isIndividualAccount?: boolean; isSchoolManagedSubscription?: boolean; paymentRequired?: boolean } | null) {
+  return Boolean((user?.isIndividualAccount || user?.isSchoolManagedSubscription) && user?.paymentRequired);
 }
 
 const STAFF_ROLES = ['student', 'admin', 'teacher', 'super-admin'] as const;

@@ -52,6 +52,14 @@ import SettingsView from './_components/SettingsView';
 
 type TabId = Exclude<TeacherNavId, 'subscription'>;
 
+const INDIVIDUAL_TEACHER_BLOCKED_TABS = new Set<TabId>([
+  'classes',
+  'students',
+  'calendar',
+  'results',
+  'reports',
+]);
+
 type NavTarget = {
   studentsSub?: 'list' | 'track-progress' | 'submissions' | 'daily' | 'remarks';
   progressClassFilter?: string;
@@ -224,6 +232,9 @@ export default function TeacherDashboard() {
   };
 
   const goToTab = (next: TabId, target?: NavTarget) => {
+    if (isIndividualAccount(user) && INDIVIDUAL_TEACHER_BLOCKED_TABS.has(next)) {
+      next = 'overview';
+    }
     if (target) setNavTarget(target);
     else setNavTarget({});
     selectTab(next);
@@ -244,7 +255,7 @@ export default function TeacherDashboard() {
       router.push('/auth/subscribe');
       return;
     }
-    if (id === 'results' && isIndividualAccount(user)) {
+    if (isIndividualAccount(user) && INDIVIDUAL_TEACHER_BLOCKED_TABS.has(id)) {
       return;
     }
     if (id === activeTab) {

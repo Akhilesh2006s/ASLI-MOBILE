@@ -81,7 +81,7 @@ export default function StudentExamPreviewCard({
     if (!Number.isNaN(end.getTime())) {
       stats.push({ icon: 'calendar-outline', text: `Ends ${end.toLocaleDateString()}` });
     }
-  } else if (dateRange) {
+  } else if (dateRange && !exam.hideAvailabilityDates) {
     stats.push({ icon: 'calendar-outline', text: dateRange });
   }
   stats.push({ icon: 'locate-outline', text: `Attempts ${usedAttempts} / ${maxAttempts}` });

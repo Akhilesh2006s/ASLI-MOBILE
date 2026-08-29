@@ -408,8 +408,10 @@ const OverviewView = memo(function OverviewView({
     fetchDashboardData();
     setupAppStateListener();
     const cleanupSessionSync = setupSessionTimeSync((times) => {
-      setStudyTimeToday(times.today);
-      setStudyTimeThisWeek(times.thisWeek);
+      // Foreground study time is cumulative within the day/week. Ignore a stale
+      // lower response that arrives after a newer local value.
+      setStudyTimeToday((current) => Math.max(current, times.today));
+      setStudyTimeThisWeek((current) => Math.max(current, times.thisWeek));
     });
     return () => cleanupSessionSync();
   }, [fetchDashboardData]);

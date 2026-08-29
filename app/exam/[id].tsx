@@ -26,6 +26,7 @@ import api, { AUTH_TOKEN_KEY } from '../../src/services/api/api';
 import { getDashboardPath } from '../../src/hooks/useBackNavigation';
 import ExamResultsView from '../../src/components/student/ExamResultsView';
 import ExamInstructionsScreen from '../../src/components/exam/ExamInstructionsScreen';
+import ExamMathText from '../../src/components/student/ExamMathText';
 import { GlassPanel } from '../../src/components/ui';
 import { ExamAnalysisResult, normalizeMongoId } from '../../src/lib/exam-analysis-helpers';
 import { normalizeAndFormatExamDisplayText, resolveAssertionReasonDisplay } from '../../src/lib/exam-text-normalize';
@@ -1540,9 +1541,10 @@ export default function ExamPage() {
             {arDisplay.showQuestionText && arDisplay.questionText ? (
             <View style={styles.questionTextRow}>
               <Text style={styles.qPrefix}>Q{currentIndex + 1}.</Text>
-              <Text style={styles.questionText}>
-                {normalizeExamText(arDisplay.questionText, currentQuestion.subject)}
-              </Text>
+              <ExamMathText
+                text={normalizeExamText(arDisplay.questionText, currentQuestion.subject)}
+                style={styles.questionText}
+              />
             </View>
             ) : null}
 
@@ -1581,9 +1583,10 @@ export default function ExamPage() {
                     onPress={() => currentQid && handleSelect(currentQid, label, qType === 'multiple')}
                     activeOpacity={0.7}
                   >
-                    <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
-                      {displayLabel}
-                    </Text>
+                    <ExamMathText
+                      text={displayLabel}
+                      style={[styles.optionText, selected && styles.optionTextSelected]}
+                    />
                   </TouchableOpacity>
                 );
               })

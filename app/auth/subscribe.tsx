@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import GlassPanel from '../../src/components/ui/GlassPanel';
 import IndividualPlanCheckout from '../../src/components/b2c/IndividualPlanCheckout';
+import SchoolStudentPlanCheckout from '../../src/components/b2b/SchoolStudentPlanCheckout';
 import { IndividualSubscriptionReceiptCard } from '../../src/components/b2c/IndividualSubscriptionReceipt';
 import { receiptFromUser, showActiveReceipt } from '../../src/lib/individual-subscription';
 import { useAuth } from '../../src/context/AuthContext';
@@ -52,9 +53,9 @@ export default function SubscribeScreen() {
   const existingReceipt = receiptFromUser(user);
   const showReceipt = showActiveReceipt(user) && existingReceipt;
   const isActive = user?.subscriptionStatus === 'active' && !user?.paymentRequired;
+  const schoolManaged = Boolean(user?.isSchoolManagedSubscription);
 
   const goBack = () => {
-    if (paywallLocked) return;
     if (router.canGoBack()) {
       router.back();
       return;
@@ -66,21 +67,23 @@ export default function SubscribeScreen() {
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <StatusBar style="dark" />
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        {!paywallLocked ? (
-          <Pressable onPress={goBack} style={styles.backBtn} hitSlop={8}>
-            <Ionicons name="chevron-back" size={22} color={COLORS.text} />
-            <Text style={styles.backText}>Back</Text>
-          </Pressable>
-        ) : null}
+        <Pressable onPress={goBack} style={styles.backBtn} hitSlop={8}>
+          <Ionicons name="chevron-back" size={22} color={COLORS.text} />
+          <Text style={styles.backText}>Back</Text>
+        </Pressable>
         <View style={styles.hero}>
           <View style={styles.iconWrap}>
             <Ionicons name="card-outline" size={28} color="#C2410C" />
           </View>
-          <Text style={styles.title}>{isActive ? 'Manage your plan' : 'Choose Boards, IIT, or both'}</Text>
+          <Text style={styles.title}>{isActive ? 'Manage your plan' : schoolManaged ? 'Activate your student plan' : 'Choose Boards, IIT, or both'}</Text>
           <Text style={styles.subtitle}>
             Hi {user?.fullName || 'there'} —{' '}
             {isActive
               ? 'your subscription is active. You can review recent payments here, renew early, or upgrade to a bigger plan anytime.'
+              : schoolManaged
+              ? onTrial
+                ? `you have ${user?.trialDaysLeft ?? 0} day${user?.trialDaysLeft === 1 ? '' : 's'} left in your school student trial. You can activate the yearly plan now.`
+                : 'your school student trial has ended. Activate the yearly plan to continue.'
               : onTrial
               ? `you still have ${user?.trialDaysLeft ?? 0} day${user?.trialDaysLeft === 1 ? '' : 's'} on your trial. Subscribe now — no need to wait until expiry.`
               : `your ${INDIVIDUAL_TRIAL_DAYS}-day trial has ended. Pick a plan and pay monthly or yearly to continue.`}
@@ -109,7 +112,7 @@ export default function SubscribeScreen() {
           <IndividualSubscriptionReceiptCard receipt={existingReceipt} />
         ) : null}
 
-        <IndividualPlanCheckout
+        {schoolManaged ? <SchoolStudentPlanCheckout user={user} onPaid={() => void refreshAuth({ silent: true })} /> : <IndividualPlanCheckout
           userId={user?._id || user?.id || null}
           role={user?.role}
           userName={user?.fullName}
@@ -118,11 +121,11 @@ export default function SubscribeScreen() {
           initialTrack={initialTrack}
           initialPackage={initialTrack ? 'both' : 'board'}
           onPaid={() => void refreshAuth({ silent: true })}
-        />
+        />}
 
-        <Text style={styles.resourcesHint}>
+        {!schoolManaged && <Text style={styles.resourcesHint}>
           Pick Boards + IIT to see Alpha / Beta / Gamma books, quizzes, Vidya AI, and practice exams tied to that track.
-        </Text>
+        </Text>}
 
         <Pressable
           onPress={async () => {
