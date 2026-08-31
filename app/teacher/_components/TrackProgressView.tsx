@@ -806,6 +806,8 @@ const styles = StyleSheet.create({
     ...glassCard,
     backgroundColor: 'transparent',
     borderRadius: TEACHER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(99,102,241,0.32)',
     overflow: 'hidden',
   },
   classListTitle: {
