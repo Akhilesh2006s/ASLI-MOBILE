@@ -122,8 +122,8 @@ export default function VidyaAIView({
   }, [ready]);
 
   const visibleTools = useMemo(
-    () => filterVisibleStudentTools(subjectNames, { includeChat: chatEnabled }),
-    [subjectNames, chatEnabled],
+    () => filterVisibleStudentTools(subjectNames),
+    [subjectNames],
   );
   const toolRows = useMemo(
     () => chunkItems(visibleTools, isGrid ? gridColumns : 1),

@@ -24,6 +24,7 @@ export default function AiToolQuestionCard({
   accent = '#059669',
 }: Props) {
   const [revealed, setRevealed] = useState(false);
+  const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const isMcq = options.length >= 2;
   const hasReveal = Boolean(String(answer || '').trim() || String(explanation || '').trim());
 
@@ -56,13 +57,25 @@ export default function AiToolQuestionCard({
           {options.map((opt, i) => {
             const label = opt.match(/^([A-D])\)/i)?.[1]?.toUpperCase() || String.fromCharCode(65 + i);
             const text = opt.replace(/^[A-D]\)\s*/i, '').trim();
+            const selected = selectedOption === i;
             return (
-              <View key={`${opt}-${i}`} style={styles.optionRow}>
-                <View style={[styles.optionLabel, { backgroundColor: `${accent}22` }]}>
-                  <Text style={[styles.optionLabelText, { color: accent }]}>{label}</Text>
+              <Pressable
+                key={`${opt}-${i}`}
+                onPress={() => setSelectedOption(i)}
+                style={[
+                  styles.optionRow,
+                  selected && { borderColor: accent, backgroundColor: `${accent}12` },
+                ]}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: selected }}
+                accessibilityLabel={`Option ${label}: ${text}`}
+              >
+                <View style={[styles.optionLabel, { backgroundColor: selected ? accent : `${accent}22` }]}>
+                  <Text style={[styles.optionLabelText, { color: selected ? '#FFFFFF' : accent }]}>{label}</Text>
                 </View>
                 <Text style={styles.optionText}>{text}</Text>
-              </View>
+                {selected ? <Ionicons name="checkmark-circle" size={20} color={accent} /> : null}
+              </Pressable>
             );
           })}
         </View>
@@ -135,7 +148,15 @@ const styles = StyleSheet.create({
   marksText: { fontSize: 11, fontWeight: '700', color: '#92400e' },
   question: { fontSize: 15, lineHeight: 22, fontWeight: '600', color: '#0f172a' },
   options: { gap: 6 },
-  optionRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  optionRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    borderRadius: 10,
+    padding: 6,
+  },
   optionLabel: {
     width: 24,
     height: 24,
