@@ -265,9 +265,10 @@ export default function Login() {
     const load = async () => {
       try {
         const email = await storageGetItem('rememberedEmail');
-        const password = await storageGetItem('rememberedPassword');
-        if (email && password) {
-          const next = { email, password };
+        // Passwords are never persisted. Remove values left by older builds.
+        await storageDeleteItem('rememberedPassword');
+        if (email) {
+          const next = { email, password: '' };
           credentialsRef.current = next;
           setFormData(next);
           setRememberMe(true);
@@ -343,7 +344,7 @@ export default function Login() {
       const data = await signIn({ email, password });
       if (rememberMe) {
         await storageSetItem('rememberedEmail', email);
-        await storageSetItem('rememberedPassword', password);
+        await storageDeleteItem('rememberedPassword');
       } else {
         await storageDeleteItem('rememberedEmail');
         await storageDeleteItem('rememberedPassword');

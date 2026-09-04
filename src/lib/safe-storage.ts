@@ -4,14 +4,19 @@ import * as SecureStore from 'expo-secure-store';
 import { isAndroidTv } from './device';
 
 /**
- * On some Android devices expo-secure-store can hit a broken Keystore and abort
- * before JS can recover, so Android uses AsyncStorage. iOS keeps SecureStore,
- * while values over its safe size are also stored in AsyncStorage.
+ * Authentication secrets use the OS keychain/keystore on native devices.
+ * Non-sensitive, oversized UI state may still use AsyncStorage.
  */
 const SECURE_STORE_MAX_BYTES = 2048;
 
 function useAsyncOnly(): boolean {
-  return Platform.OS === 'android' || isAndroidTv();
+  return Platform.OS === 'web' || isAndroidTv();
+}
+
+const SENSITIVE_KEYS = new Set(['authToken', 'accessToken', 'jwtToken', 'token', 'refreshToken']);
+
+function isSensitiveKey(key: string): boolean {
+  return SENSITIVE_KEYS.has(key);
 }
 
 export async function storageGetItem(key: string): Promise<string | null> {
@@ -19,8 +24,17 @@ export async function storageGetItem(key: string): Promise<string | null> {
     try {
       const value = await SecureStore.getItemAsync(key);
       if (value != null) return value;
+      // One-time migration from old plaintext storage.
+      if (isSensitiveKey(key)) {
+        const legacy = await AsyncStorage.getItem(key);
+        if (legacy != null) {
+          await SecureStore.setItemAsync(key, legacy);
+          await AsyncStorage.removeItem(key);
+          return legacy;
+        }
+      }
     } catch {
-      /* fall through to AsyncStorage */
+      if (isSensitiveKey(key)) return null;
     }
   }
   try {
@@ -32,12 +46,15 @@ export async function storageGetItem(key: string): Promise<string | null> {
 
 export async function storageSetItem(key: string, value: string): Promise<void> {
   const tooLarge = value.length >= SECURE_STORE_MAX_BYTES;
+  if (isSensitiveKey(key) && tooLarge) {
+    throw new Error('Authentication credential is too large for secure storage.');
+  }
   if (!useAsyncOnly() && !tooLarge) {
     try {
       await SecureStore.setItemAsync(key, value);
       return;
     } catch {
-      /* fall through */
+      if (isSensitiveKey(key)) throw new Error('Secure credential storage is unavailable.');
     }
   } else if (!useAsyncOnly() && tooLarge) {
     try {
