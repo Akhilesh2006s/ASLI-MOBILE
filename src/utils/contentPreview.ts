@@ -190,12 +190,10 @@ export async function getPdfJsFetchUrl(fileUrl: string, title?: string): Promise
   if (!absolute) return '';
   if (shouldFetchDirectly(absolute)) return absolute;
 
-  const token = await getAuthToken();
   return (
     `${API_BASE_URL}/api/student/content-preview` +
     `?url=${encodeURIComponent(absolute)}` +
     `&filename=${encodeURIComponent(title || 'preview.pdf')}` +
-    `&token=${encodeURIComponent(token)}` +
     `&forceProxy=1`
   );
 }
@@ -1660,7 +1658,6 @@ export async function getPdfPreviewUrl(fileUrl: string, title?: string): Promise
 }
 
 export async function getAuthHeaders(url: string): Promise<Record<string, string> | undefined> {
-  if (url.includes('content-preview') && url.includes('token=')) return undefined;
   if (!url.includes(API_BASE_URL) && !url.includes('/uploads/')) return undefined;
   const token = await getAuthToken();
   return token ? { Authorization: `Bearer ${token}` } : undefined;
