@@ -1,7 +1,6 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
-import { isAndroidTv } from './device';
 
 /**
  * Authentication secrets use the OS keychain/keystore on native devices.
@@ -10,7 +9,7 @@ import { isAndroidTv } from './device';
 const SECURE_STORE_MAX_BYTES = 2048;
 
 function useAsyncOnly(): boolean {
-  return Platform.OS === 'web' || isAndroidTv();
+  return Platform.OS === 'web';
 }
 
 const SENSITIVE_KEYS = new Set(['authToken', 'accessToken', 'jwtToken', 'token', 'refreshToken']);
