@@ -7,6 +7,8 @@ import { router } from 'expo-router';
 import { useBackNavigation } from '../../src/hooks/useBackNavigation';
 import { collectVidyaSubjectLabels } from '../../src/lib/vidya-subjects';
 import teacherService, { asArray } from '../../src/services/api/teacherService';
+import { buildTeacherVidyaSubjectSelectOptions } from '../../src/lib/subject-names';
+import type { VidyaSubjectSelectOption } from '../../src/types/vidya';
 import { TEACHER, TEACHER_SPACING } from '../../src/theme/teacher';
 import AppBackground from '../../src/components/ui/AppBackground';
 import VidyaAvatar from '../../src/components/vidya/VidyaAvatar';
@@ -27,6 +29,7 @@ export default function TeacherVidyaChatScreen() {
   const [teacherName, setTeacherName] = useState<string | undefined>();
   const [primarySubject, setPrimarySubject] = useState<string | undefined>();
   const [subjectOptions, setSubjectOptions] = useState<string[]>([]);
+  const [subjectSelectOptions, setSubjectSelectOptions] = useState<VidyaSubjectSelectOption[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -43,12 +46,29 @@ export default function TeacherVidyaChatScreen() {
         setTeacherName(user?.fullName || user?.email?.split('@')[0] || 'Teacher');
 
         const subs = asArray<any>(user?.subjects || user?.assignedSubjects || []);
-        const names = extractSubjectNames(subs);
+        let catalog = subs;
+        try {
+          const subjectsRes = await teacherService.subjects();
+          catalog = asArray<any>(subjectsRes.data);
+        } catch {
+          /* fall back to profile subjects */
+        }
+        const grouped = buildTeacherVidyaSubjectSelectOptions(catalog.length > 0 ? catalog : subs);
         const merged = collectVidyaSubjectLabels({
-          subjects: subs,
+          subjects: catalog,
           assignedSubjects: user?.assignedSubjects,
         });
-        const options = merged.length > 0 ? merged : names.length > 0 ? names : ['General'];
+        const names = extractSubjectNames(catalog.length > 0 ? catalog : subs);
+        const groupedValues = grouped.map((row) => row.value);
+        const options =
+          groupedValues.length > 0
+            ? groupedValues
+            : merged.length > 0
+              ? merged
+              : names.length > 0
+                ? names
+                : ['General'];
+        setSubjectSelectOptions(grouped);
         setSubjectOptions(options);
         setPrimarySubject(options[0]);
       } catch (error) {
@@ -72,8 +92,8 @@ export default function TeacherVidyaChatScreen() {
             <Ionicons name="arrow-back" size={22} color={TEACHER.text} />
           </Pressable>
           <View style={styles.headerText}>
-            <Text style={styles.title}>Vidya AI Chat</Text>
-            <Text style={styles.subtitle}>AI-Powered Teaching Assistant</Text>
+            <Text style={styles.title}>Vidya AI</Text>
+            <Text style={styles.subtitle}>Teacher App Assistant</Text>
           </View>
           <View style={styles.headerIcon}>
             <VidyaAvatar size={40} borderColor="#93c5fd" />
@@ -91,6 +111,7 @@ export default function TeacherVidyaChatScreen() {
               teacherName={teacherName}
               subject={primarySubject}
               subjectOptions={subjectOptions}
+              subjectSelectOptions={subjectSelectOptions}
               fullPage
               standalone
             />

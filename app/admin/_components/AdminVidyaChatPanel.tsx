@@ -46,7 +46,11 @@ export default function AdminVidyaChatPanel({ adminId, adminName }: Props) {
     context: chatContext,
   });
 
-  const starterPrompts = model.quickQuestions.slice(0, 4);
+  const quickActions = [
+    { label: 'Overview', icon: 'bar-chart-outline' as const, prompt: 'School dashboard overview' },
+    { label: 'OMR', icon: 'calendar-outline' as const, prompt: 'How many OMR batches do we have?' },
+    { label: 'Students', icon: 'people-outline' as const, prompt: 'How many students and teachers are active?' },
+  ];
 
   const scrollToBottom = (animated = true) => {
     scrollRef.current?.scrollToEnd({ animated });
@@ -75,9 +79,11 @@ export default function AdminVidyaChatPanel({ adminId, adminName }: Props) {
       <View style={[styles.header, { borderBottomColor: colors.surfaceBorder, paddingHorizontal: spacing.md }]}>
         <View style={styles.headerLeft}>
           <VidyaAvatar size={40} borderColor="#fdba74" />
-          <View>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>Vidya AI</Text>
-            <Text style={[styles.headerSub, { color: colors.textMuted }]}>Admin Assistant</Text>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>School AI Assistant</Text>
+            <Text style={[styles.headerSub, { color: colors.textMuted }]}>
+              Ask about your school data, classes, learning paths, or curriculum.
+            </Text>
           </View>
         </View>
         <AdminScalePressable
@@ -108,11 +114,33 @@ export default function AdminVidyaChatPanel({ adminId, adminName }: Props) {
       >
         {model.displayMessages.length === 0 ? (
           <View style={styles.emptyBlock}>
-            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-              Ask about students, teachers, exams, attendance, or school reports.
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>
+              How can I support school operations?
             </Text>
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+              Ask about enrollment, assignments, exams, and reports.
+            </Text>
+            <View style={styles.quickActions}>
+              {quickActions.map((action) => (
+                <AdminScalePressable
+                  key={action.label}
+                  style={[
+                    styles.quickActionChip,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.surfaceBorder,
+                      borderRadius: radius.sm,
+                    },
+                  ]}
+                  onPress={() => model.onPromptClick(action.prompt)}
+                >
+                  <Ionicons name={action.icon} size={14} color={colors.primary} />
+                  <Text style={[styles.quickActionText, { color: colors.primary }]}>{action.label}</Text>
+                </AdminScalePressable>
+              ))}
+            </View>
             <View style={styles.promptGrid}>
-              {starterPrompts.map((question) => (
+              {model.quickQuestions.map((question) => (
                 <AdminScalePressable
                   key={question}
                   style={[
@@ -214,6 +242,25 @@ export default function AdminVidyaChatPanel({ adminId, adminName }: Props) {
         ]}
       >
         <View style={styles.inputBar}>
+          <AdminScalePressable
+            style={[
+              styles.iconBtn,
+              {
+                borderRadius: radius.md,
+                backgroundColor: colors.surface,
+                borderColor: colors.surfaceBorder,
+                borderWidth: 1,
+              },
+            ]}
+            onPress={() => {
+              void model.pickAndAnalyzeImage(model.message);
+            }}
+            disabled={model.isPending}
+            accessibilityRole="button"
+            accessibilityLabel="Upload image"
+          >
+            <Ionicons name="image-outline" size={18} color={colors.textMuted} />
+          </AdminScalePressable>
           <View
             style={[
               styles.inputShell,
@@ -290,7 +337,7 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     borderBottomWidth: 1,
   },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 },
   headerTitle: { fontSize: 18, fontWeight: '800' },
   headerSub: { fontSize: 11, marginTop: 1 },
   clearBtn: {
@@ -302,11 +349,31 @@ const styles = StyleSheet.create({
   messagesScroll: { flex: 1, minHeight: 0 },
   messagesContent: { paddingVertical: 16, flexGrow: 1 },
   emptyBlock: { paddingTop: 8, marginBottom: 16 },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
   emptyText: {
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 16,
   },
+  quickActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
+  quickActionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  quickActionText: { fontSize: 12, fontWeight: '700' },
   promptGrid: { gap: 8 },
   promptCard: {
     flexDirection: 'row',
@@ -364,6 +431,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  iconBtn: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   inputShell: {
     flex: 1,

@@ -72,8 +72,10 @@ export default function SuperAdminVidyaChatPanel({ userId = 'super-admin' }: Pro
         <View style={styles.headerLeft}>
           <VidyaAvatar size={36} borderColor="#fdba74" />
           <View style={styles.headerText}>
-            <Text style={styles.headerTitle}>Vidya AI</Text>
-            <Text style={styles.headerSub}>Platform Metrics Assistant</Text>
+            <Text style={styles.headerTitle}>AI System Control Panel</Text>
+            <Text style={styles.headerSub}>
+              Super-admin app assistant — live data for schools, OMR, exams, trials, videos, risk.
+            </Text>
           </View>
         </View>
         <Pressable
@@ -101,9 +103,9 @@ export default function SuperAdminVidyaChatPanel({ userId = 'super-admin' }: Pro
       >
         {model.displayMessages.length === 0 ? (
           <View style={styles.emptyBlock}>
-            <Text style={styles.emptyTitle}>Ask About Platform Metrics</Text>
+            <Text style={styles.emptyTitle}>System Control Assistant Ready</Text>
             <Text style={styles.emptyText}>
-              Students, teachers, exams, attendance, and AI usage — answered from live data.
+              Run diagnostics, audits, and platform-wide AI checks.
             </Text>
             <View style={styles.promptGrid}>
               {model.quickQuestions.map((question) => (
@@ -178,13 +180,24 @@ export default function SuperAdminVidyaChatPanel({ userId = 'super-admin' }: Pro
       >
         <View style={[styles.inputBar, { paddingBottom: composerBottomPad }]}>
           <View style={styles.inputWrap}>
+            <Pressable
+              style={styles.iconBtn}
+              onPress={() => {
+                void model.pickAndAnalyzeImage(model.message);
+              }}
+              disabled={model.isPending}
+              accessibilityRole="button"
+              accessibilityLabel="Upload image"
+            >
+              <Ionicons name="image-outline" size={20} color="#64748b" />
+            </Pressable>
             <View style={styles.inputShell}>
               <TextInput
                 ref={inputRef}
                 style={styles.input}
                 value={model.message}
                 onChangeText={model.setMessage}
-                placeholder="Ask about students, teachers, exams…"
+                placeholder={model.inputPlaceholder}
                 placeholderTextColor="#94a3b8"
                 multiline
                 maxLength={2000}
@@ -364,6 +377,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 8,
+  },
+  iconBtn: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   inputShell: {
     flex: 1,

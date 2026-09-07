@@ -38,7 +38,7 @@ type ComposerProps = {
   bottomInset: number;
   showVoice?: boolean;
   onSend: (text: string) => void;
-  onPickImage: () => void;
+  onPickImage: (draft?: string) => void;
   onVoice: () => void;
   onFocusInput?: () => void;
   onHeightChange?: (height: number) => void;
@@ -109,7 +109,7 @@ const ChatComposer = memo(function ChatComposer({
       <View style={styles.inputWrap}>
         <Pressable
           style={styles.iconBtn}
-          onPress={onPickImage}
+          onPress={() => onPickImage(draftRef.current)}
           disabled={isPending}
           hitSlop={4}
           accessibilityRole="button"
@@ -205,12 +205,21 @@ export default function StudentVidyaChatPanel({
     baselineWindowHRef.current = Dimensions.get('window').height;
   }, []);
 
+  const [suggestionsOpen, setSuggestionsOpen] = useState(true);
   const hasNotifications = Boolean(
     model.todayFocusAction || model.studyStreakMessage || model.proactivePrompt
   );
   const hasMessages = model.displayMessages.length > 0;
-  // Same as web: insights stay open until the user collapses them; also show when chat is empty
-  const showInsightsExpanded = hasNotifications && (insightsOpen || !hasMessages);
+  const showInsightsExpanded = Boolean(hasNotifications && insightsOpen);
+  const hasUserMessage = model.displayMessages.some((m) => m.role === 'user');
+
+  useEffect(() => {
+    if (hasMessages) setInsightsOpen(false);
+  }, [hasMessages]);
+
+  useEffect(() => {
+    if (!hasUserMessage) setSuggestionsOpen(true);
+  }, [hasUserMessage]);
 
   useEffect(() => {
     scrollToBottom(true);
@@ -284,7 +293,7 @@ export default function StudentVidyaChatPanel({
           <VidyaAvatar size={36} borderColor="#bae6fd" />
           <View style={styles.headerText}>
             <Text style={styles.headerTitle}>Vidya AI</Text>
-            <Text style={styles.headerSub}>Your study buddy</Text>
+            <Text style={styles.headerSub}>Your Asli Learn app assistant</Text>
           </View>
           {hasNotifications ? (
             <Pressable
@@ -370,9 +379,10 @@ export default function StudentVidyaChatPanel({
         <View style={styles.messagesBlock}>
           {!hasMessages ? (
             <View style={styles.starterBlock}>
-              <Text style={styles.starterTitle}>Ask about your learning on Asli</Text>
+              <Text style={styles.starterTitle}>Ask anything about your Asli app</Text>
               <Text style={styles.starterSub}>
-                Progress, videos watched, exam status, weak areas — or any subject doubt
+                Today’s plan, homework, upcoming exams, subjects, videos completed — or any subject
+                doubt.
               </Text>
               <View style={styles.starterGrid}>
                 {model.quickQuestions.map((question, index) => {
@@ -436,12 +446,50 @@ export default function StudentVidyaChatPanel({
               <VidyaAvatar size={28} borderColor="#bae6fd" borderWidth={1} />
               <View style={[styles.bubble, styles.bubbleAssistant, styles.thinkingBubble]}>
                 <ActivityIndicator size="small" color="#0284C7" />
-                <Text style={styles.thinkingText}>Vidya is thinking…</Text>
+                <Text style={styles.thinkingText}>Checking your Asli app data…</Text>
               </View>
             </View>
           ) : null}
         </View>
       </ScrollView>
+
+      {hasMessages ? (
+        <View style={styles.suggestionsWrap}>
+          <Pressable
+            style={styles.suggestionsToggle}
+            onPress={() => setSuggestionsOpen((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel="Suggested questions"
+          >
+            <Text style={styles.suggestionsToggleText}>Suggested questions</Text>
+            <Ionicons
+              name={suggestionsOpen ? 'chevron-up' : 'chevron-down'}
+              size={16}
+              color="#64748b"
+            />
+          </Pressable>
+          {suggestionsOpen ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.suggestionsChips}
+            >
+              {model.quickQuestions.map((question) => (
+                <Pressable
+                  key={question}
+                  style={[styles.suggestionChip, model.isPending && styles.suggestionChipDisabled]}
+                  onPress={() => model.onPromptClick(question)}
+                  disabled={model.isPending}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Ask Vidya: ${question}`}
+                >
+                  <Text style={styles.suggestionChipText}>{question}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          ) : null}
+        </View>
+      ) : null}
 
       {/* Composer pinned in layout flow (web pattern), with keyboard lift padding on iOS */}
       <View style={{ paddingBottom: Platform.OS === 'ios' ? keyboardLift : 0 }}>
@@ -452,7 +500,9 @@ export default function StudentVidyaChatPanel({
           bottomInset={composerBottomPad}
           showVoice={false}
           onSend={handleSend}
-          onPickImage={model.pickAndAnalyzeImage}
+          onPickImage={(draft) => {
+            void model.pickAndAnalyzeImage(draft);
+          }}
           onVoice={model.handleVoiceInput}
           onHeightChange={undefined}
           onFocusInput={() => {
@@ -577,6 +627,32 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   starterCardText: { fontSize: 12, fontWeight: '600', lineHeight: 17 },
+  suggestionsWrap: {
+    borderTopWidth: 1,
+    borderTopColor: '#bae6fd',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingTop: 6,
+  },
+  suggestionsToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
+  suggestionsToggleText: { fontSize: 12, fontWeight: '600', color: '#475569' },
+  suggestionsChips: { gap: 8, paddingBottom: 8 },
+  suggestionChip: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#c7d2fe',
+    backgroundColor: '#eef2ff',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    maxWidth: 280,
+  },
+  suggestionChipDisabled: { opacity: 0.5 },
+  suggestionChipText: { fontSize: 12, color: '#3730a3', fontWeight: '600' },
   messageRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',

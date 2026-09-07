@@ -154,3 +154,120 @@ export function getLearningPathBoardLabel(subject: {
   }
   return '';
 }
+
+export type TeacherVidyaSubjectSelectOption = {
+  value: string;
+  label: string;
+  group: 'CBSE' | 'IIT' | 'Other';
+};
+
+const CANONICAL_SUBJECT_LABELS: Record<string, string> = {
+  biology: 'Biology',
+  math: 'Mathematics',
+  physics: 'Physics',
+  chemistry: 'Chemistry',
+  science: 'Science',
+  english: 'English',
+  social: 'Social Science',
+  computer: 'Computer Science',
+  hindi: 'Hindi',
+  telugu: 'Telugu',
+};
+
+function titleCaseSubjectWords(value: string): string {
+  return String(value || '')
+    .replace(/\biit\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+export function canonicalTeacherSubjectLabel(name: string): string {
+  const key = normalizeSubjectDisplayKey(name);
+  if (CANONICAL_SUBJECT_LABELS[key]) return CANONICAL_SUBJECT_LABELS[key];
+  const plain = extractPlainSubjectName(String(name || ''))
+    .replace(/\b(iit|neet|jee)\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return titleCaseSubjectWords(plain) || String(name || '').trim();
+}
+
+export function isIitTeacherSubjectTrack(subject: {
+  name?: string;
+  board?: string;
+  productCategory?: string;
+}): boolean {
+  const board = normalizeBoardKey(String(subject.board || ''));
+  if (board.includes('IIT') || board.includes('NEET') || board.includes('JEE')) return true;
+  const name = String(subject.name || '');
+  if (/\b(iit|neet|jee)\b/i.test(name)) return true;
+  const cat = String(subject.productCategory || '')
+    .toUpperCase()
+    .trim()
+    .replace(/^IIT_/, '');
+  if (cat && cat !== 'GENERAL' && cat !== 'NONE' && cat !== 'ALL') return true;
+  return false;
+}
+
+function teacherSubjectValueScore(name: string): number {
+  const raw = String(name || '').trim();
+  const plain = extractPlainSubjectName(raw);
+  let score = plain.length;
+  if (!/_\d+$/.test(raw)) score += 40;
+  if (!/\b(iit|neet|jee)\b/i.test(raw)) score += 5;
+  if (/^(biology|mathematics|chemistry|physics|science|english)/i.test(plain)) score += 25;
+  if (/^(bio|maths|math|chem|phy|sci)$/i.test(plain)) score -= 30;
+  return score;
+}
+
+/** Same CBSE / IIT grouping as the website teacher Vidya picker. */
+export function buildTeacherVidyaSubjectSelectOptions(
+  subjects: Array<{ name?: string; board?: string; productCategory?: string } | string>,
+): TeacherVidyaSubjectSelectOption[] {
+  const best = new Map<
+    string,
+    { value: string; label: string; group: TeacherVidyaSubjectSelectOption['group']; score: number }
+  >();
+
+  for (const row of subjects || []) {
+    const subject =
+      typeof row === 'string'
+        ? { name: row }
+        : {
+            name: row?.name,
+            board: row?.board,
+            productCategory: row?.productCategory,
+          };
+    const value = String(subject.name || '').trim();
+    if (!value) continue;
+
+    const resolvedGroup: TeacherVidyaSubjectSelectOption['group'] = isIitTeacherSubjectTrack(subject)
+      ? 'IIT'
+      : 'CBSE';
+
+    const label = canonicalTeacherSubjectLabel(value);
+    const key = `${resolvedGroup}|${normalizeSubjectDisplayKey(value)}`;
+    const score = teacherSubjectValueScore(value);
+    const prev = best.get(key);
+    if (!prev || score > prev.score) {
+      best.set(key, { value, label, group: resolvedGroup, score });
+    }
+  }
+
+  const groupOrder: Record<TeacherVidyaSubjectSelectOption['group'], number> = {
+    CBSE: 0,
+    IIT: 1,
+    Other: 2,
+  };
+
+  return [...best.values()]
+    .map(({ value, label, group }) => ({ value, label, group }))
+    .sort((a, b) => {
+      const g = groupOrder[a.group] - groupOrder[b.group];
+      if (g !== 0) return g;
+      return a.label.localeCompare(b.label, undefined, { sensitivity: 'base' });
+    });
+}

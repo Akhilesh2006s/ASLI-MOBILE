@@ -7,7 +7,8 @@ import { Platform, Text, StyleSheet, View, type TextStyle } from 'react-native';
 export function normalizeChatStructure(raw: string): string {
   if (!raw) return '';
   let text = String(raw).replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
-
+  text = text.replace(/\n\s*(?:#{1,4}\s*)?(?:sources?|retrieved sources?|textbook sections retrieved)\s*:?[ \t]*\n[\s\S]*$/i, '');
+  text = text.replace(/\s*\[B\d+\](?=[\s.,;:!?)]|$)/gi, '');
   text = text.replace(/\s*---+\s*/g, '\n\n');
   text = text.replace(/([a-z.!?)])\s+(\d{1,2})\.\s+(\*{0,2}[A-Z])/g, '$1\n\n$2. $3');
   text = text.replace(/([^\n])\s+[•●]\s+/g, '$1\n• ');

@@ -10,7 +10,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { usePathname, useRouter } from 'expo-router';
 import { queryClient } from '../src/lib/queryClient';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
-import { AppSplash, SPLASH_DURATION_MS, SPLASH_EXIT_DURATION_MS } from '../src/components/AppSplash';
+import { AppSplash, SPLASH_DURATION_MS, SPLASH_EXIT_DURATION_MS, SPLASH_MAX_DURATION_MS } from '../src/components/AppSplash';
 import { useMemoryCleanup } from '../src/hooks/useMemoryCleanup';
 import { isSchoolOnlyStudentPath } from '../src/components/b2c/SchoolOnlyGuard';
 import { isIndividualAccount } from '../src/lib/individual-signup';
@@ -314,7 +314,14 @@ function SplashOverlay() {
 
   useEffect(() => {
     const timer = setTimeout(() => setMinTimeDone(true), SPLASH_DURATION_MS);
-    return () => clearTimeout(timer);
+    const maxTimer = setTimeout(() => {
+      setMinTimeDone(true);
+      setExiting(true);
+    }, SPLASH_MAX_DURATION_MS);
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(maxTimer);
+    };
   }, []);
 
   useEffect(() => {
@@ -336,6 +343,13 @@ function SplashOverlay() {
 
   const onSplashLayout = useCallback(() => {
     void SplashScreen.hideAsync().catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void SplashScreen.hideAsync().catch(() => {});
+    }, 400);
+    return () => clearTimeout(timer);
   }, []);
 
   if (hidden) return null;

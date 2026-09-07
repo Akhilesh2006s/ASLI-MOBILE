@@ -27,7 +27,7 @@ import { useKeyboardDockLift } from '../../../src/hooks/useKeyboardDockLift';
 import SubjectPickerModal from '../../../src/components/vidya/SubjectPickerModal';
 import VidyaAvatar from '../../../src/components/vidya/VidyaAvatar';
 import VidyaChatMessageText from '../../../src/components/vidya/VidyaChatMessageText';
-import type { AIChatContext, TeachingTab } from '../../../src/types/vidya';
+import type { AIChatContext, VidyaSubjectSelectOption } from '../../../src/types/vidya';
 import { TEACHER, TEACHER_RADIUS, TEACHER_SPACING, glassCard } from '../../../src/theme/teacher';
 import { GlassPanel } from '../../../src/components/ui';
 
@@ -90,39 +90,22 @@ function SendButton({ disabled, onPress }: { disabled: boolean; onPress: () => v
   );
 }
 
-const TEACHING_MODES: Record<
-  TeachingTab,
-  {
-    label: string;
-    quickA: { label: string; prompt: string };
-    quickB: { label: string; prompt: string };
-  }
-> = {
-  lesson: {
-    label: 'Lesson',
-    quickA: { label: 'Plan Lesson', prompt: 'Create a 45-minute lesson plan with learning outcomes and activities.' },
-    quickB: { label: 'Explain Topic', prompt: 'Explain this topic with examples and misconceptions to avoid.' },
-  },
-  quiz: {
-    label: 'Quiz',
-    quickA: { label: 'Create Quiz', prompt: 'Generate 10 MCQs with answers, bloom level, and difficulty tags.' },
-    quickB: { label: 'Worksheet', prompt: 'Create a worksheet with 3 easy, 3 medium, and 2 challenge questions.' },
-  },
-  help: {
-    label: 'Help',
-    quickA: { label: 'Engagement', prompt: 'Suggest practical strategies to improve classroom engagement.' },
-    quickB: { label: 'Mixed Ability', prompt: 'How should I support mixed-ability learners in this lesson?' },
-  },
-};
-
-
 interface VidyaAIViewChatProps {
   teacherId: string;
   teacherName?: string;
   subject?: string;
   subjectOptions?: string[];
+  subjectSelectOptions?: VidyaSubjectSelectOption[];
   fullPage?: boolean;
   standalone?: boolean;
+}
+
+function subjectPickerLabel(
+  current: string,
+  grouped?: VidyaSubjectSelectOption[],
+): string {
+  const match = grouped?.find((row) => row.value === current);
+  return match?.label || current;
 }
 
 export default function VidyaAIViewChat({
@@ -130,11 +113,11 @@ export default function VidyaAIViewChat({
   teacherName,
   subject,
   subjectOptions = [],
+  subjectSelectOptions,
   fullPage = false,
   standalone = false,
 }: VidyaAIViewChatProps) {
   const insets = useSafeAreaInsets();
-  const [teachingTab, setTeachingTab] = useState<TeachingTab>('lesson');
   const [subjectPickerOpen, setSubjectPickerOpen] = useState(false);
   const [composerHeight, setComposerHeight] = useState(64);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -146,9 +129,9 @@ export default function VidyaAIViewChat({
       studentName: teacherName || 'Teacher',
       currentSubject: subject || subjectOptions[0] || 'General',
       subjectOptions: subjectOptions.length > 0 ? subjectOptions : subject ? [subject] : ['General'],
-      teacherMode: teachingTab,
+      subjectSelectOptions,
     }),
-    [teacherName, subject, subjectOptions, teachingTab]
+    [teacherName, subject, subjectOptions, subjectSelectOptions]
   );
 
   const model = useVidyaChat({
@@ -157,8 +140,8 @@ export default function VidyaAIViewChat({
     context: chatContext,
   });
 
-  const mode = TEACHING_MODES[teachingTab];
   const composerBottomPad = keyboardOpen ? 8 : Math.max(insets.bottom, TEACHER_SPACING.sm);
+  const groupedSubjects = model.subjectSelectOptions || subjectSelectOptions;
   const showSubjectPicker = model.subjectOptions.length > 1;
   /** The opaque dock rounds itself instead of the card clipping it. */
   const cardRadius = fullPage || standalone ? 0 : TEACHER_RADIUS.lg;
@@ -193,57 +176,14 @@ export default function VidyaAIViewChat({
   return (
     <View style={[styles.chatRoot, fullPage && styles.chatRootFull, standalone && styles.chatRootStandalone]}>
       <View style={styles.chrome}>
-        <View style={styles.modeTabs}>
-          {(Object.keys(TEACHING_MODES) as TeachingTab[]).map((tab) => {
-            const active = teachingTab === tab;
-            return (
-              <Pressable key={tab} onPress={() => setTeachingTab(tab)} style={styles.modeTabPress}>
-                {active ? (
-                  <LinearGradient
-                    colors={[TEACHER.primary, TEACHER.primaryDark]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={[styles.modeTab, styles.modeTabActive]}
-                  >
-                    <Text style={[styles.modeTabText, styles.modeTabTextActive]}>
-                      {TEACHING_MODES[tab].label}
-                    </Text>
-                  </LinearGradient>
-                ) : (
-                  <View style={styles.modeTab}>
-                    <Text style={styles.modeTabText}>{TEACHING_MODES[tab].label}</Text>
-                  </View>
-                )}
-              </Pressable>
-            );
-          })}
-        </View>
-
-        <View style={styles.quickRow}>
-          <Pressable
-            style={styles.subjectBadge}
-            onPress={() => showSubjectPicker && setSubjectPickerOpen(true)}
-            disabled={!showSubjectPicker}
-          >
-            <Text style={styles.subjectBadgeText}>{model.currentSubject}</Text>
-            {showSubjectPicker ? (
-              <Ionicons name="chevron-down" size={12} color={TEACHER.primaryLight} />
-            ) : null}
-          </Pressable>
-          <ScrollView
-            horizontal
-            nestedScrollEnabled
-            showsHorizontalScrollIndicator={false}
-            style={styles.quickChipsScroll}
-            contentContainerStyle={styles.quickChips}
-          >
-            <Pressable style={styles.quickChip} onPress={() => model.onPromptClick(mode.quickA.prompt)}>
-              <Text style={styles.quickChipText}>{mode.quickA.label}</Text>
-            </Pressable>
-            <Pressable style={styles.quickChip} onPress={() => model.onPromptClick(mode.quickB.prompt)}>
-              <Text style={styles.quickChipText}>{mode.quickB.label}</Text>
-            </Pressable>
-          </ScrollView>
+        <View style={styles.deskHeader}>
+          <View style={styles.deskHeaderText}>
+            <Text style={styles.deskEyebrow}>Interactive AI</Text>
+            <Text style={styles.deskTitle}>Teacher App Assistant</Text>
+            <Text style={styles.deskSubtitle}>
+              Live class data — students, homework, attendance, exams, OMR.
+            </Text>
+          </View>
           <Pressable
             onPress={confirmClearChat}
             disabled={!canClearChat}
@@ -253,6 +193,24 @@ export default function VidyaAIViewChat({
           >
             <Ionicons name="trash-outline" size={15} color={TEACHER.danger} />
             <Text style={styles.clearChatText}>Clear Chat</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.subjectCard}>
+          <Text style={styles.subjectCardLabel}>Teach using subject</Text>
+          <Pressable
+            style={styles.subjectSelect}
+            onPress={() => showSubjectPicker && setSubjectPickerOpen(true)}
+            disabled={!showSubjectPicker}
+            accessibilityRole="button"
+            accessibilityLabel="Select subject"
+          >
+            <Text style={styles.subjectSelectText} numberOfLines={1}>
+              {subjectPickerLabel(model.currentSubject, groupedSubjects)}
+            </Text>
+            {showSubjectPicker ? (
+              <Ionicons name="chevron-down" size={16} color={TEACHER.primaryLight} />
+            ) : null}
           </Pressable>
         </View>
       </View>
@@ -273,8 +231,10 @@ export default function VidyaAIViewChat({
         <View style={styles.messagesBlock}>
           {model.displayMessages.length === 0 ? (
             <View style={styles.starterBlock}>
-              <Text style={styles.starterTitle}>Start With A Teaching Prompt</Text>
-              <Text style={styles.starterSub}>Tap a suggestion below or type your own question.</Text>
+              <Text style={styles.starterTitle}>Ask about your teaching app</Text>
+              <Text style={styles.starterSub}>
+                Classes, homework, attendance, exams, OMR — or a student by name.
+              </Text>
               <View style={styles.starterGrid}>
                 {model.quickQuestions.map((question) => (
                   <Pressable
@@ -404,6 +364,7 @@ export default function VidyaAIViewChat({
       <SubjectPickerModal
         visible={subjectPickerOpen}
         subjects={model.subjectOptions}
+        groupedOptions={groupedSubjects}
         selected={model.currentSubject}
         onSelect={model.setSelectedSubject}
         onClose={() => setSubjectPickerOpen(false)}
@@ -473,6 +434,70 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: TEACHER.surfaceBorder,
     paddingTop: TEACHER_SPACING.md,
+    paddingBottom: TEACHER_SPACING.md,
+  },
+  deskHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 10,
+    paddingHorizontal: TEACHER_SPACING.md,
+    marginBottom: TEACHER_SPACING.md,
+  },
+  deskHeaderText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  deskEyebrow: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: TEACHER.primaryLight,
+    marginBottom: 4,
+  },
+  deskTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: TEACHER.text,
+  },
+  deskSubtitle: {
+    marginTop: 4,
+    fontSize: 13,
+    lineHeight: 18,
+    color: TEACHER.textMuted,
+  },
+  subjectCard: {
+    marginHorizontal: TEACHER_SPACING.md,
+    padding: TEACHER_SPACING.md,
+    borderRadius: TEACHER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
+    backgroundColor: TEACHER.surface,
+  },
+  subjectCardLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: TEACHER.text,
+    marginBottom: 8,
+  },
+  subjectSelect: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    paddingHorizontal: 12,
+    borderRadius: TEACHER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: TEACHER.surfaceBorder,
+    backgroundColor: '#FFFFFF',
+  },
+  subjectSelectText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
+    color: TEACHER.text,
   },
   modeTabs: {
     flexDirection: 'row',

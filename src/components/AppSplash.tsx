@@ -16,7 +16,9 @@ import Animated, {
 import { isAndroidTv } from '../lib/device';
 
 /** Hold long enough for the entrance spring to settle before exit. */
-export const SPLASH_DURATION_MS = 3800;
+export const SPLASH_DURATION_MS = 1600;
+/** Never leave the branded overlay up longer than this, even if auth is slow. */
+export const SPLASH_MAX_DURATION_MS = 3200;
 const EXIT_DURATION_MS = 520;
 const MAX_LOGO_SCALE = 1.06;
 const BRAND_LOGO = require('../../assets/logo-transparent.png');

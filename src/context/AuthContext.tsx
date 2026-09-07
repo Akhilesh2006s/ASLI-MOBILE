@@ -20,6 +20,12 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
+function isAuthNetworkIssue(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const maybe = error as { isTimeout?: unknown; isNetworkError?: unknown };
+  return Boolean(maybe.isTimeout || maybe.isNetworkError);
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
@@ -42,12 +48,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setToken(stored.token);
       setRole(stored.role);
-      const me = await authService.me();
-      setUser(me?.user || null);
-      if (me?.user?.role) {
-        setRole(me.user.role);
+      // Release the splash as soon as we have a stored session. /me can be slow
+      // on mobile networks and must not pin the branded overlay for up to 60s.
+      if (!silent) {
+        setIsLoading(false);
       }
-    } catch (error) {
+
+      try {
+        const me = await authService.me();
+        setUser(me?.user || null);
+        if (me?.user?.role) {
+          setRole(me.user.role);
+        }
+      } catch (error) {
+        if (!isAuthNetworkIssue(error)) {
+          await authService.clearAuth();
+          setToken(null);
+          setRole(null);
+          setUser(null);
+        }
+      }
+    } catch {
       await authService.clearAuth();
       setToken(null);
       setRole(null);

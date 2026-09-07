@@ -97,8 +97,8 @@ export default function AITutor() {
         <View style={styles.headerContent}>
           <VidyaAvatar size={44} borderColor="#c7d2fe" />
           <View>
-            <Text style={styles.headerTitle}>Vidya AI</Text>
-            <Text style={styles.headerSub}>Your AI Study Buddy</Text>
+            <Text style={styles.headerTitle}>Ask Vidya AI</Text>
+            <Text style={styles.headerSub}>Your Asli Learn app assistant</Text>
           </View>
         </View>
       </View>

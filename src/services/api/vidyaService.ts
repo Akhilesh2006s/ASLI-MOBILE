@@ -29,11 +29,23 @@ const vidyaService = {
   studentChat: (body: {
     message: string;
     studentId: string;
-    history?: Array<{ role: string; content: string }>;
+    history?: Array<{ role: string; content: string; citations?: unknown[] }>;
   }) =>
     fetchJson<any>('/api/vidya/student/chat', { method: 'POST', body: JSON.stringify(body) }),
 
-  analyzeImage: (body: { image: string; context?: string }) =>
+  teacherChat: (body: {
+    message: string;
+    history?: Array<{ role: string; content: string; citations?: unknown[] }>;
+    context?: Record<string, unknown>;
+  }) =>
+    fetchJson<any>('/api/vidya/teacher/chat', { method: 'POST', body: JSON.stringify(body) }),
+
+  analyzeImage: (body: {
+    image: string;
+    mimeType?: string;
+    context?: string;
+    history?: Array<{ role: string; content: string; citations?: unknown[] }>;
+  }) =>
     fetchJson<any>('/api/ai-chat/analyze-image', { method: 'POST', body: JSON.stringify(body) }),
 
   getStudentFocusCard: () => fetchJson<any>('/api/vidya/student/focus-card'),
