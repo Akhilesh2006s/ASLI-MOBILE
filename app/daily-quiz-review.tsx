@@ -148,10 +148,14 @@ export default function DailyQuizReviewScreen() {
             </Text>
           </LinearGradient>
           {(review.questions || []).map((q, index) => {
-            const expected = q.correctAnswer || q.options?.find((o) => o.isCorrect)?.text || '';
-            const userAnswer = q.userAnswer;
-            const isCorrect = q.isCorrect ?? Boolean(userAnswer && userAnswer === expected);
-            const isAnswered = Boolean(userAnswer);
+            const expected = String(
+              q.correctAnswer || q.options?.find((o) => o.isCorrect)?.text || '',
+            ).trim();
+            const userAnswer = String(q.userAnswer || '').trim();
+            const isAnswered = Boolean(userAnswer) || Boolean(q.isAnswered);
+            const isCorrect =
+              q.isCorrect ??
+              Boolean(isAnswered && userAnswer && (userAnswer === expected || q.options?.some((o) => o.isCorrect && String(o.text || '').trim() === userAnswer)));
             return (
               <View key={`q-${index}`} style={styles.qCard}>
                 <View style={styles.qTop}>
@@ -168,9 +172,15 @@ export default function DailyQuizReviewScreen() {
                   </View>
                 </View>
                 <Text style={styles.prompt}>{q.questionText}</Text>
+                {isAnswered ? (
+                  <Text style={styles.yourAnswer}>Your answer: {userAnswer || '—'}</Text>
+                ) : (
+                  <Text style={styles.yourAnswerMuted}>No answer recorded</Text>
+                )}
                 {(q.options || []).map((option, optIndex) => {
-                  const selected = userAnswer === option.text;
-                  const correctOpt = Boolean(option.isCorrect) || option.text === expected;
+                  const optText = String(option.text || '').trim();
+                  const selected = Boolean(userAnswer) && userAnswer === optText;
+                  const correctOpt = Boolean(option.isCorrect) || optText === expected;
                   return (
                     <View
                       key={`${index}-opt-${optIndex}`}
@@ -178,10 +188,13 @@ export default function DailyQuizReviewScreen() {
                         styles.opt,
                         correctOpt && styles.optOk,
                         selected && !correctOpt && styles.optBad,
+                        selected && correctOpt && styles.optOk,
                       ]}
                     >
                       <Text style={styles.optText}>
-                        {String.fromCharCode(65 + optIndex)}. {option.text}
+                        {String.fromCharCode(65 + optIndex)}. {optText}
+                        {selected ? '  · your pick' : ''}
+                        {correctOpt ? '  · correct' : ''}
                       </Text>
                     </View>
                   );
@@ -249,6 +262,8 @@ const styles = StyleSheet.create({
   badgeSkip: { backgroundColor: '#f1f5f9' },
   badgeText: { fontSize: 11, fontWeight: '700', color: '#334155' },
   prompt: { marginTop: 8, fontSize: 14, fontWeight: '600', color: '#0f172a', lineHeight: 20 },
+  yourAnswer: { marginTop: 8, fontSize: 12, fontWeight: '700', color: '#0369a1' },
+  yourAnswerMuted: { marginTop: 8, fontSize: 12, fontWeight: '600', color: '#94a3b8' },
   opt: {
     marginTop: 6,
     borderRadius: 10,

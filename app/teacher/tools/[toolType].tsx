@@ -62,6 +62,7 @@ import { getAiToolIonicon } from '../../../src/lib/ai-tool-icons';
 import {
   filterSubjectsForAiTool,
   filterSubjectsForIitBoard,
+  collapseSchoolBoardScienceSubjects,
   isIitAiToolBoard,
   isLanguageExcludedTool,
   isStoryPassageLanguageSubject,
@@ -402,11 +403,16 @@ export default function TeacherToolPage() {
     if (isIitAiToolBoard(selectedBoard)) {
       return filterSubjectsForIitBoard(uniquePreserveOrder(raw));
     }
+    let merged: string[];
     if (assignedSubjectNames.length > 0) {
-      return mergeAssignedWithCurriculum(assignedSubjectNames, raw);
+      merged = mergeAssignedWithCurriculum(assignedSubjectNames, raw);
+    } else if (raw.length === 0) {
+      merged = [];
+    } else {
+      merged = uniquePreserveOrder(raw);
     }
-    if (raw.length === 0) return [];
-    return uniquePreserveOrder(raw);
+    // CBSE/SSC: Physics/Chemistry/Biology → one Science option (matches web).
+    return collapseSchoolBoardScienceSubjects(selectedBoard, merged);
   }, [
     formParams.gradeLevel,
     cascade.subjects,

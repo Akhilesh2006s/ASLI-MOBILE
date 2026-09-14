@@ -56,6 +56,7 @@ export default function SubscribeScreen() {
   const schoolManaged = Boolean(user?.isSchoolManagedSubscription);
 
   const goBack = () => {
+    if (paywallLocked) return;
     if (router.canGoBack()) {
       router.back();
       return;
@@ -67,10 +68,14 @@ export default function SubscribeScreen() {
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <StatusBar style="dark" />
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <Pressable onPress={goBack} style={styles.backBtn} hitSlop={8}>
-          <Ionicons name="chevron-back" size={22} color={COLORS.text} />
-          <Text style={styles.backText}>Back</Text>
-        </Pressable>
+        {!paywallLocked ? (
+          <Pressable onPress={goBack} style={styles.backBtn} hitSlop={8}>
+            <Ionicons name="chevron-back" size={22} color={COLORS.text} />
+            <Text style={styles.backText}>Back</Text>
+          </Pressable>
+        ) : (
+          <View style={styles.backBtn} />
+        )}
         <View style={styles.hero}>
           <View style={styles.iconWrap}>
             <Ionicons name="card-outline" size={28} color="#C2410C" />

@@ -92,12 +92,14 @@ const OPAQUE_PUSHED_SCREEN = {
 const STUDENT_PUSHED_SCREEN = OPAQUE_PUSHED_SCREEN;
 
 function AuthGate() {
-  const { isLoading, isAuthenticated, role, user } = useAuth();
+  const { isLoading, isAuthenticated, role, user, sessionResolved } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
     if (isLoading) return;
+    // Wait for /me so paymentRequired is known before opening the dashboard.
+    if (isAuthenticated && !sessionResolved) return;
 
     const publicPath = isPublicPath(pathname);
     const subscribePath = isSubscribePath(pathname);
@@ -115,6 +117,8 @@ function AuthGate() {
     }
 
     if (isAuthenticated && publicPath) {
+      // Never bounce a paywalled student off subscribe via "public → dashboard".
+      if (subscribePath && needsIndividualPayment(user)) return;
       router.replace(getDashboardByRole(role));
       return;
     }
@@ -127,9 +131,18 @@ function AuthGate() {
     if (isAuthenticated && !canAccessPath(pathname, role)) {
       router.replace(getDashboardByRole(role));
     }
-  }, [isLoading, isAuthenticated, pathname, role, user, router]);
+  }, [isLoading, isAuthenticated, sessionResolved, pathname, role, user, router]);
 
-  if (isLoading && pathname === '/') {
+  if ((isLoading || (isAuthenticated && !sessionResolved)) && pathname === '/') {
+    return (
+      <View style={styles.loadingContainer}>
+        <LoadingState variant="stats" style={{ width: '100%', paddingHorizontal: 24 }} />
+      </View>
+    );
+  }
+
+  // Hard block: expired school/individual trial must not render app content.
+  if (isAuthenticated && sessionResolved && needsIndividualPayment(user) && !isSubscribePath(pathname)) {
     return (
       <View style={styles.loadingContainer}>
         <LoadingState variant="stats" style={{ width: '100%', paddingHorizontal: 24 }} />

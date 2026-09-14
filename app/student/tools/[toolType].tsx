@@ -32,6 +32,7 @@ import {
   resolveStudentToolConfigKey,
   filterSubjectsForAiTool,
   filterSubjectsForIitBoard,
+  collapseSchoolBoardScienceSubjects,
   isIitAiToolBoard,
   isLanguageExcludedTool,
   isStoryPassageLanguageSubject,
@@ -357,7 +358,7 @@ export default function StudentToolPage() {
     if (isIitAiToolBoard(selectedBoard)) {
       return filterSubjectsForIitBoard(raw);
     }
-    return raw;
+    return collapseSchoolBoardScienceSubjects(selectedBoard, raw);
   }, [formParams.gradeLevel, cascade.subjects, cascade.loadingSubjects, selectedBoard]);
 
   const subjectsForTool = useMemo(

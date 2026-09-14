@@ -48,6 +48,9 @@ const SUBSCRIPTION_NAV_ITEM: StudentNavItem = {
 };
 
 export function studentNavItemsForUser(user?: any): StudentNavItem[] {
+  const showSubscription = Boolean(
+    isIndividualAccount(user) || user?.isSchoolManagedSubscription || user?.paymentRequired,
+  );
   if (isIndividualAccount(user)) {
     return [
       ...STUDENT_NAV_ITEMS.filter((item) => item.id !== 'results' && item.id !== 'timetable').map((item) =>
@@ -55,6 +58,9 @@ export function studentNavItemsForUser(user?: any): StudentNavItem[] {
       ),
       SUBSCRIPTION_NAV_ITEM,
     ];
+  }
+  if (showSubscription) {
+    return [...STUDENT_NAV_ITEMS, SUBSCRIPTION_NAV_ITEM];
   }
   return STUDENT_NAV_ITEMS;
 }

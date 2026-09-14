@@ -117,6 +117,13 @@ export default function StudentDashboard() {
         return;
       }
       setUser(data.user);
+      if (
+        (data.user?.isIndividualAccount || data.user?.isSchoolManagedSubscription) &&
+        data.user?.paymentRequired
+      ) {
+        router.replace('/auth/subscribe');
+        return;
+      }
     } catch (error) {
       const message = String((error as any)?.message || '').toLowerCase();
       if (

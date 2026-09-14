@@ -125,6 +125,72 @@ export function isIitAiToolBoard(board?: string | null): boolean {
   return compact.includes('IIT') || compact.includes('NEET') || compact.includes('JEE');
 }
 
+const SCIENCE_BRANCH_PLAIN_KEYS = new Set([
+  'physics',
+  'phy',
+  'chemistry',
+  'chem',
+  'biology',
+  'bio',
+]);
+
+/** Physics / Chemistry / Biology (branch textbooks under CBSE Science). */
+export function isScienceBranchSubject(subject?: string | null): boolean {
+  const raw = String(subject || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[/_.]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!raw) return false;
+  const plain = extractPlainSubjectName(raw).toLowerCase().trim();
+  if (SCIENCE_BRANCH_PLAIN_KEYS.has(plain)) return true;
+  const first = plain.split(/\s+/)[0];
+  return Boolean(first && SCIENCE_BRANCH_PLAIN_KEYS.has(first));
+}
+
+/**
+ * Map form/book subject → AI Tool Topics curriculum subject.
+ * CBSE-like boards: Physics/Chemistry/Biology use Science topics.
+ * IIT boards keep Physics/Chemistry/Biology as separate subjects.
+ */
+export function curriculumSubjectForAiToolTopics(
+  board: string | null | undefined,
+  bookOrFormSubject: string | null | undefined,
+): string {
+  const subject = String(bookOrFormSubject || '').trim();
+  if (!subject) return '';
+  if (isIitAiToolBoard(board)) return subject;
+  if (isScienceBranchSubject(subject) || /^science$/i.test(subject)) {
+    return 'Science';
+  }
+  return subject;
+}
+
+/**
+ * CBSE / SSC teacher & student tool dropdowns: show one Science option.
+ * Physics / Chemistry / Biology stay separate only on IIT boards.
+ */
+export function collapseSchoolBoardScienceSubjects(
+  board: string | null | undefined,
+  subjects: string[],
+): string[] {
+  const list = Array.isArray(subjects) ? subjects.filter(Boolean) : [];
+  if (!list.length || isIitAiToolBoard(board)) return list;
+
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of list) {
+    const mapped = curriculumSubjectForAiToolTopics(board, raw) || String(raw).trim();
+    if (!mapped) continue;
+    const key = mapped.toLowerCase().replace(/\s+/g, ' ');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(mapped);
+  }
+  return out;
+}
+
 const IIT_STEM_PLAIN_KEYS = new Set([
   'physics',
   'phy',

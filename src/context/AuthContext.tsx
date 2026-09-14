@@ -12,6 +12,8 @@ type AuthState = {
   role: string | null;
   user: any;
   isLoading: boolean;
+  /** True once stored-session restore finished (/me ok, cleared, or no token). */
+  sessionResolved: boolean;
   isAuthenticated: boolean;
   signIn: (payload: LoginPayload) => Promise<any>;
   signOut: () => Promise<void>;
@@ -31,11 +33,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [sessionResolved, setSessionResolved] = useState(false);
 
   const refreshAuth = async (options?: { silent?: boolean }) => {
     const silent = options?.silent === true;
     if (!silent) {
       setIsLoading(true);
+      setSessionResolved(false);
     }
     try {
       const stored = await authService.getStoredAuth();
@@ -50,6 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setRole(stored.role);
       // Release the splash as soon as we have a stored session. /me can be slow
       // on mobile networks and must not pin the branded overlay for up to 60s.
+      // AuthGate still waits on sessionResolved before opening paid routes.
       if (!silent) {
         setIsLoading(false);
       }
@@ -75,6 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
     } finally {
       setIsLoading(false);
+      setSessionResolved(true);
     }
   };
 
@@ -84,6 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (payload: LoginPayload) => {
     resetSessionBaseline();
+    setSessionResolved(false);
     const data = await authService.login(payload);
     setToken(data?.token || null);
     setRole(data?.user?.role || null);
@@ -93,6 +100,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (me?.user?.role) setRole(me.user.role);
     } catch {
       setUser(data?.user || null);
+    } finally {
+      setSessionResolved(true);
     }
     return data;
   };
@@ -103,6 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(null);
     setRole(null);
     setUser(null);
+    setSessionResolved(true);
   };
 
   const value = useMemo(
@@ -111,12 +121,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       role,
       user,
       isLoading,
+      sessionResolved,
       isAuthenticated: Boolean(token),
       signIn,
       signOut,
       refreshAuth,
     }),
-    [token, role, user, isLoading]
+    [token, role, user, isLoading, sessionResolved]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

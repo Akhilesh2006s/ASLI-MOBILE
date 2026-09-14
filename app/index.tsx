@@ -14,14 +14,18 @@ function getDashboardByRole(role: string | null) {
 }
 
 export default function Index() {
-  const { isLoading, isAuthenticated, role } = useAuth();
+  const { isLoading, isAuthenticated, role, user, sessionResolved } = useAuth();
 
-  if (isLoading) {
+  if (isLoading || (isAuthenticated && !sessionResolved)) {
     return <View style={styles.boot} />;
   }
 
   if (!isAuthenticated) {
     return <Redirect href="/auth/login" />;
+  }
+
+  if ((user?.isIndividualAccount || user?.isSchoolManagedSubscription) && user?.paymentRequired) {
+    return <Redirect href="/auth/subscribe" />;
   }
 
   return <Redirect href={getDashboardByRole(role)} />;
