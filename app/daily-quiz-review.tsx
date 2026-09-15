@@ -15,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { API_BASE_URL } from '../src/lib/api-config';
 import { useBackNavigation, getDashboardPath } from '../src/hooks/useBackNavigation';
+import { sanitizeAiDisplayText } from '../src/lib/sanitize-ai-display-text';
 
 type DailyReviewQuestion = {
   questionText: string;
@@ -171,7 +172,7 @@ export default function DailyQuizReviewScreen() {
                     </Text>
                   </View>
                 </View>
-                <Text style={styles.prompt}>{q.questionText}</Text>
+                <Text style={styles.prompt}>{sanitizeAiDisplayText(q.questionText)}</Text>
                 {isAnswered ? (
                   <Text style={styles.yourAnswer}>Your answer: {userAnswer || '—'}</Text>
                 ) : (

@@ -143,6 +143,8 @@ type FieldProps = {
   inputRef?: RefObject<TextInputType | null>;
   onSubmitEditing?: () => void;
   onFocusField?: () => void;
+  /** When false, discourage OS password managers from filling the field. */
+  allowAutofill?: boolean;
 };
 
 function PremiumField({
@@ -159,6 +161,7 @@ function PremiumField({
   inputRef,
   onSubmitEditing,
   onFocusField,
+  allowAutofill = false,
 }: FieldProps) {
   const [focused, setFocused] = useState(false);
   const focusAnim = useSharedValue(0);
@@ -197,8 +200,18 @@ function PremiumField({
           keyboardType={keyboardType}
           autoCapitalize="none"
           autoCorrect={false}
-          autoComplete={secure ? 'password' : keyboardType === 'email-address' ? 'email' : 'username'}
-          textContentType={secure ? 'password' : 'username'}
+          autoComplete={
+            allowAutofill
+              ? secure
+                ? 'password'
+                : keyboardType === 'email-address'
+                  ? 'email'
+                  : 'username'
+              : 'off'
+          }
+          textContentType={allowAutofill ? (secure ? 'password' : 'username') : 'none'}
+          importantForAutofill={allowAutofill ? 'yes' : 'no'}
+          passwordRules={secure && !allowAutofill ? '' : undefined}
           secureTextEntry={secure && !showPassword}
           underlineColorAndroid="transparent"
           selectionColor={PALETTE.accent}
@@ -249,6 +262,9 @@ export default function Login() {
   const passwordInputRef = useRef<TextInputType>(null);
   const credentialsRef = useRef({ email: '', password: '' });
   const submitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rememberMeRef = useRef(rememberMe);
+  const passwordTouchedRef = useRef(false);
+  rememberMeRef.current = rememberMe;
 
   useEffect(() => {
     credentialsRef.current = formData;
@@ -262,23 +278,71 @@ export default function Login() {
 
   useEffect(() => {
     if (!showForm) return;
+    let cancelled = false;
+    passwordTouchedRef.current = false;
     const load = async () => {
       try {
-        const email = await storageGetItem('rememberedEmail');
         // Passwords are never persisted. Remove values left by older builds.
         await storageDeleteItem('rememberedPassword');
-        if (email) {
+        const flag = await storageGetItem('rememberMe');
+        const email = await storageGetItem('rememberedEmail');
+        if (cancelled) return;
+        if (flag === '1' && email) {
           const next = { email, password: '' };
           credentialsRef.current = next;
           setFormData(next);
           setRememberMe(true);
+          return;
         }
+        // Remember me off: do not restore credentials; clear any leftover storage.
+        await storageDeleteItem('rememberedEmail');
+        await storageDeleteItem('rememberMe');
+        setRememberMe(false);
       } catch {
         /* ignore */
       }
     };
-    load();
+    void load();
+
+    // OS password managers may fill after mount; strip password only when Remember me is off
+    // and the user has not focused the password field yet.
+    const stripPasswordAutofill = () => {
+      if (cancelled || rememberMeRef.current || passwordTouchedRef.current) return;
+      setFormData((prev) => {
+        if (!prev.password) return prev;
+        const next = { ...prev, password: '' };
+        credentialsRef.current = next;
+        return next;
+      });
+    };
+    const t1 = setTimeout(stripPasswordAutofill, 400);
+    const t2 = setTimeout(stripPasswordAutofill, 900);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, [showForm]);
+
+  const toggleRememberMe = () => {
+    Haptics.selectionAsync().catch(() => {});
+    setRememberMe((wasOn) => {
+      const next = !wasOn;
+      if (!next) {
+        void storageDeleteItem('rememberedEmail');
+        void storageDeleteItem('rememberedPassword');
+        void storageDeleteItem('rememberMe');
+        passwordTouchedRef.current = false;
+        const empty = { email: '', password: '' };
+        credentialsRef.current = empty;
+        setFormData(empty);
+      } else {
+        void storageSetItem('rememberMe', '1');
+      }
+      return next;
+    });
+  };
 
   // Keep active fields (and Sign In) above the keyboard on edge-to-edge Android.
   useEffect(() => {
@@ -343,9 +407,11 @@ export default function Login() {
     try {
       const data = await signIn({ email, password });
       if (rememberMe) {
+        await storageSetItem('rememberMe', '1');
         await storageSetItem('rememberedEmail', email);
         await storageDeleteItem('rememberedPassword');
       } else {
+        await storageDeleteItem('rememberMe');
         await storageDeleteItem('rememberedEmail');
         await storageDeleteItem('rememberedPassword');
       }
@@ -461,6 +527,7 @@ export default function Login() {
                       inputRef={emailInputRef}
                       onFocusField={ensureFieldVisible}
                       onSubmitEditing={() => passwordInputRef.current?.focus()}
+                      allowAutofill={rememberMe}
                     />
                     <PremiumField
                       label="Password"
@@ -468,6 +535,7 @@ export default function Login() {
                       placeholder="Enter your password"
                       value={formData.password}
                       onChangeText={(password) => {
+                        passwordTouchedRef.current = true;
                         credentialsRef.current = { ...credentialsRef.current, password };
                         setFormData((p) => ({ ...p, password }));
                       }}
@@ -476,8 +544,12 @@ export default function Login() {
                       onTogglePassword={() => setShowPassword((v) => !v)}
                       delay={260}
                       inputRef={passwordInputRef}
-                      onFocusField={ensureFieldVisible}
+                      onFocusField={() => {
+                        passwordTouchedRef.current = true;
+                        ensureFieldVisible();
+                      }}
                       onSubmitEditing={handleSubmit}
+                      allowAutofill={rememberMe}
                     />
 
                     <Animated.View entering={FadeInDown.duration(450).delay(340)} style={styles.optionsRow}>
@@ -485,10 +557,7 @@ export default function Login() {
                         style={styles.rememberRow}
                         accessibilityRole="checkbox"
                         accessibilityState={{ checked: rememberMe }}
-                        onPress={() => {
-                          Haptics.selectionAsync().catch(() => {});
-                          setRememberMe((v) => !v);
-                        }}
+                        onPress={toggleRememberMe}
                       >
                         <LinearGradient
                           colors={rememberMe ? ['#4F46E5', '#4338CA'] : ['#FFFFFF', '#FFFFFF']}

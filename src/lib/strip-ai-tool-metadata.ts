@@ -12,8 +12,18 @@ export function stripVariantScaffoldFromQuestionText(text: string): string {
   }
 
   q = q.replace(/^(?:record|set)\s+\d+\s*:\s*/i, '').trim();
+  // Trailing bank labels: "… Set: 13" / "… (Set 13)" / "… — Set: 13"
+  q = q.replace(/\s*[—–-]\s*set\s*:?\s*\d+\s*$/i, '').trim();
+  q = q.replace(/\s*\(\s*set\s*:?\s*\d+\s*\)\s*$/i, '').trim();
+  q = q.replace(/\s+set\s*:\s*\d+\s*$/i, '').trim();
+  q = q.replace(/\s+set\s+\d+\s*$/i, '').trim();
   q = q.replace(/\s*\((?:VSA|SA|LA|MCQ|HOTS|Q)\s*\d+\)\s*$/i, '').trim();
   q = q.replace(/\s*\(variant\s+\d+\)\s*$/i, '').trim();
+  q = q.replace(/\s*[—–-]\s*practice\s+activity\s+\d+\s*$/i, '').trim();
+  q = q.replace(/\s+practice\s+activity\s+\d+\s*$/i, '').trim();
+  q = q.replace(/\s*[—–-]\s*concept\s+mastery\s*\(guide\s*\d+\)\s*$/i, '').trim();
+  q = q.replace(/\s*\(guide\s*\d+\)\s*$/i, '').trim();
+  q = q.replace(/^\s*variant\s+\d+\s*:\s*/i, '').trim();
 
   return q;
 }

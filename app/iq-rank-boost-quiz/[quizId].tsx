@@ -18,6 +18,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { API_BASE_URL } from '../../src/lib/api-config';
 import { GlassPanel } from '../../src/components/ui';
 import { STUDENT } from '../../src/theme/student';
+import { sanitizeAiDisplayText } from '../../src/lib/sanitize-ai-display-text';
 import {
   setStudentDashboardTabIntent,
   setLearningPathsSubTabIntent,
@@ -34,6 +35,20 @@ interface Question {
     _id: string;
     name: string;
   } | string;
+}
+
+function cleanQuizQuestion(q: Question): Question {
+  return {
+    ...q,
+    questionText: sanitizeAiDisplayText(q?.questionText || ''),
+    explanation: q?.explanation ? sanitizeAiDisplayText(q.explanation) : q?.explanation,
+    options: Array.isArray(q?.options)
+      ? q.options.map((opt) => ({
+          ...opt,
+          text: sanitizeAiDisplayText(opt?.text || ''),
+        }))
+      : q?.options,
+  };
 }
 
 const LIST_PATH = '/dashboard';
@@ -72,7 +87,9 @@ export default function IQRankBoostQuiz() {
   const [dailyMeta, setDailyMeta] = useState<{
     dateKey?: string;
     completed?: boolean;
-    score?: number;
+    lockedUntilTomorrow?: boolean;
+    score?: number | null;
+    correctCount?: number;
     pickCount?: number;
   } | null>(null);
   const [lockedUntilTomorrow, setLockedUntilTomorrow] = useState(false);
@@ -128,21 +145,27 @@ export default function IQRankBoostQuiz() {
         const dailyBank =
           data.quiz?.questionBankSource === 'daily-quiz-xlsx' ||
           data.quiz?.activityType === 'daily' ||
+          data.quiz?.scheduleType === 'daily' ||
           Boolean(data.daily);
         setIsDaily(Boolean(dailyBank));
         setDailyMeta(data.daily || null);
+        const cleaned = (fetched as Question[]).map(cleanQuizQuestion);
         // Keep API order for daily (category spread). Only shuffle one-off quizzes.
-        setQuestions(dailyBank ? fetched : [...fetched].sort(() => Math.random() - 0.5));
+        setQuestions(dailyBank ? cleaned : [...cleaned].sort(() => Math.random() - 0.5));
         if (data.quiz?.title) setQuizTitle(String(data.quiz.title));
         const subject = data.quiz?.subject || fetched[0]?.subject;
         if (subject) {
           setSubjectName(typeof subject === 'object' ? subject?.name || '' : '');
         }
 
-        if (dailyBank && data.daily?.completed) {
-          const total = Number(data.daily.pickCount) || fetched.length || 5;
+        const dailyCompleted = Boolean(
+          data.daily?.completed || data.daily?.lockedUntilTomorrow,
+        );
+
+        if (dailyBank && dailyCompleted) {
+          const total = Number(data.daily.pickCount) || cleaned.length || 5;
           let score = data.daily.score != null ? Number(data.daily.score) : null;
-          let correct = 0;
+          let correct = Number(data.daily.correctCount) || 0;
           try {
             const statusRes = await fetch(`${API_BASE_URL}/api/student/daily-quiz-status`, {
               headers: { Authorization: `Bearer ${token}` },
@@ -150,10 +173,10 @@ export default function IQRankBoostQuiz() {
             if (statusRes.ok) {
               const statusJson = await statusRes.json();
               const today = statusJson?.data?.today;
-              if (today?.completed) {
-                const t = Number(today.totalQuestions) || total;
-                correct = Number(today.correctCount) || 0;
-                score = today.score != null ? Number(today.score) : score;
+              if (today?.completed || statusJson?.data?.lockedUntilTomorrow) {
+                const t = Number(today?.totalQuestions) || total;
+                correct = Number(today?.correctCount) || correct;
+                score = today?.score != null ? Number(today.score) : score;
                 setResults({
                   total: t,
                   correct,
@@ -168,19 +191,48 @@ export default function IQRankBoostQuiz() {
               }
             }
           } catch {
-            /* fall through */
+            /* fall through — still lock from daily.completed */
           }
-          if (score != null) {
-            setResults({
-              total,
-              correct: 0,
-              incorrect: 0,
-              unattempted: 0,
-              score,
+          setResults({
+            total,
+            correct,
+            incorrect: Math.max(0, total - correct),
+            unattempted: 0,
+            score: score ?? 0,
+          });
+          setIsSubmitted(true);
+          setLockedUntilTomorrow(true);
+          setHasStarted(true);
+          return;
+        }
+
+        // Extra status check even if quiz payload missed the completed flag.
+        if (dailyBank) {
+          try {
+            const statusRes = await fetch(`${API_BASE_URL}/api/student/daily-quiz-status`, {
+              headers: { Authorization: `Bearer ${token}` },
             });
-            setIsSubmitted(true);
-            setLockedUntilTomorrow(true);
-            setHasStarted(true);
+            if (statusRes.ok) {
+              const statusJson = await statusRes.json();
+              if (statusJson?.data?.lockedUntilTomorrow || statusJson?.data?.today?.completed) {
+                const today = statusJson?.data?.today;
+                const t = Number(today?.totalQuestions) || cleaned.length || 5;
+                const correct = Number(today?.correctCount) || 0;
+                setResults({
+                  total: t,
+                  correct,
+                  incorrect: Math.max(0, t - correct),
+                  unattempted: 0,
+                  score: today?.score != null ? Number(today.score) : 0,
+                });
+                setDailyMeta((prev) => ({ ...(prev || {}), completed: true }));
+                setIsSubmitted(true);
+                setLockedUntilTomorrow(true);
+                setHasStarted(true);
+              }
+            }
+          } catch {
+            /* ignore */
           }
         }
       } else {
@@ -261,6 +313,7 @@ export default function IQRankBoostQuiz() {
       }
       if (data?.daily?.lockedUntilTomorrow || isDaily) {
         setLockedUntilTomorrow(true);
+        setDailyMeta((prev) => ({ ...(prev || {}), completed: true, lockedUntilTomorrow: true }));
       }
     } catch (error) {
       console.error('Error submitting quiz:', error);
