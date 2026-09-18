@@ -17,7 +17,8 @@ export function displayBoardShort(board?: string | null): string {
   const key = normalizeBoardKey(board);
   if (!key) return '';
   if (key === 'IIT/NEET') return 'IIT';
-  if (key === 'ASLI_EXCLUSIVE_SCHOOLS') return 'Asli Exclusive';
+  // Internal hub — do not show "Asli Exclusive" on class/subject cards.
+  if (key === 'ASLI_EXCLUSIVE_SCHOOLS') return '';
   return key;
 }
 
