@@ -13,6 +13,14 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { API_BASE_URL } from '../../../src/lib/api-config';
+
+function timetableImageSrc(imageUrl?: string | null): string {
+  const raw = String(imageUrl || '').trim();
+  if (!raw) return '';
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+  if (raw.startsWith('/')) return `${API_BASE_URL}${raw}`;
+  return `${API_BASE_URL}/${raw}`;
+}
 import { getSchoolBranding } from '../../../src/lib/school-branding';
 import { EmptyState, ErrorState, LoadingState } from '../../../src/components/ui';
 import { STUDENT } from '../../../src/theme/student';
@@ -53,11 +61,7 @@ export default function TimetableTabView({ user }: { user?: any }) {
       const data = await res.json();
       const next = data?.data || null;
       setPhoto(next);
-      setImageUrl(
-        next?.imageUrl
-          ? `${API_BASE_URL}/api/timetable/photo/file?token=${encodeURIComponent(token)}`
-          : ''
-      );
+      setImageUrl(timetableImageSrc(next?.imageUrl));
     } catch {
       setError('Could not load timetable photo.');
       setPhoto(null);

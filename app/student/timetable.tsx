@@ -25,8 +25,12 @@ type PhotoPayload = {
   imageUrl?: string;
 };
 
-async function resolveAuthenticatedFileUrl(token: string): Promise<string> {
-  return `${API_BASE_URL}/api/timetable/photo/file?token=${encodeURIComponent(token)}`;
+function timetableImageSrc(imageUrl?: string | null): string {
+  const raw = String(imageUrl || '').trim();
+  if (!raw) return '';
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+  if (raw.startsWith('/')) return `${API_BASE_URL}${raw}`;
+  return `${API_BASE_URL}/${raw}`;
 }
 
 export default function StudentTimetable() {
@@ -63,7 +67,7 @@ export default function StudentTimetable() {
       const data = await res.json();
       const next = data?.data || null;
       setPhoto(next);
-      setImageUrl(next?.imageUrl ? await resolveAuthenticatedFileUrl(token) : '');
+      setImageUrl(timetableImageSrc(next?.imageUrl));
     } catch {
       setError('Could not load timetable photo.');
       setPhoto(null);

@@ -51,6 +51,13 @@ export async function storageSetItem(key: string, value: string): Promise<void> 
   if (!useAsyncOnly() && !tooLarge) {
     try {
       await SecureStore.setItemAsync(key, value);
+      if (isSensitiveKey(key)) {
+        try {
+          await AsyncStorage.removeItem(key);
+        } catch {
+          /* drop any leftover plaintext copy */
+        }
+      }
       return;
     } catch {
       if (isSensitiveKey(key)) throw new Error('Secure credential storage is unavailable.');

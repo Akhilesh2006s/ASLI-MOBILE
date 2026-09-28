@@ -3,6 +3,14 @@ import React, { memo, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, ActivityIndicator, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { API_BASE_URL } from '../../../../src/lib/api-config';
+
+function timetableImageSrc(imageUrl?: string | null): string {
+  const raw = String(imageUrl || '').trim();
+  if (!raw) return '';
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+  if (raw.startsWith('/')) return `${API_BASE_URL}${raw}`;
+  return `${API_BASE_URL}/${raw}`;
+}
 import { GlassPanel } from '../../../../src/components/ui';
 import { STUDENT, STUDENT_RADIUS } from '../../../../src/theme/student';
 
@@ -33,11 +41,7 @@ function ClassTimetableSectionComponent() {
         const data = await res.json();
         const next = data?.data || null;
         setPhoto(next);
-        setImageUrl(
-          next?.imageUrl
-            ? `${API_BASE_URL}/api/timetable/photo/file?token=${encodeURIComponent(token)}`
-            : '',
-        );
+        setImageUrl(timetableImageSrc(next?.imageUrl));
       } catch {
         setPhoto(null);
         setImageUrl('');
